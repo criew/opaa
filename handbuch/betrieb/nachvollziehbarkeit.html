@@ -1,0 +1,4837 @@
+
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="ueberwachung-und-fehlerbehebung.html">
+      
+      
+        <link rel="next" href="releases-und-nachweise.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/opaa-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Nachvollziehbarkeit - OPAA-Handbuch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/opaa.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#nachvollziehbarkeit" class="md-skip">
+          Zum Inhalt
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OPAA-Handbuch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Nachvollziehbarkeit
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Dunkles Farbschema"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dunkles Farbschema" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Helles Farbschema"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Helles Farbschema" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Suche" placeholder="Suche" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Suche">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Zurücksetzen" aria-label="Zurücksetzen" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Suche wird initialisiert
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    OPAA-Handbuch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OPAA-Handbuch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benutzer
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Benutzer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstieg und Chat
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Einstieg und Chat
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/erste-schritte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Erste Schritte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/fragen-stellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fragen stellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/belege-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/anhaengen-und-diktieren.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dateien anhängen und Spracheingabe
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompts-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/antworten-weitergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Antworten weitergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/chats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chats verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-inhalte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inhalte eines Space zuordnen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-mitglieder.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mitglieder eines Space verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-einstellungen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space-Einstellungen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliotheken
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bibliotheken
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/katalog.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Katalog nutzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompt-bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt-Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/arbeitsmittel-teilen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arbeitsmittel teilen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-aktuell-halten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek aktuell halten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/metadaten-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/fuer-ki-werkzeuge-freigeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Für externe KI-Werkzeuge freigeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/konnektoren/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektoren
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4_8" id="__nav_2_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konnektoren
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/filesystem.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Verzeichnis im Dateisystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/http-directory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Webverzeichnis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/rss-feed.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Confluence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/s3.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: S3-Objektspeicher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/smb.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Windows-Dateifreigabe (SMB)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/sharepoint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: SharePoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/onedrive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: OneDrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/google-drive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Google Drive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/nextcloud.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/dropbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Dropbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto und Zugriff
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konto und Zugriff
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konto-verbinden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto verbinden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/private-bibliothek.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/zugangstoken.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugangstoken anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/ki-werkzeug-einrichten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/gruppe-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interne Gruppe pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/zugriff-nachvollziehen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugriffsberechtigung nachvollziehen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/meine-daten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eigene Daten herunterladen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../administration/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Administration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemverwaltung
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Systemverwaltung
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einfuehrung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einführung vorbereiten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/branding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lokale Konten verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anmeldung-einstellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anmeldung einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konto-uebergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto an Identitätsanbieter übergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/systemrollen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemrollen vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/gruppen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gruppen verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anlegerechte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anlegerechte vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/ausscheiden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ausscheiden und Nachfolge regeln
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/zugaenge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugänge einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/modelle.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/suche-und-indexierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suche und Indexierung überwachen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/externe-ki-werkzeuge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Externe KI-Werkzeuge zulassen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/datenschutz.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/e-mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einstellungen-uebertragen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstellungen übertragen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revision
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Revision
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/stichtagsauskunft.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stichtagsauskunft erstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/nachweisprotokoll-lesen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachweisprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/verbindungsprotokoll.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verbindungsprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Betrieb
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Betrieb
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="schnellstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schnellstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="docker-compose.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kubernetes.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="authentifizierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentifizierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modell-endpunkte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="netz-und-sicherheit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Netz und Sicherheit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="datenbank.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenbank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="originalablage.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mehrere-instanzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mehrere Backend-Instanzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="images-und-laufzeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images und Laufzeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="aktualisierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aktualisierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sicherung-und-wiederherstellung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sicherung und Wiederherstellung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ueberwachung-und-fehlerbehebung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="nachvollziehbarkeit.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#was-opaa-automatisch-nachweist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was OPAA automatisch nachweist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prüfsummenkette-und-monatssiegel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prüfsummenkette und Monatssiegel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pseudonymisierung-im-protokoll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pseudonymisierung im Protokoll
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wo-die-faktenblätter-liegen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wo die Faktenblätter liegen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#das-update-paket-eines-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das Update-Paket eines Release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#die-stufenregeln" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Die Stufenregeln
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Die Stufenregeln">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zuordnung-im-werkzeug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zuordnung im Werkzeug
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ein-faktenblatt-selbst-erzeugen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ein Faktenblatt selbst erzeugen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auskunft-über-die-datenerhebung-einer-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auskunft über die Datenerhebung einer Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auskunft über die Datenerhebung einer Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#abgleich-eines-updates-mit-der-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abgleich eines Updates mit der Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#was-bei-jeder-änderung-geprüft-wird" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was bei jeder Änderung geprüft wird
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behördenunterlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behördenunterlagen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="releases-und-nachweise.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases und Nachweise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referenz
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referenz
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/rechte-matrix.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rechte-Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/glossar.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/konfiguration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konfiguration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/formate/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Formate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pdf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PDF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/docx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Word (DOCX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Text (ODT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pptx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PowerPoint (PPTX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Präsentation (ODP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/tabular.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Tabellen (XLSX, CSV, ODS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/html.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: HTML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/markdown.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: E-Mail (EML, MSG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Confluence-Seite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/fallback.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Auffang-Pipeline (TXT, DOC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/metadaten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-indexierung-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Indexierung arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-die-suche-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Suche arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#was-opaa-automatisch-nachweist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was OPAA automatisch nachweist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prüfsummenkette-und-monatssiegel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prüfsummenkette und Monatssiegel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pseudonymisierung-im-protokoll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pseudonymisierung im Protokoll
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wo-die-faktenblätter-liegen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wo die Faktenblätter liegen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#das-update-paket-eines-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das Update-Paket eines Release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#die-stufenregeln" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Die Stufenregeln
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Die Stufenregeln">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zuordnung-im-werkzeug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zuordnung im Werkzeug
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ein-faktenblatt-selbst-erzeugen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ein Faktenblatt selbst erzeugen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auskunft-über-die-datenerhebung-einer-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auskunft über die Datenerhebung einer Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auskunft über die Datenerhebung einer Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#abgleich-eines-updates-mit-der-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abgleich eines Updates mit der Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#was-bei-jeder-änderung-geprüft-wird" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was bei jeder Änderung geprüft wird
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behördenunterlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behördenunterlagen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="nachvollziehbarkeit">Nachvollziehbarkeit<a class="headerlink" href="#nachvollziehbarkeit" title="Permanent link">&para;</a></h1>
+<p>Vor einer Einführung und bei jedem Update fragen Datenschutz, Personalrat und
+Informationssicherheit dasselbe: Welche Daten speichert OPAA, wie lange, wer sieht sie, was
+verlässt die Installation und was ist voreingestellt? Dieses Kapitel beschreibt, wie OPAA diese
+Fragen aus dem eigenen Code beantwortet, wo die Antworten liegen und was bei jeder Codeänderung
+automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
+<a href="../index.html">Handbuchs</a>.</p>
+<blockquote>
+<p><strong>Beispiel.</strong> Die Datenschutzbeauftragte eines Landratsamts will vor dem Pilotbetrieb wissen,
+wohin eine Chatfrage geht und wie lange das Revisionsprotokoll aufbewahrt wird. Der Betrieb
+erzeugt die Faktenblätter zum eingesetzten Stand (siehe <a href="#ein-faktenblatt-selbst-erzeugen">Ein Faktenblatt selbst
+erzeugen</a>) und gibt ihr <code>datenfluesse</code> und <code>fristen</code>. Sie
+sieht darin jedes Ziel mit den übermittelten Daten und jede Frist mit ihrem
+Konfigurationsschlüssel, ohne den Code lesen zu müssen. Ein späteres Update, das daran etwas
+ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“ und im Delta seines
+Update-Pakets.</p>
+</blockquote>
+<h2 id="was-opaa-automatisch-nachweist">Was OPAA automatisch nachweist<a class="headerlink" href="#was-opaa-automatisch-nachweist" title="Permanent link">&para;</a></h2>
+<p>Grundlage ist das <strong>Fakten-Manifest</strong>: eine Beschreibung im Code, welche Daten OPAA speichert,
+welche Protokollereignisse es schreibt, was jede Rolle über andere sieht, welche Verbindungen nach
+außen es aufbaut, welche Voreinstellungen, Standardmodelle und System-Prompts gelten und welche
+Fristen laufen. Das Manifest wird wie Code geändert und geprüft. Aus ihm entstehen die
+<strong>Faktenblätter</strong>, je Thema eines:</p>
+<table>
+<thead>
+<tr>
+<th>Faktenblatt</th>
+<th>Beantwortet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>datenkatalog</code></td>
+<td>Welche Daten liegen wo, mit welchem Zweck, Personenbezug, welcher Frist und Sichtbarkeit, und wie werden sie gelöscht? Über welche Angaben wird ein Eintrag einer Person zugeordnet, oder warum gehört er nicht zur Selbstauskunft?</td>
+</tr>
+<tr>
+<td><code>protokollereignisse</code></td>
+<td>Was hält das Revisionsprotokoll fest, bei welchem Anlass, und wer darf es lesen?</td>
+</tr>
+<tr>
+<td><code>rollensicht</code></td>
+<td>Was sieht jede Systemrolle und Fähigkeit über andere Personen?</td>
+</tr>
+<tr>
+<td><code>datenfluesse</code></td>
+<td>Was verlässt die Installation, wohin, wann, und lässt es sich abschalten? Mit einem Bild aller Verbindungen nach Gruppen</td>
+</tr>
+<tr>
+<td><code>voreinstellungen</code></td>
+<td>Welche Einstellungen wirken auf Daten, mit welchem Standardwert? Welche System-Prompts und KI-Funktionen gibt es?</td>
+</tr>
+<tr>
+<td><code>fristen</code></td>
+<td>Welche Aufbewahrungs- und Löschfristen gelten, mit welchem Konfigurationsschlüssel?</td>
+</tr>
+</tbody>
+</table>
+<p>Jedes Blatt beschreibt die <strong>Voreinstellung einer Version</strong>, nicht die Einstellungen einer
+bestimmten Installation. Was eine Installation abweichend konfiguriert hat, zeigt ihre <a href="#auskunft-über-die-datenerhebung-einer-installation">Auskunft
+über die Datenerhebung</a>. Was das Manifest
+noch nicht beschreibt, steht im Blatt unter „Noch nicht erfasst“, statt zu fehlen.</p>
+<pre class="mermaid"><code>flowchart LR
+    C[Code] --- W{Wächter&lt;br/&gt;im Build}
+    W --- MF[Fakten-&lt;br/&gt;Manifest]
+    MF --&gt; FB[Faktenblätter]
+    FB --&gt; BU[Unterlagen&lt;br/&gt;der Behörde]
+    MF --&gt; UP[Update-&lt;br/&gt;Paket]
+    PR[Kennzeichnung&lt;br/&gt;am PR] --&gt; RN[Release-&lt;br/&gt;Notizen]
+    PR --&gt; UP</code></pre>
+<p>Die Wächter halten Code und Manifest gleich; ein Pull Request mit roten Wächtern wird nicht
+gemergt. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
+sie. Die Kennzeichnung am Pull Request führt jede datenrelevante Änderung in die Release-Notizen.
+Aus beiden entsteht zu jedem Release das Update-Paket.</p>
+<p>Ein Wächter prüft auch die <strong>Selbstauskunft</strong>, mit der jede Person die zu ihr gespeicherten Daten
+herunterlädt: Jede Kategorie mit einem Weg zur Person hat eine Ausgabe, darin kommt jede Angabe
+vor, die das Manifest als Teil der Auskunft führt, und nichts, was es ausschließt.</p>
+<p>Die Selbstauskunft hinterlässt im Nachweisprotokoll <strong>zwei Einträge je Auskunft</strong>: den Start und
+das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
+ausgelieferten Daten und den enthaltenen Kategorien, nie den Inhalt. Ein Start ohne Ende heißt, dass
+die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in den
+<a href="ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Metriken</a>. Ändert die Systemverwaltung Notabschaltung oder
+Tagesgrenze, entsteht ebenfalls ein Eintrag.</p>
+<h2 id="prüfsummenkette-und-monatssiegel">Prüfsummenkette und Monatssiegel<a class="headerlink" href="#prüfsummenkette-und-monatssiegel" title="Permanent link">&para;</a></h2>
+<p>Das Revisionsprotokoll kann von der Anwendung nur angefügt und gelesen werden; eine Änderung mit
+direkten Datenbankrechten fiele allein dadurch nicht auf. Dafür trägt jeder Protokollmonat eine
+<strong>Prüfsummenkette</strong>: Ein Lauf alle zehn Minuten verkettet die Einträge in ihrer Reihenfolge und
+schreibt je Stapel einen Kontrollpunkt. Ist ein Monat zu Ende und vollständig verkettet, wird er
+<strong>versiegelt</strong>: Die Kopf-Prüfsumme steht mit der Anzahl der Einträge als Protokolleintrag
+<code>AUDIT_LOG_MONTH_SEALED</code> in dem Monat, in dem der Lauf siegelt, und geht, wenn die <a href="ueberwachung-und-fehlerbehebung.html#ausleitung-an-ein-sicherheitsmonitoring">Ausleitung an ein
+Sicherheitsmonitoring</a>
+eingeschaltet ist, mit der Prüfsumme als eigenem Feld dorthin. So liegt das Siegel außerhalb der
+Datenbank. Kontrollpunkte und Siegel liegen in Tabellen, die wie das Protokoll dem Wartungskonto
+gehören; eine abgelaufene Monatspartition nimmt bei ihrer Löschung ihre Kontrollpunkte und ihr
+Siegel mit.</p>
+<blockquote>
+<p><strong>Beispiel.</strong> Der Rechnungshof prüft 2029 eine Vergabe aus dem März 2027. Die Revisorin ruft
+<code>GET /api/v1/audit/chain/2027-03?reason=Pruefung%20RH%202029</code> ab und erhält <code>INTACT</code>, die Zahl
+der verketteten Einträge und die Kopf-Prüfsumme. Dieselbe Prüfsumme findet der Betrieb in der
+Meldung <code>AUDIT_LOG_MONTH_SEALED</code> vom April 2027 im Sicherheitsmonitoring. Beides zusammen belegt,
+dass der Monat seit seinem Abschluss unverändert ist, ohne dass jemand an die Datenbank muss.</p>
+</blockquote>
+<p>Die Prüfung läuft über die Rolle AUDITOR der Standardorganisation mit Anlass als Pflichtfeld, weil
+die Kette das Protokoll aller Organisationen umfasst, und wird wie jeder Zugriff auf Protokolldaten
+selbst protokolliert (<code>AUDIT_LOG_ACCESSED</code>, Abfrageweg <code>chain-verification</code>). Die Antwort nennt:</p>
+<table>
+<thead>
+<tr>
+<th>Feld</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>INTACT</code>: Kette passt zu jedem Kontrollpunkt, zum Siegel und zu dessen Eintrag <code>AUDIT_LOG_MONTH_SEALED</code>; <code>BROKEN</code>: eine Abweichung, auch wenn der Protokollmonat fehlt, obwohl Kontrollpunkte oder Siegel noch da sind, oder wenn Siegel und Siegel-Eintrag nicht zueinander passen oder eines von beiden fehlt; <code>UNCHAINED</code>: noch kein Kontrollpunkt, etwa für einen künftigen Monat; <code>NOT_RETAINED</code>: kein Protokollmonat mehr und nichts von seiner Kette, die Aufbewahrungsfrist hat ihn gelöscht (er liegt vor ihrer Löschgrenze) oder es gab ihn nie; ein Monat an oder nach der Löschgrenze, zu dem der Eintrag <code>AUDIT_LOG_MONTH_SEALED</code> noch steht, ist dagegen <code>BROKEN</code>; <code>UNVERIFIABLE</code>: der Monat wurde mit einem Verfahren verkettet, das diese Version nicht kennt</td>
+</tr>
+<tr>
+<td><code>sealed</code>, <code>sealEventId</code></td>
+<td>ob der Monat versiegelt ist, und der Eintrag <code>AUDIT_LOG_MONTH_SEALED</code> dazu</td>
+</tr>
+<tr>
+<td><code>chainedEntries</code>, <code>unchainedEntries</code></td>
+<td>Einträge bis zum Kettenkopf und Einträge darüber, die der nächste Lauf verkettet</td>
+</tr>
+<tr>
+<td><code>headHash</code>, <code>algorithm</code></td>
+<td>Kopf-Prüfsumme (SHA-256, hexadezimal; bei einem versiegelten Monat ohne Einträge die des Siegels) und Verfahren der Kette</td>
+</tr>
+<tr>
+<td><code>deviation</code></td>
+<td>bei <code>BROKEN</code> die erste Abweichung: <code>position</code> des Kontrollpunkts, <code>kind</code> <code>CHANGED</code> (ein Eintrag wurde geändert) oder <code>INSERTED_OR_REMOVED</code> (ein Eintrag fehlt oder kam hinzu) und das Zeitsegment <code>segmentFrom</code>/<code>segmentTo</code> zwischen den Kontrollpunkten</td>
+</tr>
+</tbody>
+</table>
+<p>Ein Monat gilt als <code>BROKEN</code>, sobald ein Eintrag nachträglich in ihn geschrieben wurde, auch durch
+eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Ein Monat, zu dem ein
+Eintrag <code>AUDIT_LOG_MONTH_SEALED</code> existiert, wird nie ein zweites Mal versiegelt: Fehlt seine
+Siegelzeile, lässt der Lauf ihn liegen, meldet das im Log, und die Prüfung nennt ihn <code>BROKEN</code>. Die Grenzen eines Monats
+sind die seiner Partition in der Datenbank, nicht die der Zeitzone des Servers; ein Wechsel der
+Zeitzone ändert die Kette nicht. Kein Inhalt eines Eintrags
+verlässt dabei das Protokoll; wer gehandelt hat, klärt nur die Revision über ihre Abfragewege. Wie
+weit die Kette hinterherläuft, zeigen die Metriken <code>opaa_audit_chain_lag_seconds</code> und
+<code>opaa_audit_chain_unsealed_months</code> (<a href="ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>).
+Was die Kette nicht leistet: Wer die Datenbank beherrscht, kann Einträge ändern und die Kette neu
+rechnen; erkennbar bleibt das nur an einem Siegel, das die Datenbank verlassen hat.</p>
+<h2 id="pseudonymisierung-im-protokoll">Pseudonymisierung im Protokoll<a class="headerlink" href="#pseudonymisierung-im-protokoll" title="Permanent link">&para;</a></h2>
+<p>Das Revisionsprotokoll hält fest, wer was verwaltet hat, etwa Rechte vergeben, Einstellungen
+geändert oder Konten gesperrt. Damit es sich nicht zur Kontrolle von Leistung und Verhalten eignet,
+gilt:</p>
+<ul>
+<li><strong>Pseudonym ab dem Schreiben:</strong> Im Protokoll steht statt eines Namens eine Kennung. Welche Person
+  dazu gehört, liegt getrennt in einer eigenen Tabelle (<code>datenkatalog</code>, Eintrag <code>audit-pseudonyms</code>).</li>
+<li><strong>Feste Angaben je Ereignisart:</strong> Was ein Eintrag über den Stand vorher und nachher festhält,
+  legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
+  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
+  sie im Log als Fehler. Welche Angaben je Ereignisart erlaubt sind, steht im Auszug für die
+  Personalvertretung. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist,
+  und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.</li>
+<li><strong>Keine Suche nach Personen:</strong> Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
+  Vorgang ab, jeweils für einen begrenzten Zeitraum
+  (<a href="../administration/stichtagsauskunft.html">Administration</a>).
+  Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
+  (<a href="ueberwachung-und-fehlerbehebung.html#ausleitung-an-ein-sicherheitsmonitoring">Überwachung</a>).</li>
+<li><strong>Keine Kennung in der Antwort:</strong> In ihren Abfragen des Revisionsprotokolls und des
+  Verbindungsprotokolls sieht die Revision keine Kennung einer Person, weder das gespeicherte
+  Pseudonym noch einen Ersatz, nur dass eine Person gehandelt hat oder betroffen ist. Damit lassen
+  sich diese Antworten nicht über eine Person verbinden, auch nicht über Einträge, die in zwei
+  Antworten vorkommen, und aus vielen Abfragen entsteht keine Zeitreihe einer Person. Bewusst
+  ausgenommen sind die Stichtagsauskunft, die zu einem Objekt nennt, wer es lesen durfte
+  (<a href="../administration/stichtagsauskunft.html">Administration</a>),
+  das Diagnoseprotokoll, das bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym
+  nennt, um deren Handeln zu kontrollieren, und die offenen Anträge auf die Rolle Revision, die Name
+  und Adresse des Kontos und die beantragende Person nennen, damit die Revision die Person vor der
+  Bestätigung prüft (<a href="../administration/systemrollen.html#die-rolle-revision">Administration</a>).</li>
+<li><strong>Auflösen nur im Einzelfall:</strong> Einer Person zugeordnet wird ein Eintrag nur über eine
+  anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
+  (<a href="../administration/systemrollen.html">Administration</a>). Ihr
+  Zeitraum liegt ganz in der Vergangenheit und ist je Klärung begrenzt, ihre Antwort nennt keine
+  Kennung der Person, und Antrag und Freigabe stehen selbst im Protokoll, gesichert durch die
+  Prüfsummenkette.</li>
+<li><strong>Löschen ohne Eingriff ins Protokoll:</strong> Wird ein Konto gelöscht, entfällt die Zuordnung; das
+  Protokoll bleibt unverändert und ist danach keiner Person mehr zuzuordnen
+  (<a href="../administration/konten.html#sperren-statt-löschen">Administration</a>).
+  Ausnahme: Nennt eine anlassbezogene Klärung (Antrag oder Freigabe) die Person, bleibt die
+  Zuordnung über diese Klärung bis zu deren Löschfrist bestehen
+  (<a href="../administration/systemrollen.html">Administration</a>).</li>
+</ul>
+<p>Pseudonymisierte Daten bleiben personenbezogen, solange die Zuordnung besteht. Sie gehören deshalb
+in Verzeichnis, Löschkonzept und Auskunft der Behörde.</p>
+<h2 id="wo-die-faktenblätter-liegen">Wo die Faktenblätter liegen<a class="headerlink" href="#wo-die-faktenblätter-liegen" title="Permanent link">&para;</a></h2>
+<p>Die Faktenblätter sind nicht eingecheckt, sondern werden neu erzeugt:</p>
+<ul>
+<li><strong>Für ein Release</strong> im <a href="#das-update-paket-eines-release">Update-Paket</a> am GitHub-Release der
+  Version, Verzeichnis <code>faktenblaetter/</code>. Die Blätter tragen die Version des Release.</li>
+<li><strong>Für den Entwicklungsstand <code>main</code></strong> bei jedem CI-Lauf auf <code>main</code>, als Artefakt
+  <code>compliance-faktenblaetter</code> am letzten Lauf des Workflows „CI“: auf GitHub im Reiter „Actions“ den
+  Lauf öffnen, Abschnitt „Artifacts“.</li>
+</ul>
+<p>Beide enthalten die Blätter als Markdown und <code>faktenblaetter.json</code> mit allen Inhalten für Werkzeuge.</p>
+<p>Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version, den Commit, das
+Erzeugungsdatum und <code>erzeugung: generiert</code>. Im Update-Paket ist das Erzeugungsdatum das Datum des
+Commits, sodass ein erneut erzeugtes Paket gleich ausfällt. Die Blätter aus der CI auf <code>main</code> tragen
+immer die Version <code>0.0.0-dev</code>; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
+„Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde.“ Jeder Eintrag hat einen festen
+Anker aus seiner Kennung, sodass eine Unterlage auf genau eine Zeile verweisen kann.</p>
+<h2 id="das-update-paket-eines-release">Das Update-Paket eines Release<a class="headerlink" href="#das-update-paket-eines-release" title="Permanent link">&para;</a></h2>
+<p>Jedes Release, auch ein Vorab-Release, trägt am GitHub-Release ein Update-Paket
+<code>opaa-update-paket-&lt;Version&gt;.tar.gz</code> mit einer Prüfsummendatei. Es ist für die Stellen gedacht, die
+ein Update verantworten, ohne den Code zu lesen:</p>
+<table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.html</code></td>
+<td>Startseite der HTML-Fassung: Neben jeder Markdown-Datei liegt dieselbe Seite als HTML, untereinander verlinkt und ohne Internetzugang lesbar</td>
+</tr>
+<tr>
+<td><code>LIESMICH.md</code></td>
+<td>Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle</td>
+</tr>
+<tr>
+<td><code>delta/</code></td>
+<td>Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht</td>
+</tr>
+<tr>
+<td><code>delta-lts/</code>, <code>betrieb-lts/</code></td>
+<td>nur bei einem LTS-Release und seinen Kandidaten: dasselbe wie <code>delta/</code> und <code>betrieb/</code>, aber gegenüber dem jüngsten Release der vorigen LTS-Linie, für Installationen, die nur LTS-Linien betreiben; <code>LIESMICH.md</code> sagt, welcher Vergleich für wen gilt</td>
+</tr>
+<tr>
+<td><code>betrieb/</code></td>
+<td>Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da</td>
+</tr>
+<tr>
+<td><code>faktenblaetter/</code></td>
+<td>die Faktenblätter dieser Version</td>
+</tr>
+<tr>
+<td><code>barrierefreiheit/</code></td>
+<td>der Prüfbericht der automatisierten Barrierefreiheitsprüfung dieser Version mit axe-core: geprüfte Seiten und Zustände, jeder im Farbschema, das sein Prüfszenario einstellt, ein Teil der Zustände in beiden, und welche Zustände (Seite, Dialog, Menü) nur in einem geprüft sind; angewandte Regeln, jeder Befund mit Stufe, was das Werkzeug nicht entscheiden konnte und welche Szenarien vorzeitig abbrachen. Ein Befund hält das Release nicht auf. Tastatur, Screenreader und Vergrößerung prüft er nicht</td>
+</tr>
+<tr>
+<td><code>lizenzen/</code></td>
+<td>die Lizenzübersicht der ausgelieferten Abhängigkeiten</td>
+</tr>
+<tr>
+<td><code>sbom/</code></td>
+<td>die CycloneDX-SBOMs von Backend und Frontend der Version</td>
+</tr>
+<tr>
+<td><code>vorlagen/</code></td>
+<td>alle Vorlagen für Behörden dieser Version, nach Themen geordnet; ihre Verweise auf Faktenblätter und Handbuch führen auf Blätter und Kapitel im Paket, Verweise auf weitere Dokumentation auf deren Stand in dieser Version</td>
+</tr>
+<tr>
+<td><code>handbuch/</code></td>
+<td>dieses Handbuch im Stand der Version; Verweise auf weitere Dokumentation führen auf deren Stand in dieser Version</td>
+</tr>
+<tr>
+<td><code>update-vermerk.md</code></td>
+<td>Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise führen wie in <code>vorlagen/</code> ins Paket</td>
+</tr>
+<tr>
+<td><code>SHA256SUMS</code></td>
+<td>Prüfsummen aller Dateien</td>
+</tr>
+</tbody>
+</table>
+<p>Vor dem ersten finalen Release vergleicht das Paket mit dem „Stand ohne Fakten-Manifest“; im Delta
+erscheint deshalb jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.</p>
+<p>Das Paket ist attestiert wie die Images. Die Provenance prüft:</p>
+<div class="highlight"><pre><span></span><code>gh<span class="w"> </span>release<span class="w"> </span>download<span class="w"> </span>v&lt;Version&gt;<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span>--pattern<span class="w"> </span><span class="s1">'opaa-update-paket-*'</span>
+gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>opaa-update-paket-&lt;Version&gt;.tar.gz<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/v&lt;Version&gt;
+</code></pre></div>
+<p>Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von OPAA zu
+genau dieser Version erzeugt hat.</p>
+<p>Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe <a href="#was-bei-jeder-änderung-geprüft-wird">Was bei jeder Änderung geprüft
+wird</a>) besteht; sonst erscheint das Release nicht.</p>
+<p><strong>Mehrere Versionen überspringen.</strong> Das Delta im Paket vergleicht nur mit dem vorigen finalen
+Release. Wer etwa von 0.12 auf 0.17 geht, erzeugt das Delta über den ganzen Sprung aus dem Quellcode
+mit Tags:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Delta, aus backend/</span>
+<span class="nb">cd</span><span class="w"> </span>backend
+./gradlew<span class="w"> </span>complianceDelta<span class="w"> </span>-PfromRef<span class="o">=</span>v0.12.0<span class="w"> </span>-PtoRef<span class="o">=</span>v0.17.0
+<span class="c1"># Betriebsfolgen und Suchqualität für denselben Sprung, aus der Wurzel des Checkouts</span>
+<span class="nb">cd</span><span class="w"> </span>..
+python3<span class="w"> </span>.github/scripts/update_package.py<span class="w"> </span>operations<span class="w"> </span>--from<span class="w"> </span>v0.12.0<span class="w"> </span>--to<span class="w"> </span>v0.17.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--out<span class="w"> </span>/tmp/betrieb<span class="w"> </span>--delta-json<span class="w"> </span>backend/build/compliance/delta/manifest-delta.json
+</code></pre></div>
+<p>Das Delta liegt unter <code>backend/build/compliance/delta/</code>, die Betriebsfolgen unter <code>/tmp/betrieb/</code>.
+Die Vorbereitung aller übersprungenen Versionen steht dort zusammengefasst.</p>
+<h2 id="die-stufenregeln">Die Stufenregeln<a class="headerlink" href="#die-stufenregeln" title="Permanent link">&para;</a></h2>
+<p>Jede Änderung im Delta erhält einen <strong>Stufenvorschlag</strong> nach dem Stufenmodell gängiger
+IT-Rahmendienstvereinbarungen (Bagatelle / Anzeige / Zustimmung). Diese Regeln sind die <strong>gemeinsame
+Quelle</strong> für das Delta-Werkzeug und die Zustimmungsklassen der Muster-Dienstvereinbarung; beide
+übernehmen sie wörtlich und verweisen hierher.</p>
+<p><strong>Zustimmung</strong> — wenn die Änderung mindestens eine dieser Klassen erfüllt:</p>
+<table>
+<thead>
+<tr>
+<th>Klasse</th>
+<th>Änderung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Z1</td>
+<td>neue personenbezogene Daten oder neue Protokollereignisse</td>
+</tr>
+<tr>
+<td>Z2</td>
+<td>neue Sichtbarkeit: eine Rolle sieht mehr über andere Personen als vorher</td>
+</tr>
+<tr>
+<td>Z3</td>
+<td>neue Auswertung oder neuer Export</td>
+</tr>
+<tr>
+<td>Z4</td>
+<td>längere Frist</td>
+</tr>
+<tr>
+<td>Z5</td>
+<td>neuer externer Datenfluss oder neues Ziel eines bestehenden</td>
+</tr>
+<tr>
+<td>Z6</td>
+<td>geänderte KI-Einstufung</td>
+</tr>
+<tr>
+<td>Z7</td>
+<td>geänderte Voreinstellung mit Datenwirkung, einschließlich eines Standardmodells, das einen Datenfluss ändert</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anzeige</strong> — Änderungen ohne neue Datenwirkung, die Beschäftigte dennoch wahrnehmen: kürzere Frist,
+entfallene Daten, Felder, Ereignisse oder Datenflüsse, eingeschränkte Sichtbarkeit, geänderter
+System-Prompt oder geändertes Standardmodell ohne Klasse Z1–Z7.</p>
+<p><strong>Bagatelle</strong> — nur nach abschließender Liste:</p>
+<ul>
+<li>redaktionelle Präzisierung eines Manifest-Eintrags ohne inhaltliche Änderung</li>
+<li>neuer Konfigurationsschlüssel mit der Markierung „ohne Datenwirkung“</li>
+<li>neue Spalte oder Tabelle ohne Personenbezug</li>
+</ul>
+<p><strong>Im Zweifel Zustimmung.</strong> Eine Änderung, die keiner Liste eindeutig zugeordnet werden kann, erhält
+den Vorschlag „Zustimmung“ mit dem Vermerk, warum die Zuordnung offen ist.</p>
+<p>Je Änderung nennt das Delta zusätzlich, ob das VVT anzupassen (Änderung an Zweck, Datenkategorie,
+Empfänger oder Frist), die DSFA zu überprüfen und das Sicherheitskonzept fortzuschreiben ist (neue
+Datenflüsse, Ports, Egress-Ziele, Rollen oder Protokollereignisse). Rechtsgrundlage der
+DSFA-Überprüfung ist Art. 35 Abs. 11 DSGVO, der an eine Änderung des Risikos anknüpft; dass das Delta
+sie bei jeder Änderung der Stufe Zustimmung vorschlägt, ist eine <strong>Heuristik</strong>, keine Ableitung aus der
+Norm. Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.</p>
+<h3 id="zuordnung-im-werkzeug">Zuordnung im Werkzeug<a class="headerlink" href="#zuordnung-im-werkzeug" title="Permanent link">&para;</a></h3>
+<p>Das Werkzeug wendet die Regeln so auf Änderungen am Manifest an. „Offen“ heißt: Zustimmung, weil
+sich die Klasse aus dem Manifest nicht ablesen lässt, etwa bei einer neu formulierten Beschreibung,
+die ebenso gut nur redaktionell sein kann.</p>
+<table>
+<thead>
+<tr>
+<th>Änderung im Manifest</th>
+<th>Vorschlag</th>
+<th>VVT</th>
+<th>Sicherheitskonzept</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>neues Datum mit Personenbezug, neue personenbezogene Spalte, stärkerer Personenbezug</td>
+<td>Zustimmung Z1</td>
+<td>ja</td>
+<td>—</td>
+</tr>
+<tr>
+<td>neues Protokollereignis, neues Feld im Protokollsatz</td>
+<td>Zustimmung Z1</td>
+<td>ja</td>
+<td>bei neuem Ereignis</td>
+</tr>
+<tr>
+<td>neue Rolle oder Fähigkeit; weitere Rolle in Sichtbarkeit oder Lesern; neuer Zugriffsweg außer Export</td>
+<td>Zustimmung Z2</td>
+<td>ja, außer beim Zugriffsweg</td>
+<td>bei neuer Rolle</td>
+</tr>
+<tr>
+<td>neuer Zugriffsweg Export (zusammen mit einem weiteren Zugriffsweg Z2 und Z3)</td>
+<td>Zustimmung Z3</td>
+<td>ja</td>
+<td>—</td>
+</tr>
+<tr>
+<td>längere Frist (Standardwert einer Fristeinstellung)</td>
+<td>Zustimmung Z4</td>
+<td>ja</td>
+<td>—</td>
+</tr>
+<tr>
+<td>neuer Datenfluss, neues Ziel eines Datenflusses, geänderte Adresse einer Modellrolle oder eines Konnektors</td>
+<td>Zustimmung Z5 (Adresse auch Z7)</td>
+<td>ja</td>
+<td>ja</td>
+</tr>
+<tr>
+<td>neue KI-Funktion; geänderte Ausgabeart, Interaktion, Bewertung von Personen, Kennzeichnung oder Prompts einer KI-Funktion</td>
+<td>Zustimmung Z6</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>neue Voreinstellung (als Frist auch Z4), geänderter Standardwert oder geänderte Helm-Voreinstellung</td>
+<td>Zustimmung Z7</td>
+<td>bei neuer Frist</td>
+<td>—</td>
+</tr>
+<tr>
+<td>neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; geänderte Zuordnung zur Person (Weg, Ausschluss, ausgenommene Spalte); geänderte Gruppe eines Datenflusses (Z5); neuer System-Prompt; neues Datum ohne Personenbezug und ohne Tabelle; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel</td>
+<td>Zustimmung, offen</td>
+<td>bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle</td>
+<td>beim Weg über den Ausgangsproxy</td>
+</tr>
+<tr>
+<td>kürzere Frist, entfallene Daten, Spalten, Ereignisse, Rollen, Datenflüsse, KI-Funktionen, Prompts oder Zugriffswege, eingeschränkte Sichtbarkeit, schwächerer Personenbezug</td>
+<td>Anzeige</td>
+<td>außer bei Spalten ohne Personenbezug, Zugriffswegen, KI-Funktionen und Prompts</td>
+<td>—</td>
+</tr>
+<tr>
+<td>geänderter System-Prompt (Prüfsumme), geändertes Standardmodell bei gleicher Adresse</td>
+<td>Anzeige</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>neue Tabelle oder Spalte ohne Personenbezug, neues Datum, dessen Tabellen keine personenbezogene Spalte haben</td>
+<td>Bagatelle (Liste, Punkt 3: neue Spalte oder Tabelle ohne Personenbezug)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>nur Bezeichnung, Leerzeichen, Bereich des Eintrags oder Fundstelle eines unveränderten Prompts; gleiche Fristlänge in anderer Schreibweise (<code>P1Y</code> statt <code>12</code> Monate); neuer oder entfallener Bereich des Manifests</td>
+<td>Bagatelle (Liste, Punkt 1: redaktionelle Präzisierung ohne inhaltliche Änderung)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Die DSFA-Überprüfung schlägt das Werkzeug bei jeder Zustimmung vor. Listen (Spalten, Rollen,
+Zugriffswege, Einstellungen, Prompts) vergleicht es ohne Reihenfolge; eine bloße Umsortierung ist keine
+Änderung. Eine Frist ist eine Einstellung, die ein Datum oder Protokollereignis als Frist nennt; ihre
+Länge vergleicht es über die Einheit des Werts oder des Schlüssels (ein Jahr 365 Tage, ein Monat ein
+Zwölftel davon), ein Wert ohne Länge oder von 0 ist offen. Punkt 2 der Bagatell-Liste (neuer
+Konfigurationsschlüssel ohne Datenwirkung) erreicht das Werkzeug nicht: Ein solcher Schlüssel steht
+nicht im Manifest und erscheint deshalb nicht im Delta.</p>
+<h2 id="ein-faktenblatt-selbst-erzeugen">Ein Faktenblatt selbst erzeugen<a class="headerlink" href="#ein-faktenblatt-selbst-erzeugen" title="Permanent link">&para;</a></h2>
+<p>Wer den Quellcode der eingesetzten Version ausgecheckt hat, erzeugt die Blätter selbst. Gebraucht
+wird nur das Java-Werkzeug des Backends, keine Datenbank:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># aus backend/</span>
+./gradlew<span class="w"> </span>complianceDocs<span class="w"> </span>-PopaaVersion<span class="o">=</span>&lt;X.Y.Z&gt;
+</code></pre></div>
+<p>Die Blätter liegen danach unter <code>backend/build/compliance/faktenblaetter/</code>. Der Commit im Kopf
+stammt aus dem ausgecheckten Stand, die Version aus der Angabe <code>-PopaaVersion</code>; ohne sie steht dort
+<code>0.0.0-dev</code>.</p>
+<h2 id="auskunft-über-die-datenerhebung-einer-installation">Auskunft über die Datenerhebung einer Installation<a class="headerlink" href="#auskunft-über-die-datenerhebung-einer-installation" title="Permanent link">&para;</a></h2>
+<p>Die Faktenblätter beschreiben eine Version. Die <strong>Auskunft über die Datenerhebung</strong> beschreibt eine
+laufende Installation: das Fakten-Manifest der eingesetzten Version, verbunden mit den Werten, die
+diese Installation tatsächlich verwendet. Sie ist für Datenschutz und Personalrat gedacht, etwa vor
+dem Rollout als Anlage einer Dienstvereinbarung oder jährlich als Nachweis, dass sich nichts
+stillschweigend verschoben hat.</p>
+<blockquote>
+<p><strong>Beispiel.</strong> Der Personalrat will wissen, ob die Dienststelle das Revisionsprotokoll länger als
+voreingestellt aufbewahrt und welche Quellen angebunden sind. Die Systemverwaltung ruft die
+Auskunft als Markdown ab. Unter „Abweichungen von der Voreinstellung“ steht die verlängerte Frist
+mit dem Zeitpunkt ihrer letzten Änderung, unter „Konnektortypen in Gebrauch“ jeder Konnektor, aus
+dem eine Bibliothek liest.</p>
+</blockquote>
+<p>Abrufen darf sie nur die Systemverwaltung, mit dem Zugangstoken einer angemeldeten Sitzung:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># maschinenlesbar, als Eingang für Werkzeuge</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://&lt;host&gt;/api/v1/admin/compliance/data-collection-disclosure<span class="w"> </span>&gt;<span class="w"> </span>auskunft.json
+<span class="c1"># lesbar, für Datenschutz und Personalrat</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://&lt;host&gt;/api/v1/admin/compliance/data-collection-disclosure/markdown<span class="w"> </span>&gt;<span class="w"> </span>auskunft.md
+<span class="c1"># mit Berichtszeitraum für die anlassbezogenen Klärungen, in ganzen Monaten</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://&lt;host&gt;/api/v1/admin/compliance/data-collection-disclosure/markdown?from=2026-01-01&amp;to=2026-06-30"</span>
+</code></pre></div>
+<p>Ein Konto ohne die Rolle erhält <code>403</code>. <strong>Jeder Abruf steht im Revisionsprotokoll</strong>, auch der
+abgewiesene, mit Format und Berichtszeitraum, aber ohne den Inhalt der Auskunft. Die Ereignisart
+dafür führt das Faktenblatt <code>protokollereignisse</code> wie jede andere.</p>
+<p>Der <strong>Berichtszeitraum</strong> gilt nur für die anlassbezogenen Klärungen. Er beginnt am Ersten und endet
+am Letzten eines Monats; ein Zeitraum, der einen Monat anschneidet, wird mit <code>400</code> abgewiesen, ebenso
+einer vor 1970 oder nach 9999. Ohne Angabe umfasst er das laufende und das vorige Kalenderjahr.
+Ausgewiesen werden nur <strong>abgeschlossene Monate</strong>: Reicht der Zeitraum in den laufenden Monat oder
+später, endet er mit dem letzten abgeschlossenen Monat, und die Auskunft nennt dieses Ende. Ein
+Zeitraum ganz im laufenden Monat oder später wird mit <code>400</code> abgewiesen. So lässt sich eine Klärung
+auch durch wiederholte Abrufe nicht erkennen, solange ihr Monat läuft.</p>
+<p>Die Auskunft enthält:</p>
+<table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kopf</td>
+<td>OPAA-Version, Commit des Images und Zeitpunkt des Abrufs</td>
+</tr>
+<tr>
+<td>Abweichungen von der Voreinstellung</td>
+<td>jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht</td>
+</tr>
+<tr>
+<td>Einstellungen mit Datenwirkung</td>
+<td>alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung</td>
+</tr>
+<tr>
+<td>Ausgehende Datenflüsse</td>
+<td>jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt</td>
+</tr>
+<tr>
+<td>Konnektortypen in Gebrauch</td>
+<td>je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt</td>
+</tr>
+<tr>
+<td>Modellanbieter</td>
+<td>Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte</td>
+</tr>
+<tr>
+<td>Gespeicherte Daten und Protokoll</td>
+<td>der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege</td>
+</tr>
+<tr>
+<td>Anlassbezogene Klärungen im Berichtszeitraum</td>
+<td>je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind, dazu die Zahl der angehaltenen Chat-Löschungen und je Zweck ihre Anträge, Freigaben, Verlängerungen, Ablehnungen und Abläufe</td>
+</tr>
+</tbody>
+</table>
+<p>Die JSON-Fassung trägt das Manifest in derselben Form wie <code>faktenblaetter.json</code>; ein Werkzeug liest
+beide gleich.</p>
+<p><strong>Ohne Geheimnisse, Personen und Inhalte.</strong> Ausgegeben wird nur der Wert einer Einstellung, die das
+Manifest als datenwirksam führt; Schlüssel, Passwörter und Token gehören nie dazu. Adressen
+erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protokollsätze und Inhalte
+von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
+Bibliotheken.</p>
+<p><strong>Anlassbezogene Klärungen</strong> zählt OPAA je Monat und Anlass, ohne Person, Begründung und Verweis
+auf die Freigabe; die Zahlen bleiben erhalten, wenn Anträge und Freigaben nach ihrer Frist gelöscht
+sind. „Abgelaufen“ heißt, dass die Nutzbarkeit einer Freigabe im Zeitraum endete.
+Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt unbeantwortet.
+Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall nicht hervortritt.
+Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
+Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.</p>
+<p><strong>Angehaltene Chat-Löschungen</strong> zählt OPAA je Monat, ohne Person: wie oft eine Anhaltung der
+Löschung der Chats eines gesperrten Kontos mit der Freigabe durch eine zweite Person wirksam wurde.
+Darunter steht je Zweck, wie viele Anhaltungen beantragt, freigegeben, verlängert, abgelehnt
+(einschließlich zurückgezogener und unbeantwortet verfallener Anträge) und mit ihrer Höchstdauer
+abgelaufen sind; eine vorzeitig aufgehobene zählt nicht als abgelaufen. Es gilt dieselbe Schwelle.
+Eine Klärung, die die Löschung aufhält, zählt hier nicht mit, sie steht bei den Klärungen.</p>
+<h3 id="abgleich-eines-updates-mit-der-installation">Abgleich eines Updates mit der Installation<a class="headerlink" href="#abgleich-eines-updates-mit-der-installation" title="Permanent link">&para;</a></h3>
+<p>Das Delta im Update-Paket beschreibt, was sich am Produkt ändert. Ob eine Änderung die eigene
+Installation tatsächlich trifft, zeigt erst der <strong>Abgleich</strong> mit ihrer Auskunft. Eine geänderte
+Voreinstellung wirkt nicht, wo die Installation einen eigenen Wert gesetzt hat. Ein neuer Konnektor
+wirkt erst, wenn jemand eine Bibliothek oder einen Zugang dieser Art einrichtet. Umgekehrt ist eine
+Frist, die die Dienststelle selbst verlängert hat, ebenso beteiligungsrelevant wie eine Änderung des
+Produkts.</p>
+<blockquote>
+<p><strong>Beispiel.</strong> Vor dem Update auf eine neue Version legt die Systemverwaltung dem
+Datenschutzbeauftragten die aktuelle Auskunft und die vom letzten Update vor. Er gleicht sie mit
+dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Punkte in der
+Gesprächsnotiz eines Chats (<code>opaa.chat.note.max-items</code>) steht als „betrifft sie nicht
+(überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
+Dienststelle“ steht die zwischen beiden Auskünften verlängerte Aufbewahrung des
+Revisionsprotokolls mit dem Vorschlag „Zustimmung“.</p>
+</blockquote>
+<p>Der Abgleich läuft auf Dateien, ohne Zugang zur Installation und ohne Netz. Gebraucht werden ein
+Checkout des Quellcodes <strong>im Stand der Zielversion des Deltas</strong>, also des Tags der Version, auf die
+aktualisiert wird, und das Java-Werkzeug des Backends. Die <a href="#die-stufenregeln">Stufenregeln</a> für die Änderungen der
+Dienststelle kommen aus diesem Checkout:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># aus backend/</span>
+./gradlew<span class="w"> </span>complianceInstanceMatch<span class="w"> </span>-Pdelta<span class="o">=</span>&lt;pfad&gt;/delta/manifest-delta.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Pexport<span class="o">=</span>&lt;pfad&gt;/auskunft.json<span class="w"> </span><span class="o">[</span>-PpreviousExport<span class="o">=</span>&lt;pfad&gt;/auskunft-vorher.json<span class="o">]</span>
+</code></pre></div>
+<p>Das Ergebnis liegt unter <code>backend/build/compliance/instanz-abgleich/</code>, als <code>instanz-abgleich.md</code>
+zum Lesen und <code>instanz-abgleich.json</code> für Werkzeuge.</p>
+<table>
+<thead>
+<tr>
+<th>Teil</th>
+<th>Inhalt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kopf</td>
+<td>die beiden Versionen des Deltas, Version, Commit und Zeitpunkt jeder Auskunft, Hinweise wie eine Auskunft einer anderen Version als der, bei der das Delta beginnt</td>
+</tr>
+<tr>
+<td>Änderungen des Updates</td>
+<td>jede Änderung des Deltas mit ihrem Stufenvorschlag und der Einordnung „betrifft diese Instanz“, „betrifft sie nicht (überschrieben)“ oder „betrifft sie nicht (nicht eingeschaltet)“, jeweils mit Grund</td>
+</tr>
+<tr>
+<td>Änderungen der Dienststelle</td>
+<td>nur mit einer früheren Auskunft: geänderte Werte von Einstellungen, ein- oder ausgeschaltete Datenflüsse, neue, entfallene oder umgestellte Modellanbieter, je mit Stufenvorschlag nach denselben Regeln wie das Delta</td>
+</tr>
+</tbody>
+</table>
+<p>Regeln der Einordnung:</p>
+<ul>
+<li><strong>Im Zweifel betroffen.</strong> Nur drei Fälle gelten als nicht betroffen: eine geänderte
+  Voreinstellung, wenn der Wert der Installation von der bisherigen Voreinstellung abweicht; ein
+  Datenfluss, der dort ausgeschaltet ist; ein neuer Datenfluss eines Konnektors. Alles andere, auch
+  eine Einstellung ohne ermittelten Wert, gilt als betroffen.</li>
+<li><strong>Verglichen wird mit der bisherigen Voreinstellung des geänderten Felds</strong>, bei einer Voreinstellung
+  des Helm-Charts also mit der des Charts, nicht der der Anwendung.</li>
+<li><strong>Ein eigener Wert gleich der alten Voreinstellung</strong> lässt sich in der Auskunft nicht von der
+  Voreinstellung unterscheiden; die Änderung steht dann als „betrifft diese Instanz“ da.</li>
+<li><strong>Einstellungen aus der Verwaltung</strong> liegen in der Datenbank der Installation. Eine neue
+  Voreinstellung gilt für Neuinstallationen; eine bestehende Installation behält ihren Wert, sofern
+  kein Datenbank-Update ihn ändert. Der Bericht nennt das als Grund und ordnet im Zweifel als
+  betroffen ein.</li>
+<li><strong>Modellanbieter</strong> vergleicht der Abgleich je Modellrolle über das aktive Ziel, nicht über den
+  Anzeigenamen: Ein anderes Modell auf demselben Server ist ein geändertes Modell, kein neuer
+  Datenfluss.</li>
+<li><strong>Vertauschte Auskünfte</strong> lehnt der Abgleich ab: Die frühere Auskunft muss älter sein als die
+  aktuelle.</li>
+<li><strong>Der Stufenvorschlag bleibt.</strong> „Betrifft sie nicht“ heißt nur, dass die Änderung in dieser
+  Konfiguration nicht wirkt. Schaltet die Dienststelle den Konnektor später ein, wird sie wirksam.</li>
+<li><strong>Die Auskunft gehört zum Ausgangsstand.</strong> Sie wird auf der Version abgerufen, bei der das Delta
+  beginnt, also vor dem Update.</li>
+</ul>
+<h2 id="was-bei-jeder-änderung-geprüft-wird">Was bei jeder Änderung geprüft wird<a class="headerlink" href="#was-bei-jeder-änderung-geprüft-wird" title="Permanent link">&para;</a></h2>
+<p>Kein Mensch muss daran denken, die Fakten nachzutragen: Mehrere Prüfungen schlagen fehl, wenn
+Code und Beschreibung auseinanderlaufen.</p>
+<table>
+<thead>
+<tr>
+<th>Prüfung</th>
+<th>Wann</th>
+<th>Was sie erzwingt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Wächter im Backend-Build</strong></td>
+<td>bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf <code>main</code></td>
+<td>Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von OPAA und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten</td>
+</tr>
+<tr>
+<td><strong>Kennzeichnung <code>data-impact</code></strong></td>
+<td>an jedem Pull Request (Prüfung „Datenwirkung“)</td>
+<td>Die Beschreibung jedes Pull Requests fragt ab, ob er personenbezogene Daten, Sichtbarkeit, Auswertungen, Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung ändert. Trifft etwas zu, trägt er das Label <code>data-impact</code> und einen Satz in Alltagssprache. Ändert er Dateien, in denen Datenwirkung typischerweise entsteht, ohne Label und ohne die Angabe „Keine Wirkung“, schlägt die Prüfung fehl. Solche Änderungen erscheinen in den Release-Notizen als erste Rubrik „Datenrelevante Änderungen“</td>
+</tr>
+<tr>
+<td><strong>Verweise der Behördenunterlagen</strong></td>
+<td>bei jeder Änderung an den Unterlagen und am Manifest</td>
+<td>Jeder Verweis einer Vorlage auf ein Faktenblatt trifft ein vorhandenes Blatt und einen vorhandenen Eintrag darin</td>
+</tr>
+<tr>
+<td><strong>Lizenzprüfung</strong></td>
+<td>an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf <code>main</code></td>
+<td>Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt <code>license-report-backend</code> bzw. <code>license-report-frontend</code> am CI-Lauf und im Update-Paket jedes Release</td>
+</tr>
+<tr>
+<td><strong>Lauf ohne Internetzugang</strong></td>
+<td>jede Nacht, auf Zuruf und an Pull Requests mit dem Label <code>offline-suite</code></td>
+<td>Die Compose-Installation arbeitet in einem Netz ohne Weg nach außen, und keine Namensauflösung und kein Abruf des Browsers verlässt es. Er sieht auch Abrufe eingebundener Bibliotheken, aber nur in dem, was er durchläuft (<a href="netz-und-sicherheit.html#betrieb-ohne-internet">Betrieb ohne Internet</a>)</td>
+</tr>
+<tr>
+<td><strong>Wöchentliche Drift-Routine</strong></td>
+<td>einmal je Woche, nach dem Merge</td>
+<td>Eine nur lesende Prüfroutine sieht die Änderungen der Woche auf <code>main</code> durch: ob ein Pull Request mit Datenwirkung ohne Kennzeichnung blieb, ob ein Eintrag im Manifest sachlich nicht mehr stimmt, ob sich Verhalten ohne Schemaänderung geändert hat und ob eine Vorlage einen geänderten Wert abschreibt. Ihre Befunde gehen an den Maintainer</td>
+</tr>
+</tbody>
+</table>
+<p>Die Prüfungen ergänzen sich: Der Wächter stellt sicher, <strong>dass</strong> es einen Eintrag gibt, nicht, ob
+er stimmt. Ob ein Personenbezug, ein Zweck oder eine Sichtbarkeit zutrifft, prüfen das Review jedes
+Pull Requests und die Drift-Routine.</p>
+<p><strong>Verbindungen eingebundener Bibliotheken.</strong> Der Wächter liest den Code von OPAA. Eine Bibliothek,
+die von sich aus eine Verbindung aufbaut, etwa zum Abruf einer Konfiguration bei ihrem Hersteller,
+erkennt er nicht. Solche Abrufe fallen nur im Lauf ohne Internetzugang auf, und nur in dem, was er
+durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises. Bekannte Abrufe
+eingebundener Bibliotheken sind abgeschaltet.</p>
+<h2 id="behördenunterlagen">Behördenunterlagen<a class="headerlink" href="#behördenunterlagen" title="Permanent link">&para;</a></h2>
+<p>Im Repository liegen unter <code>docs/behoerden/</code> Vorlagen, mit denen eine Behörde ihre eigenen
+Unterlagen erstellt, etwa zum Datenschutz, zur Informationssicherheit oder zur KI-Verordnung,
+geordnet nach den Schritten von der Entscheidung bis zum Update. Die Vorlagen schreiben keine Werte
+ab, sondern verweisen auf das Faktenblatt der eingesetzten Version. Deshalb veralten sie nicht mit
+jedem Release. Gelesen werden sie im Update-Paket dieser Version, wo jeder Verweis ein Link ist; die
+Übersicht <code>docs/behoerden/README.md</code> (im Paket <code>vorlagen/README.md</code>) erklärt Aufbau, Kopfvermerk und
+woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
+<code>backend/docs/compliance-manifest.md</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Zurück zum Seitenanfang
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "In Zwischenablage kopiert", "clipboard.copy": "In Zwischenablage kopieren", "search.result.more.one": "1 weiteres Suchergebnis auf dieser Seite", "search.result.more.other": "# weitere Suchergebnisse auf dieser Seite", "search.result.none": "Keine Suchergebnisse", "search.result.one": "1 Suchergebnis", "search.result.other": "# Suchergebnisse", "search.result.placeholder": "Suchbegriff eingeben", "search.result.term.missing": "Es fehlt", "select.version": "Version ausw\u00e4hlen"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

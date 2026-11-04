@@ -1,0 +1,5408 @@
+
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="schnellstart.html">
+      
+      
+        <link rel="next" href="kubernetes.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/opaa-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Docker Compose - OPAA-Handbuch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/opaa.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#docker-compose" class="md-skip">
+          Zum Inhalt
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OPAA-Handbuch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Docker Compose
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Dunkles Farbschema"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dunkles Farbschema" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Helles Farbschema"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Helles Farbschema" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Suche" placeholder="Suche" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Suche">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Zurücksetzen" aria-label="Zurücksetzen" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Suche wird initialisiert
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    OPAA-Handbuch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OPAA-Handbuch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benutzer
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Benutzer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstieg und Chat
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Einstieg und Chat
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/erste-schritte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Erste Schritte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/fragen-stellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fragen stellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/belege-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/anhaengen-und-diktieren.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dateien anhängen und Spracheingabe
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompts-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/antworten-weitergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Antworten weitergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/chats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chats verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-inhalte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inhalte eines Space zuordnen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-mitglieder.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mitglieder eines Space verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-einstellungen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space-Einstellungen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliotheken
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bibliotheken
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/katalog.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Katalog nutzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompt-bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt-Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/arbeitsmittel-teilen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arbeitsmittel teilen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-aktuell-halten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek aktuell halten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/metadaten-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/fuer-ki-werkzeuge-freigeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Für externe KI-Werkzeuge freigeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/konnektoren/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektoren
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4_8" id="__nav_2_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konnektoren
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/filesystem.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Verzeichnis im Dateisystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/http-directory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Webverzeichnis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/rss-feed.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Confluence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/s3.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: S3-Objektspeicher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/smb.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Windows-Dateifreigabe (SMB)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/sharepoint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: SharePoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/onedrive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: OneDrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/google-drive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Google Drive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/nextcloud.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/dropbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Dropbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto und Zugriff
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konto und Zugriff
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konto-verbinden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto verbinden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/private-bibliothek.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/zugangstoken.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugangstoken anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/ki-werkzeug-einrichten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/gruppe-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interne Gruppe pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/zugriff-nachvollziehen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugriffsberechtigung nachvollziehen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/meine-daten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eigene Daten herunterladen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../administration/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Administration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemverwaltung
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Systemverwaltung
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einfuehrung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einführung vorbereiten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/branding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lokale Konten verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anmeldung-einstellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anmeldung einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konto-uebergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto an Identitätsanbieter übergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/systemrollen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemrollen vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/gruppen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gruppen verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anlegerechte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anlegerechte vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/ausscheiden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ausscheiden und Nachfolge regeln
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/zugaenge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugänge einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/modelle.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/suche-und-indexierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suche und Indexierung überwachen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/externe-ki-werkzeuge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Externe KI-Werkzeuge zulassen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/datenschutz.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/e-mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einstellungen-uebertragen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstellungen übertragen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revision
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Revision
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/stichtagsauskunft.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stichtagsauskunft erstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/nachweisprotokoll-lesen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachweisprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/verbindungsprotokoll.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verbindungsprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Betrieb
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Betrieb
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="schnellstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schnellstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="docker-compose.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#schnellstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schnellstart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images-aus-ghcr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images aus GHCR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#konfiguration-mit-envdocker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Konfiguration mit .env.docker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Konfiguration mit .env.docker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-spezifische-variablen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker-spezifische Variablen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimale-envdocker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimale .env.docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dokumente" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dokumente
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datenbank-im-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datenbank im Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lokal-betriebenes-ollama-im-compose-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lokal betriebenes Ollama im Compose-Stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#der-mitgelieferte-objektspeicher-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der mitgelieferte Objektspeicher im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mailpit-im-lokalen-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mailpit im lokalen Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mehrere-backend-instanzen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mehrere Backend-Instanzen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mehrere Backend-Instanzen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-ohne-ausfall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update ohne Ausfall
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nicht-root-betrieb-des-backend-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nicht-root-Betrieb des Backend-Containers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eigene-interne-ca-ergänzen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eigene interne CA ergänzen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnose-im-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnose im Container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#härtung-des-compose-stapels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Härtung des Compose-Stapels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherung-und-wiederherstellung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherung und Wiederherstellung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aktualisierung-auf-einen-neuen-stand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aktualisierung auf einen neuen Stand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aktualisierung auf einen neuen Stand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vorbereitungsschritte-für-bestandsinstallationen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vorbereitungsschritte für Bestandsinstallationen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neu-aufsetzen-statt-aktualisieren" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Neu aufsetzen statt aktualisieren
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fehlerbehebung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fehlerbehebung
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fehlerbehebung">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-gibt-leere-antworten-oder-connection-refused-zurück" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend gibt leere Antworten oder „Connection refused" zurück
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-anfragen-geben-403-forbidden-zurück" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST-Anfragen geben 403 Forbidden zurück
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docker exec in den Backend-Container schlägt mit „executable file not found" fehl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jeder-upload-endet-mit-interner-serverfehler-und-accessdeniedexception-appuploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jeder Upload endet mit „Interner Serverfehler" und AccessDeniedException: /app/uploads/…
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#umgebungsvariablen-änderungen-treten-nicht-in-kraft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Umgebungsvariablen-Änderungen treten nicht in Kraft
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#das-backend-startet-nicht-und-meldet-refuses-to-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das Backend startet nicht und meldet refuses to start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#der-container-meldet-137" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Container meldet 137
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#der-container-meldet-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Container meldet 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stoppen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stoppen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kubernetes.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="authentifizierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentifizierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modell-endpunkte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="netz-und-sicherheit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Netz und Sicherheit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="datenbank.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenbank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="originalablage.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mehrere-instanzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mehrere Backend-Instanzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="images-und-laufzeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images und Laufzeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="aktualisierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aktualisierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sicherung-und-wiederherstellung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sicherung und Wiederherstellung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ueberwachung-und-fehlerbehebung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="nachvollziehbarkeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="releases-und-nachweise.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases und Nachweise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referenz
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referenz
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/rechte-matrix.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rechte-Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/glossar.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/konfiguration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konfiguration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/formate/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Formate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pdf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PDF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/docx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Word (DOCX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Text (ODT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pptx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PowerPoint (PPTX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Präsentation (ODP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/tabular.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Tabellen (XLSX, CSV, ODS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/html.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: HTML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/markdown.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: E-Mail (EML, MSG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Confluence-Seite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/fallback.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Auffang-Pipeline (TXT, DOC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/metadaten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-indexierung-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Indexierung arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-die-suche-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Suche arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#schnellstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schnellstart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images-aus-ghcr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images aus GHCR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#konfiguration-mit-envdocker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Konfiguration mit .env.docker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Konfiguration mit .env.docker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-spezifische-variablen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker-spezifische Variablen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimale-envdocker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimale .env.docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dokumente" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dokumente
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datenbank-im-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datenbank im Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lokal-betriebenes-ollama-im-compose-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lokal betriebenes Ollama im Compose-Stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#der-mitgelieferte-objektspeicher-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der mitgelieferte Objektspeicher im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mailpit-im-lokalen-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mailpit im lokalen Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mehrere-backend-instanzen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mehrere Backend-Instanzen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mehrere Backend-Instanzen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-ohne-ausfall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update ohne Ausfall
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nicht-root-betrieb-des-backend-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nicht-root-Betrieb des Backend-Containers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eigene-interne-ca-ergänzen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eigene interne CA ergänzen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnose-im-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnose im Container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#härtung-des-compose-stapels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Härtung des Compose-Stapels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherung-und-wiederherstellung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherung und Wiederherstellung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aktualisierung-auf-einen-neuen-stand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aktualisierung auf einen neuen Stand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aktualisierung auf einen neuen Stand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vorbereitungsschritte-für-bestandsinstallationen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vorbereitungsschritte für Bestandsinstallationen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neu-aufsetzen-statt-aktualisieren" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Neu aufsetzen statt aktualisieren
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fehlerbehebung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fehlerbehebung
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fehlerbehebung">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-gibt-leere-antworten-oder-connection-refused-zurück" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend gibt leere Antworten oder „Connection refused" zurück
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-anfragen-geben-403-forbidden-zurück" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST-Anfragen geben 403 Forbidden zurück
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docker exec in den Backend-Container schlägt mit „executable file not found" fehl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jeder-upload-endet-mit-interner-serverfehler-und-accessdeniedexception-appuploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jeder Upload endet mit „Interner Serverfehler" und AccessDeniedException: /app/uploads/…
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#umgebungsvariablen-änderungen-treten-nicht-in-kraft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Umgebungsvariablen-Änderungen treten nicht in Kraft
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#das-backend-startet-nicht-und-meldet-refuses-to-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das Backend startet nicht und meldet refuses to start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#der-container-meldet-137" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Container meldet 137
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#der-container-meldet-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Container meldet 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stoppen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stoppen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="docker-compose">Docker Compose<a class="headerlink" href="#docker-compose" title="Permanent link">&para;</a></h1>
+<p>Der Compose-Stapel des Repositorys (<code>docker-compose.yml</code>) startet OPAA auf einem einzelnen Rechner:
+Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
+und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
+gedacht; seine Vorgaben sind bequem und <strong>nicht</strong> gehärtet. Was für jeden Betriebsweg gilt — Images,
+Probes, Härtung, Schlüssel, Sicherung, Aktualisierung —, steht in der
+<a href="index.html">Betrieb</a> und ihren Kapiteln, die Bedeutung jeder Variable in der
+<a href="../referenz/konfiguration.html">Konfiguration</a>.</p>
+<h2 id="schnellstart">Schnellstart<a class="headerlink" href="#schnellstart" title="Permanent link">&para;</a></h2>
+<p>Der kürzeste Weg mit einem API-Schlüssel steht im <a href="schnellstart.html">Schnellstart</a>. Dieser Abschnitt
+startet den Stapel im Entwicklungsmodus mit lokal betriebenen Modellen.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Umgebung konfigurieren</span>
+cp<span class="w"> </span>.env.docker.example<span class="w"> </span>.env.docker
+
+<span class="c1"># 2. Ablageverzeichnisse anlegen und für das Container-Konto zugänglich machen</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>documents<span class="w"> </span>uploads
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">65532</span>:65532<span class="w"> </span>uploads<span class="w">     </span><span class="c1"># Schreibrecht: Eigentum abgeben</span>
+chmod<span class="w"> </span>-R<span class="w"> </span>o+rX<span class="w"> </span>documents<span class="w">               </span><span class="c1"># Leserecht: Eigentum bleibt, wo es ist</span>
+</code></pre></div>
+<p>Der zweite Schritt ist Pflicht: Das Backend läuft im Container unter der Kennung <code>65532</code>, ein
+Verzeichnis, das Docker selbst für einen fehlenden Bind-Mount anlegt, gehört dagegen <code>root</code> — der
+erste Upload schlägt dann fehl. Warum der Korpus nur Leserecht bekommt, der Weg ohne <code>sudo</code> und die
+Lage auf einem Netzlaufwerk stehen unter
+<a href="#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des Backend-Containers"</a>.</p>
+<p>Voreingestellt sind lokal betriebene Modelle über einen Ollama-Server; in <code>.env.docker</code> ist dafür
+nichts weiter einzutragen. Für Ollama gibt es zwei Wege, die sich gegenseitig ausschließen:</p>
+<p><strong>Weg A — Ollama als Teil des Stapels (Profil <code>ollama</code>).</strong> Die Modelladresse zeigt bereits auf
+<code>http://ollama:11434/v1</code>. Beim allerersten Start zuerst den Download der Modelle abwarten (mehrere GiB,
+siehe <a href="#lokal-betriebenes-ollama-im-compose-stack">„Lokal betriebenes Ollama im Compose-Stack"</a>) —
+ein Dokument, das währenddessen hochgeladen wird, endet sonst mit <code>FAILED</code>:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>ollama<span class="w"> </span>up<span class="w"> </span>ollama-pull<span class="w">   </span><span class="c1"># wartet, bis beide Modelle vorliegen</span>
+docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>ollama<span class="w"> </span>up<span class="w"> </span>--build<span class="w">       </span><span class="c1"># danach den vollständigen Stapel starten</span>
+</code></pre></div>
+<p>Nur auf diesem Weg beim Embedding-Modell der Installation die Eingabegrenze 8192 eintragen (in der
+Antwortdatei <code>"maxInputTokens": 8192</code>): <code>ollama-pull</code> legt <code>bge-m3</code> mit dieser Grenze an. Ohne die
+Angabe gilt die Vorgabe 2.048, und OPAA teilt längere Chunks.</p>
+<p>Wer nicht warten muss, startet gleich mit <code>docker compose --profile ollama up --build</code>; <code>ollama-pull</code>
+lädt dann im Hintergrund.</p>
+<p><strong>Weg B — ein vorhandener Ollama-Server</strong>, auf dem Host oder in einem anderen Netz. Läuft er auf dem
+Host, im Modus <code>dev</code> der Vorlage in <code>.env.docker</code> setzen und ohne Profil starten; im Betriebsmodus
+<code>oidc</code> wirkt die Variable nicht, dort trägt die Installation dieselbe Adresse ein:</p>
+<div class="highlight"><pre><span></span><code>OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>--build
+</code></pre></div>
+<p>Auf dem Server müssen die Modelle der Installation vorliegen, im Modus <code>dev</code> die der Vorgabe:
+<code>ollama pull bge-m3</code> und <code>ollama pull phi3:mini</code>. Die Eingabegrenze 8192 gehört nur dann zum
+Embedding-Modell, wenn <code>bge-m3</code> dort per Modelfile mit dieser Grenze angelegt ist
+(<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze des Embedding-Modells</a>).</p>
+<p>Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
+die Oberfläche unter <code>http://localhost:3000</code> erreichbar, die API unter <code>http://localhost:8081/api</code>,
+beide nur vom Host selbst: Im Modus <code>dev</code> ist jede Anfrage ohne Anmeldung Systemverwaltung. Für
+andere Rechner gehört der Stapel in den Modus <code>oidc</code>
+(<a href="#härtung-des-compose-stapels">Härtung des Compose-Stapels</a>).
+Im Modus <code>dev</code> der Vorlage richtet sich der Stapel selbst ein; im Betriebsmodus <code>oidc</code> startet eine
+leere Datenbank im Installationsmodus (<a href="#installation-im-compose-stapel">Installation im Compose-Stapel</a>).</p>
+<h2 id="services">Services<a class="headerlink" href="#services" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Host-Port</th>
+<th>Container-Port</th>
+<th>Beschreibung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frontend</td>
+<td>3000</td>
+<td>8080</td>
+<td>React-App über nginx bereitgestellt</td>
+</tr>
+<tr>
+<td>backend</td>
+<td>8081</td>
+<td>8080</td>
+<td>Spring Boot API</td>
+</tr>
+<tr>
+<td>postgres</td>
+<td>5432</td>
+<td>5432</td>
+<td>PostgreSQL 18 mit pgvector</td>
+</tr>
+<tr>
+<td>keycloak</td>
+<td>8180</td>
+<td>8180</td>
+<td>Keycloak (nur <code>oidc</code>-/<code>demo</code>-Profil)</td>
+</tr>
+<tr>
+<td>ollama</td>
+<td>—</td>
+<td>11434</td>
+<td>Ollama-Server (nur <code>ollama</code>-Profil; kein Host-Port)</td>
+</tr>
+<tr>
+<td>ollama-pull</td>
+<td>—</td>
+<td>—</td>
+<td>einmaliger Init-Schritt, zieht <code>bge-m3</code>/<code>phi3:mini</code> (nur <code>ollama</code>-Profil)</td>
+</tr>
+<tr>
+<td>upload-store</td>
+<td>8095 (API), 8096 (Konsole unter <code>/rustfs/console/</code>)</td>
+<td>9000, 9001</td>
+<td>Objektspeicher der Originalablage (nur <code>upload-s3</code>-Profil; an <code>127.0.0.1</code> gebunden)</td>
+</tr>
+<tr>
+<td>upload-store-init</td>
+<td>—</td>
+<td>—</td>
+<td>einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur <code>upload-s3</code>-Profil)</td>
+</tr>
+<tr>
+<td>mailpit</td>
+<td>1025 (SMTP), 8025 (Weboberfläche)</td>
+<td>1025, 8025</td>
+<td>Mailserver, der alles annimmt und nichts zustellt (nur <code>mail</code>-Profil)</td>
+</tr>
+<tr>
+<td>backend-migrate</td>
+<td>—</td>
+<td>—</td>
+<td>einmaliger Migrationsschritt (nur <a href="#mehrere-backend-instanzen">Mehrinstanz-Variante</a>)</td>
+</tr>
+<tr>
+<td>backend-a, backend-b</td>
+<td>—</td>
+<td>8080</td>
+<td>zwei Backend-Instanzen statt <code>backend</code> (nur Mehrinstanz-Variante)</td>
+</tr>
+</tbody>
+</table>
+<p>Das Backend meldet seinen Zustand über einen Health Check auf die
+<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness</a>; <code>docker compose ps</code> zeigt ihn als
+<code>healthy</code>, und das Frontend startet erst danach. Der Frontend-nginx löst den Namen <code>backend</code> zur
+Laufzeit auf (<code>OPAA_BACKEND_RESOLVER</code>): Ein neu erstelltes Backend erreicht er ohne eigenen Neustart.</p>
+<p>Die Profile <code>demo</code> (Demo-Instanz „Stadt Rheinfurt" mit eigenen Quellen) und <code>oidc</code> (gebündeltes
+Keycloak) ergänzen weitere Dienste. Alle Befehle dieses Kapitels sprechen den <strong>Servicenamen</strong> an
+(<code>backend</code>, <code>frontend</code>, <code>postgres</code>), nicht einen Containernamen: Wie die Container heißen, hängt vom
+Namen des Compose-Projekts ab, ohne eigene Angabe dem Namen des Verzeichnisses mit der
+<code>docker-compose.yml</code>. <code>docker compose logs backend</code> funktioniert in jedem Stapel, <code>docker logs &lt;name&gt;</code>
+nur in einem.</p>
+<h2 id="images-aus-ghcr">Images aus GHCR<a class="headerlink" href="#images-aus-ghcr" title="Permanent link">&para;</a></h2>
+<p>Auf einem Zielsystem, auf dem nicht gebaut werden soll, genügt eine <code>docker-compose.yml</code>, die
+<code>image:</code> statt <code>build:</code> verwendet; ein Checkout des Repositorys ist nicht nötig. Welcher Tag welchen
+Stand bedeutet, steht unter <a href="images-und-laufzeit.html#images-und-versionen">Images und Versionen</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/criew/opaa-backend:0.1.0</span><span class="w">   </span><span class="c1"># oder :main für den Entwicklungsstand</span>
+<span class="w">  </span><span class="nt">frontend</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/criew/opaa-frontend:0.1.0</span>
+</code></pre></div>
+<p>Eine eigene Compose-Datei bildet den Host-Port des Frontends auf den Containerport <code>8080</code> ab, nicht
+auf <code>80</code>.</p>
+<h2 id="konfiguration-mit-envdocker">Konfiguration mit <code>.env.docker</code><a class="headerlink" href="#konfiguration-mit-envdocker" title="Permanent link">&para;</a></h2>
+<p>Die Dienste lesen ihre Umgebung aus <code>.env.docker</code> (<code>env_file</code>); alle Optionen mit Beschreibung stehen
+in <code>.env.docker.example</code>, die Bedeutung jeder Variable in der <a href="../referenz/konfiguration.html">Konfiguration</a>.</p>
+<ul>
+<li><strong>Zwei Vorlagen, zwei Zwecke.</strong> <code>.env.example</code> ist auf <code>./gradlew bootRun</code> auf dem Host
+  zugeschnitten (Datenbank auf <code>localhost</code>, CORS auf den Vite-Dev-Server <code>:5173</code>).
+  <code>.env.docker.example</code> ist die Vorlage für den Stapel: <code>SPRING_PROFILES_ACTIVE=docker,dev</code>, die
+  Datenbankadresse aus dem Profil <code>docker</code> (Hostname <code>postgres</code>), CORS auf den Frontend-Port <code>:3000</code>.
+  Wer beide unverändert nebeneinander nutzt, bekommt in beiden Fällen einen startfähigen Stand.</li>
+<li><strong><code>.env</code> und <code>.env.docker</code> sind verschieden.</strong> Docker Compose liest eine <code>.env</code> im
+  Projektverzeichnis von selbst, aber nur für die Platzhalter in <code>docker-compose.yml</code> selbst — Ports,
+  Bind-Mounts, die Auswahl der <code>env_file</code>, die Zugangsdaten mitgelieferter Dienste. Solche Werte
+  wirken nur aus der Shell-Umgebung oder einer <code>.env</code>, nie aus <code>.env.docker</code>; die
+  <a href="../referenz/konfiguration.html#alle-umgebungsvariablen">Konfiguration</a> kennzeichnet sie. Wer eine <code>.env</code> für die
+  lokale Entwicklung hat, achtet darauf, dass Ports und Datenbankzugang nicht kollidieren.</li>
+<li><strong>Änderungen wirken erst mit neuem Container:</strong> <code>docker compose up -d &lt;service&gt;</code>, nicht <code>restart</code> —
+  <code>restart</code> verwendet den vorhandenen Container samt alter Umgebung erneut.</li>
+</ul>
+<h3 id="docker-spezifische-variablen">Docker-spezifische Variablen<a class="headerlink" href="#docker-spezifische-variablen" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Erforderlicher Wert</th>
+<th>Warum</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPRING_PROFILES_ACTIVE</code></td>
+<td><code>docker,oidc</code> (Betrieb) oder <code>docker,dev</code> (Entwicklung)</td>
+<td>Aktiviert die Docker-spezifische Konfiguration (Datenbankadresse, Modelladresse) und den Betriebsmodus; ohne <code>oidc</code> oder <code>dev</code> startet das Backend nicht</td>
+</tr>
+<tr>
+<td><code>OPAA_SERVER_ADDRESS</code></td>
+<td><code>0.0.0.0</code></td>
+<td>Das Backend muss an alle Schnittstellen binden, damit der nginx des Frontend-Containers es erreicht. <code>0.0.0.0</code> bindet IPv4 und, wo vorhanden, IPv6; <code>::</code> verhindert den Start in einem Container ohne IPv6</td>
+</tr>
+<tr>
+<td><code>OPAA_CORS_ALLOWED_ORIGINS</code></td>
+<td><code>http://localhost:3000</code></td>
+<td>muss mit dem Host-Port des Frontends übereinstimmen</td>
+</tr>
+<tr>
+<td><code>OPAA_DB_USERNAME</code>, <code>OPAA_DB_PASSWORD</code></td>
+<td><code>opaa</code>, <code>opaa</code></td>
+<td>müssen zwischen Backend und <code>postgres</code> übereinstimmen</td>
+</tr>
+</tbody>
+</table>
+<h3 id="minimale-envdocker">Minimale <code>.env.docker</code><a class="headerlink" href="#minimale-envdocker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SPRING_PROFILES_ACTIVE=docker,dev
+OPAA_SERVER_ADDRESS=0.0.0.0
+OPAA_CORS_ALLOWED_ORIGINS=http://localhost:3000
+OPAA_DB_USERNAME=opaa
+OPAA_DB_PASSWORD=opaa
+</code></pre></div>
+<p>Chat- und Embedding-Modell stehen nicht in <code>.env.docker</code>: Beide legt die
+<a href="installation.html">Installation</a> fest, die Dimension des Embedding-Modells ermittelt ihre
+Probeeinbettung (<a href="modell-endpunkte.html#embedding">Modelle</a>). Im Modus <code>dev</code> gelten <code>phi3:mini</code> und <code>bge-m3</code>
+unter <code>OPAA_OPENAI_BASE_URL</code>.</p>
+<h2 id="installation-im-compose-stapel">Installation im Compose-Stapel<a class="headerlink" href="#installation-im-compose-stapel" title="Permanent link">&para;</a></h2>
+<p>Im Betriebsmodus <code>oidc</code> (<code>SPRING_PROFILES_ACTIVE=docker,oidc</code>) bietet eine leere Datenbank nur die
+<a href="installation.html">Installation</a> an: erstes Konto, Anmeldeverfahren, Chat- und Embedding-Modell. Zwei Wege führen
+hindurch.</p>
+<p><strong>Im Browser oder über die Installations-API.</strong> Ohne weitere Angaben schreibt der erste Start das
+Installations-Token einmalig ins Log:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>logs<span class="w"> </span>backend<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A3<span class="w"> </span><span class="s2">"INSTALLATION TOKEN"</span>
+</code></pre></div>
+<p>Wer das Token selbst vorgeben will, setzt <code>OPAA_INSTALLATION_TOKEN</code> in <code>.env.docker</code> (mindestens
+32 Zeichen, <code>openssl rand -base64 48</code>). Das empfiehlt sich, sobald die Protokolle des Stapels an ein
+zentrales System gehen: Ein erzeugtes Token stünde auch dort.</p>
+<p><strong>Mit einer Antwortdatei</strong>, ohne Browser. Der Stapel hängt das Verzeichnis <code>installation/</code>
+(<code>OPAA_INSTALLATION_DIR_HOST</code>) schreibgeschützt unter <code>/run/opaa/installation</code> ein; Git verfolgt
+dort nur das Beispiel.</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>installation/installation.example.json<span class="w"> </span>installation/installation.json
+<span class="c1"># Adresse, Chat- und Embedding-Modell und gegebenenfalls Anmeldeverfahren eintragen</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s1">'&lt;Passwort des ersten Kontos&gt;'</span><span class="w"> </span>&gt;<span class="w"> </span>installation/admin-password
+sudo<span class="w"> </span>chown<span class="w"> </span><span class="m">65532</span>:65532<span class="w"> </span>installation/admin-password<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">0400</span><span class="w"> </span>installation/admin-password
+</code></pre></div>
+<p>In <code>.env.docker</code> die Zeile <code>OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json</code>
+einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle; das Ollama
+des Stapels braucht <code>ollama:11434</code> in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>, wie es
+<code>.env.docker.example</code> setzt (<a href="modell-endpunkte.html#adressprüfung-der-modelle">Adressprüfung der Modelle</a>),
+nicht in der Liste der Quellen.
+Das Passwort steht nie in der JSON-Datei, sondern nur in der
+Datei, auf die <code>passwordFile</code> zeigt; Zugangsschlüssel der Modelle ebenso über <code>apiKeyFile</code>. Das
+erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange <code>requirePasswordChange</code>
+nicht <code>false</code> ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
+löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
+<code>docker compose logs backend | grep "answer file"</code> nennt Schritt und Grund.</p>
+<p><strong>Mit dem gebündelten Keycloak</strong> (Profil <code>oidc</code>) bekommt die Antwortdatei das Anmeldeverfahren
+<code>LOCAL_AND_OIDC</code>. Der Browser erreicht den Issuer unter <code>localhost</code>, das Backend die Schlüssel unter
+dem Dienstnamen:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">"signIn"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LOCAL_AND_OIDC"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"oidc"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"issuerUri"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://localhost:8180/realms/opaa"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"clientId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"opaa-frontend"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"jwkSetUri"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://keycloak:8180/realms/opaa/protocol/openid-connect/certs"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Dazu in <code>.env.docker</code> <code>OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost:8180,keycloak:8180</code> (beide
+Adressen sind intern; mit Port, damit <code>localhost</code> nicht mit allen Ports freigegeben ist) und
+<code>OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180</code>.</p>
+<h2 id="dokumente">Dokumente<a class="headerlink" href="#dokumente" title="Permanent link">&para;</a></h2>
+<p>Dokumente für eine Dateisystem-Bibliothek liegen im Verzeichnis <code>./documents</code> (oder dem Pfad aus
+<code>OPAA_INDEXING_DOCUMENT_PATH_HOST</code>). Es wird im Backend-Container unter <code>/app/documents</code> eingehängt.</p>
+<h2 id="datenbank-im-stapel">Datenbank im Stapel<a class="headerlink" href="#datenbank-im-stapel" title="Permanent link">&para;</a></h2>
+<p>Die Daten von PostgreSQL liegen im benannten Volume <code>opaa-postgres-data</code> und überleben
+<code>docker compose down</code> und <code>up</code>. Zurückgesetzt wird die Datenbank mit:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w"> </span>-v
+</code></pre></div>
+<ul>
+<li><strong>Konto vor dem ersten Start festlegen.</strong> PostgreSQL legt das Konto aus <code>OPAA_DB_USERNAME</code> und
+  <code>OPAA_DB_PASSWORD</code> nur beim ersten Start an; eine spätere Änderung wird ignoriert, bis das Volume
+  verworfen ist.</li>
+<li><strong><code>down -v</code> verwirft alle Volumes des Stapels</strong>, mit dem Profil <code>ollama</code> auch <code>opaa-ollama-data</code>
+  mit den heruntergeladenen Modellen (rund 3,3 GiB, die <code>ollama-pull</code> danach neu lädt) und mit
+  <code>upload-s3</code> den Objektspeicher samt allen Originalen. Wer nur die Datenbank verwerfen will, nimmt
+  <code>docker volume rm &lt;projekt&gt;_opaa-postgres-data</code> bei angehaltenem Stapel.</li>
+<li><strong>Eine eigene PostgreSQL</strong> statt des Dienstes <code>postgres</code> braucht pgvector und einige Vorbereitung
+  (<a href="datenbank.html">Datenbank</a>).</li>
+</ul>
+<h2 id="lokal-betriebenes-ollama-im-compose-stack">Lokal betriebenes Ollama im Compose-Stack<a class="headerlink" href="#lokal-betriebenes-ollama-im-compose-stack" title="Permanent link">&para;</a></h2>
+<p>Das Profil <code>ollama</code> startet einen Ollama-Server im Stapel. Es ist nicht voreingestellt: Image und
+Modelle sind groß, und wer einen Ollama-Server schon betreibt, braucht keinen zweiten.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>ollama<span class="w"> </span>up<span class="w"> </span>--build
+</code></pre></div>
+<ul>
+<li><strong><code>ollama</code></strong> ist der Server, mit dem Volume <code>opaa-ollama-data</code> für die Modelle. Er veröffentlicht
+  keinen Host-Port; Backend und Init-Schritt erreichen ihn im Compose-Netz unter dem Namen <code>ollama</code>,
+  auf den die Modelladresse im Profil <code>docker</code> bereits zeigt. Die Adressprüfung der Modelle lässt
+  ihn nur mit dem Eintrag <code>ollama:11434</code> in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code> durch, den
+  <code>.env.docker.example</code> setzt; fehlt er in der eigenen <code>.env.docker</code>, lehnen Installation und
+  Modellverwaltung die Vorlage <code>http://ollama:11434/v1</code> ab. Der auskommentierte <code>ports</code>-Eintrag
+  bindet, falls aktiviert, nur an <code>127.0.0.1</code>.</li>
+<li><strong><code>ollama-pull</code></strong> zieht <code>bge-m3</code> (Einbettung) und <code>phi3:mini</code> (Chat) und beendet sich. Beide sind
+  nötig: <code>phi3:mini</code> wird beim ersten Start zum aktiven Chat-Modell
+  (<a href="modell-endpunkte.html#llm-anbieter">Modelle</a>), ohne es scheitert die erste Frage. <code>bge-m3</code> legt der Schritt
+  danach unter demselben Namen mit einer Eingabegrenze von 8.192 Tokens neu an, damit jeder Chunk
+  ungekürzt eingebettet wird (<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze</a>).
+  Dazu gehört die Eingabegrenze 8192 beim Embedding-Modell der Installation aus Weg A.
+  Wer stattdessen <code>nomic-embed-text</code> nutzt, zieht es mit
+  <code>docker compose --profile ollama exec ollama ollama pull nomic-embed-text</code>, nennt es in der
+  Installation und lässt die Eingabegrenze weg. Bei einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.</li>
+</ul>
+<p><strong>Platz und Zeit.</strong> Die Modelle laden beim ersten Start rund 3,3 GiB herunter (<code>phi3:mini</code> rund
+2,2 GiB, <code>bge-m3</code> rund 1,1 GiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64) noch
+größer. Beim Einbetten braucht <code>bge-m3</code> mehrere Gigabyte Arbeitsspeicher
+(<a href="modell-endpunkte.html#welches-embedding-modell">Welches Embedding-Modell</a>). Den Fortschritt zeigt <code>docker compose logs -f ollama-pull</code>. Der Stapel ist nutzbar,
+sobald <code>ollama</code> gesund ist; bis beide Modelle vorliegen, können Indexierung und Fragen scheitern.</p>
+<p><strong>Fehlgeschlagener Download.</strong> Scheitert <code>ollama-pull</code> (Registry nicht erreichbar, Platte voll),
+laufen Backend und Frontend unauffällig weiter, nur Indexierung und Chat schlagen fehl. Die Ursache
+steht in <code>docker compose logs ollama-pull</code> — der erste Blick bei einem unerklärten <code>FAILED</code> direkt
+nach dem Start.</p>
+<p><strong>Ohne Internet.</strong> <code>ollama pull</code> prüft bei jedem Aufruf gegen die Registry im Internet und scheitert
+ohne Zugang, auch wenn beide Modelle schon im Volume liegen. In einem abgeschotteten Netz entweder
+das <code>command</code> in <code>docker-compose.yml</code> um einen vorangestellten <code>ollama list | grep -q ... ||</code> ergänzen
+oder <code>ollama-pull</code> beim erneuten Start weglassen
+(<code>docker compose --profile ollama up ollama backend frontend postgres</code>).</p>
+<p><strong>GPU.</strong> Ohne Ergänzung nutzt <code>ollama</code> nur die CPU. Eine NVIDIA-GPU mit installiertem Container-Toolkit
+reicht ein eigener <code>deploy.resources.reservations.devices</code>-Eintrag am Dienst <code>ollama</code> durch.</p>
+<p><strong>Ein vorhandener Server statt des Profils</strong> ist gleichwertig (Weg B im <a href="#schnellstart">Schnellstart</a>);
+<code>docker-compose.yml</code> setzt den nötigen <code>extra_hosts</code>-Eintrag für <code>host.docker.internal</code> bereits. Er
+eignet sich, wenn ihn mehrere Installationen nutzen sollen.</p>
+<h2 id="der-mitgelieferte-objektspeicher-im-compose-stapel">Der mitgelieferte Objektspeicher im Compose-Stapel<a class="headerlink" href="#der-mitgelieferte-objektspeicher-im-compose-stapel" title="Permanent link">&para;</a></h2>
+<p>Das Profil <code>upload-s3</code> bringt einen Objektspeicher für die <a href="originalablage.html">Originalablage</a> mit.
+Ohne das Profil existieren die beiden Dienste nicht.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>upload-s3<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>upload-store<span class="w"> </span>upload-store-init
+</code></pre></div>
+<ul>
+<li><code>upload-store</code> hält die Originale im eigenen Volume <code>opaa-upload-store-data</code>. <code>docker compose down -v</code>
+  löscht es samt allen Originalen; für den regulären Stopp genügt <code>docker compose down</code>.</li>
+<li><code>upload-store-init</code> legt einmal den Bucket an und beendet sich; den Inhalt schreibt allein die
+  Anwendung.</li>
+<li>Das Backend hängt von keinem der beiden ab: Ein kurz nicht erreichbarer Speicher hält den Start
+  nicht auf.</li>
+</ul>
+<p>In <code>.env.docker</code> gehören dann <code>OPAA_UPLOAD_STORE</code>, <code>OPAA_UPLOAD_S3_ENDPOINT</code>, <code>OPAA_UPLOAD_S3_BUCKET</code>,
+<code>OPAA_UPLOAD_S3_ACCESS_KEY</code> und <code>OPAA_UPLOAD_S3_SECRET_KEY</code>; <code>.env.docker.example</code> trägt sie
+auskommentiert mit den Werten, die der Dienst voreingestellt hat. Die Zugangsdaten des Dienstes
+<strong>selbst</strong> (<code>OPAA_UPLOAD_STORE_ROOT_USER</code>, <code>OPAA_UPLOAD_STORE_ROOT_PASSWORD</code>,
+<code>OPAA_UPLOAD_STORE_BUCKET</code>) liest Compose nur aus der Shell-Umgebung oder einer <code>.env</code>. Wer sie
+ändert, ändert sie auf beiden Seiten, sonst weist der Speicher jeden Zugriff zurück. Der Endpunkt
+zeigt auf den Servicenamen und passiert die Zielprüfung der Originalablage ohne eigenen Eintrag.</p>
+<p>Dieser Dienst ist nicht der Objektspeicher des Profils <code>demo</code>: Jener füllt einen Korpus-Bucket, aus
+dem eine Bibliothek als <strong>Quelle</strong> liest, wird bei jedem Start neu befüllt und hat kein Volume. Beide
+Profile laufen nebeneinander.</p>
+<h2 id="mailpit-im-lokalen-stapel">Mailpit im lokalen Stapel<a class="headerlink" href="#mailpit-im-lokalen-stapel" title="Permanent link">&para;</a></h2>
+<p>Für Erprobung und Entwicklung liegt ein Mailserver bei, der alles annimmt und nichts zustellt:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>mail<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>mailpit
+</code></pre></div>
+<p>Die abgefangenen Nachrichten liegen unter <code>http://localhost:8025</code>. Unter „Administration → E-Mail →
+SMTP-Zugang" einzutragen: Server <code>mailpit</code>, Port <code>1025</code>, Verschlüsselung <code>NONE</code>, keine Zugangsdaten
+(<a href="../administration/e-mail.html">E-Mail-Versand</a>). Dieselben Angaben nimmt auch der Schritt E-Mail-Versand des
+Einrichtungs-Assistenten an, wenn <code>OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST=mailpit:1025</code> in
+<code>.env.docker</code> steht (<a href="installation.html#schritte">Installation</a>).</p>
+<h2 id="mehrere-backend-instanzen">Mehrere Backend-Instanzen<a class="headerlink" href="#mehrere-backend-instanzen" title="Permanent link">&para;</a></h2>
+<p><code>docker-compose.multi.yml</code> ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
+eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen. Wie die Instanzen
+zusammenarbeiten, erklärt <a href="mehrere-instanzen.html">Mehrere Backend-Instanzen</a>. Jeder Befehl für diesen
+Stapel nennt beide Dateien:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose.multi.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p>Statt <code>backend</code> laufen dann <code>backend-migrate</code>, das die Datenbank migriert und endet, und die
+Instanzen <code>backend-a</code> und <code>backend-b</code>. Sie starten erst nach dem Migrationsschritt, migrieren selbst
+nicht und haben je ein eigenes <code>/tmp</code>, aber keinen Host-Port. Beide tragen im Compose-Netz den Namen
+<code>backend</code>; der Frontend-nginx verteilt die Anfragen auf beide und weicht auf die andere aus, wenn eine
+keine Verbindung annimmt. Das gilt auch für eine gerade gestoppte Instanz, die nginx noch einige
+Sekunden lang in der Verteilung führt: Kommt dort binnen 4 s keine Verbindung zustande, geht die
+Anfrage an die andere. Eine Anfrage, die noch keine Instanz erreicht hat, endet so nicht mit einem
+Fehler, solange eine Instanz läuft; nur eine Diktataufnahme, die genau in diesem Moment hochgeladen
+wird, kann scheitern und ist dann neu aufzunehmen. Laufende Anfragen der stoppenden Instanz enden
+wie unter <a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a> beschrieben. Hat eine Instanz
+die Verbindung angenommen, gibt nginx nur eine lesende Anfrage (<code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>) an die
+andere weiter, wenn die Verbindung abreißt oder die Antwort länger als <code>OPAA_BACKEND_READ_TIMEOUT</code>
+ausbleibt; jede andere, auch Ändern und Löschen, endet dann mit einem Fehler und läuft nie ein
+zweites Mal (<a href="mehrere-instanzen.html#das-gesamtbild">Das Gesamtbild</a>).
+<code>docker compose --scale</code> ist nicht der Weg zu einer weiteren Instanz: Die skalierten Container
+teilten sich ein <code>/tmp</code>.</p>
+<ul>
+<li><strong>Originale:</strong> Empfohlen ist der Objektspeicher (<code>OPAA_UPLOAD_STORE=s3</code>, etwa mit dem Profil
+  <code>upload-s3</code>). Das gemeinsame Verzeichnis <code>uploads/</code> genügt, weil alle Instanzen auf diesem einen
+  Rechner laufen; Instanzen auf mehreren Rechnern brauchen den Objektspeicher.</li>
+<li><strong>Konfiguration:</strong> Beide Instanzen lesen dieselbe <code>.env.docker</code> und haben damit denselben
+  <a href="mehrere-instanzen.html#gleiche-konfiguration-der-konfigurationsabdruck">Konfigurationsabdruck</a>.</li>
+<li><strong>Grenzen je Instanz:</strong> Ein Wert, der für die ganze Installation gemeint ist, steht in
+  <code>.env.docker</code> durch die Zahl der Instanzen geteilt, etwa <code>OPAA_INDEXING_EMBEDDING_CONCURRENCY=3</code>
+  für zusammen sechs gleichzeitige Einbettungen. Welche Grenzen das betrifft, steht unter
+  <a href="mehrere-instanzen.html#grenzen-und-budgets">Grenzen und Budgets</a>.</li>
+<li><strong>Datenbankverbindungen:</strong> Die Grenze nennt
+  <a href="datenbank.html#verbindungen-bei-mehreren-instanzen">Verbindungen bei mehreren Instanzen</a>.</li>
+<li><strong>Vertraute Proxys:</strong> Die feste Adresse des Frontend-Containers in
+  <code>OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS</code> genügt, solange genau ein Frontend-Container vor den Instanzen
+  steht. Ein zweiter Frontend-Container braucht eine eigene feste Adresse im Compose-Netz und einen
+  eigenen Eintrag; mit <code>docker compose --scale frontend</code> bekämen die Container Adressen, die sich nicht
+  einzeln vertrauen lassen. Ein weiterer Proxy davor kommt hinzu wie unter
+  <a href="netz-und-sicherheit.html#vertraute-proxys-und-client-adresse">Vertraute Proxys</a> beschrieben.</li>
+</ul>
+<h3 id="update-ohne-ausfall">Update ohne Ausfall<a class="headerlink" href="#update-ohne-ausfall" title="Permanent link">&para;</a></h3>
+<p>Compose ersetzt Container nicht nacheinander von selbst. Die Reihenfolge, eine Instanz nach der
+anderen, jeweils bis sie <code>healthy</code> ist:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">F</span><span class="o">=</span><span class="s2">"-f docker-compose.yml -f docker-compose.multi.yml"</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nv">$F</span><span class="w"> </span>pull<span class="w">                              </span><span class="c1"># oder build</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nv">$F</span><span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>backend-migrate<span class="w">          </span><span class="c1"># Migration der neuen Version</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nv">$F</span><span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--wait<span class="w"> </span>backend-a<span class="w">  </span><span class="c1"># wartet, bis backend-a healthy ist</span>
+sleep<span class="w"> </span><span class="m">15</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nv">$F</span><span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--wait<span class="w"> </span>backend-b
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nv">$F</span><span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--wait<span class="w"> </span>frontend
+</code></pre></div>
+<ol>
+<li><strong>Migration zuerst.</strong> Sie erweitert das Schema nur, die laufenden Instanzen der alten Version
+   arbeiten weiter. Endet <code>run</code> nicht mit Exit-Code 0, hier aufhören: Die alten Instanzen laufen
+   unverändert.</li>
+<li><strong>Dann <code>backend-a</code>.</strong> Während Compose den Container ersetzt, beantwortet <code>backend-b</code> alle Anfragen;
+   laufende Anfragen von <code>backend-a</code> enden geordnet (<a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>).</li>
+<li><strong>Dann <code>backend-b</code></strong>, erst wenn <code>backend-a</code> wieder <code>healthy</code> ist und eine kurze Pause vergangen
+   ist; <code>--wait</code> wartet auf das eine, <code>sleep 15</code> sorgt für das andere. Der Frontend-nginx nimmt eine
+   Instanz, die beim Start kurz keine Verbindung annahm, erst danach sicher wieder in die Verteilung;
+   ohne die Pause können für einige Sekunden Anfragen mit <code>502</code> scheitern.</li>
+<li><strong>Das Frontend zuletzt.</strong> Es ist ein einzelner Container. Während Compose ihn ersetzt, lehnt der
+   Port etwa eine Sekunde lang Verbindungen ab; keine Anfrage wird mit einem Fehler beantwortet, und
+   die Oberfläche lädt danach weiter.</li>
+</ol>
+<p>Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank
+(<a href="mehrere-instanzen.html#update-ohne-ausfall">Update ohne Ausfall</a>). Mails gehen dabei nicht verloren,
+Läufe und Uploads der stoppenden Instanz lassen sich wiederholen
+(<a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>).</p>
+<p>Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, lässt die neue Version die
+laufende nicht in ihrem <a href="mehrere-instanzen.html#gleiche-konfiguration-der-konfigurationsabdruck">Versionsfenster</a>
+zu, oder ändert sich ein Wert des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten
+(<code>docker compose $F stop backend-a backend-b</code>), dann folgen Migration und Start wie oben.</p>
+<h2 id="nicht-root-betrieb-des-backend-containers">Nicht-root-Betrieb des Backend-Containers<a class="headerlink" href="#nicht-root-betrieb-des-backend-containers" title="Permanent link">&para;</a></h2>
+<p>Das Backend läuft als Benutzer und Gruppe <code>65532</code>. Bei einem Bind-Mount gilt der Eigentümer des
+<strong>Host</strong>-Verzeichnisses; Docker ändert daran beim Einhängen nichts. Daraus folgen drei Anforderungen:</p>
+<ol>
+<li><strong><code>/app/uploads</code> muss für <code>65532</code> beschreibbar sein</strong>, solange die Originale im Dateisystem liegen
+   (<code>OPAA_UPLOAD_STORE</code> nicht auf <code>s3</code>) — am einfachsten, indem das Host-Verzeichnis dieser Kennung
+   gehört.</li>
+<li><strong>Ein eigenes Temp-Verzeichnis muss für <code>65532</code> beschreibbar sein.</strong> Ohne Angabe zeigen
+   <code>OPAA_UPLOAD_S3_TEMP_DIRECTORY</code> und <code>OPAA_INDEXING_S3_TEMP_DIRECTORY</code> auf <code>/tmp</code>; wer sie auf ein
+   großes eingehängtes Volume legt, übergibt es. Sonst scheitert jeder Upload beim Anlegen der
+   Arbeitsdatei, auch mit <code>OPAA_UPLOAD_STORE=s3</code>.</li>
+<li><strong>Jedes weitere eingehängte Verzeichnis muss für <code>65532</code> les- und betretbar sein</strong>: <code>/app/documents</code>
+   und jedes über <code>OPAA_INDEXING_FILESYSTEM_ALLOWLIST</code> freigegebene Verzeichnis. Eine eng gesetzte
+   Freigabe (<code>root:root 0700</code>, ein CIFS-Mount mit <code>uid=0,file_mode=0600</code>) ist es nicht
+   (<a href="../benutzer/konnektoren/filesystem.html">Konnektor Dateisystem</a>).</li>
+</ol>
+<p>Der häufigste Fall ist der erste: Legt Docker das fehlende Verzeichnis selbst an, gehört es <code>root</code>,
+der Start meldet <code>UP</code>, und erst der erste Upload endet mit <code>500</code> und dieser Meldung:</p>
+<div class="highlight"><pre><span></span><code>java.io.UncheckedIOException: Datei konnte nicht gespeichert werden
+Caused by: java.nio.file.AccessDeniedException: /app/uploads/&lt;Organisations-ID&gt;
+</code></pre></div>
+<p><strong>Neue Installation:</strong> Schritt 2 im <a href="#schnellstart">Schnellstart</a>. <strong>Bestehende Installation:</strong>
+dieselben Zeilen ohne <code>mkdir</code>; sie ändern Rechte und Eigentümer, keine Inhalte.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">65532</span>:65532<span class="w"> </span>uploads
+chmod<span class="w"> </span>-R<span class="w"> </span>o+rX<span class="w"> </span>documents
+docker<span class="w"> </span>compose<span class="w"> </span>pull<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p><strong>Warum <code>documents</code> nicht übereignet wird.</strong> Den Korpus befüllt typischerweise jemand anderes — ein
+Fachverfahren, ein Sync-Dienst, eine Freigabe. Ein <code>chown</code> nähme diesem Schreiber die Rechte. Gebraucht
+wird Lese- und Betretungsrecht für „andere", bei den üblichen <code>0755</code> bereits vorhanden; <code>chmod -R o+rX</code>
+ist nur für einen enger gesetzten Korpus nötig. Sonst helfen eine gemeinsame Gruppe oder der
+<code>user:</code>-Weg unten. Dasselbe gilt für jedes freigegebene Verzeichnis einer Dateisystem-Bibliothek.</p>
+<p><strong>Ohne <code>sudo</code>, mit eigener Kennung.</strong> Wer die Verzeichnisse nicht abgeben kann — etwa weil sie einem
+Dienstkonto gehören sollen —, lässt den Container unter dieser Kennung laufen; die Zeile steht in der
+<code>docker-compose.yml</code> auskommentiert:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="s">"1000:1000"</span><span class="w"> </span><span class="c1"># die eigene uid:gid, `id -u`/`id -g`</span>
+</code></pre></div>
+<p>Das ist der Ausweg, nicht der empfohlene Weg: Die Kennung ist bei jedem Umzug und in jeder
+abgeleiteten Compose-Datei mitzupflegen. <code>user: "0:0"</code> erfüllt denselben Zweck und gibt den
+Sicherheitsgewinn auf. Bei einem <strong>CIFS/SMB-Mount</strong> ist dieser Weg oder die Mount-Option
+<code>uid=65532,gid=65532</code> der einzige, weil <code>chown</code> dort ins Leere läuft.</p>
+<p><strong>Benannte Volumes brauchen nichts davon — und vertragen sich nicht mit <code>user:</code>.</strong> Ein leeres
+benanntes Volume übernimmt beim ersten Einhängen die Eigentümer aus dem Image, also <code>65532</code>; genau
+deshalb ist es für einen Container mit <code>user: "1000:1000"</code> nicht beschreibbar. Wer <code>user:</code> setzt,
+bleibt beim Bind-Mount. Mit <code>OPAA_UPLOAD_STORE=s3</code> entfällt Anforderung 1.</p>
+<p><strong>Beschreibbare Pfade im Stapel.</strong> Das Backend läuft mit <code>read_only: true</code> und <code>no-new-privileges</code>;
+<code>/tmp</code> ist das benannte Volume <code>opaa-backend-tmp</code> (warum, siehe
+<a href="images-und-laufzeit.html#read-only-filesystem">Read-only Filesystem</a>). Es überlebt <code>docker compose down</code>.
+Was ein harter Abbruch, ein Heap-Dump oder ein JFR-Mitschnitt dort hinterlässt, wird bei angehaltenem
+Backend entfernt:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>stop<span class="w"> </span>backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>backend
+docker<span class="w"> </span>volume<span class="w"> </span>rm<span class="w"> </span>&lt;projekt&gt;_opaa-backend-tmp
+docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>backend
+</code></pre></div>
+<h2 id="eigene-interne-ca-ergänzen">Eigene interne CA ergänzen<a class="headerlink" href="#eigene-interne-ca-ergänzen" title="Permanent link">&para;</a></h2>
+<p><code>-Djavax.net.ssl.trustStore=…</code> <strong>ersetzt</strong> den mitgelieferten Truststore, statt ihn zu ergänzen (siehe
+<a href="images-und-laufzeit.html#backend-laufzeitimage">Backend-Laufzeitimage</a>). Richtig ist, den mitgelieferten Store zu
+kopieren, zu ergänzen und an seinen Platz zurückzumounten:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Mitgelieferten Truststore herausholen (funktioniert ohne Shell im Container)</span>
+docker<span class="w"> </span>cp<span class="w"> </span>&lt;container&gt;:/opt/java/openjdk/lib/security/cacerts<span class="w"> </span>./cacerts
+
+<span class="c1"># 2. Eigene CA ergänzen (Standardpasswort des JDK-Truststores: changeit)</span>
+keytool<span class="w"> </span>-importcert<span class="w"> </span>-keystore<span class="w"> </span>./cacerts<span class="w"> </span>-storepass<span class="w"> </span>changeit<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-alias<span class="w"> </span>interne-ca<span class="w"> </span>-file<span class="w"> </span>interne-ca.crt<span class="w"> </span>-noprompt
+
+<span class="c1"># 3. Ergänzte Kopie an ihren Originalplatz mounten - dann ist kein JVM-Schalter nötig</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./cacerts:/opt/java/openjdk/lib/security/cacerts:ro</span>
+</code></pre></div>
+<p>Die Kopie muss für <code>65532</code> <strong>lesbar</strong> sein; bei einer restriktiven <code>umask</code> (etwa <code>077</code>) ist sie es
+nicht, und der Start bricht mit einer Meldung über den Truststore ab — <code>chmod 644 ./cacerts</code> genügt.
+Nach einem Image-Update mit neuen öffentlichen Wurzelzertifikaten ist der Schritt zu wiederholen:
+Die gemountete Kopie überdeckt den Stand des Images.</p>
+<h2 id="diagnose-im-container">Diagnose im Container<a class="headerlink" href="#diagnose-im-container" title="Permanent link">&para;</a></h2>
+<p>Was die Actuator-Pfade zeigen, steht unter <a href="ueberwachung-und-fehlerbehebung.html#diagnose-ohne-shell">Diagnose ohne Shell</a>.
+Für den Container selbst:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>backend<span class="w">                       </span><span class="c1"># Logs</span>
+docker<span class="w"> </span>cp<span class="w"> </span>&lt;container&gt;:/app/uploads<span class="w"> </span>./uploads-kopie<span class="w">   </span><span class="c1"># Dateien aus dem Container holen</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span>--network<span class="w"> </span>container:&lt;container&gt;<span class="w"> </span>nicolaka/netshoot<span class="w">   </span><span class="c1"># Netzwerkdiagnose im selben Netz</span>
+</code></pre></div>
+<p><code>docker cp … /app/uploads</code> gilt nur für die Ablage im Dateisystem; mit <code>OPAA_UPLOAD_STORE=s3</code> ist das
+Verzeichnis leer oder trägt einen Altbestand, und der Befehl kopiert genau das, ohne Hinweis
+(<a href="originalablage.html#was-im-objektspeicher-liegt">Originalablage</a>). <code>docker cp</code> läuft über den
+Docker-Daemon, nicht unter der Kennung des Containers.</p>
+<p>Thread- und Heap-Dump ohne Shell:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;container&gt;<span class="w"> </span>/opt/java/openjdk/bin/jcmd<span class="w"> </span><span class="m">1</span><span class="w"> </span>Thread.print
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;container&gt;<span class="w"> </span>/opt/java/openjdk/bin/jcmd<span class="w"> </span><span class="m">1</span><span class="w"> </span>GC.heap_dump<span class="w"> </span>/tmp/heap.hprof
+docker<span class="w"> </span>cp<span class="w"> </span>&lt;container&gt;:/tmp/heap.hprof<span class="w"> </span>./heap.hprof
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>&lt;projekt&gt;_opaa-backend-tmp:/t<span class="w"> </span>busybox<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>/t/heap.hprof<span class="w">   </span><span class="c1"># Dump im Container entfernen</span>
+docker<span class="w"> </span><span class="nb">kill</span><span class="w"> </span>-s<span class="w"> </span>QUIT<span class="w"> </span>&lt;container&gt;<span class="w">   </span><span class="c1"># Alternative: Thread-Dump ins Log, braucht nichts im Image</span>
+</code></pre></div>
+<p>Der Dump liegt mit absolutem Pfad unter <code>/tmp</code>, weil das übrige Dateisystem read-only ist; er
+enthält Geheimnisse und Inhalte und bleibt im Volume, bis er entfernt wird — deshalb die vierte Zeile.
+<code>docker exec</code> auf <code>jcmd</code> läuft ohne <code>--user</code> unter derselben Kennung wie der Prozess und darf sich
+deshalb an ihn hängen. <code>docker kill -s QUIT</code> beendet den Container <strong>nicht</strong>: Die JVM schreibt
+daraufhin einen Thread-Dump in <code>docker compose logs</code>. Für alles Weitere lässt sich ein
+Werkzeug-Container in denselben Netzwerk- oder PID-Namensraum hängen (<code>--network container:…</code>,
+<code>--pid container:…</code>).</p>
+<h2 id="härtung-des-compose-stapels">Härtung des Compose-Stapels<a class="headerlink" href="#härtung-des-compose-stapels" title="Permanent link">&para;</a></h2>
+<p>Die Vorgaben des Stapels (<code>docker-compose.yml</code>, <code>keycloak/realm-export.json</code>) sind für die lokale
+Entwicklung gewählt: ohne Ersteinrichtung nutzbar, mit funktionierendem Keycloak-Realm ab dem ersten
+Start. Für eine erreichbare Installation ist jede davon ein Problem. Was allgemein gilt, steht unter
+<a href="netz-und-sicherheit.html#härtung-für-erreichbare-deployments">Härtung</a>, was den mitgelieferten Keycloak betrifft,
+unter <a href="authentifizierung.html#härtung-des-mitgelieferten-keycloak">Authentifizierung</a>. Für den Stapel
+selbst:</p>
+<table>
+<thead>
+<tr>
+<th>Vorgabe</th>
+<th>Risiko bei erreichbarem Betrieb</th>
+<th>Gegenmaßnahme</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modus <code>dev</code> in <code>.env.docker.example</code> (<code>SPRING_PROFILES_ACTIVE=docker,dev</code>)</td>
+<td>Ohne Anmeldung ist jede Anfrage das Konto <code>dev-admin</code> mit Systemverwaltung</td>
+<td><strong>Zwingend</strong> für jeden Betrieb, den andere Rechner erreichen: <code>docker,oidc</code> (<a href="#installation-im-compose-stapel">Installation im Compose-Stapel</a>). Reicht <code>OPAA_FRONTEND_BIND_ADDRESS</code> über Loopback hinaus, startet das Backend im Modus <code>dev</code> nicht; nur <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code> in <code>.env.docker</code> lässt es zu, etwa in einem abgeschotteten Entwicklungsnetz</td>
+</tr>
+<tr>
+<td>Alle Ports binden an <code>127.0.0.1</code>; <code>frontend</code> und <code>keycloak</code> öffnen <code>OPAA_FRONTEND_BIND_ADDRESS</code> bzw. <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> (etwa <code>0.0.0.0</code>, in <code>.env</code> oder der Shell-Umgebung)</td>
+<td>Loopback schützt vor dem Netz, nicht vor anderen Prozessen und Konten desselben Hosts; über den Backend-Port ließe sich <code>X-Forwarded-For</code> am Frontend vorbei setzen. Ein geöffneter Port ist aus dem Netz erreichbar — Docker veröffentlicht ihn an ufw und firewalld vorbei —, bei <code>keycloak</code> samt Admin-Konsole</td>
+<td>Bindungen an <code>127.0.0.1</code> <strong>zwingend</strong> für <code>keycloak</code>, <code>backend</code> und <code>postgres</code>; <code>frontend</code> nur öffnen, wenn kein Reverse-Proxy auf demselben Host davor steht. Die <code>ports:</code>-Zuordnung von <code>postgres</code> ganz entfernen; das Backend erreicht die Datenbank im Compose-Netz</td>
+</tr>
+<tr>
+<td>Zugangsdaten des mitgelieferten Objektspeichers (<code>opaa-uploads</code>/<code>OpaaUploads!2026</code>, Profil <code>upload-s3</code>)</td>
+<td>Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen</td>
+<td><strong>Zwingend</strong> außerhalb einer Erprobung: eigene Werte über <code>OPAA_UPLOAD_STORE_ROOT_USER</code>/<code>OPAA_UPLOAD_STORE_ROOT_PASSWORD</code> in <code>.env</code> oder der Shell-Umgebung, dieselben als <code>OPAA_UPLOAD_S3_ACCESS_KEY</code>/<code>OPAA_UPLOAD_S3_SECRET_KEY</code> in <code>.env.docker</code>. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS</code> leer</td>
+<td>Alle Clients teilen hinter dem Frontend-nginx einen Zähler</td>
+<td>die feste Adresse des Frontend-Containers als <code>/32</code> eintragen, wie in <code>.env.docker.example</code> (<a href="netz-und-sicherheit.html#vertraute-proxys-und-client-adresse">Vertraute Proxys</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>Die mitgelieferten Vorlagen (<code>.env.docker.example</code>, <code>.env.example</code> und jede <code>docker-compose*.yml</code>
+des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
+durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
+gehören nicht dazu.</p>
+<ul>
+<li><strong>Ports nur an Loopback.</strong> Jeder veröffentlichte Port bindet an <code>127.0.0.1</code>. Nur <code>frontend</code> und
+  <code>keycloak</code> lassen sich über <code>OPAA_FRONTEND_BIND_ADDRESS</code> bzw. <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> öffnen,
+  beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; <code>network_mode: host</code> kommt
+  nicht vor.</li>
+<li><strong>Keine anonyme Systemverwaltung jenseits von Loopback.</strong> Keine Vorlage setzt
+  <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code>, und das Backend erhält die Bindungsadresse des Frontends, damit
+  es im Modus <code>dev</code> den Start verweigern kann.</li>
+<li><strong>Keine festen Geheimnisse von OPAA.</strong> Signaturschlüssel, Verschlüsselungsschlüssel und Tokens
+  bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
+  (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
+  Prüfung einzeln begründet.</li>
+</ul>
+<p>Eigene Dateien wie <code>.env.docker</code> oder eine <code>docker-compose.override.yml</code> prüft sie nicht.</p>
+<p>Der Startabbruch im Modus <code>dev</code> sieht nur die Variable <code>OPAA_FRONTEND_BIND_ADDRESS</code>: Ein eigener
+<code>ports:</code>-Eintrag in einer Override-Datei, auch der automatisch geladenen <code>docker-compose.override.yml</code>,
+umgeht ihn.</p>
+<p>Eine eigene <code>docker-compose.prod.yml</code> gibt es nicht. Mehrere Maßnahmen verlangen eine Änderung am
+Realm-Export, einen Schritt nach der Ersteinrichtung oder eine externe Datenbank für Keycloak — eine
+zweite Compose-Datei würde nur die Port-Bindungen automatisieren.</p>
+<p>Ein gehärtetes Beispiel ist die öffentliche Demo-Instanz des Projekts: alle Ports an <code>127.0.0.1</code>, ein
+TLS-terminierender nginx auf dem Host, Keycloak unter dem Unterpfad <code>/idp</code>, der Entwicklungsnutzer
+<code>testuser</code> deaktiviert, das Passwort des Keycloak-Administrators nach jedem Befüllen rotiert, der
+Client <code>opaa-seed</code> nur für die Dauer des Befüllens aktiviert und der Verzeichniszugang mit eigenem
+Geheimnis.</p>
+<h2 id="sicherung-und-wiederherstellung">Sicherung und Wiederherstellung<a class="headerlink" href="#sicherung-und-wiederherstellung" title="Permanent link">&para;</a></h2>
+<p>Was zu sichern ist und in welcher Reihenfolge, steht unter
+<a href="sicherung-und-wiederherstellung.html">Sicherung und Wiederherstellung</a>. Im Stapel, bei
+angehaltenem Backend (<code>docker compose stop backend</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Datenbank sichern</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>postgres<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'</span><span class="w"> </span>&gt;<span class="w"> </span>opaa-db.dump
+
+<span class="c1"># Originale sichern (Ablage im Dateisystem)</span>
+tar<span class="w"> </span>-C<span class="w"> </span>uploads<span class="w"> </span>-cf<span class="w"> </span>opaa-uploads.tar<span class="w"> </span>.
+</code></pre></div>
+<p>Dazu <code>.env.docker</code>, eine <code>.env</code> und eine eigene <code>docker-compose.yml</code>. Mit dem mitgelieferten
+Objektspeicher sichert man den Bucket über dessen Werkzeuge, etwa <code>mc mirror</code>
+(<a href="originalablage.html#eine-laufende-installation-auf-den-objektspeicher-umstellen">Originalablage</a>).</p>
+<p>Zurückspielen in umgekehrter Reihenfolge, das Backend bleibt bis zum Schluss angehalten:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Originale zurückspielen und das Eigentum zurückgeben</span>
+sudo<span class="w"> </span>tar<span class="w"> </span>-C<span class="w"> </span>uploads<span class="w"> </span>-xf<span class="w"> </span>opaa-uploads.tar
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">65532</span>:65532<span class="w"> </span>uploads
+
+<span class="c1"># Datenbank leeren, neu anlegen, Sicherung einspielen</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>postgres<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" &amp;&amp;</span>
+<span class="s1">  createdb -U "$POSTGRES_USER" "$POSTGRES_DB" &amp;&amp;</span>
+<span class="s1">  pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error'</span><span class="w"> </span>&lt;<span class="w"> </span>opaa-db.dump
+</code></pre></div>
+<p><strong>Auf einem frischen Datenbank-Volume</strong>, etwa auf einem neuen Host, fehlt die Rolle
+<code>opaa_audit_owner</code>: Sie gehört zur PostgreSQL-Instanz, nicht zur Datenbank, steht deshalb nicht im
+Dump und entsteht sonst nur beim ersten Start des Backends. Ohne sie bricht <code>pg_restore</code> mit
+<code>role "opaa_audit_owner" does not exist</code> ab (<a href="sicherung-und-wiederherstellung.html">Sicherung und Wiederherstellung</a>).
+Vor dem Einspielen deshalb einmal anlegen, mit angehaltenem Backend:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>postgres<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \</span>
+<span class="s1">  -c "CREATE ROLE opaa_audit_owner NOLOGIN" -c "GRANT opaa_audit_owner TO \"$POSTGRES_USER\""'</span>
+</code></pre></div>
+<p>Danach <code>OPAA_AUTH_JWT_SECRET</code> in <code>.env.docker</code> ersetzen und erst dann <code>docker compose up -d backend</code>
+(<a href="authentifizierung.html#nacharbeit-nach-einer-rücksicherung-der-datenbank">Nacharbeit nach einer Rücksicherung</a>).</p>
+<h2 id="aktualisierung-auf-einen-neuen-stand">Aktualisierung auf einen neuen Stand<a class="headerlink" href="#aktualisierung-auf-einen-neuen-stand" title="Permanent link">&para;</a></h2>
+<p>Ablauf, Sicherung vorab und was ein Update mit dem Index macht, stehen unter
+<a href="aktualisierung.html">Aktualisierung</a>; hier folgen die Befehle. Im Verzeichnis mit der
+<code>docker-compose.yml</code>:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>pull<span class="w">          </span><span class="c1"># neue Images holen</span>
+docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w">         </span><span class="c1"># Container mit den neuen Images neu erstellen</span>
+docker<span class="w"> </span>image<span class="w"> </span>prune<span class="w"> </span>-f<span class="w">        </span><span class="c1"># optional: verdrängte Images aufräumen</span>
+</code></pre></div>
+<p><code>up -d</code> ersetzt nur die Container, deren Image sich geändert hat. Mit der Mehrinstanz-Variante gilt
+die Reihenfolge unter <a href="#update-ohne-ausfall">Update ohne Ausfall</a>. <code>docker compose restart</code> genügt
+<strong>nicht</strong>: Es startet den vorhandenen Container samt altem Image. Zustand danach:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>ps
+docker<span class="w"> </span>compose<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>backend
+</code></pre></div>
+<p>Der Stand <code>main</code> bekommt bei jedem Push und wöchentlich neue Images; ein <code>pull</code> bringt deshalb auch
+ohne neuen Commit einen neuen Stand mit Sicherheitsupdates (<a href="images-und-laufzeit.html#images-und-versionen">Images und Versionen</a>).
+Ein Skript, das genau diese Schritte regelmäßig ausführt, ist eine naheliegende Automatisierung; so
+läuft die öffentliche Demo-Instanz, täglich per Cron. Ein solches Skript trennt einen Schalter, der
+zusätzlich die Volumes verwirft, klar vom regulären Lauf: Das ist kein Update, sondern ein
+Neuaufsetzen mit vollständiger Neuindizierung.</p>
+<h3 id="vorbereitungsschritte-für-bestandsinstallationen">Vorbereitungsschritte für Bestandsinstallationen<a class="headerlink" href="#vorbereitungsschritte-für-bestandsinstallationen" title="Permanent link">&para;</a></h3>
+<p>Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
+Bestandsinstallationen"; für Einzelheiten verweisen sie hierher. Eine <code>.env.docker</code> oder eine eigene
+Compose-Datei aus einem älteren Stand braucht diese Punkte, alle <strong>vor</strong> dem <code>docker compose up -d</code>.
+Ohne Punkt 1 oder 8 startet das Backend nicht, ohne Punkt 2 sperrt die Adressprüfung einen internen
+Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar,
+ohne Punkt 7 nicht mehr von anderen Rechnern:</p>
+<ol>
+<li><strong><code>OPAA_AUTH_JWT_SECRET</code> setzen — Pflicht.</strong> Im Betriebsmodus <code>oidc</code> bricht der Start ohne es ab,
+   ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit <code>openssl rand -base64 48</code>
+   (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).</li>
+<li><strong>Adressen der Anbieter freigeben.</strong> Eine Datenbank, auf der schon eine frühere Version lief,
+   gilt als eingerichtet (<a href="installation.html">Installation</a>); <code>OPAA_INITIAL_ADMIN_*</code>, <code>OPAA_OIDC_*</code>
+   außer der Zielprüfung, <code>OPAA_OPENAI_CHAT_*</code>, <code>OPAA_OPENAI_EMBEDDING_*</code> außer dem Timeout und
+   <code>OPAA_PGVECTOR_DIMENSIONS</code> wirken nicht mehr und können entfallen, ebenso <code>OPAA_OPENAI_BASE_URL</code>
+   und <code>OPAA_OPENAI_API_KEY</code>, die nur der Modus <code>dev</code> liest; der Start warnt je Variable.
+   Liegt ein Anbieter auf einer internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Host und
+   Port in <code>OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST</code>; bisher gab die Adresse aus <code>OPAA_OIDC_*</code> sie frei.
+   Interne Modell-Hosts gehören mit Port in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>, nicht in die
+   Liste der Quellen (<a href="modell-endpunkte.html#adressprüfung-der-modelle">Adressprüfung der Modelle</a>).
+   Ein Update von <code>v0.1.0-rc.4</code> setzt die Datenbank neu auf (Release-Notizen) und installiert danach
+   über Antwortdatei oder Assistent.</li>
+<li><strong><code>OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS</code> setzen</strong>, sobald ein Proxy vor dem Backend steht — und der
+   nginx des Frontend-Containers ist einer. Eingetragen wird seine feste Adresse als <code>/32</code>; ohne sie
+   gilt die Anmeldegrenze für das ganze Haus (<a href="netz-und-sicherheit.html#vertraute-proxys-und-client-adresse">Vertraute Proxys</a>).</li>
+<li><strong><code>OPAA_PUBLIC_BASE_URL</code> setzen</strong> — empfohlen, Pflicht für Einladungen per Mail und für Zugänge
+   mit Anmeldeart OAuth: Sie steht in jedem Link einer Mail und bildet die Rücksprungadresse
+   <code>{OPAA_PUBLIC_BASE_URL}/connections/callback</code> (<a href="../administration/e-mail.html">E-Mail-Versand</a>).</li>
+<li><strong><code>uploads/</code> der Kennung <code>65532</code> übergeben</strong>, solange die Originale im Dateisystem liegen:
+   <code>sudo chown -R 65532:65532 uploads</code>. Ebenfalls prüfen: ob <code>documents/</code>, jedes über
+   <code>OPAA_INDEXING_FILESYSTEM_ALLOWLIST</code> freigegebene Verzeichnis und ein eigenes Temp-Verzeichnis für
+   <code>65532</code> zugänglich sind; ein eigenes Temp-Verzeichnis liegt auf einem eingehängten Volume oder unter
+   <code>/tmp</code>. Ein Verstoß zeigt sich erst beim ersten Upload bzw. Lauf
+   (<a href="#nicht-root-betrieb-des-backend-containers">Nicht-root-Betrieb</a>).</li>
+<li><strong>Containerport des Frontends auf <code>8080</code></strong> in jeder eigenen Compose-Datei: die Port-Abbildung des
+   Dienstes <code>frontend</code> (etwa <code>"127.0.0.1:3000:8080"</code>) und ein eigener Proxy im Docker-Netz
+   (<code>frontend:8080</code>). Bildet sie noch auf <code>80</code> ab, antwortet der Host-Port nicht, und ein
+   vorgeschalteter Proxy meldet <code>502</code>. Die <code>docker-compose.yml</code> des Repositorys tut das bereits.</li>
+<li><strong>Zugriff von außen ausdrücklich öffnen.</strong> Frontend und Keycloak sind nur noch auf <code>127.0.0.1</code>
+   veröffentlicht. Wer sie ohne Reverse-Proxy auf demselben Host von anderen Rechnern erreichen muss,
+   setzt vor dem Update <code>OPAA_FRONTEND_BIND_ADDRESS</code> bzw. <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> (etwa
+   <code>0.0.0.0</code>) in <code>.env</code> oder der Shell-Umgebung; im Modus <code>dev</code> zusätzlich
+   <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code> (<a href="#härtung-des-compose-stapels">Härtung des Compose-Stapels</a>).</li>
+<li><strong>Kopierte Test- oder Entwicklungswerte ersetzen.</strong> Steht in <code>OPAA_CREDENTIALS_ENCRYPTION_KEY</code>
+   oder <code>OPAA_SETTINGS_ENCRYPTION_KEY</code> ein Schlüssel des Profils <code>dev</code>, der Wertesätze der CI oder aus
+   früheren Fassungen einer <code>e2e/*.env</code>, bricht der Start im Modus <code>oidc</code> ab, ebenso mit einem
+   <code>OPAA_AUTH_JWT_SECRET</code> aus einer solchen Datei. Einen eigenen Schlüssel erzeugen
+   (<code>openssl rand -base64 32</code>) und den bisherigen in <code>OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS</code> bzw.
+   <code>OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS</code> eintragen; OPAA verschlüsselt die gespeicherten Werte dann
+   selbst neu (<a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a>). Ein neues
+   Signaturgeheimnis (<code>openssl rand -base64 48</code>) beendet alle lokalen Sitzungen
+   (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).</li>
+</ol>
+<p>Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft
+unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet.</p>
+<h3 id="neu-aufsetzen-statt-aktualisieren">Neu aufsetzen statt aktualisieren<a class="headerlink" href="#neu-aufsetzen-statt-aktualisieren" title="Permanent link">&para;</a></h3>
+<p>Fassen die Notizen eines Release die Schemahistorie zu einer neuen Baseline zusammen, lässt sich eine
+ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Wechsel der
+Migrationsbibliothek von Liquibase zu Flyway (Oktober 2026): Die Historie beginnt dort neu mit einer
+Baseline je Modul, und eine Datenbank, die noch Liquibase migriert hat, startet nicht. Ob eine
+Installation betroffen ist, zeigt vor dem Update:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-tAc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"SELECT to_regclass('flyway_schema_history') IS NOT NULL"</span>
+</code></pre></div>
+<p><code>t</code> heißt: nicht betroffen. <code>f</code> heißt: neu aufsetzen. Neu aufsetzen:</p>
+<ol>
+<li><strong>Was in der Datenbank liegt, geht verloren</strong> — Konten, Anbieter, Gruppen, Bibliotheken samt
+   Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands
+   lässt sich nicht in den neuen einspielen; wer Inhalte nachschlagen will, zieht ihn trotzdem vorher.
+   <code>.env.docker</code> und der Korpus bleiben.</li>
+<li>Stapel anhalten und <strong>nur</strong> das Datenbank-Volume verwerfen, nicht alle mit <code>down -v</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down
+docker<span class="w"> </span>volume<span class="w"> </span>rm<span class="w"> </span>&lt;projekt&gt;_opaa-postgres-data
+</code></pre></div>
+<p><code>docker volume ls | grep opaa-postgres-data</code> zeigt den genauen Namen. Das Volume
+   <code>&lt;projekt&gt;_opaa-backend-tmp</code> kann im selben Zug verworfen werden.
+3. Die Originale der alten Bibliotheken entfernen — <code>uploads/</code> bei Ablage im Dateisystem, den Inhalt
+   des Buckets beim Objektspeicher; beim mitgelieferten genügt nach
+   <code>docker compose --profile upload-s3 down</code> ein <code>docker volume rm &lt;projekt&gt;_opaa-upload-store-data</code>.
+   Sonst bleiben Originale liegen, auf die nichts mehr zeigt.
+4. <code>docker compose pull &amp;&amp; docker compose up -d</code>. Der erste Start legt das Schema an und steht im
+   Installationsmodus, bis die Installation abgeschlossen ist
+   (<a href="#installation-im-compose-stapel">Installation im Compose-Stapel</a>).
+5. Bibliotheken neu anlegen und indizieren.</p>
+<p>Variablen, die seit älteren Ständen entfallen sind, nennt die
+<a href="../referenz/konfiguration.html#entfallene-und-veraltete-variablen">Konfiguration</a>; eine übernommene <code>.env.docker</code>
+wird daraufhin geprüft.</p>
+<h2 id="fehlerbehebung">Fehlerbehebung<a class="headerlink" href="#fehlerbehebung" title="Permanent link">&para;</a></h2>
+<h3 id="backend-gibt-leere-antworten-oder-connection-refused-zurück">Backend gibt leere Antworten oder „Connection refused" zurück<a class="headerlink" href="#backend-gibt-leere-antworten-oder-connection-refused-zurück" title="Permanent link">&para;</a></h3>
+<p>Das Backend bindet ohne Angabe an <code>localhost</code>, was nur innerhalb des Containers erreichbar ist.
+<code>OPAA_SERVER_ADDRESS=0.0.0.0</code> in <code>.env.docker</code> setzen.</p>
+<h3 id="post-anfragen-geben-403-forbidden-zurück">POST-Anfragen geben 403 Forbidden zurück<a class="headerlink" href="#post-anfragen-geben-403-forbidden-zurück" title="Permanent link">&para;</a></h3>
+<p>CORS passt nicht: <code>OPAA_CORS_ALLOWED_ORIGINS</code> muss die Adresse des Frontends nennen (etwa
+<code>http://localhost:3000</code>). GET-Anfragen funktionieren trotzdem, weil sie keinen CORS-Preflight auslösen.</p>
+<h3 id="postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen">PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"<a class="headerlink" href="#postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen" title="Permanent link">&para;</a></h3>
+<p>Betrifft die <strong>Datenbank</strong>, kein Konto von OPAA: Das Volume stammt aus einer früheren Initialisierung
+mit anderen Zugangsdaten (<a href="#datenbank-im-stapel">Datenbank im Stapel</a>).</p>
+<h3 id="docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl"><code>docker exec</code> in den Backend-Container schlägt mit „executable file not found" fehl<a class="headerlink" href="#docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl" title="Permanent link">&para;</a></h3>
+<p>Das Image enthält keine Shell; die Wege ohne Shell stehen unter
+<a href="#diagnose-im-container">Diagnose im Container</a>.</p>
+<h3 id="jeder-upload-endet-mit-interner-serverfehler-und-accessdeniedexception-appuploads">Jeder Upload endet mit „Interner Serverfehler" und <code>AccessDeniedException: /app/uploads/…</code><a class="headerlink" href="#jeder-upload-endet-mit-interner-serverfehler-und-accessdeniedexception-appuploads" title="Permanent link">&para;</a></h3>
+<p>Das Host-Verzeichnis gehört nicht der Kennung <code>65532</code> — meist, weil Docker es selbst angelegt hat.
+Behebung unter <a href="#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des Backend-Containers"</a>.</p>
+<h3 id="umgebungsvariablen-änderungen-treten-nicht-in-kraft">Umgebungsvariablen-Änderungen treten nicht in Kraft<a class="headerlink" href="#umgebungsvariablen-änderungen-treten-nicht-in-kraft" title="Permanent link">&para;</a></h3>
+<p><code>docker compose up -d &lt;service&gt;</code> statt <code>restart</code> verwenden; <code>restart</code> behält die alte Umgebung.</p>
+<h3 id="das-backend-startet-nicht-und-meldet-refuses-to-start">Das Backend startet nicht und meldet <code>refuses to start</code><a class="headerlink" href="#das-backend-startet-nicht-und-meldet-refuses-to-start" title="Permanent link">&para;</a></h3>
+<p>Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut
+Instanzregister noch läuft. Im Einzelbetrieb ist das der eigene Vorgänger, wenn er hart beendet wurde
+(Exit-Code <code>137</code>) und sich nicht abmelden konnte. Er gilt nach <code>OPAA_INSTANCE_DEAD_AFTER</code> als
+beendet (siehe
+<a href="mehrere-instanzen.html#gleiche-konfiguration-der-konfigurationsabdruck">Konfigurationsabdruck</a>).</p>
+<p>Weil Compose das Backend nach jedem Abbruch neu startet (<code>restart: unless-stopped</code>), läuft ein
+Startabbruch in eine Neustartschleife; er löst sich von selbst, sobald der Vorgänger als beendet
+gilt. Bei einem Fehler der Konfiguration zeigt <code>docker compose logs backend</code> die Ursache, und
+<code>docker compose stop backend</code> hält die Schleife an, bis die Konfiguration berichtigt ist.</p>
+<h3 id="der-container-meldet-137">Der Container meldet <code>137</code><a class="headerlink" href="#der-container-meldet-137" title="Permanent link">&para;</a></h3>
+<p><code>docker inspect --format '{{.State.OOMKilled}}' &lt;container&gt;</code> zeigt, ob ein OOM-Kill der Grund
+war (<a href="images-und-laufzeit.html#speicher-und-container-grenzen">Speicher und Container-Grenzen</a>); sonst lief die
+Grace Period <code>OPAA_STOP_GRACE_PERIOD</code> ab.</p>
+<h3 id="der-container-meldet-3">Der Container meldet <code>3</code><a class="headerlink" href="#der-container-meldet-3" title="Permanent link">&para;</a></h3>
+<p>Der Heap des Backends reichte nicht; es hat sich selbst beendet und wird neu gestartet
+(<a href="images-und-laufzeit.html#speicher-und-container-grenzen">Speicher und Container-Grenzen</a>).</p>
+<h2 id="stoppen">Stoppen<a class="headerlink" href="#stoppen" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Zurück zum Seitenanfang
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "In Zwischenablage kopiert", "clipboard.copy": "In Zwischenablage kopieren", "search.result.more.one": "1 weiteres Suchergebnis auf dieser Seite", "search.result.more.other": "# weitere Suchergebnisse auf dieser Seite", "search.result.none": "Keine Suchergebnisse", "search.result.one": "1 Suchergebnis", "search.result.other": "# Suchergebnisse", "search.result.placeholder": "Suchbegriff eingeben", "search.result.term.missing": "Es fehlt", "select.version": "Version ausw\u00e4hlen"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
