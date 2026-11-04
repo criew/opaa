@@ -61,6 +61,33 @@ describe('markedItems', () => {
     expect(markedItems(items, 'Fundstelle steht hier', 'dort.', SINGLE)).toEqual([0, 3])
   })
 
+  // regression guard for #3551: the index joins table cells with " | ", the text layer does not
+  it('finds an end quote inside a table whose cells the index joined with a pipe', () => {
+    const items = [
+      'Verwaltungsgebührensatzung der Stadt Rheinfurt',
+      'Aktenzeichen (Muster): AZ 20.1-2026-0001',
+      '§ 3 Ermäßigung und Befreiung wegen Bedürftigkeit',
+      'Reisepass (regulär, 32 Seiten)',
+      ' ',
+      '69 Euro',
+      'Führungszeugnis',
+      ' ',
+      '15 Euro',
+    ]
+    expect(
+      markedItems(
+        items,
+        'Verwaltungsgebührensatzung der Stadt Rheinfurt Aktenzeichen',
+        '(regulär, 32 Seiten) | 69 Euro Führungszeugnis | 15 Euro',
+        SINGLE,
+      ),
+    ).toEqual([0, 8])
+  })
+
+  it('marks a single-page passage to the end of the page when its end quote is missing', () => {
+    expect(markedItems(ITEMS, 'Projekt besteht', 'nicht hier', SINGLE)).toEqual([1, 3])
+  })
+
   it('marks nothing on an empty page', () => {
     expect(markedItems([], 'a', 'b', SINGLE)).toBeNull()
   })
