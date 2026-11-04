@@ -10,6 +10,9 @@ Probes, Härtung, Schlüssel, Sicherung, Aktualisierung —, steht in der
 
 ## Schnellstart
 
+Der kürzeste Weg mit einem API-Schlüssel steht im [Schnellstart](schnellstart.md). Dieser Abschnitt
+startet den Stapel im Entwicklungsmodus mit lokal betriebenen Modellen.
+
 ```bash
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker

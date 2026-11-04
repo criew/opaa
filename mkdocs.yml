@@ -125,9 +125,10 @@ nav:
       - verwalten/verbindungsprotokoll.md
   - Betreiben:
       - betreiben/README.md
-      - betreiben/installation.md
+      - betreiben/schnellstart.md
       - betreiben/docker-compose.md
       - betreiben/kubernetes.md
+      - betreiben/installation.md
       - betreiben/authentifizierung.md
       - betreiben/modell-endpunkte.md
       - betreiben/netz-und-sicherheit.md

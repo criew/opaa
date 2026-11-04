@@ -84,6 +84,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 - **Betreiben**
   - [Betriebsübersicht](betreiben/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
     Organisation, Wegweiser zu den Kapiteln darunter
+    - [Schnellstart](betreiben/schnellstart.md) — in einer Viertelstunde eine laufende Instanz mit
+      Docker und API-Schlüssel
     - [Docker Compose](betreiben/docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](betreiben/kubernetes.md) — Betrieb mit dem Helm-Chart
@@ -132,6 +134,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 
 | Anlass | Reihenfolge |
 |---|---|
+| Ausprobieren | [Schnellstart](betreiben/schnellstart.md) → [Erste Schritte](arbeiten/erste-schritte.md) |
 | Erste Installation | [Betriebsübersicht](betreiben/README.md) → [Docker Compose](betreiben/docker-compose.md): „Schnellstart" → [Installation](betreiben/installation.md) → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betreiben/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Bibliothek anlegen](arbeiten/bibliothek-anlegen.md) |
 | Erste Installation unter Kubernetes | [Kubernetes](betreiben/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](betreiben/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
