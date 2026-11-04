@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A document attached to a chat question (docs/handbuch/arbeiten/anhaengen-und-diktieren.md). It
+ * A document attached to a chat question (docs/handbuch/benutzer/anhaengen-und-diktieren.md). It
  * belongs to its author alone; {@code chatId} is null until a question names it and then never
  * changes, so the attachment is deleted with its chat ({@code ON DELETE CASCADE}). Its text lives
  * in {@code chat_attachment_chunks}, its original in the upload storage under {@link

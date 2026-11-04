@@ -29,7 +29,7 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
   unverändert. Die API kennzeichnet Antworten maschinenlesbar.
 - **Nicht geliefert:** Wasserzeichen im Text, signiertes Manifest, Erkennung, ob ein Text aus OPAA
   stammt. Markieren kann nur das Modell
-  ([Handbuch, Modelle](../../handbuch/betreiben/modell-endpunkte.md#kennzeichnung-erzeugter-texte)).
+  ([Handbuch, Modelle](../../handbuch/betrieb/modell-endpunkte.md#kennzeichnung-erzeugter-texte)).
 - **Kein Schulungsmaterial;** das Handbuch zur Suche taugt als Grundlage einer Einweisung.
 - **Updates:** Das Update-Paket weist geänderte Standardmodelle und Prompts aus.
 
@@ -89,13 +89,13 @@ machbar“ mit Lückenanalyse; ob die Aufsicht es genügen lässt, ist offen.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Handbuch, Suche](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md): wie eine Antwort entsteht und wie man Belege prüft;
+- [Handbuch, Suche](../../handbuch/referenz/wie-die-suche-arbeitet.md): wie eine Antwort entsteht und wie man Belege prüft;
   Grundlage für die Einweisung.
-- [Handbuch, Branding](../../handbuch/verwalten/branding.md): wo der eigene Name und der Hinweistext
+- [Handbuch, Branding](../../handbuch/administration/branding.md): wo der eigene Name und der Hinweistext
   gepflegt werden.
-- [Handbuch, Modelle](../../handbuch/betreiben/modell-endpunkte.md#kennzeichnung-erzeugter-texte): was die
+- [Handbuch, Modelle](../../handbuch/betrieb/modell-endpunkte.md#kennzeichnung-erzeugter-texte): was die
   Markierung erzeugter Texte vom Modell abhängig macht.
-- [Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release):
+- [Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release):
   welche Änderungen ein Update meldet und mit welcher Stufe es sie zur Bewertung vorschlägt.
 
 **Rechtsgrundlagen** für Justiziariat und Datenschutz:

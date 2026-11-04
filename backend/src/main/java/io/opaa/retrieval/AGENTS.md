@@ -45,7 +45,7 @@ Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll.
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md`; ADR-0065; Evaluierung: `eval/README.md`
+- Handbuch: `docs/handbuch/referenz/wie-die-suche-arbeitet.md`; ADR-0065; Evaluierung: `eval/README.md`
 
 ## Tests bei Änderungen
 

@@ -3,7 +3,7 @@ package io.opaa.retrieval;
 import io.opaa.api.types.RetrievalStageName;
 
 /**
- * One named step of the retrieval pipeline (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md):
+ * One named step of the retrieval pipeline (docs/handbuch/referenz/wie-die-suche-arbeitet.md):
  * candidate lists in, candidate lists out, plus an explanation of what happened to them.
  *
  * <p>Three properties are structural rather than a matter of discipline: a stage receives {@link

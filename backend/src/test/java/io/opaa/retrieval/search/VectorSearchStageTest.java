@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** The vector path's stage on its own (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md). */
+/** The vector path's stage on its own (docs/handbuch/referenz/wie-die-suche-arbeitet.md). */
 class VectorSearchStageTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();

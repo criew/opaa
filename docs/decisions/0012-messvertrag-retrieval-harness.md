@@ -490,7 +490,7 @@ benennt, welche Pipeline sich bewegt hat. Alle registrierten, nicht nur die vom 
 damit ein Routing-Fehler sichtbar wird. Kein Harness-Guard: Der Wert wird aus der verdrahteten
 Registry gelesen und ist für jeden Lauf korrekt. Die drei Korpora sind Markdown und laufen seit
 #1103 über `MarkdownDocumentFormat` (Schnitt an Überschriften, Frontmatter am Dateianfang
-verworfen; Entscheidungen 24, 25, Regeln in `docs/handbuch/nachschlagen/formate/README.md`).
+verworfen; Entscheidungen 24, 25, Regeln in `docs/handbuch/referenz/formate/README.md`).
 
 #### 57. `contextPrefixFingerprint`
 

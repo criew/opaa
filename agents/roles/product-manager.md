@@ -32,7 +32,7 @@ Dann stoppen. In dieser Phase keine Spezifikationen schreiben oder Issues erstel
 
 Die Spezifikation als Body des Epics gemäß dem untenstehenden Hausmuster schreiben oder aktualisieren, nicht als Datei im Repository. Explizit festhalten, welche Herausforderungen oder Vorschläge angenommen oder abgelehnt wurden — abgelehnte Ideen kommen unter „Außerhalb des Umfangs“ oder werden gestrichen, niemals still wieder eingefügt.
 
-Den Abschnitt „Wirkung auf Behördenunterlagen“ der Epic-Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/handbuch/betreiben/nachvollziehbarkeit.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
+Den Abschnitt „Wirkung auf Behördenunterlagen“ der Epic-Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
 
 ### Phase 3 — Issues
 

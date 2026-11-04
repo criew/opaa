@@ -49,7 +49,7 @@ cat <<EOF
 **Helm-Chart**
 - \`oci://ghcr.io/${owner}/charts/opaa\`, Version \`${version}\`
 
-Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/betreiben/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
+Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/betrieb/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
 
 \`\`\`bash
 kubectl create namespace opaa
@@ -86,7 +86,7 @@ gh attestation verify opaa-frontend-${version}.cdx.json --repo ${repository} \\
 EOF
 printf '%s\n\n' "$preparation"
 cat <<EOF
-Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/betreiben/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/betreiben/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
+Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/betrieb/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
 
 **Update-Paket für Behörden**
 
@@ -94,5 +94,5 @@ Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: 
 
 **Offline-Bündel**
 
-Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release: beide Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betreiben/images-und-laufzeit.md#installation-ohne-internetzugang).
+Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release: beide Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang).
 EOF

@@ -49,7 +49,7 @@ Vektortabelle auf ein anderes Schema zeigt; die Prüfung läuft vor Datenquelle 
 ## Konsequenzen
 
 - **Einfacher:** OPAA lässt sich in ein beliebiges, vorab angelegtes Schema installieren, auch neben
-  anderen Anwendungen ([Handbuch: Eigenes Datenbankschema](../handbuch/betreiben/datenbank.md#eigenes-datenbankschema)).
+  anderen Anwendungen ([Handbuch: Eigenes Datenbankschema](../handbuch/betrieb/datenbank.md#eigenes-datenbankschema)).
   Ein Wechsel des Schemas nach der Installation verschiebt keine Daten. Tests fragen Kataloge über
   `current_schema()` ab.
 - **Schwieriger:** Ein Wechsel des Zielschemas ist keine Migration; bestehende Installationen werden

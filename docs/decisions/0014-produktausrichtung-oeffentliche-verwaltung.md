@@ -118,7 +118,7 @@ nicht. Objektbasierter Speicher ist seit ADR-0030 für die Originalablage der Up
 (`opaa.upload.store: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
 Objektspeicher-Dienst ist im Compose-Stapel über ein eigenes Profil zuschaltbar, nicht Teil des
 Einstiegs. Siehe
-[Originalablage](../handbuch/betreiben/originalablage.md).
+[Originalablage](../handbuch/betrieb/originalablage.md).
 
 ### 12. Chat-Kanäle: nur selbst betriebene Team-Chats
 
@@ -155,7 +155,7 @@ nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapp
 (Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
 nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
 Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Siehe [Suche](../handbuch/nachschlagen/wie-die-suche-arbeitet.md).
+ausgeschlossen. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
 
 ### 15. Nachweis der Organisationsgrenze
 

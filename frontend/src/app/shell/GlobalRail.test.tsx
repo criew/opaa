@@ -94,7 +94,7 @@ describe('GlobalRail', () => {
     renderRailAt('/spaces/space-1/settings/members')
 
     const help = screen.getByRole('link', { name: /Handbuch zu dieser Ansicht/ })
-    expect(help).toHaveAttribute('href', 'https://opaa.io/handbuch/pflegen/space-mitglieder.html')
+    expect(help).toHaveAttribute('href', 'https://opaa.io/handbuch/benutzer/space-mitglieder.html')
     expect(help).toHaveAttribute('target', '_blank')
     expect(help).toHaveAttribute('rel', 'noopener noreferrer')
   })

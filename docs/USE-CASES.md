@@ -11,7 +11,7 @@ zeigen, dass die elf Themenbereiche zusammen einen Arbeitstag tragen und nicht e
 Verteilungs-Effekt (was daraus ein teilbares KI-Asset macht) · Phase. Die Bezeichnungen der Themenbereiche
 A–K und der Phasen 1–4 stammen aus [VISION.md](./VISION.md); die Begriffe *Space*, *Asset*,
 *Wissensbibliothek* und *Verteilungsstufe* sind in
-[Glossar](handbuch/nachschlagen/glossar.md) und [CONCEPTS.md](./CONCEPTS.md)
+[Glossar](handbuch/referenz/glossar.md) und [CONCEPTS.md](./CONCEPTS.md)
 definiert.
 
 **Querschnittsrahmen Finanzverwaltung:** Das **Steuergeheimnis (§ 30 AO)** verbietet praktisch jede
@@ -479,5 +479,5 @@ der Wert abstrakt, ohne die zweite bleibt er unzulässig.
 ## Weiterlesen
 
 - [VISION.md](./VISION.md) — Nordstern, Themenbereiche, Phasen
-- [Spaces](handbuch/pflegen/space-mitglieder.md) und [Roadmap](./ROADMAP.md) — Spaces, Assets, Verteilungsstufen
+- [Spaces](handbuch/benutzer/space-mitglieder.md) und [Roadmap](./ROADMAP.md) — Spaces, Assets, Verteilungsstufen
 - [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar

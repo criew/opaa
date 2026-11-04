@@ -15,7 +15,7 @@ import jakarta.persistence.Converter;
  * <p><b>Write fails hard, read fails soft</b> - and for the same reason the library converter does
  * it: the provider list ({@code GET /api/v1/admin/oidc-providers} maps every row), the delete and
  * the re-store must keep working when one value cannot be decrypted (a lost key, a restored backup)
- * - the last two are exactly the repair paths {@code docs/handbuch/betreiben/authentifizierung.md}
+ * - the last two are exactly the repair paths {@code docs/handbuch/betrieb/authentifizierung.md}
  * points an operator at. Loading never decrypts; the getter reads such a value as {@code null} and
  * logs a warning without any part of the value.
  *

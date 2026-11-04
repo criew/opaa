@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
 /**
- * The budget of the fusion stage (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md): {@link
+ * The budget of the fusion stage (docs/handbuch/referenz/wie-die-suche-arbeitet.md): {@link
  * CandidateFusion} ranks without a cap, the stage applies it and says of every candidate beyond it
  * why it went.
  */

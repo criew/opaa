@@ -15,7 +15,7 @@ für alles andere. Jede Fallunterscheidung nach Anbieter zog sich durch Formular
 und Tests.
 
 Gebaut wurde das in Epic #755 und #762. Die Betriebssicht steht im Handbuch unter
-[Modelle](../handbuch/betreiben/modell-endpunkte.md).
+[Modelle](../handbuch/betrieb/modell-endpunkte.md).
 
 ## Entscheidung
 

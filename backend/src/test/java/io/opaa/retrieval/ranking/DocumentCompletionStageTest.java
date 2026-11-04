@@ -27,7 +27,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
  * Document completion after fusion, inside the pipeline it belongs to
- * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md). The completion algorithm itself is {@link
+ * (docs/handbuch/referenz/wie-die-suche-arbeitet.md). The completion algorithm itself is {@link
  * DocumentCompletionTest}'s subject.
  */
 class DocumentCompletionStageTest {

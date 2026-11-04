@@ -58,8 +58,120 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
 validation:
+  nav:
+    omitted_files: warn
   links:
     not_found: warn
     absolute_links: warn
     unrecognized_links: warn
     anchors: warn
+# Reading order instead of alphabetical folder order; a new page needs an entry here, the strict
+# build fails on pages missing from the navigation.
+nav:
+  - README.md
+  - Benutzer:
+      - benutzer/README.md
+      - Einstieg und Chat:
+          - benutzer/erste-schritte.md
+          - benutzer/fragen-stellen.md
+          - benutzer/belege-pruefen.md
+          - benutzer/anhaengen-und-diktieren.md
+          - benutzer/prompts-verwenden.md
+          - benutzer/antworten-weitergeben.md
+          - benutzer/chats.md
+      - Spaces:
+          - benutzer/space-anlegen.md
+          - benutzer/space-inhalte.md
+          - benutzer/space-mitglieder.md
+          - benutzer/space-einstellungen.md
+      - Bibliotheken:
+          - benutzer/katalog.md
+          - benutzer/bibliothek-anlegen.md
+          - benutzer/prompt-bibliothek-anlegen.md
+          - benutzer/arbeitsmittel-teilen.md
+          - benutzer/bibliothek-aktuell-halten.md
+          - benutzer/metadaten-pflegen.md
+          - benutzer/fuer-ki-werkzeuge-freigeben.md
+          - Konnektoren:
+              - benutzer/konnektoren/README.md
+              - benutzer/konnektoren/filesystem.md
+              - benutzer/konnektoren/http-directory.md
+              - benutzer/konnektoren/rss-feed.md
+              - benutzer/konnektoren/confluence.md
+              - benutzer/konnektoren/s3.md
+              - benutzer/konnektoren/smb.md
+              - benutzer/konnektoren/sharepoint.md
+              - benutzer/konnektoren/onedrive.md
+              - benutzer/konnektoren/google-drive.md
+              - benutzer/konnektoren/nextcloud.md
+              - benutzer/konnektoren/dropbox.md
+      - Konto und Zugriff:
+          - benutzer/konto-verbinden.md
+          - benutzer/private-bibliothek.md
+          - benutzer/zugangstoken.md
+          - benutzer/ki-werkzeug-einrichten.md
+          - benutzer/gruppe-pflegen.md
+          - benutzer/zugriff-nachvollziehen.md
+          - benutzer/meine-daten.md
+  - Administration:
+      - administration/README.md
+      - Systemverwaltung:
+          - administration/einfuehrung.md
+          - administration/branding.md
+          - administration/konten.md
+          - administration/anmeldung-einstellen.md
+          - administration/konto-uebergeben.md
+          - administration/systemrollen.md
+          - administration/gruppen.md
+          - administration/anlegerechte.md
+          - administration/ausscheiden.md
+          - administration/zugaenge.md
+          - administration/modelle.md
+          - administration/suche-und-indexierung.md
+          - administration/externe-ki-werkzeuge.md
+          - administration/datenschutz.md
+          - administration/e-mail.md
+          - administration/einstellungen-uebertragen.md
+      - Revision:
+          - administration/stichtagsauskunft.md
+          - administration/nachweisprotokoll-lesen.md
+          - administration/verbindungsprotokoll.md
+  - Betrieb:
+      - betrieb/README.md
+      - betrieb/schnellstart.md
+      - betrieb/docker-compose.md
+      - betrieb/kubernetes.md
+      - betrieb/installation.md
+      - betrieb/authentifizierung.md
+      - betrieb/modell-endpunkte.md
+      - betrieb/netz-und-sicherheit.md
+      - betrieb/datenbank.md
+      - betrieb/originalablage.md
+      - betrieb/mehrere-instanzen.md
+      - betrieb/images-und-laufzeit.md
+      - betrieb/aktualisierung.md
+      - betrieb/sicherung-und-wiederherstellung.md
+      - betrieb/ueberwachung-und-fehlerbehebung.md
+      - betrieb/nachvollziehbarkeit.md
+      - betrieb/releases-und-nachweise.md
+  - Referenz:
+      - referenz/README.md
+      - referenz/rechte-matrix.md
+      - referenz/glossar.md
+      - referenz/konfiguration.md
+      - Formate:
+          - referenz/formate/README.md
+          - referenz/formate/pdf.md
+          - referenz/formate/docx.md
+          - referenz/formate/odt.md
+          - referenz/formate/pptx.md
+          - referenz/formate/odp.md
+          - referenz/formate/tabular.md
+          - referenz/formate/html.md
+          - referenz/formate/markdown.md
+          - referenz/formate/mail.md
+          - referenz/formate/confluence.md
+          - referenz/formate/fallback.md
+      - referenz/metadaten.md
+      - referenz/wie-indexierung-arbeitet.md
+      - referenz/wie-die-suche-arbeitet.md

@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The {@link RetrievalStageName#FULL_TEXT_SEARCH} stage
- * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md): one PostgreSQL full-text query per search
+ * (docs/handbuch/referenz/wie-die-suche-arbeitet.md): one PostgreSQL full-text query per search
  * query, each with the identical permission filter the vector path applies and the identical {@link
  * QueryProperties#fetchK}, yielding one labelled candidate list per search query. Its lists enter
  * {@link RankFusionStage} next to the vector path's, deduplicated by chunk id and never by score.

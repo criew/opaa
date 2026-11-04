@@ -75,7 +75,7 @@ Prüfung läuft bei Anlage und erneut bei jedem Lauf) und die Zieladressprüfung
 (`TargetAddressValidator`, `opaa.indexing.target-validation`, lehnt aufgelöste Adressen im Loopback-,
 Link-Local-, privaten oder nicht routbaren Bereich ab und bewacht einen geprüften Namen gegen
 DNS-Rebinding, [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), siehe
-[netz-und-sicherheit.md](../handbuch/betreiben/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Die Fähigkeit ersetzt keine
+[netz-und-sicherheit.md](../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Die Fähigkeit ersetzt keine
 der beiden Sicherungen und macht keine entbehrlich.
 
 ### 7. Zeitplan je Bibliothek
