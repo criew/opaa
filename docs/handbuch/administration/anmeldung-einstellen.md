@@ -1,6 +1,10 @@
 # Anmeldung einstellen
 
-> **Wer:** Systemverwaltung, „Administration → Benutzer“, Reiter „Einstellungen“.
+**Ziel:** Passwortregeln, Sperren und Selbstregistrierung der lokalen Konten passen zum Haus.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Benutzer“, Reiter „Einstellungen“
+{: .kopf }
 
 Die Karte legt fest, was für alle lokalen Konten gilt. Jede Änderung wirkt ab der nächsten Anwendung,
 nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Identitätsanbieter und

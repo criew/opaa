@@ -29,7 +29,7 @@ function SignOutPending() {
         justifyContent: 'center',
         alignItems: 'center',
         gap: 2,
-        height: '100vh',
+        height: '100dvh',
       }}
     >
       <CircularProgress aria-hidden size={28} />
@@ -55,7 +55,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: '100dvh',
         }}
       >
         <CircularProgress />

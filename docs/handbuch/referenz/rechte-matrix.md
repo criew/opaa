@@ -15,7 +15,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Space anlegen](../benutzer/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
 | [Konto verbinden](../benutzer/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
 | [Private Bibliothek anlegen](../benutzer/private-bibliothek.md) | — | verbundenes Konto | Anlegerecht für den Zugang | kein Zugang |
-| [Zugangstoken anlegen](../benutzer/zugangstoken.md), [KI-Werkzeug einrichten](../benutzer/ki-werkzeug-einrichten.md) | — | Leserecht, Bibliothek freigegeben | externe KI-Werkzeuge an | aus |
+| [KI-Werkzeug einrichten](../benutzer/ki-werkzeug-einrichten.md) | — | Leserecht, Bibliothek freigegeben | externe KI-Werkzeuge an | aus |
 | [Eigene Daten herunterladen](../benutzer/meine-daten.md) | — | — | Selbstauskunft an | an |
 
 ## Benutzer: mit Rolle am Objekt

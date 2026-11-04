@@ -1461,7 +1461,7 @@ describe('InstallationPage', () => {
       expect(screen.getByLabelText('Hinweis zur KI-Nutzung')).toHaveValue(
         OPAA_BRANDING.aiNoticeDefault,
       )
-      expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
       await submitStep(user)
 
       expect(await stepHeading('Abschluss')).toBeInTheDocument()
@@ -1497,7 +1497,6 @@ describe('InstallationPage', () => {
 
       await user.type(field('Produktname (optional)'), 'Landesamt-Assistent')
       await user.type(field('Primärfarbe (optional)'), '#FFEB3B')
-      await user.click(screen.getByRole('radio', { name: 'Dunkel' }))
 
       expect(screen.getByText('Kontrast unterschritten')).toBeInTheDocument()
       const previews = container.querySelectorAll('figure[aria-hidden="true"]')
@@ -1511,7 +1510,6 @@ describe('InstallationPage', () => {
       expect(brandingOf()?.branding).toMatchObject({
         productName: 'Landesamt-Assistent',
         primaryColor: '#FFEB3B',
-        defaultColorScheme: 'DARK',
       })
     })
 

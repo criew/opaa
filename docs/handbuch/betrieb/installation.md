@@ -94,7 +94,7 @@ Transkriptionsmodell.
 | Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
 | Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../administration/e-mail.md)) |
-| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../administration/branding.md)) |
+| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../administration/branding.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN

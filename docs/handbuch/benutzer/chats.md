@@ -1,6 +1,7 @@
 # Chats verwalten
 
-Sie halten Ihre Chatliste übersichtlich und finden alte Gespräche wieder.
+**Ziel:** Eine übersichtliche Chatliste, in der Sie alte Gespräche wiederfinden.
+{: .kopf }
 
 Die Chatliste in der Seitenleiste zeigt oben die angehefteten Chats, darunter die zuletzt
 verwendeten. Das Menü jedes Eintrags bietet:

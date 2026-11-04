@@ -1,18 +1,23 @@
 # Branding
 
-> **Wer:** Systemverwaltung, „Administration → Allgemein & Branding“.
+**Ziel:** OPAA trägt Namen, Farben und Bilder des Hauses.
+{: .kopf }
 
-Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören
+**Wer:** Systemverwaltung, „Administration → Allgemein & Branding“
+{: .kopf }
+
+Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe und drei Bilder gehören
 der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration → Allgemein & Branding**, von
 einem Systemverwalter; gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist
 sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im Nachweisprotokoll. Ein leer
 gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld:
-Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Texte, Akzentfarbe und
-Farbschema-Vorgabe lassen sich schon bei der Einrichtung im optionalen Schritt Branding des
+Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Texte und Akzentfarbe
+lassen sich schon bei der Einrichtung im optionalen Schritt Branding des
 [Einrichtungs-Assistenten](../betrieb/installation.md#einrichtungs-assistent-im-browser) festlegen, mit
 denselben Regeln; die Bilder nur hier. Welche Anmeldewege die Anmeldeseite
 zeigt und in welcher Reihenfolge, steht unter
-[Authentifizierung](../betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
+[Authentifizierung](../betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc). Hell oder
+dunkel gibt das Haus nicht vor: Das stellt jede Person in ihren Einstellungen selbst ein.
 
 ## Regeln für die Texte
 

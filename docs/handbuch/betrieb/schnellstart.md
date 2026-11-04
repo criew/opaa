@@ -1,7 +1,7 @@
 # Schnellstart
 
-Sie haben danach eine laufende OPAA-Instanz auf einem Rechner, mit einem Sprachmodell über einen
-API-Schlüssel. Das dauert etwa eine Viertelstunde.
+**Ziel:** Eine laufende OPAA-Instanz auf einem Rechner, mit einem Sprachmodell über einen API-Schlüssel, in etwa einer Viertelstunde.
+{: .kopf }
 
 **Sie brauchen:** Docker mit Compose, Git und einen API-Schlüssel eines Modellanbieters, etwa
 OpenAI. Ein OpenAI-Schlüssel deckt Chat- und Embedding-Modell ab.

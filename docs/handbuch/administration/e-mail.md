@@ -1,6 +1,10 @@
 # E-Mail-Versand (SMTP)
 
-> **Wer:** Systemverwaltung, „Administration → E-Mail“.
+**Ziel:** OPAA verschickt Einladungen, Rücksetzlinks und Hinweise per E-Mail.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → E-Mail“
+{: .kopf }
 
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang

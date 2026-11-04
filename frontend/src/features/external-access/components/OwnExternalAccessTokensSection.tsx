@@ -151,7 +151,7 @@ export default function OwnExternalAccessTokensSection() {
     <>
       <PageSection
         title="Zugangstokens"
-        description="Mit einem Zugangstoken durchsucht ein externes KI-Werkzeug - etwa Claude Code oder Cursor - die Bibliotheken, die Sie ihm erteilen. Es kann nie mehr als Sie selbst, und nur lesen und suchen."
+        description="Mit einem Zugangstoken erhält ein externes KI-Werkzeug Zugriff auf Wissensbibliotheken, die Sie mit ihm teilen."
         action={
           /* With a closed channel the issuance rejects every request and the selectable set is
             empty - the button would lead to a refusal instead of a token. */

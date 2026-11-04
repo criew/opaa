@@ -7,6 +7,10 @@ export const SIDEBAR_DEFAULT_WIDTH = 248
 export const SIDEBAR_MIN_WIDTH = 200
 export const SIDEBAR_MAX_WIDTH = 520
 
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'dark' || value === 'light' || value === 'system'
+}
+
 /** Clamps a requested space column width into the allowed range, in whole pixels. */
 export function clampSidebarWidth(width: number): number {
   return Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width)))
@@ -19,19 +23,9 @@ interface UiState {
   /** Desktop width of the space column; always within the min/max bounds. */
   sidebarWidth: number
   setSidebarWidth: (width: number) => void
-  /**
-   * The user's own choice, or `null` while they have not made one. The distinction is
-   * load-bearing: `null` is what lets the operator's configured default colour scheme apply, and
-   * a plain `'system'` default here would have made "never decided" indistinguishable from
-   * "deliberately picked system" - silently overriding every operator default with system.
-   *
-   * Read through `resolveThemeMode` (src/shared/theme/colorScheme.ts) rather than directly, so the
-   * precedence between user choice and operator default lives in exactly one place.
-   */
-  themeMode: ThemeMode | null
+  /** The person's colour scheme in this browser; `system` follows the operating system. */
+  themeMode: ThemeMode
   setThemeMode: (mode: ThemeMode) => void
-  /** Back to the operator's configured default - the only way out of an own choice. */
-  clearThemeMode: () => void
   /** Keys of the space column's groups the person folded, kept across reloads like the width. */
   collapsedSidebarSections: string[]
   toggleSidebarSection: (key: string) => void
@@ -45,9 +39,8 @@ export const useUiStore = create<UiState>()(
       toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
       sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
       setSidebarWidth: (width: number) => set({ sidebarWidth: clampSidebarWidth(width) }),
-      themeMode: null,
+      themeMode: 'system',
       setThemeMode: (mode: ThemeMode) => set({ themeMode: mode }),
-      clearThemeMode: () => set({ themeMode: null }),
       collapsedSidebarSections: [],
       toggleSidebarSection: (key: string) => {
         const current = get().collapsedSidebarSections
@@ -74,6 +67,8 @@ export const useUiStore = create<UiState>()(
           collapsedSidebarSections: Array.isArray(stored.collapsedSidebarSections)
             ? stored.collapsedSidebarSections.filter((key) => typeof key === 'string')
             : current.collapsedSidebarSections,
+          // an older store kept `null` for „no own choice"; that is `system` now
+          themeMode: isThemeMode(stored.themeMode) ? stored.themeMode : 'system',
           sidebarWidth:
             typeof stored.sidebarWidth === 'number'
               ? clampSidebarWidth(stored.sidebarWidth)

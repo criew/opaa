@@ -1,6 +1,10 @@
 # Modelle verwalten
 
-> **Wer:** Systemverwaltung, „Administration → Modelle“.
+**Ziel:** Chat, Suche und Spracheingabe nutzen die Modelle, die das Haus gewählt hat.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Modelle“
+{: .kopf }
 
 OPAA bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
 Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der Betrieb

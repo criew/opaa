@@ -1,6 +1,10 @@
 # Lokale Konten verwalten
 
-> **Wer:** Systemverwaltung, „Administration → Benutzer“.
+**Ziel:** Wer ohne Identitätsanbieter arbeitet, hat ein passendes lokales Konto.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Benutzer“
+{: .kopf }
 
 Lokale Konten führt OPAA selbst. Sie werden gebraucht, solange kein Identitätsanbieter angebunden
 ist, und immer für das Notanker-Konto der Systemverwaltung. Konten eines Identitätsanbieters stehen
@@ -43,7 +47,9 @@ regelt [Ausscheiden und Nachfolge](ausscheiden.md).
 allen Spaces. Das Datum steht im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Entsperren
 beendet die Frist. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
 Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung, und erst eine
-**zweite** Person gibt frei. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
+**zweite** Person gibt frei. Die Freigabe gilt genau dem angezeigten Antrag: Wurde er inzwischen
+zurückgezogen und neu gestellt, lehnt OPAA sie ab und zeigt den aktuellen Antrag. Einen Antrag,
+der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
 
 ## Liste prüfen

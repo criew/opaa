@@ -111,7 +111,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await expect(user.getByText("Anlass des Kontos")).toBeVisible();
     await expect(user.getByText("Sachbearbeitung Meldewesen, Vertretung")).toBeVisible();
     // A local session offers the password change; an OIDC one would not.
-    await expect(user.getByRole("link", { name: "Passwort ändern" })).toBeVisible();
+    await expect(user.getByRole("button", { name: /^Ändern\s?Passwort/ })).toBeVisible();
 
     // The administration now sees the account as ACTIVE, without ever having seen the password.
     await openAccountList(admin);

@@ -1,6 +1,7 @@
 # Belege prüfen
 
-Sie sehen, auf welche Stellen sich eine Antwort stützt, und öffnen sie im Original.
+**Ziel:** Sie sehen, worauf sich eine Antwort stützt, und haben die Stelle im Original vor sich.
+{: .kopf }
 
 1. Unter der Antwort den Belegstand wählen, etwa „Belegt · 3 Stellen in 2 Dokumenten“, oder eine
    Fußnote im Text anklicken.

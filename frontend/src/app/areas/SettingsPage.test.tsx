@@ -17,7 +17,7 @@ function renderPage() {
 describe('SettingsPage', () => {
   beforeEach(() => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
-    useUiStore.setState({ themeMode: null })
+    useUiStore.setState({ themeMode: 'system' })
     useAuthStore.setState({
       user: {
         id: 'user-1',
@@ -42,13 +42,12 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Gelten für Sie persönlich in allen Spaces.')).toBeInTheDocument()
   })
 
-  it('shows the profile block with name, address and sign-in method - display only', () => {
+  it('shows the profile block with name and address only - display only', () => {
     renderPage()
 
     expect(screen.getByText('B. Wagner')).toBeInTheDocument()
-    expect(
-      screen.getByText('b.wagner@example.de · über Verzeichnisdienst angemeldet'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('b.wagner@example.de')).toBeInTheDocument()
+    expect(screen.queryByText(/angemeldet/)).not.toBeInTheDocument()
     // Editing name, language or picture needs backend support that does not exist (Abgrenzung).
     // The only text field there is the own vocabulary list of speech input.
     expect(
@@ -59,33 +58,16 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Bild ändern')).not.toBeInTheDocument()
   })
 
-  it('names the dev sign-in without a technical mode string', () => {
-    useAuthStore.setState({ mode: 'dev' })
-    renderPage()
-
-    expect(
-      screen.getByText('b.wagner@example.de · über Entwicklungsanmeldung angemeldet'),
-    ).toBeInTheDocument()
-  })
-
-  it('keeps the colour scheme choice including the way back to the operator default', async () => {
+  it('offers light, system and dark - the own choice, without an operator default', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(screen.getByRole('group', { name: 'Farbschema' })).toBeInTheDocument()
-
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: 'Dunkel' }))
 
     expect(useUiStore.getState().themeMode).toBe('dark')
-
-    // Actually walk the way back - a broken onClick wiring
-    // stayed green while only the button's presence was asserted.
-    await user.click(screen.getByRole('button', { name: 'Vorgabe des Hauses übernehmen' }))
-
-    expect(useUiStore.getState().themeMode).toBeNull()
-    expect(
-      screen.queryByRole('button', { name: 'Vorgabe des Hauses übernehmen' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Vorgabe/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Erscheinungsbild des Hauses')).not.toBeInTheDocument()
   })
 
   it('survives an empty display name from the IdP instead of crashing (#800)', () => {
@@ -110,28 +92,8 @@ describe('SettingsPage', () => {
     renderPage()
 
     expect(screen.getAllByText(/x@y\.example/)).toHaveLength(1)
-    expect(screen.getByText('über Verzeichnisdienst angemeldet')).toBeInTheDocument()
   })
 
-  it('points system administrators at the branding page and everyone else at their admin', () => {
-    const { unmount } = renderPage()
-    expect(screen.queryByRole('link', { name: 'Branding' })).not.toBeInTheDocument()
-    unmount()
-
-    useAuthStore.setState({
-      user: {
-        id: 'user-2',
-        email: 'a@b.example',
-        displayName: 'Admin',
-        systemRole: 'SYSTEM_ADMIN',
-      },
-    })
-    renderPage()
-    expect(screen.getByRole('link', { name: 'Branding' })).toHaveAttribute(
-      'href',
-      '/admin/branding',
-    )
-  })
   // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure.
   it('shows the creation reason a system administrator recorded', () => {
     useAuthStore.setState({
@@ -173,7 +135,7 @@ describe('SettingsPage', () => {
       { withRouter: true, initialRoute: '/settings', withNotificationHost: false },
     )
 
-    await userEvent.click(screen.getByRole('link', { name: 'Passwort ändern' }))
+    await userEvent.click(screen.getByRole('button', { name: /^Ändern\s?Passwort/ }))
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Passwort ändern' }),
     ).toBeInTheDocument()
@@ -188,19 +150,18 @@ describe('SettingsPage', () => {
     ).toBeInTheDocument()
   }, 15_000)
 
-  it('points a provider session at its provider instead', () => {
+  it('leaves the account section out for a provider session', () => {
     renderPage()
 
-    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Ihr Passwort verwaltet der Identitätsanbieter/)).toBeInTheDocument()
+    expect(screen.queryByText('Ihr Konto')).not.toBeInTheDocument()
+    expect(screen.queryByText('Passwort')).not.toBeInTheDocument()
   })
 
   it('says nothing about passwords in the development sign-in', () => {
     useAuthStore.setState({ mode: 'dev', sessionKind: null })
     renderPage()
 
-    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Ihr Passwort verwaltet/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Passwort')).not.toBeInTheDocument()
   })
 
   it('has the connected accounts as a tab of their own', async () => {

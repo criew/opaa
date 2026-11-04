@@ -1,8 +1,12 @@
 # Gruppen verwalten
 
-> **Wer:** Systemverwaltung, „Administration → Gruppen“.
+**Ziel:** Rechte hängen an Gruppen statt an Personen und bleiben so aktuell.
+{: .kopf }
 
-Rechte an Gruppen statt an Personen zu geben hält sie aktuell: Wer morgen in „Referat 50“ kommt,
+**Wer:** Systemverwaltung, „Administration → Gruppen“
+{: .kopf }
+
+Wer morgen in „Referat 50“ kommt,
 liest ab dann, wer geht, verliert es mit der Mitgliedschaft. Gruppen verschachteln nicht; eine
 Abteilung, die im Verzeichnis nur Untergruppen hat, ist in OPAA leer.
 

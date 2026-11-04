@@ -1,9 +1,12 @@
 # Suche und Indexierung überwachen
 
-> **Wer:** Systemverwaltung, „Administration → Suche & Indexierung“.
+**Ziel:** Sie wissen, warum jemand ein Dokument nicht findet.
+{: .kopf }
 
-Die Seite zeigt und diagnostiziert, stellt aber nichts ein. Sie beantwortet die häufigste Frage im
-Betrieb: Warum findet jemand ein Dokument nicht?
+**Wer:** Systemverwaltung, „Administration → Suche & Indexierung“
+{: .kopf }
+
+Die Seite zeigt und diagnostiziert, stellt aber nichts ein.
 
 | Reiter | Zeigt |
 |---|---|

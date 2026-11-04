@@ -81,7 +81,7 @@ Diese Sorge wird zuerst adressiert, nicht die Funktionsliste.
 
 ### Begriffe
 
-Diese Begriffe werden einheitlich verwendet; sie stammen aus [CONCEPTS.md](../CONCEPTS.md) und
+Diese Begriffe werden einheitlich verwendet; sie stammen aus dem [Glossar](../handbuch/referenz/glossar.md) und
 [VISION.md](../VISION.md).
 
 | Wir sagen | Nicht |

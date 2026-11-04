@@ -19,7 +19,7 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/prompts\/new$/, 'benutzer/prompt-bibliothek-anlegen.html'],
   [/^\/prompts\/[^/]+\/freigaben$/, 'benutzer/arbeitsmittel-teilen.html'],
   [/^\/prompts\/[^/]+/, 'benutzer/prompts-verwenden.html'],
-  [/^\/settings\/tokens$/, 'benutzer/zugangstoken.html'],
+  [/^\/settings\/tokens$/, 'benutzer/ki-werkzeug-einrichten.html'],
   [/^\/settings\/accounts$/, 'benutzer/konto-verbinden.html'],
   [/^\/settings\/data$/, 'benutzer/meine-daten.html'],
   [/^\/settings\/groups$/, 'benutzer/gruppe-pflegen.html'],

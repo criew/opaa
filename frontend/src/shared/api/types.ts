@@ -490,6 +490,8 @@ export type LocalUserUpdateRequest = components['schemas']['LocalUserUpdateReque
 export type LocalUserChatCleanupResponse = components['schemas']['LocalUserChatCleanupResponse']
 export type ChatCleanupAfterLockStatus = components['schemas']['ChatCleanupAfterLockStatus']
 export type ChatCleanupHoldPurpose = components['schemas']['ChatCleanupHoldPurpose']
+export type LocalUserChatCleanupHoldApproval =
+  components['schemas']['LocalUserChatCleanupHoldApproval']
 export type LocalUserChatCleanupHoldRequest =
   components['schemas']['LocalUserChatCleanupHoldRequest']
 export type LocalUserLockRequest = components['schemas']['LocalUserLockRequest']

@@ -7,22 +7,18 @@ import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
-import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
-import { Link as RouterLink, Navigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import type { AuthMode } from '@/shared/session/types'
 import { PASSWORD_ROUTE, SETTINGS_ROUTE } from '@/shared/routes'
 import { useUiStore } from '@/shared/stores/uiStore'
 import type { ThemeMode } from '@/shared/stores/uiStore'
-import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalBadge from '@/shared/ui/GlobalBadge'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { userInitial } from '@/shared/utils/userInitial'
 import SectionHead from '@/shared/ui/SectionHead'
-import { TextLink } from '@/shared/ui/DetailSection'
+import { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import { contentWidth } from '@/shared/theme/tokens'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import { OwnExternalAccessTokensSection } from '@/features/external-access'
@@ -63,13 +59,6 @@ function isSettingsTab(
   return offered.some((entry) => entry.value === value)
 }
 
-/** How the account signed in, next to the address - never a technical mode name. */
-function signInMethodLabel(mode: AuthMode | null): string | null {
-  if (mode === 'oidc') return 'über Verzeichnisdienst angemeldet'
-  if (mode === 'dev') return 'über Entwicklungsanmeldung angemeldet'
-  return null
-}
-
 /**
  * The personal settings, with the own access tokens, the groups the account is responsible for,
  * the connected accounts and the person's own data (self-disclosure) as further areas.
@@ -83,28 +72,19 @@ export default function SettingsPage() {
   const { tab } = useParams()
   const themeMode = useUiStore((s) => s.themeMode)
   const setThemeMode = useUiStore((s) => s.setThemeMode)
-  const clearThemeMode = useUiStore((s) => s.clearThemeMode)
-  const operatorDefault = useBrandingStore((s) => s.branding.defaultColorScheme)
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const authMode = useAuthStore((s) => s.mode)
   const sessionKind = useAuthStore((s) => s.sessionKind)
-  const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
   const offered = offeredTabs(useFeatureEnabled('externalAccess'), useFeatureEnabled('chatUpload'))
   // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure -
   // an account of an identity provider has none, and the block then stays away entirely.
   const createdReason = user?.createdReason?.trim() || null
 
-  // The toggle shows what actually applies, which for someone who has never chosen is the
-  // operator's default - not an empty selection they would have to interpret.
-  const hasOwnChoice = themeMode !== null
-  const effectiveMode = resolveThemeMode(themeMode, operatorDefault)
-
-  const signInMethod = signInMethodLabel(authMode)
   // A missing or blank displayName makes the e-mail the name line - repeating it in the
   // meta line would show it twice.
   const displayName = user?.displayName?.trim() || null
   const accountName = displayName ?? user?.email ?? 'Benutzer'
-  const accountMeta = [displayName ? user?.email : null, signInMethod].filter(Boolean).join(' · ')
+  const accountMeta = displayName ? user?.email : null
 
   if (tab !== undefined && !isSettingsTab(tab, offered)) {
     return <Navigate to={SETTINGS_ROUTE} replace />
@@ -113,7 +93,8 @@ export default function SettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: activeTab === 'general' ? 640 : contentWidth.areaContent }}>
+      {/* one width for every area, so the tab row scrolls alike in all of them */}
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
           icon={TuneOutlinedIcon}
           title="Ihre Einstellungen"
@@ -171,57 +152,56 @@ export default function SettingsPage() {
                   </Box>
                 )}
 
-                {(createdReason || sessionKind !== null) && (
+                {/* An identity provider's account has neither a reason nor a password here. */}
+                {(createdReason || sessionKind === 'local') && (
                   <Box component="section" sx={{ mb: 5 }}>
                     <SectionHead>Ihr Konto</SectionHead>
                     {createdReason && (
-                      <Box sx={{ mb: sessionKind === null ? 0 : 2.5 }}>
-                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                          Anlass des Kontos
-                        </Typography>
-                        <Typography sx={{ fontSize: 13.5, mt: 0.25 }}>{createdReason}</Typography>
-                        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                          So hat Ihre Systemverwaltung den dienstlichen Anlass Ihres Kontos
-                          festgehalten.
-                        </Typography>
-                      </Box>
+                      <ValueRow
+                        title="Anlass des Kontos"
+                        headingLevel="h3"
+                        value={
+                          <>
+                            {createdReason}
+                            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                              So hat Ihre Systemverwaltung den dienstlichen Anlass Ihres Kontos
+                              festgehalten.
+                            </Typography>
+                          </>
+                        }
+                      />
                     )}
-                    {sessionKind === 'local' ? (
-                      <Box>
-                        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                          Ihr Passwort gilt nur für diese Installation. Nach einer Änderung bleiben
-                          Sie hier angemeldet; Ihre übrigen Sitzungen und Ihre Zugangstokens für
-                          externe KI-Werkzeuge werden beendet.
-                        </Typography>
-                        {/* The password page returns to where it was opened from; without the target a
-                    voluntary change would end on the chat page (see redirectTargetOf). */}
-                        <TextLink
-                          to={PASSWORD_ROUTE}
-                          state={{ from: SETTINGS_ROUTE }}
-                          sx={{ mt: 1 }}
-                        >
-                          Passwort ändern
-                        </TextLink>
-                      </Box>
-                    ) : (
-                      sessionKind === 'oidc' && (
-                        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                          Ihr Passwort verwaltet der Identitätsanbieter, über den Sie sich
-                          angemeldet haben — ändern Sie es dort.
-                        </Typography>
-                      )
+                    {sessionKind === 'local' && (
+                      <ValueRow
+                        title="Passwort"
+                        headingLevel="h3"
+                        value={
+                          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                            Gilt nur für diese Installation.
+                          </Typography>
+                        }
+                        action={
+                          // the password page returns to where it was opened from
+                          <TextAction
+                            context="Passwort"
+                            onClick={() =>
+                              navigate(PASSWORD_ROUTE, { state: { from: SETTINGS_ROUTE } })
+                            }
+                          >
+                            Ändern
+                          </TextAction>
+                        }
+                      />
                     )}
                   </Box>
                 )}
 
                 <SectionHead>Darstellung</SectionHead>
                 <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
-                  {hasOwnChoice
-                    ? 'Ihre eigene Wahl gilt und bleibt von der Vorgabe Ihres Hauses unberührt.'
-                    : 'Aktuell gilt die Vorgabe Ihres Hauses. Sobald Sie hier wählen, gilt Ihre Wahl.'}
+                  Gilt in diesem Browser.
                 </Typography>
                 <ToggleButtonGroup
-                  value={effectiveMode}
+                  value={themeMode}
                   exclusive
                   onChange={(_e, value: ThemeMode | null) => {
                     if (value !== null) setThemeMode(value)
@@ -242,32 +222,6 @@ export default function SettingsPage() {
                     Dunkel
                   </ToggleButton>
                 </ToggleButtonGroup>
-                {hasOwnChoice && (
-                  <Box sx={{ mt: 2 }}>
-                    <Button size="small" onClick={clearThemeMode}>
-                      Vorgabe des Hauses übernehmen
-                    </Button>
-                  </Box>
-                )}
-
-                <Box sx={{ mt: 5 }}>
-                  <SectionHead>Erscheinungsbild des Hauses</SectionHead>
-                  <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                    Logo, Produktname, Akzentfarbe und das Standard-Farbschema stellt Ihr Haus
-                    zentral ein{' '}
-                    {isSystemAdmin ? (
-                      <>
-                        — als Systemadministration unter{' '}
-                        <Link component={RouterLink} to="/admin/branding">
-                          Branding
-                        </Link>
-                        .
-                      </>
-                    ) : (
-                      '— wenden Sie sich dafür an Ihre Systemadministration.'
-                    )}
-                  </Typography>
-                </Box>
 
                 <TranscriptionVocabularySection />
               </>
