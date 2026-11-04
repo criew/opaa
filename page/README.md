@@ -2,7 +2,8 @@
 
 Die öffentliche Einstiegsseite des Projekts. `index.html` ist eine einzelne,
 in sich geschlossene Seite ohne Build-Schritt — Stile und Skripte stehen darin,
-Bilder liegen in `img/`. Zum Ansehen genügt es, die Datei im Browser zu öffnen.
+Bilder liegen in `img/`, die Schriften (Quicksand, Source Sans 3, OFL) in `fonts/`,
+damit die Seite keine Fremdserver anspricht. Zum Ansehen genügt es, die Datei im Browser zu öffnen.
 
 Inhaltlich leitet sie sich aus [`docs/market/MESSAGING.md`](../docs/market/MESSAGING.md)
 ab; Positionierungsänderungen beginnen dort, nicht hier.

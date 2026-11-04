@@ -12,9 +12,9 @@ erfindet nichts hinzu — es entscheidet nur, was davon zuerst gesagt wird und i
 
 ## Positionierung in einem Satz
 
-> OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen eines Hauses
-> belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die
-> ganze Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
+> OPAA ist der souveräne, quelloffene KI-Assistent für die öffentliche Verwaltung: Er durchsucht die
+> Bestände eines Hauses und antwortet mit geprüften Fundstellen — im eigenen Rechenzentrum, auch ohne
+> Netzanbindung.
 
 Kurzform für Aufzählungen, Metadaten und Kacheln:
 

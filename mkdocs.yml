@@ -28,6 +28,8 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Helles Farbschema
+extra:
+  homepage: https://opaa.io/
 plugins:
   - search:
       lang: de
