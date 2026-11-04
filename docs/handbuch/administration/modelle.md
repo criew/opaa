@@ -41,7 +41,9 @@ Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:
 ## Reranking und Spracheingabe
 
 Je ein Reiter mit Schalter, Basis-Adresse, Modell-Kennung und Schlüssel, bei der Spracheingabe auch
-die Sprache. „Verbindung testen“ prüft, ohne zu speichern. Fehlt der Betriebsschalter für die
+die Sprache und die „Begriffsliste“: Fachbegriffe und Abkürzungen des Hauses, etwa „Einspruchsfrist,
+Grunderwerbsteuer, AO, BZSt“, die das Modell damit zuverlässiger erkennt. Jede Person ergänzt in
+ihren Einstellungen eine eigene Liste; sie geht nach der des Hauses an das Modell. „Verbindung testen“ prüft, ohne zu speichern. Fehlt der Betriebsschalter für die
 Spracheingabe, lässt sie sich nur vorbereiten. Die Spracheingabe verarbeitet Stimmen; sie gehört vor
 dem Einschalten mit der Personalvertretung geklärt ([Einführung vorbereiten](einfuehrung.md)).
 

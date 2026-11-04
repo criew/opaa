@@ -10,6 +10,9 @@ export const TRANSCRIPTION_TEXTS = {
   languageHint: 'Kürzel aus zwei Buchstaben, etwa de; leer erkennt das Modell die Sprache selbst.',
   languageRule:
     'Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en; leer erkennt das Modell die Sprache selbst.',
+  vocabularyLabel: 'Begriffsliste',
+  vocabularyHint:
+    'Fachbegriffe, Namen und Abkürzungen, kommagetrennt oder als Beispielsatz. Das Modell erkennt sie damit zuverlässiger.',
 } as const
 
 const LANGUAGE_CODE = /^[a-z]{2}$/

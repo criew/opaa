@@ -869,7 +869,8 @@ components:
 
     TranscriptionModelSettingsResponse:
       type: object
-      required: [enabled, apiKeySet, language, state, speechInputAvailable, retiredVariables]
+      required:
+        [enabled, apiKeySet, language, vocabulary, state, speechInputAvailable, retiredVariables]
       properties:
         enabled:
           type: boolean
@@ -891,6 +892,12 @@ components:
             ISO-639-1 code passed to the model; empty lets the model detect the language. de is
             the factory default.
           example: de
+        vocabulary:
+          type: string
+          description: >
+            The installation's vocabulary list, sent as prompt with every transcription ahead of
+            the person's own list; empty when none is stored.
+          example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
         state:
           $ref: "#/components/schemas/SearchModelRoleState"
         speechInputAvailable:
@@ -945,6 +952,14 @@ components:
             Two-letter ISO-639-1 code; an empty string lets the model detect the language, omitted
             (null) keeps the stored language.
           example: de
+        vocabulary:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Terms and abbreviations the model should recognise, comma-separated or as an example
+            sentence; an empty string removes the list, omitted (null) keeps the stored one.
+          example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
 
     ModelRoleTestRequest:
       type: object

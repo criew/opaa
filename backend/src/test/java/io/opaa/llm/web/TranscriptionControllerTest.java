@@ -13,8 +13,12 @@ import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.GlobalExceptionHandler;
 import io.opaa.api.RequestLoggingFilter;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.FeatureFlags;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.llm.PersonalTranscriptionVocabularyService;
 import io.opaa.llm.TranscriptionClient;
 import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.llm.TranscriptionModelRole;
@@ -30,15 +34,22 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.MethodParameter;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import tools.jackson.databind.ObjectMapper;
 
@@ -55,6 +66,27 @@ class TranscriptionControllerTest {
   private static final byte[] AUDIO = AUDIO_MARKER.getBytes(StandardCharsets.US_ASCII);
   private static final int MAX_AUDIO_BYTES = 1024;
   private static final String PERSON = "erika.musterfrau";
+  private static final CurrentUser CALLER =
+      CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.USER, "Erika");
+  private static final HandlerMethodArgumentResolver CALLER_RESOLVER =
+      new HandlerMethodArgumentResolver() {
+        @Override
+        public boolean supportsParameter(MethodParameter parameter) {
+          return parameter.hasParameterAnnotation(Caller.class);
+        }
+
+        @Override
+        public Object resolveArgument(
+            MethodParameter parameter,
+            ModelAndViewContainer container,
+            NativeWebRequest request,
+            WebDataBinderFactory binderFactory) {
+          return CALLER;
+        }
+      };
+
+  private final PersonalTranscriptionVocabularyService vocabularies =
+      Mockito.mock(PersonalTranscriptionVocabularyService.class);
 
   private HttpServer upstream;
   private final AtomicInteger upstreamStatus = new AtomicInteger(200);
@@ -118,6 +150,7 @@ class TranscriptionControllerTest {
         .setControllerAdvice(
             new GlobalExceptionHandler(
                 new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC()))
+        .setCustomArgumentResolvers(CALLER_RESOLVER)
         .addFilters(
             new TranscriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC()),
             new RequestLoggingFilter())
@@ -126,7 +159,7 @@ class TranscriptionControllerTest {
 
   private TranscriptionController controller(boolean enabled, Duration timeout) {
     role = role(enabled, timeout);
-    return new TranscriptionController(role);
+    return new TranscriptionController(role, vocabularies);
   }
 
   private TranscriptionModelRole role(boolean enabled, Duration timeout) {
@@ -240,7 +273,10 @@ class TranscriptionControllerTest {
 
     HttpServletRequest rawBodyOnly = untouchable(request);
 
-    assertThat(controller(true, Duration.ofSeconds(5)).createTranscription(rawBodyOnly).getText())
+    assertThat(
+            controller(true, Duration.ofSeconds(5))
+                .createTranscription(rawBodyOnly, CALLER)
+                .getText())
         .isEqualTo(RECOGNISED);
   }
 

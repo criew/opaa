@@ -413,6 +413,8 @@ operations:
   updateSuccessionSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getTranscriptionAvailability:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   createTranscription:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no transcription model is set up; the operation names no object of anyone"}
+  getMyTranscriptionVocabulary:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  updateMyTranscriptionVocabulary:           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   reportOrphanedOriginals:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   deleteOrphanedOriginals:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   reportOrphanedLibraries:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}

@@ -2,12 +2,15 @@ package io.opaa.llm.web;
 
 import io.opaa.api.dto.TranscriptionAvailabilityResponse;
 import io.opaa.api.dto.TranscriptionResponse;
+import io.opaa.auth.Caller;
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.BadGatewayException;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
+import io.opaa.llm.PersonalTranscriptionVocabularyService;
 import io.opaa.llm.TranscriptionAudioFormat;
 import io.opaa.llm.TranscriptionClient.TranscriptionUnavailableException;
 import io.opaa.llm.TranscriptionModelRole;
@@ -31,8 +34,9 @@ import org.springframework.web.bind.annotation.RestController;
  * TranscriptionMultipartGuard} turns multipart away before it is parsed). It is read through {@link
  * #readBounded} into one array, which the client sends without copying and which is overwritten
  * once the call ends. No answer, no exception and no log line carries audio or recognised text, and
- * no person is named to the endpoint. At most {@code opaa.transcription.max-concurrent} recordings
- * are held at once on this instance (ADR-0053).
+ * no person is named to the endpoint; the caller's own vocabulary list goes along as prompt. At
+ * most {@code opaa.transcription.max-concurrent} recordings are held at once on this instance
+ * (ADR-0053).
  */
 @RestController
 @RequestMapping("/api/v1/transcriptions")
@@ -49,9 +53,12 @@ public class TranscriptionController {
           + " Frage.";
 
   private final TranscriptionModelRole role;
+  private final PersonalTranscriptionVocabularyService vocabularies;
 
-  public TranscriptionController(TranscriptionModelRole role) {
+  public TranscriptionController(
+      TranscriptionModelRole role, PersonalTranscriptionVocabularyService vocabularies) {
     this.role = role;
+    this.vocabularies = vocabularies;
   }
 
   @GetMapping("/availability")
@@ -60,7 +67,8 @@ public class TranscriptionController {
   }
 
   @PostMapping(consumes = "audio/*")
-  public TranscriptionResponse createTranscription(HttpServletRequest request) throws IOException {
+  public TranscriptionResponse createTranscription(
+      HttpServletRequest request, @Caller CurrentUser caller) throws IOException {
     if (!role.usable()) {
       throw new ServiceUnavailableException(UNAVAILABLE_MESSAGE);
     }
@@ -77,7 +85,8 @@ public class TranscriptionController {
         if (audio.length == 0) {
           throw new ValidationException("Die Aufnahme ist leer.");
         }
-        return new TranscriptionResponse(role.transcribe(audio, format));
+        String personal = vocabularies.vocabularyOf(caller.id(), caller.organizationId());
+        return new TranscriptionResponse(role.transcribe(audio, format, personal));
       } finally {
         Arrays.fill(audio, (byte) 0);
       }

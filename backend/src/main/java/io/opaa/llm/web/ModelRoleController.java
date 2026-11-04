@@ -74,7 +74,8 @@ public class ModelRoleController {
             request.getBaseUrl(),
             request.getModel(),
             request.getApiKey(),
-            request.getLanguage()));
+            request.getLanguage(),
+            request.getVocabulary()));
   }
 
   @PostMapping("/transcription/test")

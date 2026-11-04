@@ -20,3 +20,11 @@ sich auch in eine Bibliothek übernehmen.
 
 Die Aufnahme wird nicht gespeichert. Fehlen Büroklammer oder Mikrofon, hat die Installation die
 Funktion nicht eingeschaltet.
+
+## Eigene Begriffe beibringen
+
+Namen, Aktenzeichen oder Abkürzungen aus Ihrem Referat erkennt die Spracheingabe besser, wenn sie
+sie kennt. Unter „Ihre Einstellungen“, Bereich „Allgemein“, Abschnitt „Spracheingabe“ tragen Sie
+sie in die „Begriffsliste“ ein, kommagetrennt oder als Beispielsatz, etwa „Referat Z 4,
+Grundsteuermessbescheid, Az. 12-345/26“. Die Liste sehen nur Sie; sie geht bei jedem Diktat mit und
+wird mit Ihrem Konto gelöscht. Ihre Systemverwaltung kann zusätzlich eine Liste für alle pflegen.

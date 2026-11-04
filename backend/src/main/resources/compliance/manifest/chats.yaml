@@ -191,6 +191,28 @@ data:
         Anhaltungen aus der Zeit vor der Freigabe im Vier-Augen-Prinzip haben weder Zweck noch
         Begründung; der erste nächtliche Lauf nach dem Update gibt ihnen das Ende nach der
         Höchstdauer, danach laufen sie wie jede andere ab
+  - id: transcription-vocabularies
+    title: Persönliche Begriffsliste der Spracheingabe
+    purpose: >-
+      Bessere Erkennung eigener Fachbegriffe, Namen und Abkürzungen beim Diktat; die Liste geht mit
+      jeder Aufnahme der Person als Prompt an den Transkriptions-Endpunkt
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: transcription_vocabularies
+        personalColumns: [user_id, vocabulary, updated_at]
+        nonPersonalColumns: [organization_id]
+        person:
+          columns: [user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis die Person die Liste leert oder das Konto gelöscht wird
+      settings: []
+    visibility: [nur die Person selbst]
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: Durch die Person (Liste leeren), mit dem Konto
+    evaluations: Keine; weder protokolliert noch gezählt
+    notes:
+      - Von der Person selbst gepflegt; die Verwaltung sieht die Liste nicht
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]
   chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]

@@ -346,7 +346,7 @@ nonPersonalTables:
     - reference_vectors
   rerank_model: [id, enabled, base_url, model_identifier, api_key_ciphertext, updated_at]
   transcription_model:
-    [id, enabled, base_url, model_identifier, api_key_ciphertext, language, updated_at]
+    [id, enabled, base_url, model_identifier, api_key_ciphertext, language, vocabulary, updated_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   shared_library_quota_settings: [id, quota_bytes, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]

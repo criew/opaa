@@ -168,6 +168,6 @@
   "SYSTEM_ADMIN_ROLE_GRANTED": ["provider", "role"],
   "SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED": ["role", "tokenRole"],
   "SYSTEM_ADMIN_ROLE_REVOKED": ["provider", "role"],
-  "TRANSCRIPTION_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model"],
+  "TRANSCRIPTION_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model", "vocabulary"],
   "UPLOAD_ORPHAN_ORIGINALS_DELETED": ["deleted", "deletedCount", "requestedCount", "skippedCount"]
 }

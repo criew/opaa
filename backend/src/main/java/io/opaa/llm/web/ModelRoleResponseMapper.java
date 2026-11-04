@@ -29,6 +29,7 @@ final class ModelRoleResponseMapper {
             view.enabled(),
             view.apiKeySet(),
             view.language(),
+            view.vocabulary(),
             condition(view.status().state()),
             view.speechInputAvailable(),
             view.retiredVariables())

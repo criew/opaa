@@ -3,6 +3,7 @@ package io.opaa.llm.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.opaa.llm.PersonalTranscriptionVocabularyService;
 import io.opaa.llm.TranscriptionModelRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -16,6 +17,9 @@ class TranscriptionControllerFeatureTest {
   private final ApplicationContextRunner runner =
       new ApplicationContextRunner()
           .withBean(TranscriptionModelRole.class, () -> mock(TranscriptionModelRole.class))
+          .withBean(
+              PersonalTranscriptionVocabularyService.class,
+              () -> mock(PersonalTranscriptionVocabularyService.class))
           .withUserConfiguration(TranscriptionController.class);
 
   @Test

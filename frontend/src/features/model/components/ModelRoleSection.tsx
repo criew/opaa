@@ -15,6 +15,7 @@ import type {
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
+import VocabularyField from '@/shared/ui/transcription/VocabularyField'
 import { notify } from '@/shared/stores/notificationStore'
 import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
@@ -34,9 +35,10 @@ const RECHECK_DELAY_MS = 3000
 /** What the section shows of a stored role; the rerank role has no language. */
 type RoleSettings = Omit<
   TranscriptionModelSettingsResponse,
-  'language' | 'speechInputAvailable'
+  'language' | 'vocabulary' | 'speechInputAvailable'
 > & {
   language?: string
+  vocabulary?: string
   speechInputAvailable?: boolean
 }
 
@@ -86,7 +88,7 @@ function load(kind: ModelRoleKind): Promise<RoleSettings> {
 
 /**
  * The rerank or the transcription model role in one form: switch, endpoint, key and — for
- * dictation — language, with a connection test and the role's last known state. The key is
+ * dictation — language and the installation's vocabulary list, with a connection test and the role's last known state. The key is
  * write-only, as for the chat models: an untouched field keeps it, „entfernen" removes it.
  */
 export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
@@ -97,6 +99,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const [baseUrl, setBaseUrl] = useState('')
   const [model, setModel] = useState('')
   const [language, setLanguage] = useState('')
+  const [vocabulary, setVocabulary] = useState('')
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
   const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
@@ -114,6 +117,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     setBaseUrl(stored.baseUrl ?? '')
     setModel(stored.model ?? '')
     setLanguage(stored.language ?? '')
+    setVocabulary(stored.vocabulary ?? '')
     setApiKeyInput('')
     setApiKeyTouched(false)
     setApiKeyClearRequested(false)
@@ -167,7 +171,11 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       const saved =
         kind === 'rerank'
           ? await updateRerankModelSettings(common)
-          : await updateTranscriptionModelSettings({ ...common, language: language.trim() })
+          : await updateTranscriptionModelSettings({
+              ...common,
+              language: language.trim(),
+              vocabulary: vocabulary.trim(),
+            })
       apply(saved)
       setChecking(saved.enabled && saved.state !== 'ACTIVE')
       notify('Das Modell wurde gespeichert.', 'success')
@@ -322,6 +330,15 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
             helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
             size="small"
             sx={{ maxWidth: 240 }}
+          />
+        )}
+        {kind === 'transcription' && (
+          <VocabularyField
+            id={`${prefix}-vocabulary`}
+            value={vocabulary}
+            onChange={setVocabulary}
+            error={errors.vocabulary}
+            hint="Gilt für alle. Persönliche Begriffe pflegt jede Person in ihren Einstellungen; sie gehen nach dieser Liste an das Modell."
           />
         )}
         {testResult && (

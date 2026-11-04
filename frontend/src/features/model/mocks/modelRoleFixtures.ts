@@ -23,6 +23,7 @@ export function factoryTranscriptionModel(): TranscriptionModelSettingsResponse 
     model: null,
     apiKeySet: false,
     language: 'de',
+    vocabulary: '',
     state: 'DISABLED',
     speechInputAvailable: true,
     updatedAt: null,

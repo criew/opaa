@@ -61,8 +61,56 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/me/transcription-vocabulary:
+    get:
+      operationId: getMyTranscriptionVocabulary
+      tags: [transcription]
+      summary: >
+        The caller's own vocabulary list for dictation. Visible only to the caller, never
+        evaluated, deleted with the account. Not reachable while the feature speech-input is
+        switched off.
+      responses:
+        "200":
+          description: The caller's list, empty when none is stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionVocabulary"
+    put:
+      operationId: updateMyTranscriptionVocabulary
+      tags: [transcription]
+      summary: >
+        Replaces the caller's own vocabulary list; an empty list removes it. Sent with every
+        dictation of the caller as prompt, after the installation's list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptionVocabulary"
+      responses:
+        "200":
+          description: The list as stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionVocabulary"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
 components:
   schemas:
+    TranscriptionVocabulary:
+      type: object
+      required: [vocabulary]
+      properties:
+        vocabulary:
+          type: string
+          maxLength: 500
+          description: >
+            Terms, names and abbreviations, comma-separated or as an example sentence; stripped
+            when stored, empty for none.
+          example: Az. 12-345/26, Referat Z 4, Grundsteuermessbescheid
     TranscriptionAvailabilityResponse:
       type: object
       required: [available, realtimeAvailable]
