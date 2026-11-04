@@ -2982,6 +2982,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#begriffslisten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Begriffslisten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#anforderungen-an-den-betrieb-des-dienstes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4266,6 +4277,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#begriffslisten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Begriffslisten
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#anforderungen-an-den-betrieb-des-dienstes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4937,13 +4959,31 @@ Zertifizierungsstellen wie die übrigen Modellrollen; eine interne CA wird also 
 <code>GET /actuator/health/transcription-model</code>. Der Chat zeigt das Mikrofon dann nicht; alles andere
 läuft weiter.</p>
 <p><strong>Was an den Dienst geht:</strong> die Aufnahme, die Modell-Kennung, die Sprache
-(Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
+(Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst), die
+Begriffslisten als Prompt (siehe unten) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
 kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
 <strong>Was OPAA behält:</strong> nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
 Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
 Anfrageprotokoll des Backends nennt für eine Aufnahme nur Methode, Pfad, Status und Dauer, keine
 Person. Eine Aufnahme
 über <code>OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES</code> lehnt das Backend ab, ohne sie weiterzureichen.</p>
+<h3 id="begriffslisten">Begriffslisten<a class="headerlink" href="#begriffslisten" title="Permanent link">&para;</a></h3>
+<p>Whisper-kompatible Modelle erkennen Fachbegriffe deutlich besser, wenn sie Beispielvokabular
+mitbekommen. OPAA schickt dazu das Feld <code>prompt</code> mit: zuerst die Begriffsliste der Installation
+(Modelle → Spracheingabe), dann die persönliche Liste der diktierenden Person (Ihre Einstellungen →
+Allgemein). Jede Liste fasst höchstens 500 Zeichen. Ist keine gepflegt, geht kein Prompt mit.</p>
+<ul>
+<li><strong>Länge:</strong> Whisper berücksichtigt nur die letzten etwa 224 Token des Prompts. Sind beide Listen
+  voll, fällt deshalb der Anfang der Liste der Installation weg; die persönliche Liste wirkt immer.</li>
+<li><strong>Unterstützung:</strong> speaches, vLLM mit Whisper und OpenAI (<code>gpt-4o-transcribe</code>,
+  <code>gpt-4o-mini-transcribe</code>, <code>whisper-1</code>) werten den Prompt aus. OpenRouter ignoriert ihn; die
+  Spracheingabe funktioniert dort unverändert, nur ohne diese Hilfe.</li>
+<li><strong>Form:</strong> Kommagetrennte Begriffe oder ein Beispielsatz. Schreibweise und Stil der Liste färben
+  auf den erkannten Text ab.</li>
+<li><strong>Personenbezug:</strong> Die persönliche Liste sieht nur die Person selbst; sie steht in ihrer
+  Selbstauskunft und wird mit dem Konto gelöscht. Die Liste der Installation steht bei jeder
+  Änderung im Wortlaut im Revisionsprotokoll.</li>
+</ul>
 <h3 id="anforderungen-an-den-betrieb-des-dienstes">Anforderungen an den Betrieb des Dienstes<a class="headerlink" href="#anforderungen-an-den-betrieb-des-dienstes" title="Permanent link">&para;</a></h3>
 <p>OPAA speichert und protokolliert keine Aufnahme; der Transkriptionsdienst muss dasselbe zusichern.
 Für die Stelle, die ihn betreibt, heißt das:</p>
