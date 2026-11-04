@@ -11,6 +11,8 @@ exclude_docs: |
 theme:
   name: material
   language: de
+  logo: assets/opaa-icon.svg
+  favicon: assets/opaa-icon.svg
   features:
     - navigation.sections
     - navigation.indexes

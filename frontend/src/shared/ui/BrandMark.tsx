@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useBrandingStore } from '../branding/brandingStore'
@@ -44,6 +45,8 @@ export default function BrandMark({
 }: BrandMarkProps) {
   const branding = useBrandingStore((s) => s.branding)
   const vertical = orientation === 'vertical'
+  // One mask per instance: the rail and the mobile header can render the mark at the same time.
+  const maskId = `opaa-mark-cut-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const logoUrl = (preferLoginLogo ? branding.loginLogoUrl : undefined) ?? branding.logoUrl
 
   return (
@@ -74,41 +77,39 @@ export default function BrandMark({
             }}
           />
         ) : (
-          // The OPAA standard mark: accent-stroked squircle, document lines in
-          // the surrounding text color so it works on navy and on white alike.
+          // The OPAA standard mark "Fundstelle": an answer bubble of text lines with a verified badge.
+          // Bubble in the surrounding text colour, badge in the accent; lines and the badge ring are
+          // cut out by a mask, so the mark reads on navy, white and dark grounds alike.
           <Box
             component="svg"
-            viewBox="0 0 24 24"
+            viewBox="0 0 64 64"
             aria-hidden="true"
-            sx={{ width: logoHeight - 2, height: logoHeight - 2, flexShrink: 0 }}
+            sx={{ width: logoHeight, height: logoHeight, flexShrink: 0 }}
           >
-            <Box
-              component="rect"
-              x={2.5}
-              y={2.5}
-              width={19}
-              height={19}
-              rx={5.5}
-              sx={{ fill: 'none', stroke: (t) => t.palette.primary.main, strokeWidth: 1.8 }}
+            <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={64} height={64}>
+              <rect width={64} height={64} fill="#fff" />
+              <path d="M16 20h22M16 30h14" stroke="#000" strokeWidth={5} strokeLinecap="round" />
+              <circle cx={47} cy={45} r={15} fill="#000" />
+            </mask>
+            <path
+              mask={`url(#${maskId})`}
+              fill="currentColor"
+              d="M18 7h24a12 12 0 0 1 12 12v13a12 12 0 0 1-12 12H23l-10 10v-10.6A12 12 0 0 1 6 32V19A12 12 0 0 1 18 7z"
             />
             <Box
-              component="path"
-              d="M7 13h6M7 16.5h8.5"
-              sx={{
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.8,
-                strokeLinecap: 'round',
-              }}
-            />
-            <Box
-              component="rect"
-              x={14.5}
-              y={6.5}
-              width={3.5}
-              height={3.5}
-              rx={1}
+              component="circle"
+              cx={47}
+              cy={45}
+              r={13}
               sx={{ fill: (t) => t.palette.primary.main }}
+            />
+            <path
+              d="M41 45.5l4.2 4.2 7.8-8.4"
+              fill="none"
+              stroke="#fff"
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </Box>
         )}
