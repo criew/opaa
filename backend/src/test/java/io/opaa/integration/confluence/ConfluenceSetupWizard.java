@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * Walks Confluence Data Center's first-run wizard over plain HTTP: licence first, then whatever
  * form the wizard shows next - the cluster step (skipped, but every one of its fields must be
  * posted), the database step (the container's environment already configured it), user management
- * (internal), the administrator account, finish. Two documented traps: continue from the URL a POST
+ * (internal), the administrator account, finish. Two known traps: continue from the URL a POST
  * landed on, never from the wizard root; and the cluster step rejects a form missing any of its
  * fields.
  */

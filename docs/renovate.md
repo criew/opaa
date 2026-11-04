@@ -408,8 +408,8 @@ Commit des Tags aus dem Kommentar muss genau der gepinnte SHA sein.
 
 - Docker
 - Ein GitHub-Token als Umgebungsvariable `RENOVATE_TOKEN` — **nie committen**. Die minimalen
-  Rechte und warum ein Fine-grained PAT hier nur vom Konto des Repository-Eigentümers ausgestellt werden kann,
-  stehen unter [Token: minimale Rechte](#token-minimale-rechte). Ein klassisches PAT braucht die
+  Rechte und warum ein Fine-grained PAT hier nur vom Eigentümer-Konto ausgestellt werden
+  kann, stehen unter [Token: minimale Rechte](#token-minimale-rechte). Ein klassisches PAT braucht die
   Scopes `repo` **und** `workflow`. Für einen schreibenden Lauf ein Token mit genau diesen
   Rechten verwenden, **nicht** das CLI-Token (`gh auth token`): Es trägt meist weitere Scopes
   und reicht über alle Repositories seines Inhabers. Für die reinen Lese-Läufe unten
@@ -631,25 +631,26 @@ Renovate braucht dort ([Renovate-Doku, GitHub-Plattform](https://docs.renovatebo
 | *Dependabot alerts* | Read-only | Schwachstellen-Hinweise in Update-PRs; ohne das Recht nur eine Warnung im Log |
 | *Metadata* | Read-only | wird automatisch gesetzt |
 
-*Members* aus der Renovate-Liste entfällt, weil der Eigentümer ein persönliches Konto ist und keine
-Organisation.
+*Members* aus der Renovate-Liste entfällt, weil das Eigentümer-Konto ein persönliches Konto ist und
+keine Organisation.
 
-**Einschränkung: Ein Fine-grained PAT kann hier nur das Konto des Repository-Eigentümers ausstellen.** Fine-grained
-PATs gelten für Repositories ihres Inhabers oder seiner Organisationen. Wer nur Collaborator
+**Einschränkung: Ein Fine-grained PAT kann hier nur das Eigentümer-Konto ausstellen.**
+Fine-grained PATs gelten für Repositories ihres Inhabers oder seiner Organisationen. Wer nur Collaborator
 eines fremden persönlichen Repositorys ist, kann damit nicht schreiben
 ([GitHub-Doku, Limitations](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens-limitations)).
 Das heutige Token gehört laut `gitAuthor` einem Collaborator-Konto; mit diesem Konto
 ist ein Fine-grained PAT für dieses Repository also nicht möglich. Wege:
 
-1. **Fine-grained PAT des Eigentümer-Kontos** (empfohlen, kleinster Umbau). Als Eigentümer anmelden,
-   *Settings → Developer settings → Fine-grained tokens → Generate new token*; *Resource owner*
-   der Eigentümer, *Only select repositories* nur dieses Repository, die Rechte der Tabelle,
-   Ablauf höchstens ein Jahr. Hinterlegen mit `gh secret set RENOVATE_TOKEN`, *Run workflow* einmal anstoßen und im Log
-   auf 401/403 prüfen, danach das alte klassische PAT widerrufen. Im selben PR `gitAuthor` in
-   `renovate.json5` auf die Noreply-Adresse des Eigentümers umstellen
-   (`<id>+<login>@users.noreply.github.com`, `<id>` aus `gh api users/<login> --jq .id`). Der
-   CLA-Check (#924) bleibt dabei grün: der Eigentümer steht in `cla.yml` in der
-   `allowlist`. PRs und Commits zeigen dann ihn als Urheber.
+1. **Fine-grained PAT des Eigentümer-Kontos** (empfohlen, kleinster Umbau). Mit dem
+   Eigentümer-Konto anmelden, *Settings → Developer settings → Fine-grained tokens → Generate new
+   token*; als *Resource owner* das Eigentümer-Konto, *Only select repositories* nur dieses
+   Repository, die Rechte der Tabelle, Ablauf höchstens ein Jahr. Hinterlegen mit
+   `gh secret set RENOVATE_TOKEN`, *Run workflow* einmal anstoßen und im Log auf 401/403 prüfen,
+   danach das alte klassische PAT widerrufen. Im selben PR `gitAuthor` in `renovate.json5` auf die
+   Noreply-Adresse des Eigentümer-Kontos umstellen (`<id>+<login>@users.noreply.github.com`, `<id>`
+   aus `gh api users/<login> --jq .id`). Der CLA-Check (#924) bleibt dabei grün: Das
+   Eigentümer-Konto steht in `cla.yml` in der `allowlist`. PRs und Commits zeigen dann dieses
+   Konto als Urheber.
 2. **Eigene GitHub App**, nur in `criew/opaa` installiert, mit den Rechten aus der Renovate-Doku.
    Die Installations-Tokens gelten eine Stunde, kein Personenkonto steht dahinter. Der Workflow
    müsste das Token mit einer Action erzeugen (`actions/create-github-app-token`, SHA-gepinnt,
