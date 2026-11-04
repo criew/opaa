@@ -49,9 +49,9 @@ eigens angelegte Anbieterzeile.
 
 ## Anmeldewege im Betriebsmodus `oidc`
 
-Die Anmeldeseite zeigt oben die Maske für Konten dieser Installation — sofern die lokale
-Benutzerverwaltung eingeschaltet ist —, darunter die Identitätsanbieter, einer je Zeile, in der
-Reihenfolge der Anbieterverwaltung. Ist die lokale Benutzerverwaltung aus, steht am Fuß der Seite der
+Die Anmeldeseite zeigt oben die Identitätsanbieter, einer je Zeile, in der Reihenfolge der
+Anbieterverwaltung; der vorgeschlagene ist hervorgehoben. Darunter folgt die Maske für Konten dieser
+Installation, sofern die lokale Benutzerverwaltung eingeschaltet ist. Ist die lokale Benutzerverwaltung aus, steht am Fuß der Seite der
 Verweis „Anmeldung für die Systemverwaltung" auf `/login/system`. Wie Produktname und Bilder der
 Anmeldeseite festgelegt werden, steht im Kapitel [Branding](../verwalten/branding.md).
 
