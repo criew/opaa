@@ -1,12 +1,12 @@
-/* OPAA-Farbschema für das Handbuch: Werte aus docs/design/guidelines.md (Tokens hell/dunkel).
-   Schriften liegen lokal unter assets/fonts/, die Seite spricht keine Fremdserver an. */
+/* OPAA color scheme for the handbook: token values from docs/design/guidelines.md (light and dark).
+   Fonts per guidelines 3.1 (Quicksand, JetBrains Mono) are served from assets/fonts/ (OFL, licence
+   files beside them), so the site makes no request to third-party hosts. */
 @font-face{font-family:"Quicksand";font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format("woff2")}
-@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-latin.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;font-display:swap;src:url(fonts/jetbrains-mono-latin.woff2) format("woff2")}
 
 :root{
-  --md-text-font:"Source Sans 3","Segoe UI",system-ui,sans-serif;
-  --md-code-font:ui-monospace,"Cascadia Mono","Consolas","Liberation Mono",monospace;
-  --opaa-display:"Quicksand","Segoe UI",system-ui,sans-serif;
+  --md-text-font:"Quicksand","Inter",system-ui,sans-serif;
+  --md-code-font:"JetBrains Mono",ui-monospace,monospace;
 }
 
 [data-md-color-primary=custom]{
@@ -58,10 +58,9 @@
   --md-footer-bg-color--dark:#09090B;
 }
 
-.md-header__topic,.md-nav__title,.md-typeset h1,.md-typeset h2,.md-typeset h3,.md-typeset h4{font-family:var(--opaa-display);letter-spacing:.01em}
 .md-typeset h1,.md-typeset h2{font-weight:700;color:var(--md-default-fg-color)}
 .md-typeset h3,.md-typeset h4{font-weight:600}
-.md-typeset{font-size:.85rem}
-.md-header__button.md-logo img,.md-header__button.md-logo svg{height:1.3rem;background:#012142;border-radius:.3rem;padding:.15rem}
-[data-md-color-scheme=slate] .md-header__button.md-logo img{background:#02305E}
-.md-typeset blockquote{border-left-color:#0B6FBC;color:var(--md-default-fg-color--light)}
+.md-typeset{font-size:.85rem;font-weight:500}
+.md-typeset strong{font-weight:700}
+.md-header__button.md-logo img{height:1.4rem}
+.md-typeset blockquote{border-left-color:var(--md-accent-fg-color);color:var(--md-default-fg-color--light)}
