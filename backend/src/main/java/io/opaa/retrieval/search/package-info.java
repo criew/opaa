@@ -1,5 +1,5 @@
 /**
  * Stages 3-5: sub-query decomposition and the two search paths that add candidates to the run
- * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md).
+ * (docs/handbuch/referenz/wie-die-suche-arbeitet.md).
  */
 package io.opaa.retrieval.search;

@@ -28,8 +28,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [VISION.md](./VISION.md) — Nordstern und die beiden Leitprinzipien
 2. [USE-CASES.md](./USE-CASES.md) — die Abläufe, um die es geht
-3. [CONCEPTS.md](./CONCEPTS.md) — nur die Abschnitte **Belegbarkeit**, **Verteilbarkeit**, **Fundstelle und
-   Quellenbindung**, **Belegvalidierung**, **Konfidenz**
+3. [Glossar](handbuch/referenz/glossar.md) — Begriffe wie Fundstelle, Space, Bibliothek
 4. [Roadmap](ROADMAP.md), Bereich C — wie eine gute Arbeitsweise vom
    Einzelfall zum geprüften Standard wird
 5. [Roadmap](./ROADMAP.md) — Leichte Sprache, Amtssprache,
@@ -52,18 +51,17 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 **Lesepfad:**
 
-1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Betrieb**, **Modelle und zentrale Steuerung**,
-   **Retrieval und Belegbarkeit**
+1. [Glossar](handbuch/referenz/glossar.md) — Begriffe
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
-3. [Betrieb](handbuch/betreiben/README.md) mit [docker-compose.md](handbuch/betreiben/docker-compose.md) und [kubernetes.md](handbuch/betreiben/kubernetes.md) — **vertieft**;
+3. [Betrieb](handbuch/betrieb/README.md) mit [docker-compose.md](handbuch/betrieb/docker-compose.md) und [kubernetes.md](handbuch/betrieb/kubernetes.md) — **vertieft**;
    Ziele in der [Roadmap](ROADMAP.md)
-4. [Modelle](handbuch/betreiben/modell-endpunkte.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
+4. [Modelle](handbuch/betrieb/modell-endpunkte.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
    Modellverwaltung, lokal betriebene Modelle; Modell-Policy als Obergrenze in der [Roadmap](ROADMAP.md)
-5. [Authentifizierung](handbuch/betreiben/authentifizierung.md) und [Benutzerverwaltung](handbuch/verwalten/konten.md) — Anmeldung, Kontenlebenszyklus, Mandanten
+5. [Authentifizierung](handbuch/betrieb/authentifizierung.md) und [Benutzerverwaltung](handbuch/administration/konten.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
-7. [Wissensbibliotheken](handbuch/nachschlagen/wie-indexierung-arbeitet.md) und
-   [Konnektoren](handbuch/pflegen/konnektoren/README.md) — was indiziert wird und wie oft
+7. [Wissensbibliotheken](handbuch/referenz/wie-indexierung-arbeitet.md) und
+   [Konnektoren](handbuch/benutzer/konnektoren/README.md) — was indiziert wird und wie oft
 8. [Gesamtstand](./fortschritt/gesamtstand.md) — der ehrliche Stand, belegt über die Inventur
 
 **Worauf es dabei ankommt:**
@@ -87,17 +85,16 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 **Lesepfad:**
 
-1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Sicherheit, Nachweis und Mitbestimmung** sowie
-   **Berechtigungsdurchsetzung zur Abfragezeit**
-2. [Nachvollziehbarkeit](handbuch/betreiben/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
+1. [VISION.md](./VISION.md) — Bereich **G** „Sicherheit, Nachweis & Prüfbarkeit“
+2. [Nachvollziehbarkeit](handbuch/betrieb/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
    revisionssicheres Protokoll, Vollständigkeit nach DSGVO, Mitbestimmung
-3. [Berechtigungen](handbuch/nachschlagen/rechte-matrix.md) — Rechtemodell; Freigabekette und
+3. [Berechtigungen](handbuch/referenz/rechte-matrix.md) — Rechtemodell; Freigabekette und
    Mitbestimmung in der [Roadmap](ROADMAP.md)
-4. [Benutzerverwaltung](handbuch/verwalten/konten.md) — Kontenlebenszyklus, Mandantengrenze
+4. [Benutzerverwaltung](handbuch/administration/konten.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
-6. [Netz und Sicherheit](handbuch/betreiben/netz-und-sicherheit.md) und
-   [Sicherung](handbuch/betreiben/sicherung-und-wiederherstellung.md) — Verschlüsselung, Netztrennung, Sicherung
+6. [Netz und Sicherheit](handbuch/betrieb/netz-und-sicherheit.md) und
+   [Sicherung](handbuch/betrieb/sicherung-und-wiederherstellung.md) — Verschlüsselung, Netztrennung, Sicherung
 7. [Gesamtstand](./fortschritt/gesamtstand.md) — was zu Bereich **G** gebaut ist und was noch fehlt,
    offen benannt
 
@@ -121,7 +118,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 **Lesepfad:**
 
-1. [CONCEPTS.md](./CONCEPTS.md) — vollständig, es ist die gemeinsame Sprache im Repository
+1. [Glossar](handbuch/referenz/glossar.md) — die gemeinsame Sprache im Repository
 2. [VISION.md](./VISION.md) — besonders die elf Themenbereiche und die vier Phasen
 3. [Gesamtstand](./fortschritt/gesamtstand.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K**
    sind noch nicht begonnen; die priorisierte Restliste für Phase 1 steht im aktuellen
@@ -146,7 +143,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 **Großes Bild zuerst** — für Leitung und Entscheidungsvorbereitung: VISION.md, dann USE-CASES.md, dann
 gezielt in eine Spezifikation.
 
-**Lernen während des Tuns** — für Beitragende: CONCEPTS.md, dann die eigene Spezifikation vollständig, dann
+**Lernen während des Tuns** — für Beitragende: Glossar, dann die eigene Spezifikation vollständig, dann
 die angrenzenden, sobald eine Abhängigkeit auftaucht.
 
 **Prüfen statt lesen** — für Datenschutz, Informationssicherheit und Prüfung: mit dem
@@ -167,7 +164,7 @@ steht, ist ein Vorhaben.
 → [INDEX.md](./INDEX.md), Abschnitt „Häufige Fragen".
 
 **Ein Begriff sagt mir nichts.**
-→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Schnellreferenz".
+→ [Glossar](handbuch/referenz/glossar.md).
 
 **Gibt es Code-Beispiele in diesen Dokumenten?**
 → Nein. Es sind Produkt- und Entwurfsdokumente; der Code liegt in `backend/` und `frontend/`.
@@ -181,7 +178,6 @@ Einstieg
 ├── README.md              — was OPAA ist und für wen
 ├── docs/VISION.md         — Zielbild: Prinzipien, elf Bereiche, vier Phasen
 ├── docs/USE-CASES.md      — Abläufe aus dem Verwaltungsalltag
-├── docs/CONCEPTS.md       — Begriffe und Glossar
 ├── docs/INDEX.md          — vollständiger Index
 └── docs/GETTING-STARTED.md — diese Datei
 

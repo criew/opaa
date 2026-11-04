@@ -6,7 +6,6 @@ import ErrorBoundary from './ErrorBoundary'
 import ProtectedRoute from './ProtectedRoute'
 import InstallationRedirect from './InstallationRedirect'
 import { createAppTheme } from '@/shared/theme/theme'
-import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './shell/GlobalAreaLayout'
 import AppShell from './shell/AppShell'
 import PageLoading from './shell/PageLoading'
@@ -154,11 +153,7 @@ export default function App() {
   const loadBranding = useBrandingStore((s) => s.loadBranding)
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)')
 
-  // The operator's default applies only where the user has made no choice of their own - see
-  // resolveThemeMode. `system` then still follows the browser, as it always has.
-  const preferredMode = resolveThemeMode(themeMode, branding.defaultColorScheme)
-  const effectiveMode =
-    preferredMode === 'system' ? (prefersDark ? 'dark' : 'light') : preferredMode
+  const effectiveMode = themeMode === 'system' ? (prefersDark ? 'dark' : 'light') : themeMode
   // The accent is the only branding value the theme itself consumes; product name, claim and logo
   // are read from the store by the components that render them (guidelines 7).
   const theme = useMemo(

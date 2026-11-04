@@ -319,8 +319,8 @@ jobs:
       - name: Verweise von Vorlagen und Handbuch im Update-Paket prüfen
         run: python .github/scripts/update_package.py links
 
-      # Page rules of docs/handbuch/AGENTS.md: no reference to decision records, and every task page
-      # under arbeiten/ and pflegen/ has its "Wer darf das" box and fits one screen.
+      # Page rules of docs/handbuch/AGENTS.md: no reference to decision records, a "Wer" box has
+      # one line and is required under administration/, and task pages under benutzer/ fit one screen.
       - name: Seitenregeln des Handbuchs prüfen
         run: .github/scripts/check_handbuch.sh
 

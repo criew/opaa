@@ -26,16 +26,16 @@ Behörde oder eines Dienstleisters.
 
 | Merkmal | Angabe | Nachweis |
 |---|---|---|
-| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist), [Belege](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen) |
-| Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) |
-| Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/nachschlagen/rechte-matrix.md), {{faktenblatt:rollensicht#matrix}} |
-| Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/arbeiten/prompt-bibliothek-anlegen.md), [Externe KI-Werkzeuge](../../handbuch/verwalten/externe-ki-werkzeuge.md) |
-| Modelle | über eine OpenAI-kompatible Schnittstelle, im eigenen Haus betreibbar | [Modelle](../../handbuch/betreiben/modell-endpunkte.md), {{faktenblatt:voreinstellungen#ki-funktionen}} |
-| Betrieb | Container-Images für Docker Compose oder Kubernetes mit Helm-Chart; eine oder mehrere Backend-Instanzen | [Bausteine](../../handbuch/betreiben/README.md#bausteine), [Mehrere Backend-Instanzen](../../handbuch/betreiben/mehrere-instanzen.md) |
-| Anmeldung | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betreiben/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
+| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#was-opaa-ist), [Belege](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) |
+| Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate) |
+| Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/referenz/rechte-matrix.md), {{faktenblatt:rollensicht#matrix}} |
+| Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/benutzer/prompt-bibliothek-anlegen.md), [Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md) |
+| Modelle | über eine OpenAI-kompatible Schnittstelle, im eigenen Haus betreibbar | [Modelle](../../handbuch/betrieb/modell-endpunkte.md), {{faktenblatt:voreinstellungen#ki-funktionen}} |
+| Betrieb | Container-Images für Docker Compose oder Kubernetes mit Helm-Chart; eine oder mehrere Backend-Instanzen | [Bausteine](../../handbuch/betrieb/README.md#bausteine), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) |
+| Anmeldung | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
 | Daten | gespeicherte Daten, Fristen, Datenflüsse nach außen je Version beschrieben | {{faktenblatt:datenkatalog}}, {{faktenblatt:fristen}}, {{faktenblatt:datenfluesse}} |
-| Nachweise je Version | Faktenblätter, Update-Paket, SBOM, Provenance | [Nachvollziehbarkeit](../../handbuch/betreiben/nachvollziehbarkeit.md), [Was ein Release liefert](../../handbuch/betreiben/releases-und-nachweise.md#was-ein-release-liefert) |
-| Releases und Support | geplant zwei Funktionsreleases im Jahr mit Supportzeiträumen je Linie, ab dem ersten finalen Release; Patches für ältere Linien über eigene Wartungsbranches | [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume) |
+| Nachweise je Version | Faktenblätter, Update-Paket, SBOM, Provenance | [Nachvollziehbarkeit](../../handbuch/betrieb/nachvollziehbarkeit.md), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
+| Releases und Support | geplant zwei Funktionsreleases im Jahr mit Supportzeiträumen je Linie, ab dem ersten finalen Release; Patches für ältere Linien über eigene Wartungsbranches | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
 | Lizenz | GNU Affero General Public License v3.0, kein Lizenzentgelt | [Lizenz](lizenz.md) |
 | Barrierefreiheit | Prüfstand und bekannte Einschränkungen | [Erklärung zur Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) |
 

@@ -7,7 +7,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 | Achse | Ort | Frage, die sie beantwortet |
 |---|---|---|
-| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md), [CONCEPTS.md](./CONCEPTS.md) | Wohin soll es gehen, in welchen Begriffen? |
+| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md) | Wohin soll es gehen? |
 | **Spezifikation** | im Epic (GitHub), offene Ziele in der [Roadmap](./ROADMAP.md) | Wie soll sich ein Bereich im Zielbild verhalten? |
 | **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
 | **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
@@ -19,7 +19,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien, die elf Themenbereiche, die vier
    Phasen
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
-4. **[CONCEPTS.md](./CONCEPTS.md)** — Begriffe und Glossar
+4. **[Glossar](handbuch/referenz/glossar.md)** — Begriffe
 5. **[Gesamtstand](./fortschritt/gesamtstand.md)** — was davon heute tatsächlich gebaut ist
 6. **[GETTING-STARTED.md](./GETTING-STARTED.md)** — welche Lesepfade es je Publikum gibt
 
@@ -33,7 +33,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 - **[VISION.md](./VISION.md)** — Produktvision: Wissen, Agenten, KI für Teams und Organisation
 - **[USE-CASES.md](./USE-CASES.md)** — Abläufe aus dem Verwaltungsalltag
-- **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
+- **[ROADMAP.md](./ROADMAP.md)** — was noch kommt, nach Phasen
 - **[Gesamtstand](./fortschritt/gesamtstand.md)** — inventurbelegter Umsetzungsstand; die
   Zeitraumsberichte unter [`fortschritt/`](./fortschritt/) liefern den Nachweis je Stichtag
 - **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
@@ -48,7 +48,7 @@ Roadmap für die Ziele.
 
 ### A · Wissensschicht & Retrieval
 
-**[`handbuch/nachschlagen/wie-die-suche-arbeitet.md`](handbuch/nachschlagen/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)** ·
+**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)** ·
 **[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
@@ -57,7 +57,7 @@ Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 
-**[`handbuch/nachschlagen/wie-indexierung-arbeitet.md`](handbuch/nachschlagen/wie-indexierung-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/referenz/wie-indexierung-arbeitet.md`](handbuch/referenz/wie-indexierung-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
 
 Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
 Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
@@ -65,7 +65,7 @@ Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wisse
 
 ### C · Spaces, Assets & Verteilung
 
-**[`handbuch/pflegen/space-mitglieder.md`](handbuch/pflegen/space-mitglieder.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/benutzer/space-mitglieder.md`](handbuch/benutzer/space-mitglieder.md)** · **[Roadmap](./ROADMAP.md)**
 
 Spaces als Arbeitsräume, Assets als eigenständige Objekte · Zuordnung als harte Grenze gegen Enthaltensein ·
 Wissensbibliotheken als Rechteanker · Verteilungsstufen und Sichtbarkeit · ein Katalog nur mit Lesbarem ·
@@ -83,7 +83,7 @@ menschlicher Freigabe.
 
 ### E · Modelle & zentrale Steuerung
 
-**[`handbuch/betreiben/modell-endpunkte.md`](handbuch/betreiben/modell-endpunkte.md)** · **[ADR-0067](./decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md)** ·
+**[`handbuch/betrieb/modell-endpunkte.md`](handbuch/betrieb/modell-endpunkte.md)** · **[ADR-0067](./decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Jede OpenAI-kompatible Schnittstelle · lokal betriebene Modelle als Voreinstellung · Modellverwaltung ·
@@ -92,7 +92,7 @@ personenbezogener Daten.
 
 ### F · Identität, Rechte & Mandanten
 
-**[`handbuch/verwalten/konten.md`](handbuch/verwalten/konten.md)** · **[`handbuch/nachschlagen/rechte-matrix.md`](handbuch/nachschlagen/rechte-matrix.md)** ·
+**[`handbuch/administration/konten.md`](handbuch/administration/konten.md)** · **[`handbuch/referenz/rechte-matrix.md`](handbuch/referenz/rechte-matrix.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Anmeldung über den Verzeichnisdienst · Kontenlebenszyklus über SCIM · Gruppen als Rechtesubjekt ·
@@ -100,7 +100,7 @@ Berechtigungsdurchsetzung zur Abfragezeit · Organisation als harte Mandantengre
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
-**[`handbuch/betreiben/nachvollziehbarkeit.md`](handbuch/betreiben/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
+**[`handbuch/betrieb/nachvollziehbarkeit.md`](handbuch/betrieb/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Revisionssicheres Protokoll · Vollständigkeit nach DSGVO einschließlich Löschrecht und Datenexport · sichere
@@ -115,7 +115,7 @@ Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Pe
 
 ### I · Kanäle & Oberflächen
 
-**[`handbuch/nachschlagen/wie-die-suche-arbeitet.md`](handbuch/nachschlagen/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
 
 Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
@@ -123,8 +123,8 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 ### J · Betrieb & Deployment
 
-**[`handbuch/betreiben/README.md`](handbuch/betreiben/README.md)** ·
-**[`handbuch/betreiben/kubernetes.md`](handbuch/betreiben/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -133,7 +133,7 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 **[Roadmap](./ROADMAP.md)** ·
 **[`behoerden/README.md`](./behoerden/README.md)** ·
-**[`handbuch/betreiben/nachvollziehbarkeit.md`](handbuch/betreiben/nachvollziehbarkeit.md)**
+**[`handbuch/betrieb/nachvollziehbarkeit.md`](handbuch/betrieb/nachvollziehbarkeit.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
 Anbindung an die elektronische Akte und an Dokumentenmanagement · Unterlagen entlang der Behördenreise,
@@ -146,26 +146,26 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ### Handbuch — das gebaute Produkt benutzen
 
-- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
-  Lesewege nach Anlass. Die Ordner folgen dem Kapitelbaum; die Kapitel im Einzelnen:
-  - Arbeiten ([`arbeiten/`](handbuch/arbeiten/README.md)): eine Seite je Aufgabe für jedes Konto
-  - Pflegen ([`pflegen/`](handbuch/pflegen/README.md)): eine Seite je Aufgabe, dazu
-    [`konnektoren/`](handbuch/pflegen/konnektoren/README.md)
-  - Verwalten und Prüfen ([`verwalten/`](handbuch/verwalten/README.md)): eine Seite je Aufgabe der
-    Systemverwaltung und der Revision
-  - Nachschlagen ([`nachschlagen/`](handbuch/nachschlagen/README.md)): Rechte-Matrix, Glossar,
+- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, was OPAA ist, Aufbau
+  und Lesewege. Die Ordner folgen den Kapiteln:
+  - Benutzer ([`benutzer/`](handbuch/benutzer/README.md)): eine Seite je Aufgabe für jedes Konto,
+    von der ersten Frage bis zu Spaces, Bibliotheken und Gruppen, dazu
+    [`konnektoren/`](handbuch/benutzer/konnektoren/README.md)
+  - Administration ([`administration/`](handbuch/administration/README.md)): eine Seite je Aufgabe
+    der Systemverwaltung und der Revision
+  - Referenz ([`referenz/`](handbuch/referenz/README.md)): Rechte-Matrix, Glossar,
     Konfiguration, Formate, Metadaten, wie Indexierung und Suche arbeiten
-  - Betreiben ([`betreiben/`](handbuch/betreiben/README.md), Bausteine und Wegweiser) mit
-    [`images-und-laufzeit.md`](handbuch/betreiben/images-und-laufzeit.md),
-    [`netz-und-sicherheit.md`](handbuch/betreiben/netz-und-sicherheit.md) (Härtung),
-    [`sicherung-und-wiederherstellung.md`](handbuch/betreiben/sicherung-und-wiederherstellung.md),
-    [`aktualisierung.md`](handbuch/betreiben/aktualisierung.md),
-    [`ueberwachung-und-fehlerbehebung.md`](handbuch/betreiben/ueberwachung-und-fehlerbehebung.md),
-    [`docker-compose.md`](handbuch/betreiben/docker-compose.md),
-    [`kubernetes.md`](handbuch/betreiben/kubernetes.md) (Helm-Chart),
-    [`konfiguration.md`](handbuch/nachschlagen/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
-    [`modelle.md`](handbuch/betreiben/modell-endpunkte.md),
-    [`authentifizierung.md`](handbuch/betreiben/authentifizierung.md)
+  - Betrieb ([`betrieb/`](handbuch/betrieb/README.md), Bausteine und Wegweiser) mit
+    [`images-und-laufzeit.md`](handbuch/betrieb/images-und-laufzeit.md),
+    [`netz-und-sicherheit.md`](handbuch/betrieb/netz-und-sicherheit.md) (Härtung),
+    [`sicherung-und-wiederherstellung.md`](handbuch/betrieb/sicherung-und-wiederherstellung.md),
+    [`aktualisierung.md`](handbuch/betrieb/aktualisierung.md),
+    [`ueberwachung-und-fehlerbehebung.md`](handbuch/betrieb/ueberwachung-und-fehlerbehebung.md),
+    [`docker-compose.md`](handbuch/betrieb/docker-compose.md),
+    [`kubernetes.md`](handbuch/betrieb/kubernetes.md) (Helm-Chart),
+    [`konfiguration.md`](handbuch/referenz/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
+    [`modelle.md`](handbuch/betrieb/modell-endpunkte.md),
+    [`authentifizierung.md`](handbuch/betrieb/authentifizierung.md)
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
@@ -272,21 +272,21 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [GETTING-STARTED.md](./GETTING-STARTED.md), Lesepfad nach Publikum
 
 **Was heißt Belegbarkeit, Verteilbarkeit, Belegvalidierung?**
-→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Die beiden Leitbegriffe"
+→ [VISION.md](./VISION.md), Abschnitt „Zwei Leitprinzipien"
 
 **Was ist heute wirklich gebaut?**
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
-→ [Berechtigungen](handbuch/nachschlagen/rechte-matrix.md)
+→ [Berechtigungen](handbuch/referenz/rechte-matrix.md)
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
-[Images und Laufzeit](handbuch/betreiben/images-und-laufzeit.md)
+[Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md)
 
 **Welche Modelle werden unterstützt?**
 → Jede OpenAI-kompatible Schnittstelle, einschließlich lokal betriebener Modelle. Siehe
-[Modelle](handbuch/betreiben/modell-endpunkte.md)
+[Modelle](handbuch/betrieb/modell-endpunkte.md)
 
 **Können mehrere Häuser dieselbe Installation nutzen?**
 → Ja, die Organisation ist die harte Mandantengrenze. Siehe
@@ -294,11 +294,11 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Was bedeutet „C5-fähig"?**
 → Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
-[CONCEPTS.md](./CONCEPTS.md)
+[VISION.md](./VISION.md#häufige-fragen), Häufige Fragen
 
 **Was heißt das für die Personalvertretung?**
-→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und
+→ [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) und
 [Behördenunterlagen](./behoerden/README.md)
 
 **Kann ich eigene Dokumente hochladen?**
-→ Ja. Siehe [Wissensbibliotheken](handbuch/nachschlagen/wie-indexierung-arbeitet.md)
+→ Ja. Siehe [Wissensbibliotheken](handbuch/referenz/wie-indexierung-arbeitet.md)

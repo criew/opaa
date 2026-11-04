@@ -954,7 +954,7 @@ Verbindliche Begriffe:
 | **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5 |
 | **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
 | **Verbindung**            | die Anbindung einer Bibliothek an ihre Quelle: Adresse und Anmeldung, selbst eingetragen oder über einen Zugang; bei jeder Quellart derselbe Begriff |
-| **Zugang**                | eine von der Systemverwaltung angelegte und freigegebene, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt"), die man beim Anlegen einer Bibliothek nur noch auswählt ([Glossar](../handbuch/nachschlagen/glossar.md)) |
+| **Zugang**                | eine von der Systemverwaltung angelegte und freigegebene, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt"), die man beim Anlegen einer Bibliothek nur noch auswählt ([Glossar](../handbuch/referenz/glossar.md)) |
 | **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
 | **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
 | **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |

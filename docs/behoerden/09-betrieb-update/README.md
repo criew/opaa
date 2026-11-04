@@ -2,8 +2,8 @@
 
 Vorlagen für den laufenden Betrieb: was bei einem Ausfall gilt, ob sich Sicherungen wirklich
 zurückspielen lassen, und wie ein Update bewertet wird. Die technischen Anleitungen dazu stehen im
-Handbuch ([Sicherung und Wiederherstellung](../../handbuch/betreiben/sicherung-und-wiederherstellung.md),
-[Aktualisierung](../../handbuch/betreiben/aktualisierung.md)).
+Handbuch ([Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md),
+[Aktualisierung](../../handbuch/betrieb/aktualisierung.md)).
 
 | Dokument | Worum es geht |
 |---|---|

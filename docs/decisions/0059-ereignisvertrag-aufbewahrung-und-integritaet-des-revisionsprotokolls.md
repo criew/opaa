@@ -7,7 +7,7 @@ Akzeptiert · zuletzt geändert 2026-11-02
 ## Kontext
 
 Das Revisionsprotokoll (`audit_log`) hält fest, was Zugriff verändert oder Verwaltungshandeln ist
-([Nachvollziehbarkeit](../handbuch/betreiben/nachvollziehbarkeit.md)).
+([Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md)).
 Die Ablage gehört der Rolle `opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird
 nur eine abgelaufene Monatspartition ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)); die
 Ausleitung an ein Sicherheitsmonitoring sendet die Einträge ohne Pseudonyme

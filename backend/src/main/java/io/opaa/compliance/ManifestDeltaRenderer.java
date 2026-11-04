@@ -37,7 +37,7 @@ public final class ManifestDeltaRenderer {
   public static final String DEFAULT_REPOSITORY = "criew/opaa";
 
   private static final String STAGE_RULES_PATH =
-      "/docs/handbuch/betreiben/nachvollziehbarkeit.md#die-stufenregeln";
+      "/docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln";
   private static final Pattern COMMIT_ID = Pattern.compile("[0-9a-f]{7,64}");
   private static final int SHORT_COMMIT = 7;
   private static final String NONE = "—";

@@ -1,6 +1,6 @@
 """Data and rendering for the "Ratsinformationen Stadt Rheinfurt" library (S3 connector, see
 demo/README.md and
-docs/handbuch/pflegen/konnektoren/s3.md).
+docs/handbuch/benutzer/konnektoren/s3.md).
 
 Council minutes (Niederschriften, .md) and decision papers (Beschlussvorlagen, .txt) of the
 Stadtrat, the Hauptausschuss and the Bauausschuss, laid out under one key prefix per year and one

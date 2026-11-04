@@ -113,16 +113,16 @@ an Barrierefreiheit und Missbrauchsschutz.
 
 | | Bereich | Worum es geht | Dokumentation |
 |---|---|---|---|
-| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [Handbuch](handbuch/nachschlagen/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
-| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [Handbuch](handbuch/nachschlagen/wie-indexierung-arbeitet.md), [Roadmap](./ROADMAP.md) |
-| **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [Handbuch](handbuch/pflegen/space-mitglieder.md), [Roadmap](./ROADMAP.md) |
+| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [Handbuch](handbuch/referenz/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
+| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [Handbuch](handbuch/referenz/wie-indexierung-arbeitet.md), [Roadmap](./ROADMAP.md) |
+| **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [Handbuch](handbuch/benutzer/space-mitglieder.md), [Roadmap](./ROADMAP.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [Roadmap](./ROADMAP.md) |
-| **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [Handbuch](handbuch/betreiben/modell-endpunkte.md), [Roadmap](./ROADMAP.md) |
-| **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [Handbuch](handbuch/verwalten/konten.md), [Roadmap](./ROADMAP.md) |
-| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](handbuch/betreiben/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
+| **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [Handbuch](handbuch/betrieb/modell-endpunkte.md), [Roadmap](./ROADMAP.md) |
+| **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [Handbuch](handbuch/administration/konten.md), [Roadmap](./ROADMAP.md) |
+| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](handbuch/betrieb/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [Roadmap](./ROADMAP.md) |
-| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](handbuch/nachschlagen/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
-| **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](handbuch/betreiben/README.md), [Roadmap](./ROADMAP.md) |
+| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](handbuch/referenz/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
+| **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](handbuch/betrieb/README.md), [Roadmap](./ROADMAP.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [Roadmap](./ROADMAP.md) |
 
 ---
@@ -355,6 +355,6 @@ Vorgabe der Systemverwaltung, keine Entscheidung der einzelnen Nutzerin.
 ## Weiterlesen
 
 - [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
-- [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar
+- [Glossar](handbuch/referenz/glossar.md) — Begriffe
 - [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute gebaut ist
 - [decisions/](./decisions/) — die Architekturentscheidungen dahinter

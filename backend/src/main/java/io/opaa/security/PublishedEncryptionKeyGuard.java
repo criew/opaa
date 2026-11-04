@@ -47,7 +47,7 @@ public class PublishedEncryptionKeyGuard {
               + "). The \"oidc\" profile refuses to start with it. Generate a key of your own with:"
               + " openssl rand -base64 32 - and move the published key to the matching"
               + " *_PREVIOUS_KEYS variable, which keeps data encrypted with it readable until it"
-              + " is re-encrypted. See docs/handbuch/betreiben/netz-und-sicherheit.md.");
+              + " is re-encrypted. See docs/handbuch/betrieb/netz-und-sicherheit.md.");
     }
   }
 }

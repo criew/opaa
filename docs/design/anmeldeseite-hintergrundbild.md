@@ -1,6 +1,6 @@
 # Hintergrundbild der Anmeldeseite
 
-Das mitgelieferte Motiv der Markenfläche auf der Anmeldeseite (`frontend/src/features/auth/assets/login-backdrop.webp`), seine Herkunft und der Weg von der Erzeugung bis zum Kontrastnachweis. Eine Installation kann es über das Branding durch ein eigenes Bild ersetzen ([Handbuch: Branding](../handbuch/verwalten/branding.md)).
+Das mitgelieferte Motiv der Markenfläche auf der Anmeldeseite (`frontend/src/features/auth/assets/login-backdrop.webp`), seine Herkunft und der Weg von der Erzeugung bis zum Kontrastnachweis. Eine Installation kann es über das Branding durch ein eigenes Bild ersetzen ([Handbuch: Branding](../handbuch/administration/branding.md)).
 
 ## Motiv
 

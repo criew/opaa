@@ -282,7 +282,7 @@ export default function CreateExternalAccessTokenDialog({
             error={Boolean(fieldErrors.name)}
             helperText={
               fieldErrors.name ??
-              'Zum Beispiel „Claude Code auf dem Dienstrechner“ - nicht „Token 3“.'
+              'Zum Beispiel „KI-Werkzeug auf dem Dienstrechner“ - nicht „Token 3“.'
             }
             slotProps={{ htmlInput: { maxLength: 120 } }}
             fullWidth

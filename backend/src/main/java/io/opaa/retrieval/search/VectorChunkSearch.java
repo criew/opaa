@@ -22,7 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The vector half of the hybrid search (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md): the
+ * The vector half of the hybrid search (docs/handbuch/referenz/wie-die-suche-arbeitet.md): the
  * nearest chunks to the query within the request's filter, best first, in the {@link Document}
  * shape of {@code PgVectorStore#similaritySearch} (same filter translation, distance, score and
  * threshold).

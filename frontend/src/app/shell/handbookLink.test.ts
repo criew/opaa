@@ -15,25 +15,25 @@ describe('handbookLink', () => {
 
   it('opens the page of the view, the start page otherwise', () => {
     expect(handbookUrl('/spaces/abc/settings/members', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/pflegen/space-mitglieder.html',
+      'https://opaa.io/handbuch/benutzer/space-mitglieder.html',
     )
     expect(handbookUrl('/spaces/abc/chats/c1', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/arbeiten/fragen-stellen.html',
+      'https://opaa.io/handbuch/benutzer/fragen-stellen.html',
     )
     expect(handbookUrl('/admin/connections/external-tools', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/verwalten/externe-ki-werkzeuge.html',
+      'https://opaa.io/handbuch/administration/externe-ki-werkzeuge.html',
     )
     expect(handbookUrl('/admin/connections/access', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/verwalten/zugaenge.html',
+      'https://opaa.io/handbuch/administration/zugaenge.html',
     )
     expect(handbookUrl('/settings/uploads', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/arbeiten/anhaengen-und-diktieren.html',
+      'https://opaa.io/handbuch/benutzer/anhaengen-und-diktieren.html',
     )
     expect(handbookUrl('/settings/groups', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/pflegen/gruppe-pflegen.html',
+      'https://opaa.io/handbuch/benutzer/gruppe-pflegen.html',
     )
     expect(handbookUrl('/spaces', '0.0.0-dev')).toBe(
-      'https://opaa.io/handbuch/arbeiten/erste-schritte.html',
+      'https://opaa.io/handbuch/benutzer/erste-schritte.html',
     )
     expect(handbookUrl('/unbekannt', '0.0.0-dev')).toBe('https://opaa.io/handbuch/index.html')
   })

@@ -77,7 +77,7 @@ public class VectorIndexDistanceGuard implements ApplicationRunner {
             .orElse(index.operatorClass());
     return ("%s (spring.ai.vectorstore.pgvector.distance-type) is %s, but the vector index %s of %s"
             + " was built for %s (%s): the search would not use it. Set %s back to %s, or rebuild"
-            + " the index with %s; see docs/handbuch/betreiben/datenbank.md.")
+            + " the index with %s; see docs/handbuch/betrieb/datenbank.md.")
         .formatted(
             VARIABLE,
             configured,

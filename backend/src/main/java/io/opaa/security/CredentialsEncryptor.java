@@ -28,7 +28,7 @@ public class CredentialsEncryptor {
 
   static final String VARIABLE = "OPAA_CREDENTIALS_ENCRYPTION_KEY";
   static final String PREVIOUS_VARIABLE = "OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS";
-  private static final String DOC_PAGE = "docs/handbuch/betreiben/netz-und-sicherheit.md";
+  private static final String DOC_PAGE = "docs/handbuch/betrieb/netz-und-sicherheit.md";
   private static final Logger log = LoggerFactory.getLogger(CredentialsEncryptor.class);
 
   private final CredentialsEncryptionProperties properties;

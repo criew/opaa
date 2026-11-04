@@ -23,8 +23,8 @@ bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 ## Was OPAA liefert
 
 Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}}. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
-[Modelle](../../handbuch/betreiben/modell-endpunkte.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
-[Konnektoren im Überblick](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick).
+[Modelle](../../handbuch/betrieb/modell-endpunkte.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
+[Konnektoren im Überblick](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick).
 
 ## Die Matrix
 
@@ -39,7 +39,7 @@ Spalte; die Partner aller drei Antworten zusammen sind die AVV-Partner.
 | Wo läuft das Sprachmodell? | **M1** im Haus oder beim Dienstleister aus B2 | niemandem weiter; bei B2 im Vertrag des Dienstleisters | — |
 | | **M2** bei einem externen Anbieter | dem Modellanbieter, direkt oder über den Dienstleister | Verarbeitungsort und Übermittlung in Länder außerhalb der EU, keine Nutzung der Eingaben etwa für Training, Speicherdauer, Unterauftragnehmer; jede Modellrolle einzeln |
 | Wo liegen die Quellen? | **K1** im eigenen Netz oder beim Dienstleister | niemandem weiter | — |
-| | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch OPAA ab ([Zugänge](../../handbuch/verwalten/zugaenge.md))? |
+| | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch OPAA ab ([Zugänge](../../handbuch/administration/zugaenge.md))? |
 
 Mischformen, etwa Betrieb durch einen Dienstleister und Wartung durch einen weiteren, ergeben sich als
 Summe der Antworten.
@@ -49,10 +49,10 @@ Summe der Antworten.
 1. **Einordnen:** je Frage eine Antwort wählen und die Partner ablesen.
 2. **Weitere Ziele prüfen:** jedes Ziel aus dem Faktenblatt Datenflüsse, das die eigene Installation
    nutzt, etwa ein Identitätsanbieter in der Cloud
-   ([Authentifizierung](../../handbuch/betreiben/authentifizierung.md)), ein externer E-Mail-Dienst
-   ([E-Mail-Versand](../../handbuch/verwalten/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
-   Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/verwalten/externe-ki-werkzeuge.md)), oder ein
-   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betreiben/netz-und-sicherheit.md#ausgangsproxy)).
+   ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)), ein externer E-Mail-Dienst
+   ([E-Mail-Versand](../../handbuch/administration/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
+   Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md)), oder ein
+   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)).
 3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.
 4. **Bei jedem Update nachprüfen:** Ändert ein Update die Datenflüsse, weist das Update-Paket das aus.
 

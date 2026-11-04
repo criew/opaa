@@ -11,7 +11,7 @@
 #   SECRET_ACCESS_KEY, ENCRYPTION_KEY or PRIVATE_KEY with a literal value or a ${VAR:-default}
 #   default, unless SECRET_EXCEPTIONS names file, service and key with a reason.
 # An exception that matches nothing any more fails as well. The rules are listed for operators in
-# docs/handbuch/betreiben/docker-compose.md, "Härtung des Compose-Stapels".
+# docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels".
 # Line-based: ports: and environment: in flow style are refused rather than read.
 set -euo pipefail
 

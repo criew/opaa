@@ -1,6 +1,7 @@
 import type {
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupHoldApproval,
   LocalUserChatCleanupHoldRequest,
   LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
@@ -118,13 +119,19 @@ export async function requestLocalUserChatCleanupHold(
   }
 }
 
-/** Approves the pending request; the backend refuses the requesting administrator. */
+/**
+ * Approves the pending request the caller saw, named by its `requestedAt`; the backend refuses the
+ * requesting administrator, and a request replaced or expired in between with 409.
+ */
 export async function approveLocalUserChatCleanupHold(
   id: string,
+  requestedAt: string,
 ): Promise<LocalUserChatCleanupResponse> {
+  const approval: LocalUserChatCleanupHoldApproval = { requestedAt }
   try {
     const { data } = await apiClient.post<LocalUserChatCleanupResponse>(
       `/v1/admin/local-users/${id}/chat-cleanup/hold-request/approve`,
+      approval,
     )
     return data
   } catch (err) {

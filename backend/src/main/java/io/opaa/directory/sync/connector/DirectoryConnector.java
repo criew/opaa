@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * io.opaa.security.CredentialsEncryptor}, AES-256-GCM), bound to this row ({@link #CLIENT_SECRET},
  * ADR-0064). A rotation of {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} re-encrypts it in place; the
  * <em>service account's</em> password itself is replaced through {@link DirectoryConnectorService}.
- * See {@code docs/handbuch/betreiben/authentifizierung.md}, "Keycloak als Verzeichnis".
+ * See {@code docs/handbuch/betrieb/authentifizierung.md}, "Keycloak als Verzeichnis".
  */
 @Entity
 @Table(name = "directory_connectors")

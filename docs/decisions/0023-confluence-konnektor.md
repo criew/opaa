@@ -129,7 +129,7 @@ nichts. Ein Webhook (`ConfluenceWebhookSignature`: Signatur bzw. geteiltes Gehei
 verglichen, sonst einheitlich `401`) ist nur Anlass für einen Einzelabruf (`WEBHOOK`/`INCREMENTAL`),
 der den Anker nicht bewegt. Identität ist die titelfreie Seiten-URL (ADR-0022, Entscheidung 2); der
 `webui`-Link taugt nicht als Identität, weil er den Titel enthält. Rhythmus, Anker und Budget:
-[Handbuch](../handbuch/pflegen/konnektoren/confluence.md), „Betriebsarten und Änderungserkennung“ bis
+[Handbuch](../handbuch/benutzer/konnektoren/confluence.md), „Betriebsarten und Änderungserkennung“ bis
 „Löscherkennung“.
 
 ### 5. Folgen des Mehrfach-Bibliotheken-Modells
@@ -149,7 +149,7 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
   brauchen keinen neuen Weg.
 - **Schwieriger:** Ein inkrementeller Lauf verschleppt Löschungen bis zum nächsten Vollabgleich,
   im Standard bis zu eine Woche; das steht im Handbuch
-  ([Konnektor Confluence](../handbuch/pflegen/konnektoren/confluence.md)). Die Anlage ist netzabhängig.
+  ([Konnektor Confluence](../handbuch/benutzer/konnektoren/confluence.md)). Die Anlage ist netzabhängig.
   Überlappende Spaces kosten doppelt. Ein Adresswechsel baut den Bestand neu auf, weil
   `file_path` die Basisadresse enthält.
 - **Restrisiken:** Ein Space ohne Leserecht bleibt indiziert, bis eine Person eingreift; das

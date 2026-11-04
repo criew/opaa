@@ -26,9 +26,9 @@ erfasst ist, stellt jede Einrichtung selbst fest.
 | Vorgabe | Beitrag von OPAA |
 |---|---|
 | IT-Grundschutz | Bausteinzuordnung: [IT-Grundschutz](grundschutz-modellierung.md) |
-| Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); zuschaltbare Ausleitung des Nachweisprotokolls an das zentrale Sicherheitsmonitoring als Syslog mit CEF über TLS, ohne Pseudonyme, ohne stillen Verlust (auch nicht bei lang offenen Vorgängen), mindestens einmal zugestellt und mit gekennzeichneten Lücken ([Ausleitung](../../handbuch/betreiben/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring), {{faktenblatt:datenfluesse#siem-export}}); Sicherheitsereignisse des Anwendungslogs holt die Log-Sammlung der Behörde ab |
+| Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); zuschaltbare Ausleitung des Nachweisprotokolls an das zentrale Sicherheitsmonitoring als Syslog mit CEF über TLS, ohne Pseudonyme, ohne stillen Verlust (auch nicht bei lang offenen Vorgängen), mindestens einmal zugestellt und mit gekennzeichneten Lücken ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring), {{faktenblatt:datenfluesse#siem-export}}); Sicherheitsereignisse des Anwendungslogs holt die Log-Sammlung der Behörde ab |
 | Mindeststandard externe Cloud-Dienste | ausgehende Ziele je Version ({{faktenblatt:datenfluesse}}); Modelle auch im Haus betreibbar; bei Cloud-Betrieb [C5](c5-cloud-betrieb.md) |
-| Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/betreiben/netz-und-sicherheit.md#netzwerkzugang), [Zielprüfung](../../handbuch/betreiben/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
+| Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/betrieb/netz-und-sicherheit.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
 
 Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
@@ -39,7 +39,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
   [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md).
 - Daten fließen nur zu den Zielen, die die Installation einträgt ({{faktenblatt:datenfluesse}}).
   Ohne Internet geht es mit Modellen im Haus, auf Wunsch über einen
-  [Ausgangsproxy](../../handbuch/betreiben/netz-und-sicherheit.md#ausgangsproxy).
+  [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy).
 
 ## Aufgaben der Behörde
 
@@ -49,7 +49,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 4. **Erhebliche Sicherheitsvorfälle an das BSI melden.** Die Protokolle liefern Anhaltspunkte; die
    Bewertung trifft die Einrichtung.
 5. **Updates zeitnah einspielen**, vor dem Supportende der eingesetzten Linie auf die nächste
-   wechseln ([Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume)) und
+   wechseln ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume)) und
    Notfallvorsorge betreiben ([Notfallkonzept](../09-betrieb-update/notfallkonzept.md)).
 
 ## Zum Nachlesen

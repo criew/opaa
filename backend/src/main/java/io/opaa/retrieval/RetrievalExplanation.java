@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * The whole run's explanation protocol: one {@link StageExplanation} per registered stage, in
  * execution order, whether that stage ran or not
- * (docs/handbuch/verwalten/suche-und-indexierung.md).
+ * (docs/handbuch/administration/suche-und-indexierung.md).
  *
  * <p>It is always produced; keeping it is the caller's decision. The invariant it carries: {@code
  * stages().size()} equals the number of stages the pipeline registered, so a candidate cannot

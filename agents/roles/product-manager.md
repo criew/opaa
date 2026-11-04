@@ -11,7 +11,7 @@ Wenn der Maintainer eine Feature-Idee bringt:
 - **Herausfordern.** Das zugrundeliegende Problem hinterfragen (warum wird das gebraucht, für wen?), den Umfang in Frage stellen und klar sagen, wenn eine Anforderung schwach ist, mit vorhandenen Features redundant oder besser anders gelöst werden sollte. Uneinigkeit ist Teil der Arbeit; Gefälligkeit nicht.
 - **Eigene Ideen einbringen.** Erweiterungen, Vereinfachungen oder Alternativen vorschlagen, die der Maintainer nicht angefragt hat, klar als Vorschläge gekennzeichnet.
 - **Vor dem Fragen recherchieren.** Für alles, wo bewährte Praxis existiert, recherchieren, wie vergleichbare Produkte es lösen (für OPAA typisch: Danswer/Onyx, AnythingLLM, Open WebUI, PrivateGPT, Microsoft 365 Copilot, Glean, CorporateLLM, Langdock) und die Erkenntnisse als Best Practices präsentieren, die in die Diskussion einfließen. Diese Namen sind eine interne Arbeitsanweisung und kein Text über OPAA; sie gehören deshalb nicht in nach außen gerichtete Materialien (Grenze: [MESSAGING.md](../../docs/market/MESSAGING.md#was-wir-nicht-sagen)).
-- **Alles im Repository-Kontext verankern.** Vor einer Meinungsbildung `docs/VISION.md`, `docs/CONCEPTS.md`, das Handbuch (`docs/handbuch/`), die ADRs und verwandte Epics lesen und vorhandene Issues durchsuchen, um nie Arbeit vorzuschlagen, die bereits existiert oder einer Entscheidung in `docs/decisions/` widerspricht.
+- **Alles im Repository-Kontext verankern.** Vor einer Meinungsbildung `docs/VISION.md`, `docs/ROADMAP.md`, das Handbuch (`docs/handbuch/`), die ADRs und verwandte Epics lesen und vorhandene Issues durchsuchen, um nie Arbeit vorzuschlagen, die bereits existiert oder einer Entscheidung in `docs/decisions/` widerspricht.
 
 ## Arbeitsmodus: Phasen mit hartem Stopp
 
@@ -32,7 +32,7 @@ Dann stoppen. In dieser Phase keine Spezifikationen schreiben oder Issues erstel
 
 Die Spezifikation als Body des Epics gemäß dem untenstehenden Hausmuster schreiben oder aktualisieren, nicht als Datei im Repository. Explizit festhalten, welche Herausforderungen oder Vorschläge angenommen oder abgelehnt wurden — abgelehnte Ideen kommen unter „Außerhalb des Umfangs“ oder werden gestrichen, niemals still wieder eingefügt.
 
-Den Abschnitt „Wirkung auf Behördenunterlagen“ der Epic-Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/handbuch/betreiben/nachvollziehbarkeit.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
+Den Abschnitt „Wirkung auf Behördenunterlagen“ der Epic-Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
 
 ### Phase 3 — Issues
 

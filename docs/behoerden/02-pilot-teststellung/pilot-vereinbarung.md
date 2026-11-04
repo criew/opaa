@@ -24,7 +24,7 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 - **Anlagen der Version:** die Faktenblätter {{faktenblatt:datenkatalog}},
   {{faktenblatt:protokollereignisse}}, {{faktenblatt:rollensicht}}, {{faktenblatt:datenfluesse}},
   {{faktenblatt:fristen}} und {{faktenblatt:voreinstellungen}}. Ihr Kopf nennt Version und Commit.
-- **Stand der Installation:** die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
+- **Stand der Installation:** die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
   zeigt, wo die Installation von den Voreinstellungen abweicht.
 - **Änderungen bei einem Update:** das Update-Paket mit Delta und Stufenvorschlag
   ([Update-Vermerk](../09-betrieb-update/update-vermerk.md)).
@@ -73,7 +73,7 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 
 **Arbeitshilfen** für Projektleitung und Personalvertretung:
 
-- [Pseudonymisierung im Protokoll](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll):
+- [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll):
   wie OPAA Personen im Protokoll schützt.
 
 **Rechtsgrundlagen** für Dienststelle und Personalvertretung:

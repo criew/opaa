@@ -47,7 +47,7 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/nachschlagen/konfiguration.md`, `docs/handbuch/betreiben/datenbank.md`
+- Handbuch: `docs/handbuch/referenz/konfiguration.md`, `docs/handbuch/betrieb/datenbank.md`
 
 ## Tests bei Änderungen
 

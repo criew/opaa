@@ -45,13 +45,6 @@ function from(status: SelfDisclosureStatus, what: string): string {
     : ''
 }
 
-/** The daily limit in words, for the explanation above the button. */
-export function dailyLimitText(dailyLimit: number): string {
-  const times =
-    dailyLimit === 1 ? 'Einmal pro Tag möglich.' : `Bis zu ${dailyLimit}-mal pro Tag möglich.`
-  return `${times} Ein abgebrochener Download zählt nicht.`
-}
-
 /** Why no export can start now, or `null` when one can. */
 export function blockedText(status: SelfDisclosureStatus): string | null {
   switch (status.blocked) {

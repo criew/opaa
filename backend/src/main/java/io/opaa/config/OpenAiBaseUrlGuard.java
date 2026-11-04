@@ -51,7 +51,7 @@ public class OpenAiBaseUrlGuard {
           The base URL configured for the %s function carries credentials \
           (https://user:secret@host/v1). Configure the address without them and supply the access \
           key via %s instead - a base URL is written to log files and status output and is not \
-          treated as a secret anywhere. See docs/handbuch/betreiben/modell-endpunkte.md."""
+          treated as a secret anywhere. See docs/handbuch/betrieb/modell-endpunkte.md."""
               .formatted(
                   function,
                   specificVariable == null
@@ -68,7 +68,7 @@ public class OpenAiBaseUrlGuard {
         not of a target: locally operated model servers speak it too, and application.yml's own \
         default already points at one (Ollama). This means the configured value is explicitly \
         blank rather than missing - check %s for an empty override. See \
-        docs/handbuch/betreiben/modell-endpunkte.md."""
+        docs/handbuch/betrieb/modell-endpunkte.md."""
             .formatted(
                 function,
                 specificVariable == null

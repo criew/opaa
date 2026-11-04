@@ -5,14 +5,8 @@ import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
-import DarkModeIcon from '@mui/icons-material/DarkMode'
-import LightModeIcon from '@mui/icons-material/LightMode'
-import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
-import type { ColorScheme } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { BrandingImageKind } from '@/shared/branding/brandingStore'
 import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '@/shared/branding/brandingStore'
@@ -21,7 +15,6 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AccentContrastWarning from '@/shared/ui/branding/AccentContrastWarning'
 import BrandingPreviews from '@/shared/ui/branding/BrandingPreviews'
 import {
-  BRANDING_COLOR_SCHEME_OPTIONS,
   BRANDING_LABELS,
   BRANDING_LIMITS,
   BRANDING_TEXTS,
@@ -33,15 +26,10 @@ import { contentWidth } from '@/shared/theme/tokens'
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
 
-const COLOR_SCHEME_ICONS: Record<ColorScheme, React.ReactNode> = {
-  LIGHT: <LightModeIcon fontSize="small" />,
-  SYSTEM: <SettingsBrightnessIcon fontSize="small" />,
-  DARK: <DarkModeIcon fontSize="small" />,
-}
-
 /**
  * The branding form - where an operator makes the interface their house's own without a
- * rebuild: product name, claim, logo, accent colour and the deployment's default colour scheme.
+ * rebuild: product name, claim, logo and accent colour. Light or dark is
+ * each person's own choice, never set here.
  *
  * Two things about it are deliberate and worth naming:
  *
@@ -67,7 +55,6 @@ export default function BrandingSettingsPage() {
   const [aiNotice, setAiNotice] = useState(branding.aiNotice)
   const aiNoticeRef = useRef<HTMLTextAreaElement | null>(null)
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor)
-  const [colorScheme, setColorScheme] = useState<ColorScheme>(branding.defaultColorScheme)
   // One pending file per slot; the upload happens with the rest of the form, so a single
   // "Speichern" carries every change the operator made on this page.
   const [pendingImages, setPendingImages] = useState<Partial<Record<BrandingImageKind, File>>>({})
@@ -85,7 +72,6 @@ export default function BrandingSettingsPage() {
     setClaim(branding.claim)
     setAiNotice(branding.aiNotice)
     setPrimaryColor(branding.primaryColor)
-    setColorScheme(branding.defaultColorScheme)
   }, [branding])
 
   const logoPreviewUrl = useMemo(() => {
@@ -162,7 +148,6 @@ export default function BrandingSettingsPage() {
         // installation too.
         aiNotice: aiNotice.trim() === branding.aiNoticeDefault ? '' : aiNotice.trim(),
         primaryColor: primaryColor.trim(),
-        defaultColorScheme: colorScheme,
       })
       // Sequentially, not in parallel: each upload answers with the whole effective branding, and
       // two in flight at once would let the slower answer overwrite the faster one's slot.
@@ -227,7 +212,7 @@ export default function BrandingSettingsPage() {
         <AreaPageHeader
           icon={PaletteOutlinedIcon}
           title="Branding"
-          description="Produktname, Claim, Logo, Akzentfarbe und Farbschema Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
+          description="Produktname, Claim, Logo und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
         />
 
         {storeError && (
@@ -318,34 +303,6 @@ export default function BrandingSettingsPage() {
 
           <AccentContrastWarning primaryColor={primaryColor} />
 
-          <Box>
-            {/* Level 2 (also below): these section headings follow the page's h1 directly;
-                the subtitle2 look is only visual. */}
-            <Typography variant="subtitle2" component="h2" gutterBottom>
-              {BRANDING_LABELS.colorScheme}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              {BRANDING_TEXTS.colorSchemeHint}
-            </Typography>
-            <ToggleButtonGroup
-              value={colorScheme}
-              exclusive
-              onChange={(_e, value: ColorScheme | null) => {
-                if (value !== null) setColorScheme(value)
-              }}
-              aria-label={BRANDING_LABELS.colorScheme}
-            >
-              {BRANDING_COLOR_SCHEME_OPTIONS.map((option) => (
-                <ToggleButton key={option.value} value={option.value}>
-                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {COLOR_SCHEME_ICONS[option.value]}
-                    {option.label}
-                  </Box>
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </Box>
-
           <Divider />
 
           {imageSlots.map((slot) => (
@@ -423,7 +380,6 @@ export default function BrandingSettingsPage() {
                 setClaim('')
                 setAiNotice(branding.aiNoticeDefault)
                 setPrimaryColor('')
-                setColorScheme(OPAA_BRANDING.defaultColorScheme)
                 setPendingImages({})
                 setImageErrors({})
                 for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) {

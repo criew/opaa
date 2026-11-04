@@ -26,7 +26,7 @@ Ein Wechsel nur des Endpunkts, etwa auf einen Ersatzserver bei einem Ausfall, is
 ein Datenbankeingriff. Eine Installation darf ihr Embedding-Modell überspringen (ADR-0060,
 Entscheidung 6); dann gibt es weder Modellzeile noch Vektortabelle noch Index-Datensatz, und der
 Wechsel, der alle drei voraussetzt, greift nicht. Issue #3214; das Verhalten beschreibt das Handbuch
-([Modelle](../handbuch/betreiben/modell-endpunkte.md)).
+([Modelle](../handbuch/betrieb/modell-endpunkte.md)).
 
 ## Entscheidung
 

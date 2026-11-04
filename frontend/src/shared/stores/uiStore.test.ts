@@ -45,6 +45,16 @@ describe('uiStore', () => {
     })
   })
 
+  it('reads a stored „no own choice“ (null) as system', async () => {
+    useUiStore.setState({ themeMode: 'dark' })
+    window.localStorage.setItem(
+      'opaa-ui-preferences',
+      JSON.stringify({ state: { themeMode: null }, version: 0 }),
+    )
+    await useUiStore.persist.rehydrate()
+    expect(useUiStore.getState().themeMode).toBe('system')
+  })
+
   describe('folded groups of the space column (#3292)', () => {
     beforeEach(() => useUiStore.setState({ collapsedSidebarSections: [] }))
 

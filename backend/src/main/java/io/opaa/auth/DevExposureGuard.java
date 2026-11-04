@@ -74,7 +74,7 @@ public class DevExposureGuard {
             + "): without sign-in every request acts as system administrator. Bind to"
             + " 127.0.0.1, switch to the \"oidc\" profile, or confirm the exposure with "
             + ALLOW_VARIABLE
-            + "=true. See docs/handbuch/betreiben/docker-compose.md.");
+            + "=true. See docs/handbuch/betrieb/docker-compose.md.");
   }
 
   static boolean isLoopback(String address) {

@@ -14,8 +14,8 @@ import java.util.regex.Pattern;
  * reason, and whether the record of processing activities (VVT), the data protection impact
  * assessment (DSFA) and the security concept are concerned. This class is the only place in the
  * code that holds them; the manual states them in "Die Stufenregeln" of {@code
- * docs/handbuch/betreiben/nachvollziehbarkeit.md} and maps manifest changes to them in "Zuordnung
- * im Werkzeug". In doubt, the proposal is Zustimmung with {@link Assessment#undecided()} set.
+ * docs/handbuch/betrieb/nachvollziehbarkeit.md} and maps manifest changes to them in "Zuordnung im
+ * Werkzeug". In doubt, the proposal is Zustimmung with {@link Assessment#undecided()} set.
  */
 public final class StageRules {
 

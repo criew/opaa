@@ -9,7 +9,7 @@ Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0036 (Entscheid
 Die Rechtehistorie hält Grants, Gruppenmitgliedschaften und Reichweite als Zeitintervalle, damit die
 Rechtemenge einer Person zu einem Stichtag rekonstruierbar ist, auch die Negativfrage „hatte Person X
 am Tag Y keinen Zugriff auf Z?“
-([Berechtigungen](../handbuch/nachschlagen/rechte-matrix.md)).
+([Berechtigungen](../handbuch/referenz/rechte-matrix.md)).
 Fremdschlüssel mit `ON DELETE CASCADE` auf die historisierten Fachobjekte und auf die betroffene
 Person hätten genau das zerstört: Eine Gruppenlöschung nach dem Widerruf ihres Grants hätte die
 geschlossenen Intervalle mitgelöscht und eine Stichtagsanfrage für den März fälschlich mit „nicht
