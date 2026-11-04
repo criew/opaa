@@ -411,9 +411,8 @@ describe('LoginPage', () => {
       ).toHaveAttribute('href', '/login/system')
     })
 
-    // If the form is switched on, it comes first - it is the path the
-    // installation has set up for its own accounts.
-    it('shows both sections, the local mask first, when both ways exist', () => {
+    // The providers come first and keep the one primary button; the mask follows, secondary.
+    it('shows both sections, the providers first, when both ways exist', () => {
       useAuthStore.setState({
         mode: 'oidc',
         providers: [verzeichnisdienst],
@@ -422,10 +421,15 @@ describe('LoginPage', () => {
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-      expect(headings).toEqual(['Konto dieser Installation', 'Identitätsanbieter'])
+      expect(headings).toEqual(['Identitätsanbieter', 'Konto dieser Installation'])
       expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
       expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /anmelden bei/i }).className).toMatch(
+        /MuiButton-contained/,
+      )
+      expect(screen.getByRole('button', { name: 'Anmelden' }).className).toMatch(
+        /MuiButton-outlined/,
+      )
       // the quiet link is pointless once the regular page carries the mask
       expect(
         screen.queryByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
@@ -446,6 +450,10 @@ describe('LoginPage', () => {
       )
       expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
+      // without a provider the mask's button is the page's primary one
+      expect(screen.getByRole('button', { name: 'Anmelden' }).className).toMatch(
+        /MuiButton-contained/,
+      )
     })
 
     it('offers the self-service links only where the configuration allows them', () => {

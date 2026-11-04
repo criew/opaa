@@ -1009,7 +1009,7 @@ eigenes Logo konfiguriert.
   jeder Fläche, ohne dass eine Kachel dahinter nötig ist.
 - In der App folgt das Siegel der Akzentfläche, weil sie Weiß mit 4,5:1 trägt; bei konfigurierter
   Akzentfarbe nimmt es also die abgeleitete Hausfarbe an.
-- **Icon-Fassung** für Favicon, App- und Touch-Icon und Handbuch: Navy-Kachel, darin die Marke in
+- **Icon-Fassung** für Favicon, App- und Touch-Icon: Navy-Kachel, darin die Marke in
   Weiß auf 72 % der Fläche. Das SVG hat Radius 14/64; die Raster-PNGs sind vollflächig ohne Rundung,
   weil Betriebssysteme Icons selbst maskieren.
 - In der Oberfläche steht die freie Marke ohne Kachel, ab 16 px. Die Wortmarke ab 24 px Höhe.

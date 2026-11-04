@@ -27,6 +27,8 @@ interface LocalSignInFormProps {
   showSelfRegistration?: boolean
   /** Another sign-in is already under way on this page. */
   disabled?: boolean
+  /** Whether its submit button is the page's one primary button; secondary below a provider. */
+  emphasised?: boolean
 }
 
 /**
@@ -41,6 +43,7 @@ export default function LocalSignInForm({
   showPasswordReset = false,
   showSelfRegistration = false,
   disabled = false,
+  emphasised = true,
 }: LocalSignInFormProps) {
   const idPrefix = useId()
   const emailId = `${idPrefix}-email`
@@ -127,7 +130,7 @@ export default function LocalSignInForm({
         >
           <Button
             type="submit"
-            variant="contained"
+            variant={emphasised ? 'contained' : 'outlined'}
             disabled={busy}
             sx={{ borderRadius: `${radius.md}px`, minWidth: 140 }}
           >
