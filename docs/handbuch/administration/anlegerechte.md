@@ -1,6 +1,10 @@
 # Anlegerechte vergeben
 
-> **Wer:** Systemverwaltung, „Administration → Anlegerechte“.
+**Ziel:** Nur die vorgesehenen Konten legen Spaces, Bibliotheken und Gruppen an.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Anlegerechte“
+{: .kopf }
 
 Ein Anlegerecht entscheidet, wer etwas **anlegen** darf. Es öffnet nie einen Inhalt. Vergeben wird
 es an eine Person, eine Gruppe oder an „Alle Konten“.

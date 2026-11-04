@@ -1,9 +1,10 @@
 # Konto an Identitätsanbieter übergeben
 
-> **Wer:** Systemverwaltung stößt an, die betroffene Person löst ein.
+**Ziel:** Eine Person meldet sich über den Identitätsanbieter an und behält Spaces, Mitgliedschaften und Rolle.
+{: .kopf }
 
-Stellt ein Haus von lokalen Konten auf einen Identitätsanbieter um, nimmt die Übergabe Spaces,
-Mitgliedschaften und Rolle mit. Danach meldet sich die Person nur noch über den Anbieter an.
+**Wer:** Systemverwaltung stößt an, die betroffene Person löst ein
+{: .kopf }
 
 1. Zeilenmenü des Kontos, „An Identitätsanbieter übergeben“.
 2. Anbieter wählen und einen **Anlass** eintragen; eine Kennung beim Anbieter gibt niemand ein.

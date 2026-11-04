@@ -108,7 +108,6 @@ nav:
       - Konto und Zugriff:
           - benutzer/konto-verbinden.md
           - benutzer/private-bibliothek.md
-          - benutzer/zugangstoken.md
           - benutzer/ki-werkzeug-einrichten.md
           - benutzer/gruppe-pflegen.md
           - benutzer/zugriff-nachvollziehen.md

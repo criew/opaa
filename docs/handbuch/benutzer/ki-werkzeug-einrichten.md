@@ -1,12 +1,26 @@
 # KI-Werkzeug einrichten
 
-Ihr KI-Werkzeug sucht danach über den MCP-Server von OPAA in Ihren Bibliotheken. Sie brauchen zwei
-Angaben: die Adresse `https://<host>/mcp` und den Wert Ihres [Zugangstokens](zugangstoken.md). Der
-Dialog nach dem Erzeugen des Tokens zeigt fertige Ausschnitte für einige Werkzeuge, schon mit der
-Adresse Ihrer Installation.
+**Ziel:** Ein KI-Werkzeug wie OpenCode durchsucht Ihre Bibliotheken über OPAA.
+{: .kopf }
 
-**OpenCode**, in `~/.config/opencode/opencode.json`, mit dem Tokenwert in der Umgebungsvariablen
-`OPAA_TOKEN`:
+Das Werkzeug bekommt nur Fundstellen und nie mehr, als Sie selbst lesen dürfen. Voraussetzung: Die
+Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
+[dafür freigegeben](arbeitsmittel-teilen.md#für-externe-ki-werkzeuge-freigeben).
+
+## Token anlegen
+
+1. „Einstellungen“, „Zugangstokens“, „Token erzeugen“.
+2. Name (etwa „OpenCode auf dem Dienstrechner“), Bibliotheken und Ablauf wählen. Die Bibliotheken
+   lassen sich später nicht ändern.
+3. Erzeugen und **den Wert sofort kopieren**. Er wird nur einmal angezeigt, zusammen mit fertigen
+   Ausschnitten für einige Werkzeuge.
+
+Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
+anzeigen: neues Token erzeugen, altes widerrufen.
+
+## Beispiel OpenCode
+
+In `~/.config/opencode/opencode.json`, den Tokenwert in der Umgebungsvariablen `OPAA_TOKEN`:
 
 ```json
 {
@@ -21,21 +35,12 @@ Adresse Ihrer Installation.
 }
 ```
 
-`"oauth": false` sorgt dafür, dass OpenCode bei einem abgelaufenen Token den Grund nennt, statt eine
-Anmeldung zu versuchen.
-
-**Andere MCP-fähige Werkzeuge** brauchen dieselben zwei Angaben: Adresse als HTTP-Server und den
-Kopf `Authorization: Bearer <Tokenwert>`.
-
-**Eigenes Skript:** dieselbe Suche als REST-Aufruf mit demselben Kopf:
-
-```bash
-curl -s https://<host>/api/v1/search -H "Authorization: Bearer opaa_pat_…" \
-  -H "Content-Type: application/json" -d '{"question":"Fristen bei der Anhörung"}'
-```
+Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse `https://<host>/mcp` und den Kopf
+`Authorization: Bearer <Tokenwert>`.
 
 **Gut zu wissen:**
 
-- Den Tokenwert nie in eine Projektdatei schreiben, die in die Versionsverwaltung wandert.
-- Verbindet nichts, fehlt meist eine Voraussetzung: Kanal eingeschaltet, Bibliothek freigegeben,
-  Token gültig, Netzbereich zugelassen.
+- Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.
+- Ein neues Passwort beendet alle Ihre Tokens.
+- Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein
+  zugelassener Netzbereich.

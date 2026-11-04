@@ -1,6 +1,7 @@
 # Konnektor: Windows-Dateifreigabe (SMB)
 
-> **Wer:** anlegen erst nach Freigabe durch die Systemverwaltung; ändern ab *Verwalter*.
+**Wer:** anlegen erst nach Freigabe durch die Systemverwaltung; ändern ab *Verwalter*
+{: .kopf }
 
 ## 1. Was der Konnektor ist
 

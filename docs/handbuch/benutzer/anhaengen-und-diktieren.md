@@ -1,7 +1,7 @@
 # Dateien anhängen und Spracheingabe
 
-Sie bringen ein Dokument mit, das in keiner Bibliothek liegt, oder sprechen die Frage, statt sie zu
-tippen.
+**Ziel:** Ein eigenes Dokument fließt in die Antwort ein, oder die Frage ist gesprochen statt getippt.
+{: .kopf }
 
 ## Datei anhängen
 

@@ -1,8 +1,10 @@
 # Bibliothek teilen und für KI-Werkzeuge freigeben
 
-> **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek, übergeben nur der *Eigentümer*.
+**Ziel:** Andere Personen oder Gruppen lesen oder pflegen Ihre Bibliothek.
+{: .kopf }
 
-Andere Personen oder Gruppen lesen oder pflegen danach Ihre Wissens- oder Prompt-Bibliothek.
+**Wer:** *Verwalter* oder *Eigentümer* der Bibliothek, übergeben nur der *Eigentümer*
+{: .kopf }
 
 1. Die Detailseite öffnen, Reiter „Freigaben“, „Freigeben“.
 2. Person, Gruppe oder „Alle Konten“ suchen und eine Rolle wählen.
@@ -25,7 +27,7 @@ Weggang einzelner Personen.
 
 ## Für externe KI-Werkzeuge freigeben
 
-Nur Wissensbibliotheken: Wer sie lesen darf, kann sie danach in ein [Zugangstoken](zugangstoken.md) aufnehmen und
+Nur Wissensbibliotheken: Wer sie lesen darf, kann sie danach in ein [Zugangstoken](ki-werkzeug-einrichten.md#token-anlegen) aufnehmen und
 aus Werkzeugen wie OpenCode durchsuchen. Fundstellen verlassen damit OPAA und werden im fremden
 Werkzeug mit dessen Modell weiterverarbeitet. Das geht erst, wenn die Systemverwaltung externe
 KI-Werkzeuge eingeschaltet hat, und braucht die Rolle *Verwalter*.

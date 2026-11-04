@@ -1,6 +1,7 @@
 # Konnektor: OneDrive
 
-> **Wer:** jedes Konto mit [verbundenem Microsoft-Konto](../../benutzer/konto-verbinden.md); die Bibliothek ist immer privat.
+**Wer:** jedes Konto mit [verbundenem Microsoft-Konto](../../benutzer/konto-verbinden.md); die Bibliothek ist immer privat
+{: .kopf }
 
 ## 1. Was der Konnektor ist
 

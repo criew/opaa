@@ -1,7 +1,7 @@
 # Prompts verwenden
 
-Sie setzen eine wiederkehrende Formulierung, etwa „Anhörung nach Hausstandard“, mit wenigen
-Angaben in den Chat ein.
+**Ziel:** Eine wiederkehrende Formulierung, etwa „Anhörung nach Hausstandard“, steht mit wenigen Angaben im Chat.
+{: .kopf }
 
 1. Im Eingabefeld am Anfang einer Zeile `/` tippen. Die Auswahl zeigt die Prompts, gruppiert nach
    Bibliothek.

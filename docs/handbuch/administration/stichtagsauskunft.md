@@ -1,8 +1,10 @@
 # Stichtagsauskunft erstellen
 
-> **Wer:** Revision, „Revision → Stichtagsauskunft“.
+**Ziel:** Belegt, wer ein Objekt an bestimmten Tagen lesen durfte.
+{: .kopf }
 
-Die Auskunft beantwortet eine Frage: **Wer durfte dieses Objekt an diesen Tagen lesen?**
+**Wer:** Revision, „Revision → Stichtagsauskunft“
+{: .kopf }
 
 1. „Objektart“ wählen: Wissensbibliothek oder Space.
 2. „Kennung des Objekts“ eintragen. Sie steht in der Adresse der Detailseite.

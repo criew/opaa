@@ -1,6 +1,10 @@
 # Verbindungsprotokoll lesen
 
-> **Wer:** Revision, „Revision → Verbindungsprotokoll“.
+**Ziel:** Belegt, wer wann ein Konto bei einer Quelle verbunden oder getrennt hat.
+{: .kopf }
+
+**Wer:** Revision, „Revision → Verbindungsprotokoll“
+{: .kopf }
 
 Das Protokoll hält fest, wann Personen ein Konto bei einer Quelle verbunden, neu verbunden oder
 getrennt haben, wann eine Verbindung ablief und wann eine Handlung am Zugang sie beendet hat.

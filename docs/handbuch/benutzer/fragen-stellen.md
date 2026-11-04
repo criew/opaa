@@ -1,6 +1,7 @@
 # Fragen stellen
 
-Sie stellen eine Frage und bekommen eine Antwort mit Belegen aus dem Wissen Ihres Space.
+**Ziel:** Eine Antwort mit Belegen aus dem Wissen Ihres Space.
+{: .kopf }
 
 1. Die Frage ins Eingabefeld tippen. `@` wählt, wo gesucht wird, `/` setzt einen Prompt ein
    ([Prompts verwenden](prompts-verwenden.md)).

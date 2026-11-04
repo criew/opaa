@@ -1,6 +1,7 @@
 # Antworten weitergeben
 
-Sie übernehmen eine Antwort in ein eigenes Dokument oder sichern einen ganzen Chat als Datei.
+**Ziel:** Eine Antwort steht in Ihrem Dokument, oder ein ganzer Chat ist als Datei gesichert.
+{: .kopf }
 
 ## Antwort kopieren
 

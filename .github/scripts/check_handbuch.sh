@@ -3,9 +3,11 @@
 # except AGENTS.md and CLAUDE.md, found by directory walk, so a new page is checked without a list:
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
 #   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
-# - a "Wer" box is a single line "> **Wer:** ..." within the first five lines; pages under
-#   administration/ and connector pages under benutzer/konnektoren/ need one, other pages under
-#   benutzer/ carry one only where the task needs a role at the object
+# - the page head under the title: a "Ziel" row and a "Wer" row, each a single line "**Ziel:** ..."
+#   or "**Wer:** ..." followed by "{: .kopf }", within the first eight lines; every page under
+#   administration/ and benutzer/ except the connector pages needs "Ziel", pages under
+#   administration/ and the connector pages need "Wer", other pages under benutzer/ carry "Wer"
+#   only where the task needs a role at the object
 # - every page under benutzer/ except a folder's README.md and the connector pages has at most
 #   80 lines
 # Links inside the handbook are checked by the strict MkDocs build (mkdocs.yml).
@@ -34,24 +36,28 @@ while IFS= read -r -d '' file; do
     *) continue ;;
   esac
 
-  box=$(head -n 5 "$file" | grep -nE '^> \*\*Wer( darf das)?:\*\*' | head -n 1 | cut -d: -f1 || true)
-  if [ -n "$box" ]; then
-    if ! sed -n "${box}p" "$file" | grep -qE '^> \*\*Wer:\*\*'; then
-      echo "::error file=$file,line=$box::The box is written \"> **Wer:** ...\"."
-      errors=$((errors + 1))
+  if grep -qE '^> \*\*Wer( darf das)?:\*\*' "$file"; then
+    echo "::error file=$file,line=1::The \"Wer\" row is no quote any more: write \"**Wer:** ...\" followed by a line \"{: .kopf }\"."
+    errors=$((errors + 1))
+  fi
+  head8=$(head -n 8 "$file")
+  for label in Ziel Wer; do
+    row=$(grep -nE "^\*\*${label}:\*\* " <<<"$head8" | head -n 1 | cut -d: -f1 || true)
+    if [ -n "$row" ]; then
+      if ! sed -n "$((row + 1))p" "$file" | grep -qxF '{: .kopf }'; then
+        echo "::error file=$file,line=$row::The \"$label\" row is one line followed by \"{: .kopf }\"."
+        errors=$((errors + 1))
+      fi
+      continue
     fi
-    if sed -n "$((box + 1))p" "$file" | grep -q '^>'; then
-      echo "::error file=$file,line=$((box + 1))::The \"Wer\" box is one line; details belong in the Rechte-Matrix."
-      errors=$((errors + 1))
-    fi
-  else
-    case "$rel" in
-      administration/* | benutzer/konnektoren/*)
-        echo "::error file=$file,line=1::Missing \"Wer\" line: a single line \"> **Wer:** ...\" within the first five lines names the role or capability."
+    case "$label:$rel" in
+      Ziel:benutzer/konnektoren/*) ;;
+      Wer:administration/* | Wer:benutzer/konnektoren/* | Ziel:administration/* | Ziel:benutzer/*)
+        echo "::error file=$file,line=1::Missing \"$label\" row: \"**$label:** ...\" with \"{: .kopf }\" below, under the title."
         errors=$((errors + 1))
         ;;
     esac
-  fi
+  done
 
   case "$rel" in
     benutzer/konnektoren/* | administration/*) continue ;;

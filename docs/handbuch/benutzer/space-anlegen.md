@@ -1,6 +1,7 @@
 # Space anlegen
 
-Sie haben danach einen Space, in dem eine Gruppe mit denselben Bibliotheken und Prompts arbeitet.
+**Ziel:** Ein Space, in dem eine Gruppe mit denselben Bibliotheken und Prompts arbeitet.
+{: .kopf }
 
 1. In der Seitenleiste neben „Spaces“ das Plus wählen, oder „Neuer Space“ in der Übersicht.
 2. **Grunddaten:** Name und Beschreibung, bei Bedarf das automatische Aufräumen aktivieren.

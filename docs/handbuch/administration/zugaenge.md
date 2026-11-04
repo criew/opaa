@@ -1,6 +1,10 @@
 # Zugänge einrichten
 
-> **Wer:** Systemverwaltung, „Administration → Anbindungen“.
+**Ziel:** Wer eine Bibliothek anlegt, wählt die Quelle aus einer Liste, statt Adresse und Anmeldung selbst einzutragen.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Anbindungen“
+{: .kopf }
 
 Ein **Zugang** legt einmal fest, wo eine Quelle liegt und wie OPAA sich dort anmeldet. Wer eine
 Bibliothek anlegt, wählt ihn nur noch aus.

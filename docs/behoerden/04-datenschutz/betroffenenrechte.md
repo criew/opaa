@@ -31,7 +31,7 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
 - Was jede Person außerdem einsehen kann: eigene Angaben
   ([Meine Daten](../../handbuch/benutzer/meine-daten.md)), eigene
   Chats ([Chats verwalten](../../handbuch/benutzer/chats.md#chat-wiederfinden)), eigene
-  Zugangstokens ([Zugangstoken anlegen](../../handbuch/benutzer/zugangstoken.md)).
+  Zugangstokens ([KI-Werkzeug einrichten](../../handbuch/benutzer/ki-werkzeug-einrichten.md#token-anlegen)).
 
 Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
 Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weiterhin die Behörde zusammen.

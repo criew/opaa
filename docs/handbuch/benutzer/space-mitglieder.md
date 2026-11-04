@@ -1,8 +1,10 @@
 # Mitglieder eines Space verwalten
 
-> **Wer:** *Administrator* oder Eigentümer des Space.
+**Ziel:** Die richtigen Personen und Gruppen sind im Space, jede mit passender Rolle.
+{: .kopf }
 
-Sie nehmen Personen und Gruppen auf und vergeben Rollen.
+**Wer:** *Administrator* oder Eigentümer des Space
+{: .kopf }
 
 1. Das Zahnrad neben dem Namen des Space öffnen, Reiter „Mitglieder“.
 2. Person oder Gruppe suchen, Rolle wählen, „Hinzufügen“.

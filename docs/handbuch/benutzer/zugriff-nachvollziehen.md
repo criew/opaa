@@ -1,8 +1,10 @@
 # Zugriffsberechtigung nachvollziehen
 
-> **Wer:** den eigenen Zugriff jede Person, den anderer *Administratoren* und Eigentümer des Space.
+**Ziel:** Sie wissen, warum jemand eine Bibliothek oder einen Space sieht.
+{: .kopf }
 
-Sie sehen, warum jemand eine Bibliothek oder einen Space sieht.
+**Wer:** den eigenen Zugriff jede Person, den anderer *Administratoren* und Eigentümer des Space
+{: .kopf }
 
 - **Eigener Zugriff:** Auf der Detailseite einer Bibliothek, Reiter „Freigaben“, zeigt
   „Herleitung“ Ihre Rolle und den Weg dorthin, etwa „über die Gruppe Meldewesen“. Im Space dasselbe
