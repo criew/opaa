@@ -11,11 +11,10 @@ import java.util.Set;
 
 /**
  * Derives an answer's Belegstand from the verdicts of {@link CitationValidator} and the sub-query
- * attribution of the retrieval (docs/handbuch/referenz/wie-die-suche-arbeitet.md) -
- * deterministic, no score and no model call, so the same answer always gets the same level. A
- * confirmed citation covers every sub-query its document was selected for; a document outside that
- * attribution (no fusion protocol) covers nothing, which only matters when the question was
- * decomposed.
+ * attribution of the retrieval (docs/handbuch/referenz/wie-die-suche-arbeitet.md) - deterministic,
+ * no score and no model call, so the same answer always gets the same level. A confirmed citation
+ * covers every sub-query its document was selected for; a document outside that attribution (no
+ * fusion protocol) covers nothing, which only matters when the question was decomposed.
  */
 public final class AnswerEvidenceAssessor {
 

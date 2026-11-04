@@ -41,9 +41,9 @@ import org.springframework.ai.document.Document;
 
 /**
  * The guaranteed top candidates of every list ({@code opaa.query.fusion.guaranteed-per-list},
- * docs/handbuch/referenz/wie-die-suche-arbeitet.md): they reach the selection in every fusion
- * mode, the relevance cutoff and document completion never remove them, a failed rerank keeps them,
- * and {@code 0} is the fusion without the guarantee.
+ * docs/handbuch/referenz/wie-die-suche-arbeitet.md): they reach the selection in every fusion mode,
+ * the relevance cutoff and document completion never remove them, a failed rerank keeps them, and
+ * {@code 0} is the fusion without the guarantee.
  */
 class GuaranteedListTopTest {
 

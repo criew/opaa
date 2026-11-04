@@ -1,10 +1,10 @@
 package io.opaa.api.types;
 
 /**
- * The named stages of the retrieval pipeline
- * (docs/handbuch/referenz/wie-die-suche-arbeitet.md). The constant order is documentation only
- * - the order stages actually run in is the order {@code RetrievalConfiguration#retrievalPipeline}
- * registers them in, which is the one place it is decided.
+ * The named stages of the retrieval pipeline (docs/handbuch/referenz/wie-die-suche-arbeitet.md).
+ * The constant order is documentation only - the order stages actually run in is the order {@code
+ * RetrievalConfiguration#retrievalPipeline} registers them in, which is the one place it is
+ * decided.
  *
  * <p>Every stage except {@link #SEARCH_SCOPE} can be switched off via {@code
  * RetrievalPipelineProperties}, and a switched-off stage is the identity: the pipeline then runs
