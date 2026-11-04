@@ -5,7 +5,7 @@ Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was
 Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie OPAA
 Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
 und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
-beschreibt die [Betrieb](README.md).
+beschreibt die [Betriebsübersicht](README.md).
 
 ## Netzwerkzugang
 

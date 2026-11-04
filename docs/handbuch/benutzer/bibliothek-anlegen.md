@@ -15,7 +15,7 @@ Zeitplan selbst aktuell.
 
 Danach die Bibliothek einem Space zuordnen; erst dann sucht der Chat darin
 ([Katalog nutzen](katalog.md#in-einem-space-verwenden)). Was jede Quelle voraussetzt, steht bei den
-[Konnektoren](../benutzer/konnektoren/README.md).
+[Konnektoren](konnektoren/README.md).
 
 **Gut zu wissen:**
 

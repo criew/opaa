@@ -425,7 +425,7 @@ dabei `UP`. Zwei Wege führen hinaus:
 
 Die Anmeldung läuft danach über `<publicBaseUrl>/login` mit dem ersten Konto; der Abschluss hat die
 lokale Benutzerverwaltung eingeschaltet. Den Weg für Systemverwalter bei abgeschalteter Verwaltung
-beschreibt die [Benutzerverwaltung](../administration/konten.md). Was dann zu tun
+beschreibt die [Administration](../administration/konten.md). Was dann zu tun
 ist (persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unter
 [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto). Nach
 dem Abschluss gehören das Passwort (`secrets.initialAdminPassword` bzw. der Schlüssel
@@ -923,7 +923,7 @@ Images ihre aktualisierten öffentlichen CAs mit. Der Handgriff aus
 ### Identitätsanbieter
 
 Ohne `bootstrap.oidc` melden sich Personen mit lokalen Konten an
-([Benutzerverwaltung](../administration/konten.md)). Das Protokoll nennt dann bei jedem Start auf Stufe
+([Administration](../administration/konten.md)). Das Protokoll nennt dann bei jedem Start auf Stufe
 `INFO`, dass kein Identitätsanbieter konfiguriert ist und die Anmeldung nur mit lokalen Konten
 geht.
 
@@ -995,7 +995,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 | Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Timeouts | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
 | erster Identitätsanbieter | Antwortdatei | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
 | erstes Chat-Modell samt Schlüssel | Antwortdatei | `bootstrap.chatModel` und `installation-chat-api-key`; danach die Modellverwaltung ([LLM-Anbieter](modell-endpunkte.md#llm-anbieter)) |
-| erster Systemverwalter | Antwortdatei | `bootstrap.initialAdmin` und `installation-admin-password`; danach [Benutzerverwaltung](../administration/konten.md) |
+| erster Systemverwalter | Antwortdatei | `bootstrap.initialAdmin` und `installation-admin-password`; danach [Administration](../administration/konten.md) |
 | Mailserver, weitere Anbieter, Verzeichnisabgleich, Zugriff externer KI-Werkzeuge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
 **Eine geänderte Werte-Datei ändert an der Antwortdatei nichts mehr.** Nach dem Abschluss der

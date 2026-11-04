@@ -1,6 +1,6 @@
 # Space-Einstellungen
 
-> **Wer:** *Administrator* oder Eigentümer des Space; archivieren und löschen nur der Eigentümer.
+> **Wer:** *Administrator* oder Eigentümer des Space; archivieren und löschen der Eigentümer oder die Systemverwaltung.
 
 Name, Anweisung an das Modell und Aufräumen des Space, bis hin zum Archivieren oder Löschen.
 
@@ -9,7 +9,7 @@ Name, Anweisung an das Modell und Aufräumen des Space, bis hin zum Archivieren 
 3. Bei Bedarf eine **Anweisung an das Modell** eintragen, etwa „Antworte knapp und nenne immer die
    Rechtsgrundlage.“ Sie gilt für jede Antwort im Space.
 4. Bei Bedarf das **automatische Aufräumen** inaktiver Chats einschalten
-   ([Chats verwalten](../benutzer/chats.md#automatisches-aufräumen)).
+   ([Chats verwalten](chats.md#automatisches-aufräumen)).
 
 ## Archivieren oder löschen
 

@@ -24,8 +24,8 @@ kein Space; der Assistent bleibt mit allen Eingaben offen und nennt den Grund.
 | Administrator | zusätzlich Mitglieder, Rollen und Einstellungen verwalten |
 
 Sie werden **Eigentümer** des Space. Nur der Eigentümer und die Systemverwaltung dürfen ihn löschen.
-Einen Space pflegen, übergeben oder archivieren: [Mitglieder verwalten](../benutzer/space-mitglieder.md),
-[Einstellen, archivieren, löschen](../benutzer/space-einstellungen.md).
+Einen Space pflegen, übergeben oder archivieren: [Mitglieder verwalten](space-mitglieder.md),
+[Einstellen, archivieren, löschen](space-einstellungen.md).
 
 **Gut zu wissen:**
 

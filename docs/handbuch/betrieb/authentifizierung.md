@@ -4,8 +4,8 @@ Dieses Kapitel beschreibt, wie Menschen sich bei OPAA anmelden: über einen oder
 Identitätsanbieter mit OpenID Connect, über Konten, die OPAA selbst führt, und über das eine
 Notanker-Konto der Systemverwaltung. Es beschreibt außerdem, wie Gruppen und Kontosperren aus dem
 Verzeichnis kommen und was zu tun ist, wenn niemand mehr hereinkommt. Wie die Verwaltung lokale
-Konten im Alltag pflegt, steht im Kapitel [Benutzerverwaltung](../administration/konten.md); was Gruppen
-für Rechte bedeuten, im Kapitel [Berechtigungen](../referenz/rechte-matrix.md).
+Konten im Alltag pflegt, steht im Kapitel [Administration](../administration/konten.md); was Gruppen
+für Rechte bedeuten, im Kapitel [Rechte-Matrix](../referenz/rechte-matrix.md).
 
 > **Beispiel.** Das Haus meldet seine Beschäftigten über das eigene Keycloak an, das die Gruppen
 > aus dem Active Directory durchreicht. Ein Partneramt bekommt einen zweiten Anbieter. Lokale Konten
@@ -163,7 +163,7 @@ gepflegt (nur Systemverwaltung); jede Änderung wirkt ohne Neustart. Je Anbieter
 | JWK-Set-Adresse | Optional: die Adresse der Signaturschlüssel, wenn das Backend den Anbieter anders erreicht als der Browser (Compose: `keycloak` statt `localhost`). Ohne Angabe liest das Backend sie aus dem Discovery-Dokument. Sie ist der **Vertrauensanker** jedes Kontos dieses Anbieters |
 | Claim-Zuordnung | Aus welchen Claims E-Mail und Anzeigename kommen (Vorgaben `email`/`name`, Rückfall `preferred_username`), optional Rollen- und Gruppen-Claim |
 | Reihenfolge, Standard, aktiviert | Reihenfolge der Anmeldeseite; genau ein **Standardanbieter**; ein deaktivierter Anbieter wird ab dem nächsten Token abgewiesen |
-| Extern | Ob der Anbieter einem anderen Haus gehört; Vorgabe ist jeder Anbieter außer dem Standardanbieter. Gruppen eines externen Anbieters sind in jeder Auswahl abgehoben ([Berechtigungen](../administration/gruppen.md#woher-gruppen-kommen)) |
+| Extern | Ob der Anbieter einem anderen Haus gehört; Vorgabe ist jeder Anbieter außer dem Standardanbieter. Gruppen eines externen Anbieters sind in jeder Auswahl abgehoben ([Administration](../administration/gruppen.md#woher-gruppen-kommen)) |
 
 **Beim Anbieter einzutragen** (die Oberfläche zeigt die Werte mit dem eigenen Origin): die
 Weiterleitungs-URI `<Origin>/auth/callback` (für alle Anbieter dieselbe), der erlaubte Web-Origin und
@@ -191,7 +191,7 @@ Fehlerstatus, gesperrte Adresse), bleibt ein Fehler.
   die Zahlen („3 Gruppen werden noch verwendet: Rechte an 7 Bibliotheken, Mitglied in 2 Spaces …")
   und führt in die **Arbeitsliste der Gruppen** des Anbieters: Sie nennt je Gruppe, wofür sie
   verwendet wird, und überträgt ihre Rechte auf eine andere Gruppe
-  ([Berechtigungen](../administration/ausscheiden.md#rechte-übertragen)), oder die
+  ([Administration](../administration/ausscheiden.md#rechte-übertragen)), oder die
   Rechte werden dort entfernt, wo sie vergeben sind. Nicht verwendete Gruppen gehen mit dem Anbieter.
   Abgelaufene Berechtigungen zählen in der Arbeitsliste mit und halten das Löschen auf; die Vorschau
   einer Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen.
@@ -243,7 +243,7 @@ Ein Anbieter hat **genau einen Gruppenmechanismus**: den **Gruppen-Claim** seine
 ohne Konfiguration) oder den **Verzeichnisabgleich** (empfohlen für Häuser mit gepflegtem
 Verzeichnis). Beides zugleich lehnt OPAA ab, sonst entstünde dieselbe Gruppe zweimal mit zwei
 Wahrheiten über die Mitgliedschaft. Was das für Rechte und Rechtehistorie bedeutet, steht im Kapitel
-[Berechtigungen](../administration/gruppen.md#woher-gruppen-kommen).
+[Administration](../administration/gruppen.md#woher-gruppen-kommen).
 
 Der Abgleich läuft für die Konten **dieses** Anbieters: Mitglieder werden nur unter seinem Issuer
 aufgelöst, Gruppen eines anderen Anbieters sind für ihn unsichtbar. Ist die Anbieterzeile
@@ -332,7 +332,7 @@ Zugang, nicht erst mit dem Ablauf seines Tokens.
 - **Der letzte anmeldefähige Systemverwalter wird nie gesperrt**; der Bericht weist die
   zurückgehaltene Sperre namentlich aus.
 - **Offene Eigentums- oder Zuständigkeitsfragen halten eine Sperre nie auf**
-  ([Berechtigungen](../administration/ausscheiden.md)).
+  ([Administration](../administration/ausscheiden.md)).
 - Jede Sperre und Entsperrung steht im Nachweisprotokoll, der Kontozustand mit Beginn und Ende in der
   Rechtehistorie.
 
@@ -427,7 +427,7 @@ Realms.
 
 - **Keine Kontenzusammenführung:** Zwei Anbieter, dieselbe E-Mail — zwei Konten mit getrennten Rechten.
   Wer eine Person zu einem anderen Anbieter umzieht, vergibt ihre Rechte neu oder übergibt ein
-  lokales Konto ([Benutzerverwaltung](../administration/konto-uebergeben.md)).
+  lokales Konto ([Administration](../administration/konto-uebergeben.md)).
 - **Kein SAML, kein reines OAuth2.**
 - **Nur Keycloak als Verzeichnis.** LDAP und Microsoft Graph sind nicht angebunden.
 - **Eine Organisation:** Alle Anbieter legen Konten in dieselbe Organisation an.
@@ -516,7 +516,7 @@ Die Adresse muss ein zustellbares Postfach sein, am besten ein Funktionspostfach
 
 1. **Einmal anmelden**, auf der regulären Anmeldeseite, und prüfen, dass das Konto funktioniert.
 2. **Persönliche Verwalterkonten anlegen**, je Person eines
-   ([Benutzerverwaltung](../administration/konten.md)); die tägliche Arbeit läuft über diese Konten.
+   ([Administration](../administration/konten.md)); die tägliche Arbeit läuft über diese Konten.
 3. **Das Passwort versiegelt hinterlegen**, dort, wo das Haus andere Notfallzugänge verwahrt.
 
 Das Konto bleibt anmeldefähig und ist **gegenüber Verwaltungsakten unverletzlich**: Löschen, Sperren,
@@ -541,7 +541,7 @@ Lokale Konten sind Konten, die OPAA selbst führt, mit E-Mail-Adresse und Passwo
 [Installation](installation.md) schaltet ihn **ein**, mit „nur lokale Konten" wie mit einem
 Identitätsanbieter; das Revisionsprotokoll hält es unter der Installation fest.
 Was sie im Alltag leistet — anlegen, einladen, sperren, zurücksetzen, befristen, Selbstregistrierung —,
-steht im Kapitel [Benutzerverwaltung](../administration/konten.md). Für den Betrieb zählt:
+steht im Kapitel [Administration](../administration/konten.md). Für den Betrieb zählt:
 
 - **Abgeschaltet heißt: nur Systemverwalter.** Reguläre lokale Konten melden sich nicht an, laufende
   Sitzungen enden beim nächsten Aufruf mit „Die Anmeldung mit Konten dieser Installation wurde
@@ -555,7 +555,7 @@ steht im Kapitel [Benutzerverwaltung](../administration/konten.md). Für den Bet
   Selbstregistrierung (beide erzeugen Konten außerhalb des Verzeichnisses), der Auszug für die
   Personalvertretung mit der geschlossenen Liste der Nachweisereignisse und eine jährliche Vorlage
   dieses Auszugs zusätzlich zur vierteljährlichen Kontenprüfung
-  ([Benutzerverwaltung](../administration/konten.md#liste-prüfen)).
+  ([Administration](../administration/konten.md#liste-prüfen)).
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
   (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](../administration/e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
@@ -563,7 +563,7 @@ steht im Kapitel [Benutzerverwaltung](../administration/konten.md). Für den Bet
   fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
   und erhält keinen Zugang; die Bestätigungsmail nennt keinen Namen und bittet, eine nicht selbst
   ausgelöste Registrierung zu ignorieren
-  ([Benutzerverwaltung](../administration/anmeldung-einstellen.md)). Eine
+  ([Administration](../administration/anmeldung-einstellen.md)). Eine
   eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](../administration/e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen — bei der
@@ -764,7 +764,7 @@ ganze Haus. Die aufgelöste Client-Adresse zeigt der Diagnose-Endpunkt
 
 Beabsichtigt: Unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes und noch nicht
 bestätigtes Konto beantwortet OPAA **gleich**. Den Zustand eines Kontos zeigt die Kontenliste
-([Benutzerverwaltung](../administration/konten.md#liste-prüfen)). Wird eine Person
+([Administration](../administration/konten.md#liste-prüfen)). Wird eine Person
 nach der Anmeldung sofort auf „Passwort ändern" geführt, ist ein Wechsel erzwungen; die Seite nennt den
 Anlass.
 

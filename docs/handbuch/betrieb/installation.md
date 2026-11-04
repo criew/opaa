@@ -176,7 +176,7 @@ und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Kont
 vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](../administration/e-mail.md) eingerichtet sind,
 auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein Funktionspostfach der IT
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
-[Benutzerverwaltung](../administration/konten.md) ab. Jeder Schritt, jede Prüfung,
+[Administration](../administration/konten.md) ab. Jeder Schritt, jede Prüfung,
 jedes Überspringen, das Einschalten der lokalen Konten, die Übernahme des Rerank-Modells
 („Rerank-Modell“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
 

@@ -21,6 +21,7 @@ Die Lupe neben „Neuer Chat“ öffnet die Seite „Chats“ mit den Reitern �
 ## Automatisches Aufräumen
 
 Ein Space kann inaktive Chats nach einer Frist archivieren und später
-löschen. Die Seite „Chats“ nennt dann die Fristen. Angeheftete Chats bleiben.
+löschen. Die Seite „Chats“ nennt dann die Fristen. Angeheftete Chats bleiben; vor dem
+Löschen kommt keine eigene Benachrichtigung.
 
 **Gut zu wissen:** Ihre Chats sieht niemand außer Ihnen, auch keine Verwaltung.

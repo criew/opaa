@@ -95,7 +95,7 @@ begründet:
   Chat und Einbettung; ein anderer Anbieter ist konfigurierbar, aber nicht voreingestellt — und wer
   ihn wählt, gibt dessen Adresse ausdrücklich an, weil es dafür keine Voreinstellung gibt.
 - **Betrieb:** Docker Compose oder Kubernetes mit dem mitgelieferten Helm-Chart, jeweils mit einer
-  Backend-Instanz ([Handbuch: Betriebsübersicht](docs/handbuch/betrieb/README.md),
+  Backend-Instanz ([Handbuch: Betrieb](docs/handbuch/betrieb/README.md),
   [Handbuch: Kubernetes](docs/handbuch/betrieb/kubernetes.md)). Hochverfügbarkeit mit mehreren Instanzen und
   der Betrieb ohne Netzanbindung sind Ziel, aber noch nicht gebaut
 

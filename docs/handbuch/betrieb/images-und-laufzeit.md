@@ -3,7 +3,7 @@
 Dieses Kapitel beschreibt die Images von Backend und Frontend: welche Versionen es gibt, wie die
 Container zur Laufzeit arbeiten, wie die Plattform sie prüft und wie sie anhalten. Es gilt für jeden
 Betriebsweg und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
-beschreibt die [Betrieb](README.md).
+beschreibt die [Betriebsübersicht](README.md).
 
 ## Images und Versionen
 

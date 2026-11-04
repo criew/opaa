@@ -3,7 +3,7 @@
 Dieses Kapitel beschreibt, was eine Installation über sich ausgibt — Log und Metriken —, wie der
 Betrieb sie ohne Shell im Container untersucht und wo er bei einer Störung weiterliest. Es gilt für
 jeden Betriebsweg und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer
-Installation beschreibt die [Betrieb](README.md).
+Installation beschreibt die [Betriebsübersicht](README.md).
 
 ## Logs und Metriken
 
@@ -22,7 +22,7 @@ Installation beschreibt die [Betrieb](README.md).
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
 - **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
-  Anwendung ([Berechtigungen](../referenz/rechte-matrix.md)).
+  Anwendung ([Rechte-Matrix](../referenz/rechte-matrix.md)).
 - **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
   Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),
@@ -88,7 +88,7 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
   Bibliothek, privater Prompt), fehlen Kennung und Name immer. Wer gehandelt hat, klärt nur die
   anlassbezogene Klärung in OPAA
-  ([Berechtigungen](../administration/systemrollen.md)).
+  ([Administration](../administration/systemrollen.md)).
 - **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
   nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
   einzige Leser.

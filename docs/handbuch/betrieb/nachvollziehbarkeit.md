@@ -125,7 +125,7 @@ gilt:
   und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.
 - **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
   Vorgang ab, jeweils für einen begrenzten Zeitraum
-  ([Berechtigungen](../administration/stichtagsauskunft.md)).
+  ([Administration](../administration/stichtagsauskunft.md)).
   Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
   ([Überwachung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
 - **Keine Kennung in der Antwort:** In ihren Abfragen des Revisionsprotokolls und des
@@ -134,23 +134,23 @@ gilt:
   sich diese Antworten nicht über eine Person verbinden, auch nicht über Einträge, die in zwei
   Antworten vorkommen, und aus vielen Abfragen entsteht keine Zeitreihe einer Person. Bewusst
   ausgenommen sind die Stichtagsauskunft, die zu einem Objekt nennt, wer es lesen durfte
-  ([Berechtigungen](../administration/stichtagsauskunft.md)),
+  ([Administration](../administration/stichtagsauskunft.md)),
   das Diagnoseprotokoll, das bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym
   nennt, um deren Handeln zu kontrollieren, und die offenen Anträge auf die Rolle Revision, die Name
   und Adresse des Kontos und die beantragende Person nennen, damit die Revision die Person vor der
-  Bestätigung prüft ([Benutzerverwaltung](../administration/systemrollen.md#die-rolle-revision)).
+  Bestätigung prüft ([Administration](../administration/systemrollen.md#die-rolle-revision)).
 - **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Eintrag nur über eine
   anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
-  ([Berechtigungen](../administration/systemrollen.md)). Ihr
+  ([Administration](../administration/systemrollen.md)). Ihr
   Zeitraum liegt ganz in der Vergangenheit und ist je Klärung begrenzt, ihre Antwort nennt keine
   Kennung der Person, und Antrag und Freigabe stehen selbst im Protokoll, gesichert durch die
   Prüfsummenkette.
 - **Löschen ohne Eingriff ins Protokoll:** Wird ein Konto gelöscht, entfällt die Zuordnung; das
   Protokoll bleibt unverändert und ist danach keiner Person mehr zuzuordnen
-  ([Benutzerverwaltung](../administration/konten.md#sperren-statt-löschen)).
+  ([Administration](../administration/konten.md#sperren-statt-löschen)).
   Ausnahme: Nennt eine anlassbezogene Klärung (Antrag oder Freigabe) die Person, bleibt die
   Zuordnung über diese Klärung bis zu deren Löschfrist bestehen
-  ([Berechtigungen](../administration/systemrollen.md)).
+  ([Administration](../administration/systemrollen.md)).
 
 Pseudonymisierte Daten bleiben personenbezogen, solange die Zuordnung besteht. Sie gehören deshalb
 in Verzeichnis, Löschkonzept und Auskunft der Behörde.

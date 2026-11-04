@@ -5,7 +5,7 @@ Dieses Kapitel erklärt, wie mehrere Backend-Instanzen von OPAA gleichzeitig arb
 funktioniert und warum; wie man die Instanzen einrichtet, steht bei den Betriebswegen
 [Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
 [Kubernetes](kubernetes.md#mehrere-backend-instanzen). Die Bausteine einer Installation beschreibt
-die [Betrieb](README.md).
+die [Betriebsübersicht](README.md).
 
 > **Beispiel.** Ein Landratsamt betreibt OPAA mit zwei Backend-Instanzen unter Kubernetes. In der
 > Nacht fällt ein Knoten aus und nimmt eine Instanz mit. Die andere beantwortet die Fragen weiter,
@@ -355,8 +355,7 @@ Kennung der Nachricht.
 
 Eine Ausnahme sind „Passwort vergessen“ und die Selbstregistrierung: Ihre Bearbeitung samt Mail
 wartet zunächst im Speicher der Instanz, nur Millisekunden lang. Stoppt die Instanz genau dann, geht
-die Anfrage verloren, und wer keine Mail bekommt, fragt erneut (Betrieb, „Sanftes
-Herunterfahren“). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
+die Anfrage verloren, und wer keine Mail bekommt, fragt erneut ([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
 beschreibt [E-Mail-Versand](../administration/e-mail.md#zustellung-über-die-warteschlange).
 
 ## Grenzen und Budgets

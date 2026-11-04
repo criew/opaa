@@ -2,7 +2,8 @@
 
 Ihr KI-Werkzeug sucht danach über den MCP-Server von OPAA in Ihren Bibliotheken. Sie brauchen zwei
 Angaben: die Adresse `https://<host>/mcp` und den Wert Ihres [Zugangstokens](zugangstoken.md). Der
-Dialog nach dem Erzeugen des Tokens zeigt die Angaben schon mit der Adresse Ihrer Installation.
+Dialog nach dem Erzeugen des Tokens zeigt fertige Ausschnitte für einige Werkzeuge, schon mit der
+Adresse Ihrer Installation.
 
 **OpenCode**, in `~/.config/opencode/opencode.json`, mit dem Tokenwert in der Umgebungsvariablen
 `OPAA_TOKEN`:

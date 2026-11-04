@@ -7,7 +7,7 @@ in Spaces aufnehmen.
 
 1. „Einstellungen“, „Meine Gruppen“, „Gruppe anlegen“.
 2. Name eintragen und **„Zur Verwendung freigegeben“** einschalten; erst dann finden andere die
-   Gruppe.
+   Gruppe. Ausschalten nimmt sie nur aus der Auswahl, bestehende Rechte bleiben.
 3. Mitglieder über „Person suchen“ aufnehmen. Sie selbst sind verantwortlich, aber nicht
    automatisch Mitglied.
 

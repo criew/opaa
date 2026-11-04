@@ -1,7 +1,6 @@
 # Rechte-Matrix
 
-Wer welche Tätigkeit darf, auf einen Blick. Die Einzelheiten stehen im Kasten „Wer“ der
-verlinkten Seite. „—“ heißt: keine Voraussetzung in dieser Spalte.
+Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzung in dieser Spalte.
 
 ## Benutzer: ab Werk
 

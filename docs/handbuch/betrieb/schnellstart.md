@@ -16,12 +16,15 @@ sudo chown -R 65532:65532 uploads
 chmod -R o+rX documents
 ```
 
-In `.env.docker` zwei Zeilen setzen:
+In `.env.docker` drei Zeilen setzen:
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
+OPAA_SETTINGS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 ```
+
+Der dritte Schlüssel verschlüsselt den API-Schlüssel des Modells in der Datenbank.
 
 ## 2. Starten
 
@@ -30,7 +33,8 @@ docker compose up -d --build
 docker compose logs backend | grep -A3 "INSTALLATION TOKEN"
 ```
 
-Der zweite Befehl zeigt das einmalige Installations-Token.
+Der zweite Befehl zeigt das einmalige Installations-Token, sobald das Backend gestartet ist; bei
+leerer Ausgabe kurz warten und wiederholen.
 
 ## 3. Im Browser einrichten
 
