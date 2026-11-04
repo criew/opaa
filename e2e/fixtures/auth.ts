@@ -87,8 +87,9 @@ export async function openAs(page: Page, devUser: string, attempt = 1): Promise<
 }
 
 /**
- * Firefox aborts a `page.goto` with NS_BINDING_ABORTED when the app still finishes a navigation of
- * its own that is still in flight; Chromium lets the newer navigation win.
+ * Firefox aborts a `page.goto` when the app still finishes a navigation of its own that is still in
+ * flight (NS_BINDING_ABORTED, or Playwright's "interrupted by another navigation", e.g. the start
+ * page's redirect to /chat); Chromium lets the newer navigation win.
  * In Firefox every `goto` therefore waits for the page to settle and repeats once on exactly that
  * abort, so scenarios navigate the same way in both engines.
  */
@@ -99,7 +100,13 @@ function settleNavigationInFirefox(page: Page): void {
     try {
       return await goto(url, options)
     } catch (error) {
-      if (!String(error).includes('NS_BINDING_ABORTED')) throw error
+      const message = String(error)
+      if (
+        !message.includes('NS_BINDING_ABORTED') &&
+        !message.includes('is interrupted by another navigation')
+      ) {
+        throw error
+      }
       await page.waitForLoadState('load').catch(() => undefined)
       return goto(url, options)
     }
