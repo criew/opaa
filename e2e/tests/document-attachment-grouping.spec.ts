@@ -49,6 +49,8 @@ async function triggerIndexingAndWaitForCompletion(page: Page, libraryId: string
     },
     { timeout: 60_000 },
   )
+  // „Jetzt indizieren“ steht im Reiter „Quelle“, Abschnitt „Läufe“.
+  await page.getByRole('tab', { name: 'Quelle' }).click()
   await page.getByRole('button', { name: 'Jetzt indizieren' }).click()
   const response = await completion
   const body = (await response.json()) as { status: string; message: string | null }
@@ -66,6 +68,7 @@ test.describe('Anhangsgruppierung in der Dokumentliste', () => {
   }) => {
     const libraryId = await createFilesystemLibrary(page, LIBRARY_NAME)
     await triggerIndexingAndWaitForCompletion(page, libraryId)
+    await page.getByRole('tab', { name: 'Dokumente' }).click()
 
     // The two attachments are indexed within the same run, but the already-rendered document list
     // does not re-fetch on run completion - reload until the mail row shows its attachment toggle.

@@ -82,7 +82,7 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
     expect(narrowTypes.x).toBeGreaterThanOrEqual(0)
   })
 
-  test('Stern und „⋯“ heben die Kachel nicht hervor, der Fokus auf dem Titel schon', async ({
+  test('Der Stern hebt die Kachel nicht hervor, der Fokus auf dem Titel schon', async ({
     regularUserPage: page,
   }) => {
     const name = `E2E Kachelzustand ${Date.now()}`
@@ -101,17 +101,6 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
     ).toBeFocused()
     await movePointerAway(page)
     expect(await borderColor(tile), 'Kachel nach Klick auf den Stern').toBe(resting)
-
-    const more = page.getByRole('button', {
-      name: new RegExp(`Weitere Aktionen für .${escapeRegExp(name)}`),
-    })
-    await more.click()
-    await expect(page.getByRole('menu')).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('menu')).toBeHidden()
-    await expect(more).toBeFocused()
-    await movePointerAway(page)
-    expect(await borderColor(tile), 'Kachel nach dem „⋯“-Menü').toBe(resting)
 
     // The keyboard path to the tile's own control still marks the whole tile.
     await page.keyboard.press('Tab')

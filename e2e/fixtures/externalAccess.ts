@@ -3,6 +3,7 @@ import {
   request as playwrightRequest,
   type APIRequestContext,
   type APIResponse,
+  type Locator,
   type Page,
 } from '@playwright/test'
 import { gotoLibraries, gotoLibraryDetail } from './chat'
@@ -235,14 +236,19 @@ export async function setLibraryReleaseViaApi(
 }
 
 /**
- * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem der Abschnitt „Externer
- * Zugang" mit der Freigabe für externe KI-Werkzeuge steht - ohne Dialog davor.
+ * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem die Zeile „Externer Zugang" mit der
+ * Freigabe für externe KI-Werkzeuge steht.
  */
 export async function openLibraryAccessDialog(page: Page, libraryName: string): Promise<void> {
   await gotoLibraries(page)
   await gotoLibraryDetail(page, libraryName)
   await page.getByRole('tab', { name: 'Freigaben' }).click()
-  await expect(page.getByRole('heading', { name: 'Externer Zugang' })).toBeVisible()
+  await expect(externalAccessRow(page)).toBeVisible()
+}
+
+/** Die Zeile „Externer Zugang" im Reiter „Freigaben": Stand links, „Freigeben"/„Ändern" rechts. */
+export function externalAccessRow(page: Page): Locator {
+  return page.getByRole('region', { name: 'Externer Zugang' })
 }
 
 /** Der Abschnitt steht auf der Seite; zu schließen gibt es nichts. */
@@ -258,24 +264,29 @@ export function dateInputValue(daysFromNow: number): string {
 }
 
 /**
- * Setzt oder nimmt die Freigabe einer Bibliothek über die Oberfläche zurück; der Zugriffsbereich
- * muss offen sein. Das Datum wird vor dem Schalter gefüllt, weil der Schalter es mitsendet.
+ * Setzt oder beendet die Freigabe einer Bibliothek über die Zeile „Externer Zugang"; der Reiter
+ * „Freigaben" muss offen sein. Beides läuft über den Dialog hinter „Freigeben" bzw. „Ändern",
+ * das Beenden zusätzlich über die Bestätigung.
  */
 export async function setLibraryReleaseInDialog(
   page: Page,
   enabled: boolean,
   daysFromNow?: number,
 ): Promise<void> {
+  const row = externalAccessRow(page)
+  await row.getByRole('button', { name: /^(Freigeben|Ändern)/ }).click()
+  const dialog = page.getByRole('dialog', { name: 'Externer Zugang' })
   if (enabled) {
-    await page.getByLabel('Freigabe bis').fill(dateInputValue(daysFromNow ?? 30))
+    await dialog.getByLabel('Freigabe bis').fill(dateInputValue(daysFromNow ?? 30))
+    await dialog.getByRole('button', { name: /^(Freigeben|Speichern)$/ }).click()
+    await expect(dialog).toBeHidden()
+    await expect(row).toContainText(/Freigegeben bis/)
+  } else {
+    await dialog.getByRole('button', { name: 'Freigabe beenden' }).click()
+    await page.locator('#confirm-accept').click()
+    await expect(dialog).toBeHidden()
+    await expect(row).toContainText(/Nicht freigegeben · am .* zurückgenommen/)
   }
-  const toggle = page.getByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' })
-  if ((await toggle.isChecked()) !== enabled) {
-    await toggle.click()
-  }
-  await expect(
-    page.getByText(enabled ? /Freigegeben bis/ : /Die Freigabe wurde am .* zurückgenommen/),
-  ).toBeVisible()
 }
 
 /** Die eigene Tokenverwaltung in den persönlichen Einstellungen. */

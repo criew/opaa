@@ -10,6 +10,8 @@ import {
   expectAnyCitedSource,
   expectCitedExclusively,
   expectTopSidebarChatToBeNamed,
+  gotoLibraries,
+  gotoLibraryDetail,
   shareLibraryWithPerson,
   sidebarChatEntry,
   startAnotherChatViaSidebar,
@@ -611,9 +613,9 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByRole('main').getByText('Archiviert', { exact: true })).toHaveCount(0)
   })
 
-  // ADR-0039, Entscheidung 4: "In Space verwenden" leads from the catalog's "⋯" menu to the
+  // ADR-0039, Entscheidung 4: "In Space verwenden" in the asset's tab "Zuordnungen" leads to the
   // association, and the asset is usable in the space's chat right after.
-  test('10. In Space verwenden: Bibliothek aus dem Katalog zuordnen und im Chat nutzen', async (
+  test('10. In Space verwenden: Bibliothek im Reiter „Zuordnungen“ zuordnen und im Chat nutzen', async (
     { authenticatedPage: page },
     testInfo,
   ) => {
@@ -623,11 +625,15 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await createLibraryWithDocument(page, libraryName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
     const spaceId = await createSpace(page, spaceName)
 
-    await page.goto('/catalog')
-    await page.getByLabel('Suchen', { exact: true }).fill(libraryName)
-    await page.getByRole('button', { name: `Weitere Aktionen für „${libraryName}“` }).click()
-    await page.getByRole('menuitem', { name: 'In Space verwenden' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: spaceName }).click()
+    await gotoLibraries(page)
+    await gotoLibraryDetail(page, libraryName)
+    await page.getByRole('tab', { name: 'Zuordnungen' }).click()
+    await page.getByRole('button', { name: 'In Space verwenden' }).click()
+    const spaceInput = page.getByRole('combobox', { name: 'Space suchen' })
+    await spaceInput.click()
+    await spaceInput.fill(spaceName)
+    await page.getByRole('option', { name: spaceName }).click()
+    await page.getByRole('button', { name: 'Verwenden', exact: true }).click()
     await expect(page.getByText(`ist jetzt im Space „${spaceName}“ zugeordnet`)).toBeVisible()
 
     await page.goto(`/spaces/${spaceId}/chats/new`)
