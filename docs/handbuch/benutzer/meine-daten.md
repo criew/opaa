@@ -8,7 +8,7 @@
 Das geht nur bei lokalen Konten. Wer sich über einen Identitätsanbieter anmeldet, ändert das
 Passwort dort.
 
-1. „Einstellungen“, „Passwort ändern“.
+1. „Einstellungen“, unter „Ihr Konto“ bei „Passwort“ auf „Ändern“.
 2. Aktuelles und neues Passwort eingeben.
 
 Alle anderen Sitzungen und Ihre [Zugangstokens](ki-werkzeug-einrichten.md#token-anlegen) enden.

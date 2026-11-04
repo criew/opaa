@@ -18,14 +18,18 @@ export const COMPLETED_MESSAGE = 'Ihre Daten wurden vollständig heruntergeladen
 export const DOWNLOAD_BUTTON = 'Daten herunterladen'
 
 /**
- * Waits until „Meine Daten“ has loaded the status: the daily limit above the button, or the
- * notice that replaces it. Until then the button swallows a click.
+ * Waits until „Meine Daten“ has loaded the status: the button becomes available, or a line names
+ * why no download can start. Until then the button swallows a click.
  */
 export async function waitForMyDataStatus(page: Page): Promise<void> {
   await expect(page.getByText(PERSONAL_ONLY_NOTICE)).toBeVisible({ timeout: 20_000 })
-  await expect(
-    page.getByText(/pro Tag möglich\.|in dieser Installation derzeit abgeschaltet/).first(),
-  ).toBeVisible({ timeout: 20_000 })
+  const available = page
+    .locator('button:not([aria-disabled="true"])')
+    .filter({ hasText: DOWNLOAD_BUTTON })
+  const reason = page.getByText(
+    /in dieser Installation derzeit abgeschaltet|kein weiterer Download möglich|Starts für heute erschöpft|Gerade läuft ein Download/,
+  )
+  await expect(available.or(reason).first()).toBeVisible({ timeout: 20_000 })
 }
 
 /** Opens „Meine Daten“ and waits for its status. */

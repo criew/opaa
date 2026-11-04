@@ -78,9 +78,8 @@ describe('MyDataSection', () => {
     await renderReady()
 
     expect(screen.getByText(NOTICE)).toBeInTheDocument()
-    expect(screen.getByText(/Nicht enthalten sind Inhalte von Dokumenten/)).toBeInTheDocument()
-    expect(screen.getByText(/ersetzt keinen Auskunftsantrag/)).toBeInTheDocument()
-    expect(screen.getByText(/Einmal pro Tag möglich/)).toBeInTheDocument()
+    expect(screen.getByText(/Nicht enthalten sind Dokumentinhalte/)).toBeInTheDocument()
+    expect(screen.queryByText(/pro Tag möglich/)).not.toBeInTheDocument()
   })
 
   it('confirms the sign-in, downloads and then tells from when the next export is possible', async () => {
