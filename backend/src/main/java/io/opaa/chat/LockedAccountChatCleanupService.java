@@ -60,6 +60,8 @@ public class LockedAccountChatCleanupService {
   static final int MAX_CHATS_PER_RUN = 5_000;
   static final Duration PREVIEW = Duration.ofDays(30);
   static final Duration REQUEST_VALID_FOR = Duration.ofDays(14);
+  static final String REQUEST_CHANGED = "HOLD_REQUEST_CHANGED";
+  static final String REQUEST_EXPIRED = "HOLD_REQUEST_EXPIRED";
   static final int MAX_HOLDS_PER_RUN = 1_000;
   static final int MIN_REASON_LENGTH = 10;
   static final int MAX_REASON_LENGTH = 1_000;
@@ -276,13 +278,18 @@ public class LockedAccountChatCleanupService {
 
   /**
    * Approves the pending request by a second administrator: the hold takes effect, or the running
-   * hold is extended, until now plus the maximum duration in force.
+   * hold is extended, until now plus the maximum duration in force. The approval binds to the
+   * request {@code actor} saw, named by its {@code seenRequestedAt}, so a request withdrawn and
+   * filed anew in between is never approved unseen.
    *
    * @throws NotFoundException without a pending request
    * @throws ValidationException when {@code actor} filed the request (Selbstfreigabe)
+   * @throws ConflictException when the pending request is not the one seen, or is older than {@link
+   *     #REQUEST_VALID_FOR}
    */
   @Transactional
-  public LockedAccountChatCleanup approveHold(CurrentUser actor, UUID userId) {
+  public LockedAccountChatCleanup approveHold(
+      CurrentUser actor, UUID userId, Instant seenRequestedAt) {
     User user = localUsers.get(actor.organizationId(), userId).user();
     store.lockAccount(userId);
     HoldRequest request =
@@ -291,6 +298,15 @@ public class LockedAccountChatCleanupService {
       throw new ValidationException(
           "Selbstfreigabe ist nicht zulässig: Eine zweite Person der Systemverwaltung gibt die"
               + " Anhaltung frei");
+    }
+    if (!request.requestedAt().equals(seenRequestedAt)) {
+      throw new ConflictException(
+          "Der Antrag hat sich geändert. Bitte den aktuellen Antrag prüfen und erneut freigeben",
+          REQUEST_CHANGED);
+    }
+    if (!request.requestedAt().isAfter(databaseClock.now().minus(REQUEST_VALID_FOR))) {
+      throw new ConflictException(
+          "Der Antrag ist abgelaufen und kann nicht mehr freigegeben werden", REQUEST_EXPIRED);
     }
     Optional<Hold> hold = store.findHold(userId);
     if (hold.isPresent() && !hold.get().running()) {

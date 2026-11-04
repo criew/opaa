@@ -77,6 +77,10 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       return true
     } catch (err) {
       notify(localUserErrorMessage(err, 'Die Änderung ist fehlgeschlagen.'), 'error')
+      // after any refusal the section shows the state as stored, e.g. a request filed anew
+      getLocalUserChatCleanup(user.id)
+        .then(setState)
+        .catch(() => undefined)
       return false
     } finally {
       setBusy(false)
@@ -163,7 +167,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                     disabled={busy}
                     onClick={() =>
                       void act(
-                        () => approveLocalUserChatCleanupHold(user.id),
+                        () => approveLocalUserChatCleanupHold(user.id, pending.requestedAt),
                         pending.extension
                           ? `Die Anhaltung der Löschung der Chats von ${name} ist verlängert.`
                           : `Die Löschung der Chats von ${name} ist angehalten.`,
