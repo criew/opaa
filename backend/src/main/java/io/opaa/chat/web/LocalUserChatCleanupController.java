@@ -1,6 +1,7 @@
 package io.opaa.chat.web;
 
 import io.opaa.api.dto.LocalUserChatCleanupHold;
+import io.opaa.api.dto.LocalUserChatCleanupHoldApproval;
 import io.opaa.api.dto.LocalUserChatCleanupHoldRequest;
 import io.opaa.api.dto.LocalUserChatCleanupPendingHold;
 import io.opaa.api.dto.LocalUserChatCleanupResponse;
@@ -53,8 +54,10 @@ public class LocalUserChatCleanupController {
 
   @PostMapping("/hold-request/approve")
   public LocalUserChatCleanupResponse approveLocalUserChatCleanupHold(
-      @PathVariable UUID id, @Caller CurrentUser caller) {
-    return toResponse(cleanupService.approveHold(caller, id), caller);
+      @PathVariable UUID id,
+      @Valid @RequestBody LocalUserChatCleanupHoldApproval approval,
+      @Caller CurrentUser caller) {
+    return toResponse(cleanupService.approveHold(caller, id, approval.getRequestedAt()), caller);
   }
 
   @DeleteMapping("/hold-request")
