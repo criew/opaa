@@ -3,17 +3,14 @@
 Sie haben danach einen Space, in dem eine Gruppe mit denselben Bibliotheken und Prompts arbeitet.
 
 1. In der Seitenleiste neben „Spaces“ das Plus wählen, oder „Neuer Space“ in der Übersicht.
-2. **Grunddaten:** Name (Pflicht) und Beschreibung. Wer will, schaltet hier das automatische
-   Aufräumen inaktiver Chats ein ([Chats verwalten](chats.md)).
-3. **Mitglieder:** Personen und Gruppen suchen, Rolle wählen, „Vormerken“. Eine Gruppe gibt ihre
-   Rolle an alle ihre Mitglieder weiter.
-4. **Inhalte:** die Arbeitsmittel als Kacheln wählen, wie im [Katalog](katalog.md). Angeboten wird
-   alles, was Sie lesen dürfen.
+2. **Grunddaten:** Name und Beschreibung, bei Bedarf das automatische Aufräumen aktivieren.
+3. **Mitglieder:** Personen und Gruppen suchen, Rolle wählen, „Vormerken“.
+4. **Inhalte:** die Arbeitsmittel wählen, die im Space verfügbar sein sollen, wie im
+   [Katalog](katalog.md).
 5. **Zusammenfassung** prüfen und „Space anlegen“ wählen.
 
 Die Schritte „Mitglieder“ und „Inhalte“ lassen sich mit „Weiter“ überspringen und später in den
-Einstellungen des Space nachholen. Lässt sich ein Mitglied oder ein Inhalt nicht aufnehmen, entsteht
-kein Space; der Assistent bleibt mit allen Eingaben offen und nennt den Grund.
+Einstellungen des Space nachholen.
 
 **Die Rollen im Space:**
 
