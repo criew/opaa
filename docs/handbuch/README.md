@@ -1,7 +1,5 @@
 # OPAA-Handbuch
 
-[Zur OPAA-Startseite](https://opaa.io/)
-
 Dieses Handbuch beschreibt OPAA für alle, die damit arbeiten, es pflegen, verwalten oder betreiben:
 was die Software tut, wie man sie bedient und einrichtet und wo man nachsieht, wenn etwas nicht wie
 erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.

@@ -12,7 +12,6 @@
 /* Fonts are served from this origin (OFL, see fonts/): no request leaves the page except to opaa.io. */
 @font-face{font-family:'Quicksand';font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format('woff2')}
 @font-face{font-family:'Source Sans 3';font-style:normal;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-latin.woff2) format('woff2')}
-@font-face{font-family:'Source Sans 3';font-style:italic;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-italic-latin.woff2) format('woff2')}
 /* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den OPAA-Gestaltungsleitlinien (Navy, Blau-700, Off-White). */
 :root{
   --bg:#FFFFFF; --bg-2:#F6F8FB; --bg-3:#EEF2F7; --grid:rgba(1,33,66,.055);
@@ -60,7 +59,7 @@ p{margin:0}
 .btn-primary:hover{background:#085B9C}
 .btn-ghost{background:#fff;color:var(--fg);border-color:var(--line)}
 .btn-ghost:hover{background:var(--bg-2)}
-@media (max-width:760px){.links{display:none}}
+@media (max-width:760px){.pill{flex-wrap:wrap;border-radius:22px;padding:8px 10px}.links{order:3;width:100%;justify-content:center;border-top:1px solid var(--line);margin-top:6px;padding-top:6px}.links a{padding:6px 10px;font-size:14px}}
 
 /* Hero */
 .hero{padding-block:72px 40px;text-align:center}
@@ -68,7 +67,7 @@ p{margin:0}
 .hero h1 span{color:var(--accent)}
 .ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .facts{display:flex;gap:8px 22px;flex-wrap:wrap;justify-content:center;font-size:14px;color:var(--fg-3)}
-.facts span::before{content:"✓ ";color:var(--ok);font-weight:700}
+.facts span::before{content:"✓ " / "";color:var(--ok);font-weight:700}
 
 /* Browserrahmen */
 .shot{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 60px -30px rgba(1,33,66,.35),0 2px 6px rgba(1,33,66,.06);overflow:hidden}
@@ -126,7 +125,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 </head>
 <body>
 
-<div class="beta" role="status">
+<div class="beta">
   <div class="wrap">
     <span class="tag">BETA</span>
     <span>OPAA ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
@@ -135,7 +134,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 
 <div class="navbar"><div class="wrap">
   <nav class="pill" aria-label="Hauptnavigation">
-    <a class="brand" href="/"><span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg></span><b>OPAA</b><span class="b">BETA</span></a>
+    <a class="brand" href="#"><span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg></span><b>OPAA</b><span class="b">BETA</span></a>
     <div class="links">
       <a href="https://opaa.io/handbuch/">Handbuch</a>
       <a href="https://demo.opaa.io">Demo</a>
@@ -156,7 +155,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
   <div class="facts"><span>Lokale Modelle</span><span>Rechte in der Suche</span><span>Jeder Beleg geprüft</span><span>Betrieb auch air-gapped</span></div>
   <figure class="shot" style="margin-bottom:0">
     <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io · Space „Meldewesen &amp; Ausweise“</span></div>
-    <img src="img/antwort.png" width="2880" height="1800" alt="OPAA-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet OPAA mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
+    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="OPAA-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet OPAA mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
   </figure>
   <div class="callouts">
     <span class="callout"><b>Frage</b> in Umgangssprache</span>
@@ -193,7 +192,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13l2 2 4-4"/></svg></span>
       <h3>Belege geprüft, nicht nur verlinkt</h3>
       <p>Jede Aussage trägt eine Fußnote, jeder Beleg wird gegen die Fundstellen geprüft. Was nicht belegbar ist, wird nicht behauptet.</p>
-      <span class="k">Ein Klick führt zur markierten Stelle im Original</span>
+      <span class="k">Ein Klick führt zur markierten Stelle im Dokument</span>
     </article>
   </div>
 </div></section>
@@ -295,7 +294,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
   <div class="two" style="margin-top:36px">
     <figure class="shot" style="margin:0">
       <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io/catalog</span></div>
-      <img src="img/katalog.png" width="2880" height="1800" alt="Katalog der Demo: Kacheln für Interne Dienstanweisungen, Leistungen Meldewesen, Satzungen, Fachamt-Laufwerk (SMB), Rathaus-Cloud (Nextcloud), Pressemitteilungen (RSS) und weitere.">
+      <img src="img/katalog.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Katalog der Demo: Kacheln für Interne Dienstanweisungen, Leistungen Meldewesen, Satzungen, Fachamt-Laufwerk (SMB), Rathaus-Cloud (Nextcloud), Pressemitteilungen (RSS) und weitere.">
     </figure>
     <div style="display:grid;gap:12px;align-content:center">
       <h3>Der Katalog zeigt, was angebunden ist</h3>
@@ -309,16 +308,16 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
   <div class="head">
     <span class="eyebrow">Belegbarkeit</span>
     <h2>Vom Satz zur Fundstelle in einem Klick</h2>
-    <p class="lead">Belege lassen sich direkt im Originaldokument prüfen, die Fundstelle ist markiert.</p>
+    <p class="lead">Belege lassen sich direkt im Dokument prüfen, die Fundstelle ist markiert.</p>
   </div>
   <div class="two">
     <figure class="shot" style="margin:0">
       <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">Belege dieser Antwort</span></div>
-      <img src="img/belege.png" width="2880" height="1800" alt="Belegfenster rechts: Fußnote 1 verweist auf 01_verwaltungsgebuehrensatzung.pdf, Seite 1, die Fußnoten 2 bis 4 auf die Dienstanweisung zur Gebührenbefreiung.">
+      <img src="img/belege.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Belegfenster rechts: Fußnote 1 verweist auf 01_verwaltungsgebuehrensatzung.pdf, Seite 1, die Fußnoten 2 bis 4 auf die Dienstanweisung zur Gebührenbefreiung.">
     </figure>
     <figure class="shot" style="margin:0">
       <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">Dokument öffnen · Fundstelle markiert</span></div>
-      <img src="img/dokument.png" width="2880" height="1800" alt="Die Dienstanweisung zur Gebührenbefreiung als docx geöffnet, nur der Abschnitt Anerkannte Nachweise ist markiert.">
+      <img src="img/dokument.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Die Dienstanweisung zur Gebührenbefreiung als docx geöffnet, nur der Abschnitt Anerkannte Nachweise ist markiert.">
     </figure>
   </div>
 </div></section>
