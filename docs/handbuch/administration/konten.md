@@ -1,6 +1,10 @@
 # Lokale Konten verwalten
 
-> **Wer:** Systemverwaltung, „Administration → Benutzer“.
+**Ziel:** Wer ohne Identitätsanbieter arbeitet, hat ein passendes lokales Konto.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Benutzer“
+{: .kopf }
 
 Lokale Konten führt OPAA selbst. Sie werden gebraucht, solange kein Identitätsanbieter angebunden
 ist, und immer für das Notanker-Konto der Systemverwaltung. Konten eines Identitätsanbieters stehen

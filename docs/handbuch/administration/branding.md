@@ -1,6 +1,10 @@
 # Branding
 
-> **Wer:** Systemverwaltung, „Administration → Allgemein & Branding“.
+**Ziel:** OPAA trägt Namen, Farben und Bilder des Hauses.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Allgemein & Branding“
+{: .kopf }
 
 Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe und drei Bilder gehören
 der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration → Allgemein & Branding**, von

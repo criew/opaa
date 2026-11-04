@@ -1,6 +1,7 @@
 # Konnektor: Verzeichnis im Dateisystem
 
-> **Wer:** anlegen mit Anlegerecht, sobald der Betrieb Basisverzeichnisse freigibt; ändern ab *Verwalter*.
+**Wer:** anlegen mit Anlegerecht, sobald der Betrieb Basisverzeichnisse freigibt; ändern ab *Verwalter*
+{: .kopf }
 
 ## 1. Was der Konnektor ist
 

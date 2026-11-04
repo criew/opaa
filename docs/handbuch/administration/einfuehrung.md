@@ -1,8 +1,10 @@
 # Einführung vorbereiten
 
-> **Wer:** Systemverwaltung, mit Datenschutz und Personalvertretung.
+**Ziel:** Vor dem ersten Tag mit echten Personen ist alles Nötige geklärt und eingerichtet.
+{: .kopf }
 
-Diese Liste gehört vor den ersten Tag mit echten Personen, nicht danach.
+**Wer:** Systemverwaltung, mit Datenschutz und Personalvertretung
+{: .kopf }
 
 ## Klären
 

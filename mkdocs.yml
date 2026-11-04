@@ -84,31 +84,30 @@ nav:
           - benutzer/space-inhalte.md
           - benutzer/space-mitglieder.md
           - benutzer/space-einstellungen.md
-      - Bibliotheken:
+      - Katalog:
           - benutzer/katalog.md
           - benutzer/bibliothek-anlegen.md
           - benutzer/prompt-bibliothek-anlegen.md
+      - Bibliothek pflegen:
           - benutzer/arbeitsmittel-teilen.md
           - benutzer/bibliothek-aktuell-halten.md
           - benutzer/metadaten-pflegen.md
-          - benutzer/fuer-ki-werkzeuge-freigeben.md
-          - Konnektoren:
-              - benutzer/konnektoren/README.md
-              - benutzer/konnektoren/filesystem.md
-              - benutzer/konnektoren/http-directory.md
-              - benutzer/konnektoren/rss-feed.md
-              - benutzer/konnektoren/confluence.md
-              - benutzer/konnektoren/s3.md
-              - benutzer/konnektoren/smb.md
-              - benutzer/konnektoren/sharepoint.md
-              - benutzer/konnektoren/onedrive.md
-              - benutzer/konnektoren/google-drive.md
-              - benutzer/konnektoren/nextcloud.md
-              - benutzer/konnektoren/dropbox.md
+      - Quellen anbinden:
+          - benutzer/konnektoren/README.md
+          - benutzer/konnektoren/filesystem.md
+          - benutzer/konnektoren/http-directory.md
+          - benutzer/konnektoren/rss-feed.md
+          - benutzer/konnektoren/confluence.md
+          - benutzer/konnektoren/s3.md
+          - benutzer/konnektoren/smb.md
+          - benutzer/konnektoren/sharepoint.md
+          - benutzer/konnektoren/onedrive.md
+          - benutzer/konnektoren/google-drive.md
+          - benutzer/konnektoren/nextcloud.md
+          - benutzer/konnektoren/dropbox.md
       - Konto und Zugriff:
           - benutzer/konto-verbinden.md
           - benutzer/private-bibliothek.md
-          - benutzer/zugangstoken.md
           - benutzer/ki-werkzeug-einrichten.md
           - benutzer/gruppe-pflegen.md
           - benutzer/zugriff-nachvollziehen.md

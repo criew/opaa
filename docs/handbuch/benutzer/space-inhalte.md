@@ -1,8 +1,10 @@
 # Inhalte eines Space zuordnen
 
-> **Wer:** *Kurator*, *Administrator* oder Eigentümer des Space.
+**Ziel:** Die Chats des Space suchen in den gewählten Bibliotheken und bieten die gewählten Prompts an.
+{: .kopf }
 
-Die Chats des Space suchen danach in den gewählten Bibliotheken und bieten die gewählten Prompts an.
+**Wer:** *Kurator*, *Administrator* oder Eigentümer des Space
+{: .kopf }
 
 1. Das Zahnrad neben dem Namen des Space öffnen, Reiter „Inhalte“.
 2. Den Filter „Nur zugeordnete“ ausschalten, um alles zu sehen, was Sie lesen dürfen.

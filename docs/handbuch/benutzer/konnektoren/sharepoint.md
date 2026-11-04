@@ -1,6 +1,7 @@
 # Konnektor: SharePoint
 
-> **Wer:** anlegen mit Anlegerecht für einen Zugang, den die Systemverwaltung freigibt; ändern ab *Verwalter*.
+**Wer:** anlegen mit Anlegerecht für einen Zugang, den die Systemverwaltung freigibt; ändern ab *Verwalter*
+{: .kopf }
 
 ## 1. Was der Konnektor ist
 

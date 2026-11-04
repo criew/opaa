@@ -1,6 +1,10 @@
 # Externe KI-Werkzeuge zulassen
 
-> **Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“.
+**Ziel:** Personen durchsuchen freigegebene Bibliotheken aus Werkzeugen wie OpenCode, kontrolliert und befristet.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“
+{: .kopf }
 
 Werkzeuge wie OpenCode holen sich mit einem Zugangstoken Fundstellen aus
 freigegebenen Bibliotheken. Ein Token kann nie mehr als seine Person: Jeder Aufruf sieht nur, was sie
@@ -14,7 +18,7 @@ Der Kanal kann geeignet sein, Verhalten und Leistung zu überwachen. Vorher klä
 - die Unterrichtung der Beschäftigten und die Freiwilligkeit der Nutzung,
 - mit dem Datenschutz, dass Fragen und Fundstellen im fremden Werkzeug mit dessen Modell,
   Protokoll und Telemetrie weiterverarbeitet werden,
-- wer Bibliotheken freigibt ([Für externe KI-Werkzeuge freigeben](../benutzer/fuer-ki-werkzeuge-freigeben.md)).
+- wer Bibliotheken freigibt ([Bibliothek teilen und für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md#für-externe-ki-werkzeuge-freigeben)).
 
 ## Einschalten
 

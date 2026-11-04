@@ -7,7 +7,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 | Achse | Ort | Frage, die sie beantwortet |
 |---|---|---|
-| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md), [CONCEPTS.md](./CONCEPTS.md) | Wohin soll es gehen, in welchen Begriffen? |
+| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md) | Wohin soll es gehen? |
 | **Spezifikation** | im Epic (GitHub), offene Ziele in der [Roadmap](./ROADMAP.md) | Wie soll sich ein Bereich im Zielbild verhalten? |
 | **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
 | **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
@@ -19,7 +19,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien, die elf Themenbereiche, die vier
    Phasen
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
-4. **[CONCEPTS.md](./CONCEPTS.md)** — Begriffe und Glossar
+4. **[Glossar](handbuch/referenz/glossar.md)** — Begriffe
 5. **[Gesamtstand](./fortschritt/gesamtstand.md)** — was davon heute tatsächlich gebaut ist
 6. **[GETTING-STARTED.md](./GETTING-STARTED.md)** — welche Lesepfade es je Publikum gibt
 
@@ -33,7 +33,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 - **[VISION.md](./VISION.md)** — Produktvision: Wissen, Agenten, KI für Teams und Organisation
 - **[USE-CASES.md](./USE-CASES.md)** — Abläufe aus dem Verwaltungsalltag
-- **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
+- **[ROADMAP.md](./ROADMAP.md)** — was noch kommt, nach Phasen
 - **[Gesamtstand](./fortschritt/gesamtstand.md)** — inventurbelegter Umsetzungsstand; die
   Zeitraumsberichte unter [`fortschritt/`](./fortschritt/) liefern den Nachweis je Stichtag
 - **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
@@ -272,7 +272,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [GETTING-STARTED.md](./GETTING-STARTED.md), Lesepfad nach Publikum
 
 **Was heißt Belegbarkeit, Verteilbarkeit, Belegvalidierung?**
-→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Die beiden Leitbegriffe"
+→ [VISION.md](./VISION.md), Abschnitt „Zwei Leitprinzipien"
 
 **Was ist heute wirklich gebaut?**
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
@@ -294,10 +294,10 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Was bedeutet „C5-fähig"?**
 → Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
-[CONCEPTS.md](./CONCEPTS.md)
+[VISION.md](./VISION.md#häufige-fragen), Häufige Fragen
 
 **Was heißt das für die Personalvertretung?**
-→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und
+→ [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) und
 [Behördenunterlagen](./behoerden/README.md)
 
 **Kann ich eigene Dokumente hochladen?**

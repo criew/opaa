@@ -32,9 +32,11 @@ Linktexte. Jede Seite hat diese Form:
 ```markdown
 # Bibliothek teilen
 
-> **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek.
+**Ziel:** Andere Personen oder Gruppen lesen oder pflegen Ihre Bibliothek.
+{: .kopf }
 
-Ein Satz, was man danach hat.
+**Wer:** *Verwalter* oder *Eigentümer* der Bibliothek
+{: .kopf }
 
 1. Schritt mit den Beschriftungen der Oberfläche in „…“
 2. Schritt
@@ -43,6 +45,11 @@ Ein Satz, was man danach hat.
 **Gut zu wissen:** höchstens drei Punkte.
 ```
 
+- **Seitenkopf:** „Ziel“ und „Wer“ stehen direkt unter dem Titel, je eine Zeile mit `{: .kopf }`
+  darunter; die Website setzt sie klein und grau mit Linie ab. Danach folgt gleich, was man tut.
+- **Ziel-Zeile:** das Ergebnis der Aufgabe, was man am Ende hat oder kann, kein Satz über die Seite.
+  Pflicht auf jeder Seite in `benutzer/` und `administration/` außer den Konnektor-Seiten. Kein
+  zweiter Einleitungssatz, der dasselbe sagt.
 - **Wer-Zeile:** genau eine Zeile mit Rolle am Objekt, Systemrolle oder Fähigkeit, in der
   Administration mit Menüpfad. Pflicht in `administration/` und auf den Konnektor-Seiten; in
   `benutzer/` nur, wo die Aufgabe eine Rolle an Space, Bibliothek oder Gruppe braucht. Was jedes
@@ -50,7 +57,7 @@ Ein Satz, was man danach hat.
   die Auslieferung ab Werk stehen in der Rechte-Matrix (`referenz/rechte-matrix.md`).
 - **Höchstens 80 Zeilen** in `benutzer/`, besser deutlich weniger. Was nicht passt, ist eine
   zweite Aufgabe und bekommt eine eigene Seite.
-- `.github/scripts/check_handbuch.sh` prüft Wer-Zeile und Länge in der CI. Ausgenommen sind die
+- `.github/scripts/check_handbuch.sh` prüft Seitenkopf und Länge in der CI. Ausgenommen sind die
   `README.md` der Ordner; die Seiten unter `benutzer/konnektoren/` und `administration/` haben
   keine feste Länge.
 
@@ -61,7 +68,7 @@ Kubernetes gemeinsam haben, steht einmal.
 ## Aufbau der Konnektor-Seiten
 
 Jede Seite unter `benutzer/konnektoren/`
-hat oben die Wer-Zeile und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
+hat oben die Wer-Zeile (ohne Ziel-Zeile) und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
 von 1 an. Ein Abschnitt, der nicht zutrifft, entfällt; die Nummern folgen lückenlos.
 
 1. **Was der Konnektor ist** — welches System, über welche Schnittstelle (mit Version, wo bekannt),
