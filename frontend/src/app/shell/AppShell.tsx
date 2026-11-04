@@ -62,7 +62,7 @@ export default function AppShell() {
   }, [locationKey, isDesktop, setSidebarOpen])
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <SkipLink />
       {isDesktop ? (
         <>
@@ -96,7 +96,13 @@ export default function AppShell() {
       )}
 
       <Box
-        sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0 }}
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100dvh',
+          minWidth: 0,
+        }}
       >
         <MobileHeader />
         <Box
