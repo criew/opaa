@@ -970,7 +970,8 @@ auditEvents:
       Schritt und Werte vorher und nachher, ohne die Adresse des ersten Kontos und ohne Passwort
       oder Schlüssel, nur ob eines gesetzt ist; beim Mailserver Server, Port, Verschlüsselung,
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
-      Akzentfarbe und Farbschema-Vorgabe, vom Hinweis zur KI-Nutzung nur, ob ein eigener gesetzt ist;
+      Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
+      ob ein eigener gesetzt ist;
       beim Transkriptionsmodell Adresse, Modell und Sprache
     payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, defaultColorScheme, encryption,
       fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor, productName,

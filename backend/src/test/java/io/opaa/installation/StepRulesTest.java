@@ -644,6 +644,14 @@ class StepRulesTest {
         .containsExactly("branding.productName", "branding.claim");
   }
 
+  /** A step saved by an earlier version still names the removed colour scheme default. */
+  @Test
+  void aSavedBrandingStepWithTheRemovedColourSchemeStillReads() {
+    assertThat(
+            rules.brandingPayload("{\"primaryColor\":\"#7A3E9D\",\"defaultColorScheme\":\"DARK\"}"))
+        .isEqualTo(new StepRules.BrandingPayload(null, null, null, "#7A3E9D"));
+  }
+
   @Test
   void theRerankModelIsStoredWithItsKeyEncryptedOnly() {
     StepRules.Stored stored =

@@ -9,8 +9,8 @@ paths:
       operationId: getBranding
       tags: [branding]
       summary: >
-        The branding configuration in effect: product name, claim, accent colour and - if one is configured - the path the logo is served from. Readable
-        without authentication: the sign-in page renders before there is a session and still
+        The branding configuration in effect: product name, claim, accent colour and - if one
+        is configured - the path the logo is served from. Readable without authentication: the sign-in page renders before there is a session and still
         has to carry the operator's own name and logo. What that exposes is bounded to exactly
         these fields - which Behörde runs the deployment, which anyone reaching its sign-in page
         can already tell. Never fails for want of configuration - a deployment that has never configured anything gets the OPAA
