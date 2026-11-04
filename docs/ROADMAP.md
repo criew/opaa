@@ -3,7 +3,7 @@
 Was im Zielbild der [Vision](./VISION.md) noch nicht gebaut ist, nach Phasen geordnet. Was gebaut ist,
 steht im [Handbuch](./handbuch/README.md) und im [Gesamtstand](./fortschritt/gesamtstand.md).
 
-Stand: 02.11.2026, sortiert von criew. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
+Stand: 02.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
 angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ## Phase 1 — Souveräner Wissensassistent (Rest)
