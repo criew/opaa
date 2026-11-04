@@ -98,7 +98,8 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
                         LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(
                             TranscriptionModelSettings.SINGLETON_ID),
                         "transcription"),
-                    row.getLanguage()))
+                    row.getLanguage(),
+                    row.getVocabulary()))
         .orElse(TranscriptionEndpoint.FACTORY_DEFAULT);
   }
 

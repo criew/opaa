@@ -49,7 +49,12 @@ describe('SettingsPage', () => {
     expect(screen.getByText('b.wagner@example.de')).toBeInTheDocument()
     expect(screen.queryByText(/angemeldet/)).not.toBeInTheDocument()
     // Editing name, language or picture needs backend support that does not exist (Abgrenzung).
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    // The only text field there is the own vocabulary list of speech input.
+    expect(
+      screen
+        .queryAllByRole('textbox')
+        .filter((box) => box.id !== 'settings-transcription-vocabulary'),
+    ).toHaveLength(0)
     expect(screen.queryByText('Bild ändern')).not.toBeInTheDocument()
   })
 

@@ -536,13 +536,32 @@ Fehlt eine Angabe oder antwortet der Dienst nicht, steht das im Log und fortlauf
 läuft weiter.
 
 **Was an den Dienst geht:** die Aufnahme, die Modell-Kennung, die Sprache
-(Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
+(Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst), die
+Begriffslisten als Prompt (siehe unten) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
 kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
 **Was OPAA behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
 Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
 Anfrageprotokoll des Backends nennt für eine Aufnahme nur Methode, Pfad, Status und Dauer, keine
 Person. Eine Aufnahme
 über `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES` lehnt das Backend ab, ohne sie weiterzureichen.
+
+### Begriffslisten
+
+Whisper-kompatible Modelle erkennen Fachbegriffe deutlich besser, wenn sie Beispielvokabular
+mitbekommen. OPAA schickt dazu das Feld `prompt` mit: zuerst die Begriffsliste der Installation
+(Modelle → Spracheingabe), dann die persönliche Liste der diktierenden Person (Ihre Einstellungen →
+Allgemein). Jede Liste fasst höchstens 500 Zeichen. Ist keine gepflegt, geht kein Prompt mit.
+
+- **Länge:** Whisper berücksichtigt nur die letzten etwa 224 Token des Prompts. Sind beide Listen
+  voll, fällt deshalb der Anfang der Liste der Installation weg; die persönliche Liste wirkt immer.
+- **Unterstützung:** speaches, vLLM mit Whisper und OpenAI (`gpt-4o-transcribe`,
+  `gpt-4o-mini-transcribe`, `whisper-1`) werten den Prompt aus. OpenRouter ignoriert ihn; die
+  Spracheingabe funktioniert dort unverändert, nur ohne diese Hilfe.
+- **Form:** Kommagetrennte Begriffe oder ein Beispielsatz. Schreibweise und Stil der Liste färben
+  auf den erkannten Text ab.
+- **Personenbezug:** Die persönliche Liste sieht nur die Person selbst; sie steht in ihrer
+  Selbstauskunft und wird mit dem Konto gelöscht. Die Liste der Installation steht bei jeder
+  Änderung im Wortlaut im Revisionsprotokoll.
 
 ### Anforderungen an den Betrieb des Dienstes
 

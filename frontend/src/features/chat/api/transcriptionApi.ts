@@ -1,4 +1,8 @@
-import type { TranscriptionAvailabilityResponse, TranscriptionResponse } from '@/shared/api/types'
+import type {
+  TranscriptionAvailabilityResponse,
+  TranscriptionResponse,
+  TranscriptionVocabulary,
+} from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 /** Whether dictation works right now; answered from the role's last known state. */
@@ -23,6 +27,28 @@ export async function transcribeRecording(recording: Blob): Promise<string> {
       headers: { 'Content-Type': recording.type || 'audio/webm' },
     })
     return data.text
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The caller's own vocabulary list for dictation; empty when none is stored. */
+export async function getMyTranscriptionVocabulary(): Promise<string> {
+  try {
+    const { data } = await client.get<TranscriptionVocabulary>('/v1/me/transcription-vocabulary')
+    return data.vocabulary
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Replaces the caller's own vocabulary list; an empty list removes it. */
+export async function updateMyTranscriptionVocabulary(vocabulary: string): Promise<string> {
+  try {
+    const { data } = await client.put<TranscriptionVocabulary>('/v1/me/transcription-vocabulary', {
+      vocabulary,
+    })
+    return data.vocabulary
   } catch (err) {
     normalizeError(err)
   }

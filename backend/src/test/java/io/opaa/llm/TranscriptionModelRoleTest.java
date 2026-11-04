@@ -3,7 +3,9 @@ package io.opaa.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -104,7 +106,7 @@ class TranscriptionModelRoleTest {
   void aRecordingIsNotSentWhileTheRoleIsNotReady() {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
 
-    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
         .isInstanceOf(TranscriptionRoleUnusableException.class);
     verifyNoInteractions(client);
   }
@@ -114,10 +116,10 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
     when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("connection refused", false));
 
-    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
         .isInstanceOf(TranscriptionUnavailableException.class);
     assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
   }
@@ -128,13 +130,13 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
     when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("HTTP 400", false, true))
         .thenThrow(new TranscriptionUnavailableException("HTTP 500", false, true))
         .thenThrow(new TranscriptionUnavailableException("no text", false, true));
 
     for (int i = 0; i < 3; i++) {
-      assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+      assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
           .isInstanceOf(TranscriptionUnavailableException.class);
       assertThat(role.usable()).isTrue();
     }
@@ -145,10 +147,10 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
     when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("request timed out", true));
 
-    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
         .isInstanceOf(TranscriptionUnavailableException.class);
     assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
     assertThat(role.currentStatus().timedOut()).isTrue();
@@ -175,9 +177,23 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
     when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any(), any())).thenReturn("Hallo");
+    when(client.transcribe(any(), any(), any(), any(), any())).thenReturn("Hallo");
 
-    assertThat(role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM)).isEqualTo("Hallo");
+    assertThat(role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null)).isEqualTo("Hallo");
     assertThat(role.usable()).isTrue();
+  }
+
+  @Test
+  void sendsBothVocabularyListsAsOnePromptThePersonalOneLast() {
+    TranscriptionEndpoint endpoint =
+        new TranscriptionEndpoint(true, "http://stt:8000/v1", "whisper", "key", "de", "AO, BZSt");
+    TranscriptionModelRole role = role(endpoint, true);
+    when(client.probe(any(), any())).thenReturn(null);
+    role.refresh();
+    when(client.transcribe(any(), any(), any(), any(), any())).thenReturn("Hallo");
+
+    role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, "Referat Z 4");
+
+    verify(client).transcribe(any(), any(), any(), any(), eq("AO, BZSt, Referat Z 4"));
   }
 }

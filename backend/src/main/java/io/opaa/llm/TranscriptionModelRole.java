@@ -222,23 +222,26 @@ public class TranscriptionModelRole
   }
 
   /**
-   * Transcribes one recording. A call that does not reach the endpoint moves the role to {@link
-   * TranscriptionRoleState#UNREACHABLE}; an endpoint that answered but refused this one recording
-   * leaves the role as it is, since the recording comes from a person, not from the server. The log
-   * line names endpoint and cause, never content.
+   * Transcribes one recording with the installation's vocabulary list and {@code
+   * personalVocabulary} as prompt ({@link TranscriptionVocabulary#prompt}). A call that does not
+   * reach the endpoint moves the role to {@link TranscriptionRoleState#UNREACHABLE}; an endpoint
+   * that answered but refused this one recording leaves the role as it is, since the recording
+   * comes from a person, not from the server. The log line names endpoint and cause, never content.
    *
    * @throws TranscriptionRoleUnusableException when the role is not {@link
    *     TranscriptionRoleState#READY}; nothing was sent.
    * @throws TranscriptionClient.TranscriptionUnavailableException when the endpoint failed.
    */
-  public String transcribe(byte[] audio, TranscriptionAudioFormat format) {
+  public String transcribe(
+      byte[] audio, TranscriptionAudioFormat format, String personalVocabulary) {
     TranscriptionEndpoint endpoint = endpoints.get();
     TranscriptionRoleStatus status = statusFor(endpoint);
     if (status.state() != TranscriptionRoleState.READY) {
       throw new TranscriptionRoleUnusableException("transcription role is " + status.state());
     }
     try {
-      String text = client.transcribe(endpoint, properties.timeout(), audio, format);
+      String prompt = TranscriptionVocabulary.prompt(endpoint.vocabulary(), personalVocabulary);
+      String text = client.transcribe(endpoint, properties.timeout(), audio, format, prompt);
       record(endpoint, status(endpoint, TranscriptionRoleState.READY, null, false), false);
       return text;
     } catch (TranscriptionClient.TranscriptionUnavailableException e) {

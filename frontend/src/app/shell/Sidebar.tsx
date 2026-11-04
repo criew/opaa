@@ -136,7 +136,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
         // it keeps the width the person dragged it to.
         flexShrink: { xs: 1, md: 0 },
         minWidth: 0,
-        height: '100vh',
+        height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: roles.bg2,

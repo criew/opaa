@@ -79,6 +79,7 @@ public class ModelRoleAdministration {
       String model,
       boolean apiKeySet,
       String language,
+      String vocabulary,
       TranscriptionRoleStatus status,
       boolean speechInputAvailable,
       Instant updatedAt,
@@ -272,7 +273,8 @@ public class ModelRoleAdministration {
 
   /**
    * Stores the transcription role, as {@link #changeRerank}. {@code language} {@code null} keeps
-   * the stored language, blank lets the model detect it.
+   * the stored language, blank lets the model detect it; {@code vocabulary} {@code null} keeps the
+   * stored list, blank removes it.
    *
    * @throws FieldValidationException naming every violated field under {@code transcription.}
    */
@@ -283,11 +285,20 @@ public class ModelRoleAdministration {
       String baseUrl,
       String model,
       String apiKey,
-      String language) {
+      String language,
+      String vocabulary) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
     String lang = TranscriptionEndpoint.normalisedLanguage(language);
+    String terms = TranscriptionVocabulary.normalised(vocabulary);
     List<FieldError> errors = transcriptionErrors(enabled, address, identifier, apiKey, lang);
+    if (!TranscriptionVocabulary.isValid(terms)) {
+      errors.add(
+          new FieldError(
+              TRANSCRIPTION + ".vocabulary",
+              ModelEndpointRules.INVALID,
+              TranscriptionVocabulary.RULE));
+    }
     blockedAddressError(TRANSCRIPTION, address, storedTranscriptionAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
@@ -299,6 +310,7 @@ public class ModelRoleAdministration {
                 address,
                 identifier,
                 lang,
+                terms,
                 row ->
                     secretOf(
                         TRANSCRIPTION,
@@ -336,6 +348,7 @@ public class ModelRoleAdministration {
                 address,
                 identifier,
                 lang,
+                null,
                 row -> encryptInstalled(TRANSCRIPTION, apiKey)));
   }
 
@@ -362,6 +375,7 @@ public class ModelRoleAdministration {
       String address,
       String identifier,
       String requestedLanguage,
+      String requestedVocabulary,
       Function<TranscriptionModelSettings, String> ciphertextOf) {
     jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
     TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
@@ -373,6 +387,9 @@ public class ModelRoleAdministration {
     }
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
+    String storedVocabulary = stored ? row.getVocabulary() : null;
+    String vocabulary =
+        requestedVocabulary == null ? storedVocabulary : emptyToNull(requestedVocabulary);
     String previousCiphertext = row.getApiKeyCiphertext();
     String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
@@ -380,7 +397,8 @@ public class ModelRoleAdministration {
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
             && Objects.equals(row.getModelIdentifier(), emptyToNull(identifier))
             && Objects.equals(previousCiphertext, ciphertext)
-            && Objects.equals(storedLanguage, language);
+            && Objects.equals(storedLanguage, language)
+            && Objects.equals(storedVocabulary, vocabulary);
     if (unchanged) {
       return transcriptionView(existing);
     }
@@ -391,6 +409,7 @@ public class ModelRoleAdministration {
         emptyToNull(identifier),
         ciphertext,
         language,
+        vocabulary,
         clock.instant());
     transcriptionRows.save(row);
     Map<String, Object> after = transcriptionPayload(row);
@@ -530,13 +549,19 @@ public class ModelRoleAdministration {
         row == null
             ? TranscriptionEndpoint.FACTORY_DEFAULT
             : new TranscriptionEndpoint(
-                row.isEnabled(), row.getBaseUrl(), row.getModelIdentifier(), "", row.getLanguage());
+                row.isEnabled(),
+                row.getBaseUrl(),
+                row.getModelIdentifier(),
+                "",
+                row.getLanguage(),
+                row.getVocabulary());
     return new TranscriptionModelView(
         endpoint.enabled(),
         row == null ? null : row.getBaseUrl(),
         row == null ? null : row.getModelIdentifier(),
         row != null && row.getApiKeyCiphertext() != null,
         endpoint.language(),
+        endpoint.vocabulary(),
         transcriptionRole.statusFor(endpoint),
         speechInputAvailable,
         row == null ? null : row.getUpdatedAt(),
@@ -656,6 +681,7 @@ public class ModelRoleAdministration {
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     String language = row == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : row.getLanguage();
     state.put("language", language == null ? "" : language);
+    putIfPresent(state, "vocabulary", row == null ? null : row.getVocabulary());
     return state;
   }
 

@@ -537,3 +537,4 @@ export function isErrorResponse(data: unknown): data is ErrorResponse {
 export type TranscriptionAvailabilityResponse =
   components['schemas']['TranscriptionAvailabilityResponse']
 export type TranscriptionResponse = components['schemas']['TranscriptionResponse']
+export type TranscriptionVocabulary = components['schemas']['TranscriptionVocabulary']

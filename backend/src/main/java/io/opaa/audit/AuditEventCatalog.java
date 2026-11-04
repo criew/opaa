@@ -410,7 +410,8 @@ public final class AuditEventCatalog {
         RERANK_MODEL_CHANGED);
     put(
         keys,
-        Set.of("apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model"),
+        Set.of(
+            "apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model", "vocabulary"),
         TRANSCRIPTION_MODEL_CHANGED);
     put(
         keys,

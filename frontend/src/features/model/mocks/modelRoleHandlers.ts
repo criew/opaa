@@ -84,6 +84,7 @@ export const modelRoleHandlers = [
     mockModelRoles.transcription = {
       ...stored(mockModelRoles.transcription, body),
       language: body.language?.trim().toLowerCase() ?? '',
+      vocabulary: body.vocabulary?.trim() ?? mockModelRoles.transcription.vocabulary,
     }
     return HttpResponse.json(mockModelRoles.transcription)
   }),

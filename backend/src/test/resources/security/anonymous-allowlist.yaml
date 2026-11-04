@@ -105,10 +105,6 @@ withoutHandlerCheck:
     reason: Installationsweite Fristen der Chat-Aufräumung, die jede Person beim Anlegen sieht.
   - operation: GET /api/v1/transcriptions/availability
     reason: Nur, ob die Spracheingabe eingerichtet ist.
-  - operation: POST /api/v1/transcriptions
-    reason: >-
-      Spracheingabe für jede angemeldete Person; das Ergebnis geht nur an sie zurück, die Annahme
-      begrenzen Rate-Limit und opaa.transcription.max-concurrent.
   - operation: GET /api/v1/installation
     reason: >-
       Einrichtungs-Assistent; den Pfad schützen InstallationGateFilter und InstallationAccessFilter
