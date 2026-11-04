@@ -106,7 +106,7 @@ async function triggerIndexingAndWaitForCompletion(
     },
     { timeout: 30_000 },
   )
-  // „Jetzt indizieren“ steht im Reiter „Quelle“, Abschnitt „Läufe“.
+  // "Jetzt indizieren" lives in the tab "Quelle", section "Läufe".
   await page.getByRole('tab', { name: 'Quelle' }).click()
   await page.getByRole('button', { name: 'Jetzt indizieren' }).click()
   const response = await completion

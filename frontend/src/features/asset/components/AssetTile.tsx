@@ -37,7 +37,7 @@ interface AssetTileProps {
   mode: LinkMode | SelectMode
   /** Sets the caller's own favorite; without it the tile shows no star. */
   onFavoriteChange?: (favorite: boolean) => Promise<void>
-  /** Further controls beside the star, e.g. the catalog's "⋯" menu. */
+  /** Further controls beside the star. */
   actions?: ReactNode
 }
 
@@ -143,7 +143,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         borderRadius: '16px',
         bgcolor: 'background.paper',
         cursor: locked ? 'not-allowed' : readOnly ? 'default' : 'pointer',
-        // Only the main control marks the tile: pointing at or pressing the star or "⋯" marks
+        // Only the main control marks the tile: pointing at or pressing the star or a further action marks
         // just that control. The stretched main control covers every other spot of the tile.
         [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly || locked ? {} : { borderColor: blue[300] },
         [`&:has(> ${MAIN_CONTROL}:focus)`]: { borderColor: blue[300] },
