@@ -352,7 +352,7 @@ components:
         CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model, RERANK_MODEL the rerank
         model (ADR-0060, Entscheidung 10), TRANSCRIPTION_MODEL the transcription model of speech
         input (Entscheidung 16), MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and
-        BRANDING, the texts, accent colour and colour scheme of the branding without its images, are
+        BRANDING, the texts and accent colour of the branding without its images, are
         optional. TRANSCRIPTION_MODEL is listed only while OPAA_FEATURES_SPEECH_INPUT_ENABLED is on.
       enum:
         [
@@ -808,7 +808,7 @@ components:
     InstallationBranding:
       type: object
       description: >
-        The texts, accent colour and colour scheme of the branding, with the rules of
+        The texts and accent colour of the branding, with the rules of
         updateBranding: every field is optional, and an omitted, null or empty one means the OPAA
         default applies; the AI notice can be replaced but never switched off. The same object is
         returned as the saved values, null for the default. The images are uploaded in the
@@ -839,5 +839,3 @@ components:
             anything else is a field error.
           pattern: "^$|^#[0-9A-Fa-f]{6}$"
           example: "#1292EE"
-        defaultColorScheme:
-          $ref: "#/components/schemas/ColorScheme"

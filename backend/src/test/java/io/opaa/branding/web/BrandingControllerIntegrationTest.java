@@ -58,7 +58,7 @@ class BrandingControllerIntegrationTest {
   void resetBranding() {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = NULL, claim = NULL, ai_notice = NULL, primary_color = NULL,"
-            + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
+            + " logo_content = NULL, logo_content_type = NULL,"
             + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
             + " login_logo_content_type = NULL, login_logo_version = NULL,"
             + " login_logo_updated_at = NULL, login_background_content = NULL,"
@@ -76,7 +76,7 @@ class BrandingControllerIntegrationTest {
         .andExpect(jsonPath("$.aiNotice").value(BrandingDefaults.AI_NOTICE))
         .andExpect(jsonPath("$.aiNoticeDefault").value(BrandingDefaults.AI_NOTICE))
         .andExpect(jsonPath("$.primaryColor").value(BrandingDefaults.PRIMARY_COLOR))
-        .andExpect(jsonPath("$.defaultColorScheme").value(BrandingDefaults.COLOR_SCHEME.name()))
+        .andExpect(jsonPath("$.defaultColorScheme").doesNotExist())
         .andExpect(jsonPath("$.logoUrl").doesNotExist());
   }
 
@@ -172,7 +172,7 @@ class BrandingControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"productName\":\"Landesamt-Assistent\",\"claim\":\"Kurz und klar\","
-                        + "\"primaryColor\":\"#7A1FA2\",\"defaultColorScheme\":\"DARK\"}"))
+                        + "\"primaryColor\":\"#7A1FA2\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.productName").value("Landesamt-Assistent"));
 
@@ -180,8 +180,7 @@ class BrandingControllerIntegrationTest {
         .perform(get("/api/v1/branding").with(devUser("dev-user")))
         .andExpect(jsonPath("$.productName").value("Landesamt-Assistent"))
         .andExpect(jsonPath("$.claim").value("Kurz und klar"))
-        .andExpect(jsonPath("$.primaryColor").value("#7A1FA2"))
-        .andExpect(jsonPath("$.defaultColorScheme").value("DARK"));
+        .andExpect(jsonPath("$.primaryColor").value("#7A1FA2"));
   }
 
   @Test
@@ -229,17 +228,6 @@ class BrandingControllerIntegrationTest {
     mockMvc
         .perform(get("/api/v1/branding").with(devUser("dev-user")))
         .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME));
-  }
-
-  @Test
-  void anUnknownColourSchemeIsRejected() throws Exception {
-    mockMvc
-        .perform(
-            put("/api/v1/system/branding")
-                .with(devUser("dev-admin"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"defaultColorScheme\":\"NEONGRUEN\"}"))
-        .andExpect(status().isBadRequest());
   }
 
   @Test

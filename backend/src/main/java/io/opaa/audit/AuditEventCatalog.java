@@ -328,7 +328,8 @@ public final class AuditEventCatalog {
             "state",
             "value"),
         DOCUMENT_METADATA_CHANGED);
-    // plus content type and version of every image kind, from BrandingSettingsService
+    // plus content type and version of every image kind, from BrandingSettingsService;
+    // defaultColorScheme only in events recorded before the default colour scheme was removed
     put(
         keys,
         Set.of("aiNotice", "claim", "defaultColorScheme", "primaryColor", "productName"),

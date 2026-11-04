@@ -159,8 +159,10 @@ public class SettingsTransferService {
   }
 
   private List<SettingsImportResult.Change> applySection(
-      CurrentUser actor, SettingsSection section, Map<String, Object> values) {
+      CurrentUser actor, SettingsSection section, Map<String, Object> imported) {
     ObjectNode current = tree(section.export(actor));
+    Map<String, Object> values = new LinkedHashMap<>(imported);
+    values.keySet().removeAll(section.retiredKeys());
     Set<String> unknown = new TreeSet<>(values.keySet());
     unknown.removeAll(current.propertyNames());
     if (!unknown.isEmpty()) {

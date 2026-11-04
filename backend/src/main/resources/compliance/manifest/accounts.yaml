@@ -457,7 +457,6 @@ nonPersonalTables:
     - claim
     - ai_notice
     - primary_color
-    - default_color_scheme
     - logo_content
     - logo_content_type
     - logo_version

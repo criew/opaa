@@ -38,9 +38,9 @@ public enum InstallationStep {
    */
   MAIL(false),
   /**
-   * The texts, accent colour and colour scheme of the branding, optional: the completion stores
-   * them with the rules of the branding administration; skipped, the OPAA default stays. Images are
-   * uploaded in the administration only (ADR-0060, Entscheidung 15).
+   * The texts and accent colour of the branding, optional: the completion stores them with the
+   * rules of the branding administration; skipped, the OPAA default stays. Images are uploaded in
+   * the administration only (ADR-0060, Entscheidung 15).
    */
   BRANDING(false);
 

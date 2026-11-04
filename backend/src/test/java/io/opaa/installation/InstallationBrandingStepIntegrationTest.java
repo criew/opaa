@@ -38,8 +38,7 @@ class InstallationBrandingStepIntegrationTest {
   private static final String BASE = "/api/v1/installation";
   private static final String BRANDING =
       "{\"productName\":\" Landesamt-Assistent \",\"claim\":\"Fragen. Belegen.\","
-          + "\"aiNotice\":\"Antworten stammen von einer KI.\",\"primaryColor\":\"#7A3E9D\","
-          + "\"defaultColorScheme\":\"DARK\"}";
+          + "\"aiNotice\":\"Antworten stammen von einer KI.\",\"primaryColor\":\"#7A3E9D\"}";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -55,11 +54,11 @@ class InstallationBrandingStepIntegrationTest {
   void setUp() throws Exception {
     brandingBefore =
         jdbc.queryForMap(
-            "SELECT product_name, claim, ai_notice, primary_color, default_color_scheme"
+            "SELECT product_name, claim, ai_notice, primary_color"
                 + " FROM branding_settings WHERE id = 1");
     jdbc.update(
         "UPDATE branding_settings SET product_name = NULL, claim = NULL, ai_notice = NULL,"
-            + " primary_color = NULL, default_color_scheme = NULL WHERE id = 1");
+            + " primary_color = NULL WHERE id = 1");
     fixture = new InstallationFixture(jdbc, installation, status, accountsFactory.create());
   }
 
@@ -68,12 +67,11 @@ class InstallationBrandingStepIntegrationTest {
     fixture.close();
     jdbc.update(
         "UPDATE branding_settings SET product_name = ?, claim = ?, ai_notice = ?,"
-            + " primary_color = ?, default_color_scheme = ? WHERE id = 1",
+            + " primary_color = ? WHERE id = 1",
         brandingBefore.get("product_name"),
         brandingBefore.get("claim"),
         brandingBefore.get("ai_notice"),
-        brandingBefore.get("primary_color"),
-        brandingBefore.get("default_color_scheme"));
+        brandingBefore.get("primary_color"));
   }
 
   @Test
@@ -122,7 +120,6 @@ class InstallationBrandingStepIntegrationTest {
     assertThat(effective.claim()).isEqualTo("Fragen. Belegen.");
     assertThat(effective.aiNotice()).isEqualTo("Antworten stammen von einer KI.");
     assertThat(effective.primaryColor()).isEqualTo("#7A3E9D");
-    assertThat(effective.defaultColorScheme().name()).isEqualTo("DARK");
     assertThat(auditTypes()).contains("BRANDING_SETTINGS_CHANGED");
     assertThat(auditAfter("BRANDING_SETTINGS_CHANGED")).contains("Landesamt-Assistent");
     assertThat(auditAfter("INSTALLATION_STEP_SAVED"))
@@ -138,22 +135,6 @@ class InstallationBrandingStepIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.branding.productName").doesNotExist())
         .andExpect(jsonPath("$.branding.aiNotice").doesNotExist());
-    mockMvc
-        .perform(authorized(post(BASE + "/steps/BRANDING/check")))
-        .andExpect(jsonPath("$.checked").value(true));
-
-    mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
-
-    assertThat(storedBranding()).containsOnlyNulls();
-    assertThat(auditTypes()).doesNotContain("BRANDING_SETTINGS_CHANGED");
-  }
-
-  @Test
-  void onlyTheSystemColorSchemeWritesAndRecordsNothing() throws Exception {
-    completeMandatorySteps();
-    saveBranding("{\"defaultColorScheme\":\"SYSTEM\"}")
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.branding.defaultColorScheme").doesNotExist());
     mockMvc
         .perform(authorized(post(BASE + "/steps/BRANDING/check")))
         .andExpect(jsonPath("$.checked").value(true));
@@ -262,7 +243,7 @@ class InstallationBrandingStepIntegrationTest {
   private List<Object> storedBranding() {
     return new ArrayList<>(
         jdbc.queryForMap(
-                "SELECT product_name, claim, ai_notice, primary_color, default_color_scheme"
+                "SELECT product_name, claim, ai_notice, primary_color"
                     + " FROM branding_settings WHERE id = 1")
             .values());
   }

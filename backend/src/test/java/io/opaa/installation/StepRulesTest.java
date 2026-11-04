@@ -8,7 +8,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
@@ -575,15 +574,11 @@ class StepRulesTest {
   void theBrandingIsStoredWithTheRulesOfTheAdministrationAndBlankMeansTheDefault() {
     StepRules.Stored stored =
         rules.toStored(
-            new StepInput.Branding(" Landesamt-Assistent ", "", " ", " #7A3E9D ", ColorScheme.DARK),
-            null,
-            null);
+            new StepInput.Branding(" Landesamt-Assistent ", "", " ", " #7A3E9D "), null, null);
 
     assertThat(stored.secret()).isNull();
     assertThat(rules.view(InstallationStep.BRANDING, stored.payload(), null))
-        .isEqualTo(
-            new InstallationOverview.Branding(
-                "Landesamt-Assistent", null, null, "#7A3E9D", ColorScheme.DARK));
+        .isEqualTo(new InstallationOverview.Branding("Landesamt-Assistent", null, null, "#7A3E9D"));
     assertThat(rules.brandingErrors(rules.brandingPayload(stored.payload()))).isEmpty();
   }
 
@@ -592,7 +587,7 @@ class StepRulesTest {
     assertThatThrownBy(
             () ->
                 rules.toStored(
-                    new StepInput.Branding("x".repeat(61), null, null, "#12345", null), null, null))
+                    new StepInput.Branding("x".repeat(61), null, null, "#12345"), null, null))
         .isInstanceOfSatisfying(
             FieldValidationException.class,
             e ->
@@ -605,12 +600,11 @@ class StepRulesTest {
   void aBrandingProductNameOrClaimWithoutAVisibleCharacterIsStoredAsTheDefault() {
     for (String invisible : new String[] {"\u00A0", "\u200B", "\u00A0\u200B"}) {
       StepRules.Stored stored =
-          rules.toStored(
-              new StepInput.Branding(invisible, invisible, null, null, null), null, null);
+          rules.toStored(new StepInput.Branding(invisible, invisible, null, null), null, null);
 
       assertThat(rules.view(InstallationStep.BRANDING, stored.payload(), null))
           .as("value %s", invisible.codePoints().boxed().toList())
-          .isEqualTo(new InstallationOverview.Branding(null, null, null, null, null));
+          .isEqualTo(new InstallationOverview.Branding(null, null, null, null));
     }
   }
 
@@ -620,7 +614,7 @@ class StepRulesTest {
       assertThatThrownBy(
               () ->
                   rules.toStored(
-                      new StepInput.Branding(reordering, reordering, null, null, null), null, null))
+                      new StepInput.Branding(reordering, reordering, null, null), null, null))
           .as("value %s", reordering.codePoints().boxed().toList())
           .isInstanceOfSatisfying(
               FieldValidationException.class,
@@ -645,9 +639,17 @@ class StepRulesTest {
   void aSavedBrandingStepWithABidiControlFailsTheCheckBeforeCompletion() {
     assertThat(
             rules.brandingErrors(
-                new StepRules.BrandingPayload("Amt \u202Eredaeh", "\u202E", null, null, null)))
+                new StepRules.BrandingPayload("Amt \u202Eredaeh", "\u202E", null, null)))
         .extracting(FieldValidationException.FieldError::field)
         .containsExactly("branding.productName", "branding.claim");
+  }
+
+  /** A step saved by an earlier version still names the removed colour scheme default. */
+  @Test
+  void aSavedBrandingStepWithTheRemovedColourSchemeStillReads() {
+    assertThat(
+            rules.brandingPayload("{\"primaryColor\":\"#7A3E9D\",\"defaultColorScheme\":\"DARK\"}"))
+        .isEqualTo(new StepRules.BrandingPayload(null, null, null, "#7A3E9D"));
   }
 
   @Test

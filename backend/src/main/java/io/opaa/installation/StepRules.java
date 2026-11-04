@@ -1,12 +1,11 @@
 package io.opaa.installation;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
-import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingSettingsRules;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
@@ -102,13 +101,12 @@ class StepRules {
       String fromAddress,
       String fromName) {}
 
-  /** The branding as the administration stores it; {@code null} in a field means the default. */
-  record BrandingPayload(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {}
+  /**
+   * The branding as the administration stores it; {@code null} in a field means the default. A step
+   * saved by an earlier version may still name a field since removed, which is ignored.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record BrandingPayload(String productName, String claim, String aiNotice, String primaryColor) {}
 
   private final PasswordPolicy passwordPolicy;
   private final PasswordEncoder passwordEncoder;
@@ -205,11 +203,7 @@ class StepRules {
       case BRANDING -> {
         BrandingPayload branding = brandingPayload(payload);
         yield new InstallationOverview.Branding(
-            branding.productName(),
-            branding.claim(),
-            branding.aiNotice(),
-            branding.primaryColor(),
-            branding.defaultColorScheme());
+            branding.productName(), branding.claim(), branding.aiNotice(), branding.primaryColor());
       }
     };
   }
@@ -228,8 +222,7 @@ class StepRules {
             branding.productName(),
             branding.claim(),
             branding.aiNotice(),
-            branding.primaryColor(),
-            branding.defaultColorScheme())
+            branding.primaryColor())
         .errors();
   }
 
@@ -600,8 +593,7 @@ class StepRules {
 
   /**
    * The rules of the branding administration ({@link BrandingSettingsRules}), each problem named
-   * under {@code branding.}; stored normalised, a field {@code null} for the OPAA default. The
-   * default colour scheme is stored as "not set" too, so a step that only names it writes nothing.
+   * under {@code branding.}; stored normalised, a field {@code null} for the OPAA default.
    */
   private Stored branding(StepInput.Branding input) {
     BrandingSettingsRules.Checked checked =
@@ -610,20 +602,13 @@ class StepRules {
             input.productName(),
             input.claim(),
             input.aiNotice(),
-            input.primaryColor(),
-            input.defaultColorScheme());
+            input.primaryColor());
     requireNoErrors(checked.errors());
     BrandingSettingsRules.Values values = checked.values();
     return new Stored(
         json.writeValueAsString(
             new BrandingPayload(
-                values.productName(),
-                values.claim(),
-                values.aiNotice(),
-                values.primaryColor(),
-                values.defaultColorScheme() == BrandingDefaults.COLOR_SCHEME
-                    ? null
-                    : values.defaultColorScheme())),
+                values.productName(), values.claim(), values.aiNotice(), values.primaryColor())),
         null);
   }
 

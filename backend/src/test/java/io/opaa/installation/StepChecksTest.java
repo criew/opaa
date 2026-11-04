@@ -235,9 +235,8 @@ class StepChecksTest {
   void theBrandingCheckAppliesTheRulesAgainWithoutAnyConnection() {
     String passing =
         json.writeValueAsString(
-            new StepRules.BrandingPayload("Landesamt-Assistent", null, null, "#7A3E9D", null));
-    String forged =
-        json.writeValueAsString(new StepRules.BrandingPayload(null, null, null, "rot", null));
+            new StepRules.BrandingPayload("Landesamt-Assistent", null, null, "#7A3E9D"));
+    String forged = json.writeValueAsString(new StepRules.BrandingPayload(null, null, null, "rot"));
 
     assertThat(checks.check(InstallationStep.BRANDING, passing, null, null).succeeded()).isTrue();
     StepChecks.Outcome refused = checks.check(InstallationStep.BRANDING, forged, null, null);

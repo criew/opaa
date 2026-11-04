@@ -386,7 +386,6 @@ export type ChatSearchResponse = components['schemas']['ChatSearchResponse']
 export type ChatSearchHit = components['schemas']['ChatSearchHit']
 export type ChatSearchHighlight = components['schemas']['ChatSearchHighlight']
 
-export type ColorScheme = components['schemas']['ColorScheme']
 export type BrandingResponse = components['schemas']['BrandingResponse']
 export type BrandingUpdateRequest = components['schemas']['BrandingUpdateRequest']
 

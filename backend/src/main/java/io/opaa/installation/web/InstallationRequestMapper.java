@@ -157,8 +157,7 @@ final class InstallationRequestMapper {
         branding.getProductName(),
         branding.getClaim(),
         branding.getAiNotice(),
-        branding.getPrimaryColor(),
-        branding.getDefaultColorScheme());
+        branding.getPrimaryColor());
   }
 
   private static FieldValidationException missing(String field) {

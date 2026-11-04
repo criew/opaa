@@ -173,11 +173,6 @@ io.opaa.api.types.ChatStatus:
   assessment: STATE
   readable: [PRIVATE]
   pending: []
-io.opaa.api.types.ColorScheme:
-  attributes: [BrandingSettings.defaultColorScheme]
-  assessment: STATE
-  readable: [DARK, LIGHT, SYSTEM]
-  pending: []
 io.opaa.api.types.ConnectedAccountState:
   attributes: [ConnectedAccount.state]
   assessment: SECURITY

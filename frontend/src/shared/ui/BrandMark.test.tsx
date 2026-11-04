@@ -32,7 +32,6 @@ describe('BrandMark', () => {
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#7A1FA2',
-        defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc',
       },
     })
@@ -59,7 +58,6 @@ describe('BrandMark', () => {
       aiNotice: 'Hinweis der Behörde',
       aiNoticeDefault: 'Standardhinweis',
       primaryColor: '#7A1FA2',
-      defaultColorScheme: 'LIGHT' as const,
       logoUrl: '/api/v1/branding/logo?v=abc',
     }
 
@@ -113,7 +111,6 @@ describe('BrandMark', () => {
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#7A1FA2',
-        defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc',
       },
     })

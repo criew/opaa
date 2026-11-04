@@ -34,6 +34,14 @@ public interface SettingsSection {
   }
 
   /**
+   * Keys an export of an earlier version may still carry although the section no longer has them;
+   * an import ignores them instead of refusing the document.
+   */
+  default Set<String> retiredKeys() {
+    return Set.of();
+  }
+
+  /**
    * The values in force: every key of the section with its stored value. Only JSON values (numbers,
    * booleans, strings, lists, maps); what {@code null} means is the section's own (for branding the
    * OPAA default, for the quota the configured default, for a mail server field "not set"). Never a

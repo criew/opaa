@@ -768,8 +768,7 @@ public class InstallationService {
         branding.productName(),
         branding.claim(),
         branding.aiNotice(),
-        branding.primaryColor(),
-        branding.defaultColorScheme());
+        branding.primaryColor());
   }
 
   private void markCompleted(
@@ -892,9 +891,6 @@ public class InstallationService {
         summary.put("claim", orDash(branding.claim()));
         summary.put("aiNoticeSet", branding.aiNotice() != null);
         summary.put("primaryColor", orDash(branding.primaryColor()));
-        summary.put(
-            "defaultColorScheme",
-            branding.defaultColorScheme() == null ? "-" : branding.defaultColorScheme().name());
       }
     }
     return summary;

@@ -1,10 +1,7 @@
 package io.opaa.branding;
 
-import io.opaa.api.types.ColorScheme;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -50,10 +47,6 @@ public class BrandingSettings {
 
   @Column(name = "primary_color", length = 7)
   private String primaryColor;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "default_color_scheme", length = 10)
-  private ColorScheme defaultColorScheme;
 
   @Column(name = "logo_content")
   private byte[] logoContent;
@@ -116,10 +109,6 @@ public class BrandingSettings {
     return primaryColor;
   }
 
-  public ColorScheme getDefaultColorScheme() {
-    return defaultColorScheme;
-  }
-
   public Instant getUpdatedAt() {
     return updatedAt;
   }
@@ -155,17 +144,11 @@ public class BrandingSettings {
    * rather than four setters: there is no code path that legitimately changes one of these without
    * deciding about the other three, and four setters would invite one.
    */
-  void replaceSettings(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {
+  void replaceSettings(String productName, String claim, String aiNotice, String primaryColor) {
     this.productName = productName;
     this.claim = claim;
     this.aiNotice = aiNotice;
     this.primaryColor = primaryColor;
-    this.defaultColorScheme = defaultColorScheme;
     this.updatedAt = Instant.now();
   }
 

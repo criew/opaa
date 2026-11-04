@@ -156,9 +156,6 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
         claim: orDefault(values.claim),
         aiNotice: orDefault(values.aiNotice),
         primaryColor: orDefault(values.primaryColor),
-        // The standard scheme is stored as "not set", as the backend does.
-        defaultColorScheme:
-          values.defaultColorScheme === 'SYSTEM' ? undefined : values.defaultColorScheme,
       },
     }
   }

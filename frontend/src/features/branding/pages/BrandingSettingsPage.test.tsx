@@ -314,7 +314,6 @@ describe('BrandingSettingsPage', () => {
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#0B6FBC',
-        defaultColorScheme: 'DARK',
       },
       isLoaded: true,
     })

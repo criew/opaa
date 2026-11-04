@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-04 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
 
 ## Kontext
 
@@ -318,8 +318,8 @@ ein.
 
 ### 15. Branding im Assistenten: Texte und Farben, keine Bilder
 
-Der optionale Schritt Branding nimmt Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe und
-Farbschema-Vorgabe, mit den Regeln, Texten und der Kontrastwarnung der Branding-Verwaltung
+Der optionale Schritt Branding nimmt Produktname, Claim, Hinweis zur KI-Nutzung und Akzentfarbe,
+mit den Regeln, Texten und der Kontrastwarnung der Branding-Verwaltung
 (`BrandingSettingsRules`, `shared/ui/branding`); ein leeres Feld heißt je Feld OPAA-Standard, der
 Hinweis lässt sich nicht abschalten. Logo, Logo der Anmeldeseite und Hintergrundbild nimmt er nicht
 an; sie lädt die Systemverwaltung nach dem Abschluss unter „Administration → Branding“ hoch, und der

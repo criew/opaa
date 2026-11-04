@@ -22,8 +22,7 @@ final class BrandingResponseMapper {
             branding.claim(),
             branding.aiNotice(),
             BrandingDefaults.AI_NOTICE,
-            branding.primaryColor(),
-            branding.defaultColorScheme());
+            branding.primaryColor());
     branding
         .image(BrandingImageKind.LOGO)
         .ifPresent(

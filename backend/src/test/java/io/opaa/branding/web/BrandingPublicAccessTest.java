@@ -76,7 +76,6 @@ class BrandingPublicAccessTest {
                 BrandingDefaults.CLAIM,
                 BrandingDefaults.AI_NOTICE,
                 BrandingDefaults.PRIMARY_COLOR,
-                BrandingDefaults.COLOR_SCHEME,
                 Map.of()));
 
     mockMvc.perform(get("/api/v1/branding")).andExpect(status().isOk());

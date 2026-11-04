@@ -14,7 +14,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.account.LocalAdminReset;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
@@ -186,11 +185,7 @@ class InstallationStartupTest {
                             .getLast()
                             .equals(
                                 new StepInput.Branding(
-                                    "Landesamt-Assistent",
-                                    null,
-                                    null,
-                                    "#7A3E9D",
-                                    ColorScheme.DARK))));
+                                    "Landesamt-Assistent", null, null, "#7A3E9D"))));
   }
 
   @Test

@@ -32,7 +32,6 @@ export const brandingHandlers = [
       claim: body.claim?.trim() || 'Fragen. Belegen. Entscheiden.',
       aiNotice: body.aiNotice?.trim() || OPAA_BRANDING.aiNotice,
       primaryColor: primaryColor || '#1292EE',
-      defaultColorScheme: body.defaultColorScheme ?? 'SYSTEM',
     })
     return HttpResponse.json(mockBranding)
   }),
