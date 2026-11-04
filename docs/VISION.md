@@ -355,6 +355,6 @@ Vorgabe der Systemverwaltung, keine Entscheidung der einzelnen Nutzerin.
 ## Weiterlesen
 
 - [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
-- [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar
+- [Glossar](handbuch/referenz/glossar.md) — Begriffe
 - [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute gebaut ist
 - [decisions/](./decisions/) — die Architekturentscheidungen dahinter

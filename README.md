@@ -58,10 +58,11 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 **Einstieg**
 
 1. [GETTING-STARTED.md](docs/GETTING-STARTED.md) — welches Dokument für welche Rolle
-2. [CONCEPTS.md](docs/CONCEPTS.md) — Begriffe und Glossar
-3. [VISION.md](docs/VISION.md) — Nordstern, elf Themenbereiche, vier Phasen
+2. [VISION.md](docs/VISION.md) — Nordstern, elf Themenbereiche, vier Phasen
+3. [ROADMAP.md](docs/ROADMAP.md) — was noch kommt, nach Phasen
 4. [Gesamtstand](docs/fortschritt/gesamtstand.md) — was davon heute gebaut ist
-5. [INDEX.md](docs/INDEX.md) — vollständiger Dokumentationsindex
+5. [Glossar](docs/handbuch/referenz/glossar.md) — Begriffe
+6. [INDEX.md](docs/INDEX.md) — vollständiger Dokumentationsindex
 
 **Spezifikationen** — je Themenbereich eine, verlinkt aus der Übersichtstabelle in
 [VISION.md](docs/VISION.md#die-elf-themenbereiche).
