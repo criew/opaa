@@ -722,11 +722,11 @@ Suche mit `Issue #NNN` bzw. `PR #NNN`; jeder Abschnitt trägt den Anker `#issue-
 - PRs: #1950 (2026-09-24)
 - Befund: 3 (ersetzt)
 
-**Laut Issue:** Seit 24.09.2026 antwortet `quay.io/minio/minio` mit 401; alle drei `backend-test`-Shards fielen um, weil `SpringContextSignatureTest` die MinIO-Fixture mitlud. Sofort-Fix: das exakte letzte Release als öffentlichen Spiegel `ghcr.io/criew/minio` ziehen (Fixture, Compose, Renovate-Regel).
+**Laut Issue:** Seit 24.09.2026 antwortet `quay.io/minio/minio` mit 401; alle drei `backend-test`-Shards fielen um, weil `SpringContextSignatureTest` die MinIO-Fixture mitlud. Sofort-Fix: das exakte letzte Release als öffentlichen Spiegel auf GHCR ziehen (Fixture, Compose, Renovate-Regel).
 
 **Geliefert:** PR #1950 stellte Fixture, vier Compose-Zeilen, Renovate-Regel und Demo-README auf den GHCR-Spiegel um, mit rotem CI-Lauf als Reproduktionsnachweis. Als ausdrücklicher Überbrückungsfix wurde er noch am selben Tag durch #1949 (PR #1951) ersetzt: MinIO ist in Tests, Compose und Demo durch `rustfs/rustfs:1.0.0` abgelöst, der Spiegel ist entfernt.
 
-**Verifikation:** `ghcr.io/criew/minio` und `minio/minio` kommen in `docker-compose.yml`, `renovate.json5` und `backend/src` nicht mehr vor. `docker-compose.yml` nutzt `rustfs/rustfs:1.0.0`, und die Tests unter `backend/src/test/java/io/opaa/indexing/source/s3/` laufen ohne `MinioFixture`.
+**Verifikation:** Der GHCR-Spiegel und `minio/minio` kommen in `docker-compose.yml`, `renovate.json5` und `backend/src` nicht mehr vor. `docker-compose.yml` nutzt `rustfs/rustfs:1.0.0`, und die Tests unter `backend/src/test/java/io/opaa/indexing/source/s3/` laufen ohne `MinioFixture`.
 
 **Themen:** ci, testcontainer, minio, rustfs, überbrückung
 
