@@ -252,7 +252,7 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files, names
     groups = [
         ("unterlagen", "Unterlagen für Behörden",
          [p for p in ("LIESMICH.md", "vorlagen/README.md", "update-vermerk.md") if p in files]),
-        ("handbuch", "Handbuch", [p for p in ("handbuch/README.md", "handbuch/nachschlagen/glossar.md") if p in files]),
+        ("handbuch", "Handbuch", [p for p in ("handbuch/README.md", "handbuch/referenz/glossar.md") if p in files]),
         ("faktenblaetter", "Faktenblätter", under("faktenblaetter/")),
         ("aenderungen", "Änderungen und Betrieb", under("delta/") + under("betrieb/")),
         ("nachweise", "Nachweise", under("barrierefreiheit/") + under("lizenzen/") + under("sbom/")

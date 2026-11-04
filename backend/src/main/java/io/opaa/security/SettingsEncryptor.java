@@ -28,7 +28,7 @@ public class SettingsEncryptor {
 
   static final String VARIABLE = "OPAA_SETTINGS_ENCRYPTION_KEY";
   static final String PREVIOUS_VARIABLE = "OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS";
-  private static final String DOC_PAGE = "docs/handbuch/betreiben/modell-endpunkte.md";
+  private static final String DOC_PAGE = "docs/handbuch/betrieb/modell-endpunkte.md";
   private static final Logger log = LoggerFactory.getLogger(SettingsEncryptor.class);
 
   private final SettingsEncryptionProperties properties;
@@ -111,7 +111,7 @@ public class SettingsEncryptor {
               + VARIABLE
               + " noch in "
               + PREVIOUS_VARIABLE
-              + " steht. Siehe docs/handbuch/betreiben/netz-und-sicherheit.md.",
+              + " steht. Siehe docs/handbuch/betrieb/netz-und-sicherheit.md.",
           e);
     } catch (IllegalArgumentException | GeneralSecurityException e) {
       throw new IllegalStateException(

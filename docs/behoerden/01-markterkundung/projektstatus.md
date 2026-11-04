@@ -24,9 +24,9 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
 |---|---|---|
 | Ablage | öffentliches Repository auf GitHub mit Quellcode, Handbuch, Architekturentscheidungen, Issues und Pull Requests | [criew/opaa](https://github.com/criew/opaa) |
 | Wer das Projekt führt | die Maintainer mit Schreibrechten am Repository; nur sie übernehmen Änderungen und legen Releases an | [Mitwirken](../../../CONTRIBUTING.md#wie-ein-pr-nach-main-kommt) |
-| Beiträge | offen für alle; Voraussetzung für eine Übernahme ist die unterzeichnete CLA | [Lizenzen](../../handbuch/betreiben/releases-und-nachweise.md#lizenzen) |
-| Release-Zyklus | geplant sind zwei Funktionsreleases im Jahr, das Juni-Release als LTS; die Regeln gelten ab dem ersten finalen Release, bis dahin gibt es nur Vorab-Releases | [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume) |
-| Sicherheitsupdates | Patch-Releases für jede unterstützte Linie bis zu ihrem Supportende, ältere Linien über eigene Wartungsbranches; der Schwachstellen-Scan prüft jede Linie | [Sicherheitsupdates](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates) |
+| Beiträge | offen für alle; Voraussetzung für eine Übernahme ist die unterzeichnete CLA | [Lizenzen](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) |
+| Release-Zyklus | geplant sind zwei Funktionsreleases im Jahr, das Juni-Release als LTS; die Regeln gelten ab dem ersten finalen Release, bis dahin gibt es nur Vorab-Releases | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
+| Sicherheitsupdates | Patch-Releases für jede unterstützte Linie bis zu ihrem Supportende, ältere Linien über eigene Wartungsbranches; der Schwachstellen-Scan prüft jede Linie | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates) |
 | Meldestelle für Sicherheitslücken | vertraulich über das Private Vulnerability Reporting von GitHub, einziger Meldeweg; Bearbeitung nach bestem Bemühen | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) |
 | Rolle nach dem Cyber Resilience Act | ordnet sich nach bestem Wissen als Open-Source-Steward ein, obwohl der CRA dafür eine juristische Person voraussetzt und es keine gibt; nicht rechtlich geprüft; `SECURITY.md` ist die Cybersicherheitsstrategie | [Rollenklärung](../06-informationssicherheit/rollenklaerung-cra.md) |
 | Support | keine Leistungen und keine Reaktionszeiten des Projekts; Fragen über GitHub | [Kein Angebot eingegangen](../03-vergabe/ohne-angebot.md#was-opaa-liefert) |
@@ -39,7 +39,7 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
 2. **Supportzeitraum abgleichen** mit dem eigenen Update-Takt. Ein jährlicher Takt mit LTS-Linien
    setzt voraus, dass ältere Linien weiter Patches bekommen; das geschieht über eigene
    Wartungsbranches. Das Update-Paket eines LTS-Release vergleicht auch mit der vorigen LTS-Linie
-   ([Das Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release)).
+   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 3. **Zusagen vertraglich holen,** die das Projekt nicht gibt: Reaktionszeiten, längere Pflege einer
    Version, Weiterführung bei Ende des Projekts. Das leistet ein Dienstleister oder der eigene
    Betrieb.
@@ -62,7 +62,7 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
 
 - [`SECURITY.md`](../../../SECURITY.md): Meldeweg, unterstützte Versionen und Ablauf bis zur
   Veröffentlichung einer Lücke.
-- [Releases und Nachweise](../../handbuch/betreiben/releases-und-nachweise.md): Versionen, Supportzeiträume,
+- [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md): Versionen, Supportzeiträume,
   Schwachstellen und Lizenz.
 - [openCode](https://opencode.de/de): Plattform von Bund, Ländern und Kommunen für quelloffenen Code.
 

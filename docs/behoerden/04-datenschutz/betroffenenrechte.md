@@ -25,13 +25,13 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
   Zeilen „Spalten mit Personenbezug“ und „Zugriffsweg“.
 - Wer sie sieht: {{faktenblatt:rollensicht}}.
 - Die **Selbstauskunft**: Jede angemeldete Person lädt ihre Daten nach erneuter Anmeldung selbst als
-  ZIP herunter ([Meine Daten](../../handbuch/arbeiten/meine-daten.md#eigene-daten-herunterladen)).
+  ZIP herunter ([Meine Daten](../../handbuch/benutzer/meine-daten.md#eigene-daten-herunterladen)).
   Was enthalten ist und was nicht, steht je Datum im {{faktenblatt:datenkatalog}}, Zeile „Zuordnung
   zur Person“.
 - Was jede Person außerdem einsehen kann: eigene Angaben
-  ([Meine Daten](../../handbuch/arbeiten/meine-daten.md)), eigene
-  Chats ([Chats verwalten](../../handbuch/arbeiten/chats.md#chat-wiederfinden)), eigene
-  Zugangstokens ([Zugangstoken anlegen](../../handbuch/arbeiten/zugangstoken.md)).
+  ([Meine Daten](../../handbuch/benutzer/meine-daten.md)), eigene
+  Chats ([Chats verwalten](../../handbuch/benutzer/chats.md#chat-wiederfinden)), eigene
+  Zugangstokens ([Zugangstoken anlegen](../../handbuch/benutzer/zugangstoken.md)).
 
 Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
 Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weiterhin die Behörde zusammen.
@@ -48,8 +48,8 @@ Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weit
 | Recht | Was die Behörde in OPAA tut |
 |---|---|
 | **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
-| **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/verwalten/konten.md)), sonst im Identitätsanbieter |
-| **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
+| **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/administration/konten.md)), sonst im Identitätsanbieter |
+| **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
 | **Datenübertragbarkeit** | [prüfen, ob das Recht greift; dann aus den Wegen der Auskunft] |
 | **Widerspruch** | [Prüfung durch die Behörde] |
@@ -83,12 +83,12 @@ Antwort am:           [Datum]          durch: [ ]
   ({{faktenblatt:datenkatalog#audit-pseudonyms}}); Klarnamen sieht die Revision nur in den Grenzen
   der {{faktenblatt:rollensicht#auditor}}. Wird das Konto gelöscht, bleibt das Protokoll unverändert,
   nur der Personenbezug entfällt
-  ([Löschen oder sperren](../../handbuch/verwalten/konten.md#sperren-statt-löschen)).
+  ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
   Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.
 - **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht OPAA nach
-  ([Änderungen und Löschungen](../../handbuch/nachschlagen/wie-indexierung-arbeitet.md#läufe)).
+  ([Änderungen und Löschungen](../../handbuch/referenz/wie-indexierung-arbeitet.md#läufe)).
   Antworten in bestehenden Chats, die es zitiert haben, bleiben bis zur Löschung des Chats.
 
 ## Zum Nachlesen

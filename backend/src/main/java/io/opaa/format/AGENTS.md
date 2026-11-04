@@ -47,8 +47,8 @@ samt Fundort (`format.chunk`, Tokenzählung mit jtokkit).
 
 ## Verweise
 
-- Feature-Spezifikation: `docs/handbuch/nachschlagen/formate/README.md`
-- Handbuch: `docs/handbuch/nachschlagen/formate/*.md` (Übersicht in `formate/README.md`)
+- Feature-Spezifikation: `docs/handbuch/referenz/formate/README.md`
+- Handbuch: `docs/handbuch/referenz/formate/*.md` (Übersicht in `formate/README.md`)
 
 ## Tests bei Änderungen
 

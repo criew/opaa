@@ -1,6 +1,6 @@
 /**
  * The metadata filter offer the user interface presents for a search scope - which values a person
- * can filter by, cached per user and scope (docs/handbuch/nachschlagen/metadaten.md). Not part of
+ * can filter by, cached per user and scope (docs/handbuch/referenz/metadaten.md). Not part of
  * the pipeline: applying a filter is {@code io.opaa.retrieval.scope}'s job.
  */
 package io.opaa.query.filter;

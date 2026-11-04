@@ -50,7 +50,7 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/verwalten/externe-ki-werkzeuge.md`
+- Handbuch: `docs/handbuch/administration/externe-ki-werkzeuge.md`
 
 ## Tests bei Änderungen
 

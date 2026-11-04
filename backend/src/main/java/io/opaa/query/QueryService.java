@@ -52,7 +52,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Answers one question end to end (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md): resolves
+ * Answers one question end to end (docs/handbuch/referenz/wie-die-suche-arbeitet.md): resolves
  * the search scope, runs the {@link RetrievalPipeline} over it, has the answer generated, validates
  * the citations and has the source rows built.
  *

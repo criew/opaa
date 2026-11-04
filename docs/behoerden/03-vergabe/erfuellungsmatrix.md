@@ -35,26 +35,26 @@ Faktenblatt.
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen) | Handbuch |
-| F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/nachschlagen/glossar.md), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
-| F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
-| F-04 | ja | [Zugelassene Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) | Handbuch |
-| F-05 | ja | [Suchen ohne Antwort](../../handbuch/arbeiten/ki-werkzeug-einrichten.md) | Handbuch |
-| F-06 | ja | [Spracheingabe einschalten](../../handbuch/betreiben/modell-endpunkte.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/betreiben/modell-endpunkte.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
-| F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/arbeiten/ki-werkzeug-einrichten.md), [Externe KI-Werkzeuge abschalten](../../handbuch/nachschlagen/konfiguration.md#funktionen-abschalten), [KI-Werkzeug einrichten](../../handbuch/arbeiten/ki-werkzeug-einrichten.md) | Handbuch, Konfiguration |
-| F-08 | ja; Vektor- und Volltextsuche laufen zusammen und werden fusioniert, Verfahren und Gewichtung stellt der Betrieb in der Konfiguration ein | [Die Suchstrecke](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#die-stufen), [Konfiguration der Suche](../../handbuch/nachschlagen/konfiguration.md#grenzwerte-im-überblick) | Handbuch, Konfiguration |
-| F-09 | ja; ab Werk aus, braucht einen eigenen Modell-Endpunkt | [Reranking](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#die-stufen), [Reranking einschalten](../../handbuch/betreiben/modell-endpunkte.md#reranking-einschalten) | Handbuch, Konfiguration |
-| F-10 | ja; regelbasiert aus Dateieigenschaften und Bibliotheksfeldern, auf Wunsch je Bibliothek zusätzlich modellgestützt (ab Werk aus, Güte hängt am Vokabular des Bestands); wirkt als Filter in der Suche | [Automatische Ermittlung](../../handbuch/nachschlagen/metadaten.md#woher-ein-wert-kommt), [Wirkung in der Suche](../../handbuch/nachschlagen/metadaten.md#wo-metadaten-wirken), [Güte der modellgestützten Ermittlung](../../handbuch/nachschlagen/metadaten.md#woher-ein-wert-kommt) | Handbuch |
+| F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) | Handbuch |
+| F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/referenz/glossar.md), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
+| F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
+| F-04 | ja | [Zugelassene Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate) | Handbuch |
+| F-05 | ja | [Suchen ohne Antwort](../../handbuch/benutzer/ki-werkzeug-einrichten.md) | Handbuch |
+| F-06 | ja | [Spracheingabe einschalten](../../handbuch/betrieb/modell-endpunkte.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/betrieb/modell-endpunkte.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
+| F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/benutzer/ki-werkzeug-einrichten.md), [Externe KI-Werkzeuge abschalten](../../handbuch/referenz/konfiguration.md#funktionen-abschalten), [KI-Werkzeug einrichten](../../handbuch/benutzer/ki-werkzeug-einrichten.md) | Handbuch, Konfiguration |
+| F-08 | ja; Vektor- und Volltextsuche laufen zusammen und werden fusioniert, Verfahren und Gewichtung stellt der Betrieb in der Konfiguration ein | [Die Suchstrecke](../../handbuch/referenz/wie-die-suche-arbeitet.md#die-stufen), [Konfiguration der Suche](../../handbuch/referenz/konfiguration.md#grenzwerte-im-überblick) | Handbuch, Konfiguration |
+| F-09 | ja; ab Werk aus, braucht einen eigenen Modell-Endpunkt | [Reranking](../../handbuch/referenz/wie-die-suche-arbeitet.md#die-stufen), [Reranking einschalten](../../handbuch/betrieb/modell-endpunkte.md#reranking-einschalten) | Handbuch, Konfiguration |
+| F-10 | ja; regelbasiert aus Dateieigenschaften und Bibliotheksfeldern, auf Wunsch je Bibliothek zusätzlich modellgestützt (ab Werk aus, Güte hängt am Vokabular des Bestands); wirkt als Filter in der Suche | [Automatische Ermittlung](../../handbuch/referenz/metadaten.md#woher-ein-wert-kommt), [Wirkung in der Suche](../../handbuch/referenz/metadaten.md#wo-metadaten-wirken), [Güte der modellgestützten Ermittlung](../../handbuch/referenz/metadaten.md#woher-ein-wert-kommt) | Handbuch |
 
 ## M · Modelle und Datenflüsse
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| M-01 | ja | [LLM-Anbieter](../../handbuch/betreiben/modell-endpunkte.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/betreiben/modell-endpunkte.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
-| M-02 | teilweise; vollständig erzwungen für die ausgehenden Clients im Code von OPAA, deren Eintrag der Wächter im Build verlangt; Abrufe, die eingebundene Bibliotheken von sich aus aufbauen, belegt nur der nächtliche Lauf ohne Internetzugang, im Umfang dessen, was er durchläuft, und Verbindungen an feste IP-Adressen nur über das Log; bekannte Abrufe eingebundener Bibliotheken sind abgeschaltet | {{faktenblatt:datenfluesse}}, [Was bei jeder Änderung geprüft wird](../../handbuch/betreiben/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird), [Betrieb ohne Internet](../../handbuch/betreiben/netz-und-sicherheit.md#betrieb-ohne-internet) | Faktenblatt, Test |
-| M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betreiben/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betreiben/modell-endpunkte.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
-| M-04 | ja | [Ausgangsproxy](../../handbuch/betreiben/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
-| M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betreiben/modell-endpunkte.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
+| M-01 | ja | [LLM-Anbieter](../../handbuch/betrieb/modell-endpunkte.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/betrieb/modell-endpunkte.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
+| M-02 | teilweise; vollständig erzwungen für die ausgehenden Clients im Code von OPAA, deren Eintrag der Wächter im Build verlangt; Abrufe, die eingebundene Bibliotheken von sich aus aufbauen, belegt nur der nächtliche Lauf ohne Internetzugang, im Umfang dessen, was er durchläuft, und Verbindungen an feste IP-Adressen nur über das Log; bekannte Abrufe eingebundener Bibliotheken sind abgeschaltet | {{faktenblatt:datenfluesse}}, [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird), [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet) | Faktenblatt, Test |
+| M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modell-endpunkte.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
+| M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
+| M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betrieb/modell-endpunkte.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
 ## D · Datenschutz und Nachvollziehbarkeit
 
@@ -64,37 +64,37 @@ Faktenblatt.
 | D-02 | ja | {{faktenblatt:fristen}} | Faktenblatt, Konfiguration |
 | D-03 | ja | {{faktenblatt:protokollereignisse}}, {{faktenblatt:rollensicht#auditor}}, [TOM des Produktanteils](../04-datenschutz/technische-und-organisatorische-massnahmen.md) | Faktenblatt, Projektunterlage |
 | D-04 | ja | {{faktenblatt:rollensicht#matrix}} | Faktenblatt |
-| D-05 | ja; beim ersten finalen Release erscheint jeder Eintrag als neu | [Update-Paket](../../handbuch/betreiben/releases-und-nachweise.md#das-update-paket), [Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release) | Handbuch |
+| D-05 | ja; beim ersten finalen Release erscheint jeder Eintrag als neu | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release) | Handbuch |
 
 ## S · Sicherheit und Lieferkette
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| S-01 | ja | [Anmeldewege im Betriebsmodus OIDC](../../handbuch/betreiben/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) | Handbuch, Konfiguration |
-| S-02 | ja | [Provenance und Software-Stückliste](../../handbuch/betreiben/releases-und-nachweise.md#provenance-und-software-stückliste) | Handbuch |
-| S-03 | ja | [Was ein Release liefert](../../handbuch/betreiben/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
+| S-01 | ja | [Anmeldewege im Betriebsmodus OIDC](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) | Handbuch, Konfiguration |
+| S-02 | ja | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) | Handbuch |
+| S-03 | ja | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
-| S-05 | ja | [Read-only Filesystem](../../handbuch/betreiben/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betreiben/kubernetes.md#pod-security) | Handbuch |
-| S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Korrekturen und Scan für `main` und jede unterstützte Linie | [Schwachstellen](../../handbuch/betreiben/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
-| S-07 | ja; Links nur zu erlaubten Zielen, keine Bilder, Bereinigung beim Aufnehmen mit Meldung auffälliger Muster, Testsatz für das eigene Modell, Fundstellen im Prompt als Daten gekennzeichnet. Grenzen: Kennzeichnung und Bereinigung ohne gemessene Senkung der Angriffsrate, versteckter Text (weiße Schrift, verborgener Text) wird nicht erkannt, keine vollständige Erkennung | [Schutz gegen Prompt-Injection](../../handbuch/betreiben/netz-und-sicherheit.md#schutz-gegen-prompt-injection), [Erlaubte Linkziele](../../handbuch/betreiben/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) | Handbuch, Test |
-| S-08 | teilweise; über clamd, nicht über ICAP; ab Werk aus; geprüft wird jede Datei aus Upload, Quelle und Anhang, nicht ein Seiteninhalt, den eine Quelle als Text liefert; Befund im Revisionsprotokoll, Verbindung im Datenfluss-Faktenblatt | [Virenprüfung](../../handbuch/betreiben/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien), {{faktenblatt:protokollereignisse#malware-detected}}, {{faktenblatt:datenfluesse}} | Handbuch, Konfiguration, Faktenblatt |
+| S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betrieb/kubernetes.md#pod-security) | Handbuch |
+| S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Korrekturen und Scan für `main` und jede unterstützte Linie | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
+| S-07 | ja; Links nur zu erlaubten Zielen, keine Bilder, Bereinigung beim Aufnehmen mit Meldung auffälliger Muster, Testsatz für das eigene Modell, Fundstellen im Prompt als Daten gekennzeichnet. Grenzen: Kennzeichnung und Bereinigung ohne gemessene Senkung der Angriffsrate, versteckter Text (weiße Schrift, verborgener Text) wird nicht erkannt, keine vollständige Erkennung | [Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection), [Erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) | Handbuch, Test |
+| S-08 | teilweise; über clamd, nicht über ICAP; ab Werk aus; geprüft wird jede Datei aus Upload, Quelle und Anhang, nicht ein Seiteninhalt, den eine Quelle als Text liefert; Befund im Revisionsprotokoll, Verbindung im Datenfluss-Faktenblatt | [Virenprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien), {{faktenblatt:protokollereignisse#malware-detected}}, {{faktenblatt:datenfluesse}} | Handbuch, Konfiguration, Faktenblatt |
 
 ## B · Betrieb
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| B-01 | ja | [Bausteine](../../handbuch/betreiben/README.md#bausteine) | Handbuch |
-| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/betreiben/kubernetes.md#installation), [Docker Compose](../../handbuch/betreiben/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/betreiben/mehrere-instanzen.md) | Handbuch |
-| B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betreiben/sicherung-und-wiederherstellung.md), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
-| B-04 | ja | [Versionen](../../handbuch/betreiben/releases-und-nachweise.md#versionen), [Vorbereitung für Bestandsinstallationen](../../handbuch/betreiben/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
-| B-05 | ja | [Readiness und Liveness](../../handbuch/betreiben/images-und-laufzeit.md#readiness-und-liveness), [Betriebsüberwachung](../../handbuch/betreiben/kubernetes.md#betriebsüberwachung) | Handbuch |
+| B-01 | ja | [Bausteine](../../handbuch/betrieb/README.md#bausteine) | Handbuch |
+| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Docker Compose](../../handbuch/betrieb/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) | Handbuch |
+| B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
+| B-04 | ja | [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen), [Vorbereitung für Bestandsinstallationen](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
+| B-05 | ja | [Readiness und Liveness](../../handbuch/betrieb/images-und-laufzeit.md#readiness-und-liveness), [Betriebsüberwachung](../../handbuch/betrieb/kubernetes.md#betriebsüberwachung) | Handbuch |
 
 ## O · Offenheit und Souveränität
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| O-01 | ja; GNU Affero General Public License v3.0 | [Lizenz](../../../LICENSE), [Lizenzprüfung der Abhängigkeiten](../../handbuch/betreiben/releases-und-nachweise.md#lizenzen) | Projektunterlage, Test |
-| O-02 | ja | Speicherorte in {{faktenblatt:datenkatalog}}, [Originalablage](../../handbuch/betreiben/originalablage.md#die-drei-wege), [eigene Datenbank](../../handbuch/betreiben/datenbank.md#voraussetzungen-einer-eigenen-postgresql) | Faktenblatt, Handbuch |
+| O-01 | ja; GNU Affero General Public License v3.0 | [Lizenz](../../../LICENSE), [Lizenzprüfung der Abhängigkeiten](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) | Projektunterlage, Test |
+| O-02 | ja | Speicherorte in {{faktenblatt:datenkatalog}}, [Originalablage](../../handbuch/betrieb/originalablage.md#die-drei-wege), [eigene Datenbank](../../handbuch/betrieb/datenbank.md#voraussetzungen-einer-eigenen-postgresql) | Faktenblatt, Handbuch |
 | O-03 | ja | [Handbuch](../../handbuch/README.md) | Handbuch |
 
 ## N · Nutzung
@@ -107,13 +107,13 @@ Faktenblatt.
 
 | Nr. | Erfüllung | Grundlage aus dem Projekt | Art |
 |---|---|---|---|
-| L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/betreiben/kubernetes.md#installation), [Authentifizierung](../../handbuch/betreiben/authentifizierung.md), [Konnektoren](../../handbuch/pflegen/konnektoren/README.md) | Handbuch |
-| L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/betreiben/mehrere-instanzen.md) | Projektunterlage, Handbuch |
-| L-03 | Dienstleister; Patch-Releases einer Linie bringen keine neue Funktion, das LTS wechselt einmal im Jahr | [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/betreiben/releases-und-nachweise.md#das-update-paket) | Projektunterlage, Handbuch |
+| L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Authentifizierung](../../handbuch/betrieb/authentifizierung.md), [Konnektoren](../../handbuch/benutzer/konnektoren/README.md) | Handbuch |
+| L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) | Projektunterlage, Handbuch |
+| L-03 | Dienstleister; Patch-Releases einer Linie bringen keine neue Funktion, das LTS wechselt einmal im Jahr | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) | Projektunterlage, Handbuch |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |
-| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus, eine nur für die Behörde gepflegte Erweiterung trägt der Dienstleister bei jedem Update selbst nach | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/betreiben/releases-und-nachweise.md#lizenzen) | Projektunterlage, Handbuch |
-| L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/betreiben/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
+| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus, eine nur für die Behörde gepflegte Erweiterung trägt der Dienstleister bei jedem Update selbst nach | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) | Projektunterlage, Handbuch |
+| L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/betrieb/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
 | L-08 | Dienstleister | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
 
 ## Gut zu wissen

@@ -101,7 +101,7 @@ class InstallationStartup implements SmartLifecycle {
               "The vector table holds chunks but no embedding model is installed: they belong to"
                   + " a model nobody knows, and the model administration refuses a first model"
                   + " over them. Restore the model row from the backup the chunks come from, or"
-                  + " set the database up anew (docs/handbuch/betreiben/modell-endpunkte.md, \"Fehlerbilder\")");
+                  + " set the database up anew (docs/handbuch/betrieb/modell-endpunkte.md, \"Fehlerbilder\")");
         } else {
           log.info(
               "No embedding model is set up yet: indexing, upload and search answer with a notice"

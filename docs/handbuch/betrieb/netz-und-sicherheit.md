@@ -1,0 +1,483 @@
+# Netz und Sicherheit
+
+Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
+Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
+Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie OPAA
+Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
+und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
+beschreibt die [Betrieb](README.md).
+
+## Netzwerkzugang
+
+Das Backend wird nie direkt angesprochen, sondern über das Frontend. Davor steht in jedem
+erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für ihn gilt:
+
+- **`X-Forwarded-Proto` selbst setzen**, nie vom Client übernehmen; ein gefälschtes `https` umginge
+  die CORS-Prüfung.
+- **`X-Forwarded-For` setzen oder anhängen, `Forwarded` verwerfen**
+  ([Vertraute Proxys](#vertraute-proxys-und-client-adresse)).
+- **`/`, `/api/` und `/mcp` an das Frontend reichen**; Antworten auf `/mcp` nicht puffern.
+- **Den Antwortstrom des Chats nicht puffern** (`/api/v1/query/stream`, `text/event-stream`):
+  Gepuffert erscheint die Antwort erst, wenn sie fertig ist. Das Backend sendet dazu
+  `X-Accel-Buffering: no`, das nginx-basierte Proxys beachten; andere Proxys, etwa ingress-nginx
+  über `proxy-buffering: "off"`, schalten es ausdrücklich ab. Komprimieren darf der Proxy den
+  Strom nicht. Das Backend schickt alle 10 Sekunden ein Lebenszeichen, das Timeout begrenzt also
+  die Pause zwischen zwei Ereignissen.
+- **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
+  Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
+  leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
+- **Die Frame-Header des Downloads nicht ersetzen:** Für `/api/v1/me/self-disclosure/download`
+  setzt der Proxy kein eigenes `X-Frame-Options` und keine eigene `Content-Security-Policy` mit
+  `frame-ancestors` und überschreibt die des Frontends nicht. Die Seite lädt den Download in einen
+  eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
+  OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
+  und Mail aus, bis die Starts des Tages erschöpft sind.
+- **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
+  Antworten.
+- **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
+  weder protokollieren noch verändern.
+- OPAA läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
+  `OPAA_CORS_ALLOWED_ORIGINS`.
+- **`Strict-Transport-Security` setzt der äußere Proxy**, wo TLS endet.
+
+### Sicherheits-Header und `Strict-Transport-Security`
+
+Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
+`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
+Kamera und Standort gesperrt) sowie `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy`
+(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes OPAA-Fenster und
+können Antworten von OPAA nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
+selben Fenster und sind davon nicht betroffen. Die CSP lässt keine fremden Skripte oder CDNs zu und
+Verbindungen nur zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit
+einer Ausnahme: Den Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Das
+Backend sendet dieselbe Regel selbst: `SAMEORIGIN` und `frame-ancestors 'self'` für den Download,
+`X-Frame-Options: DENY` für alles andere. Der Container ersetzt die Frame-Header des Backends durch
+seine eigenen, damit jeder Header genau einmal ankommt. Ein
+Identitätsanbieter auf fremdem Origin kommt über
+`OPAA_CSP_CONNECT_SRC_EXTRA` dazu
+([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
+HSTS setzt der Container nicht; das gehört an den äußeren Proxy.
+
+### Erlaubte Linkziele in Antworten
+
+Ein präpariertes Dokument kann das Chat-Modell dazu bringen, einen Link auszugeben, in dessen
+Adresse Inhalte aus Dokumenten oder dem Gesprächsverlauf stecken. Ein Klick darauf genügt, und die
+Inhalte liegen beim fremden Server. Die **erlaubten Linkziele** begrenzen das: Ein Link in einer
+Antwort oder in der Dokumentvorschau ist nur zur eigenen Adresse der Anwendung und zu den
+eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachportal nutzbar.
+
+- **Was die Person sieht:** Ein Link zu einem anderen Ziel erscheint als Text, hinter dem Linktext
+  steht die vollständige Adresse in Klammern, damit kein Linktext ein Ziel verbirgt. Dasselbe gilt
+  für `mailto:` und jedes andere Schema. Verglichen wird der Ursprung genau: Eine Subdomain oder
+  eine längere Domain mit demselben Anfang ist ein anderes Ziel, ebenso `http` statt `https`.
+- **Bilder** lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
+  an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
+  `Content-Security-Policy` fremde Bilder.
+- **Bedienung:** Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
+  Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
+  Meldung und bleibt im Feld stehen.
+
+- **Vorgabe:** leer. Dann ist nur die eigene Adresse der Anwendung klickbar.
+- **Format:** je Eintrag ein Ursprung aus Schema, Host und optional Port, etwa
+  `https://intranet.stadt.example` oder `https://portal.stadt.example:8443`. Erlaubt sind nur `https`
+  und `http`; Pfad, Abfrage, Anker, Platzhalter wie `*` und Anmeldedaten in der Adresse werden mit
+  einer Meldung abgewiesen, ebenso IPv6-Adressen und Ports außerhalb 1 bis 65535. Ein Host mit
+  Umlauten wird in seiner `xn--`-Form eingetragen, so wie der Browser ihn meldet; Eingaben mit
+  anderen als ASCII-Zeichen werden abgewiesen. Der Host wird kleingeschrieben und der Standardport
+  weggelassen, doppelte Einträge fallen zusammen. Die Zahl der Einträge ist begrenzt (höchstens 50).
+- **Wer:** Lesen darf jede angemeldete Person, weil die Oberfläche die Liste zum Darstellen braucht;
+  ändern nur die Systemverwaltung.
+- Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
+  ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher. Die Oberfläche
+  lädt die Liste einmal je Fenster: In anderen bereits geöffneten Fenstern gilt eine Änderung erst
+  nach dem Neuladen der Seite, auch das Entfernen eines Ziels; nur das Fenster mit der Verwaltung
+  übernimmt sie sofort. Lässt sich die Liste nicht laden, ist nur die eigene Adresse klickbar.
+
+## Härtung für erreichbare Deployments
+
+Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gilt:
+
+| Maßnahme | Zwingend | Wo beschrieben |
+|---|---|---|
+| TLS am äußeren Proxy; `X-Forwarded-Proto` autoritativ | ja | [Netzwerkzugang](#netzwerkzugang) |
+| Betriebsmodus `oidc`, nie `dev` | ja | [Authentifizierung](authentifizierung.md#entwicklungsmodus-dev) |
+| eigene Geheimnisse statt Vorgaben, `OPAA_AUTH_LOCAL_COOKIE_SECURE` nicht auf `false` | ja | [Schlüssel und Geheimnisse](#schlüssel-und-geheimnisse) |
+| vertraute Proxys eintragen | ja, sobald ein Proxy vor dem Backend steht | [Vertraute Proxys](#vertraute-proxys-und-client-adresse) |
+| mitgelieferten Keycloak-Realm härten | ja, wenn er genutzt wird | [Authentifizierung](authentifizierung.md#härtung-des-mitgelieferten-keycloak) |
+| Ports an `127.0.0.1` lassen (Vorgabe), Zugangsdaten des mitgelieferten Objektspeichers ersetzen | ja für Keycloak und den Objektspeicher, sonst empfohlen | [Docker Compose](docker-compose.md#härtung-des-compose-stapels) |
+| Ausgangsproxy sperrt private und Link-Local-Ziele | ja, sobald ein Ausgangsproxy eingetragen ist | [Ausgangsproxy](#ausgangsproxy) |
+| Netztrennung, Pod Security | empfohlen | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
+| Ziele des Servers begrenzen | Vorgabe ist eingeschaltet | [Zielprüfung](#zielprüfung-abrufe-des-servers) |
+| Egress des Backends beschränken | empfohlen; unter Kubernetes nach der Einrichtung `networkPolicy.egress.enabled` | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
+
+### Vertraute Proxys und Client-Adresse
+
+Rate-Limits und die Netzbeschränkung lokaler Systemverwalter (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`)
+richten sich nach der Client-Adresse. Hinter einem Proxy — der Frontend-nginx ist schon einer — ist
+die Verbindungsadresse die des Proxys. `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` nennt die Netze, deren
+`X-Forwarded-For` zählt; **Pflicht, sobald ein Proxy vor dem Backend steht**.
+
+- **Ohne Wert** teilen sich alle Clients einen Zähler, und die Netzbeschränkung sieht nur den Proxy.
+  Der Start warnt im Log.
+- **So eng wie möglich:** unter Compose die feste Adresse des Frontend-Containers als `/32`, nie das
+  ganze Compose-Netz; jeder weitere Proxy mit seiner eigenen Adresse. Bereiche weiter als `/8` lehnt
+  der Start ab.
+- **Prüfen** mit `GET /api/v1/admin/diagnostics/client-address`
+  ([Diagnose ohne Shell](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell)).
+
+### Zielprüfung: Abrufe des Servers
+
+Wer eine Bibliothek mit einer Netzquelle anlegt, bestimmt Adressen, die der Server abruft — auch
+solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken begrenzen das:
+
+- **Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken.
+- **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
+  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, ebenso `0.0.0.0/8` und
+  IPv6-Präfixe, die auf IPv4 übersetzen oder tunneln (NAT64 `64:ff9b::/96` und `64:ff9b:1::/48`,
+  6to4 `2002::/16`, Teredo `2001::/32`, SIIT `::ffff:0:0:0/96`) oder verwerfen (`100::/64`), geprüft
+  nach der DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
+  Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
+  Eintrag in einer Liste öffnet keine der anderen.
+- **Geprüfte Namen sind gebunden.** Bis 60 Sekunden nach einer Prüfung verbindet jede Verbindung
+  des Backends zu dem Namen genau an die geprüften Adressen. Ein Namensdienst, der der Prüfung eine
+  öffentliche und der Verbindung eine interne Adresse nennt (DNS-Rebinding), läuft so ins Leere.
+  Zertifikat und SNI prüft TLS weiter gegen den Namen, auch beim Mailserver. Zwei Arten von Prüfung:
+  - **Vor jeder Verbindung** prüfen Quellen, Zugänge und die Originalablage: jeden Redirect, jede
+    Anfrage an einen Objektspeicher, jeden Abruf eines Crawls oder Feeds. Sie binden nur für die
+    Verbindung, denn jede weitere Verbindung wird neu geprüft.
+  - **Gespeicherte Ziele**, mit denen OPAA später ohne eigene Prüfung verbindet — Modell-Endpunkte,
+    Identitätsanbieter, der Mailserver —, bleiben darüber hinaus bis zum Neustart bewacht: Jede
+    Auflösung ihres Namens verliert jede Adresse in einem gesperrten Bereich, auch Tage später.
+    Bleibt keine übrig, scheitert die Verbindung wie bei einem unbekannten Host, und das Log warnt.
+    Nach dem Start prüft jede Instanz die gespeicherten Modell-Endpunkte und den Mailserver einmal;
+    was die Prüfung ablehnt, steht als Warnung im Log und bleibt unbewacht.
+- **Ein Adresswechsel kommt an**, sobald der Name neu geprüft oder aufgelöst wird: spätestens nach
+  dem Cache der JVM (30 Sekunden) bzw. nach der Wiederverwendung einer Antwort durch die Prüfung
+  (5 Sekunden), nach einer Bindung spätestens nach ihren 60 Sekunden.
+- **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse und ohne
+  Bewachung. Nur Namen aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen
+  prüft OPAA beim Speichern, Testen, Abfragen und nach dem Start, nicht bei jedem Aufruf; die
+  Bewachung schützt die Aufrufe danach.
+- **Wechselt ein gespeichertes Ziel ins eigene Netz,** etwa beim Umzug eines Dienstes, ist sein Name
+  bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
+  und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
+  auch nach dem Neustart gesperrt.
+- **Gesperrt und unbekannt klingen gleich:** Ein Ziel in einem gesperrten Bereich und ein Name, der
+  sich nicht auflösen lässt, ergeben dieselbe Meldung, damit niemand über Quellen oder Zugänge
+  erkundet, welche internen Namen es gibt. Die Ursache nennt die Zeile „Rejecting fetch to …“ im
+  Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
+- **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
+  Punycode-Schreibweise (`xn--…`) eintragen.
+- Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
+  werden immer geprüft.
+- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
+  und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
+  Egress auf Netzebene bleibt die zweite Linie.
+- **Start:** OPAA startet nur, wenn sein Resolver die Namensauflösung der JVM übernommen hat. Löst
+  eine Startoption vor der Anwendung einen Namen auf, bricht der Start mit dieser Ursache ab
+  ([Images und Laufzeit](images-und-laufzeit.md)).
+
+Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine Prüfung die letzte
+Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
+einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
+noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
+`opaa_target_validation_refused_connection_checks_total`. Ist die
+Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
+Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
+zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart
+leert die Tabelle.
+
+## Ausgangsproxy
+
+Verlangt das Haus einen Proxy, trägt die Systemverwaltung ihn unter **Administration → Anbindungen →
+Einstellungen**, Abschnitt **Ausgangsproxy** ein. Es gibt genau einen; `HTTP_PROXY`/`HTTPS_PROXY`
+und `http.proxyHost` wertet OPAA nicht aus.
+
+- **Über den Proxy:** jede HTTP(S)-Verbindung des Backends — Quellen, Zugänge, Modelldienste,
+  Identitätsanbieter, Verzeichnisabgleich.
+- **Nie über den Proxy:** Loopback, Datenbank, Mailserver, SMB-Freigaben, Objektspeicher der
+  Originalablage.
+- **Format:** `http://host:port` oder `host:port`. Proxy über HTTPS, SOCKS und Proxy-Anmeldung
+  werden nicht unterstützt.
+- **Ausnahmeliste:** je Zeile ein Hostname (gilt mit Subdomänen), eine IP-Adresse oder ein
+  CIDR-Bereich. Interne Ziele wie ein Modellserver im Haus gehören hierher.
+- **Ausnahmeliste ist keine Freigabe:** Ob ein internes Ziel erreicht werden darf, entscheidet die
+  [Zielprüfung](#zielprüfung-abrufe-des-servers). Hinter dem Proxy löst der Proxy die Adresse auf.
+- **Pflicht für den Proxy:** Die Zielprüfung sieht nur die Namensauflösung des Backends; der Proxy
+  löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding).
+  Bindung und Bewachung geprüfter Namen erreichen ihn nicht. Er muss deshalb nach seiner eigenen
+  Auflösung Ziele in privaten Netzen (RFC 1918), Loopback, Link-Local (`169.254.0.0/16` samt
+  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`), IPv6-ULA
+  (`fc00::/7`) und die übrigen Bereiche der [Zielprüfung](#zielprüfung-abrufe-des-servers), etwa
+  `0.0.0.0/8` und die IPv6-Präfixe, die auf IPv4 übersetzen, verwerfen, soweit sie nicht
+  ausdrücklich erreichbar sein sollen. Ein Name, den das
+  Backend selbst nicht auflösen kann, bleibt über den Proxy erlaubt.
+- Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
+- **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
+  Systemverwaltungskonto meldet sich ohne Anbieter an und korrigiert den Eintrag.
+
+## Betrieb ohne Internet
+
+OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
+Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
+lädt Schriften, Skripte und Bilder von der eigenen Installation. Die eingebaute Bibliothek für
+Datenbankmigrationen (Flyway) sendet nichts an ihren Hersteller. Einzig das „?“ der Oberfläche
+öffnet auf Klick das Handbuch auf `opaa.io`, ohne die Adresse der Installation mitzusenden; ohne
+Internet bleibt nur diese Seite leer. Was davon belegt ist, nennen Nachweis und Grenzen unten.
+
+**Voraussetzungen:**
+
+- **Images vorab bereitstellen:** Backend, Frontend und Datenbank (unter Kubernetes dazu die Images
+  des Charts) in eine interne Registry übernehmen oder auf den Hosts laden. Ein Start ohne
+  Internet darf kein Image mehr nachladen.
+- **Modelle im Haus:** Chat- und Embedding-Modell, bei Bedarf Reranking und Transkription, laufen
+  auf einem Modellserver im Netz der Installation ([Modelle](modell-endpunkte.md)); seine Modellgewichte
+  werden vorab dort abgelegt.
+- **Anmeldung im Haus:** ein Identitätsanbieter im eigenen Netz oder die lokale Anmeldung
+  ([Authentifizierung](authentifizierung.md)).
+- **Quellen im Haus:** Bibliotheken lesen nur Quellen, die im Netz erreichbar sind; der Upload
+  braucht keine.
+
+**Nachweis:** Ein nächtlicher Lauf in der CI des Projekts (Workflow „Betrieb ohne Internet“) startet
+die Compose-Installation in einem Netz ohne Weg nach außen. Alle Images liegen vor dem Start bereit;
+das Modell ist ein OpenAI-kompatibler Dienst im selben Netz. Der Lauf meldet sich lokal an, legt eine
+Bibliothek an, nimmt ein Dokument auf und stellt eine Frage, deren Antwort das Dokument als
+Fundstelle nennt. In einer zweiten Bibliothek nimmt er eine Tabelle, eine HTML-Seite und eine Mail
+mit Anhang auf, damit auch die Verarbeitung dieser Formate ohne Weg nach außen läuft. Jede
+Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von einer fremden Adresse
+lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
+dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
+Laufs.
+
+**Grenzen des Nachweises:**
+
+- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload von Text, Tabelle,
+  HTML-Seite und Mail, in einem Lauf von rund einer Minute. Weitere Formate wie PDF, Word- und
+  Präsentationsdateien und Bilder, Reranking, Transkription und zeitgesteuerte Aufgaben sind nicht
+  Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes. Eine
+  eingebundene Bibliothek, die nur in einem dieser Teile nach außen ruft, bleibt unbemerkt.
+- **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
+  Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.
+- **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.
+  Der Lauf erkennt sie aber nur, wenn das Log sie als nicht erreichbares Netz meldet; ein Fehler,
+  der nicht oder nur auf niedriger Stufe protokolliert wird, bleibt unbemerkt.
+
+## Virenprüfung der aufgenommenen Dateien
+
+OPAA kann jede Datei, die eine Bibliothek aufnehmen soll, vorher an einen Virenscanner geben: einen
+Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber“ wird sie gelesen,
+geschnitten und, beim Upload, in der Originalablage abgelegt.
+
+> **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
+> Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+> befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
+> der Originalablage noch im Index.
+
+- **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
+  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
+  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
+  Datei, weder Namen noch Bibliothek noch Person.
+- **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
+- **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
+  Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
+  abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
+  daraus, ebenso wenig bei einem Upload, den eine spätere Neuindizierung mit neuen Signaturen als
+  befallen erkennt. Dieselbe unveränderte Datei wird weder erneut geprüft noch erneut protokolliert;
+  erst eine geänderte Datei wird wieder geprüft. Das Dokument zählt weiter zum Speicherkontingent
+  der Bibliothek, bis es aus der Quelle verschwindet oder gelöscht wird.
+- **Revisionsprotokoll:** Jeder Befund steht dort als Systemvorgang mit Bibliothek und Signatur,
+  ohne Dateinamen und ohne die Person, die die Datei hochgeladen hat. Bei einer privaten Bibliothek
+  nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
+  Bibliothek auf ihre Eigentümerin schließen ließe.
+- **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
+  `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
+  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
+  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
+  Einstellung.
+- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
+  Antwort; danach gilt die Datei als nicht geprüft.
+- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
+  annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
+  Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
+  sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
+  mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
+- **Metrik:** `opaa_malware_scans_total` nach Ergebnis (`clean`, `infected`, `failed`).
+- **Grenzen der Prüfung:**
+  - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
+    seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim
+    nächsten Lauf. Gesperrt ist nur ein Original, für das ein Befund vorliegt.
+  - Bei Dateisystem-Bibliotheken liest OPAA die Datei zweimal von der Freigabe, einmal zum Prüfen
+    und einmal zum Verarbeiten. Wer auf die Freigabe schreiben darf, kann sie dazwischen austauschen.
+  - Wird eine früher saubere Mail nach einer Änderung als befallen erkannt, bleiben ihre bisherigen
+    Anhänge als eigene Dokumente im Index. Ihr Abruf ist gesperrt, weil er über die Mail geht.
+
+Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands mit neuen Signaturen
+und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
+eines Feeds).
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
+| `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
+| `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
+| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
+| `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
+
+Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss
+dem Backend den Weg zum Scanner öffnen.
+
+## Schlüssel und Geheimnisse
+
+| Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
+|---|---|---|---|
+| `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../administration/externe-ki-werkzeuge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modell-endpunkte.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
+| `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
+
+- Zufällig erzeugen: `openssl rand -base64 48` (Signaturgeheimnis), `openssl rand -base64 32`
+  (Schlüssel).
+- Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
+  sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
+- Die Schlüssel des Profils `dev`, die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
+  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) und die früheren Schlüssel und
+  Signaturgeheimnisse der Testläufe des Repositorys sind öffentlich. Im Modus `oidc` bricht der Start
+  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf. Ein bisher genutzter
+  öffentlicher Schlüssel wird wie bei einem [Schlüsselwechsel](#schlüsselwechsel) abgelöst; als
+  abgelöster Schlüssel ist er erlaubt.
+
+### Zugangsdaten-Verschlüsselung
+
+Zugangsdaten liegen mit AES-256-GCM verschlüsselt in der Datenbank. Keine API-Antwort und kein Log
+enthält sie.
+
+- Ohne Schlüssel scheitert nur das Speichern von Zugangsdaten (`503`).
+- Ist ein Wert nicht entschlüsselbar, zeigt die Oberfläche „nicht gesetzt“, das Log eine Warnung;
+  andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
+- Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
+  Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
+- Zugangsdaten, die keiner der eingetragenen Schlüssel entschlüsselt, übernimmt OPAA nicht in einen
+  anderen Datensatz, etwa beim Umstellen einer Bibliothek auf ein Verbindungsprofil oder beim Wechsel
+  des Embedding-Modells. Die Änderung wird mit einer Meldung abgelehnt, bis der fehlende Schlüssel
+  ergänzt oder der Wert neu eingetragen ist.
+- **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
+- Ein Wert im aktuellen Format `enc:v2` trägt die Kennung seines Schlüssels und ist an seinen
+  Datensatz gebunden. Ein solcher Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert
+  wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
+  Verschlüsselung sind nicht gebunden; OPAA liest sie nur, bis der Hintergrundlauf den Bestand
+  umgestellt hat. Er verschlüsselt dabei auch den Klartext. Findet er zweimal im Abstand von
+  mindestens fünf Minuten und zwei Heartbeat-Intervallen keinen solchen Wert mehr, meldet das Log
+  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche
+  Werte als unlesbar ab, auf allen Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
+  Ein `enc:v1`-Wert, den kein eingetragener Schlüssel liest, hält den Abschluss auf, bis er neu
+  eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt OPAA
+  nichts ab, und der Start hebt einen Abschluss wieder auf.
+
+### Schlüsselwechsel
+
+Ein Schlüssel wird gewechselt, wenn er bekannt geworden sein kann, etwa nach dem Ausscheiden einer
+Person mit Zugriff auf die Geheimnisse, oder turnusmäßig nach den Regeln des Hauses. OPAA arbeitet
+während des Wechsels weiter: Der alte Schlüssel entschlüsselt nur noch, alles Neue verschlüsselt der
+neue, und ein Hintergrundlauf stellt den Bestand um. Der Ablauf gilt für
+`OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY` gleichermaßen, einzeln oder
+beide zugleich.
+
+1. **Neuen Schlüssel erzeugen** (`openssl rand -base64 32`) und sichern, bevor er eingesetzt wird.
+2. **Schlüssel tauschen:** den bisherigen Schlüssel in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`
+   bzw. `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen, den neuen in die Variable des Schlüssels.
+   Mehrere abgelöste Schlüssel stehen durch Kommas getrennt.
+3. **Alle Instanzen gemeinsam neu starten.** Die Schlüssel gehören zum
+   [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck);
+   ein Rolling Update ist dafür nicht möglich.
+4. **Umstellung abwarten.** Zwei Minuten nach dem Start und danach alle zehn Minuten verschlüsselt
+   eine Instanz bis zu 5.000 Werte neu. Das Log meldet den Fortschritt mit „Re-encrypted … stored
+   secrets; … readable ones still stand under an old key or format“ und den Abschluss mit „… every
+   readable secret is now under the current keys, … cannot be decrypted“. Die zweite Zahl der
+   Abschlussmeldung nennt die Werte, die kein eingetragener Schlüssel entschlüsselt (siehe unten);
+   sie halten den Abschluss nicht auf. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` läuft der Wechsel
+   genauso ab, nur bleiben die Werte im bisherigen Format `enc:v1`; das Log warnt dann einmal mit
+   „Previous encryption keys are set while the keyed format is held back …“. Eine Vorversion, der man
+   den neuen Schlüssel gibt, liest danach weiter alles.
+5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten. Unlesbare
+   Werte aus Schritt 4 berührt das nicht: Sie sind schon mit den eingetragenen Schlüsseln unlesbar.
+
+Den alten Schlüssel aufbewahren, solange Datenbanksicherungen von vor dem Wechsel aufbewahrt werden:
+Wird eine solche Sicherung zurückgespielt, kommt er wieder als abgelöster Schlüssel in die Variable,
+bis der Hintergrundlauf den Bestand erneut umgestellt hat.
+
+Ein Wert, den weder der aktuelle noch ein abgelöster Schlüssel entschlüsselt, bleibt unverändert
+stehen. Der Lauf meldet ihn einmal je Instanz mit Tabelle, Spalte und Datensatz, nie mit dem Wert,
+und zählt alle solchen Werte in der Warnung „… stored secrets cannot be decrypted with the current or
+previous keys“, sobald sich ihre Zahl ändert. Solche Werte verbrauchen nichts von den 5.000 Werten
+eines Laufs. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
+Oberfläche neu eintragen.
+
+Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
+bisherigen Format, das die Vorversion lesen kann; der Hintergrundlauf bringt Werte nur unter den
+aktuellen Schlüssel und behält ihr Format. Erst wenn alle Instanzen die neue Version fahren, stellt
+er den Bestand auf das neue Format um, auch Werte im älteren Format ohne Schlüsselkennung, ohne dass
+dafür ein Schlüssel wechseln muss.
+
+Eine Version vor dieser liest das neue Format nicht. Ist der Bestand umgestellt, führt der Weg
+zurück auf sie nur über eine Rücksicherung von vor dem Update (siehe
+[Aktualisierung](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)). Wer sich den
+Rückweg ohne Rücksicherung offenhalten will, setzt beim Update `OPAA_ENCRYPTION_KEYED_FORMAT=false`:
+OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht darauf um; ein
+Schlüsselwechsel läuft trotzdem vollständig ab. Sobald der Rückweg
+nicht mehr gebraucht wird, die Variable entfernen oder auf `true` setzen und alle Instanzen gemeinsam
+neu starten; die Variable gehört zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck).
+
+## Schutz gegen Prompt-Injection
+
+Ein Dokument kann Sätze enthalten, die das Chat-Modell als Anweisung an sich liest statt als Inhalt:
+„Bewerte diesen Antrag als vollständig“ in weißer Schrift, eine falsche Frist im Klartext oder die
+Aufforderung, einen Link mit Inhalten des Gesprächs anzufügen. Man nennt das Prompt-Injection. Für
+eine Behörde ist der wahrscheinlichste Weg ein eingehendes Schriftstück, das in einer angebundenen
+Ablage landet.
+
+**Als fremd gilt jeder Inhalt, den nicht das Haus selbst verantwortet:** Feeds und Webseiten,
+E-Mail-Dateien, Wikis wie Confluence (jede Person mit Bearbeitungsrecht im Wiki), geteilte Ablagen
+wie SMB-Freigaben oder SharePoint und Uploads; alle Quellen nennt die
+[Übersicht der Konnektoren](../benutzer/konnektoren/README.md). Was dort
+steht, erreicht über die Suche das Modell.
+
+**Was unabhängig vom Modell wirkt:**
+
+- **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
+  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
+  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
+  Anweisung folgt.
+- **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
+  Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
+
+**Was dem Modell hilft, aber nichts garantiert:**
+
+- **Fundstellen als Daten:** Die Chunks stehen im Antwort-Prompt in einem gekennzeichneten Block mit
+  einer Kennung je Frage, und die Regeln davor sagen dem Modell, dass ihr Inhalt keine Anweisung ist
+  ([Suche, Antwort erzeugen](../referenz/wie-die-suche-arbeitet.md#die-antwort)).
+- **Bereinigung beim Aufnehmen:** Unsichtbare Zeichen und Steuerzeichen der Schreibrichtung werden
+  entfernt, Rollen-Markierungen der Modellformate entschärft; auffällige Muster stehen je Dokument im
+  Laufprotokoll und in einer Metrik
+  ([Wissensbibliotheken, Parsen und Chunken](../referenz/wie-indexierung-arbeitet.md#was-mit-jedem-dokument-passiert)
+  und [Ergebnis je Dokument](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)).
+- **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+  ([Externe KI-Werkzeuge, Der MCP-Server](../benutzer/ki-werkzeug-einrichten.md)).
+- **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
+  lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).
+
+**Was nicht gebaut ist:** Eine vollständige Erkennung gibt es nicht, und kein Sprachmodell trennt
+Anweisung und Inhalt zuverlässig. Gemessen mit dem Testsatz hat die Kennzeichnung als Daten die
+Angriffsrate nicht gesenkt, die Bereinigung ist nicht eigens gemessen; erfolgreich waren vor allem
+falsche Angaben im sichtbaren Text, die keine Kennzeichnung aufhält. Versteckter Text wie weiße
+Schrift im PDF, verborgener Text in DOCX oder
+ausgeblendete Abschnitte in HTML wird mit aufgenommen und nicht erkannt; die Bereinigung entfernt
+nur unsichtbare Zeichen. Ein vorgeschaltetes Klassifikationsmodell gibt es nicht.
+
+**Was beim Haus bleibt:** nur geprüfte Quellen anbinden, Schreibrechte an den Quellen begrenzen, die
+erlaubten Linkziele pflegen, das Modell anhand der Messung wählen und Antworten als Entwurf
+behandeln, der vor einer Entscheidung an den Belegen geprüft wird.

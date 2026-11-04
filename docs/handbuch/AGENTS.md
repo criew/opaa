@@ -1,29 +1,29 @@
 # Handbuch: Anweisungen für Schreibende
 
 Gilt für jede Änderung unter `docs/handbuch/`. Das Handbuch beschreibt den gebauten Ist-Stand für
-alle, die OPAA benutzen, pflegen, verwalten oder betreiben. Es ist kurz: Wer eine Aufgabe hat,
-findet sie auf einer Seite und liest sie in einem Bildschirm.
+alle, die OPAA benutzen, administrieren oder betreiben. Es ist kurz: Wer eine Aufgabe hat, findet
+sie auf einer Seite und liest sie in einem Bildschirm.
 
 ## Aufbau
 
-Kapitel nach Tätigkeit, nicht nach Rolle. Wer „mehr darf“, hat keine andere Rolle, sondern eine
-Rolle an einem Objekt oder eine Fähigkeit. Daraus folgen fünf Ordner:
+Vier Kapitel nach Zielgruppe. Wer in OPAA Spaces und Bibliotheken für andere einrichtet, ist keine
+eigene Zielgruppe: Ab Werk darf das jedes Konto, deshalb steht es unter Benutzer. Administration
+meint die Systemverwaltung der ganzen Installation und die Revision.
 
 | Ordner | Für wen | Inhalt |
 |---|---|---|
-| `arbeiten/` | jedes Konto | was ab Werk jedes Konto kann: fragen, Belege prüfen, Chats, Spaces, eigene Bibliotheken, Prompts |
-| `pflegen/` | wer eine Rolle an Bibliothek, Space oder Gruppe hat | teilen, Quellen anbinden (`pflegen/konnektoren/`), Metadaten, Space pflegen, interne Gruppen pflegen |
-| `verwalten/` | Systemverwaltung; Prüfer im Abschnitt „Prüfen“ | Konten, Gruppen und Fähigkeiten, Modelle, Einstellungen, Protokoll |
-| `betreiben/` | IT-Betrieb | Installation, Compose, Kubernetes, Sicherung, Update, Überwachung |
-| `nachschlagen/` | alle | Rechte-Matrix, Konfigurationsreferenz, Formate (`nachschlagen/formate/`), Suche im Überblick, Glossar |
+| `benutzer/` | jedes Konto | fragen, Belege, Chats, Spaces, Bibliotheken, Konnektoren (`benutzer/konnektoren/`), Gruppen, Zugriff |
+| `administration/` | Systemverwaltung und Revision | Konten, Gruppen und Fähigkeiten, Modelle, Einstellungen, Protokolle |
+| `betrieb/` | IT-Betrieb | Schnellstart, Installation, Compose, Kubernetes, Sicherung, Update, Überwachung |
+| `referenz/` | alle | Rechte-Matrix, Konfiguration, Formate (`referenz/formate/`), Suche im Überblick, Glossar |
 
-Jeder Ordner hat eine `README.md` mit der Liste seiner Seiten. Den Gesamtbaum führt
-`README.md`, Abschnitt „Aufbau des Handbuchs“. Die Reihenfolge der Website legt die Navigationsliste
-`nav` in `mkdocs.yml` fest: Kapitel in der Folge Arbeiten, Pflegen, Verwalten, Betreiben,
-Nachschlagen, Seiten in der Folge, in der man sie braucht, nicht alphabetisch. Eine neue Seite
-bekommt in beiden ihren Platz; fehlt sie in `nav`, bricht der strikte Build ab.
+Jeder Ordner hat eine `README.md` mit der Liste seiner Seiten, `benutzer/` und `administration/`
+gegliedert wie die Navigation. Die Reihenfolge der Website legt die Navigationsliste `nav` in
+`mkdocs.yml` fest: Seiten in der Folge, in der man sie braucht, nicht alphabetisch. Eine neue Seite
+bekommt in beiden ihren Platz; fehlt sie in `nav`, bricht der strikte Build ab. Die Startseite
+`README.md` bleibt kurz: Zielgruppen, was OPAA ist, Aufbau, wenige Lesewege.
 
-## Seiten in `arbeiten/` und `pflegen/`
+## Seiten in `benutzer/` und `administration/`
 
 Eine Seite ist eine Aufgabe. Der Titel ist die Aufgabe als Verb ohne Artikel („Bibliothek teilen“,
 nicht „Eine Bibliothek teilen“), nicht das Thema. Dasselbe gilt für Zwischenüberschriften und
@@ -43,24 +43,24 @@ Ein Satz, was man danach hat.
 **Gut zu wissen:** höchstens drei Punkte.
 ```
 
-- **Wer-Zeile:** nur in `pflegen/` und `verwalten/`, genau eine Zeile: Rolle am Objekt,
-  Systemrolle oder Fähigkeit, in der Verwaltung mit Menüpfad. Einzelheiten und die Auslieferung ab
-  Werk stehen in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`). Seiten in `arbeiten/` haben
-  keine Wer-Zeile, denn sie gelten für jedes Konto; eine echte Voraussetzung steht als ein Satz im
-  Text.
-- **Höchstens 80 Zeilen**, besser deutlich weniger. Was nicht passt, ist eine zweite Aufgabe und
-  bekommt eine eigene Seite.
+- **Wer-Zeile:** genau eine Zeile mit Rolle am Objekt, Systemrolle oder Fähigkeit, in der
+  Administration mit Menüpfad. Pflicht in `administration/` und auf den Konnektor-Seiten; in
+  `benutzer/` nur, wo die Aufgabe eine Rolle an Space, Bibliothek oder Gruppe braucht. Was jedes
+  Konto kann, trägt keine; eine echte Voraussetzung steht als ein Satz im Text. Einzelheiten und
+  die Auslieferung ab Werk stehen in der Rechte-Matrix (`referenz/rechte-matrix.md`).
+- **Höchstens 80 Zeilen** in `benutzer/`, besser deutlich weniger. Was nicht passt, ist eine
+  zweite Aufgabe und bekommt eine eigene Seite.
 - `.github/scripts/check_handbuch.sh` prüft Wer-Zeile und Länge in der CI. Ausgenommen sind die
-  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` und `verwalten/` haben keine feste
-  Länge.
+  `README.md` der Ordner; die Seiten unter `benutzer/konnektoren/` und `administration/` haben
+  keine feste Länge.
 
-`verwalten/` folgt derselben Form ohne feste Länge, knapp gehalten. `betreiben/` und
-`nachschlagen/` sind Referenz und dürfen lang sein, ohne Inhalte doppelt zu führen: Was Compose und
+`administration/` folgt derselben Form, knapp gehalten. `betrieb/` und `referenz/` dürfen lang
+sein, ohne Inhalte doppelt zu führen: Was Compose und
 Kubernetes gemeinsam haben, steht einmal.
 
 ## Aufbau der Konnektor-Seiten
 
-Jede Seite unter `pflegen/konnektoren/`
+Jede Seite unter `benutzer/konnektoren/`
 hat oben die Wer-Zeile und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
 von 1 an. Ein Abschnitt, der nicht zutrifft, entfällt; die Nummern folgen lückenlos.
 
@@ -88,7 +88,7 @@ Was mehrere Konnektoren teilen — Abgleichstand, Zieladressprüfung, der Abglei
 steht nur in der Übersicht der Konnektoren; die Seite verweist und nennt nur ihre Abweichung.
 **Keine API-Feldnamen** wie `sourceCredentials`: Gezeigt wird die Oberfläche. Parameternamen der
 Konfiguration bleiben erlaubt, ihre Standardwerte stehen nur in der Konfigurationsreferenz.
-Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen Aufbau.
+Format-Seiten unter `referenz/formate/` folgen ihrem bisherigen gemeinsamen Aufbau.
 
 ## Verweise
 

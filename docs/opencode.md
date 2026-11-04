@@ -109,7 +109,7 @@ Schritte für einen Maintainer; ein Agent führt sie nicht aus.
    Projektbeschreibung und einen Verweis auf GitHub als Ort für Issues und Beiträge eintragen.
 8. **Nachziehen** nach der Einrichtung, per PR: in diesem Dokument den Stand, in der Vorlage
    [Projektstatus](behoerden/01-markterkundung/projektstatus.md) die Zeile „Ablage“, im Handbuch
-   [Releases und Nachweise](handbuch/betreiben/releases-und-nachweise.md) den Punkt unter „Was nicht
+   [Releases und Nachweise](handbuch/betrieb/releases-und-nachweise.md) den Punkt unter „Was nicht
    gebaut ist“ und in der README den Hinweis auf openCode.
 
 ## Wenn der Spiegel scheitert

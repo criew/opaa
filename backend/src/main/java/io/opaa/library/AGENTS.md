@@ -47,8 +47,8 @@ liegt in `io.opaa.knowledge`, Zuordnung und Adressprüfung in connections; eine 
 
 ## Verweise
 
-- Handbuch (`docs/handbuch/`): `pflegen/arbeitsmittel-teilen.md`, `arbeiten/private-bibliothek.md`,
-  `pflegen/fuer-ki-werkzeuge-freigeben.md`
+- Handbuch (`docs/handbuch/`): `benutzer/arbeitsmittel-teilen.md`, `benutzer/private-bibliothek.md`,
+  `benutzer/fuer-ki-werkzeuge-freigeben.md`
 
 ## Tests bei Änderungen
 

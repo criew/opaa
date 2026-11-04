@@ -34,7 +34,7 @@ import org.xml.sax.SAXException;
  * (RAR, MATLAB, TIFF/JPEG 2000 images, RSS/Atom feeds). Every admitted format must still be
  * detected as itself and yield text through Tika's own parsing. The fixtures are the demo corpus
  * folder that holds one document per admitted format ({@code
- * docs/handbuch/nachschlagen/formate/README.md}).
+ * docs/handbuch/referenz/formate/README.md}).
  */
 class TikaWithoutExcludedLibrariesTest {
 

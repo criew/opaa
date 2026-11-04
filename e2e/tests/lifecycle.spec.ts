@@ -76,7 +76,7 @@ test.describe("Einstellungen übertragen", () => {
       );
 
       // The import's own entry names the changed section; the change of the value itself carries
-      // the same operation id (docs/handbuch/verwalten/einstellungen-uebertragen.md, "Nachweis").
+      // the same operation id (docs/handbuch/administration/einstellungen-uebertragen.md, "Nachweis").
       const [imported] = queryDatabase(
         `select correlation_ref || '|' || after from audit_log
            where event_type = 'SETTINGS_IMPORTED' and recorded_at >= '${startedAt}'

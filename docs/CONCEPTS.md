@@ -187,7 +187,7 @@ eigenen Mitgliedschaft gilt die höhere der beiden Rollen. Das frühere `memberS
 vollen Zugriff auf **geteilte** space-eigene Inhalte. Umgekehrt ist die [Zuordnung](#zuordnung) eine
 harte Grenze: Im Chat eines Space ist nur nutzbar, was ihm zugeordnet und für die Person lesbar ist. Chats und Artefakte entstehen zunächst **privat** bei
 der Person, die sie erzeugt, und werden erst sichtbar, sobald sie sie **in den Space teilt**. Siehe
-[Spaces](handbuch/pflegen/space-mitglieder.md).
+[Spaces](handbuch/benutzer/space-mitglieder.md).
 
 - **Beispiel:** Der Space „Bauleitplanung" bündelt die Chats zum laufenden Verfahren; die
   Rechtsquellen darin gehören dem Rechtsreferat und sind nur zugeordnet.
@@ -213,7 +213,7 @@ bleibt als entfernbare Chips **sticky am Chat**, nicht nur für eine einzelne An
   Ein-Klick-Weg zurück
 
 Eine Space-Auswahl, die den Suchbereich einer einzelnen Anfrage steuert, gibt es nicht mehr. Siehe
-[Suche](handbuch/nachschlagen/wie-die-suche-arbeitet.md) und
+[Suche](handbuch/referenz/wie-die-suche-arbeitet.md) und
 [ADR-0039](./decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md).
 
 - **Beispiel:** Eine Sachbearbeiterin öffnet einen Chat im Space „Bauleitplanung" zu einer Frage,
@@ -506,7 +506,7 @@ inhaltlich nichts zu tun hat, und die Prüfung lässt das durch.
 antwortet — früher unter dem Namen Zitierzwang geführt —, war vorgesehen und ist am 21.08.2026
 entschieden nicht gebaut worden; siehe
 [ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md) und
-[Suche](handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen).
+[Suche](handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen).
 
 - **Beispiel:** Ein Agent für Bescheidentwürfe antwortet zur Frage nach einer Härtefallregel, die im
   indizierten Bestand nicht vorkommt, dass sich dazu nichts feststellen lässt — das tut das Modell von
@@ -720,7 +720,7 @@ Dokumente über einen Konnektor aus einer Quelle abholt.
   Vorauswahl, die Person wählt die Bibliothek selbst
 - Die Originaldatei bleibt im Speicher-Backend erhalten
 
-Siehe [Wissensbibliotheken](handbuch/nachschlagen/wie-indexierung-arbeitet.md).
+Siehe [Wissensbibliotheken](handbuch/referenz/wie-indexierung-arbeitet.md).
 
 ---
 
@@ -741,7 +741,7 @@ Originale. Sie gehört der Anwendung statt einer Quelle und ist deshalb als einz
   Originalablage der Uploads** und dort zuschaltbar. Quelldokumente einer Dateisystem-Bibliothek
   bleiben beim Verzeichnis; ein S3-Bucket als *Quelle* ist stattdessen der S3-Konnektor
 
-Näheres in [Originalablage](handbuch/betreiben/originalablage.md).
+Näheres in [Originalablage](handbuch/betrieb/originalablage.md).
 
 ---
 

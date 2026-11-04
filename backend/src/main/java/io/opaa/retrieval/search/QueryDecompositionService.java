@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Splits a question into up to {@code maxSubQueries} independent, self-contained search queries
- * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md), resolving a conversation-relative
+ * (docs/handbuch/referenz/wie-die-suche-arbeitet.md), resolving a conversation-relative
  * follow-up into a standalone question in the process.
  *
  * <p>{@link #decompose} never throws: any LLM failure, unparsable or empty response, or output

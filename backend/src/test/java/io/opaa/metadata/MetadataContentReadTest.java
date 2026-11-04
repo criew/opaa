@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
  * per-document field view and the Stichprobe ask the content check of the asset shell ({@link
  * AssetAuthorization#requireContentRole}), which a system administrator without a grant fails,
  * while the aggregated Extraktionsgüte stays with the administration (handbook
- * nachschlagen/metadaten.md).
+ * referenz/metadaten.md).
  */
 class MetadataContentReadTest {
 

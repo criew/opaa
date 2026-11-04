@@ -23,9 +23,9 @@ verhandelt wird.
 
 - Die Faktenblätter der eingesetzten Version im Update-Paket am GitHub-Release; jede Frage unten
   verweist auf das passende Blatt.
-- Die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
+- Die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
   der eigenen Installation mit dem Auszug für die Personalvertretung.
-- Das [Glossar](../../handbuch/nachschlagen/glossar.md) im Handbuch.
+- Das [Glossar](../../handbuch/referenz/glossar.md) im Handbuch.
 
 ## Aufgaben der Behörde
 
@@ -56,9 +56,9 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Wer | Worauf achten | Nachschlagen |
 |---|---|---|
 | Kolleginnen und Kollegen | wer Chats, Bibliotheken und Mitgliedschaften sieht | {{faktenblatt:rollensicht#user}}, Sichtbarkeit in {{faktenblatt:datenkatalog#chats}} |
-| Verwaltung einer Bibliothek, Gruppe oder eines Space | Mitglieder und Rechte am eigenen Objekt | {{faktenblatt:rollensicht#faehigkeiten}}, [Wer welche Gruppe sieht](../../handbuch/verwalten/gruppen.md#wer-eine-gruppe-sieht) |
-| Systemverwaltung | verwaltet Konten und Rechte; sieht, welche lokalen Konten länger nicht genutzt wurden; liest fremde Inhalte nur, wenn sie sich selbst ein Recht gibt, das für alle nachlesbar gespeichert wird; kann mit „Sicht als“ befristet und begründet prüfen, was eine Person sehen würde | {{faktenblatt:rollensicht#system-admin}}, [Systemrollen und Vollmachten](../../handbuch/verwalten/systemrollen.md) |
-| Revision | liest Revisions- und Verbindungsprotokoll ohne Namen und ohne Kennungen von Personen, sieht dort nur, dass eine Person gehandelt hat, und kann darin nicht nach Personen suchen. Ausnahmen: Die Stichtagsauskunft zu einem Objekt nennt, wer es zu einem Zeitpunkt lesen durfte, mit Namen; das Diagnoseprotokoll nennt bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym, weil es gerade deren Handeln kontrolliert; die offenen Anträge auf die Rolle Revision nennen Name und Adresse des Kontos und die beantragende Person, weil die Revision die Person vor der Bestätigung prüft | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
+| Verwaltung einer Bibliothek, Gruppe oder eines Space | Mitglieder und Rechte am eigenen Objekt | {{faktenblatt:rollensicht#faehigkeiten}}, [Wer welche Gruppe sieht](../../handbuch/administration/gruppen.md#wer-eine-gruppe-sieht) |
+| Systemverwaltung | verwaltet Konten und Rechte; sieht, welche lokalen Konten länger nicht genutzt wurden; liest fremde Inhalte nur, wenn sie sich selbst ein Recht gibt, das für alle nachlesbar gespeichert wird; kann mit „Sicht als“ befristet und begründet prüfen, was eine Person sehen würde | {{faktenblatt:rollensicht#system-admin}}, [Systemrollen und Vollmachten](../../handbuch/administration/systemrollen.md) |
+| Revision | liest Revisions- und Verbindungsprotokoll ohne Namen und ohne Kennungen von Personen, sieht dort nur, dass eine Person gehandelt hat, und kann darin nicht nach Personen suchen. Ausnahmen: Die Stichtagsauskunft zu einem Objekt nennt, wer es zu einem Zeitpunkt lesen durfte, mit Namen; das Diagnoseprotokoll nennt bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym, weil es gerade deren Handeln kontrolliert; die offenen Anträge auf die Rolle Revision nennen Name und Adresse des Kontos und die beantragende Person, weil die Revision die Person vor der Bestätigung prüft | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
 | Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
@@ -153,7 +153,7 @@ eingestellt hat, in der Auskunft über die Datenerhebung.
 - Manche Funktionen lassen sich für die ganze Installation abschalten, etwa die Spracheingabe. Eine
   abgeschaltete Funktion verschwindet aus Oberfläche und Schnittstelle; ihre Daten bleiben
   unverändert liegen und werden nur nicht mehr beachtet. Wird sie wieder eingeschaltet, ist der
-  frühere Stand wieder da ([Funktionen abschalten](../../handbuch/nachschlagen/konfiguration.md#funktionen-abschalten)).
+  frühere Stand wieder da ([Funktionen abschalten](../../handbuch/referenz/konfiguration.md#funktionen-abschalten)).
 - Was schaltbar ist und wie es voreingestellt ist, steht in {{faktenblatt:voreinstellungen}}.
 - Die Selbstauskunft hat statt eines Schalters eine Notabschaltung
   ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}); jede Änderung steht im
@@ -212,7 +212,7 @@ Personalrat erfährt es danach.
 **Arbeitshilfen** für den Personalrat:
 
 - [Dienstvereinbarung](dienstvereinbarung.md): Mustertext mit Stufenmodell.
-- [Nachvollziehbarkeit](../../handbuch/betreiben/nachvollziehbarkeit.md) im Handbuch: wie die
+- [Nachvollziehbarkeit](../../handbuch/betrieb/nachvollziehbarkeit.md) im Handbuch: wie die
   Faktenblätter entstehen und geprüft werden.
 - [Update-Vermerk](../09-betrieb-update/update-vermerk.md): wie ein Update bewertet wird.
 

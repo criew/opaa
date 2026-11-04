@@ -38,7 +38,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The vector path against a real HNSW index (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md):
+ * The vector path against a real HNSW index (docs/handbuch/referenz/wie-die-suche-arbeitet.md):
  * the permission filter of a narrow search scope and a fetch-k above pgvector's default {@code
  * hnsw.ef_search} (40) must both still yield fetch-k candidates. Without an iterative index scan
  * the index hands out at most {@code ef_search} rows and the filter only thins them out afterwards

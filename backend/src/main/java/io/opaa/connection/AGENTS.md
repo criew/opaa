@@ -53,7 +53,7 @@ Kern erreicht es über die Ports `SourceConnectionResolver` (`ProfileSourceConne
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/verwalten/zugaenge.md`; `docs/handbuch/verwalten/verbindungsprotokoll.md`
+- Handbuch: `docs/handbuch/administration/zugaenge.md`; `docs/handbuch/administration/verbindungsprotokoll.md`
 
 ## Tests bei Änderungen
 

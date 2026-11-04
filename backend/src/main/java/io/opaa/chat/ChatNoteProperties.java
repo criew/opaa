@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The one configurable value of the Gesprächsnotiz (docs/handbuch/nachschlagen/konfiguration.md).
+ * The one configurable value of the Gesprächsnotiz (docs/handbuch/referenz/konfiguration.md).
  * Every other quantity of the note - two points per turn, 200 characters, the display threshold of
  * three turns, the kind of a point, the model - is a fixed value with no addressee to reconfigure
  * it (ADR-0031).

@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The bounds of chat attachments (docs/handbuch/arbeiten/anhaengen-und-diktieren.md). The size of
+ * The bounds of chat attachments (docs/handbuch/benutzer/anhaengen-und-diktieren.md). The size of
  * one file is the library upload's own {@code opaa.upload.max-file-size}.
  *
  * @param maxPerMessage attachments one question may name; default 10, from 1 to 10 (the API's own
