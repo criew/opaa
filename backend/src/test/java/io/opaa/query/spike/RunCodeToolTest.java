@@ -29,7 +29,8 @@ class RunCodeToolTest {
     CodeSandbox sandbox =
         code -> new CodeSandbox.Run(1, "", "NameError: name 'x' is not defined", false, List.of());
     ToolLoopRunState runState =
-        new ToolLoopRunState(Set.of(), MetadataFilter.NONE, UUID.randomUUID(), UUID.randomUUID());
+        new ToolLoopRunState(
+            Set.of(), MetadataFilter.NONE, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
 
     String report = new RunCodeTool(sandbox, attachmentService).runCode("x", contextFor(runState));
 
@@ -43,6 +44,7 @@ class RunCodeToolTest {
 
   @Test
   void aRejectedFileIsReportedAndNotKept() {
+    UUID chatId = UUID.randomUUID();
     UUID spaceId = UUID.randomUUID();
     UUID authorId = UUID.randomUUID();
     byte[] content = {1, 2, 3};
@@ -50,10 +52,10 @@ class RunCodeToolTest {
         code ->
             new CodeSandbox.Run(
                 0, "", "", false, List.of(new CodeSandbox.OutputFile("../evil.exe", content)));
-    when(attachmentService.uploadGenerated(spaceId, "../evil.exe", content, authorId))
+    when(attachmentService.uploadGenerated(spaceId, chatId, 0, "../evil.exe", content, authorId))
         .thenThrow(new ValidationException("Das Dateiformat wird nicht unterstützt."));
     ToolLoopRunState runState =
-        new ToolLoopRunState(Set.of(), MetadataFilter.NONE, spaceId, authorId);
+        new ToolLoopRunState(Set.of(), MetadataFilter.NONE, chatId, spaceId, authorId);
 
     String report =
         new RunCodeTool(sandbox, attachmentService).runCode("print(1)", contextFor(runState));

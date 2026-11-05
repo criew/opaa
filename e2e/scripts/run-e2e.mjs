@@ -46,6 +46,7 @@
 // (INSTALLATION_VARIANTS, one tag each) runs against a stack of its own.
 
 import { spawnSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -147,8 +148,10 @@ const dbPort =
 // The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
 // links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
 // reaches ai-stub's /last-chat-model directly. The "installation" target has ports of its own.
-const mailpitWebPort = process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
-const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
+const mailpitWebPort =
+  process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
+const mailpitSmtpPort =
+  process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
 const usesMailpit = isLocalAuth || isInstallation
 
 // The variants of the installation spec, each selected by its tag and run against a fresh stack.
@@ -272,8 +275,14 @@ const composeEnv = {
         ? '172.27.0.10'
         : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
-  // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run.
-  ...(isSandbox ? { OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092' } : {}),
+  // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run;
+  // its API key is random per run, since sandbox code can reach the server.
+  ...(isSandbox
+    ? {
+        OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092',
+        OPAA_SANDBOX_API_KEY: process.env.OPAA_SANDBOX_API_KEY ?? randomBytes(24).toString('hex'),
+      }
+    : {}),
   ...(isDemo || isLocalAuth || isInstallation
     ? {}
     : {
@@ -282,10 +291,7 @@ const composeEnv = {
         OPAA_DROPBOX_STUB_PORT: dropboxStubPort,
       }),
   ...(usesMailpit
-    ? {
-        OPAA_MAILPIT_WEB_PORT: mailpitWebPort,
-        OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort,
-      }
+    ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
 }
 
@@ -340,9 +346,7 @@ function teardown() {
   }
   tornDown = true
   console.log('\n> Tearing down E2E stack (docker compose down -v)')
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], {
-    env: composeEnv,
-  })
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -432,9 +436,7 @@ function runSeed() {
   }
   // The seed prints non-ASCII progress lines; a Windows console codepage (cp1252) cannot encode
   // them and would abort the run.
-  return run(venvPython, seedArgs, {
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-  })
+  return run(venvPython, seedArgs, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
 }
 
 async function waitUntilReady(timeoutMs) {
@@ -479,9 +481,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
   tornDown = false
   prepareBindMounts()
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], {
-    env: composeEnv,
-  })
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
   // The "e2e" target names its services explicitly (only the ones this suite needs); the "demo"
   // target relies on `--profile demo` (already in composeArgs above) to pull in

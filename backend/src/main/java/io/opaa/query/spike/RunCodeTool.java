@@ -2,7 +2,10 @@ package io.opaa.query.spike;
 
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.chat.ChatAttachmentView;
+import io.opaa.common.ConflictException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
@@ -54,7 +57,7 @@ class RunCodeTool {
   String runCode(String code, ToolContext toolContext) {
     ToolLoopRunState runState =
         (ToolLoopRunState) toolContext.getContext().get(SearchKnowledgeTool.RUN_STATE_KEY);
-    if (runState.spaceId() == null) {
+    if (runState.chatId() == null) {
       return "Code kann nur in einem Chat eines Space ausgeführt werden.";
     }
     if (code == null || code.isBlank()) {
@@ -80,7 +83,12 @@ class RunCodeTool {
       try {
         ChatAttachmentView view =
             attachmentService.uploadGenerated(
-                runState.spaceId(), file.name(), file.content(), runState.authorId());
+                runState.spaceId(),
+                runState.chatId(),
+                runState.generatedFiles().size(),
+                file.name(),
+                file.content(),
+                runState.authorId());
         runState.generatedFiles().add(view.attachment());
         report
             .append("Datei bereitgestellt: ")
@@ -88,7 +96,11 @@ class RunCodeTool {
             .append(" (")
             .append(view.attachment().getSizeBytes())
             .append(" Bytes)\n");
-      } catch (ValidationException | PayloadTooLargeException e) {
+      } catch (ValidationException
+          | PayloadTooLargeException
+          | TooManyRequestsException
+          | ServiceUnavailableException
+          | ConflictException e) {
         report.append("Datei abgelehnt: ").append(e.getMessage()).append('\n');
       }
     }

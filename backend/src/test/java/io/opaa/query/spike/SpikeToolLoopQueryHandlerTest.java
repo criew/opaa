@@ -456,7 +456,8 @@ class SpikeToolLoopQueryHandlerTest {
     UUID spaceId = UUID.randomUUID();
     UUID authorId = UUID.randomUUID();
     Chat chat = mock(Chat.class);
-    when(chat.getId()).thenReturn(UUID.randomUUID());
+    UUID chatId = UUID.randomUUID();
+    when(chat.getId()).thenReturn(chatId);
     when(chat.getSpaceId()).thenReturn(spaceId);
     when(chat.getAuthorId()).thenReturn(authorId);
     ChatAttachment attachment = mock(ChatAttachment.class);
@@ -465,7 +466,7 @@ class SpikeToolLoopQueryHandlerTest {
     when(attachment.getFileName()).thenReturn("bericht.pdf");
     ChatAttachmentService attachmentService = mock(ChatAttachmentService.class);
     byte[] pdf = "%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-    when(attachmentService.uploadGenerated(spaceId, "bericht.pdf", pdf, authorId))
+    when(attachmentService.uploadGenerated(spaceId, chatId, 0, "bericht.pdf", pdf, authorId))
         .thenReturn(new ChatAttachmentView(attachment, null, null, null));
     CodeSandbox sandbox =
         code ->

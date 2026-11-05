@@ -211,19 +211,14 @@ function streamCompletion(req, res, model, content, slow) {
   const next = () => {
     if (closed) return
     if (index < parts.length) {
-      const delta =
-        index === 0 ? { role: 'assistant', content: parts[0] } : { content: parts[index] }
+      const delta = index === 0 ? { role: 'assistant', content: parts[0] } : { content: parts[index] }
       res.write(event([{ index: 0, delta, finish_reason: null, logprobs: null }]))
       index += 1
       setTimeout(next, slow ? STREAM_SLOW_DELAY_MS : 0)
       return
     }
     res.write(event([{ index: 0, delta: {}, finish_reason: 'stop', logprobs: null }]))
-    res.write(
-      event([], {
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-      }),
-    )
+    res.write(event([], { usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } }))
     res.end('data: [DONE]\n\n')
     finishedStreams += 1
   }
@@ -385,10 +380,7 @@ const RERANK_PREFIX = '/reranker'
 const RERANK_MODEL = 'stub-reranker'
 
 function ranking(count) {
-  return Array.from({ length: count }, (_, index) => ({
-    index,
-    score: 1 / (index + 1),
-  }))
+  return Array.from({ length: count }, (_, index) => ({ index, score: 1 / (index + 1) }))
 }
 
 function fakeEmbedding() {
@@ -441,10 +433,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, '/control/streams')) {
-      sendJson(res, 200, {
-        abandoned: abandonedStreams,
-        finished: finishedStreams,
-      })
+      sendJson(res, 200, { abandoned: abandonedStreams, finished: finishedStreams })
       return
     }
 
@@ -464,11 +453,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, '/control/embedding-hold')) {
-      sendJson(res, 200, {
-        marker: holdMarker,
-        held: heldCount,
-        waiting: releaseHeld.length,
-      })
+      sendJson(res, 200, { marker: holdMarker, held: heldCount, waiting: releaseHeld.length })
       return
     }
 
@@ -502,10 +487,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, `${RERANK_PREFIX}/models`)) {
-      sendJson(res, 200, {
-        object: 'list',
-        data: [{ id: RERANK_MODEL, object: 'model' }],
-      })
+      sendJson(res, 200, { object: 'list', data: [{ id: RERANK_MODEL, object: 'model' }] })
       return
     }
 
@@ -606,9 +588,7 @@ const server = createServer(async (req, res) => {
 
     sendJson(res, 404, { error: 'not found' })
   } catch (error) {
-    sendJson(res, 500, {
-      error: error instanceof Error ? error.message : 'internal error',
-    })
+    sendJson(res, 500, { error: error instanceof Error ? error.message : 'internal error' })
   }
 })
 

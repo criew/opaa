@@ -198,6 +198,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
         new ToolLoopRunState(
             searchScope,
             metadataFilter,
+            chat.map(Chat::getId).orElse(null),
             chat.map(Chat::getSpaceId).orElse(null),
             chat.map(Chat::getAuthorId).orElse(null));
     // Code runs only in a persisted chat: its files belong to the chat's space and author.

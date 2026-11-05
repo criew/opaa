@@ -151,12 +151,28 @@ public class ChatAttachmentService {
   }
 
   /**
-   * Takes {@code content}, a file a tool of the agent loop produced for {@code authorId}, as an
-   * unbound attachment of that person in {@code spaceId} - through every check of {@link
-   * #upload(UUID, MultipartFile, CurrentUser)}, the file name included, which is untrusted.
+   * Takes {@code content}, a file a tool of the agent loop produced for {@code authorId} in {@code
+   * chatId}, as an unbound attachment of that person in {@code spaceId} - through every check of
+   * {@link #upload(UUID, MultipartFile, CurrentUser)}, the file name included, which is untrusted.
+   * {@code pendingInTurn} files of the same turn are not bound yet but count against {@code
+   * opaa.chat.attachments.max-per-chat}, so the chat never ends up above it. With the feature
+   * switched off, nothing is taken (400).
    */
   public ChatAttachmentView uploadGenerated(
-      UUID spaceId, String fileName, byte[] content, UUID authorId) {
+      UUID spaceId,
+      UUID chatId,
+      int pendingInTurn,
+      String fileName,
+      byte[] content,
+      UUID authorId) {
+    if (!featureFlags.isEnabled(Feature.CHAT_UPLOAD)) {
+      throw new ValidationException("Anhänge sind in dieser Installation abgeschaltet");
+    }
+    if (attachmentRepository.findByChatIdOrderByCreatedAtAsc(chatId).size() + pendingInTurn
+        >= properties.maxPerChat()) {
+      throw new ValidationException(
+          "Der Chat hat bereits " + properties.maxPerChat() + " Anhänge, mehr nimmt er nicht auf");
+    }
     Path temp = null;
     try {
       temp = Files.createTempFile("opaa-generated-", ".bin");

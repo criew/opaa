@@ -1,4 +1,5 @@
-# Overlay for the run_code tool: docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up
+# Overlay for the run_code tool: OPAA_SANDBOX_API_KEY=<random> docker compose -f docker-compose.yml
+# -f docker-compose.sandbox.yml up --build
 # Adds the OpenSandbox lifecycle server, which starts one container per sandbox through the host's
 # Docker socket. Whoever holds that socket controls the host: development use only.
 services:
@@ -15,12 +16,14 @@ services:
     restart: unless-stopped
     environment:
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
-      OPENSANDBOX_SERVER_API_KEY: ${OPAA_SANDBOX_API_KEY:-opaa-dev-sandbox-key}
+      OPENSANDBOX_SERVER_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox/config.toml:/etc/opensandbox/config.toml:ro
     # "default" carries the backend's calls; "sandboxes" is how the server reaches execd in each
-    # sandbox. The backend never joins "sandboxes", so sandbox code cannot reach it.
+    # sandbox. The backend never joins "sandboxes", so sandbox code cannot reach it. Sandbox code
+    # can reach this server, though: its API needs the key (no default, so no guessable value),
+    # and execd in every sandbox needs that sandbox's own token.
     networks:
       - default
       - sandboxes
@@ -41,7 +44,7 @@ services:
       OPAA_SPIKE_TOOL_LOOP_ENABLED: "true"
       OPAA_SANDBOX_ENABLED: "true"
       OPAA_SANDBOX_BASE_URL: http://opensandbox-server:8090
-      OPAA_SANDBOX_API_KEY: ${OPAA_SANDBOX_API_KEY:-opaa-dev-sandbox-key}
+      OPAA_SANDBOX_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}
       OPAA_SANDBOX_IMAGE: opaa/sandbox-python:1
     depends_on:
       opensandbox-server:

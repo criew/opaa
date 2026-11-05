@@ -25,25 +25,35 @@ final class ToolLoopRunState {
   private final String blockId = DocumentBlock.newId();
   private final List<Document> collectedChunks = new CopyOnWriteArrayList<>();
   private final List<String> searchSteps = new CopyOnWriteArrayList<>();
+  private final UUID chatId;
   private final UUID spaceId;
   private final UUID authorId;
   private final List<ChatAttachment> generatedFiles = new CopyOnWriteArrayList<>();
   private final AtomicInteger codeRuns = new AtomicInteger();
 
   ToolLoopRunState(Set<UUID> searchScope, MetadataFilter metadataFilter) {
-    this(searchScope, metadataFilter, null, null);
+    this(searchScope, metadataFilter, null, null, null);
   }
 
   /**
-   * {@code spaceId} and {@code authorId} are the chat's, {@code null} for a turn outside a chat;
-   * {@link RunCodeTool} files what it produces there and nowhere else.
+   * {@code chatId}, {@code spaceId} and {@code authorId} are the chat's, {@code null} for a turn
+   * outside a chat; {@link RunCodeTool} files what it produces there and nowhere else.
    */
   ToolLoopRunState(
-      Set<UUID> searchScope, MetadataFilter metadataFilter, UUID spaceId, UUID authorId) {
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter,
+      UUID chatId,
+      UUID spaceId,
+      UUID authorId) {
     this.searchScope = searchScope;
     this.metadataFilter = metadataFilter;
+    this.chatId = chatId;
     this.spaceId = spaceId;
     this.authorId = authorId;
+  }
+
+  UUID chatId() {
+    return chatId;
   }
 
   UUID spaceId() {

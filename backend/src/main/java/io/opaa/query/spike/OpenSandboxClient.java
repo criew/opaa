@@ -19,6 +19,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -52,8 +53,16 @@ class OpenSandboxClient implements CodeSandbox {
   static final long MAX_FILE_BYTES = 10L * 1024 * 1024;
   static final int MAX_STREAM_CHARS = 64 * 1024;
 
-  /** Seconds the sandbox outlives a run at most if this process cannot delete it. */
-  private static final int TTL_SECONDS = 300;
+  /** Longest event line and longest directory listing read from execd; more fails the run. */
+  static final int MAX_EVENT_CHARS = 256 * 1024;
+
+  static final int MAX_LISTING_BYTES = 256 * 1024;
+
+  /** The server's own cap on a sandbox's lifetime ({@code max_sandbox_timeout_seconds}). */
+  private static final long MAX_TTL_SECONDS = 900;
+
+  /** Lifetime beyond the run's own limit: start, upload, collecting and deleting. */
+  private static final long TTL_MARGIN_SECONDS = 120;
 
   private static final int SANDBOX_UID = 1000;
   private static final Duration CALL_TIMEOUT = Duration.ofSeconds(30);
@@ -112,7 +121,8 @@ class OpenSandboxClient implements CodeSandbox {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("image", Map.of("uri", image));
     body.put("entrypoint", List.of("tail", "-f", "/dev/null"));
-    body.put("timeout", TTL_SECONDS);
+    // The TTL removes a sandbox this process could not delete; it outlives the run's own limit.
+    body.put("timeout", Math.min(MAX_TTL_SECONDS, runTimeout.toSeconds() + TTL_MARGIN_SECONDS));
     body.put("resourceLimits", Map.of("cpu", cpu, "memory", memory));
     body.put("env", Map.of("EXECD_ACCESS_TOKEN", token));
     body.put("metadata", Map.of("purpose", "run_code"));
@@ -124,7 +134,11 @@ class OpenSandboxClient implements CodeSandbox {
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body))),
             HttpResponse.BodyHandlers.ofString());
     requireSuccess(response, "create sandbox");
-    return objectMapper.readTree(response.body()).path("id").asString();
+    String id = objectMapper.readTree(response.body()).path("id").asString();
+    if (!id.matches("[A-Za-z0-9-]+")) {
+      throw new SandboxException("create sandbox answered without a usable id");
+    }
+    return id;
   }
 
   private void awaitReady(String execd, String token) {
@@ -200,54 +214,99 @@ class OpenSandboxClient implements CodeSandbox {
                 .timeout(runTimeout.plus(CALL_TIMEOUT))
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body))),
             HttpResponse.BodyHandlers.ofInputStream());
-    StringBuilder stdout = new StringBuilder();
-    StringBuilder stderr = new StringBuilder();
-    Integer exitCode = null;
-    try (BufferedReader reader =
-        new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+    Run run;
+    try (InputStream events = response.body()) {
       if (response.statusCode() / 100 != 2) {
         throw new SandboxException("run command answered " + response.statusCode());
       }
-      String line;
-      while ((line = reader.readLine()) != null) {
-        String json = line.startsWith("data:") ? line.substring(5).trim() : line.trim();
-        if (json.isEmpty()) {
-          continue;
-        }
-        JsonNode event = objectMapper.readTree(json);
-        switch (event.path("type").asString()) {
-          case "stdout" -> append(stdout, event.path("text").asString());
-          case "stderr" -> append(stderr, event.path("text").asString());
-          case "execution_complete" -> exitCode = 0;
-          case "error" -> exitCode = parseExitCode(event.path("error").path("evalue").asString());
-          default -> {}
-        }
-        if (exitCode != null) {
-          break;
-        }
-      }
+      run = readEvents(events, objectMapper);
     } catch (IOException e) {
       throw new SandboxException("reading the run's output failed", e);
     }
-    if (exitCode == null) {
-      throw new SandboxException("run ended without a result");
-    }
     boolean timedOut =
-        exitCode == -1 && Duration.ofNanos(System.nanoTime() - started).compareTo(runTimeout) >= 0;
-    return new Run(exitCode, stdout.toString(), stderr.toString(), timedOut, List.of());
+        run.exitCode() == -1
+            && Duration.ofNanos(System.nanoTime() - started).compareTo(runTimeout) >= 0;
+    return new Run(run.exitCode(), run.stdout(), run.stderr(), timedOut, List.of());
+  }
+
+  /**
+   * Reads execd's event stream: bare JSON objects separated by blank lines, an optional {@code
+   * data:} prefix tolerated. Ends at {@code execution_complete} (exit code 0) or an {@code error}
+   * whose {@code evalue} is the exit code; output beyond {@link #MAX_STREAM_CHARS} is dropped, a
+   * line beyond {@link #MAX_EVENT_CHARS} fails the run.
+   */
+  static Run readEvents(InputStream body, ObjectMapper objectMapper) throws IOException {
+    BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
+    StringBuilder stdout = new StringBuilder();
+    StringBuilder stderr = new StringBuilder();
+    String line;
+    while ((line = readBoundedLine(reader)) != null) {
+      String json = line.startsWith("data:") ? line.substring(5).trim() : line.trim();
+      if (json.isEmpty()) {
+        continue;
+      }
+      JsonNode event = objectMapper.readTree(json);
+      switch (event.path("type").asString()) {
+        case "stdout" -> append(stdout, event.path("text").asString());
+        case "stderr" -> append(stderr, event.path("text").asString());
+        case "execution_complete" -> {
+          return new Run(0, stdout.toString(), stderr.toString(), false, List.of());
+        }
+        case "error" -> {
+          int exitCode = parseExitCode(event.path("error").path("evalue").asString());
+          return new Run(exitCode, stdout.toString(), stderr.toString(), false, List.of());
+        }
+        default -> {}
+      }
+    }
+    throw new SandboxException("run ended without a result");
+  }
+
+  private static String readBoundedLine(BufferedReader reader) throws IOException {
+    StringBuilder line = new StringBuilder();
+    int c;
+    while ((c = reader.read()) != -1) {
+      if (c == '\n') {
+        return line.toString();
+      }
+      if (line.length() == MAX_EVENT_CHARS) {
+        throw new SandboxException("an event line of the run exceeds its limit");
+      }
+      line.append((char) c);
+    }
+    return line.isEmpty() ? null : line.toString();
   }
 
   private List<OutputFile> collect(String execd, String token) {
-    HttpResponse<String> listing =
+    HttpResponse<InputStream> listing =
         send(
             HttpRequest.newBuilder(
                     URI.create(execd + "/directories/list?path=" + encode(OUTPUT_DIR) + "&depth=1"))
                 .header(EXECD_TOKEN_HEADER, token)
                 .GET(),
-            HttpResponse.BodyHandlers.ofString());
-    requireSuccess(listing, "list output directory");
+            HttpResponse.BodyHandlers.ofInputStream());
+    byte[] listingBytes;
+    try (InputStream body = listing.body()) {
+      if (listing.statusCode() / 100 != 2) {
+        throw new SandboxException("list output directory answered " + listing.statusCode());
+      }
+      listingBytes = body.readNBytes(MAX_LISTING_BYTES + 1);
+    } catch (IOException e) {
+      throw new SandboxException("reading the output directory failed", e);
+    }
+    if (listingBytes.length > MAX_LISTING_BYTES) {
+      throw new SandboxException("the output directory listing exceeds its limit");
+    }
+    return outputFiles(objectMapper.readTree(listingBytes), path -> download(execd, token, path));
+  }
+
+  /**
+   * The files of {@code listing} that lie directly in {@link #OUTPUT_DIR}, at most {@link
+   * #MAX_FILES} of at most {@link #MAX_FILE_BYTES} each; every other entry is skipped unread.
+   */
+  static List<OutputFile> outputFiles(JsonNode listing, Function<String, byte[]> download) {
     List<OutputFile> files = new ArrayList<>();
-    for (JsonNode entry : objectMapper.readTree(listing.body())) {
+    for (JsonNode entry : listing) {
       String path = entry.path("path").asString();
       String name = path.substring(path.lastIndexOf('/') + 1);
       if (!"file".equals(entry.path("type").asString())
@@ -259,27 +318,33 @@ class OpenSandboxClient implements CodeSandbox {
         log.info("Sandbox output file skipped: limit of count or size reached");
         continue;
       }
-      HttpResponse<InputStream> download =
-          send(
-              HttpRequest.newBuilder(URI.create(execd + "/files/download?path=" + encode(path)))
-                  .header(EXECD_TOKEN_HEADER, token)
-                  .GET(),
-              HttpResponse.BodyHandlers.ofInputStream());
-      try (InputStream body = download.body()) {
-        if (download.statusCode() != 200) {
-          throw new SandboxException("download answered " + download.statusCode());
-        }
-        byte[] content = body.readNBytes((int) MAX_FILE_BYTES + 1);
-        if (content.length > MAX_FILE_BYTES) {
-          log.info("Sandbox output file skipped: larger than announced");
-          continue;
-        }
-        files.add(new OutputFile(name, content));
-      } catch (IOException e) {
-        throw new SandboxException("downloading an output file failed", e);
+      byte[] content = download.apply(path);
+      if (content == null) {
+        log.info("Sandbox output file skipped: larger than announced");
+        continue;
       }
+      files.add(new OutputFile(name, content));
     }
     return files;
+  }
+
+  /** One output file, {@code null} when it is larger than {@link #MAX_FILE_BYTES}. */
+  private byte[] download(String execd, String token, String path) {
+    HttpResponse<InputStream> download =
+        send(
+            HttpRequest.newBuilder(URI.create(execd + "/files/download?path=" + encode(path)))
+                .header(EXECD_TOKEN_HEADER, token)
+                .GET(),
+            HttpResponse.BodyHandlers.ofInputStream());
+    try (InputStream body = download.body()) {
+      if (download.statusCode() != 200) {
+        throw new SandboxException("download answered " + download.statusCode());
+      }
+      byte[] content = body.readNBytes((int) MAX_FILE_BYTES + 1);
+      return content.length > MAX_FILE_BYTES ? null : content;
+    } catch (IOException e) {
+      throw new SandboxException("downloading an output file failed", e);
+    }
   }
 
   private void delete(String sandboxId) {
