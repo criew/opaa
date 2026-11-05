@@ -1,0 +1,65 @@
+{
+ "tesseract/fax": {
+  "docs": 72,
+  "cer": 0.0043,
+  "wer": 0.0369,
+  "headings_found": 0.926,
+  "headings_marked": 0.0,
+  "paragraph_signs": 0.0,
+  "table_cells": 0.0,
+  "answer_spans": "27/27",
+  "bm25_recall5": 0.878,
+  "sec_per_page": 0.99,
+  "errors": 0,
+  "peak_rss_mb": 15,
+  "model_load_s": 0.0
+ },
+ "tesseract/gut": {
+  "docs": 72,
+  "cer": 0.0022,
+  "wer": 0.0187,
+  "headings_found": 0.927,
+  "headings_marked": 0.0,
+  "paragraph_signs": 0.0,
+  "table_cells": 0.0,
+  "answer_spans": "27/27",
+  "bm25_recall5": 0.878,
+  "sec_per_page": 1.58,
+  "errors": 0,
+  "peak_rss_mb": 15,
+  "model_load_s": 0.0
+ },
+ "tesseract/mittel": {
+  "docs": 72,
+  "cer": 0.0024,
+  "wer": 0.0205,
+  "headings_found": 0.927,
+  "headings_marked": 0.0,
+  "paragraph_signs": 0.0,
+  "table_cells": 0.0,
+  "answer_spans": "27/27",
+  "bm25_recall5": 0.878,
+  "sec_per_page": 1.42,
+  "errors": 0,
+  "peak_rss_mb": 15,
+  "model_load_s": 0.0
+ },
+ "truth": {
+  "bm25_recall5": 0.878
+ },
+ "tesseract/schlecht": {
+  "docs": 72,
+  "cer": 0.0522,
+  "wer": 0.0685,
+  "headings_found": 0.917,
+  "headings_marked": 0.0,
+  "paragraph_signs": 0.0,
+  "table_cells": 0.0,
+  "answer_spans": "25/27",
+  "bm25_recall5": 0.878,
+  "sec_per_page": 0.93,
+  "errors": 0,
+  "peak_rss_mb": 123,
+  "model_load_s": 0.0
+ }
+}

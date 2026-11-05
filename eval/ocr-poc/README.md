@@ -14,6 +14,10 @@ Produkt nicht.
    - `run_tesseract.py`: OCRmyPDF mit Tesseract `deu` (Messlatte)
    - `run_docling.py --variant docling-easyocr|docling-rapidocr`: Docling mit EasyOCR bzw. RapidOCR (PP-OCRv6)
    - `run_paddle.py`: PaddleOCR PP-StructureV3
+   - `run_docling_vlm.py`: Docling mit dem Vision-Modell GraniteDocling
+
+   Das Gerät wählt `OCR_DEVICE` (`cpu` als Vorgabe, `cuda` für GPU, auch für den ROCm-Build von torch).
+   Ein späterer Lauf, etwa für ein weiteres Profil, ergänzt die `timing.json` der Variante, statt sie zu ersetzen.
 3. `evaluate.py` bewertet alle Ausgaben unter `work/out`. Gemessen werden Zeichen- und Wortfehlerrate,
    erkannte und als Überschrift markierte Überschriften, erhaltene §-Zeichen, Tabellenzellen,
    auffindbare Antwortstellen des Golden Datasets, BM25-Recall@5 der Golden-Fragen, Sekunden je
@@ -27,5 +31,5 @@ python run_paddle.py --corpus work/corpus --out work/out
 python evaluate.py
 ```
 
-Die Modelle laden Docling und PaddleOCR beim ersten Lauf nach (Hugging Face, ModelScope). Ergebnisse und
-Bewertung stehen in `REPORT.md`.
+Die Modelle laden Docling und PaddleOCR beim ersten Lauf nach (Hugging Face, ModelScope). Ergebnis und Bewertung
+stehen in [REPORT.md](REPORT.md), Rohdaten und die Notizen des GPU-Laufs unter `results/`.

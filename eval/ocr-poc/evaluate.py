@@ -60,18 +60,18 @@ def main():
     p.add_argument("--corpus", type=Path, default=Path("work/corpus"))
     p.add_argument("--out", type=Path, default=Path("work/out"))
     args = p.parse_args()
-    golden = json.loads(GOLDEN.read_text())
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
     truth = {}
     for d in sorted(x for x in args.corpus.iterdir() if (x / "truth.json").exists()):
-        meta = json.loads((d / "truth.json").read_text())
-        truth[d.name] = {**meta, "text": (d / "truth.txt").read_text()}
+        meta = json.loads((d / "truth.json").read_text(encoding="utf-8"))
+        truth[d.name] = {**meta, "text": (d / "truth.txt").read_text(encoding="utf-8")}
     file_to_id = {v["file"]: k for k, v in truth.items()}
 
     results = {}
     for vdir in sorted(x for x in args.out.iterdir() if x.is_dir()):
         timing = json.loads((vdir / "timing.json").read_text()) if (vdir / "timing.json").exists() else {}
         for pdir in sorted(x for x in vdir.iterdir() if x.is_dir()):
-            docs = {f.stem: f.read_text() for f in pdir.glob("*.md")}
+            docs = {f.stem: f.read_text(encoding="utf-8") for f in pdir.glob("*.md")}
             agg = defaultdict(list)
             sums = defaultdict(int)
             for doc_id, out in docs.items():
@@ -134,7 +134,7 @@ def main():
             hits += bool(exp & top)
             total += 1
     results["truth"] = {"bm25_recall5": round(hits / total, 3)}
-    Path("work/results.json").write_text(json.dumps(results, indent=1, ensure_ascii=False))
+    Path("work/results.json").write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
     cols = ["docs", "cer", "wer", "headings_found", "headings_marked", "paragraph_signs", "table_cells", "answer_spans", "bm25_recall5", "sec_per_page", "errors", "peak_rss_mb"]
     print("| Variante/Profil | " + " | ".join(cols) + " |")
     print("|---" * (len(cols) + 1) + "|")

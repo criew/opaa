@@ -57,7 +57,14 @@ def run(variant, convert, corpus, out, profiles, docs=None, setup=None):
         import psutil
 
         rss_mb = psutil.Process().memory_info().peak_wset / 2**20
-    (out / variant / "timing.json").write_text(json.dumps({"variant": variant, "model_load_seconds": round(load_s, 1), "peak_rss_mb": round(rss_mb), "runs": results}, indent=1))
+    # a later run (another profile, a re-run) merges into the variant's timing instead of replacing it
+    path = out / variant / "timing.json"
+    timing = json.loads(path.read_text()) if path.exists() else {"variant": variant, "runs": []}
+    fresh = {(r["id"], r["profile"]) for r in results}
+    timing["runs"] = [r for r in timing["runs"] if (r["id"], r["profile"]) not in fresh] + results
+    timing["model_load_seconds"] = round(load_s, 1)
+    timing["peak_rss_mb"] = max(timing.get("peak_rss_mb") or 0, round(rss_mb))
+    path.write_text(json.dumps(timing, indent=1))
 
 
 def cli():
@@ -66,7 +73,7 @@ def cli():
     p = argparse.ArgumentParser()
     p.add_argument("--corpus", type=Path, required=True)
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--profiles", default="gut,mittel,fax")
+    p.add_argument("--profiles", default="gut,mittel,fax,schlecht")
     p.add_argument("--docs", default="")
     p.add_argument("--variant", default="")
     a = p.parse_args()
