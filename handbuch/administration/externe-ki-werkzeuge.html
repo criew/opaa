@@ -2313,6 +2313,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dienstkonten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dienstkonten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#einstellungen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3863,6 +3874,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dienstkonten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dienstkonten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#einstellungen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3927,12 +3949,23 @@ heute lesen darf, was ihre Bibliothek freigegeben hat und was sie ins Token gew�
 beim nächsten Aufruf für alle Tokens, und die Tokens bleiben erhalten.</p>
 <h2 id="tokens-verwalten">Tokens verwalten<a class="headerlink" href="#tokens-verwalten" title="Permanent link">&para;</a></h2>
 <p>Die Liste „Zugangstokens“ zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand, bewusst ohne
-Nutzungsdatum und ohne Filter nach Person. Sie können ein einzelnes Token oder alle Tokens einer
-Person sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe an
-einen Identitätsanbieter beenden die Tokens eines Kontos von selbst.</p>
+Nutzungsdatum und ohne Filter nach Person; auch die Tokens der Dienstkonten stehen darin, mit dem
+Dienstkonto als Besitzer. Sie können ein einzelnes Token oder alle Tokens einer Person oder eines
+Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe
+an einen Identitätsanbieter beenden die Tokens eines Kontos von selbst. Die Zahl der Tokens an
+einer Bibliothek zählt die Tokens der Dienstkonten mit.</p>
 <p>Der <strong>Abflussalarm</strong> zählt die Abrufe des ganzen Kanals je Stunde und meldet eine Überschreitung
 einmal an die Systemverwaltung. Die Meldung führt zur Tokenliste und dient Vorfall und Sperre, nicht
 Leistungs- oder Disziplinarfragen.</p>
+<h2 id="dienstkonten">Dienstkonten<a class="headerlink" href="#dienstkonten" title="Permanent link">&para;</a></h2>
+<p>Ein Fachverfahren hängt nicht am Token einer Person, sondern an einem <strong>Dienstkonto</strong> mit eigenen
+Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt hat, je Bibliothek befristet
+wie eine Freigabe und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten zählt hier
+nicht. Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt
+sie weg, laufen die Tokens weiter, und das Dienstkonto zeigt die Lücke. Deaktivieren beendet alle
+Tokens sofort. Grenzen: Eine Rotation von <code>OPAA_AUTH_JWT_SECRET</code> entwertet auch diese Tokens; eine
+Rücksicherung belebt widerrufene Tokens und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was
+das Fachverfahren selbst mit den Fundstellen protokolliert, klärt die Behörde vor der Anbindung.</p>
 <h2 id="einstellungen">Einstellungen<a class="headerlink" href="#einstellungen" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3959,7 +3992,7 @@ Leistungs- oder Disziplinarfragen.</p>
 <td>1–1.000.000</td>
 </tr>
 <tr>
-<td>Erinnerung vor Ablauf einer Freigabe</td>
+<td>Erinnerung vor Ablauf einer Freigabe oder Zustimmung für ein Dienstkonto</td>
 <td>14 Tage</td>
 <td>0 (aus) bis knapp unter die längste Freigabefrist</td>
 </tr>
