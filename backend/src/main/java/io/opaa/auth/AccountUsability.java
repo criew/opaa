@@ -190,6 +190,9 @@ public class AccountUsability {
       if (withoutInactivity(user, row) != State.DEACTIVATED) {
         return null;
       }
+      if (user.isErased()) {
+        return new Deactivation(user.getErasedAt());
+      }
       if (user.isDirectoryLocked()) {
         return new Deactivation(user.getDirectoryLockedAt());
       }
@@ -222,7 +225,7 @@ public class AccountUsability {
     }
 
     private State withoutInactivity(User user, LocalCredentials row) {
-      if (user.isDirectoryLocked()) {
+      if (user.isErased() || user.isDirectoryLocked()) {
         return State.DEACTIVATED;
       }
       if (isLocal(user)) {

@@ -14,7 +14,9 @@ import {
  * interface relies on: local and provider accounts in one list, the three local filters
  * narrow to local accounts, no sorting by activity, a page size above 50 is 400;
  * the role endpoint rejects the role of a provider-managed account with 409, the last
- * login-capable system administrator with 409 `LAST_LOGIN_CAPABLE_ADMIN`.
+ * login-capable system administrator with 409 `LAST_LOGIN_CAPABLE_ADMIN`; the erasure refuses an
+ * account with a system role or one not deactivated (a provider account is deactivated while
+ * the directory locks it or its provider is gone).
  */
 
 const SORT_KEYS = [
@@ -159,6 +161,33 @@ export const accountHandlers = [
       page,
       size,
     })
+  }),
+
+  http.post('/api/v1/admin/accounts/:id/erasure', ({ params }) => {
+    const id = String(params.id)
+    const provider = mockProviderAccounts.find((account) => account.id === id)
+    const local = mockLocalUsers.find((account) => account.id === id)
+    if (!provider && !local) {
+      return HttpResponse.json({ error: 'Konto nicht gefunden', status: 404 }, { status: 404 })
+    }
+    if ((provider ?? local)?.systemRole !== 'USER') {
+      return conflict(
+        'Das Konto hat noch eine Systemrolle. Entziehen Sie sie zuerst.',
+        'SYSTEM_ROLE_HELD',
+      )
+    }
+    const deactivated = local
+      ? (local.status === 'LOCKED' && local.lockedReason === 'ADMIN') || local.status === 'EXPIRED'
+      : provider?.directoryLocked === true || !provider?.provider
+    if (!deactivated) {
+      return conflict(
+        'Das Konto ist noch nicht deaktiviert. Sperren Sie es zuerst.',
+        'ACCOUNT_ACTIVE',
+      )
+    }
+    setMockLocalUsers(mockLocalUsers.filter((account) => account.id !== id))
+    setMockProviderAccounts(mockProviderAccounts.filter((account) => account.id !== id))
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.post('/api/v1/admin/users/:id/role', async ({ params, request }) => {

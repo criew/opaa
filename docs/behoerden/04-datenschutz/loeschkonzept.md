@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-31
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -42,16 +42,21 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
    ([Spaces: Chats](../../handbuch/benutzer/chats.md#automatisches-aufräumen)). Die Behörde legt fest, in welchen Spaces es
    eingeschaltet wird, etwa in allen gemeinsamen Spaces.
-3. **Chats gesperrter Konten regeln:** Nach einer Sperre durch die Verwaltung löscht OPAA die Chats
-   des Kontos nach einer Frist, ab Werk eingeschaltet
+3. **Chats gesperrter Konten regeln:** Nach einer Sperre durch die Verwaltung, bei Konten eines
+   Identitätsanbieters durch den Verzeichnisabgleich, löscht OPAA die Chats des Kontos nach einer
+   Frist, ab Werk eingeschaltet
    ([Was mit den Chats eines gesperrten Kontos geschieht](../../handbuch/administration/konten.md#sperren-statt-löschen)).
    Die Behörde legt fest:
-   - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; die Frist beginnt nur
-     mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
+   - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; bei lokalen Konten
+     beginnt die Frist nur mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
      Verwaltung zusätzlich;
    - dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung) kein Anlass für diese Sperre ist;
-   - wie sie mit Konten eines Identitätsanbieters umgeht: Sie lassen sich in OPAA nicht sperren, für
-     sie greift die Frist nicht;
+   - wie sie mit Konten eines Identitätsanbieters umgeht: Sie lassen sich in OPAA nicht von Hand
+     sperren; die Frist beginnt, wenn der Verzeichnisabgleich das Konto sperrt, weil das Verzeichnis
+     es als deaktiviert oder gar nicht mehr meldet. Diese Sperre bleibt bestehen, auch wenn der
+     Abgleich danach ausgeschaltet wird, und die Frist läuft weiter. Ohne Verzeichnisabgleich greift die Frist für
+     sie nicht, und eine Anhaltung gibt es für sie nicht, nur das Aussetzen durch eine offene
+     anlassbezogene Klärung;
    - wer das Anhalten der Löschung je Konto beantragen und wer es freigeben darf. OPAA verlangt
      einen Zweck aus fester Liste (behördliche oder gerichtliche Anordnung, Sicherung von
      Beweismitteln nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag), eine
@@ -63,8 +68,11 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    - dass die Person bei planbarem Ausscheiden vor der Sperre eine Selbstauskunft ziehen kann; danach
      erreicht sie sie nicht mehr.
 4. **Anlässe regeln, die OPAA nicht kennt:**
-   - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
-     nicht gelöscht ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
+   - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird gesperrt, nicht
+     gelöscht ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
+   - Löschbegehren einer Person: wer nach der Prüfung „Personenbezug entfernen“ auslöst; OPAA
+     anonymisiert das gesperrte Konto und löscht Chats, persönlichen Space, private Bibliotheken,
+     Anmeldedaten und Tokens sofort ([Personenbezug entfernen](../../handbuch/administration/konten.md#personenbezug-entfernen)).
    - Dokumente: Sie folgen ihrer Quelle
      ([Änderungen und Löschungen](../../handbuch/referenz/wie-indexierung-arbeitet.md#läufe)),
      ihre Fristen regelt die Behörde dort; für hochgeladene Dokumente festlegen, wer sie wann prüft.

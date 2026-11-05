@@ -66,7 +66,7 @@ public class AccountAdminService {
   /**
    * Every account of the organization. A local user without its credentials row is not an account
    * (the same rule as {@code LocalUserService#allOf}); an identity-provider account whose provider
-   * row is gone keeps its issuer and appears without a provider.
+   * row is gone keeps its issuer and appears without a provider. An erased account is none.
    */
   @Transactional(readOnly = true)
   public List<AccountOverview> allOf(UUID organizationId) {
@@ -89,6 +89,9 @@ public class AccountAdminService {
                     (first, second) -> first));
     List<AccountOverview> result = new ArrayList<>(all.size());
     for (User user : all) {
+      if (user.isErased()) {
+        continue;
+      }
       if (isLocal(user)) {
         LocalCredentials row = rows.get(user.getId());
         if (row != null) {

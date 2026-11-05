@@ -38,19 +38,52 @@ Ein Link gilt einmal, ein neuer macht den alten ungültig.
 | „Rücksetz-Link per E-Mail“ oder „Passwort erzeugen“ | neues Passwort; beendet ebenfalls alle Sitzungen |
 | Ablaufdatum erreicht | das Konto kann sich nicht anmelden; ein neues Datum gibt es frei |
 | „Löschen“ | nur für ein Konto, auf das nichts mehr verweist: kein Chat, keine Bibliothek, keine Freigabe, kein Nachweiseintrag. Praktisch nur für Tippfehler und Testkonten |
+| „Personenbezug entfernen …“ | für ein Löschbegehren nach der DSGVO, nicht umkehrbar; siehe unten |
 
 **Ausscheiden heißt sperren.** Wer je Mitglied einer Gruppe war, hinterlässt einen Nachweis, der
 das Löschen blockiert, solange er liegt. Was mit Bibliotheken und Spaces der Person geschieht,
 regelt [Ausscheiden und Nachfolge](ausscheiden.md).
 
 **Chats gesperrter Konten** löscht OPAA nach einer Frist ab der Sperre durch die Verwaltung, in
-allen Spaces. Das Datum steht im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Entsperren
-beendet die Frist. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
+allen Spaces. Bei Konten eines Identitätsanbieters beginnt die Frist mit der Sperre durch den
+[Verzeichnisabgleich](../betrieb/authentifizierung.md#verzeichnisabgleich-je-anbieter): Wer im
+Verzeichnis deaktiviert wird oder dort fehlt, ist auch in OPAA gesperrt. Ohne Verzeichnisabgleich
+greift die Frist für Anbieterkonten nicht. Entsperren beendet die Frist.
+
+Bei lokalen Konten steht das Datum im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Die
+Anhaltung gibt es nur dort; bei Anbieterkonten setzt allein eine offene anlassbezogene Klärung die
+Löschung aus. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
 Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung, und erst eine
 **zweite** Person gibt frei. Die Freigabe gilt genau dem angezeigten Antrag: Wurde er inzwischen
 zurückgezogen und neu gestellt, lehnt OPAA sie ab und zeigt den aktuellen Antrag. Einen Antrag,
-der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
+der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte
+Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
+
+## Personenbezug entfernen
+
+Verlangt eine Person die Löschung ihrer Daten, entfernt „Personenbezug entfernen …“ im Zeilenmenü
+alles, was sie persönlich betrifft. Das gilt für lokale Konten und für Konten eines
+Identitätsanbieters.
+
+| Was geschieht | Was bleibt |
+|---|---|
+| Name, Adresse und Kennung beim Anbieter verschwinden, überall steht „Gelöschtes Konto“ | Mitgliedschaften, Rechte und deren Historie |
+| alle Chats der Person, auch in geteilten Spaces, ihr persönlicher Space, Benachrichtigungen, Favoriten und Fachwörter der Spracheingabe werden gelöscht | geteilte Bibliotheken, Spaces und Gruppen; sie stehen auf „Nachfolge offen“ |
+| private Bibliotheken werden binnen Minuten mit allen Inhalten gelöscht | das Revisionsprotokoll mit seinen Pseudonymen |
+| Anmeldedaten, Sitzungen und Zugangstokens enden | Dokumente, die die Person in geteilte Bibliotheken geladen hat |
+
+Das Konto verschwindet aus der Liste. Meldet sich die Person später beim Anbieter wieder an,
+entsteht ein neues, leeres Konto.
+
+**Gut zu wissen:**
+
+- Nur ein gesperrtes oder abgelaufenes Konto ohne Systemrolle lässt sich so behandeln. Konten
+  eines Anbieters gelten als deaktiviert, wenn der Verzeichnisabgleich sie sperrt oder der Anbieter
+  entfernt wurde.
+- Eine laufende oder beantragte Anhaltung der Chat-Löschung und eine offene anlassbezogene Klärung,
+  die das Konto nennt, verhindern den Schritt, bis sie enden.
+- Daten über die Person in Dokumenten und in Sicherungen erfasst der Schritt nicht.
 
 ## Liste prüfen
 

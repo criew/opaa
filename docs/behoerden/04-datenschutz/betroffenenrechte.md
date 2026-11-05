@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -49,7 +49,7 @@ Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weit
 |---|---|
 | **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
 | **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/administration/konten.md)), sonst im Identitätsanbieter |
-| **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
+| **Löschung** | Person löscht eigene Chats; Konto sperren, dann „Personenbezug entfernen“ ([Personenbezug entfernen](../../handbuch/administration/konten.md#personenbezug-entfernen), [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
 | **Datenübertragbarkeit** | [prüfen, ob das Recht greift; dann aus den Wegen der Auskunft] |
 | **Widerspruch** | [Prüfung durch die Behörde] |
@@ -76,14 +76,17 @@ Antwort am:           [Datum]          durch: [ ]
   ({{faktenblatt:protokollereignisse#self-disclosure-export-started}},
   {{faktenblatt:protokollereignisse#self-disclosure-export-finished}}); die eigenen Einträge erhält
   die Person mit ihrer Selbstauskunft.
-- **Konten lassen sich oft nur sperren.** Ein benutztes Konto ist meist nicht löschbar, weil
-  Nachweiseinträge darauf verweisen. Dann bleibt der Personenbezug im Protokoll bestehen; die Behörde
-  berücksichtigt das bei der Antwort auf ein Löschbegehren.
+- **Konten werden anonymisiert, nicht gelöscht.** Ein benutztes Konto lässt sich nicht ganz löschen,
+  weil Rechtehistorie und Protokoll darauf verweisen. „Personenbezug entfernen“ nimmt ihm Name,
+  Adresse und Kennung beim Anbieter und löscht Chats, persönlichen Space, private Bibliotheken,
+  Anmeldedaten und Tokens. Übrig bleibt eine namenlose Kennung, die sich ohne weiteres Wissen keiner
+  Person mehr zuordnen lässt. Eine laufende oder beantragte Anhaltung der Chat-Löschung oder eine offene
+  anlassbezogene Klärung hält den Schritt auf.
 - **Das Protokoll kennt Pseudonyme**, also Kennungen statt Namen
   ({{faktenblatt:datenkatalog#audit-pseudonyms}}); Klarnamen sieht die Revision nur in den Grenzen
-  der {{faktenblatt:rollensicht#auditor}}. Wird das Konto gelöscht, bleibt das Protokoll unverändert,
-  nur der Personenbezug entfällt
-  ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
+  der {{faktenblatt:rollensicht#auditor}}. Wird der Personenbezug des Kontos entfernt, bleibt das
+  Protokoll unverändert, sein Pseudonym verweist dann auf ein namenloses Konto
+  ([Personenbezug entfernen](../../handbuch/administration/konten.md#personenbezug-entfernen)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
   Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.

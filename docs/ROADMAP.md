@@ -3,7 +3,7 @@
 Was im Zielbild der [Vision](./VISION.md) noch nicht gebaut ist, nach Phasen geordnet. Was gebaut ist,
 steht im [Handbuch](./handbuch/README.md) und im [Gesamtstand](./fortschritt/gesamtstand.md).
 
-Stand: 02.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
+Stand: 05.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
 angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ## Phase 1 — Souveräner Wissensassistent (Rest)
@@ -14,11 +14,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Hardwareklasse eine Aktivierungsempfehlung geben; heute ab Werk aus (rund 3 min je Frage auf CPU).
   _(Epic #3492 (Sizing); #1051 ungebaut geschlossen)_
 
-### B · Wissensquellen & Konnektoren
-
-- **Fristen der verbundenen Konten** — Abstimmung der Werte mit Personalrat und Datenschutz steht aus.
-  ⚑
-
 ### F · Identität, Rechte & Mandanten
 
 - **Service-Accounts** — maschinelle Zugänge als eigene Identität mit benanntem Verantwortlichen,
@@ -28,9 +23,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Löschrecht nach DSGVO als Ablauf** — Löschung eines Kontos und seiner Daten über alle abgeleiteten
   Bestände; heute nur Sperrpfad und echte Löschung nie benutzter Konten.
-- **Selbstauskunft für Protokolldaten über die eigene Person hinaus**
-- **Chat-Löschung nach Sperre auch für andere Sperrarten** — greift nur bei Verwaltungssperre lokaler
-  Konten (Teil-Schnitt).
 
 ### J · Betrieb & Deployment
 
@@ -327,7 +319,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ## Gestrichen
 
-Am 02.11.2026 aus dem Zielbild genommen. Kommt ein Punkt wieder, braucht er einen neuen Anlass.
+Am 02.11.2026 aus dem Zielbild genommen, sofern kein anderes Datum dabeisteht. Kommt ein Punkt wieder, braucht er einen neuen Anlass.
 
 - Rerank-Mindestschwelle für Belege
 - Fassungsgebundene Belege / Fassungsfolge
@@ -347,6 +339,7 @@ Am 02.11.2026 aus dem Zielbild genommen. Kommt ein Punkt wieder, braucht er eine
 - Erweiterte Rechtemodelle
 - Externe Beteiligte
 - Selbstauskunft Stufe 2 und Ausbauten
+- Selbstauskunft für Protokolldaten über die eigene Person hinaus (05.11.2026)
 - Monatssiegel an zweitem Ort und Prüfansicht
 - Testzugang für die Personalvertretung
 - Suchfilter nach Stand der Indizierung

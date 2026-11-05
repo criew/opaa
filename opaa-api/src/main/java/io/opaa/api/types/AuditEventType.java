@@ -171,6 +171,11 @@ public enum AuditEventType {
    */
   SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
   ACCOUNT_DEACTIVATED,
+  /**
+   * The personal reference of a deactivated account was removed on a request under Art. 17 GDPR;
+   * the nameless account stays, and with it its pseudonym in the trail.
+   */
+  ACCOUNT_ERASED,
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,
   API_TOKEN_REVOKED,

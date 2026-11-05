@@ -16,7 +16,12 @@ import type {
   SystemRole,
   UserInfo,
 } from '@/shared/api/types'
-import { changeUserRole, listAccounts, type AccountSortField } from '../api/accountApi'
+import {
+  changeUserRole,
+  eraseAccount,
+  listAccounts,
+  type AccountSortField,
+} from '../api/accountApi'
 import {
   createLocalUser,
   deleteLocalUser,
@@ -97,6 +102,8 @@ interface UserAdminState {
   lockUser: (id: string, reason?: string | null) => Promise<LocalUserResponse>
   unlockUser: (id: string) => Promise<LocalUserResponse>
   deleteUser: (id: string) => Promise<void>
+  /** Removes the personal reference of a deactivated account; it leaves the list. */
+  eraseUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
   /** Starts a handover; the row keeps its state until the person redeems the link. */
@@ -290,6 +297,13 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   deleteUser: async (id) => {
     const sessionEpoch = currentSessionEpoch()
     await deleteLocalUser(id)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    await Promise.all([get().loadAccounts(), get().loadSummary()])
+  },
+
+  eraseUser: async (id) => {
+    const sessionEpoch = currentSessionEpoch()
+    await eraseAccount(id)
     if (isStaleSessionEpoch(sessionEpoch)) return
     await Promise.all([get().loadAccounts(), get().loadSummary()])
   },

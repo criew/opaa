@@ -56,6 +56,10 @@ public class User {
   @Column(name = "directory_locked_at")
   private Instant directoryLockedAt;
 
+  /** When the personal reference was removed, {@code null} for every other account. */
+  @Column(name = "erased_at")
+  private Instant erasedAt;
+
   protected User() {}
 
   /**
@@ -163,6 +167,29 @@ public class User {
 
   public Instant getDirectoryLockedAt() {
     return directoryLockedAt;
+  }
+
+  /**
+   * Removes the personal reference (erasure on a request under Art. 17 GDPR): name, address, the
+   * last sign-in and the identity at the provider go, the row stays as a nameless shell under
+   * {@link ErasedAccount#ISSUER} with its own id as subject. Irreversible; no token of any issuer
+   * resolves to it again, so a later sign-in creates a new account.
+   */
+  public void erase(Instant at) {
+    this.erasedAt = Objects.requireNonNull(at, "at");
+    this.issuer = ErasedAccount.ISSUER;
+    this.subject = id.toString();
+    this.email = null;
+    this.displayName = ErasedAccount.DISPLAY_NAME;
+    this.lastLoginAt = null;
+  }
+
+  public boolean isErased() {
+    return erasedAt != null;
+  }
+
+  public Instant getErasedAt() {
+    return erasedAt;
   }
 
   public UUID getOrganizationId() {

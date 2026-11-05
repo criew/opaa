@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.account.AccountAdminService;
+import io.opaa.account.AccountErasureService;
 import io.opaa.account.AccountOverview;
 import io.opaa.account.AccountPage;
 import io.opaa.account.AccountQuery;
@@ -52,6 +53,7 @@ class AccountAdminControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AccountAdminService adminService;
+  @MockitoBean private AccountErasureService erasureService;
   @MockitoBean private UserService userService;
   @MockitoBean private AuditorRoles auditorRoles;
 
