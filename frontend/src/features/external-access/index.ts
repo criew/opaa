@@ -1,3 +1,5 @@
 export { updateLibraryExternalAccess } from './api/externalAccessApi'
 export { default as ExternalToolsTab } from './components/ExternalToolsTab'
 export { default as OwnExternalAccessTokensSection } from './components/OwnExternalAccessTokensSection'
+export { default as ServiceAccountsTabB } from './components/serviceAccounts/VariantB'
+export { default as LibraryServiceAccountsSection } from './components/serviceAccounts/LibraryServiceAccountsSection'

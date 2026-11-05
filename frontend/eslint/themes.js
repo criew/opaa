@@ -67,7 +67,7 @@ export const ALLOWED = {
   mail: [],
   branding: [],
   connection: ['capability', 'audit'],
-  'external-access': ['asset'],
+  'external-access': ['asset', 'principal'],
   'search-admin': ['library'],
   audit: [],
   notification: [],

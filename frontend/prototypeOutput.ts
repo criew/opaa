@@ -29,6 +29,12 @@ export function prototypeOutput(): Plugin {
     generateBundle(_, bundle) {
       for (const file of Object.values(bundle)) {
         if (file.type === 'chunk') file.code = escapeNonAsciiJs(file.code)
+        // emitted script assets (the pdf.js worker) carry raw characters as well
+        else if (file.fileName.endsWith('.js')) {
+          const text =
+            typeof file.source === 'string' ? file.source : new TextDecoder().decode(file.source)
+          file.source = escapeNonAsciiJs(text)
+        }
       }
     },
   }

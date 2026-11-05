@@ -1,0 +1,35 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/tmp/claude-0/uilab-3589/ui-lab/results/A",
+    "flow": "service-accounts",
+    "schemes": [
+      "light"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "variant": "a",
+    "scenarios": [
+      "small",
+      "default",
+      "scale",
+      "empty",
+      "failed",
+      "partial"
+    ],
+    "areas": [
+      "list",
+      "detail",
+      "create-validation",
+      "token-value",
+      "section",
+      "add"
+    ],
+    "concurrency": 2
+  },
+  "shots": 42,
+  "seconds": 263,
+  "finishedAt": "2026-11-05T15:00:24.808Z"
+}

@@ -4,6 +4,7 @@ import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
+import { LibraryServiceAccountsSection } from '@/features/external-access'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
@@ -79,11 +80,18 @@ export default function LibrarySharingTab({
           />
         )}
 
+        {sections && externalAccessEnabled && (
+          <LibraryServiceAccountsSection libraryId={libraryId} placement="section" />
+        )}
+
         {/* the single values close the tab as rows of the Reiter „Quelle“ under one line:
            external access, diagnostics lock and derivation */}
         <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
           {sections && externalAccessEnabled && (
             <LibraryExternalAccessSection libraryId={libraryId} />
+          )}
+          {sections && externalAccessEnabled && (
+            <LibraryServiceAccountsSection libraryId={libraryId} placement="row" />
           )}
           {/* every reader sees the lock; only the responsible body gets the text action */}
           {details && (

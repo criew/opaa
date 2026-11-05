@@ -30,6 +30,9 @@ import ExternalAccessTokenAdminSection from './ExternalAccessTokenAdminSection'
 import OwnTokensLink from './OwnTokensLink'
 import ReleasedLibrariesSection from './ReleasedLibrariesSection'
 import { channelStateOf } from './externalToolsState'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
+import ServiceAccountsSectionA from './serviceAccounts/VariantA'
+import ServiceAccountsSectionC from './serviceAccounts/VariantC'
 
 /** The query parameter that opens the settings panel, e.g. from a bookmark of the former page. */
 export const PANEL_PARAM = 'panel'
@@ -113,6 +116,7 @@ export default function ExternalToolsTab() {
   const [activeTokens, setActiveTokens] = useState<number | 'failed' | null>(null)
   const [switchingOff, setSwitchingOff] = useState(false)
   const panelOpen = searchParams.get(PANEL_PARAM) === SETTINGS_PANEL
+  const variant = currentUiLabVariant()
 
   // No synchronous setState in the body: the effects below call these functions, and a
   // synchronous setState from there causes a render cascade (react-hooks/set-state-in-effect).
@@ -326,6 +330,9 @@ export default function ExternalToolsTab() {
           onRetry={() => void loadLibraries()}
         />
       </Box>
+
+      {variant === 'a' && <ServiceAccountsSectionA />}
+      {variant === 'c' && <ServiceAccountsSectionC />}
 
       <Box id={TOKENS_ANCHOR} sx={{ scrollMarginTop: 16 }}>
         <ExternalAccessTokenAdminSection onChanged={() => void loadActiveTokens()} />

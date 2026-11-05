@@ -10,7 +10,8 @@ import AreaTabs from '@/shared/ui/AreaTabs'
 import { ConnectionProfilesTab } from '@/features/connection'
 import { ConnectorTypesTab } from '@/features/connection'
 import ConnectionSettingsTab from './ConnectionSettingsTab'
-import { ExternalToolsTab } from '@/features/external-access'
+import { ExternalToolsTab, ServiceAccountsTabB } from '@/features/external-access'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
 import {
   CONNECTIONS_ADMIN_TABS,
   connectionsAdminRoute,
@@ -22,14 +23,19 @@ const TAB_LABELS: Record<ConnectionsAdminTab, string> = {
   access: 'Zugänge',
   'source-types': 'Quellarten',
   'external-tools': 'Externe KI-Werkzeuge',
+  'service-accounts': 'Dienstkonten',
   settings: 'Einstellungen',
 }
 
 /** The tabs the installation offers: switched off (ADR-0044), the external tools have none. */
 function offeredTabs(externalAccess: boolean): readonly ConnectionsAdminTab[] {
-  return externalAccess
-    ? CONNECTIONS_ADMIN_TABS
-    : CONNECTIONS_ADMIN_TABS.filter((value) => value !== 'external-tools')
+  // UI lab: only variant B gives the service accounts a tab of their own
+  const serviceAccountsTab = externalAccess && currentUiLabVariant() === 'b'
+  return CONNECTIONS_ADMIN_TABS.filter(
+    (value) =>
+      (externalAccess || value !== 'external-tools') &&
+      (serviceAccountsTab || value !== 'service-accounts'),
+  )
 }
 
 function isTab(
@@ -47,6 +53,8 @@ function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
       return <ConnectorTypesTab />
     case 'external-tools':
       return <ExternalToolsTab />
+    case 'service-accounts':
+      return <ServiceAccountsTabB />
     case 'settings':
       return <ConnectionSettingsTab />
     default: {

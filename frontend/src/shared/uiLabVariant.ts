@@ -4,7 +4,11 @@
  * `main`: a lab branch registers its variants here and lets components branch on
  * {@link currentUiLabVariant}. Without a registered variant every caller sees `null`.
  */
-export const UI_LAB_VARIANTS: readonly { id: string; label: string }[] = []
+export const UI_LAB_VARIANTS: readonly { id: string; label: string }[] = [
+  { id: 'a', label: 'A · Seitenleiste' },
+  { id: 'b', label: 'B · Eigener Reiter' },
+  { id: 'c', label: 'C · Aufklappbar' },
+]
 
 const STORAGE_KEY = 'opaa.uiLabVariant'
 
