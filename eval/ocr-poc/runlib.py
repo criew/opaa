@@ -2,10 +2,14 @@
 document timed on its own, the process's peak RSS recorded at the end."""
 
 import json
-import resource
 import sys
 import time
 from pathlib import Path
+
+try:
+    import resource
+except ImportError:  # Windows
+    resource = None
 
 
 def load_manifest(corpus):
@@ -46,8 +50,13 @@ def run(variant, convert, corpus, out, profiles, docs=None, setup=None):
             dst.write_text(text, encoding="utf-8")
             results.append({"id": entry["id"], "profile": prof, "pages": entry["pages"], "seconds": round(secs, 2), "error": err})
             print(variant, prof, entry["id"], f"{secs:.1f}s", err or "", flush=True)
-    # an external engine (ocrmypdf/tesseract) runs as a child process; count the larger peak
-    rss_mb = max(resource.getrusage(r).ru_maxrss for r in (resource.RUSAGE_SELF, resource.RUSAGE_CHILDREN)) / 1024
+    if resource:
+        # an external engine (ocrmypdf/tesseract) runs as a child process; count the larger peak
+        rss_mb = max(resource.getrusage(r).ru_maxrss for r in (resource.RUSAGE_SELF, resource.RUSAGE_CHILDREN)) / 1024
+    else:  # Windows (ROCm builds of torch for Radeon run natively there): peak working set
+        import psutil
+
+        rss_mb = psutil.Process().memory_info().peak_wset / 2**20
     (out / variant / "timing.json").write_text(json.dumps({"variant": variant, "model_load_seconds": round(load_s, 1), "peak_rss_mb": round(rss_mb), "runs": results}, indent=1))
 
 
