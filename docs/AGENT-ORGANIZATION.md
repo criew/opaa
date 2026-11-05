@@ -14,7 +14,7 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | **Code Reviewer** | Adversariales Review jedes PRs mit frischem Kontext (keine Implementierungs-Bias): Korrektheit, ADR-Compliance, Wiederverwendung, fehlende Dokumentation. Entwirft ADRs, wenn er eine Architekturentscheidung erkennt. | Subagent `code-reviewer` |
 | **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` |
 | **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` |
-| **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
+| **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: baut bei größeren Features mit UI-Bezug klickbare Varianten nach dem Skill `ui-lab` (Schritt 2), pflegt Begriffs- und Textkonventionen (`docs/design/guidelines.md`, Glossar des Handbuchs), UX-Review nach der Umsetzung. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
 
 Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review) —, und die Prüfrolle **Behördenkontakt** (Subagent `behoerdenkontakt`): Sie liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde, legt Befunde als Issues an und leistet **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung** — siehe [Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release).
 
@@ -66,14 +66,18 @@ Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den
 | Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
 | OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die Prüfrolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer; hinzu kommen die Prüfrolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
 
 ## Workflow: von der Idee bis zum Merge
 
 ```mermaid
 flowchart TD
-    A[Maintainer nennt ein Ziel] --> B[Product Manager:\nKlärungsfragen → Epic mit Spezifikation → Sub-Issues]
-    B --> C{Maintainer genehmigt Issues?}
+    A[Maintainer nennt ein Ziel] --> B[Product Manager:\nKlärungsfragen → Epic mit Spezifikation]
+    B --> L{UI-Lab nötig?}
+    L -- ja --> U[Koordinator + UX-Designer:\nklickbare Varianten → Maintainer wählt]
+    U --> S[Product Manager: Sub-Issues]
+    L -- nein --> S
+    S --> C{Maintainer genehmigt Issues?}
     C -- anpassen --> B
     C -- ja --> D[Orchestrator verteilt einen\nDeveloper pro Issue]
     D --> E[Developer: Worktree + Feature-Branch\n→ Implementierung + Tests + Docs → PR]
@@ -86,6 +90,7 @@ flowchart TD
 
 1. **Ziel** — Der Maintainer gibt dem Orchestrator ein Ziel ("einen Confluence-Connector hinzufügen").
 2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Spezifikation in den Body des Epics (nicht ins Repository) und erstellt beschriftete Sub-Issues, bei Stufe Zustimmung erst nach dem [Stakeholder-Review](#wann-ein-stakeholder-review-läuft).
+   - **Klickbare Varianten vor den Issues.** Bringt ein Feature einen neuen Nutzerfluss, eine neue Seite oder einen neuen Dialog, vermerkt die Spezifikation „UI-Lab: schnell“ (eine Seite oder ein Dialog) oder „UI-Lab: groß“ (ein ganzer Bereich). Der Koordinator führt dann den Skill `ui-lab` aus: Der UX-Designer baut die Varianten, frische Subagenten bewerten sie, der Maintainer klickt die Prototypen durch und wählt. Erst danach schneidet der Product Manager die Issues; ihre Abnahmekriterien verweisen auf die gewählte Variante. Kleine UI-Änderungen brauchen kein Lab.
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
 4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung). Was die Spezifikation festlegt, landet im selben PR an seinem dauerhaften Ort: Verhalten im Handbuch, Begründungen im ADR, Details im Code ([AGENTS.md](../AGENTS.md#was-dauerhaft-im-repository-liegt)).
 5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.
@@ -138,7 +143,7 @@ Wer ein Issue bearbeitet — Mensch oder Agent —, weist es sich **vor Arbeitsb
 ### Dokumentation
 
 - **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.
-- **Das Produkthandbuch (`docs/handbuch/`) wird mit dem Code gepflegt.** Wer ein Verhalten oder eine Konfiguration ändert, die ein Kapitel beschreibt, zieht das Kapitel im selben PR nach — nach den Konventionen der [Einstiegsseite](./handbuch/README.md): Ist-Stand, Verweise nur innerhalb des Handbuchs, Zahlen nur in Konfigurationstabellen, Begriffe aus dem Glossar. Der Code Reviewer prüft bei jedem PR mit Verhaltens- oder Konfigurationsänderung, ob das betroffene Kapitel angefasst wurde, und hält die Änderung gegen den Code; ein fehlender Nachzug ist ein Merge-Blocker, kein Nit. Es gibt keinen periodischen Dokumentationsdurchgang und keinen eigenen Dokumentations-Agenten — ein Kapitel, das beim Bauen nicht mitgezogen wurde, wird bei einem späteren Durchgang nicht besser.
+- **Das Produkthandbuch (`docs/handbuch/`) wird mit dem Code gepflegt.** Wer ein Verhalten oder eine Konfiguration ändert, die ein Kapitel beschreibt, zieht das Kapitel im selben PR nach — nach den Regeln in [`docs/handbuch/AGENTS.md`](./handbuch/AGENTS.md): Ist-Stand, Verweise nur innerhalb des Handbuchs, Zahlen nur in Konfigurationstabellen, Begriffe aus dem Glossar. Der Code Reviewer prüft bei jedem PR mit Verhaltens- oder Konfigurationsänderung, ob das betroffene Kapitel angefasst wurde, und hält die Änderung gegen den Code; ein fehlender Nachzug ist ein Merge-Blocker, kein Nit. Es gibt keinen periodischen Dokumentationsdurchgang und keinen eigenen Dokumentations-Agenten — ein Kapitel, das beim Bauen nicht mitgezogen wurde, wird bei einem späteren Durchgang nicht besser.
 - **ADRs**: Wenn der Code Reviewer oder ein Entwickler eine echte Architekturentscheidung identifiziert, schreibt er einen ADR nach der Vorlage und den Regeln in [`docs/decisions/README.md`](./decisions/README.md) mit dem Status „Akzeptiert · zuletzt geändert <Datum>“ und hängt ihn an den PR. Der Maintainer entscheidet mit dem Merge; ein abgelehnter ADR wird nicht gemergt, einen Zwischenstatus gibt es nicht. Eine spätere Änderung an einer Entscheidung schreibt den Kerntext des ADR fort (kein Nachtrag, kein Änderungsverlauf); `git log` ist die Historie. Nichts Architektonisches wird implizit festgelegt.
 
 ### Koordinator-Betrieb

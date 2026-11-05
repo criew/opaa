@@ -43,9 +43,11 @@ Prüflisten-Freigabe, Skizzenrunde, Querbögen und Vergleichsseite entfallen.
 
 Der Rest dieses Skills beschreibt die Stufe „groß“; die Grundregeln gelten für beide.
 
+**Wer was tut:** Angestoßen wird ein Lab meist durch die Epic-Spezifikation („UI-Lab: schnell“ oder „groß“). Den Ablauf führt der Koordinator: Halte beim Maintainer, Juroren, Konsistenz-Review, Veröffentlichung. Varianten baut der UX-Designer ([Rollenvertrag](../../../agents/roles/ux-designer.md)), als Subagent `ux-designer` oder als Session je Variante mit diesem Rollenvertrag im Auftrag. Juroren und Detailprüfer sind frische Subagenten, nie der UX-Designer.
+
 ## Grundregeln
 
-Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
+Sie gelten in jedem Schritt.
 
 1. **Von Anfang an Cloud-Sessions.** Varianten laufen in eigenen Sessions (`create_session`), jede
    mit eigenem Branch, Dev-Server und Port. Lokale Parallelität in einem Arbeitsverzeichnis
@@ -131,8 +133,8 @@ Ist-Stand des Bereichs auf `main` erfassen, in `ui-lab/inputs/inventory.md` auf 
    Fehlende Randfälle werden Mock-Szenarien (Punkt 1).
 5. Festhalten, was dem kleinen Fall genügt (ein Space, ein Ordner): Jede Variante muss ihn so
    leicht lassen, wie er heute ist.
-6. Nebenbefunde außerhalb der UI (Backend kürzt still, API liefert zu wenig) sofort als eigenes
-   Issue anlegen und im Inventar verlinken, nicht im Lab mitschleppen.
+6. Nebenbefunde außerhalb der UI (Backend kürzt still, API liefert zu wenig) im Inventar
+   festhalten, nicht im Lab mitschleppen; ein eigenes Issue nur, wenn der Befund eigene Arbeit braucht.
 7. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
    Vergleichsmatrix konsistent/inkonsistent · Verstöße mit Prüflistennummer und Beleg · zehn
    größte Probleme nach Wirkung · Lücken der Mocks · Randfalltabellen · kleiner Fall ·
