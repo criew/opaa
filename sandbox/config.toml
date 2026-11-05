@@ -1,0 +1,37 @@
+# OpenSandbox lifecycle server for the run_code tool (docker-compose.sandbox.yml).
+# The API key comes from OPENSANDBOX_SERVER_API_KEY; without it the server refuses to start.
+
+[server]
+host = "0.0.0.0"
+port = 8090
+# Upper bound for the "timeout" (TTL, seconds) of a create request.
+max_sandbox_timeout_seconds = 900
+
+[proxy]
+# The server proxies /sandboxes/{id}/proxy/{port}/... to the sandbox's IP on the internal
+# network below; it is the only route from the backend to execd.
+resolve_internal = true
+
+[log]
+level = "INFO"
+
+[runtime]
+type = "docker"
+execd_image = "opensandbox/execd:release-1.1.1"
+
+[docker]
+# Sandboxes join only this internal network (no gateway, so no internet egress). The name must
+# match the network "opaa-sandboxes" in docker-compose.sandbox.yml and be lowercase.
+network_mode = "opaa-sandboxes"
+# Docker skips port publishing on internal networks; the address keeps any published port on loopback.
+publish_host = "127.0.0.1"
+drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+no_new_privileges = true
+pids_limit = 4096
+
+[ingress]
+mode = "direct"
+
+[storage]
+# No host bind mounts for sandboxes.
+allowed_host_paths = []

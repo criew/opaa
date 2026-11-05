@@ -711,6 +711,15 @@ components:
             question first appears with the next answer or on a reload of the chat.
           items:
             $ref: "#/components/schemas/ChatNoteItem"
+        generatedFiles:
+          type: array
+          description: >
+            Files a tool of the agent loop produced for this answer, each bound to the answer's
+            message as a chat attachment of the asker (getChatAttachmentContent). Absent or empty on
+            every answer the agent loop did not give; a reload of the chat shows them as the
+            answer message's attachments.
+          items:
+            $ref: "#/components/schemas/ChatAttachmentRef"
 
     SourceFreeze:
       type: object

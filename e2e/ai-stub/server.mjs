@@ -211,14 +211,19 @@ function streamCompletion(req, res, model, content, slow) {
   const next = () => {
     if (closed) return
     if (index < parts.length) {
-      const delta = index === 0 ? { role: 'assistant', content: parts[0] } : { content: parts[index] }
+      const delta =
+        index === 0 ? { role: 'assistant', content: parts[0] } : { content: parts[index] }
       res.write(event([{ index: 0, delta, finish_reason: null, logprobs: null }]))
       index += 1
       setTimeout(next, slow ? STREAM_SLOW_DELAY_MS : 0)
       return
     }
     res.write(event([{ index: 0, delta: {}, finish_reason: 'stop', logprobs: null }]))
-    res.write(event([], { usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } }))
+    res.write(
+      event([], {
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      }),
+    )
     res.end('data: [DONE]\n\n')
     finishedStreams += 1
   }
@@ -257,6 +262,109 @@ function triggeredFragments(messages) {
   return fragments.length > 0 ? `\n\n${fragments.join('\n\n')}` : ''
 }
 
+// --- Agent loop (sandbox spike) ----------------------------------------------------------------
+//
+// A request that offers the tool run_code is a turn of the agent loop. The stub plays a fixed
+// script per turn: search_knowledge with the question, then run_code with a Python script that
+// writes /workspace/out/zusammenfassung.pdf (title: the first text in quotes of the question,
+// else "Zusammenfassung"; body: the first lines the search returned), then a closing answer that
+// names the file and cites what the search found.
+const RUN_CODE_TOOL = 'run_code'
+const SEARCH_TOOL = 'search_knowledge'
+const GENERATED_FILE = 'zusammenfassung.pdf'
+
+function offersTool(body, name) {
+  return Array.isArray(body.tools) && body.tools.some((tool) => tool?.function?.name === name)
+}
+
+/** The tool results of the current turn, each with the name of the tool that produced it. */
+function toolResultsOfTurn(messages) {
+  const lastUser = messages.map((message) => message.role).lastIndexOf('user')
+  const turn = messages.slice(lastUser + 1)
+  const names = new Map()
+  for (const message of turn) {
+    for (const call of message.tool_calls ?? []) {
+      names.set(call.id, call.function?.name)
+    }
+  }
+  return turn
+    .filter((message) => message.role === 'tool')
+    .map((message) => ({
+      name: names.get(message.tool_call_id),
+      content: typeof message.content === 'string' ? message.content : '',
+    }))
+}
+
+function pdfScript(question, searchResult) {
+  const quoted = /[„"“]([^"“”]+)["“”]/.exec(question)
+  const title = quoted ? quoted[1] : 'Zusammenfassung'
+  const lines = searchResult
+    .replace(CITATION_PATTERN, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !/^[<\[]|Zitiermarke|^-{3,}/.test(line))
+    .slice(0, 12)
+  return [
+    'from reportlab.lib.pagesizes import A4',
+    'from reportlab.pdfgen import canvas',
+    `title = ${JSON.stringify(title)}`,
+    `lines = ${JSON.stringify(lines)}`,
+    `c = canvas.Canvas("/workspace/out/${GENERATED_FILE}", pagesize=A4)`,
+    'c.setTitle(title)',
+    'c.setFont("Helvetica-Bold", 16)',
+    'c.drawString(72, 770, title)',
+    'c.setFont("Helvetica", 10)',
+    'y = 740',
+    'for line in lines:',
+    '    c.drawString(72, y, line[:100])',
+    '    y -= 14',
+    'c.save()',
+    'print("ok")',
+  ].join('\n')
+}
+
+function toolCallMessage(name, args) {
+  return {
+    role: 'assistant',
+    content: null,
+    tool_calls: [
+      {
+        id: `call_${name}_${Date.now()}`,
+        type: 'function',
+        function: { name, arguments: JSON.stringify(args) },
+      },
+    ],
+  }
+}
+
+/** The next step of the fixed agent script: a tool call, or the closing answer. */
+function agentStep(messages) {
+  const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
+  const results = toolResultsOfTurn(messages)
+  const search = results.find((result) => result.name === SEARCH_TOOL)
+  const run = results.find((result) => result.name === RUN_CODE_TOOL)
+  if (!search) {
+    return {
+      message: toolCallMessage(SEARCH_TOOL, { frage: question }),
+      finish: 'tool_calls',
+    }
+  }
+  if (!run) {
+    return {
+      message: toolCallMessage(RUN_CODE_TOOL, {
+        code: pdfScript(question, search.content),
+      }),
+      finish: 'tool_calls',
+    }
+  }
+  const citations = [...new Set([...search.content.matchAll(CITATION_PATTERN)].map((m) => m[0]))]
+  const provided = run.content.includes(GENERATED_FILE)
+  const content = provided
+    ? `Ich habe die Datei ${GENERATED_FILE} erzeugt. ${citations.join(' ')}`.trim()
+    : `Die Datei konnte nicht erzeugt werden.\n\n${run.content}`
+  return { message: { role: 'assistant', content }, finish: 'stop' }
+}
+
 // Every managed chat model in this suite points at this same
 // stub, so a scenario that activates a *different* model and then asks a chat question cannot
 // otherwise tell whether the answer actually came from the newly activated model or from a stale,
@@ -277,7 +385,10 @@ const RERANK_PREFIX = '/reranker'
 const RERANK_MODEL = 'stub-reranker'
 
 function ranking(count) {
-  return Array.from({ length: count }, (_, index) => ({ index, score: 1 / (index + 1) }))
+  return Array.from({ length: count }, (_, index) => ({
+    index,
+    score: 1 / (index + 1),
+  }))
 }
 
 function fakeEmbedding() {
@@ -330,7 +441,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, '/control/streams')) {
-      sendJson(res, 200, { abandoned: abandonedStreams, finished: finishedStreams })
+      sendJson(res, 200, {
+        abandoned: abandonedStreams,
+        finished: finishedStreams,
+      })
       return
     }
 
@@ -350,7 +464,11 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, '/control/embedding-hold')) {
-      sendJson(res, 200, { marker: holdMarker, held: heldCount, waiting: releaseHeld.length })
+      sendJson(res, 200, {
+        marker: holdMarker,
+        held: heldCount,
+        waiting: releaseHeld.length,
+      })
       return
     }
 
@@ -384,7 +502,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && matchesEndpoint(req.url, `${RERANK_PREFIX}/models`)) {
-      sendJson(res, 200, { object: 'list', data: [{ id: RERANK_MODEL, object: 'model' }] })
+      sendJson(res, 200, {
+        object: 'list',
+        data: [{ id: RERANK_MODEL, object: 'model' }],
+      })
       return
     }
 
@@ -416,6 +537,25 @@ const server = createServer(async (req, res) => {
             code: null,
             param: null,
           },
+        })
+        return
+      }
+      if (offersTool(body, RUN_CODE_TOOL)) {
+        const step = agentStep(messages)
+        sendJson(res, 200, {
+          id: 'chatcmpl-stub',
+          object: 'chat.completion',
+          created: Math.floor(Date.now() / 1000),
+          model: body.model ?? 'stub-chat',
+          choices: [
+            {
+              index: 0,
+              message: step.message,
+              finish_reason: step.finish,
+              logprobs: null,
+            },
+          ],
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         })
         return
       }
@@ -466,7 +606,9 @@ const server = createServer(async (req, res) => {
 
     sendJson(res, 404, { error: 'not found' })
   } catch (error) {
-    sendJson(res, 500, { error: error instanceof Error ? error.message : 'internal error' })
+    sendJson(res, 500, {
+      error: error instanceof Error ? error.message : 'internal error',
+    })
   }
 })
 

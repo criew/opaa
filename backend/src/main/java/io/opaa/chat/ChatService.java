@@ -577,6 +577,24 @@ public class ChatService {
       List<ChatSource> sources,
       AnswerEvidence evidence,
       List<UUID> attachmentIds) {
+    return appendTurn(
+        chat, question, usedPrompt, answer, sources, evidence, attachmentIds, List.of());
+  }
+
+  /**
+   * The same turn, binding {@code answerAttachmentIds} - files a tool of the agent loop produced as
+   * the author's attachments - to the chat and to the answer's message.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat,
+      String question,
+      UsedPrompt usedPrompt,
+      String answer,
+      List<ChatSource> sources,
+      AnswerEvidence evidence,
+      List<UUID> attachmentIds,
+      List<UUID> answerAttachmentIds) {
     // An archived space accepts no new turn; QueryService#query checks this early, this call
     // guards a space archived in between.
     requireSpaceNotArchived(chat.getSpaceId());
@@ -598,7 +616,8 @@ public class ChatService {
                 serializedSources,
                 serializedEvidence,
                 derivedTitle,
-                attachmentIds);
+                attachmentIds,
+                answerAttachmentIds);
         break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {

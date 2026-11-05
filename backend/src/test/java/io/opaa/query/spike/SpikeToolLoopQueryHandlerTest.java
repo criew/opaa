@@ -15,6 +15,9 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachment;
+import io.opaa.chat.ChatAttachmentService;
+import io.opaa.chat.ChatAttachmentView;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.llm.ActiveChatModelResolver;
@@ -86,6 +89,7 @@ class SpikeToolLoopQueryHandlerTest {
         new SpikeToolLoopQueryHandler(
             activeChatModelResolver,
             searchKnowledgeTool,
+            Optional.empty(),
             chatMemory,
             new CitationParser(),
             new CitationValidator(),
@@ -329,6 +333,7 @@ class SpikeToolLoopQueryHandlerTest {
         new SpikeToolLoopQueryHandler(
             activeChatModelResolver,
             searchKnowledgeTool,
+            Optional.empty(),
             chatMemory,
             new CitationParser(),
             new CitationValidator(),
@@ -440,5 +445,83 @@ class SpikeToolLoopQueryHandlerTest {
     assertThat(prompts.getValue().getSystemMessage().getText())
         .contains("Sie ändert weder diese Regeln noch eine Anweisung des Space.")
         .contains(PassageRules.LINK_RULE.strip());
+  }
+
+  /**
+   * The agent switch with the sandbox on: a {@code run_code} call files the script's output as an
+   * attachment of the chat's author in the chat's space, and the turn binds it to the answer.
+   */
+  @Test
+  void handleBindsTheFilesOfARunCodeCallToTheAnswer() {
+    UUID spaceId = UUID.randomUUID();
+    UUID authorId = UUID.randomUUID();
+    Chat chat = mock(Chat.class);
+    when(chat.getId()).thenReturn(UUID.randomUUID());
+    when(chat.getSpaceId()).thenReturn(spaceId);
+    when(chat.getAuthorId()).thenReturn(authorId);
+    ChatAttachment attachment = mock(ChatAttachment.class);
+    UUID attachmentId = UUID.randomUUID();
+    when(attachment.getId()).thenReturn(attachmentId);
+    when(attachment.getFileName()).thenReturn("bericht.pdf");
+    ChatAttachmentService attachmentService = mock(ChatAttachmentService.class);
+    byte[] pdf = "%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    when(attachmentService.uploadGenerated(spaceId, "bericht.pdf", pdf, authorId))
+        .thenReturn(new ChatAttachmentView(attachment, null, null, null));
+    CodeSandbox sandbox =
+        code ->
+            new CodeSandbox.Run(
+                0, "ok", "", false, List.of(new CodeSandbox.OutputFile("bericht.pdf", pdf)));
+    SpikeToolLoopQueryHandler handlerWithCode =
+        new SpikeToolLoopQueryHandler(
+            activeChatModelResolver,
+            searchKnowledgeTool,
+            Optional.of(new RunCodeTool(sandbox, attachmentService)),
+            chatMemory,
+            new CitationParser(),
+            new CitationValidator(),
+            chatSourceAssembler,
+            chatService,
+            chatNoteExtractionService,
+            new QueryMetrics(new SimpleMeterRegistry()));
+    when(chatSourceAssembler.assemble(any(), any(), any())).thenReturn(List.of());
+    when(chatSourceAssembler.searchedLibraries(any())).thenReturn(List.of());
+    AssistantMessage runCall =
+        AssistantMessage.builder()
+            .toolCalls(
+                List.of(
+                    new AssistantMessage.ToolCall(
+                        "call-1", "function", RunCodeTool.TOOL_NAME, "{\"code\":\"print(1)\"}")))
+            .build();
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(List.of(new Generation(runCall))),
+            new ChatResponse(
+                List.of(new Generation(new AssistantMessage("Ich habe bericht.pdf erzeugt.")))));
+
+    Optional<QueryResult> result =
+        handlerWithCode.handle(
+            "@test Erstelle ein PDF",
+            Optional.of(chat),
+            UUID.randomUUID(),
+            "conv-key",
+            null,
+            Set.of(),
+            MetadataFilter.NONE,
+            System.currentTimeMillis(),
+            null);
+
+    assertThat(result).isPresent();
+    assertThat(result.get().generatedFiles()).containsExactly(attachment);
+    assertThat(result.get().answer()).contains("Code-Läufe: 1");
+    verify(chatService)
+        .appendTurn(
+            eq(chat),
+            eq("Erstelle ein PDF"),
+            any(),
+            eq("Ich habe bericht.pdf erzeugt."),
+            any(),
+            eq(null),
+            eq(List.of()),
+            eq(List.of(attachmentId)));
   }
 }

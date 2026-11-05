@@ -32,6 +32,8 @@ SECRET_EXCEPTIONS=(
   "docker-compose.yml|upload-store-init|AWS_SECRET_ACCESS_KEY|Init job of the same upload store"
   "e2e/docker-compose.multi-instance.yml|corpus-init|AWS_SECRET_ACCESS_KEY|Upload store of the two-instance test stack, the default of docker-compose.yml"
   "e2e/docker-compose.e2e.yml|nextcloud|NEXTCLOUD_ADMIN_PASSWORD|Public test value of the E2E stack's Nextcloud, loopback only"
+  "docker-compose.sandbox.yml|opensandbox-server|OPENSANDBOX_SERVER_API_KEY|Development-only sandbox server of the agent spike, loopback only, not part of any release"
+  "docker-compose.sandbox.yml|backend|OPAA_SANDBOX_API_KEY|The same key, read by the backend of that development overlay"
 )
 
 SECRET_KEY='(SECRET|PASSWORD|PASSWD|TOKEN|API_KEY|SECRET_KEY|SECRET_ACCESS_KEY|ENCRYPTION_KEY|PRIVATE_KEY)'

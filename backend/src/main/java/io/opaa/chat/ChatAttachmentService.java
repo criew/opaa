@@ -147,7 +147,39 @@ public class ChatAttachmentService {
    * reading slots of the account and the pool (429).
    */
   public ChatAttachmentView upload(UUID spaceId, MultipartFile file, CurrentUser caller) {
-    Space space = requireMembership(spaceId, caller.id());
+    return upload(spaceId, file, caller.id());
+  }
+
+  /**
+   * Takes {@code content}, a file a tool of the agent loop produced for {@code authorId}, as an
+   * unbound attachment of that person in {@code spaceId} - through every check of {@link
+   * #upload(UUID, MultipartFile, CurrentUser)}, the file name included, which is untrusted.
+   */
+  public ChatAttachmentView uploadGenerated(
+      UUID spaceId, String fileName, byte[] content, UUID authorId) {
+    Path temp = null;
+    try {
+      temp = Files.createTempFile("opaa-generated-", ".bin");
+      Files.write(temp, content);
+      return upload(
+          spaceId,
+          new StoredFileMultipartFile(temp, fileName, "application/octet-stream"),
+          authorId);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Erzeugte Datei konnte nicht gespeichert werden", e);
+    } finally {
+      if (temp != null) {
+        try {
+          Files.deleteIfExists(temp);
+        } catch (IOException e) {
+          log.warn("Temporary generated file {} could not be deleted", temp, e);
+        }
+      }
+    }
+  }
+
+  private ChatAttachmentView upload(UUID spaceId, MultipartFile file, UUID authorId) {
+    Space space = requireMembership(spaceId, authorId);
     if (space.isArchived()) {
       throw new ConflictException("Der Space ist archiviert und lässt keine neuen Inhalte mehr zu");
     }
@@ -171,7 +203,7 @@ public class ChatAttachmentService {
     }
     String extension = matchedExtension(fileName);
 
-    ChatAttachmentReadingSlots.Slot slot = readingSlots.reserve(caller.id());
+    ChatAttachmentReadingSlots.Slot slot = readingSlots.reserve(authorId);
     boolean handedOver = false;
     UploadedOriginalStore.AcceptedUpload accepted = null;
     ChatAttachment saved = null;
@@ -184,7 +216,7 @@ public class ChatAttachmentService {
           new ChatAttachment(
               space.getOrganizationId(),
               spaceId,
-              caller.id(),
+              authorId,
               fileName,
               probeContentType(workingFile),
               Files.size(workingFile),

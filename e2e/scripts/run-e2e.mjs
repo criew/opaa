@@ -20,6 +20,7 @@
 //   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
 //   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 //   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
+//   node scripts/run-e2e.mjs --target sandbox      # agent spike with run_code (pnpm run test:sandbox)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, demo/README.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -72,9 +73,13 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (!['e2e', 'demo', 'local-auth', 'multi-instance', 'offline', 'installation'].includes(target)) {
+if (
+  !['e2e', 'demo', 'local-auth', 'multi-instance', 'offline', 'installation', 'sandbox'].includes(
+    target,
+  )
+) {
   console.error(
-    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance", "offline" oder "installation")`,
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance", "offline", "installation" oder "sandbox")`,
   )
   process.exit(1)
 }
@@ -95,6 +100,9 @@ if (target === 'offline') {
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'
 const isInstallation = target === 'installation'
+// The "sandbox" target is the "e2e" stack plus docker-compose.sandbox.yml (OpenSandbox, agent
+// switch on) and runs only the specs under e2e/sandbox/tests/ - never part of the regular suite.
+const isSandbox = target === 'sandbox'
 
 // The "demo" Compose profile's Keycloak realm (keycloak/realm-export.json) has a static
 // redirectUris list scoped to http://localhost:3000, and this run's own
@@ -113,25 +121,34 @@ const projectNames = {
   demo: 'opaa-demo-smoke',
   'local-auth': 'opaa-local-auth',
   installation: 'opaa-installation',
+  sandbox: 'opaa-sandbox',
 }
 const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? projectNames[target]
 // Each target gets its own host ports so two of them - or one of them and a developer's own stack -
 // can run side by side. Only the "demo" target's frontend port is pinned (its Keycloak realm's
 // redirectUris, see the comment above).
 const backendPort =
-  process.env.OPAA_BACKEND_PORT ?? (isLocalAuth ? '18082' : isInstallation ? '18086' : '18081')
+  process.env.OPAA_BACKEND_PORT ??
+  (isLocalAuth ? '18082' : isInstallation ? '18086' : isSandbox ? '18087' : '18081')
 const frontendPort =
   process.env.OPAA_FRONTEND_PORT ??
-  (isDemo ? '3000' : isLocalAuth ? '13001' : isInstallation ? '13005' : '13000')
+  (isDemo
+    ? '3000'
+    : isLocalAuth
+      ? '13001'
+      : isInstallation
+        ? '13005'
+        : isSandbox
+          ? '13007'
+          : '13000')
 const dbPort =
-  process.env.OPAA_DB_PORT ?? (isLocalAuth ? '15433' : isInstallation ? '15436' : '15432')
+  process.env.OPAA_DB_PORT ??
+  (isLocalAuth ? '15433' : isInstallation ? '15436' : isSandbox ? '15437' : '15432')
 // The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
 // links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
 // reaches ai-stub's /last-chat-model directly. The "installation" target has ports of its own.
-const mailpitWebPort =
-  process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
-const mailpitSmtpPort =
-  process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
+const mailpitWebPort = process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
+const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
 const usesMailpit = isLocalAuth || isInstallation
 
 // The variants of the installation spec, each selected by its tag and run against a fresh stack.
@@ -157,12 +174,14 @@ const overlayFiles = {
   demo: 'e2e/docker-compose.demo-smoke.yml',
   'local-auth': 'e2e/docker-compose.local-auth.yml',
   installation: 'e2e/docker-compose.installation.yml',
+  sandbox: 'e2e/docker-compose.e2e.yml',
 }
 const envFiles = {
   e2e: 'e2e/e2e.env',
   demo: 'e2e/demo-smoke.env',
   'local-auth': 'e2e/local-auth.env',
   installation: 'e2e/installation.env',
+  sandbox: 'e2e/e2e.env',
 }
 const overlayFile = overlayFiles[target]
 const envFile = envFiles[target]
@@ -214,6 +233,7 @@ const composeArgs = [
   'docker-compose.yml',
   '-f',
   overlayFile,
+  ...(isSandbox ? ['-f', 'docker-compose.sandbox.yml'] : []),
 ]
 
 // No auth secrets are needed for the "e2e" target: the stack runs in the "dev" auth profile,
@@ -252,6 +272,8 @@ const composeEnv = {
         ? '172.27.0.10'
         : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
+  // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run.
+  ...(isSandbox ? { OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092' } : {}),
   ...(isDemo || isLocalAuth || isInstallation
     ? {}
     : {
@@ -260,7 +282,10 @@ const composeEnv = {
         OPAA_DROPBOX_STUB_PORT: dropboxStubPort,
       }),
   ...(usesMailpit
-    ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
+    ? {
+        OPAA_MAILPIT_WEB_PORT: mailpitWebPort,
+        OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort,
+      }
     : {}),
 }
 
@@ -315,7 +340,9 @@ function teardown() {
   }
   tornDown = true
   console.log('\n> Tearing down E2E stack (docker compose down -v)')
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], {
+    env: composeEnv,
+  })
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -375,7 +402,7 @@ function runSeed() {
   const seedArgs = [
     'demo/seed/seed.py',
     '--profile',
-    target,
+    isSandbox ? 'e2e' : target,
     '--base-url',
     `http://localhost:${backendPort}/api`,
   ]
@@ -405,7 +432,9 @@ function runSeed() {
   }
   // The seed prints non-ASCII progress lines; a Windows console codepage (cp1252) cannot encode
   // them and would abort the run.
-  return run(venvPython, seedArgs, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
+  return run(venvPython, seedArgs, {
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+  })
 }
 
 async function waitUntilReady(timeoutMs) {
@@ -450,7 +479,9 @@ async function runStack(variantArgs = [], variantEnv = {}) {
   tornDown = false
   prepareBindMounts()
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], {
+    env: composeEnv,
+  })
 
   // The "e2e" target names its services explicitly (only the ones this suite needs); the "demo"
   // target relies on `--profile demo` (already in composeArgs above) to pull in
@@ -486,6 +517,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
             'postgres',
             'backend',
             'frontend',
+            ...(isSandbox ? ['opensandbox-server'] : []),
           ]
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
@@ -542,6 +574,11 @@ async function runStack(variantArgs = [], variantEnv = {}) {
     // (e2e/local-auth/tests), so these specs - which need a stack the regular suite does not have -
     // can never be picked up by a bare `playwright test`.
     playwrightArgs.push('--config', 'local-auth/playwright.config.ts')
+  }
+  if (isSandbox) {
+    // Its own config with its own testDir (e2e/sandbox/tests): the stack needs OpenSandbox and the
+    // agent switch, which the regular suite does not have.
+    playwrightArgs.push('--config', 'sandbox/playwright.config.ts')
   }
   if (isInstallation) {
     // Its own config, without retries: completing the installation ends the installation mode.

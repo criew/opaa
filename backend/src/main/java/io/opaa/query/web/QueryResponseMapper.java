@@ -5,6 +5,7 @@ import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
+import io.opaa.chat.web.ChatAttachmentResponseMapper;
 import io.opaa.chat.web.ChatResponseMapper;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.query.QueryOutcome;
@@ -31,7 +32,8 @@ final class QueryResponseMapper {
             result.chatId())
         .evidence(ChatResponseMapper.toEvidence(result.evidence()))
         .chatTitle(result.chatTitle())
-        .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
+        .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()))
+        .generatedFiles(ChatAttachmentResponseMapper.toRefs(result.generatedFiles()));
   }
 
   private static QueryMetadata toMetadata(QueryOutcome outcome) {

@@ -313,10 +313,12 @@ public class QueryService {
 
                 // A present tool-loop handler may take over the whole turn, with exactly the
                 // rights and scope just resolved above; an empty result leaves everything below
-                // unchanged.
+                // unchanged. A question that names new attachments stays on the ordinary path,
+                // which reads them; earlier attachments of the chat, the loop's own generated
+                // files among them, do not keep a turn from the loop.
                 Optional<QueryResult> toolLoopResult =
                     toolLoopQueryHandler
-                        .filter(handler -> attachments.attachmentIds().isEmpty())
+                        .filter(handler -> attachments.newAttachmentIds().isEmpty())
                         .flatMap(
                             handler ->
                                 handler.handle(

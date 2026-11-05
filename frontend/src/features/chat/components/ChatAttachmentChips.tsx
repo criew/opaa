@@ -88,26 +88,32 @@ export function ChatAttachmentDraftChips({ items, notice, onRemove, disabled }: 
   )
 }
 
-/** The attachments a sent question carried, shown above its bubble. */
+/**
+ * The attachments a sent question carried, shown above its bubble - or, with `generated`, the
+ * files a tool produced for an answer, shown below it.
+ */
 export function ChatAttachmentRefs({
   attachments,
   onOpen,
+  generated = false,
 }: {
   attachments: ChatAttachmentRef[]
   onOpen?: (attachment: ChatAttachmentRef) => void
+  generated?: boolean
 }) {
   if (attachments.length === 0) return null
   return (
     <Box
       component="ul"
-      aria-label="Anhänge"
-      data-testid="message-attachments"
+      aria-label={generated ? 'Erzeugte Dateien' : 'Anhänge'}
+      data-testid={generated ? 'generated-files' : 'message-attachments'}
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
-        justifyContent: 'flex-end',
+        justifyContent: generated ? 'flex-start' : 'flex-end',
         gap: 0.5,
         m: 0,
+        mt: generated ? 1 : 0,
         mb: 0.5,
         p: 0,
         listStyle: 'none',
@@ -121,7 +127,11 @@ export function ChatAttachmentRefs({
             icon={<AttachFileIcon aria-hidden />}
             label={attachment.fileName}
             onClick={onOpen ? () => onOpen(attachment) : undefined}
-            aria-label={onOpen ? `Anhang ${attachment.fileName} herunterladen` : undefined}
+            aria-label={
+              onOpen
+                ? `${generated ? 'Datei' : 'Anhang'} ${attachment.fileName} herunterladen`
+                : undefined
+            }
             sx={{ maxWidth: '100%' }}
           />
         </Box>

@@ -54,6 +54,11 @@ class SecurityInvariantsTest {
               "io.opaa.indexing.source.smb.SmbShareClient$ValidatingSocketFactory#createSocket",
               "runs TargetAddressValidator#validateHost before it connects"),
           Map.entry("io.opaa.llm.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.query.spike.OpenSandboxClient#send",
+              "development-only spike: reaches only the sandbox server the operator configured in"
+                  + " opaa.sandbox.base-url, never an address from the model or a person; follows"
+                  + " no redirect"),
           Map.entry("io.opaa.llm.LlmModelConnectionTester#probe", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.LlmModelDiscoverer#send", MODEL_ADDRESS_CHECKED),
           Map.entry(

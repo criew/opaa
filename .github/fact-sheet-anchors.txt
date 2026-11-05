@@ -237,6 +237,7 @@ rollensicht#user
 datenfluesse
 datenfluesse#bereich-outbound
 datenfluesse#chat-model
+datenfluesse#code-sandbox
 datenfluesse#connection-oauth
 datenfluesse#datenfluesse
 datenfluesse#directory-sync
