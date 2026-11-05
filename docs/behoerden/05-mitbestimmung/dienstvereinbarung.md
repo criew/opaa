@@ -243,15 +243,19 @@ Zustimmung des Personalrats.
 der Sperre durch die Verwaltung kennt:
 
 1. Die Dienststelle sperrt das Konto einer ausgeschiedenen Person binnen [Frist] nach dem
-   Ausscheiden. Kann ein Konto in der eingesetzten Version nicht gesperrt werden, etwa ein Konto
-   eines Identitätsanbieters, gilt die Löschfrist dafür nicht; die Dienststelle regelt den Ersatz
-   [Regelung].
+   Ausscheiden, bei einem Konto eines Identitätsanbieters mit Verzeichnisabgleich durch
+   Deaktivieren im Verzeichnis; dessen Sperre durch den Abgleich steht der Sperre durch die
+   Verwaltung gleich. Kann ein Konto in der eingesetzten Version nicht gesperrt werden, etwa ein
+   Konto eines Identitätsanbieters ohne Verzeichnisabgleich, gilt die Löschfrist dafür nicht; die
+   Dienststelle regelt den Ersatz [Regelung].
 2. Bei planbarem Ausscheiden erhält die Person vor der Sperre Gelegenheit zur Selbstauskunft; solange
    diese die Chats nicht umfasst, und nach der Sperre bis zum Löschdatum erhält sie Auskunft über die
    oder den Datenschutzbeauftragten.
 3. Die Chats werden nach [Frist, nicht kürzer als die Untergrenze der Version] gelöscht. Eine
    Verlängerung bedarf der Zustimmung des Personalrats.
-4. Die Löschung der Chats eines Kontos wird nur für einen der Zwecke angehalten, die die eingesetzte
+4. Die Löschung der Chats eines Kontos wird, soweit die eingesetzte Version das für die Kontoart
+   kennt (heute lokale Konten; bei Anbieterkonten setzt nur eine offene anlassbezogene Klärung
+   sie aus), nur für einen der Zwecke angehalten, die die eingesetzte
    Version zur Auswahl stellt (behördliche oder gerichtliche Anordnung, Sicherung von Beweismitteln
    nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag der Person), nie für einen
    disziplinarischen, arbeitsrechtlichen oder leistungsbezogenen Zweck. Eine Person beantragt mit

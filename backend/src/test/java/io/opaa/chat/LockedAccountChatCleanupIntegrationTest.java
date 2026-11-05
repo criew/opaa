@@ -217,22 +217,68 @@ class LockedAccountChatCleanupIntegrationTest {
   }
 
   @Test
-  void anAccountOfAnIdentityProviderLockedByItsDirectoryStartsNoPeriod() {
-    User user =
-        new User(UUID.randomUUID().toString(), "test-issuer", "anbieter@example.com", "Anbieter");
-    user.setOrganizationId(organizationId);
-    UUID person = userRepository.save(user).getId();
+  void anAccountOfAnIdentityProviderLockedByItsDirectoryLosesItsChatsAfterThePeriod() {
+    UUID person = providerAccount("test-issuer");
     chat(space(person, true), person);
-    jdbc.update(
-        "UPDATE users SET directory_locked_at = ? WHERE id = ?",
-        Timestamp.from(now.minus(DAY.multipliedBy(800))),
-        person);
+    Instant lockedAt = now.minus(DAY.multipliedBy(366));
+    lockByDirectory(person, lockedAt);
+
+    cleanupService.runOnce(now);
+
+    assertThat(chatCountOf(person)).isZero();
+    assertThat(userRepository.findById(person)).isPresent();
+    assertThat(String.valueOf(deletionEventsOf(person).getFirst().get("before")))
+        .contains("periodStart", lockedAt.toString(), "lockReason", "DIRECTORY");
+    assertThatThrownBy(() -> cleanupService.stateOf(organizationId, person))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void aDirectoryLockShorterThanThePeriodOrTakenBackKeepsTheChats() {
+    UUID recent = providerAccount("test-issuer");
+    chat(space(recent, true), recent);
+    lockByDirectory(recent, now.minus(DAY.multipliedBy(364)));
+    UUID unlocked = providerAccount("test-issuer");
+    chat(space(unlocked, true), unlocked);
+    lockByDirectory(unlocked, now.minus(DAY.multipliedBy(800)));
+    jdbc.update("UPDATE users SET directory_locked_at = NULL WHERE id = ?", unlocked);
+
+    cleanupService.runOnce(now);
+
+    assertThat(chatCountOf(recent)).isOne();
+    assertThat(chatCountOf(unlocked)).isOne();
+  }
+
+  @Test
+  void aBatchLeavesTheChatsOfAProviderAccountTheDirectoryUnlockedSinceItWasFoundDue() {
+    UUID person = providerAccount("test-issuer");
+    chat(space(person, true), person);
+    lockByDirectory(person, now.minus(DAY.multipliedBy(400)));
+    Instant cutoff = now.minus(DAY.multipliedBy(365));
+    LockedAccountChatCleanupStore.DueAccount due =
+        store.findDue(cutoff, now, 10).stream()
+            .filter(account -> account.userId().equals(person))
+            .findFirst()
+            .orElseThrow();
+    assertThat(due.source()).isEqualTo(LockedAccountChatCleanupStore.LockSource.DIRECTORY);
+
+    jdbc.update("UPDATE users SET directory_locked_at = NULL WHERE id = ?", person);
+    int deleted = cleanupService.deleteBatch(due, cutoff, now, 10, true);
+
+    assertThat(deleted).isZero();
+    assertThat(chatCountOf(person)).isOne();
+  }
+
+  @Test
+  void anOpenKlaerungSuspendsTheDeletionOfADirectoryLockedAccount() {
+    UUID person = providerAccount("test-issuer");
+    chat(space(person, true), person);
+    lockByDirectory(person, now.minus(DAY.multipliedBy(800)));
+    requestKlaerung(person, admin());
 
     cleanupService.runOnce(now);
 
     assertThat(chatCountOf(person)).isOne();
-    assertThatThrownBy(() -> cleanupService.stateOf(organizationId, person))
-        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -516,11 +562,12 @@ class LockedAccountChatCleanupIntegrationTest {
     lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(345)));
     lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(300)));
     lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(366)));
+    lockByDirectory(providerAccount("test-issuer"), now.minus(DAY.multipliedBy(350)));
     UUID held = localAccount();
     lockByAdministration(held, now.minus(DAY.multipliedBy(350)));
     approvedHold(held, admin, admin());
 
-    assertThat(cleanupService.upcomingAccounts(now)).isEqualTo(before + 2);
+    assertThat(cleanupService.upcomingAccounts(now)).isEqualTo(before + 3);
     assertThat(service(false).upcomingAccounts(now)).isZero();
   }
 
@@ -862,6 +909,11 @@ class LockedAccountChatCleanupIntegrationTest {
     row.unlock(lockedAt);
     row.lock(LockReason.ADMIN, lockedAt, null);
     credentialsRepository.save(row);
+  }
+
+  private void lockByDirectory(UUID userId, Instant lockedAt) {
+    jdbc.update(
+        "UPDATE users SET directory_locked_at = ? WHERE id = ?", Timestamp.from(lockedAt), userId);
   }
 
   private void unlock(UUID userId) {

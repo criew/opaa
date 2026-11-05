@@ -114,8 +114,8 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 - **Kontosperren aus dem Abgleich** unterliegen derselben Schwelle und demselben Bestätigungsweg, sind
   als Kontozustand rückholbar (Entsperren), nicht aber in ihren Folgen: Eine Sperre ist eine
   Deaktivierung nach ADR-0041, der Abgleich der Verbindungen beendet die verbundenen Konten, verwirft
-  deren Geheimnisse und startet die Löschfrist der privaten Bibliotheken; ein Entsperren verbindet
-  nichts neu. Sie werden historisiert (`AccountStateHistory`, Entscheidung 8); die Person erhält bei der
+  deren Geheimnisse und startet die Löschfrist der privaten Bibliotheken und die der Chats
+  (ADR-0066, Entscheidung 8); ein Entsperren beendet die Fristen, verbindet aber nichts neu. Sie werden historisiert (`AccountStateHistory`, Entscheidung 8); die Person erhält bei der
   nächsten Anmeldung Grund und Ansprechstelle.
 - **Mechanismuswechsel:** Token-Gruppen bleiben mit eingefrorener Mitgliedschaft stehen, sind kein neues
   Grant-Ziel, der Differenzbericht weist sie aus; nichts wird still entzogen.

@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,31 +14,75 @@ import org.springframework.stereotype.Repository;
 
 /**
  * The tables of {@link LockedAccountChatCleanupService}: the moment from which the period may
- * count, the holds and their requests, and the reading of which accounts are due. Only a lock by
- * the administration ({@code local_credentials.locked_reason = 'ADMIN'}) starts a period; an open
- * anlassbezogene Klärung suspends it with the rule of the account deletion ({@code
- * UserRepository#countDeletionBlockers}).
+ * count, the holds and their requests, and the reading of which accounts are due. Two locks start a
+ * period, each of {@link LockSource}: the administration's lock of a local account ({@code
+ * local_credentials.locked_reason = 'ADMIN'}) and the directory sync's lock of a provider account
+ * ({@code users.directory_locked_at}); an open anlassbezogene Klärung suspends it with the rule of
+ * the account deletion ({@code UserRepository#countDeletionBlockers}).
  */
 @Repository
 class LockedAccountChatCleanupStore {
 
   /**
-   * The conditions of a due account, on {@code lc} and the parameters cutoff, now, now: a hold
-   * counts until its {@code held_until}; one without (placed before holds ended by themselves)
-   * counts until the nightly run gives it its end.
+   * A lock that starts a period: the rows it reads, the condition of a locked account, when the
+   * lock began, the account's id and the row a deletion locks so that an unlock waits for it. An
+   * account is either local or of a provider, so at most one source names it.
    */
-  private static final String DUE =
-      """
-      lc.locked_reason = 'ADMIN' AND lc.locked_at IS NOT NULL
-        AND s.counting_since IS NOT NULL
-        AND GREATEST(lc.locked_at, s.counting_since) < ?
-        AND NOT EXISTS (SELECT 1 FROM chat_cleanup_holds h WHERE h.user_id = lc.user_id
-            AND (h.held_until IS NULL OR h.held_until > ?))
-        AND NOT EXISTS (SELECT 1 FROM audit_incident_scope_grants g
-            WHERE (g.subject_user_id = lc.user_id OR g.requested_by_user_id = lc.user_id
-                OR g.approved_by_user_id = lc.user_id)
-              AND (g.status = 'PENDING' OR g.usable_until >= ?))
-      """;
+  enum LockSource {
+    ADMIN(
+        "local_credentials lc JOIN users u ON u.id = lc.user_id",
+        "lc.locked_reason = 'ADMIN' AND lc.locked_at IS NOT NULL",
+        "lc.locked_at",
+        "lc.user_id",
+        "lc"),
+    DIRECTORY("users u", "u.directory_locked_at IS NOT NULL", "u.directory_locked_at", "u.id", "u");
+
+    private final String from;
+    private final String locked;
+    private final String lockedAt;
+    private final String userId;
+    private final String lockedRow;
+
+    LockSource(String from, String locked, String lockedAt, String userId, String lockedRow) {
+      this.from = from;
+      this.locked = locked;
+      this.lockedAt = lockedAt;
+      this.userId = userId;
+      this.lockedRow = lockedRow;
+    }
+
+    /** The start of the period on the row. */
+    String start() {
+      return "GREATEST(" + lockedAt + ", s.counting_since)";
+    }
+
+    /** The rows of this source with the counting state, ready for {@code WHERE}. */
+    String from() {
+      return from + " CROSS JOIN chat_locked_account_cleanup_state s";
+    }
+
+    /**
+     * The conditions of a due account, on the parameters cutoff, now, now: a hold counts until its
+     * {@code held_until}; one without (placed before holds ended by themselves) counts until the
+     * nightly run gives it its end.
+     */
+    String due() {
+      return locked
+          + " AND s.counting_since IS NOT NULL AND "
+          + start()
+          + " < ? AND NOT EXISTS (SELECT 1 FROM chat_cleanup_holds h WHERE h.user_id = "
+          + userId
+          + " AND (h.held_until IS NULL OR h.held_until > ?))"
+          + " AND NOT EXISTS (SELECT 1 FROM audit_incident_scope_grants g WHERE (g.subject_user_id"
+          + " = "
+          + userId
+          + " OR g.requested_by_user_id = "
+          + userId
+          + " OR g.approved_by_user_id = "
+          + userId
+          + ") AND (g.status = 'PENDING' OR g.usable_until >= ?))";
+    }
+  }
 
   private final JdbcTemplate jdbc;
 
@@ -76,23 +121,37 @@ class LockedAccountChatCleanupStore {
    * limit}.
    */
   List<DueAccount> findDue(Instant cutoff, Instant now, int limit) {
+    StringBuilder sql = new StringBuilder();
+    List<Object> args = new ArrayList<>();
+    for (LockSource source : LockSource.values()) {
+      if (!sql.isEmpty()) {
+        sql.append(" UNION ALL ");
+      }
+      sql.append("SELECT ")
+          .append(source.userId)
+          .append(" AS user_id, u.organization_id, ")
+          .append(source.start())
+          .append(" AS start, '")
+          .append(source.name())
+          .append("' AS lock_source FROM ")
+          .append(source.from())
+          .append(" WHERE ")
+          .append(source.due())
+          .append(" AND EXISTS (SELECT 1 FROM chats c WHERE c.author_id = ")
+          .append(source.userId)
+          .append(" AND c.status = 'PRIVATE')");
+      args.addAll(List.of(Timestamp.from(cutoff), Timestamp.from(now), Timestamp.from(now)));
+    }
+    args.add(limit);
     return jdbc.query(
-        "SELECT lc.user_id, u.organization_id, GREATEST(lc.locked_at, s.counting_since) AS start"
-            + " FROM local_credentials lc JOIN users u ON u.id = lc.user_id"
-            + " CROSS JOIN chat_locked_account_cleanup_state s WHERE "
-            + DUE
-            + " AND EXISTS (SELECT 1 FROM chats c WHERE c.author_id = lc.user_id"
-            + " AND c.status = 'PRIVATE')"
-            + " ORDER BY start, lc.user_id LIMIT ?",
+        "SELECT * FROM (" + sql + ") due ORDER BY start, user_id LIMIT ?",
         (rs, i) ->
             new DueAccount(
                 rs.getObject("user_id", UUID.class),
                 rs.getObject("organization_id", UUID.class),
-                rs.getTimestamp("start").toInstant()),
-        Timestamp.from(cutoff),
-        Timestamp.from(now),
-        Timestamp.from(now),
-        limit);
+                rs.getTimestamp("start").toInstant(),
+                LockSource.valueOf(rs.getString("lock_source"))),
+        args.toArray());
   }
 
   /**
@@ -100,32 +159,43 @@ class LockedAccountChatCleanupStore {
    * hold or an open Klärung at {@code now} leaves an account out, as it does in {@link #findDue}.
    */
   int countDueBetween(Instant cutoff, Instant later, Instant now) {
-    Integer count =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM local_credentials lc"
-                + " CROSS JOIN chat_locked_account_cleanup_state s WHERE "
-                + DUE
-                + " AND GREATEST(lc.locked_at, s.counting_since) >= ?",
-            Integer.class,
-            Timestamp.from(later),
-            Timestamp.from(now),
-            Timestamp.from(now),
-            Timestamp.from(cutoff));
-    return count == null ? 0 : count;
+    int count = 0;
+    for (LockSource source : LockSource.values()) {
+      Integer ofSource =
+          jdbc.queryForObject(
+              "SELECT count(*) FROM "
+                  + source.from()
+                  + " WHERE "
+                  + source.due()
+                  + " AND "
+                  + source.start()
+                  + " >= ?",
+              Integer.class,
+              Timestamp.from(later),
+              Timestamp.from(now),
+              Timestamp.from(now),
+              Timestamp.from(cutoff));
+      count += ofSource == null ? 0 : ofSource;
+    }
+    return count;
   }
 
   /**
-   * Whether {@code userId} is still due, read under a share lock on its credentials row until the
-   * end of the transaction: an unlock waits for the deletion, or the deletion sees it. A hold only
-   * locks that row without changing it, so a hold committed while this read waited is not in its
-   * snapshot; {@link #holdRunsAt} re-reads it afterwards.
+   * Whether {@code userId} is still due by {@code source}, read under a share lock on the row of
+   * its lock until the end of the transaction: an unlock waits for the deletion, or the deletion
+   * sees it. A hold only locks the credentials row without changing it, so a hold committed while
+   * this read waited is not in its snapshot; {@link #holdRunsAt} re-reads it afterwards.
    */
-  boolean lockStillDue(UUID userId, Instant cutoff, Instant now) {
+  boolean lockStillDue(UUID userId, LockSource source, Instant cutoff, Instant now) {
     return !jdbc.queryForList(
-            "SELECT 1 FROM local_credentials lc"
-                + " CROSS JOIN chat_locked_account_cleanup_state s WHERE lc.user_id = ? AND "
-                + DUE
-                + " FOR SHARE OF lc",
+            "SELECT 1 FROM "
+                + source.from()
+                + " WHERE "
+                + source.userId
+                + " = ? AND "
+                + source.due()
+                + " FOR SHARE OF "
+                + source.lockedRow,
             Integer.class,
             userId,
             Timestamp.from(cutoff),
@@ -359,5 +429,5 @@ class LockedAccountChatCleanupStore {
       Instant requestedAt) {}
 
   /** An account whose period started at {@code periodStart} and ran out. */
-  record DueAccount(UUID userId, UUID organizationId, Instant periodStart) {}
+  record DueAccount(UUID userId, UUID organizationId, Instant periodStart, LockSource source) {}
 }

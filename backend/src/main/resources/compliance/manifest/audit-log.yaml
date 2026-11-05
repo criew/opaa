@@ -362,10 +362,12 @@ auditEvents:
     payloadKeys: [documentsRemoved, name, sourceType]
   - id: LOCKED_ACCOUNT_CHATS_DELETED
     trigger: >-
-      Der nächtliche Lauf löscht Chats eines lokalen Kontos, dessen Frist nach der Sperre durch
-      die Verwaltung abgelaufen ist; ein Eintrag je Konto und Lauf
+      Der nächtliche Lauf löscht Chats eines Kontos, dessen Frist nach der Sperre durch die
+      Verwaltung (lokal) oder durch den Verzeichnisabgleich (Anbieterkonto) abgelaufen ist; ein
+      Eintrag je Konto und Lauf
     details: >-
-      Beginn der Frist und Sperrgrund, nie Zahl, Titel, Inhalt oder Space der Chats; betroffene
+      Beginn der Frist und Sperrgrund (ADMIN oder DIRECTORY), nie Zahl, Titel, Inhalt oder Space
+      der Chats; betroffene
       Person ist das gesperrte Konto
     purpose: >-
       Allein der Nachweis, dass die Chats eines gesperrten Kontos fristgerecht gelöscht wurden;

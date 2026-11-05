@@ -45,12 +45,19 @@ das Löschen blockiert, solange er liegt. Was mit Bibliotheken und Spaces der Pe
 regelt [Ausscheiden und Nachfolge](ausscheiden.md).
 
 **Chats gesperrter Konten** löscht OPAA nach einer Frist ab der Sperre durch die Verwaltung, in
-allen Spaces. Das Datum steht im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Entsperren
-beendet die Frist. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
+allen Spaces. Bei Konten eines Identitätsanbieters beginnt die Frist mit der Sperre durch den
+[Verzeichnisabgleich](../betrieb/authentifizierung.md#verzeichnisabgleich-je-anbieter): Wer im
+Verzeichnis deaktiviert wird oder dort fehlt, ist auch in OPAA gesperrt. Ohne Verzeichnisabgleich
+greift die Frist für Anbieterkonten nicht. Entsperren beendet die Frist.
+
+Bei lokalen Konten steht das Datum im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Die
+Anhaltung gibt es nur dort; bei Anbieterkonten setzt allein eine offene anlassbezogene Klärung die
+Löschung aus. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
 Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung, und erst eine
 **zweite** Person gibt frei. Die Freigabe gilt genau dem angezeigten Antrag: Wurde er inzwischen
 zurückgezogen und neu gestellt, lehnt OPAA sie ab und zeigt den aktuellen Antrag. Einen Antrag,
-der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
+der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte
+Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
 
 ## Personenbezug entfernen

@@ -12,7 +12,7 @@ Jede Änderung wirkt ohne Neustart auf allen Instanzen und steht mit altem und n
 |---|---|---|
 | „Selbstauskunft“ | ob Personen ihre Daten herunterladen können (Notabschaltung) und wie oft am Tag | an; ein vollständiger Download je Tag |
 | „Bereinigung der Chats in Spaces“ | ob inaktive Chats archiviert und gelöscht werden, und nach welcher Frist | siehe [Chats verwalten](../benutzer/chats.md#automatisches-aufräumen) |
-| „Chats gesperrter Konten“ | Löschung der Chats nach einer Sperre durch die Verwaltung, mit Frist | an, nach 365 Tagen |
+| „Chats gesperrter Konten“ | Löschung der Chats nach einer Sperre durch die Verwaltung oder den Verzeichnisabgleich, mit Frist | an, nach 365 Tagen |
 | „Anlassbezogene Klärungen“ | wie lange Anträge und Freigaben einer Klärung liegen bleiben | 1 Jahr, 1 bis 10 Jahre |
 
 **Eine Verkürzung wirkt mit dem nächsten Löschlauf vollständig**, eine Verlängerung sofort, holt aber
