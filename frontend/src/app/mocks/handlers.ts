@@ -57,6 +57,7 @@ import { connectionLifecycleHandlers } from '@/features/connection/mocks/connect
 import { externalAccessHandlers } from '@/features/external-access/mocks/externalAccessHandlers'
 import { externalAccessTokenHandlers } from '@/features/external-access/mocks/externalAccessTokenHandlers'
 import { externalAccessLibraryHandlers } from '@/features/external-access/mocks/externalAccessLibraryHandlers'
+import { serviceAccountHandlers } from '@/features/external-access/mocks/serviceAccountHandlers'
 // search-admin
 import { searchHandlers } from '@/features/chat/mocks/searchHandlers'
 import { searchAdminHandlers } from '@/features/search-admin/mocks/searchAdminHandlers'
@@ -141,6 +142,7 @@ export const handlers = [
   ...externalAccessHandlers,
   ...externalAccessTokenHandlers,
   ...externalAccessLibraryHandlers,
+  ...serviceAccountHandlers,
   // search-admin
   ...searchHandlers,
   ...searchAdminHandlers,

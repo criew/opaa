@@ -37,7 +37,7 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/admin\/settings-transfer(\/|$)/, 'administration/einstellungen-uebertragen.html'],
   [/^\/admin\/capabilities(\/|$)/, 'administration/anlegerechte.html'],
   [
-    /^\/admin\/(connections\/external-tools|external-access)(\/|$)/,
+    /^\/admin\/(connections\/(external-tools|service-accounts)|external-access)(\/|$)/,
     'administration/externe-ki-werkzeuge.html',
   ],
   [/^\/admin\/(connections|connection-profiles)(\/|$)/, 'administration/zugaenge.html'],

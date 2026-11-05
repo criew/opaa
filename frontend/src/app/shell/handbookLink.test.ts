@@ -23,6 +23,9 @@ describe('handbookLink', () => {
     expect(handbookUrl('/admin/connections/external-tools', '0.0.0-dev')).toBe(
       'https://opaa.io/handbuch/administration/externe-ki-werkzeuge.html',
     )
+    expect(handbookUrl('/admin/connections/service-accounts', '0.0.0-dev')).toBe(
+      'https://opaa.io/handbuch/administration/externe-ki-werkzeuge.html',
+    )
     expect(handbookUrl('/admin/connections/access', '0.0.0-dev')).toBe(
       'https://opaa.io/handbuch/administration/zugaenge.html',
     )

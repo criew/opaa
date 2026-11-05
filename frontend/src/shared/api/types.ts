@@ -524,6 +524,23 @@ export type CreatedExternalAccessTokenResponse =
 export type OwnExternalAccessTokenResponse = components['schemas']['OwnExternalAccessTokenResponse']
 export type AdminExternalAccessTokenResponse =
   components['schemas']['AdminExternalAccessTokenResponse']
+export type ServiceAccountRequest = components['schemas']['ServiceAccountRequest']
+export type ServiceAccountResponse = components['schemas']['ServiceAccountResponse']
+export type ServiceAccountListResponse = components['schemas']['ServiceAccountListResponse']
+export type ServiceAccountDetailResponse = components['schemas']['ServiceAccountDetailResponse']
+export type ServiceAccountConsentedLibraryResponse =
+  components['schemas']['ServiceAccountConsentedLibraryResponse']
+export type ServiceAccountConsentStatus = components['schemas']['ServiceAccountConsentStatus']
+export type ServiceAccountTokenResponse = components['schemas']['ServiceAccountTokenResponse']
+export type CreateServiceAccountTokenRequest =
+  components['schemas']['CreateServiceAccountTokenRequest']
+export type CreatedServiceAccountTokenResponse =
+  components['schemas']['CreatedServiceAccountTokenResponse']
+export type LibraryServiceAccountConsentResponse =
+  components['schemas']['LibraryServiceAccountConsentResponse']
+export type LibraryServiceAccountConsentListResponse =
+  components['schemas']['LibraryServiceAccountConsentListResponse']
+export type ServiceAccountChoiceResponse = components['schemas']['ServiceAccountChoiceResponse']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

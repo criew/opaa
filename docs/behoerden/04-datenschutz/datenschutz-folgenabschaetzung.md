@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -65,6 +65,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 | Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md), Rollenvergabe | [ ] |
 | Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
 | Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/referenz/rechte-matrix.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
+| Inhalte erreichen über ein Dienstkonto ein Fachverfahren und dessen Nutzende | Zustimmung der Bibliotheksverwaltung je Dienstkonto, befristet, mit Erinnerung und sofort widerrufbar; Kanal nur im Hausnetz ([Dienstkonten](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten), [Dienstkonto aufnehmen](../../handbuch/benutzer/arbeitsmittel-teilen.md#dienstkonto-aufnehmen)) | wer zustimmt, Protokollierung im Fachverfahren, Kreis seiner Nutzenden | [ ] |
 | Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modell-endpunkte.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
 | Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/referenz/wie-die-suche-arbeitet.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
 | Daten bleiben länger als nötig | Fristen und Löschung je Datum ({{faktenblatt:fristen}}) | gewählte Fristen | [ ] |

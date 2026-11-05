@@ -174,6 +174,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   in the grid like `AssetTile`, on a login page outside the administration, no content block.
  * - `ExternalAccessTokenValueDialog`: the token value shown once and the setup snippets
  *   as a monospace block — the same case as `GeneratedPasswordDialog`.
+ * - `IssueServiceAccountTokenDialog`: the token value of a service account shown once as a
+ *   monospace block — the same case as `ExternalAccessTokenValueDialog`.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -196,6 +198,7 @@ const AUSNAHMEN = [
   'AccessBadge.tsx',
   'HandoverScopeSummary.tsx',
   'ExternalAccessTokenValueDialog.tsx',
+  'IssueServiceAccountTokenDialog.tsx',
 ]
 
 /**

@@ -3,7 +3,7 @@
 **Ziel:** Personen durchsuchen freigegebene Bibliotheken aus Werkzeugen wie OpenCode, kontrolliert und befristet.
 {: .kopf }
 
-**Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“
+**Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“ und „Dienstkonten“
 {: .kopf }
 
 Werkzeuge wie OpenCode holen sich mit einem Zugangstoken Fundstellen aus
@@ -45,14 +45,28 @@ Leistungs- oder Disziplinarfragen.
 
 ## Dienstkonten
 
-Ein Fachverfahren hängt nicht am Token einer Person, sondern an einem **Dienstkonto** mit eigenen
-Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt hat, je Bibliothek befristet
-wie eine Freigabe und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten zählt hier
-nicht. Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt
-sie weg, laufen die Tokens weiter, und das Dienstkonto zeigt die Lücke. Deaktivieren beendet alle
-Tokens sofort. Grenzen: Eine Rotation von `OPAA_AUTH_JWT_SECRET` entwertet auch diese Tokens; eine
-Rücksicherung belebt widerrufene Tokens und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was
-das Fachverfahren selbst mit den Fundstellen protokolliert, klärt die Behörde vor der Anbindung.
+Ein Fachverfahren wie ein Antragsportal hängt nicht am Token einer Person, sondern an einem
+**Dienstkonto** mit eigenen Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt
+hat, je Bibliothek befristet und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten
+zählt hier nicht ([Dienstkonto aufnehmen](../benutzer/arbeitsmittel-teilen.md#dienstkonto-aufnehmen)).
+
+1. Reiter „Dienstkonten“, „Dienstkonto anlegen“: den Namen des Verfahrens, die verantwortliche
+   Person und bei Bedarf „Anfragen je Stunde“ für alle Tokens zusammen, dann „Weiter“.
+2. „Erstes Token ausstellen“: Name und Ablauf, „Ausstellen“. Den Wert mit „Kopieren“ übernehmen und
+   auf sicherem Weg an den Betrieb des Verfahrens geben; er erscheint nur dieses eine Mal. „Ohne
+   Token beenden“ legt das Dienstkonto ohne Token an.
+3. Die Verwaltung jeder Bibliothek, die das Verfahren durchsuchen soll, nimmt das Dienstkonto auf.
+
+Ein Klick auf eine Zeile der Liste öffnet das Dienstkonto mit Angaben, Tokens und Bibliotheken.
+**Erneuern ohne Ausfall:** „Token ausstellen“, im Verfahren umstellen, dann das alte Token über „⋯“
+„Widerrufen“. „Dienstkonto deaktivieren“ beendet alle Tokens sofort und lässt sich nicht
+zurücknehmen.
+
+Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt sie
+weg, laufen die Tokens weiter, und die Liste zeigt „Verantwortlich fehlt“. Grenzen: Eine Rotation
+von `OPAA_AUTH_JWT_SECRET` entwertet auch diese Tokens; eine Rücksicherung belebt widerrufene Tokens
+und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was das Fachverfahren selbst mit den
+Fundstellen protokolliert, klärt die Behörde vor der Anbindung.
 
 ## Einstellungen
 

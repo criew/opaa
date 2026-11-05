@@ -6,4 +6,4 @@ Personen- und Gruppenauswahl: Auswahlfelder für Konten, Gruppen und „Alle Kon
 - **Spec-Tags:** lesende Operationen aus `user` (`GET /api/v1/users`) und `group` (`GET /api/v1/groups/selectable`, `GET /api/v1/me/groups`); eigene Spec-Datei gibt es nicht.
 - **Backend-Modul:** identity (Paket `io.opaa.auth`), rights (Paket `io.opaa.group`).
 - **Erlaubte Abhängigkeiten:** keine.
-- **Genutzt von:** `space`, `asset`, `library`, `prompt`, `group`, `succession`, `capability`, `directory-sync`.
+- **Genutzt von:** `space`, `asset`, `library`, `prompt`, `group`, `succession`, `capability`, `directory-sync`, `external-access`.

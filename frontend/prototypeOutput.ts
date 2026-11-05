@@ -3,12 +3,13 @@ import type { Plugin } from 'vite'
 export const PROTOTYPE_TITLE = 'OPAA-Prototyp'
 
 /**
- * Rewrites every non-ASCII UTF-16 code unit in JavaScript source as a `\uXXXX` escape, which
- * means the same inside strings, templates, regular expressions and comments. A backslash that
- * escaped the character itself (an identity escape) is dropped; the `\uXXXX` escape replaces it.
+ * Rewrites every non-ASCII UTF-16 code unit and every control character other than tab, line feed
+ * and carriage return in JavaScript source as a `\uXXXX` escape, which means the same inside
+ * strings, templates, regular expressions and comments. A backslash that escaped the character
+ * itself (an identity escape) is dropped; the `\uXXXX` escape replaces it.
  */
 export function escapeNonAsciiJs(code: string): string {
-  return code.replace(/(\\*)([\u0080-\uffff])/g, (_, slashes: string, char: string) => {
+  return code.replace(/(\\*)([^\t\n\r\x20-\x7e])/g, (_, slashes: string, char: string) => {
     const kept = slashes.length % 2 === 1 ? slashes.slice(1) : slashes
     return `${kept}\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`
   })
@@ -16,7 +17,8 @@ export function escapeNonAsciiJs(code: string): string {
 
 /**
  * Output of the static prototype: pure-ASCII scripts and its own page title. Static hosts such as
- * claude.ai artifacts reject files with certain raw characters (U+FFFD among them).
+ * claude.ai artifacts reject files with certain raw characters (U+FFFD and control bytes among
+ * them).
  */
 export function prototypeOutput(): Plugin {
   return {
@@ -29,6 +31,12 @@ export function prototypeOutput(): Plugin {
     generateBundle(_, bundle) {
       for (const file of Object.values(bundle)) {
         if (file.type === 'chunk') file.code = escapeNonAsciiJs(file.code)
+        // emitted script assets (the pdf.js worker) carry raw characters and control bytes too
+        else if (file.fileName.endsWith('.js')) {
+          const text =
+            typeof file.source === 'string' ? file.source : new TextDecoder().decode(file.source)
+          file.source = escapeNonAsciiJs(text)
+        }
       }
     },
   }
