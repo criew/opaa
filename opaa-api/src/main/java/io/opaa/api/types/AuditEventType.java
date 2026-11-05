@@ -181,6 +181,27 @@ public enum AuditEventType {
    * gap in the trail as one that begins without one; {@code after.reason} names which of the two.
    */
   API_TOKEN_EXPIRED,
+  /**
+   * A service account - the identity of one Fachverfahren on the external access channel - was
+   * created (ADR-0035, Entscheidung 7). Name and description stay in the table, never in the entry.
+   */
+  SERVICE_ACCOUNT_CREATED,
+  /**
+   * Responsible person or hourly quota of a service account changed, or its name or description.
+   */
+  SERVICE_ACCOUNT_CHANGED,
+  /** A service account was deactivated; its tokens end in the same act, each with its own entry. */
+  SERVICE_ACCOUNT_DEACTIVATED,
+  /**
+   * A library administration consented a library to a service account, with the end of the consent
+   * (ADR-0035, Entscheidung 7) - the reach of a Fachverfahren, as {@link
+   * #ASSET_EXTERNAL_ACCESS_CHANGED} is that of the personal tokens.
+   */
+  SERVICE_ACCOUNT_CONSENT_GRANTED,
+  /** The end of a running consent was moved. */
+  SERVICE_ACCOUNT_CONSENT_CHANGED,
+  /** A consent was taken back; the library leaves every token of the service account. */
+  SERVICE_ACCOUNT_CONSENT_REVOKED,
   /** One entry per effected change from a directory sync run, linked via {@code correlationRef}. */
   DIRECTORY_SYNC_CHANGE_APPLIED,
   /**

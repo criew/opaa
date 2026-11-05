@@ -243,7 +243,10 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             // external
             "external_access_settings",
             "external_access_token_libraries",
-            "external_access_tokens");
+            "external_access_tokens",
+            "service_account_library_consents",
+            "service_account_tokens",
+            "service_accounts");
   }
 
   /**

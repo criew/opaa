@@ -551,17 +551,51 @@ auditEvents:
   - id: ACCOUNT_REAUTHENTICATION_FORCED
     trigger: Eine erneute Anmeldung wird erzwungen (noch nicht verdrahtet)
   - id: API_TOKEN_ISSUED
-    trigger: Ein persönliches Zugangstoken für externe KI-Werkzeuge wird ausgestellt
-    details: Bibliotheksauswahl und Ablauf; Token-Kennung statt Tokenname
-    payloadKeys: [expiresAt, libraryIds]
+    trigger: >-
+      Ein persönliches Zugangstoken für externe KI-Werkzeuge oder ein Token eines Dienstkontos wird
+      ausgestellt
+    details: >-
+      Bibliotheksauswahl (nur persönliche Tokens) und Ablauf, beim Dienstkonto dessen Kennung;
+      Token-Kennung statt Tokenname
+    payloadKeys: [expiresAt, libraryIds, serviceAccountId]
   - id: API_TOKEN_REVOKED
-    trigger: Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen
-    details: Anlass und wer widerrufen hat
-    payloadKeys: [by, reason]
+    trigger: >-
+      Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen, auch mit der
+      Deaktivierung seines Dienstkontos
+    details: Anlass, wer widerrufen hat und gegebenenfalls die Kennung des Dienstkontos
+    payloadKeys: [by, reason, serviceAccountId]
   - id: API_TOKEN_EXPIRED
     trigger: Ein Zugangstoken erlischt durch Ablauf oder Kontenlebenszyklus
-    details: after.reason nennt EXPIRED oder ACCOUNT_LIFECYCLE
-    payloadKeys: [reason]
+    details: after.reason nennt EXPIRED oder ACCOUNT_LIFECYCLE; beim Dienstkonto dessen Kennung
+    payloadKeys: [reason, serviceAccountId]
+  - id: SERVICE_ACCOUNT_CREATED
+    trigger: Die Systemverwaltung legt ein Dienstkonto für ein Fachverfahren an
+    details: >-
+      Die verantwortliche Person als betroffene Person (Pseudonym) und das Kontingent; Name und
+      Beschreibung stehen nicht im Eintrag
+    payloadKeys: [rateLimitPerHour]
+  - id: SERVICE_ACCOUNT_CHANGED
+    trigger: >-
+      Die Systemverwaltung ändert Name, Beschreibung, verantwortliche Person oder Kontingent eines
+      Dienstkontos
+    details: Welche Angaben sich geändert haben, die verantwortliche Person als betroffene Person
+    payloadKeys: [changed, rateLimitPerHour]
+  - id: SERVICE_ACCOUNT_DEACTIVATED
+    trigger: Die Systemverwaltung deaktiviert ein Dienstkonto
+    details: Anzahl der dabei widerrufenen Tokens; jedes Token erhält zusätzlich einen eigenen Eintrag
+    payloadKeys: [revokedTokens]
+  - id: SERVICE_ACCOUNT_CONSENT_GRANTED
+    trigger: Die Verwaltung einer Bibliothek stimmt einem Dienstkonto zu
+    details: Kennung des Dienstkontos und Ende der Zustimmung
+    payloadKeys: [expiresAt, serviceAccountId]
+  - id: SERVICE_ACCOUNT_CONSENT_CHANGED
+    trigger: Die Verwaltung einer Bibliothek verschiebt das Ende einer laufenden Zustimmung
+    details: Kennung des Dienstkontos, altes und neues Ende
+    payloadKeys: [expiresAt, serviceAccountId]
+  - id: SERVICE_ACCOUNT_CONSENT_REVOKED
+    trigger: Die Verwaltung einer Bibliothek nimmt eine Zustimmung für ein Dienstkonto zurück
+    details: Kennung des Dienstkontos
+    payloadKeys: [serviceAccountId]
   - id: DIRECTORY_SYNC_CHANGE_APPLIED
     trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
     details: Je Änderung ein Eintrag, verbunden über correlation_ref

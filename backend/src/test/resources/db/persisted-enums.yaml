@@ -100,7 +100,9 @@ io.opaa.api.types.AuditEventType:
     PROMPT_CHANGED, PROMPT_CREATED, PROMPT_DELETED, PROMPT_LIBRARY_CHANGED, PROMPT_LIBRARY_CREATED,
     PROMPT_LIBRARY_DELETED, RERANK_MODEL_CHANGED, SEARCH_DIAGNOSIS_PROFILE_RUN,
     SELF_DISCLOSURE_EXPORT_FINISHED,
-    SELF_DISCLOSURE_EXPORT_STARTED, SELF_DISCLOSURE_SETTINGS_CHANGED, SETTINGS_IMPORTED,
+    SELF_DISCLOSURE_EXPORT_STARTED, SELF_DISCLOSURE_SETTINGS_CHANGED, SERVICE_ACCOUNT_CHANGED,
+    SERVICE_ACCOUNT_CONSENT_CHANGED, SERVICE_ACCOUNT_CONSENT_GRANTED, SERVICE_ACCOUNT_CONSENT_REVOKED,
+    SERVICE_ACCOUNT_CREATED, SERVICE_ACCOUNT_DEACTIVATED, SETTINGS_IMPORTED,
     SHARED_LIBRARY_QUOTA_CHANGED,
     SPACE_ARCHIVED, SPACE_CHANGED,
     SPACE_CREATED, SPACE_DELETED, SPACE_MEMBER_ADDED, SPACE_MEMBER_REMOVED,
@@ -127,7 +129,7 @@ io.opaa.api.types.AuditObjectType:
   assessment: AUDIT
   readable: [
     API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, GROUP, KNOWLEDGE_LIBRARY, PROMPT,
-    PROMPT_LIBRARY, SPACE, SYSTEM_SETTING, USER_ACCOUNT
+    PROMPT_LIBRARY, SERVICE_ACCOUNT, SPACE, SYSTEM_SETTING, USER_ACCOUNT
   ]
   pending: []
 io.opaa.api.types.AuditOutcome:
@@ -357,9 +359,14 @@ io.opaa.connection.token.ConnectionToken$Kind:
   readable: [OAUTH, PERSONAL_SECRET]
   pending: []
 io.opaa.externalaccess.token.ExternalAccessTokenRevocationReason:
-  attributes: [ExternalAccessToken.revocationReason]
+  attributes: [ExternalAccessToken.revocationReason, ServiceAccountToken.revocationReason]
   assessment: SECURITY
   readable: [ACCOUNT_LIFECYCLE, ADMIN, EXPIRED, OWNER]
+  pending: []
+io.opaa.externalaccess.token.ServiceAccountConsentEndReason:
+  attributes: [ServiceAccountLibraryConsent.endReason]
+  assessment: SECURITY
+  readable: [EXPIRED, REPLACED, WITHDRAWN]
   pending: []
 io.opaa.indexing.job.IndexingEventCategory:
   attributes: [IndexingRunEvent.category]

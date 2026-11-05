@@ -41,6 +41,8 @@ class ExternalAccessTokenAdminServiceTest {
     service =
         new ExternalAccessTokenAdminService(
             tokens,
+            mock(ServiceAccountTokenRepository.class),
+            mock(ServiceAccountRepository.class),
             users,
             mock(ExternalAccessTokenService.class),
             mock(AuditEventRecorder.class),

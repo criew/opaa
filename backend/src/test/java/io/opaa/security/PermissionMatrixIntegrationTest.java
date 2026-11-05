@@ -127,6 +127,7 @@ class PermissionMatrixIntegrationTest {
   private static final Set<String> ORGANIZATION_LISTINGS =
       Set.of(
           "listAllExternalAccessTokens",
+          "listServiceAccounts",
           "listGroups",
           "listUsers",
           "listAccounts",
@@ -423,7 +424,7 @@ class PermissionMatrixIntegrationTest {
         API.operations().stream().filter(operation -> lists.contains(operation.id())).toList();
     assertThat(listings).hasSize(lists.size());
     List<String> markers = new ArrayList<>(foreign.markers());
-    for (String name : List.of("tokenId", "userId", "groupId")) {
+    for (String name : List.of("tokenId", "userId", "groupId", "serviceAccountId")) {
       markers.add(foreign.ids().get(name));
     }
 
@@ -669,8 +670,15 @@ class PermissionMatrixIntegrationTest {
     UUID profile = UUID.randomUUID();
     UUID oauthProfile = UUID.randomUUID();
     UUID attachment = UUID.randomUUID();
+    UUID serviceAccount = UUID.randomUUID();
     Consumer<JdbcTemplate> seed =
         rows -> {
+          rows.update(
+              "INSERT INTO service_accounts (id, organization_id, name, responsible_user_id)"
+                  + " VALUES (?, ?, 'Probe-Verfahren', ?)",
+              serviceAccount,
+              organization,
+              owner);
           rows.update(
               "INSERT INTO chat_attachments (id, organization_id, space_id, author_id, chat_id,"
                   + " file_name, content_type, size_bytes, status, created_at) VALUES (?, ?, ?,"
@@ -758,6 +766,7 @@ class PermissionMatrixIntegrationTest {
     ids.put("eventId", event.toString());
     ids.put("profileId", profile.toString());
     ids.put("oauthProfileId", oauthProfile.toString());
+    ids.put("serviceAccountId", serviceAccount.toString());
     List<String> markers =
         List.of(
             space.toString(),

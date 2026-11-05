@@ -16,5 +16,6 @@ public enum AuditObjectType {
   AUDIT_LOG,
   DIRECTORY_SYNC_RUN,
   PROMPT_LIBRARY,
-  PROMPT
+  PROMPT,
+  SERVICE_ACCOUNT
 }

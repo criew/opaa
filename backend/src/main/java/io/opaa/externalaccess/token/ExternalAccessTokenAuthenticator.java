@@ -20,11 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Resolves a presented bearer value into a person plus a token id, or into a named reason for
- * refusing it (ADR-0035, Entscheidung 2). The whole chain runs on <b>every single call</b>: switch,
- * token row, expiry, revocation and the lifecycle of the account behind it ({@link
- * AccountUsability}). Nothing is cached and nothing is carried over from a previous call, so a
- * Notaus or a revocation takes effect with the next request of an already open connection.
+ * Resolves a presented bearer value into a person plus a token id - or a service account plus a
+ * token id (Entscheidung 7) - or into a named reason for refusing it (ADR-0035, Entscheidung 2).
+ * The whole chain runs on <b>every single call</b>: switch, token row, expiry, revocation and the
+ * lifecycle of the account behind it ({@link AccountUsability}). Nothing is cached and nothing is
+ * carried over from a previous call, so a Notaus or a revocation takes effect with the next request
+ * of an already open connection.
  *
  * <p>An account of an identity provider is accepted only while its last sign-in lies at most {@link
  * ExternalAccessProperties#providerSignInMaxAgeDays} back: a deactivation at the provider and the
@@ -40,6 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExternalAccessTokenAuthenticator {
 
   private final ExternalAccessTokenRepository tokens;
+  private final ServiceAccountTokenRepository serviceAccountTokens;
+  private final ServiceAccountRepository serviceAccounts;
   private final UserRepository users;
   private final AccountUsability usability;
   private final LocalAuthKeyService keys;
@@ -50,6 +53,8 @@ public class ExternalAccessTokenAuthenticator {
 
   public ExternalAccessTokenAuthenticator(
       ExternalAccessTokenRepository tokens,
+      ServiceAccountTokenRepository serviceAccountTokens,
+      ServiceAccountRepository serviceAccounts,
       UserRepository users,
       AccountUsability usability,
       LocalAuthKeyService keys,
@@ -58,6 +63,8 @@ public class ExternalAccessTokenAuthenticator {
       FeatureFlags featureFlags,
       ExternalAccessProperties properties) {
     this.tokens = tokens;
+    this.serviceAccountTokens = serviceAccountTokens;
+    this.serviceAccounts = serviceAccounts;
     this.users = users;
     this.usability = usability;
     this.keys = keys;
@@ -98,7 +105,7 @@ public class ExternalAccessTokenAuthenticator {
     }
     Result result = check(rawValue);
     if (!settings.isEnabled()) {
-      return result instanceof Result.Authenticated
+      return !(result instanceof Result.Refused)
           ? new Result.Refused(ExternalAccessTokenRejection.CHANNEL_CLOSED)
           : result;
     }
@@ -118,11 +125,10 @@ public class ExternalAccessTokenAuthenticator {
     if (!ExternalAccessTokenValues.looksLikeAccessToken(rawValue)) {
       return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
     }
-    Optional<ExternalAccessToken> found =
-        tokens.findByTokenLookupHash(
-            keys.lookupHash(Purpose.EXTERNAL_ACCESS_TOKEN_LOOKUP, rawValue));
+    String lookupHash = keys.lookupHash(Purpose.EXTERNAL_ACCESS_TOKEN_LOOKUP, rawValue);
+    Optional<ExternalAccessToken> found = tokens.findByTokenLookupHash(lookupHash);
     if (found.isEmpty()) {
-      return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
+      return checkServiceAccountToken(lookupHash);
     }
     ExternalAccessToken token = found.get();
     Instant now = clock.instant();
@@ -151,6 +157,36 @@ public class ExternalAccessTokenAuthenticator {
   }
 
   /**
+   * The same chain for a token of a service account (ADR-0035, Entscheidung 7): revocation, expiry
+   * and the account itself. No person is asked - a locked or deleted responsible person leaves the
+   * token working, which is the point of a service account.
+   */
+  private Result checkServiceAccountToken(String lookupHash) {
+    ServiceAccountToken token = serviceAccountTokens.findByTokenLookupHash(lookupHash).orElse(null);
+    if (token == null) {
+      return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
+    }
+    if (token.getRevokedAt() != null) {
+      return new Result.Refused(
+          token.getRevocationReason() == ExternalAccessTokenRevocationReason.EXPIRED
+              ? ExternalAccessTokenRejection.TOKEN_EXPIRED
+              : ExternalAccessTokenRejection.TOKEN_REVOKED);
+    }
+    if (!token.getExpiresAt().isAfter(clock.instant())) {
+      return new Result.Refused(ExternalAccessTokenRejection.TOKEN_EXPIRED);
+    }
+    ServiceAccount account = serviceAccounts.findById(token.getServiceAccountId()).orElse(null);
+    if (account == null) {
+      return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
+    }
+    if (!account.isActive()) {
+      return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
+    }
+    return new Result.ServiceAccountAuthenticated(
+        account.getId(), account.getOrganizationId(), account.getName(), token.getId());
+  }
+
+  /**
    * A local account is left out: its lifecycle is decided in OPAA itself. One that never signed in
    * counts from its creation, as for the inactivity of {@link AccountUsability}.
    */
@@ -171,6 +207,13 @@ public class ExternalAccessTokenAuthenticator {
      * already carries - so the caller can skip a second write without a second query.
      */
     record Authenticated(User user, UUID tokenId, LocalDate lastUsedOn) implements Result {}
+
+    /**
+     * A token of a service account: the account, its organization and name, and the token id. No
+     * day of use - the use of a service-account token is not recorded at all.
+     */
+    record ServiceAccountAuthenticated(
+        UUID serviceAccountId, UUID organizationId, String name, UUID tokenId) implements Result {}
 
     /** Refused, with the reason {@code WWW-Authenticate} names. */
     record Refused(ExternalAccessTokenRejection rejection) implements Result {}

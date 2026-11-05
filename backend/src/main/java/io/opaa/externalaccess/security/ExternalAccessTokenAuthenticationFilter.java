@@ -121,6 +121,21 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
       refuse(response, style, refused.rejection());
       return;
     }
+    if (result instanceof Result.ServiceAccountAuthenticated serviceAccount) {
+      // No day of use: a service-account token leaves no trace of its use anywhere.
+      CurrentUserArgumentResolver.bindServiceAccountCaller(
+          request,
+          serviceAccount.serviceAccountId(),
+          serviceAccount.organizationId(),
+          serviceAccount.name(),
+          serviceAccount.tokenId());
+      SecurityContextHolder.getContext()
+          .setAuthentication(
+              new ExternalAccessTokenAuthentication(
+                  serviceAccount.serviceAccountId(), serviceAccount.tokenId()));
+      filterChain.doFilter(request, response);
+      return;
+    }
     Result.Authenticated authenticated = (Result.Authenticated) result;
     UUID tokenId = authenticated.tokenId();
     CurrentUserArgumentResolver.bindExternalAccessCaller(request, authenticated.user(), tokenId);
@@ -182,9 +197,9 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
   }
 
   /**
-   * The authentication an access-token call carries: the person, the token, one authority. The
-   * token has a quota of its own, so the rate limits count it apart from its account and spend no
-   * budget of its address.
+   * The authentication an access-token call carries: the person - or the service account - the
+   * token, one authority. The token has a quota of its own, so the rate limits count it apart from
+   * its account and spend no budget of its address.
    */
   static final class ExternalAccessTokenAuthentication extends AbstractAuthenticationToken
       implements OwnQuotaAuthentication {

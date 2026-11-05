@@ -131,6 +131,24 @@ public final class CurrentUser {
         accessTokenId);
   }
 
+  /**
+   * The caller of a token call of a service account (ADR-0035, Entscheidung 7): the account's id
+   * and organization under the lowest system role, its name as display name and no address. It is
+   * no person - the id resolves to no {@link User}, and nothing reachable with an access token
+   * needs one.
+   */
+  static CurrentUser forServiceAccount(
+      UUID serviceAccountId, UUID organizationId, String name, UUID accessTokenId) {
+    Objects.requireNonNull(accessTokenId, "An access-token caller needs the id of its token");
+    return new CurrentUser(
+        Objects.requireNonNull(serviceAccountId, "serviceAccountId"),
+        Objects.requireNonNull(organizationId, "organizationId"),
+        SystemRole.USER,
+        name,
+        null,
+        accessTokenId);
+  }
+
   static CurrentUser from(User user) {
     return new CurrentUser(
         user.getId(),

@@ -5,8 +5,8 @@ Pakete (`io.opaa.*`): externalaccess, mcp. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Der Kanal für Fremdzugänge: Kanaleinstellungen mit dem Schalter der Installation (Vorgabe aus,
-zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Server mit den Werkzeugen
-`search`, `fetch` und `list_libraries` (`mcp`).
+zugleich Notaus), persönliche Zugangstokens, Dienstkonten mit Bibliothekszustimmung (`externalaccess`)
+und der MCP-Server mit den Werkzeugen `search`, `fetch` und `list_libraries` (`mcp`).
 
 ## Invarianten und Stolpersteine
 
@@ -19,18 +19,18 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
   Freigabe-Nachtlauf nicht; `isEnabled()` und der Token-Authenticator sagen immer nein. Schalter
   und Daten bleiben, Lapse- und Retention-Step laufen weiter: Das Flag hält keine Löschfrist an.
 - **Ein Zugangstoken ist ein opaker Zufallswert mit festem Präfix**, gespeichert nur als
-  HMAC-Suchhash (eigener Zweck in `LocalAuthKeyService`). Es ist an eine Person, eine
-  unveränderliche Auswahl von Bibliotheken und ein Pflicht-Ablaufdatum gebunden.
+  HMAC-Suchhash (eigener Zweck in `LocalAuthKeyService`), mit Pflicht-Ablaufdatum. Ein persönliches
+  hat eine unveränderliche Bibliotheksauswahl; ein Dienstkonto-Token (eigene Tabelle) hat keine.
 - **Ein Token folgt dem Lebenszyklus seiner Person:** Sperre, Übergabe und Ende aller Sitzungen beenden
-  es in derselben Transaktion, ein Anbieterkonto braucht eine junge Anmeldung (Handbuch, Abschnitt 6).
-- **Die wirksame Sicht wird je Aufruf berechnet, nie im Token eingefroren:** Rechte der Person,
-  Freigabe der Bibliothek, Auswahl des Tokens, Schalter der Installation
-  (`ExternalAccessTokenScopeService`).
+  es in derselben Transaktion; ein Anbieterkonto braucht eine junge Anmeldung (Handbuch, Abschnitt 6).
+  Dienstkonto-Tokens berührt der Personen-Lebenszyklus nie; sie enden mit dem Deaktivieren des Kontos.
+- **Die wirksame Sicht wird je Aufruf berechnet, nie eingefroren** (`ExternalAccessTokenScopeService`):
+  Rechte der Person ∩ Freigabe ∩ Auswahl ∩ Schalter; beim Dienstkonto Zustimmungen ∩ Schalter ∩ Token
+  ∩ Konto aktiv. Die Freigabe zählt dort nicht, das Kontingent gilt je Dienstkonto (ADR-0035, E. 7).
 - **Die Token-ID reist am Aufrufer** (`CurrentUser#accessTokenId`), nie über Request-Attribut oder
   Thread; ein Tokenaufrufer ohne Token-ID lässt sich nicht bauen, ein MCP-Aufruf ohne sie wird abgewiesen.
-- **Kein Tokenpräfix ins Log:** Mit einem Zeitstempel ergäbe es die personenbezogene
-  Abfragehistorie, die das Revisionsprotokoll bewusst ausschließt
-  (`ExternalAccessTokenAuthenticationIntegrationTest#thePrefixAppearsInNoLogLineOfTheApplication`).
+- **Kein Tokenpräfix ins Log:** Mit einem Zeitstempel ergäbe es die personenbezogene Abfragehistorie,
+  die das Revisionsprotokoll ausschließt (`ExternalAccessTokenAuthenticationIntegrationTest`).
 - **`mcp` ist eine Übersetzungsschicht und sonst nichts:** kein Index, keine Rechtelogik, kein
   Zugriff auf `vector_store`. Jeder Werkzeugaufruf geht über `io.opaa.search`, dieselben Dienste
   wie `POST /api/v1/search` und `POST /api/v1/query`.

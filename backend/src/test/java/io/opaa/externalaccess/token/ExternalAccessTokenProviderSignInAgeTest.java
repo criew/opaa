@@ -47,6 +47,8 @@ class ExternalAccessTokenProviderSignInAgeTest {
   private final ExternalAccessTokenAuthenticator authenticator =
       new ExternalAccessTokenAuthenticator(
           tokens,
+          mock(ServiceAccountTokenRepository.class),
+          mock(ServiceAccountRepository.class),
           users,
           usability,
           keys,

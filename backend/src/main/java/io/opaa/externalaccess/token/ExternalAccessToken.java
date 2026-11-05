@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  */
 @Entity
 @Table(name = "external_access_tokens")
-public class ExternalAccessToken {
+public class ExternalAccessToken implements ListedAccessToken {
 
   @Id private UUID id;
 
