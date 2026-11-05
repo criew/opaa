@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
+Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0038](0038-steckbare-konnektoren.md) · ergänzt durch
 [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) (OAuth-Kern und Geheimnisse des Zugangs),
@@ -192,11 +192,25 @@ im Revisionsprotokoll.
 | Inaktivitätsschwelle für Verbindungen | 30–365 Tage | 90 Tage | wie die Löschfrist |
 | Schwellenwarnung abgelaufener Konten je Zugang | 1–1000 | 10 | wie die Löschfrist |
 
-Die Obergrenzen der Fristen sind weder in der Verwaltung noch per SQL dehnbar. Begründung: Der
-Inhalt einer privaten Bibliothek liegt weiter beim Anbieter, eine kurze Frist kostet nur einen Lauf;
-90 Tage sind die Grenze, die Personalrat und Datenschutz verlangen. Das Protokoll belegt die Nutzung
-persönlicher Verbindungen, nicht Rechte; zwölf Monate decken einen Prüfzyklus. Personalrat und
-Datenschutz können die Vorgaben innerhalb der Grenzen ändern, ohne dass dieser ADR geändert wird.
+Die Obergrenzen der Fristen sind weder in der Verwaltung noch per SQL dehnbar. Die Vorgaben stehen
+fest; sie sind der Vorschlag für die Dienstvereinbarung:
+
+- **Inaktivität 90 Tage:** länger als Urlaub, Fortbildung und übliche Krankheit, sodass private
+  Bibliotheken während einer gewöhnlichen Abwesenheit weiter aktuell bleiben; nicht länger als ein
+  Quartal, sodass Zugangsdaten abwesender Personen nicht monatelang genutzt werden. Ruhen löscht
+  nichts, die nächste Anmeldung weckt die Konten ohne Neuverbinden; eine zu kurze Schwelle kostet nur
+  ausgesetzte Läufe.
+- **Löschfrist privater Bibliotheken 30 Tage:** Der Inhalt liegt weiter beim Anbieter, eine kurze
+  Frist kostet nach einer Reaktivierung nur Neuverbinden und einen Indexlauf. 30 Tage fangen eine
+  irrtümliche Deaktivierung und den letzten Arbeitstag mit Resturlaub ab. Die Obergrenze von 90 Tagen
+  hält die Kopie fremder Inhalte ausgeschiedener Personen kurz.
+- **Warnschwelle 10:** ein reiner Betriebswert; einzelne abgelaufene Konten sind Alltag, ab zehn
+  auf einem Zugang liegt meist ein Fehler am Zugang selbst vor (Secret abgelaufen, Einwilligung
+  entzogen).
+
+Das Protokoll belegt die Nutzung persönlicher Verbindungen, nicht Rechte; zwölf Monate decken einen
+Prüfzyklus. Eine Behörde, deren Personalrat oder Datenschutz andere Werte will, stellt sie innerhalb
+der Grenzen in der Verwaltung ein, ohne dass dieser ADR geändert wird.
 
 ### 8. Code-Struktur, Freigabe und Spezifikation
 
