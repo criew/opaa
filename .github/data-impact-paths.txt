@@ -64,6 +64,7 @@ backend/src/main/java/io/opaa/connection/profile/McpServerProfileService.java
 backend/src/main/java/io/opaa/account/LocalAccountMailer.java
 backend/src/main/java/io/opaa/account/MailingBootstrapLoginNotifier.java
 backend/src/main/java/io/opaa/externalaccess/token/ExternalAccessTokenMailer.java
+backend/src/main/java/io/opaa/externalaccess/token/ServiceAccountMailer.java
 backend/src/main/java/io/opaa/library/LibraryExternalAccessReminderService.java
 backend/src/main/java/io/opaa/auth/NimbusOidcJwtDecoderFactory.java
 backend/src/main/java/io/opaa/api/HttpClientConfig.java
