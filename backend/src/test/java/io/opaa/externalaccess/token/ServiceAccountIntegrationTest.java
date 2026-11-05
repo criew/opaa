@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.account.AccountErasureEvent;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AccountUsability;
@@ -41,6 +42,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -49,6 +51,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -82,6 +85,7 @@ class ServiceAccountIntegrationTest {
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private ExternalAccessNetworkPolicy networkPolicy;
   @Autowired private JsonMapper jsonMapper;
+  @Autowired private ApplicationEventPublisher events;
   @Autowired private Clock clock;
 
   private User owner;
@@ -236,6 +240,22 @@ class ServiceAccountIntegrationTest {
         .perform(get("/api/v1/admin/service-accounts/" + accountId).with(devUser("dev-admin")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.serviceAccount.responsiblePersonMissing").value(true));
+  }
+
+  @Test
+  void anErasedResponsiblePersonLeavesOnlyTheReferenceBehind() throws Exception {
+    // Published in a transaction, as AccountErasureService does: every listener joins it.
+    new TransactionTemplate(transactionManager)
+        .executeWithoutResult(
+            status ->
+                events.publishEvent(
+                    new AccountErasureEvent(
+                        asAdministrator(),
+                        users.findById(responsible.getId()).orElseThrow(),
+                        clock.instant())));
+
+    assertThat(accounts.findById(accountId).orElseThrow().getResponsibleUserId()).isNull();
+    assertThat(searchableLibraries(rawValue)).containsExactly(consentedLibraryId.toString());
   }
 
   @Test
@@ -515,6 +535,14 @@ class ServiceAccountIntegrationTest {
         account,
         name,
         clock.instant().plus(Duration.ofDays(30)));
+  }
+
+  private CurrentUser asAdministrator() {
+    return CurrentUser.of(
+        administrator.getId(),
+        administrator.getOrganizationId(),
+        administrator.getSystemRole(),
+        "Systemverwaltung");
   }
 
   private CurrentUser asOwner() {

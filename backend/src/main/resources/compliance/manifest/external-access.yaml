@@ -53,7 +53,9 @@ data:
       - Verwaltung einer Bibliothek (Name und Beschreibung aktiver Dienstkonten zur Auswahl)
       - die verantwortliche Person selbst (Selbstauskunft)
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Keine Löschung; die Spalte responsible_user_id wird mit dem Konto geleert
+    deletion: >-
+      Keine Löschung des Dienstkontos; die Spalte responsible_user_id wird mit dem Konto der Person
+      oder beim Entfernen ihres Personenbezugs geleert
     evaluations: >-
       Welche Dienstkonten eine Person verantwortet; keine Nutzungsdaten, die einzelne Abfrage eines
       Fachverfahrens wird nicht protokolliert und kein Nutzungsdatum gespeichert
