@@ -37,14 +37,15 @@ data:
       rule: >-
         Unbegrenzt bis zur Löschung durch die Person; in Spaces mit eingeschalteter Bereinigung
         Archiv nach 90 Tagen ohne Aktivität und Löschung 365 Tage nach der Archivierung,
-        angeheftete Chats ausgenommen. Unabhängig davon werden alle Chats eines lokalen Kontos
-        365 Tage nach seiner Sperre durch die Verwaltung gelöscht, auch angeheftete. Alle drei
+        angeheftete Chats ausgenommen. Unabhängig davon werden alle Chats eines Kontos 365 Tage
+        nach seiner Sperre gelöscht, auch angeheftete: bei lokalen Konten nach der Sperre durch
+        die Verwaltung, bei Anbieterkonten nach der Sperre durch den Verzeichnisabgleich. Alle drei
         Fristen sind Voreinstellungen, die die Systemverwaltung ändern kann; die Frist nach der
         Sperre beginnt frühestens mit der Einführung bzw. dem Einschalten, ruht nicht, wird aber
-        ausgesetzt, solange eine freigegebene Anhaltung der Löschung für das Konto läuft
-        (höchstens opaa.chat.locked-account-cleanup.hold-max-days Tage je Freigabe) oder das Konto
-        in einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität oder Fehlversuchen
-        und Konten eines Identitätsanbieters lösen sie nicht aus
+        ausgesetzt, solange eine freigegebene Anhaltung der Löschung für das Konto läuft (nur
+        lokale Konten, höchstens opaa.chat.locked-account-cleanup.hold-max-days Tage je Freigabe)
+        oder das Konto in einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität
+        oder Fehlversuchen und Anbieterkonten ohne Verzeichnisabgleich lösen sie nicht aus
       settings:
         - chat_auto_cleanup_settings.archive_after_days
         - chat_auto_cleanup_settings.delete_after_days

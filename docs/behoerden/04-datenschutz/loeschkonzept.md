@@ -47,13 +47,14 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    Frist, ab Werk eingeschaltet
    ([Was mit den Chats eines gesperrten Kontos geschieht](../../handbuch/administration/konten.md#sperren-statt-löschen)).
    Die Behörde legt fest:
-   - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; die Frist beginnt nur
-     mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
+   - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; bei lokalen Konten
+     beginnt die Frist nur mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
      Verwaltung zusätzlich;
    - dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung) kein Anlass für diese Sperre ist;
    - wie sie mit Konten eines Identitätsanbieters umgeht: Sie lassen sich in OPAA nicht von Hand
      sperren; die Frist beginnt, wenn der Verzeichnisabgleich das Konto sperrt, weil das Verzeichnis
-     es als deaktiviert oder gar nicht mehr meldet. Ohne Verzeichnisabgleich greift die Frist für
+     es als deaktiviert oder gar nicht mehr meldet. Diese Sperre bleibt bestehen, auch wenn der
+     Abgleich danach ausgeschaltet wird, und die Frist läuft weiter. Ohne Verzeichnisabgleich greift die Frist für
      sie nicht, und eine Anhaltung gibt es für sie nicht, nur das Aussetzen durch eine offene
      anlassbezogene Klärung;
    - wer das Anhalten der Löschung je Konto beantragen und wer es freigeben darf. OPAA verlangt

@@ -366,7 +366,8 @@ auditEvents:
       Verwaltung (lokal) oder durch den Verzeichnisabgleich (Anbieterkonto) abgelaufen ist; ein
       Eintrag je Konto und Lauf
     details: >-
-      Beginn der Frist und Sperrgrund (ADMIN oder DIRECTORY), nie Zahl, Titel, Inhalt oder Space der Chats; betroffene
+      Beginn der Frist und Sperrgrund (ADMIN oder DIRECTORY), nie Zahl, Titel, Inhalt oder Space
+      der Chats; betroffene
       Person ist das gesperrte Konto
     purpose: >-
       Allein der Nachweis, dass die Chats eines gesperrten Kontos fristgerecht gelöscht wurden;

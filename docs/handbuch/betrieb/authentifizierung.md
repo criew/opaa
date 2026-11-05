@@ -323,7 +323,9 @@ Zugang, nicht erst mit dem Ablauf seines Tokens.
 
 - **Gesperrt, nicht gelöscht.** Mitgliedschaften, Spaces, Rollen und Eigentum bleiben stehen. Meldet
   das Verzeichnis das Konto wieder als freigeschaltet, hebt der nächste Lauf die Sperre auf; eine
-  Entsperrung von Hand gibt es nicht, weil OPAA nie ins Verzeichnis schreibt.
+  Entsperrung von Hand gibt es nicht, weil OPAA nie ins Verzeichnis schreibt. Mit der Sperre
+  beginnt die Frist, nach der OPAA die Chats des Kontos löscht
+  ([Chats gesperrter Konten](../administration/konten.md#sperren-statt-löschen)).
 - **Sofort wirksam.** Jede weitere Anfrage des Kontos wird abgewiesen, auch mit gültigem Token, und
   seine Zugangstokens treten außer Kraft. Die Person sieht beim nächsten Aufruf Grund und
   Ansprechstelle.
