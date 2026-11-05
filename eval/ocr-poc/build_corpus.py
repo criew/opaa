@@ -4,7 +4,7 @@ Each Markdown document becomes: a ground-truth text file, a rendered text PDF, a
 profile an image-only PDF (the "scan") whose text is known. Gebührenordnungen get their fee
 positions appended as a ruled table so that table recognition has a known answer.
 
-Usage: python build_corpus.py --out work/corpus [--docs id,id,...] [--profiles gut,mittel,fax]
+Usage: python build_corpus.py --out work/corpus [--docs id,id,...] [--profiles gut,mittel,fax,schlecht]
 """
 
 import argparse
@@ -85,6 +85,8 @@ def degrade(img, profile, rng):
         angle, noise, blur, dpi_scale = rng.uniform(-1.5, 1.5), 12, 0.6, 1.0
     elif profile == "fax":
         angle, noise, blur, dpi_scale = rng.uniform(-1.0, 1.0), 6, 0.0, 200 / 300
+    elif profile == "schlecht":
+        angle, noise, blur, dpi_scale = rng.uniform(-2.5, 2.5), 22, 1.1, 150 / 300
     else:
         raise ValueError(profile)
     g = g.rotate(angle, resample=Image.BICUBIC, expand=False, fillcolor=255)
@@ -93,6 +95,10 @@ def degrade(img, profile, rng):
     a = np.asarray(g).astype(np.float32)
     if profile == "mittel":
         a = 30 + a * 0.80  # greyish paper, weaker toner
+    if profile == "schlecht":
+        # copy of a copy: uneven lighting from left to right, faded toner, 150 dpi, strong JPEG
+        ramp = np.linspace(0, 45, a.shape[1], dtype=np.float32)[None, :]
+        a = 45 + a * 0.70 + ramp
     nprng = np.random.default_rng(rng.randrange(1 << 30))
     a = a + nprng.normal(0, noise, a.shape)
     if profile == "fax":
@@ -102,14 +108,20 @@ def degrade(img, profile, rng):
         a = np.where(a > 150, 255, 0).astype(np.float32)
         speckle = nprng.random(a.shape) < 0.0015
         a[speckle] = 255 - a[speckle]
-    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    if profile == "schlecht":
+        out = out.resize((int(out.width * dpi_scale), int(out.height * dpi_scale)), Image.BILINEAR)
+        buf = io.BytesIO()
+        out.save(buf, "JPEG", quality=25)
+        out = Image.open(io.BytesIO(buf.getvalue())).convert("L")
+    return out
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--docs", default="")
-    p.add_argument("--profiles", default="gut,mittel,fax")
+    p.add_argument("--profiles", default="gut,mittel,fax,schlecht")
     args = p.parse_args()
 
     import weasyprint  # imported late: only the render step needs it
@@ -137,7 +149,7 @@ def main():
         rng = random.Random(doc_id)
         for prof in profiles:
             imgs = [degrade(Image.open(pg), prof, rng) for pg in pages]
-            dpi = 200 if prof == "fax" else 300
+            dpi = {"fax": 200, "schlecht": 150}.get(prof, 300)
             imgs[0].save(d / f"scan-{prof}.pdf", save_all=True, append_images=imgs[1:], resolution=dpi)
             imgs[0].save(d / f"scan-{prof}-p1.png")
         for pg in pages:

@@ -46,7 +46,8 @@ def run(variant, convert, corpus, out, profiles, docs=None, setup=None):
             dst.write_text(text, encoding="utf-8")
             results.append({"id": entry["id"], "profile": prof, "pages": entry["pages"], "seconds": round(secs, 2), "error": err})
             print(variant, prof, entry["id"], f"{secs:.1f}s", err or "", flush=True)
-    rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    # an external engine (ocrmypdf/tesseract) runs as a child process; count the larger peak
+    rss_mb = max(resource.getrusage(r).ru_maxrss for r in (resource.RUSAGE_SELF, resource.RUSAGE_CHILDREN)) / 1024
     (out / variant / "timing.json").write_text(json.dumps({"variant": variant, "model_load_seconds": round(load_s, 1), "peak_rss_mb": round(rss_mb), "runs": results}, indent=1))
 
 

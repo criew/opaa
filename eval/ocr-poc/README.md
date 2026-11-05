@@ -7,7 +7,7 @@ Produkt nicht.
 ## Ablauf
 
 1. `build_corpus.py` rendert jedes Dokument aus `eval/corpus/verwaltung` zu PDF, rastert es mit 300 dpi
-   und erzeugt je Scanprofil (`gut`, `mittel`, `fax`) ein reines Bild-PDF. Den Solltext kennen wir
+   und erzeugt je Scanprofil (`gut`, `mittel`, `fax`, `schlecht`: Kopie einer Kopie mit 150 dpi, ungleichmäßiger Ausleuchtung und starker JPEG-Kompression) ein reines Bild-PDF. Den Solltext kennen wir
    (`truth.txt`, Überschriften und Gebührentabelle in `truth.json`). Gebührenordnungen bekommen ihr
    Gebührenverzeichnis als Tabelle mit Gitterlinien angehängt.
 2. Je Variante ein Läufer, jeweils in einer eigenen Python-Umgebung:
