@@ -1,0 +1,29 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/tmp/claude-0/uilab-3589/ui-lab/results/ist/dark",
+    "flow": "service-accounts",
+    "schemes": [
+      "dark"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "scenarios": [
+      "default"
+    ],
+    "areas": [
+      "list",
+      "detail",
+      "create-validation",
+      "token-value",
+      "section",
+      "add"
+    ],
+    "concurrency": 2
+  },
+  "shots": 0,
+  "seconds": 11,
+  "finishedAt": "2026-11-05T14:36:41.511Z"
+}

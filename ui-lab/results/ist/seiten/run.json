@@ -1,0 +1,29 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/tmp/claude-0/uilab-3589/ui-lab/results/ist/seiten",
+    "flow": "pages",
+    "pages": [
+      "/admin/connections/external-tools",
+      "/libraries/library-nextcloud-projekte?tab=freigaben"
+    ],
+    "scenarios": [
+      "default",
+      "scale"
+    ],
+    "schemes": [
+      "light"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "areas": [
+      "page"
+    ],
+    "concurrency": 2
+  },
+  "shots": 8,
+  "seconds": 40,
+  "finishedAt": "2026-11-05T14:37:32.114Z"
+}

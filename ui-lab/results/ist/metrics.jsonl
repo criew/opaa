@@ -1,0 +1,84 @@
+{"shot":null,"area":"section","type":"library","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"small","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"small","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"default","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"default","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"scale","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"scale","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"empty","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"empty","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"failed","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"failed","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"partial","scheme":"light","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"partial","scheme":"light","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"list","type":"admin","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"list","type":"admin","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"detail","type":"admin","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"create-validation","type":"admin","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"token-value","type":"admin","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no service account area"}
+{"shot":null,"area":"section","type":"library","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"section","type":"library","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"default","scheme":"dark","width":1280,"status":"not-found","reason":"no section"}
+{"shot":null,"area":"add","type":"library","scenario":"default","scheme":"dark","width":320,"status":"not-found","reason":"no section"}
