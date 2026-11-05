@@ -14,11 +14,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Hardwareklasse eine Aktivierungsempfehlung geben; heute ab Werk aus (rund 3 min je Frage auf CPU).
   _(Epic #3492 (Sizing); #1051 ungebaut geschlossen)_
 
-### F · Identität, Rechte & Mandanten
-
-- **Service-Accounts** — maschinelle Zugänge als eigene Identität mit benanntem Verantwortlichen,
-  Rechten, Ablauf, Netzbereich; Umfang (nur Abfrage oder auch Verwaltung) offen. _(⚑ (Umfang))_
-
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
 - **Löschrecht nach DSGVO als Ablauf** — Löschung eines Kontos und seiner Daten über alle abgeleiteten
@@ -157,8 +152,8 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 ### H · Monitoring, Kosten & Governance
 
 - **Grenzen je Person und Gruppe** — Anfragen, Modellverbrauch, gleichzeitige Läufe, Uploads; der Person
-  selbst angezeigt, für andere unsichtbar, auch für Tokens und Service-Accounts. Heute gibt es
-  Kontingente je Netzadresse, Token und Speicher.
+  selbst angezeigt, für andere unsichtbar, auch für Tokens und Dienstkonten. Heute gibt es
+  Kontingente je Netzadresse, Token, Dienstkonto und Speicher.
 - **Kostentransparenz** — Verbrauch je Sitzung, Asset, Bibliothek, Modell, Organisationseinheit;
   Kostenvergleich zwischen Modellen; Vorschau vor teuren Läufen.
 - **Auswertungscockpit** — Betriebs- und Nutzungssicht, Mindestgruppengröße mit Unterdrückung,

@@ -52,7 +52,8 @@ Fremdzugängen, Prompt-Bibliothek und MCP-Server als Zugangsprofil begonnen.
   Datenschutz, Mitbestimmung, Sicherheit und KI-Verordnung.
 - **Vorlagen teilen:** Prompt-Bibliotheken mit Variablen, im Chat per Slash-Befehl einsetzbar.
 - **Aus anderen KI-Werkzeugen nutzen:** persönliche Zugangstokens, Such-Endpunkt und MCP-Server
-  für Claude Code, Cursor, VS Code und andere — hinter einem Feature-Flag mit Notaus.
+  für Claude Code, Cursor, VS Code und andere — hinter einem Feature-Flag mit Notaus; Fachverfahren
+  greifen über eigene Dienstkonten lesend zu.
 - **Moderne, barrierefreie Oberfläche:** eigenes Designsystem mit konfigurierbarem Branding,
   Dunkelmodus und Barrierefreiheit (BITV/WCAG, Kontrast als Regel), automatisiert geprüft —
   durchgängig deutsch.
@@ -238,7 +239,10 @@ Kontrastregeln (WCAG AA, Fokusring 3:1) per Test durchgesetzt; durchgängig deut
 **Fremdzugänge und API:** „Externe KI-Werkzeuge“ mit persönlichen Zugangstokens, Such-Endpunkt
 und MCP-Server hinter einem Feature-Flag mit Notaus, Netzbereichen, Kontingent und befristeter
 Bibliotheksfreigabe (ADR-0035); Tokens ruhen, wenn die letzte Anmeldung beim Identitätsanbieter zu
-lange zurückliegt. Die REST-API antwortet mit korrekten Statuscodes nach einer per Test
+lange zurückliegt. Dienstkonten geben Fachverfahren einen lesenden Zugang ohne Person: Die
+Systemverwaltung legt sie mit verantwortlicher Person, Kontingent und Tokens an, die
+Bibliotheksverwaltung stimmt je Dienstkonto zu.
+Die REST-API antwortet mit korrekten Statuscodes nach einer per Test
 durchgesetzten Regel.
 
 **Nicht gebaut:** Antwort-Bewertung, Streaming-Darstellung, Live-Transkript (#2615), Anbindung an
