@@ -33,6 +33,7 @@ eval/
 │   └── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
 │       ├── MANIFEST.sha256
 │       └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
+├── ocr-poc/                         Messstand des OCR-PoC mit Ergebnis (Issue #1062)
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
 │   ├── city-landmarks.json
