@@ -1,5 +1,10 @@
 # OCR-PoC – lokaler Lauf mit GPU (5./6. November 2026)
 
+> Protokoll des Laufs auf dem Stand `c39885f6`. Seither gilt: Die Läufer haben `schlecht` als
+> Vorgabeprofil. `timing.json` wird nach jedem Dokument geschrieben und ergänzt statt ersetzt.
+> `evaluate.py` liest UTF-8 ohne `PYTHONUTF8`. Docling lädt die Modelle in `setup()`. Die Hinweise
+> dazu weiter unten beschreiben den Stand während des Laufs.
+
 Lauf auf einem lokalen Rechner mit AMD-Grafikkarte. Korpus wie im README: 72 Dokumente, 230 Seiten, die
 Profile `gut`, `mittel`, `fax` und `schlecht`, gebaut mit `build_corpus.py` aus Stand `60c362e6`.
 Tesseract lief hier nicht, weil die Cloud-Messung alle Profile schon abdeckt.

@@ -11,10 +11,10 @@ Variante, die gleichzeitig vier Dinge schafft:
 
 - § wird zuverlässig erkannt.
 - Tabellen bleiben vollständig erhalten.
-- Bei schlechten Vorlagen bleibt die Fehlerrate unter 2 %.
+- Im härtesten Profil `schlecht` bleibt die Fehlerrate unter 2 % (GPU-Lauf 1,3 %, CPU-Stichprobe 2,1 %). Bei `fax` liegt sie bei 3,1 %, siehe die fehlenden Absatzzeilen.
 - Sie läuft ohne GPU mit rund 3 GB RAM.
 
-PaddleOCR liest Zeichen am genauesten, ist auf der CPU aber drei- bis viermal langsamer und braucht
+PaddleOCR liest Zeichen am genauesten, ist auf der CPU aber drei- bis fünfmal langsamer und braucht
 11 GB RAM. EasyOCR (Doclings bisherige Vorgabe) und Tesseract scheiden aus, weil sie § nie richtig
 lesen.
 
@@ -31,7 +31,7 @@ lesen.
 - Tesseract lief in der Cloud-Sandbox auf 4 vCPU. Alle anderen Varianten liefen auf einem Notebook
   (Ryzen AI 9 365, 24 GB RAM, Radeon RX 9060 XT mit 16 GB unter ROCm/Windows), siehe
   [results/NOTES.md](results/NOTES.md).
-- Die Docling-Varianten liefen auf der GPU über den ganzen Korpus. Docling (EasyOCR, RapidOCR) und PaddleOCR liefen
+- Docling mit EasyOCR und mit RapidOCR liefen auf der GPU über den ganzen Korpus, GraniteDocling nur im Profil `mittel`. Docling (EasyOCR, RapidOCR) und PaddleOCR liefen
   zusätzlich als CPU-Stichprobe (12 Dokumente, `mittel` und `schlecht`). PaddleOCR gibt es für
   AMD-GPUs nicht, PaddleOCR-VL lief deshalb gar nicht.
 
@@ -39,17 +39,23 @@ lesen.
 
 Profil `mittel`. Die Spalte „schlecht“ zeigt die Zeichenfehlerrate (CER) im härtesten Profil.
 
-| Variante | CER | CER schlecht | § erhalten | Überschrift erkannt | Tabellenzellen | Antwortstellen | s/Seite CPU | RAM |
+| Variante | CER | CER schlecht | § erhalten | als Überschrift markiert ⁴ | Tabellenzellen | Antwortstellen | s/Seite CPU ⁵ | RAM |
 |---|---|---|---|---|---|---|---|---|
 | **Docling + RapidOCR** | **0,9 %** | **1,3 %** | **100 %** | 98 % | 99 % | 27/27 | 16–22 | 3,1 GB |
 | PaddleOCR PP-StructureV3 ¹ | 0,2 % | 4,0 % | 100 % | 98 % | 100 % ² | 14/14 | 70–85 ³ | 11,3 GB |
 | GraniteDocling (VLM, nur GPU) | 1,4 % | – | 96 % | 99 % | 100 % | 27/27 | – (GPU 17) | 2,5 GB + VRAM |
 | Docling + EasyOCR | 4,4 % | 17,7 % | 0 % | 97 % | 90 % | 22/27 | 32–40 | 6,8 GB |
-| Tesseract (OCRmyPDF) | 0,2 % | 5,2 % | 0 % | keine Struktur | keine Struktur | 27/27 | 1–1,6 | < 0,2 GB |
+| Tesseract (OCRmyPDF) | 0,2 % | 5,2 % | 0 % | keine Struktur | keine Struktur | 27/27 | 1–1,6 | unter 0,2 GB ⁶ |
 
 ¹ nur CPU-Stichprobe mit 12 Dokumenten. ² Inhalt vollständig, aber die Spalten stehen in der falschen
 Reihenfolge (`Amtshandlung | Gebühr | Nr.`). ³ oneDNN abgeschaltet, weil paddlepaddle 3.3.1 damit
-abstürzt. Mit oneDNN wäre es schneller.
+abstürzt. Mit oneDNN wäre es schneller. ⁴ Unscharfer Abgleich (Ähnlichkeit ab 90 %): eine
+Überschrift `8 1 Geltungsbereich` statt `§ 1 Geltungsbereich` zählt noch als markiert. Ob die
+§-Gliederung selbst erhalten bleibt, zeigt die Spalte „§ erhalten“. `evaluate.py` misst das inzwischen
+auch je Überschrift mit exaktem Präfix `§ N` (`paragraph_headings_marked`). Für die lokalen Läufe liegt
+dieser Wert nicht vor, weil ihre Ausgaben nicht eingecheckt sind. ⁵ Tesseract auf 4 vCPU in der Cloud,
+alle anderen auf dem Notebook-Prozessor. ⁶ Die Speicherspitze der Tesseract-Prozesse erfasst die
+Messung nur ungenau (15 bis 123 MB).
 
 Der BM25-Recall@5 der 49 Golden-Fragen liegt bei allen Varianten zwischen 0,86 und 0,90, gegenüber
 0,88 auf dem Solltext. Die Suche verträgt die verbleibenden Fehler. Das Maß trennt die Varianten auf
@@ -60,7 +66,7 @@ diesem Korpus aber nicht.
 | Kriterium | Schwelle | gemessen | |
 |---|---|---|---|
 | CER bei mittlerer Scanqualität | ≤ 2 % | 0,9 % | erfüllt |
-| §-Überschriften erkannt | ≥ 90 % | 98 % | erfüllt |
+| §-Überschriften erkannt | ≥ 90 % | § zu 100 % erhalten, Überschriften zu 98 % markiert | erfüllt |
 | Tabellenzellen korrekt | ≥ 85 % | 99 % | erfüllt |
 | Recall@5 Scan zu Original | ≥ 0,9 × Original | 0,857 / 0,878 = 0,98 | erfüllt |
 | Laufzeit CPU | ≤ 3 s/Seite | 16–22 s/Seite | **verfehlt** |
@@ -88,6 +94,14 @@ weiter auf der CPU.
 
 ## Grenzen dieser Messung
 
+- Die Laufzeiten der lokalen Docling-Läufe enthalten noch das Laden der Modelle im jeweils ersten
+  Dokument. Das erklärt zum Teil, warum `mittel` in der CPU-Stichprobe langsamer ist als `schlecht`.
+  Seit dem Review lädt `setup()` die Modelle vorab. Beim GPU-Lauf `docling-rapidocr/schlecht` stammen
+  die Zeiten nach einem Abbruch zum Teil aus einem langsameren Nachlauf, siehe
+  [results/NOTES.md](results/NOTES.md). Die Werte für die Laufzeit sind deshalb grobe Größenordnungen.
+- Seit dem Review wird jedes Scanprofil mit einem eigenen Startwert erzeugt (`Dokument/Profil`). Ein
+  neu gebauter Korpus weicht deshalb im Detail von dem gemessenen ab. Die Profile selbst sind
+  unverändert.
 - Der Korpus ist synthetisch: eine Schrift, sauberer Satz, künstliche Scanfehler. Echte Scans mit
   Stempeln, Handschrift, Formularen, Mehrspaltensatz und Fraktur sind nicht dabei. Vor einer
   Umsetzungsentscheidung braucht es 10–20 echte, freigegebene Scans.

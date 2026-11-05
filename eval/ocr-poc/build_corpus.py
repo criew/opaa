@@ -67,7 +67,7 @@ def plain_text(markdown):
     lines = []
     for line in markdown.splitlines():
         line = re.sub(r"^#+\s*", "", line)
-        if re.match(r"^\|?-{3}", line.replace("|", "-").strip("-|")) or set(line.strip()) <= set("|-"):
+        if set(line.strip()) <= set("|-"):  # table separator row
             continue
         line = line.strip().strip("|").replace(" | ", " ")
         line = re.sub(r"\*\*|__|\*|`", "", line)
@@ -146,8 +146,9 @@ def main():
         weasyprint.HTML(string=f"<html lang='de'><meta charset='utf-8'><style>{CSS}</style><body>{html}</body></html>").write_pdf(d / "text.pdf")
         subprocess.run(["pdftoppm", "-r", "300", "-gray", "-png", str(d / "text.pdf"), str(d / "page")], check=True)
         pages = sorted(d.glob("page-*.png"))
-        rng = random.Random(doc_id)
         for prof in profiles:
+            # seeded per document and profile: a scan is the same whichever profiles one build covers
+            rng = random.Random(f"{doc_id}/{prof}")
             imgs = [degrade(Image.open(pg), prof, rng) for pg in pages]
             dpi = {"fax": 200, "schlecht": 150}.get(prof, 300)
             imgs[0].save(d / f"scan-{prof}.pdf", save_all=True, append_images=imgs[1:], resolution=dpi)

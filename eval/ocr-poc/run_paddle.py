@@ -3,8 +3,6 @@
 import html
 import os
 import re
-import tempfile
-from pathlib import Path
 
 from runlib import cli, run
 

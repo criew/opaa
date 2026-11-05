@@ -1,8 +1,8 @@
 """Scores every variant output under work/out against the corpus ground truth and writes
-work/results.json plus a Markdown summary table (stdout).
+work/results.json (--results) plus a Markdown summary table (stdout).
 
 Measures per document and scan profile: character and word error rate, headings recovered as a
-line and marked as a Markdown heading, fee-table cells recovered inside a Markdown table row,
+line and marked as a Markdown heading (fuzzy), §-headings marked with their exact "§ N" prefix, fee-table cells recovered inside a Markdown table row,
 golden answer passages still findable, and BM25 recall@5 of the golden queries (only where the
 whole corpus ran). Timing comes from each variant's timing.json.
 """
@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -20,6 +21,8 @@ from rapidfuzz import fuzz
 
 REPO = Path(__file__).resolve().parents[2]
 GOLDEN = REPO / "eval" / "golden" / "verwaltung.json"
+# "§ 12" at the start of a heading, matched exactly: a "$ 12" or "8 12" from the OCR does not count
+PARAGRAPH_PREFIX = re.compile(r"§ \d+\b")
 
 
 def norm(text):
@@ -59,6 +62,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--corpus", type=Path, default=Path("work/corpus"))
     p.add_argument("--out", type=Path, default=Path("work/out"))
+    p.add_argument("--results", type=Path, default=Path("work/results.json"))
     args = p.parse_args()
     golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
     truth = {}
@@ -80,6 +84,10 @@ def main():
                 agg["cer"].append(jiwer.cer(ref, hyp) if hyp else 1.0)
                 agg["wer"].append(jiwer.wer(ref, hyp) if hyp else 1.0)
                 f, m = heading_scores(t["headings"], out)
+                prefixes = [hit.group(0) for h in t["headings"] if (hit := PARAGRAPH_PREFIX.match(h))]
+                marked = [re.sub(r"^#+\s*", "", l).strip() for l in out.splitlines() if l.startswith("#")]
+                sums["para_headings"] += len(prefixes)
+                sums["para_headings_marked"] += sum(1 for pre in prefixes if any(PARAGRAPH_PREFIX.match(o) and PARAGRAPH_PREFIX.match(o).group(0) == pre for o in marked))
                 sums["headings"] += len(t["headings"])
                 sums["headings_found"] += f
                 sums["headings_marked"] += m
@@ -106,6 +114,8 @@ def main():
                     total += 1
                 recall = round(hits / total, 3)
             runs = [r for r in timing.get("runs", []) if r["profile"] == pdir.name and r["id"] in docs]
+            if len(runs) != len(docs):
+                print(f"warning: {vdir.name}/{pdir.name}: times for {len(runs)} of {len(docs)} documents", file=sys.stderr)
             pages = sum(r["pages"] for r in runs) or 1
             results[f"{vdir.name}/{pdir.name}"] = {
                 "docs": len(docs),
@@ -113,11 +123,13 @@ def main():
                 "wer": round(statistics.mean(agg["wer"]), 4),
                 "headings_found": round(sums["headings_found"] / max(sums["headings"], 1), 3),
                 "headings_marked": round(sums["headings_marked"] / max(sums["headings"], 1), 3),
+                "paragraph_headings_marked": round(sums["para_headings_marked"] / sums["para_headings"], 3) if sums["para_headings"] else None,
                 "paragraph_signs": round(sums["para_out"] / max(sums["para_truth"], 1), 3),
                 "table_cells": round(sums["cells_ok"] / sums["cells"], 3) if sums["cells"] else None,
                 "answer_spans": f"{found}/{len(spans)}",
                 "bm25_recall5": recall,
                 "sec_per_page": round(sum(r["seconds"] for r in runs) / pages, 2),
+                "timed_docs": len(runs),
                 "errors": sum(1 for r in runs if r["error"]),
                 "peak_rss_mb": timing.get("peak_rss_mb"),
                 "model_load_s": timing.get("model_load_seconds"),
@@ -134,8 +146,8 @@ def main():
             hits += bool(exp & top)
             total += 1
     results["truth"] = {"bm25_recall5": round(hits / total, 3)}
-    Path("work/results.json").write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
-    cols = ["docs", "cer", "wer", "headings_found", "headings_marked", "paragraph_signs", "table_cells", "answer_spans", "bm25_recall5", "sec_per_page", "errors", "peak_rss_mb"]
+    args.results.write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
+    cols = ["docs", "cer", "wer", "headings_found", "headings_marked", "paragraph_headings_marked", "paragraph_signs", "table_cells", "answer_spans", "bm25_recall5", "sec_per_page", "timed_docs", "errors", "peak_rss_mb"]
     print("| Variante/Profil | " + " | ".join(cols) + " |")
     print("|---" * (len(cols) + 1) + "|")
     for k, v in results.items():

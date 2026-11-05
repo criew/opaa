@@ -18,7 +18,9 @@ def setup():
         generate_page_images=True,
         accelerator_options=AcceleratorOptions(num_threads=4, device=os.environ.get("OCR_DEVICE", "cpu")),
     )
-    return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_cls=VlmPipeline, pipeline_options=opts)})
+    converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_cls=VlmPipeline, pipeline_options=opts)})
+    converter.initialize_pipeline(InputFormat.PDF)  # load the model here, not in the first document
+    return converter
 
 
 def convert(converter, src):

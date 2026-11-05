@@ -2,7 +2,7 @@
 document timed on its own, the process's peak RSS recorded at the end."""
 
 import json
-import sys
+import os
 import time
 from pathlib import Path
 
@@ -27,12 +27,28 @@ def load_manifest(corpus):
     return out
 
 
+def peak_rss_mb():
+    if resource:
+        # an external engine (ocrmypdf/tesseract) runs as a child process; count the larger peak
+        return max(resource.getrusage(r).ru_maxrss for r in (resource.RUSAGE_SELF, resource.RUSAGE_CHILDREN)) / 1024
+    import psutil  # Windows (ROCm builds of torch for Radeon run natively there): peak working set
+
+    return psutil.Process().memory_info().peak_wset / 2**20
+
+
 def run(variant, convert, corpus, out, profiles, docs=None, setup=None):
+    """Converts every scan of the selected profiles and documents. timing.json is rewritten after each
+    document, so an aborted run keeps the times of what it finished; a later run (another profile, a
+    re-run) merges into it, replacing only the entries it repeats. Each entry names its device."""
+    device = os.environ.get("OCR_DEVICE", "cpu")
     t0 = time.perf_counter()
     state = setup() if setup else None
     load_s = time.perf_counter() - t0
     manifest = load_manifest(corpus)
-    results = []
+    path = out / variant / "timing.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    timing = json.loads(path.read_text()) if path.exists() else {"variant": variant, "runs": []}
+    timing["model_load_seconds"] = round(load_s, 1)
     for prof in profiles:
         for entry in manifest:
             if docs and entry["id"] not in docs:
@@ -48,23 +64,11 @@ def run(variant, convert, corpus, out, profiles, docs=None, setup=None):
                 text, err = "", repr(e)
             secs = time.perf_counter() - t
             dst.write_text(text, encoding="utf-8")
-            results.append({"id": entry["id"], "profile": prof, "pages": entry["pages"], "seconds": round(secs, 2), "error": err})
+            result = {"id": entry["id"], "profile": prof, "pages": entry["pages"], "seconds": round(secs, 2), "device": device, "error": err}
+            timing["runs"] = [r for r in timing["runs"] if (r["id"], r["profile"]) != (entry["id"], prof)] + [result]
+            timing["peak_rss_mb"] = max(timing.get("peak_rss_mb") or 0, round(peak_rss_mb()))
+            path.write_text(json.dumps(timing, indent=1))
             print(variant, prof, entry["id"], f"{secs:.1f}s", err or "", flush=True)
-    if resource:
-        # an external engine (ocrmypdf/tesseract) runs as a child process; count the larger peak
-        rss_mb = max(resource.getrusage(r).ru_maxrss for r in (resource.RUSAGE_SELF, resource.RUSAGE_CHILDREN)) / 1024
-    else:  # Windows (ROCm builds of torch for Radeon run natively there): peak working set
-        import psutil
-
-        rss_mb = psutil.Process().memory_info().peak_wset / 2**20
-    # a later run (another profile, a re-run) merges into the variant's timing instead of replacing it
-    path = out / variant / "timing.json"
-    timing = json.loads(path.read_text()) if path.exists() else {"variant": variant, "runs": []}
-    fresh = {(r["id"], r["profile"]) for r in results}
-    timing["runs"] = [r for r in timing["runs"] if (r["id"], r["profile"]) not in fresh] + results
-    timing["model_load_seconds"] = round(load_s, 1)
-    timing["peak_rss_mb"] = max(timing.get("peak_rss_mb") or 0, round(rss_mb))
-    path.write_text(json.dumps(timing, indent=1))
 
 
 def cli():

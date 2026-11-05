@@ -30,7 +30,10 @@ def make_setup(variant):
             ocr_options=ocr,
             accelerator_options=AcceleratorOptions(num_threads=4, device=os.environ.get("OCR_DEVICE", "cpu")),
         )
-        return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+        converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+        # builds the pipeline and loads the models now, so their load time is not booked on the first document
+        converter.initialize_pipeline(InputFormat.PDF)
+        return converter
 
     return setup
 
