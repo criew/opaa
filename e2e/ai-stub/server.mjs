@@ -286,8 +286,20 @@ function toolResultsOfTurn(messages) {
     .filter((message) => message.role === 'tool')
     .map((message) => ({
       name: names.get(message.tool_call_id),
-      content: typeof message.content === 'string' ? message.content : '',
+      content: toolText(message.content),
     }))
+}
+
+/** A tool result as plain text; Spring AI sends a String result JSON-encoded. */
+function toolText(content) {
+  if (typeof content !== 'string') return ''
+  if (!content.startsWith('"')) return content
+  try {
+    const decoded = JSON.parse(content)
+    return typeof decoded === 'string' ? decoded : content
+  } catch {
+    return content
+  }
 }
 
 function pdfScript(question, searchResult) {
