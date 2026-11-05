@@ -63,9 +63,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   /**
    * Used by {@code AuditIncidentScopeService#request} to reject an anlassbezogene Klärung named
    * against a person outside the requester's own organization before a grant row - and later, at
-   * query time, a pseudonym - is ever created for them.
+   * query time, a pseudonym - is ever created for them. An erased account is not found: no role,
+   * grant, request or Klärung can name the nameless shell again.
    */
-  Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
+  @Query(
+      "select u from User u where u.id = :id and u.organizationId = :organizationId"
+          + " and u.erasedAt is null")
+  Optional<User> findByIdAndOrganizationId(
+      @Param("id") UUID id, @Param("organizationId") UUID organizationId);
 
   /**
    * Resolves directory group members to their accounts, scoped to the organization and to the
@@ -234,7 +239,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * The member search every organization member may call: {@code pageable} caps the rows, and
    * {@link UserService#searchInOrganization} only calls it with a long enough query. Matches
    * display name and e-mail case-insensitively, every character of {@code query} literally - a
-   * query of {@code %%} or {@code __} must not list the whole organization.
+   * query of {@code %%} or {@code __} must not list the whole organization. An erased account is
+   * never found.
    */
   default List<User> searchByOrganizationId(UUID organizationId, String query, Pageable pageable) {
     return searchByOrganizationIdMatching(organizationId, LikePatterns.containing(query), pageable);
@@ -242,7 +248,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /** {@link #searchByOrganizationId} with {@code pattern} ready to bind ({@link LikePatterns}). */
   @Query(
-      "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "
+      "SELECT u FROM User u WHERE u.organizationId = :organizationId AND u.erasedAt IS NULL AND "
           + "(LOWER(u.displayName) LIKE LOWER(:pattern) ESCAPE '\\' "
           + "OR LOWER(u.email) LIKE LOWER(:pattern) ESCAPE '\\')")
   List<User> searchByOrganizationIdMatching(

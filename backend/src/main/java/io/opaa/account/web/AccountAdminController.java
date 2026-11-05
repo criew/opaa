@@ -1,6 +1,7 @@
 package io.opaa.account.web;
 
 import io.opaa.account.AccountAdminService;
+import io.opaa.account.AccountErasureService;
 import io.opaa.account.AccountQuery;
 import io.opaa.api.dto.AccountPageResponse;
 import io.opaa.api.types.LocalAccountState;
@@ -9,9 +10,13 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,11 +31,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountAdminController {
 
   private final AccountAdminService adminService;
+  private final AccountErasureService erasureService;
   private final AuditorRoles auditorRoles;
 
-  public AccountAdminController(AccountAdminService adminService, AuditorRoles auditorRoles) {
+  public AccountAdminController(
+      AccountAdminService adminService,
+      AccountErasureService erasureService,
+      AuditorRoles auditorRoles) {
     this.adminService = adminService;
+    this.erasureService = erasureService;
     this.auditorRoles = auditorRoles;
+  }
+
+  // Irreversible: a left-open or stolen session must not erase a person's data.
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @RequiresRecentLogin
+  @PostMapping("/{id}/erasure")
+  public ResponseEntity<Void> eraseAccount(@PathVariable UUID id, @Caller CurrentUser caller) {
+    erasureService.erase(caller, id);
+    return ResponseEntity.noContent().build();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

@@ -38,6 +38,7 @@ Ein Link gilt einmal, ein neuer macht den alten ungültig.
 | „Rücksetz-Link per E-Mail“ oder „Passwort erzeugen“ | neues Passwort; beendet ebenfalls alle Sitzungen |
 | Ablaufdatum erreicht | das Konto kann sich nicht anmelden; ein neues Datum gibt es frei |
 | „Löschen“ | nur für ein Konto, auf das nichts mehr verweist: kein Chat, keine Bibliothek, keine Freigabe, kein Nachweiseintrag. Praktisch nur für Tippfehler und Testkonten |
+| „Personenbezug entfernen …“ | für ein Löschbegehren nach der DSGVO, nicht umkehrbar; siehe unten |
 
 **Ausscheiden heißt sperren.** Wer je Mitglied einer Gruppe war, hinterlässt einen Nachweis, der
 das Löschen blockiert, solange er liegt. Was mit Bibliotheken und Spaces der Person geschieht,
@@ -51,6 +52,31 @@ Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung
 zurückgezogen und neu gestellt, lehnt OPAA sie ab und zeigt den aktuellen Antrag. Einen Antrag,
 der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
+
+## Personenbezug entfernen
+
+Verlangt eine Person die Löschung ihrer Daten, entfernt „Personenbezug entfernen …“ im Zeilenmenü
+alles, was sie persönlich betrifft. Das gilt für lokale Konten und für Konten eines
+Identitätsanbieters.
+
+| Was geschieht | Was bleibt |
+|---|---|
+| Name, Adresse und Kennung beim Anbieter verschwinden, überall steht „Gelöschtes Konto“ | Mitgliedschaften, Rechte und deren Historie |
+| alle Chats der Person, auch in geteilten Spaces, ihr persönlicher Space, Benachrichtigungen, Favoriten und Fachwörter der Spracheingabe werden gelöscht | geteilte Bibliotheken, Spaces und Gruppen; sie stehen auf „Nachfolge offen“ |
+| private Bibliotheken werden binnen Minuten mit allen Inhalten gelöscht | das Revisionsprotokoll mit seinen Pseudonymen |
+| Anmeldedaten, Sitzungen und Zugangstokens enden | Dokumente, die die Person in geteilte Bibliotheken geladen hat |
+
+Das Konto verschwindet aus der Liste. Meldet sich die Person später beim Anbieter wieder an,
+entsteht ein neues, leeres Konto.
+
+**Gut zu wissen:**
+
+- Nur ein gesperrtes oder abgelaufenes Konto ohne Systemrolle lässt sich so behandeln. Konten
+  eines Anbieters gelten als deaktiviert, wenn der Verzeichnisabgleich sie sperrt oder der Anbieter
+  entfernt wurde.
+- Eine laufende oder beantragte Anhaltung der Chat-Löschung und eine offene anlassbezogene Klärung,
+  die das Konto nennt, verhindern den Schritt, bis sie enden.
+- Daten über die Person in Dokumenten und in Sicherungen erfasst der Schritt nicht.
 
 ## Liste prüfen
 

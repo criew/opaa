@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
+Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
 
 ## Kontext
 
@@ -38,9 +38,12 @@ Die Subjektspalten bleiben echte Fremdschlüssel auf `users` mit `ON DELETE REST
 `asset_ownership_history.owner_user_id`, `capability_grant_history.subject_user_id` und
 `space_membership_history.subject_user_id`. Die Kontolöschung (`LocalUserService#delete`) prüft
 dieselben Tabellen vorab und lehnt mit `409` ab, solange das Konto in Rechte- oder Nachweisbeständen
-referenziert ist; die Anleitung lautet „sperren statt löschen“. `RESTRICT` ist die Übergangslösung bis
-zu einer Pseudonymisierung des Personenbezugs, die die Historie selbst unangetastet lässt; eine
-Kaskade ist für diese Tabellen ausgeschlossen. `account_state_history.user_id` steht dagegen auf `ON
+referenziert ist; die Anleitung lautet „sperren statt löschen“. Ein Löschbegehren nach Art. 17 DSGVO
+löscht deshalb nicht die Zeile, sondern ihren Personenbezug (`AccountErasureService`): Name, Adresse
+und `(issuer, subject)` weichen einer namenlosen Hülle (`users.erased_at`, Issuer
+`urn:opaa:erased`), die Fremdschlüssel der Historie bleiben gültig und zeigen auf eine Kennung, die
+sich ohne weiteres Wissen keiner Person mehr zuordnen lässt. Eine Kaskade ist für diese Tabellen
+ausgeschlossen. `account_state_history.user_id` steht dagegen auf `ON
 DELETE CASCADE`: Ein Zustandsintervall nennt für sich keinen Zugang, es kürzt nur Zeiträume, die in
 einer der Tabellen oben stehen und die Löschung schon verweigern (ADR-0036, Entscheidung 8).
 
@@ -77,7 +80,8 @@ gewährt aber keinen Zugriff; „wer konnte lesen?“ beantwortet allein die Rec
 `deleteLibrary`/`deleteGroup` bleiben sofort wirksam.
 
 **Schwieriger:** Eine Historienzeile lässt sich nach der Objektlöschung nicht mehr per Join auf einen
-Namen zurückführen. Eine Kontolöschung scheitert praktisch bei jedem Konto, das je ein Recht hatte.
+Namen zurückführen. Eine Kontolöschung scheitert praktisch bei jedem Konto, das je ein Recht hatte;
+an ihre Stelle tritt das Entfernen des Personenbezugs, das die Zeile als namenlose Hülle stehen lässt.
 Tests, die Konten löschen, entfernen die eigene Historie vorher über die als Test-Hilfsmittel
 markierten `deleteBy…In`-Methoden der Historien-Repositories.
 
@@ -87,12 +91,12 @@ markierten `deleteBy…In`-Methoden der Historien-Repositories.
   braucht.
 - `RESTRICT` für Diagnose-Vollmachten — blockierte die Kontolöschung, um die es geht, wegen eines
   Rechts, das ohne Inhaberin niemand ausüben kann.
+- Pseudonymisierung der Subjektspalten jeder Historientabelle beim Löschbegehren — derselbe Effekt
+  wie die namenlose Hülle, aber ein Umschreiben vieler Tabellen samt Constraints statt einer Zeile.
 
 ## Offen
 
 - Namens-Schnappschuss an Historienzeilen, damit ein Prüfbericht ohne Join auf ein gelöschtes Objekt
   lesbar bleibt.
-- Pseudonymisierung des Personenbezugs der Rechtehistorie, damit eine Kontolöschung ohne
-  Historienverlust möglich wird.
 - Korrelation historisierter Verzeichnislauf-Änderungen mit dem konkreten Lauf; `directory_sync_status`
   hält nur den jeweils letzten Lauf.

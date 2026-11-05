@@ -158,7 +158,7 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Löschen des Dokuments oder der Bibliothek, Abgleich mit der Quelle, Löschung privater
-      Bibliotheken
+      Bibliotheken (auch binnen Minuten nach dem Entfernen des Personenbezugs ihrer Eigentümerin)
     evaluations: Suche und Antwortgenerierung im Rahmen der Leserechte
     notes:
       - Inhalte stammen aus Fachverfahren und können Personendaten Dritter enthalten

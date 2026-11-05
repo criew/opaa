@@ -24,7 +24,7 @@ data:
         - audit_retention_settings.retention_months
     visibility: [die Person selbst, "SYSTEM_ADMIN (Kennung, Ablauf, Zustand)"]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Retention-Schritt gekoppelt an die Protokollfrist
+    deletion: Retention-Schritt gekoppelt an die Protokollfrist; beim Entfernen des Personenbezugs
     evaluations: >-
       Letzter Nutzungstag je Token; die Nutzung selbst wird nicht protokolliert, der Zähler des
       Abflussalarms lebt nur im Arbeitsspeicher

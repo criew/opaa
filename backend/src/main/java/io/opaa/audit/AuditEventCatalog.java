@@ -171,6 +171,7 @@ public final class AuditEventCatalog {
     put(keys, Set.of("role", "provider"), AUDITOR_ROLE_REQUESTED, AUDITOR_ROLE_REQUEST_DECLINED);
     put(keys, Set.of("role", "tokenRole"), SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
     put(keys, Set.of(), ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED);
+    put(keys, Set.of("origin"), ACCOUNT_ERASED);
     put(keys, Set.of("expiresAt", "libraryIds", "serviceAccountId"), API_TOKEN_ISSUED);
     put(keys, Set.of("by", "reason", "serviceAccountId"), API_TOKEN_REVOKED);
     put(keys, Set.of("reason", "serviceAccountId"), API_TOKEN_EXPIRED);

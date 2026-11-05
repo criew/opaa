@@ -1134,6 +1134,28 @@ describe('UserManagementPage', () => {
     await waitFor(() => expect(screen.queryByText('R. Sommer')).not.toBeInTheDocument())
   })
 
+  it('removes the personal reference of a locked account after naming the consequence', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const activeMenu = await openRowMenu(user, 'T. Klein')
+    expect(
+      within(activeMenu).getByRole('menuitem', { name: /Personenbezug entfernen/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Escape}')
+
+    const menu = await openRowMenu(user, 'A. Vogt')
+    await user.click(within(menu).getByRole('menuitem', { name: /Personenbezug entfernen/ }))
+    const frage = await screen.findByRole('dialog', {
+      name: /Personenbezug von „A\. Vogt“ entfernen\?/,
+    })
+    expect(within(frage).getByText(/nicht umkehrbar/)).toBeInTheDocument()
+    await user.click(within(frage).getByRole('button', { name: 'Entfernen' }))
+    await waitFor(() => expect(screen.queryByText('A. Vogt')).not.toBeInTheDocument())
+  })
+
   it('asks before the local sign-in is switched off and names the ended sessions', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

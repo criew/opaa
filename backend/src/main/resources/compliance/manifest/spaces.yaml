@@ -38,7 +38,9 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Entfernen des Mitglieds oder Löschen des Space; mit dem Konto nur der persönliche Space, jede
-      weitere Mitgliedschaft verhindert über ihre Historie die Löschung des Kontos
+      weitere Mitgliedschaft verhindert über ihre Historie die Löschung des Kontos. Beim Entfernen
+      des Personenbezugs geht der persönliche Space, weitere Mitgliedschaften bleiben beim
+      namenlosen Konto
     evaluations: Mitgliederliste je Space
   - id: space-membership-history
     title: Historie der Space-Mitgliedschaften
@@ -85,7 +87,7 @@ data:
       settings: []
     visibility: [SYSTEM_ADMIN]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Mit dem Konto
+    deletion: Mit dem Konto; beim Entfernen des Personenbezugs widerrufen
     evaluations: keine
   - id: diagnostic-context-log
     title: Diagnoseprotokoll
