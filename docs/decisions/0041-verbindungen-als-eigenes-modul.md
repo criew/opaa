@@ -192,17 +192,18 @@ im Revisionsprotokoll.
 | Inaktivitätsschwelle für Verbindungen | 30–365 Tage | 90 Tage | wie die Löschfrist |
 | Schwellenwarnung abgelaufener Konten je Zugang | 1–1000 | 10 | wie die Löschfrist |
 
-Die Obergrenzen der Fristen sind weder in der Verwaltung noch per SQL dehnbar. Die Vorgaben sind
-endgültig festgelegt und gelten als Vorschlag für die Dienstvereinbarung:
+Die Obergrenzen der Fristen sind weder in der Verwaltung noch per SQL dehnbar. Die Vorgaben stehen
+fest; sie sind der Vorschlag für die Dienstvereinbarung:
 
-- **Inaktivität 90 Tage:** länger als Urlaub, Fortbildung und übliche Krankheit, sodass niemand nach
-  einer gewöhnlichen Abwesenheit neu verbinden muss; nicht länger als ein Quartal, sodass Zugangsdaten
-  abwesender Personen nicht monatelang nutzbar bleiben. Ruhen löscht nichts, die nächste Anmeldung
-  weckt die Konten; eine zu kurze Schwelle kostet nur ein erneutes Verbinden.
+- **Inaktivität 90 Tage:** länger als Urlaub, Fortbildung und übliche Krankheit, sodass private
+  Bibliotheken während einer gewöhnlichen Abwesenheit weiter aktuell bleiben; nicht länger als ein
+  Quartal, sodass Zugangsdaten abwesender Personen nicht monatelang genutzt werden. Ruhen löscht
+  nichts, die nächste Anmeldung weckt die Konten ohne Neuverbinden; eine zu kurze Schwelle kostet nur
+  ausgesetzte Läufe.
 - **Löschfrist privater Bibliotheken 30 Tage:** Der Inhalt liegt weiter beim Anbieter, eine kurze
-  Frist kostet nur einen Indexlauf. 30 Tage fangen eine irrtümliche Deaktivierung und den letzten
-  Arbeitstag mit Resturlaub ab. Die Obergrenze von 90 Tagen hält die Kopie fremder Inhalte
-  ausgeschiedener Personen kurz.
+  Frist kostet nach einer Reaktivierung nur Neuverbinden und einen Indexlauf. 30 Tage fangen eine
+  irrtümliche Deaktivierung und den letzten Arbeitstag mit Resturlaub ab. Die Obergrenze von 90 Tagen
+  hält die Kopie fremder Inhalte ausgeschiedener Personen kurz.
 - **Warnschwelle 10:** ein reiner Betriebswert; einzelne abgelaufene Konten sind Alltag, ab zehn
   auf einem Zugang liegt meist ein Fehler am Zugang selbst vor (Secret abgelaufen, Einwilligung
   entzogen).
