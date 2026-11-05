@@ -241,7 +241,8 @@ und MCP-Server hinter einem Feature-Flag mit Notaus, Netzbereichen, Kontingent u
 Bibliotheksfreigabe (ADR-0035); Tokens ruhen, wenn die letzte Anmeldung beim Identitätsanbieter zu
 lange zurückliegt. Dienstkonten geben Fachverfahren einen lesenden Zugang ohne Person: Die
 Systemverwaltung legt sie mit verantwortlicher Person, Kontingent und Tokens an, die
-Bibliotheksverwaltung stimmt je Dienstkonto zu. Die REST-API antwortet mit korrekten Statuscodes nach einer per Test
+Bibliotheksverwaltung stimmt je Dienstkonto zu.
+Die REST-API antwortet mit korrekten Statuscodes nach einer per Test
 durchgesetzten Regel.
 
 **Nicht gebaut:** Antwort-Bewertung, Streaming-Darstellung, Live-Transkript (#2615), Anbindung an
