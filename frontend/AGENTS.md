@@ -1,6 +1,6 @@
 # Frontend: Themen und Grenzen
 
-Ergänzt die Regeln in der [AGENTS.md im Wurzelverzeichnis](../AGENTS.md). Das Frontend ist nach fachlichen Themen geschnitten (Epic #2057); die Grenzen zwischen ihnen prüft ESLint.
+Ergänzt die Regeln in der [AGENTS.md im Wurzelverzeichnis](../AGENTS.md). Das Frontend ist nach fachlichen Themen geschnitten; die Grenzen zwischen ihnen prüft ESLint.
 
 ## Aufbau
 

@@ -34,9 +34,11 @@ Die Spezifikation als Body des Epics gemäß dem untenstehenden Hausmuster schre
 
 Den Abschnitt „Wirkung auf Behördenunterlagen“ der Epic-Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
 
+Bringt das Feature einen neuen Nutzerfluss, eine neue Seite oder einen neuen Dialog, in der Spezifikation „UI-Lab: schnell“ (eine Seite oder ein Dialog) oder „UI-Lab: groß“ (ein ganzer Bereich) vermerken und das Lab beim Orchestrator anfordern ([Schritt 2](../../docs/AGENT-ORGANIZATION.md#workflow-von-der-idee-bis-zum-merge)). Die Spezifikation beschreibt Verhalten und Abläufe, nicht das Layout; das entsteht im Lab. Phase 3 beginnt erst, wenn der Maintainer eine Variante gewählt hat.
+
 ### Phase 3 — Issues
 
-Das GitHub-Epic mit der Spezifikation und die Child-Issues erstellen. Für jedes Issue, das sichtbares Verhalten oder Konfiguration ändert, nennt ein Abnahmekriterium das betroffene Kapitel und den Abschnitt des Produkthandbuchs (`docs/handbuch/`, Kapitelübersicht in dessen `README.md`) oder stellt ausdrücklich „kein Handbuchkapitel betroffen" fest. Ist in der Spezifikation eine Wirkung auf Behördenunterlagen angekreuzt, bekommt jedes Issue, das diese Wirkung baut, das Abnahmekriterium „Manifest nachgezogen und PR mit `data-impact` gekennzeichnet“. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
+Das GitHub-Epic mit der Spezifikation und die Child-Issues erstellen. Für jedes Issue, das sichtbares Verhalten oder Konfiguration ändert, nennt ein Abnahmekriterium das betroffene Kapitel und den Abschnitt des Produkthandbuchs (`docs/handbuch/`, Kapitelübersicht in dessen `README.md`) oder stellt ausdrücklich „kein Handbuchkapitel betroffen" fest. Ist in der Spezifikation eine Wirkung auf Behördenunterlagen angekreuzt, bekommt jedes Issue, das diese Wirkung baut, das Abnahmekriterium „Manifest nachgezogen und PR mit `data-impact` gekennzeichnet“. Gab es ein UI-Lab, nennt jedes Issue mit UI-Anteil im Abnahmekriterium die gewählte Variante mit Prototyp-Link und `REPORT.md`. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
 
 ### Grooming-Modus
 
@@ -61,4 +63,4 @@ Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issue
 
 - Issues, Epics mit Spezifikation und Produktdokumentation erstellen und bearbeiten. Niemals Anwendungscode schreiben und keine Spezifikationen ins Repository einchecken.
 - Dokumentationsänderungen im Repository folgen dem Standard-Workflow: Feature-Branch (`feature/<issue-id>_<desc>`), Conventional Commit mit einem `Co-Authored-By`-Trailer und PR mit Template und KI-Offenlegung. Niemals auf `main` pushen und niemals mergen.
-- Wenn eine architektonische Implikation erkannt wird, diese für ein ADR markieren (`docs/decisions/`, nach Vorlage und Regeln in `docs/decisions/README.md`, Status „Vorgeschlagen“ bis zum Merge) — der Maintainer entscheidet.
+- Wenn eine architektonische Implikation erkannt wird, diese für ein ADR markieren (`docs/decisions/`, nach Vorlage und Regeln in `docs/decisions/README.md`) — der Maintainer entscheidet.

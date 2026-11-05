@@ -128,7 +128,7 @@ KI-Agenten müssen einen `Co-Authored-By`-Trailer in Commits einfügen.
 Wenn mehrere Agent-Sessions gleichzeitig in diesem Verzeichnis arbeiten (z. B. mehrere Features parallel), für jede neue Aufgabe einen eigenen Git Worktree nutzen, statt im Hauptverzeichnis zu branchen. So blockieren sich parallele Sessions nicht gegenseitig durch Branch-Wechsel im selben Arbeitsverzeichnis.
 
 - Neue Aufgabe → eigenen Worktree anlegen (eigener Branch, eigenes Arbeitsverzeichnis)
-- Aufgabe fertig & gemerged → Worktree **sofort entfernen**. Ein bebauter Worktree belegt durch `backend/build` und `.gradle` schnell viele GB — liegengebliebene Worktrees füllen die Platte. (`frontend/node_modules` ist seit der pnpm-Migration nur noch ein Link-Baum in den benutzerweiten Store und fällt kaum noch ins Gewicht.)
+- Aufgabe fertig & gemerged → Worktree **sofort entfernen**. Ein bebauter Worktree belegt durch `backend/build` und `.gradle` schnell viele GB — liegengebliebene Worktrees füllen die Platte. (`frontend/node_modules` ist ein Link-Baum in den benutzerweiten pnpm-Store und fällt kaum ins Gewicht.)
 - Aufgabe unterbrochen, später weiterführen → Worktree behalten
 - `pnpm install` in einem Worktree erst ausführen, wenn tatsächlich am Frontend gearbeitet wird
 
@@ -142,9 +142,10 @@ Format: `feature/<issue-id>_<kurze-beschreibung>` — **ausnahmslos** mit `featu
 
 ### GitHub-Issues
 
-- Beim Erstellen IMMER passende vorhandene Labels zuweisen (z. B. `bug`, `backend`, `size:S/M/L`)
+- Beim Erstellen passende vorhandene Labels zuweisen (z. B. `bug`, `backend`, `size:S/M/L`)
 - **Vor Arbeitsbeginn das Issue selbst zuweisen** (`gh issue edit <nr> --add-assignee @me`). Ist es einem anderen Account zugewiesen, nicht anfangen, sondern Bescheid geben — Details in [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md#bearbeitung-anzeigen-issue-selbst-zuweisen)
-- Titel und Beschreibung MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
+- Titel und Beschreibung auf Deutsch verfassen (siehe [Projektsprache](#projektsprache))
+- **Befunde im selben PR beheben, Folge-Issues sind die Ausnahme** — nur für einen sehr großen Umbau oder einen ganz anderen Scope ([AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md), Schritt 5)
 - **Epics führen ihre Tickets als native Sub-Issues**, nicht als Checkliste im Body; Aufbau des Epic-Bodys: [.github/ISSUE_TEMPLATE/epic.md](.github/ISSUE_TEMPLATE/epic.md)
 - **Ein Epic wird geschlossen, sobald alle seine Sub-Issues geschlossen sind**, mit kurzem Abschlusskommentar: was geliefert wurde (PR-Verweise genügen) und welche Folge-Issues außerhalb des Epic-Umfangs entstanden sind. Wer das letzte Sub-Issue abschließt, prüft den Stand der Geschwister. Befehle dazu in [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md#issues), Abschnitt Issues
 
@@ -153,8 +154,8 @@ Format: `feature/<issue-id>_<kurze-beschreibung>` — **ausnahmslos** mit `featu
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
 - Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
 - Kein formales Approval nötig: ein Maintainer merged, sobald CI grün ist, per Auto-Merge (`gh pr merge --auto --squash`); der PR muss dafür nur konfliktfrei sein, nicht up to date mit `main`. Wer Auto-Merge setzen darf, regelt [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md), Schritt 6
-- Beim Erstellen IMMER passende Labels zuweisen; Titel und Beschreibung MÜSSEN auf Deutsch verfasst werden
-- IMMER das PR-Template [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) verwenden
+- Beim Erstellen passende Labels zuweisen; Titel und Beschreibung auf Deutsch verfassen
+- Das PR-Template [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) verwenden
 
 ### Pre-Push-Checkliste
 
@@ -192,7 +193,6 @@ Verfahren und Wortlaut des Unterzeichnungskommentars stehen in [CONTRIBUTING.md]
 
 ## Agenten-Verhalten
 
-- In der Sprache antworten, in der der Benutzer schreibt
 - Code nicht umstrukturieren, sofern nicht ausdrücklich verlangt
 - Vor dem Erstellen neuer Dateien prüfen, ob ähnliche Muster oder Hilfsfunktionen bereits existieren
 - Kleine, fokussierte Commits gegenüber großen bevorzugen

@@ -1,0 +1,7 @@
+name = "ux-designer"
+description = "Builds clickable UI variants with the ui-lab skill before larger UI features are implemented, maintains terms and UI copy, and reviews implemented UIs from the user's perspective."
+
+developer_instructions = """
+Read AGENTS.md, docs/AGENT-ORGANIZATION.md, agents/roles/ux-designer.md, and .claude/skills/ui-lab/SKILL.md before starting.
+The shared role contract is binding. Create and use an isolated Git worktree on the lab branch named in the assignment before building variants.
+"""

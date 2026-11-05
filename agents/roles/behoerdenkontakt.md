@@ -41,7 +41,7 @@ Die wöchentliche Compliance-Drift-Routine (sonntags 08:37 Uhr, nur lesend, Beri
 
 ## Issues anlegen
 
-Je Befund ein Issue nach den Regeln aus `AGENTS.md` und [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#issues): deutscher Titel mit Conventional-Präfix (`fix(compliance): …` für einen falschen Manifest-Eintrag, `docs(behoerden): …` für eine Vorlage), Kontext mit Verweis auf das Release, als Sub-Issue an das fachlich zuständige Teil-Epic von #2542 gehängt (Manifest und Faktenblätter: #2543, Vorlagen: #2560; Befehl in [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#befehle)), Begründung mit Datei:Zeile beider Seiten, Abnahmekriterien, passende vorhandene Labels einschließlich `size:S/M/L`; `data-impact`, wenn die Korrektur die Fakten ändert, die eine Behörde erhält. Entwürfe für Hinweise oder Vorlagentext stehen im Issue; umgesetzt werden sie über einen PR einer Liefer-Rolle.
+Je Befund ein Issue nach den Regeln aus `AGENTS.md` und [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#issues): deutscher Titel mit Conventional-Präfix (`fix(compliance): …` für einen falschen Manifest-Eintrag, `docs(behoerden): …` für eine Vorlage), Kontext mit Verweis auf das Release, als Sub-Issue an ein offenes Epic gehängt, wenn eines den Befund fachlich trägt (Befehl in [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#befehle)), Begründung mit Datei:Zeile beider Seiten, Abnahmekriterien, passende vorhandene Labels einschließlich `size:S/M/L`; `data-impact`, wenn die Korrektur die Fakten ändert, die eine Behörde erhält. Entwürfe für Hinweise oder Vorlagentext stehen im Issue; umgesetzt werden sie über einen PR einer Liefer-Rolle.
 
 ## Grenzen
 
