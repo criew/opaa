@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -96,6 +97,12 @@ public class ServiceAccountService {
         tokens.findByServiceAccountIdIn(rows.stream().map(ServiceAccount::getId).toList()).stream()
             .collect(Collectors.groupingBy(ServiceAccountToken::getServiceAccountId));
     Map<UUID, User> responsible = responsiblePersons(rows);
+    Map<UUID, List<ServiceAccountLibraryConsent>> consentsByAccount =
+        withExistingLibraries(
+                consents.findByServiceAccountIdInAndEndedAtIsNull(
+                    rows.stream().map(ServiceAccount::getId).toList()))
+            .stream()
+            .collect(Collectors.groupingBy(ServiceAccountLibraryConsent::getServiceAccountId));
     return rows.stream()
         .map(
             account ->
@@ -103,7 +110,7 @@ public class ServiceAccountService {
                     account,
                     responsible.get(account.getResponsibleUserId()),
                     tokensByAccount.getOrDefault(account.getId(), List.of()),
-                    consents.findByServiceAccountIdAndEndedAtIsNull(account.getId()),
+                    consentsByAccount.getOrDefault(account.getId(), List.of()),
                     now))
         .sorted(
             Comparator.comparing((ServiceAccountOverview view) -> !view.account().isActive())
@@ -119,13 +126,15 @@ public class ServiceAccountService {
     Instant now = clock.instant();
     List<ServiceAccountToken> own =
         tokens.findByServiceAccountIdOrderByCreatedAtDesc(account.getId());
-    List<ServiceAccountLibraryConsent> open =
+    List<ServiceAccountLibraryConsent> named =
         consents.findByServiceAccountIdAndEndedAtIsNull(account.getId());
     Map<UUID, String> names =
         libraries
-            .findAllById(open.stream().map(ServiceAccountLibraryConsent::getLibraryId).toList())
+            .findAllById(named.stream().map(ServiceAccountLibraryConsent::getLibraryId).toList())
             .stream()
             .collect(Collectors.toMap(KnowledgeLibrary::getId, KnowledgeLibrary::getName));
+    List<ServiceAccountLibraryConsent> open =
+        named.stream().filter(consent -> names.containsKey(consent.getLibraryId())).toList();
     List<ConsentedLibrary> consented =
         open.stream()
             .map(
@@ -249,7 +258,7 @@ public class ServiceAccountService {
   @Transactional
   public ServiceAccountOverview deactivate(
       UUID actorUserId, UUID organizationId, UUID serviceAccountId) {
-    ServiceAccount account = require(organizationId, serviceAccountId);
+    ServiceAccount account = requireLocked(organizationId, serviceAccountId);
     if (!account.isActive()) {
       return overviewOf(account);
     }
@@ -296,7 +305,7 @@ public class ServiceAccountService {
       throw new AccessDeniedException(
           "Externe KI-Werkzeuge sind für diese Installation ausgeschaltet");
     }
-    ServiceAccount account = require(organizationId, serviceAccountId);
+    ServiceAccount account = requireLocked(organizationId, serviceAccountId);
     if (!account.isActive()) {
       throw new ConflictException("Ein deaktiviertes Dienstkonto bekommt keine Tokens mehr");
     }
@@ -385,6 +394,12 @@ public class ServiceAccountService {
             .build());
   }
 
+  private ServiceAccount requireLocked(UUID organizationId, UUID serviceAccountId) {
+    return accounts
+        .lockByIdAndOrganizationId(serviceAccountId, organizationId)
+        .orElseThrow(() -> new NotFoundException("Dienstkonto nicht gefunden"));
+  }
+
   private ServiceAccount require(UUID organizationId, UUID serviceAccountId) {
     return accounts
         .findByIdAndOrganizationId(serviceAccountId, organizationId)
@@ -400,8 +415,27 @@ public class ServiceAccountService {
         account,
         responsible,
         tokens.findByServiceAccountIdOrderByCreatedAtDesc(account.getId()),
-        consents.findByServiceAccountIdAndEndedAtIsNull(account.getId()),
+        withExistingLibraries(consents.findByServiceAccountIdAndEndedAtIsNull(account.getId())),
         clock.instant());
+  }
+
+  /**
+   * The consents whose library still exists. The history has no foreign key on the library, and the
+   * daily step ends the rows of a deleted one only on its next run.
+   */
+  private List<ServiceAccountLibraryConsent> withExistingLibraries(
+      List<ServiceAccountLibraryConsent> open) {
+    if (open.isEmpty()) {
+      return open;
+    }
+    Set<UUID> existing =
+        libraries
+            .findAllById(
+                open.stream().map(ServiceAccountLibraryConsent::getLibraryId).distinct().toList())
+            .stream()
+            .map(KnowledgeLibrary::getId)
+            .collect(Collectors.toSet());
+    return open.stream().filter(consent -> existing.contains(consent.getLibraryId())).toList();
   }
 
   private ServiceAccountOverview overview(

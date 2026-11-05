@@ -11,5 +11,7 @@ public enum ServiceAccountConsentEndReason {
   /** The end was moved; the next row carries the consent from then on. */
   REPLACED,
   /** A consent that had already run out was renewed or removed; the row closes at its old end. */
-  EXPIRED
+  EXPIRED,
+  /** The library was deleted; the row stays as its history, without a foreign key on it. */
+  LIBRARY_DELETED
 }

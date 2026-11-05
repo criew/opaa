@@ -157,6 +157,90 @@ class ServiceAccountIntegrationTest {
   }
 
   @Test
+  void aConsentRowOnALibraryOfAnotherOrganizationAddsNothing() throws Exception {
+    UUID foreignOrganization = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO organizations (id, name) VALUES (?, ?)", foreignOrganization, "Fremdamt");
+    User foreigner = new User(UUID.randomUUID().toString(), "opaa-dev", null, "Fremd");
+    foreigner.setOrganizationId(foreignOrganization);
+    UUID foreignOwner = users.save(foreigner).getId();
+    UUID foreignLibrary = UUID.randomUUID();
+    try {
+      jdbc.update(
+          "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+              + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER',"
+              + " ?) RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+              + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
+          foreignLibrary,
+          foreignOrganization,
+          foreignOwner);
+      consentRowByHand(foreignLibrary);
+
+      assertThat(searchableLibraries(rawValue)).containsExactly(consentedLibraryId.toString());
+    } finally {
+      jdbc.update("DELETE FROM assets WHERE id = ?", foreignLibrary);
+      users.deleteById(foreignOwner);
+      jdbc.update("DELETE FROM organizations WHERE id = ?", foreignOrganization);
+    }
+  }
+
+  @Test
+  void aConsentOnAPrivateLibraryAddsNothing() throws Exception {
+    UUID privateLibrary = insertLibrary("Privat", true);
+    try {
+      consentRowByHand(privateLibrary);
+
+      assertThat(searchableLibraries(rawValue)).containsExactly(consentedLibraryId.toString());
+    } finally {
+      jdbc.update("DELETE FROM asset_grants WHERE asset_id = ?", privateLibrary);
+      jdbc.update("DELETE FROM assets WHERE id = ?", privateLibrary);
+    }
+  }
+
+  @Test
+  void theConsentHistoryOutlivesTheLibraryAndIsEndedByTheDailyStep() throws Exception {
+    UUID doomed = insertLibrary("Wird gelöscht");
+    consentService.set(asOwner(), doomed, accountId, clock.instant().plus(Duration.ofDays(30)));
+    jdbc.update("DELETE FROM asset_grants WHERE asset_id = ?", doomed);
+    jdbc.update("DELETE FROM asset_visibility_history WHERE asset_id = ?", doomed);
+    jdbc.update("DELETE FROM assets WHERE id = ?", doomed);
+
+    maintenanceStep.run(clock.instant());
+
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT end_reason FROM service_account_library_consents WHERE library_id = ?",
+                String.class,
+                doomed))
+        .isEqualTo("LIBRARY_DELETED");
+    assertThat(
+            service.detail(Organization.DEFAULT_ID, accountId).overview().consentedLibraryCount())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aConsentThatRanOutIsRecordedOnceAndStaysListed() throws Exception {
+    jdbc.update(
+        "UPDATE service_account_library_consents SET expires_at = ? WHERE service_account_id = ?",
+        Timestamp.from(clock.instant().minus(Duration.ofMinutes(1))),
+        accountId);
+
+    maintenanceStep.run(clock.instant());
+    maintenanceStep.run(clock.instant());
+
+    assertThat(auditCount(AuditEventType.SERVICE_ACCOUNT_CONSENT_EXPIRED, consentedLibraryId))
+        .isEqualTo(1);
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + consentedLibraryId + "/service-accounts")
+                .with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.consents[?(@.serviceAccountId == '" + accountId + "')].status")
+                .value("EXPIRED"));
+  }
+
+  @Test
   void aConsentThatHasRunOutEmptiesTheView() throws Exception {
     jdbc.update(
         "UPDATE service_account_library_consents SET expires_at = ? WHERE service_account_id = ?",
@@ -512,6 +596,17 @@ class ServiceAccountIntegrationTest {
     }
   }
 
+  /** A consent row written past the service, as a stale or tampered row would stand. */
+  private void consentRowByHand(UUID libraryId) {
+    jdbc.update(
+        "INSERT INTO service_account_library_consents (id, service_account_id, library_id,"
+            + " granted_at, expires_at) VALUES (?, ?, ?, now(), ?)",
+        UUID.randomUUID(),
+        accountId,
+        libraryId,
+        Timestamp.from(clock.instant().plus(Duration.ofDays(10))));
+  }
+
   private UUID createAccount(String name, Integer rateLimitPerHour) {
     UUID id =
         service
@@ -627,16 +722,21 @@ class ServiceAccountIntegrationTest {
   }
 
   private UUID insertLibrary(String name) {
+    return insertLibrary(name, false);
+  }
+
+  private UUID insertLibrary(String name, boolean ownerOnly) {
     UUID id = UUID.randomUUID();
     jdbc.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?)"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, ?)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         id,
         Organization.DEFAULT_ID,
         name,
-        owner.getId());
+        owner.getId(),
+        ownerOnly);
     jdbc.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?,"

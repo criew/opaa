@@ -207,6 +207,8 @@ public enum AuditEventType {
   SERVICE_ACCOUNT_CONSENT_CHANGED,
   /** A consent was taken back; the library leaves every token of the service account. */
   SERVICE_ACCOUNT_CONSENT_REVOKED,
+  /** A consent ran out at its end (system process); recorded once per consent row. */
+  SERVICE_ACCOUNT_CONSENT_EXPIRED,
   /** One entry per effected change from a directory sync run, linked via {@code correlationRef}. */
   DIRECTORY_SYNC_CHANGE_APPLIED,
   /**

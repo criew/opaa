@@ -82,7 +82,8 @@ aus dem Haus erreichbar?" auch nach der Löschfrist des Nachweisprotokolls beant
 ist pflichtbefristet auf höchstens `opaa.external-access.max-release-days` (365) mit
 Wiedervorlage per Mail (Vorlauf eine Einstellung der externen KI-Werkzeuge, Werkseinstellung 14 Tage,
 höchstens einen Tag unter der längsten Befristung; Mailweg aus ADR-0033); eine unbefristete Freigabe
-wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants.
+wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants; für Dienstkonten
+tritt an ihre Stelle die Zustimmung aus Entscheidung 7, ein eigenes historisiertes Reichweitenfeld.
 Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Genehmigungsstufe —
 Befristung, Historisierung und die angezeigte Anzahl der Tokens, die die Bibliothek enthalten
 (`tokenCount`), sind die Antwort auf das dahinterliegende Anliegen. Eine zurückgenommene oder
@@ -153,7 +154,9 @@ nicht, und `external_access_tokens.user_id` bleibt `NOT NULL`. Die Reichweite gi
 (`service_account_library_consents`): gleiche Schranke wie die Freigabe aus Entscheidung 4
 (MANAGER oder Systemverwaltung, nie eine private Bibliothek, kein Weiten bei offener Nachfolge),
 pflichtbefristet auf `max-release-days`, widerrufbar, historisiert (eine Zeile wird beendet, nie
-gelöscht). Die Fremdzugangsfreigabe zählt hier nicht: Sie gilt den Werkzeugen der Beschäftigten,
+gelöscht; wie `asset_visibility_history` ohne Fremdschlüssel auf die Bibliothek, sodass die
+Historie deren Löschung überlebt). Das Auslaufen einer Zustimmung schreibt der tägliche Lauf genau
+einmal ins Protokoll (`SERVICE_ACCOUNT_CONSENT_EXPIRED`, Anspruch per bedingtem Update). Die Fremdzugangsfreigabe zählt hier nicht: Sie gilt den Werkzeugen der Beschäftigten,
 nicht der Speisung eines Fachverfahrens. Die Sicht eines Dienstkonto-Tokens ist Zustimmungen ∩
 Installationsschalter ∩ Token aktiv ∩ Dienstkonto aktiv, je Aufruf in
 `ExternalAccessTokenScopeService` gebildet; Pfade, Netzbeschränkung, Notaus und Abflussalarm sind die

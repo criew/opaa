@@ -703,6 +703,14 @@ class PermissionMatrixIntegrationTest {
               recipient,
               HexFormat.of().formatHex(token.toString().getBytes()).substring(0, 64),
               Timestamp.from(Instant.now().plus(30, ChronoUnit.DAYS)));
+          // The same id as a token of the service account: tokenId names a token in both tables.
+          rows.update(
+              "INSERT INTO service_account_tokens (id, service_account_id, name, token_prefix,"
+                  + " token_lookup_hash, expires_at) VALUES (?, ?, 'Probe', 'opaa_probe', ?, ?)",
+              token,
+              serviceAccount,
+              HexFormat.of().formatHex(serviceAccount.toString().getBytes()).substring(0, 64),
+              Timestamp.from(Instant.now().plus(30, ChronoUnit.DAYS)));
           rows.update(
               "INSERT INTO audit_incident_scope_grants (id, organization_id, subject_user_id,"
                   + " scope_start, scope_end, purpose, reason, requested_by_user_id,"

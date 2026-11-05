@@ -601,6 +601,10 @@ auditEvents:
     trigger: Die Verwaltung einer Bibliothek nimmt eine Zustimmung für ein Dienstkonto zurück
     details: Kennung des Dienstkontos
     payloadKeys: [serviceAccountId]
+  - id: SERVICE_ACCOUNT_CONSENT_EXPIRED
+    trigger: Eine Zustimmung für ein Dienstkonto erlischt durch Fristablauf (Systemvorgang)
+    details: Kennung des Dienstkontos und das Ende der Zustimmung
+    payloadKeys: [expiresAt, serviceAccountId]
   - id: DIRECTORY_SYNC_CHANGE_APPLIED
     trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
     details: Je Änderung ein Eintrag, verbunden über correlation_ref

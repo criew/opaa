@@ -2,6 +2,7 @@ package io.opaa.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ch.qos.logback.classic.Logger;
@@ -17,6 +18,8 @@ import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
+import io.opaa.externalaccess.token.ServiceAccountConsentService;
+import io.opaa.externalaccess.token.ServiceAccountService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
@@ -48,6 +51,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.env.Environment;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -105,6 +109,8 @@ class McpServerIntegrationTest {
   @Autowired private ExternalAccessMassRetrievalAlarm alarm;
   @Autowired private Environment environment;
   @Autowired private Clock clock;
+  @Autowired private ServiceAccountService serviceAccounts;
+  @Autowired private ServiceAccountConsentService serviceAccountConsents;
 
   private final HttpClient http = HttpClient.newHttpClient();
 
@@ -117,6 +123,7 @@ class McpServerIntegrationTest {
   private UUID unselectedDocumentId;
   private String narrowToken;
   private String wideToken;
+  private final List<UUID> createdServiceAccounts = new ArrayList<>();
 
   @BeforeEach
   void setUp() throws Exception {
@@ -175,6 +182,9 @@ class McpServerIntegrationTest {
   @AfterEach
   void tearDown() {
     alarm.reset();
+    for (UUID account : createdServiceAccounts) {
+      jdbc.update("DELETE FROM service_accounts WHERE id = ?", account);
+    }
     removeOwnRows();
     vectorChunkStore.deleteByLibraryId(servedLibraryId);
     vectorChunkStore.deleteByLibraryId(unselectedLibraryId);
@@ -268,6 +278,61 @@ class McpServerIntegrationTest {
     List<String> names = new ArrayList<>();
     result.get("libraries").forEach(library -> names.add(library.get("name").asString()));
     assertThat(names).contains(SERVED_LIBRARY).doesNotContain(UNSELECTED_LIBRARY);
+  }
+
+  /**
+   * A service account's token over {@code /mcp} (ADR-0035, Entscheidung 7): both libraries are
+   * released, but only the consented one is in its view - the release counts for persons only.
+   */
+  @Test
+  void aServiceAccountTokenSeesOnlyItsConsentedLibraryOverMcp() {
+    String value = serviceAccountToken();
+
+    JsonNode listed = structured(rpc(value, toolCall("list_libraries", Map.of())));
+    List<String> names = new ArrayList<>();
+    listed.get("libraries").forEach(library -> names.add(library.get("name").asString()));
+    assertThat(names).containsExactly(SERVED_LIBRARY);
+
+    JsonNode hits =
+        structured(rpc(value, toolCall("search", Map.of("query", QUESTION, "maxHits", 5))))
+            .get("results");
+    assertThat(hits.size()).isPositive();
+    for (JsonNode hit : hits) {
+      assertThat(hit.get("libraryId").asString()).isEqualTo(servedLibraryId.toString());
+    }
+  }
+
+  @Test
+  void aServiceAccountTokenReachesNothingOfALibraryWithoutConsentOverRest() throws Exception {
+    String value = serviceAccountToken();
+    String asPerson =
+        mockMvc
+            .perform(
+                post("/api/v1/search")
+                    .with(devUser("dev-user"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(searchBody(unselectedLibraryId)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    List<String> foreignHitIds = com.jayway.jsonpath.JsonPath.read(asPerson, "$.hits[*].hitId");
+    assertThat(foreignHitIds).isNotEmpty();
+
+    String asServiceAccount =
+        mockMvc
+            .perform(
+                post("/api/v1/search")
+                    .with(bearer(value))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(searchBody(unselectedLibraryId)))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(asServiceAccount).doesNotContain(unselectedLibraryId.toString());
+    mockMvc
+        .perform(get("/api/v1/search/hits/" + foreignHitIds.getFirst()).with(bearer(value)))
+        .andExpect(status().isNotFound());
   }
 
   @Test
@@ -658,6 +723,38 @@ class McpServerIntegrationTest {
   private long auditEntriesOfThisPerson() {
     return jdbc.queryForObject(
         "SELECT count(*) FROM audit_log WHERE actor_ref = ?", Long.class, ownerId.toString());
+  }
+
+  /** A service account consented to the served library only, and the value of its one token. */
+  private String serviceAccountToken() {
+    UUID account =
+        serviceAccounts
+            .create(
+                administratorId, DEFAULT_ORGANIZATION_ID, "MCP-Fachverfahren", null, ownerId, null)
+            .account()
+            .getId();
+    createdServiceAccounts.add(account);
+    serviceAccountConsents.set(
+        owner(), servedLibraryId, account, clock.instant().plus(Duration.ofDays(30)));
+    return serviceAccounts
+        .issueToken(
+            administratorId,
+            DEFAULT_ORGANIZATION_ID,
+            account,
+            "MCP-Token",
+            clock.instant().plus(Duration.ofDays(30)))
+        .rawValue();
+  }
+
+  private static String searchBody(UUID libraryId) {
+    return "{\"question\":\"" + QUESTION + "\",\"libraryIds\":[\"" + libraryId + "\"]}";
+  }
+
+  private static RequestPostProcessor bearer(String value) {
+    return request -> {
+      request.addHeader("Authorization", "Bearer " + value);
+      return request;
+    };
   }
 
   private String firstHitId() {

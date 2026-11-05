@@ -57,7 +57,9 @@ CREATE INDEX idx_service_account_tokens_expires_at ON service_account_tokens USI
 
 -- The consent of a library administration to one service account, historised: a row is never
 -- deleted, a change ends it (ended_at, end_reason) and starts the next one. At most one row per pair
--- is open; an open row whose expires_at has passed no longer takes effect.
+-- is open; an open row whose expires_at has passed no longer takes effect. Like
+-- asset_visibility_history it has no foreign key on the library, so it outlives its deletion;
+-- reminder_sent_at and expiry_recorded_at are the claims of the reminder and of the expiry entry.
 CREATE TABLE service_account_library_consents (
     id uuid NOT NULL,
     service_account_id uuid NOT NULL,
@@ -67,14 +69,13 @@ CREATE TABLE service_account_library_consents (
     ended_at timestamp with time zone,
     end_reason character varying(20),
     reminder_sent_at timestamp with time zone,
+    expiry_recorded_at timestamp with time zone,
     CONSTRAINT service_account_library_consents_pkey PRIMARY KEY (id),
     CONSTRAINT chk_service_account_library_consents_end CHECK ((ended_at IS NULL) = (end_reason IS NULL)),
     CONSTRAINT chk_service_account_library_consents_end_reason CHECK (
-        end_reason IS NULL OR end_reason IN ('WITHDRAWN', 'REPLACED', 'EXPIRED')),
+        end_reason IS NULL OR end_reason IN ('WITHDRAWN', 'REPLACED', 'EXPIRED', 'LIBRARY_DELETED')),
     CONSTRAINT fk_service_account_library_consents_account FOREIGN KEY (service_account_id)
-        REFERENCES service_accounts(id) ON DELETE CASCADE,
-    CONSTRAINT fk_service_account_library_consents_library FOREIGN KEY (library_id)
-        REFERENCES knowledge_libraries(id) ON DELETE CASCADE
+        REFERENCES service_accounts(id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX ux_service_account_library_consents_open

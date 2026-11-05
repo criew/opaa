@@ -33,13 +33,26 @@ beim nächsten Aufruf für alle Tokens, und die Tokens bleiben erhalten.
 ## Tokens verwalten
 
 Die Liste „Zugangstokens“ zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand, bewusst ohne
-Nutzungsdatum und ohne Filter nach Person. Sie können ein einzelnes Token oder alle Tokens einer
-Person sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe an
-einen Identitätsanbieter beenden die Tokens eines Kontos von selbst.
+Nutzungsdatum und ohne Filter nach Person; auch die Tokens der Dienstkonten stehen darin, mit dem
+Dienstkonto als Besitzer. Sie können ein einzelnes Token oder alle Tokens einer Person oder eines
+Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe
+an einen Identitätsanbieter beenden die Tokens eines Kontos von selbst. Die Zahl der Tokens an
+einer Bibliothek zählt die Tokens der Dienstkonten mit.
 
 Der **Abflussalarm** zählt die Abrufe des ganzen Kanals je Stunde und meldet eine Überschreitung
 einmal an die Systemverwaltung. Die Meldung führt zur Tokenliste und dient Vorfall und Sperre, nicht
 Leistungs- oder Disziplinarfragen.
+
+## Dienstkonten
+
+Ein Fachverfahren hängt nicht am Token einer Person, sondern an einem **Dienstkonto** mit eigenen
+Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt hat, je Bibliothek befristet
+wie eine Freigabe und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten zählt hier
+nicht. Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt
+sie weg, laufen die Tokens weiter, und das Dienstkonto zeigt die Lücke. Deaktivieren beendet alle
+Tokens sofort. Grenzen: Eine Rotation von `OPAA_AUTH_JWT_SECRET` entwertet auch diese Tokens; eine
+Rücksicherung belebt widerrufene Tokens und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was
+das Fachverfahren selbst mit den Fundstellen protokolliert, klärt die Behörde vor der Anbindung.
 
 ## Einstellungen
 
@@ -48,7 +61,7 @@ Leistungs- oder Disziplinarfragen.
 | Zugangstokens höchstens gültig | 90 Tage | 1–365 |
 | Anfragen je Token und Stunde | 60 | 1–10.000 |
 | Abflussalarm ab Abrufen je Stunde | 600 | 1–1.000.000 |
-| Erinnerung vor Ablauf einer Freigabe | 14 Tage | 0 (aus) bis knapp unter die längste Freigabefrist |
+| Erinnerung vor Ablauf einer Freigabe oder Zustimmung für ein Dienstkonto | 14 Tage | 0 (aus) bis knapp unter die längste Freigabefrist |
 | Netzbereiche | private Adressbereiche und localhost | höchstens 50, nur CIDR; leer weist jeden Aufruf ab |
 | Einleitungstext für fremde Werkzeuge | Vorgabetext | höchstens 4.000 Zeichen |
 

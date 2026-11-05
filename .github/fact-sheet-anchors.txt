@@ -211,6 +211,7 @@ protokollereignisse#self-disclosure-export-started
 protokollereignisse#self-disclosure-settings-changed
 protokollereignisse#service-account-changed
 protokollereignisse#service-account-consent-changed
+protokollereignisse#service-account-consent-expired
 protokollereignisse#service-account-consent-granted
 protokollereignisse#service-account-consent-revoked
 protokollereignisse#service-account-created

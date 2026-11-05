@@ -44,6 +44,13 @@ public class ServiceAccountLibraryConsent {
   @Column(name = "end_reason", length = 20)
   private ServiceAccountConsentEndReason endReason;
 
+  /** Claim columns, written only by their conditional updates in the repository. */
+  @Column(name = "reminder_sent_at", insertable = false, updatable = false)
+  private Instant reminderSentAt;
+
+  @Column(name = "expiry_recorded_at", insertable = false, updatable = false)
+  private Instant expiryRecordedAt;
+
   protected ServiceAccountLibraryConsent() {}
 
   public ServiceAccountLibraryConsent(

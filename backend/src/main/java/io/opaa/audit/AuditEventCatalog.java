@@ -184,6 +184,7 @@ public final class AuditEventCatalog {
         SERVICE_ACCOUNT_CONSENT_GRANTED,
         SERVICE_ACCOUNT_CONSENT_CHANGED);
     put(keys, Set.of("serviceAccountId"), SERVICE_ACCOUNT_CONSENT_REVOKED);
+    put(keys, Set.of("serviceAccountId", "expiresAt"), SERVICE_ACCOUNT_CONSENT_EXPIRED);
     put(
         keys,
         Set.of("created", "dissolved", "member", "memberCount", "name"),
