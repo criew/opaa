@@ -13,7 +13,10 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
 import { fontFamily, radius } from '@/shared/theme/tokens'
+import { connectionsAdminRoute } from '@/shared/routes'
+import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccountToken } from '../../api/serviceAccountApi'
 import {
@@ -24,6 +27,10 @@ import {
 } from '../tokenLabels'
 import { useErrorTitle } from './serviceAccountHooks'
 import { VALUE_ONCE_HINT, formatDate } from './serviceAccountLabels'
+
+export const CONFIRM_PURPOSE =
+  'Ein Token eines Dienstkontos wirkt über diese Sitzung hinaus. Bevor Sie es ausstellen, ' +
+  'bestätigen Sie bitte Ihre Anmeldung.'
 
 interface IssueServiceAccountTokenDialogProps {
   /** The account the token is for; null keeps the dialog closed. */
@@ -110,6 +117,7 @@ function TokenDialog({
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState<CreatedServiceAccountTokenResponse | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
   const expiryRef = useRef<HTMLInputElement>(null)
   useErrorTitle(Boolean(errors.name || errors.expiry) && !created)
@@ -125,6 +133,14 @@ function TokenDialog({
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    await issue(false)
+  }
+
+  /**
+   * Issuing needs a recent sign-in: a refusal opens the confirmation, which repeats the issue
+   * once; a second refusal stands as the form's message.
+   */
+  async function issue(afterConfirmation: boolean) {
     if (!account) return
     const found: { name?: string; expiry?: string } = {}
     if (!name.trim()) found.name = 'Bitte einen Namen angeben.'
@@ -143,7 +159,9 @@ function TokenDialog({
       setCreated(result)
       onIssued()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Das Token wurde nicht ausgestellt.')
+      if (isRecentLoginRequired(err) && !afterConfirmation) setConfirming(true)
+      else if (isRecentLoginRequired(err)) setFormError(recentLoginRefusalMessage(false))
+      else setFormError(err instanceof Error ? err.message : 'Das Token wurde nicht ausgestellt.')
     } finally {
       setSaving(false)
     }
@@ -226,6 +244,16 @@ function TokenDialog({
           </BusyButton>
         </DialogActions>
       </form>
+      <RecentLoginDialog
+        open={confirming}
+        purpose={CONFIRM_PURPOSE}
+        onConfirmed={() => {
+          setConfirming(false)
+          void issue(true)
+        }}
+        onClose={() => setConfirming(false)}
+        returnTo={`${connectionsAdminRoute('service-accounts')}?account=${account.id}`}
+      />
     </Dialog>
   )
 }

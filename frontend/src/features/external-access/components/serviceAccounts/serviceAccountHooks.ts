@@ -7,17 +7,25 @@ import { DEACTIVATE_CONSEQUENCE } from './serviceAccountLabels'
 
 const ERROR_PREFIX = 'Fehler: '
 
+/** How many mounted forms show errors right now; the prefix goes with the last of them. */
+let errorForms = 0
+
 /**
  * While a form shows validation errors, the document title starts with „Fehler: “ (UI-Prüfliste
- * P29); the title in force before comes back once the errors are gone or the form closes.
+ * P29). The cleanup removes only the prefix, so a title changed meanwhile and a second form with
+ * errors keep their own state.
  */
 export function useErrorTitle(hasErrors: boolean): void {
   useEffect(() => {
     if (!hasErrors) return
-    const before = document.title
-    document.title = before.startsWith(ERROR_PREFIX) ? before : `${ERROR_PREFIX}${before}`
+    if (!document.title.startsWith(ERROR_PREFIX))
+      document.title = `${ERROR_PREFIX}${document.title}`
+    errorForms += 1
     return () => {
-      document.title = before
+      errorForms -= 1
+      if (errorForms === 0 && document.title.startsWith(ERROR_PREFIX)) {
+        document.title = document.title.slice(ERROR_PREFIX.length)
+      }
     }
   }, [hasErrors])
 }

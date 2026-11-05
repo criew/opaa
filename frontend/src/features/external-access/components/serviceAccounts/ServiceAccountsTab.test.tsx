@@ -2,12 +2,15 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
+import { useAuthStore } from '@/shared/session/authStore'
 import type { ServiceAccountResponse } from '@/shared/api/types'
 import { scenarioErrorBody } from '@/shared/mocks/mockScenario'
 import { server } from '../../../../test/server'
 import {
   answerConfirm,
   renderWithProviders,
+  setMockAuthState,
   waitForDialogClosed,
 } from '../../../../test/test-utils'
 import ServiceAccountsTab from './ServiceAccountsTab'
@@ -234,5 +237,135 @@ describe('ServiceAccountsTab', () => {
     expect(within(alert).getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Dienstkonto deaktivieren' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Alle Dienstkonten' })).toBeInTheDocument()
+  })
+
+  it('bestätigt vor dem Ausstellen die Anmeldung und stellt danach einmal aus', async () => {
+    let calls = 0
+    server.use(
+      http.post('*/api/v1/admin/service-accounts/:id/tokens', () => {
+        calls += 1
+        if (calls === 1) {
+          return HttpResponse.json(
+            { code: 'RECENT_LOGIN_REQUIRED', message: 'Bitte bestätigen Sie Ihre Anmeldung.' },
+            { status: 403 },
+          )
+        }
+        return undefined
+      }),
+      http.post('*/api/v1/auth/local/reauthenticate', () =>
+        HttpResponse.json({ accessToken: 'recent', expiresInSeconds: 900, tokenType: 'Bearer' }),
+      ),
+    )
+    setMockAuthState()
+    useAuthStore.setState({ mode: 'oidc', sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    render('/admin/connections/service-accounts?account=sa-bauantrag')
+
+    await user.click(await screen.findByRole('button', { name: 'Token ausstellen' }))
+    const form = await screen.findByRole('dialog', { name: 'Token ausstellen' })
+    await user.type(within(form).getByRole('textbox', { name: 'Name' }), 'Ersatz')
+    await user.click(within(form).getByRole('button', { name: 'Ausstellen' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Token eines Dienstkontos/)).toBeInTheDocument()
+    await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Token für Bauantrag-Portal' }),
+    ).toBeInTheDocument()
+    expect(calls).toBe(2)
+  })
+
+  it('nennt eine zweite Ablehnung nach der Bestätigung im Formular', async () => {
+    server.use(
+      http.post('*/api/v1/admin/service-accounts/:id/tokens', () =>
+        HttpResponse.json(
+          { code: 'RECENT_LOGIN_REQUIRED', message: 'Bitte bestätigen Sie Ihre Anmeldung.' },
+          { status: 403 },
+        ),
+      ),
+      http.post('*/api/v1/auth/local/reauthenticate', () =>
+        HttpResponse.json({ accessToken: 'recent', expiresInSeconds: 900, tokenType: 'Bearer' }),
+      ),
+    )
+    setMockAuthState()
+    useAuthStore.setState({ mode: 'oidc', sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    render('/admin/connections/service-accounts?account=sa-bauantrag')
+
+    await user.click(await screen.findByRole('button', { name: 'Token ausstellen' }))
+    const form = await screen.findByRole('dialog', { name: 'Token ausstellen' })
+    await user.type(within(form).getByRole('textbox', { name: 'Name' }), 'Ersatz')
+    await user.click(within(form).getByRole('button', { name: 'Ausstellen' }))
+    await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+    expect(
+      await within(form).findByText(
+        'Bitte bestätigen Sie zuerst Ihre Anmeldung, dann versuchen Sie es erneut.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('service-account-token-value')).toBeNull()
+  })
+
+  it('ändert die Angaben eines Dienstkontos', async () => {
+    const user = userEvent.setup()
+    render('/admin/connections/service-accounts?account=sa-bauantrag')
+
+    await user.click(await screen.findByRole('button', { name: /^Ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Dienstkonto ändern' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
+    expect(name).toHaveValue('Bauantrag-Portal')
+    await user.clear(name)
+    await user.type(name, 'Bauantrag-Portal Nord')
+    const rate = within(dialog).getByRole('textbox', { name: 'Anfragen je Stunde (optional)' })
+    await user.clear(rate)
+    await user.type(rate, '900')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    await waitForDialogClosed()
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bauantrag-Portal Nord' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('900 je Stunde')).toBeInTheDocument()
+  })
+
+  it('zeigt einen Feldfehler des Backends ohne eigenes Feld über dem Formular', async () => {
+    server.use(
+      http.put('*/api/v1/admin/service-accounts/:id', () =>
+        HttpResponse.json(
+          {
+            ...scenarioErrorBody(400, 'Die Angaben sind unvollständig.'),
+            fieldErrors: [{ field: 'description', message: 'Die Beschreibung ist zu lang.' }],
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    render('/admin/connections/service-accounts?account=sa-bauantrag')
+
+    await user.click(await screen.findByRole('button', { name: /^Ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Dienstkonto ändern' })
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Die Beschreibung ist zu lang.',
+    )
+  })
+
+  it('nimmt „Fehler:“ erst mit dem letzten fehlerhaften Formular aus dem Titel', async () => {
+    const { useErrorTitle } = await import('./serviceAccountHooks')
+    const { renderHook } = await import('@testing-library/react')
+    document.title = 'Anbindungen · OPAA'
+    const first = renderHook(({ on }) => useErrorTitle(on), { initialProps: { on: true } })
+    const second = renderHook(({ on }) => useErrorTitle(on), { initialProps: { on: true } })
+    expect(document.title).toBe('Fehler: Anbindungen · OPAA')
+
+    first.unmount()
+    expect(document.title).toBe('Fehler: Anbindungen · OPAA')
+    second.rerender({ on: false })
+    expect(document.title).toBe('Anbindungen · OPAA')
+    second.unmount()
   })
 })

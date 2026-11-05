@@ -82,7 +82,7 @@ sich vom Dev-Server mit Mocks in drei Punkten:
   PDF-Worker, und Seitentitel „OPAA-Prototyp“ (`frontend/prototypeOutput.ts`): Das Hosting von
   claude.ai-Artifacts lehnt Dateien mit bestimmten rohen Zeichen ab, darunter U+FFFD und
   Steuerbytes. `build-prototype.mjs` bricht ab, wenn eine Ausgabedatei U+FFFD oder ein Skript ein
-  Nicht-ASCII-Zeichen oder ein Steuerzeichen außer Tabulator und Zeilenumbruch enthält.
+  Nicht-ASCII-Zeichen oder ein Steuerzeichen außer Tabulator und Zeilenumbruch enthält oder sich nicht mehr parsen lässt (`node --check`).
 
 Szenario, Breite und Variante stehen als Suchparameter **vor** dem Hash, z. B.
 `index.html?mockScenario=scale#/libraries/library-s3-protokolle`.

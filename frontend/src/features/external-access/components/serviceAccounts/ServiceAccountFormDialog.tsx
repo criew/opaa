@@ -18,6 +18,9 @@ import { useErrorTitle } from './serviceAccountHooks'
 
 type Field = 'name' | 'responsibleUserId' | 'rateLimitPerHour'
 
+/** The fields that show a backend message at themselves. */
+const SHOWN_FIELDS: readonly Field[] = ['name', 'responsibleUserId', 'rateLimitPerHour']
+
 interface ServiceAccountFormDialogProps {
   open: boolean
   /** The account to change; absent for a new one. */
@@ -112,10 +115,15 @@ function FormDialog({
       const fieldErrors = apiFieldErrors(err)
       if (fieldErrors.length > 0) {
         const mapped: Partial<Record<Field, string>> = {}
+        const unshown: string[] = []
         fieldErrors.forEach((entry) => {
-          mapped[entry.field as Field] = entry.message
+          if (SHOWN_FIELDS.includes(entry.field as Field))
+            mapped[entry.field as Field] = entry.message
+          else unshown.push(entry.message)
         })
         setErrors(mapped)
+        // a field without an error line of its own (the description, say) speaks above the form
+        setFormError(unshown.length > 0 ? unshown.join(' ') : null)
         focusFirst(mapped)
       } else {
         setFormError(err instanceof Error ? err.message : 'Das Speichern ist fehlgeschlagen.')

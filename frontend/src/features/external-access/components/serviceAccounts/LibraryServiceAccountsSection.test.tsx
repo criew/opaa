@@ -196,4 +196,98 @@ describe('LibraryServiceAccountsSection', () => {
     expect(await screen.findByText('Keines')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Verwalten/ })).toBeEnabled()
   })
+
+  it('verwirft eine Wahl, die die Suche ausblendet, statt sie aufzunehmen', async () => {
+    let puts = 0
+    server.use(
+      http.get('*/api/v1/libraries/:libraryId/service-account-choices', () =>
+        HttpResponse.json({
+          serviceAccounts: Array.from({ length: 8 }, (_, i) => ({
+            id: `sa-${i}`,
+            name: i === 3 ? 'Kita-Platzvergabe' : `Verfahren ${i}`,
+            description: null,
+          })),
+        }),
+      ),
+      http.put('*/api/v1/libraries/:libraryId/service-accounts/:id', () => {
+        puts += 1
+        return HttpResponse.json({})
+      }),
+    )
+    const user = userEvent.setup()
+    render('library-mine')
+
+    const dialog = await openManage(user)
+    await user.click(await within(dialog).findByRole('radio', { name: 'Kita-Platzvergabe' }))
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Dienstkonto suchen' }),
+      'Verfahren',
+    )
+    await user.type(within(dialog).getByLabelText('Zugriff bis'), inDays(30))
+    await user.click(within(dialog).getByRole('button', { name: 'Aufnehmen' }))
+
+    expect(within(dialog).getByText('Bitte ein Dienstkonto auswählen.')).toBeInTheDocument()
+    expect(puts).toBe(0)
+    await user.clear(within(dialog).getByRole('textbox', { name: 'Dienstkonto suchen' }))
+    expect(within(dialog).getByRole('radio', { name: 'Kita-Platzvergabe' })).not.toBeChecked()
+  })
+
+  it('zeigt einen Ladefehler der Auswahl mit „Erneut laden“', async () => {
+    let fail = true
+    server.use(
+      http.get('*/api/v1/libraries/:libraryId/service-account-choices', () =>
+        fail
+          ? HttpResponse.json(scenarioErrorBody(502, 'Die Auswahl konnte nicht geladen werden.'), {
+              status: 502,
+            })
+          : HttpResponse.json({
+              serviceAccounts: [
+                { id: 'a', name: 'Kita-Platzvergabe', description: null },
+                { id: 'b', name: 'Wohngeld-Online', description: null },
+              ],
+            }),
+      ),
+    )
+    const user = userEvent.setup()
+    render('library-mine')
+
+    const dialog = await openManage(user)
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('Die Auswahl konnte nicht geladen werden.')
+    fail = false
+    await user.click(within(alert).getByRole('button', { name: 'Erneut laden' }))
+    expect(
+      await within(dialog).findByRole('radio', { name: 'Kita-Platzvergabe' }),
+    ).toBeInTheDocument()
+  })
+
+  it('ändert die Frist einer Zustimmung', async () => {
+    const user = userEvent.setup()
+    render('library-nextcloud-projekte')
+
+    const dialog = await openManage(user)
+    const consents = await within(dialog).findByRole('list', { name: 'Dienstkonten mit Zugriff' })
+    const row = within(consents).getByText('Bauantrag-Portal').closest('li')!
+    await user.click(within(row).getByRole('button', { name: /Bauantrag-Portal/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Frist ändern' }))
+
+    const change = await screen.findByRole('dialog', { name: 'Frist ändern' })
+    const field = within(change).getByLabelText('Zugriff bis')
+    expect(field).not.toHaveValue('')
+    await user.clear(field)
+    const until = inDays(60)
+    await user.type(field, until)
+    await user.click(within(change).getByRole('button', { name: 'Speichern' }))
+
+    const [y, m, d] = until.split('-')
+    await waitFor(() =>
+      expect(
+        within(
+          within(screen.getByRole('list', { name: 'Dienstkonten mit Zugriff' }))
+            .getByText('Bauantrag-Portal')
+            .closest('li')!,
+        ).getByText(`${d}.${m}.${y}`),
+      ).toBeInTheDocument(),
+    )
+  })
 })

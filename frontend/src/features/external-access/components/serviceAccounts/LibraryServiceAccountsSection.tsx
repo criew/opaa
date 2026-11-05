@@ -88,21 +88,26 @@ function useConsents(libraryId: string) {
 function useChoices(libraryId: string, listed: readonly string[]) {
   const [choices, setChoices] = useState<ServiceAccountChoiceResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const reload = useCallback(
+    () =>
+      listServiceAccountChoices(libraryId)
+        .then((loaded) => {
+          setChoices(loaded)
+          setError(null)
+        })
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : 'Die Auswahl konnte nicht geladen werden.'),
+        ),
+    [libraryId],
+  )
   useEffect(() => {
-    void listServiceAccountChoices(libraryId)
-      .then((loaded) => {
-        setChoices(loaded)
-        setError(null)
-      })
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Die Auswahl konnte nicht geladen werden.'),
-      )
-  }, [libraryId])
+    void reload()
+  }, [reload])
   const open = useMemo(
     () => choices?.filter((choice) => !listed.includes(choice.id)) ?? null,
     [choices, listed],
   )
-  return { choices: open, error }
+  return { choices: open, error, reload }
 }
 
 /** The state of one consent: „bis <Datum>“, „Abgelaufen“ or the account „Deaktiviert“. */
@@ -336,7 +341,7 @@ function AddConsentForm({
   maxDays: number
   onSaved: (name: string) => void
 }) {
-  const { choices, error: loadError } = useChoices(libraryId, listed)
+  const { choices, error: loadError, reload } = useChoices(libraryId, listed)
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState('')
   const [date, setDate] = useState('')
@@ -352,6 +357,16 @@ function AddConsentForm({
     const needle = query.trim().toLocaleLowerCase('de')
     return (choices ?? []).filter((choice) => choice.name.toLocaleLowerCase('de').includes(needle))
   }, [choices, query])
+
+  // a choice the search hides is no choice any more: „Aufnehmen“ never names an invisible account
+  function search(value: string) {
+    setQuery(value)
+    const needle = value.trim().toLocaleLowerCase('de')
+    const kept = (choices ?? []).some(
+      (choice) => choice.id === chosen && choice.name.toLocaleLowerCase('de').includes(needle),
+    )
+    if (!kept) setChosen('')
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -374,7 +389,20 @@ function AddConsentForm({
     }
   }
 
-  if (loadError) return <Alert severity="error">{loadError}</Alert>
+  if (loadError) {
+    return (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={() => void reload()}>
+            Erneut laden
+          </Button>
+        }
+      >
+        {loadError}
+      </Alert>
+    )
+  }
   if (choices === null) return <Skeleton variant="rounded" height={96} />
   if (choices.length === 0) {
     return (
@@ -404,7 +432,7 @@ function AddConsentForm({
               <Box sx={{ mb: 1 }}>
                 <ListSearch
                   value={query}
-                  onChange={setQuery}
+                  onChange={search}
                   placeholder="Name"
                   label="Dienstkonto suchen"
                 />
