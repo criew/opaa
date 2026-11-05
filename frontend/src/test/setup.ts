@@ -45,6 +45,7 @@ import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLo
 // external-access
 import { resetMockExternalAccessSettings } from '@/features/external-access/mocks/externalAccessHandlers'
 import { resetMockExternalAccessTokens } from '@/features/external-access/mocks/externalAccessTokenHandlers'
+import { resetServiceAccountMockState } from '@/features/external-access/mocks/serviceAccountHandlers'
 // compliance
 import { resetSelfDisclosureMockState } from '@/features/compliance/mocks/selfDisclosureHandlers'
 import { resetRetentionMockState } from '@/features/compliance/mocks/retentionHandlers'
@@ -112,6 +113,7 @@ afterEach(() => {
   // mutable, so that a save, a creation or a revocation is visible in the next GET.
   resetMockExternalAccessSettings()
   resetMockExternalAccessTokens()
+  resetServiceAccountMockState()
   // Prompt libraries, their prompts and the space associations are mutable in the mocks as well.
   resetMockPromptLibraries()
   resetMockSpaceAssetAssociations()

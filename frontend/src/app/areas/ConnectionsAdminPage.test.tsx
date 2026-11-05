@@ -37,7 +37,7 @@ describe('ConnectionsAdminPage', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
-  it('führt die vier Reiter als Links in der Reihenfolge der Arbeit', () => {
+  it('führt die fünf Reiter als Links in der Reihenfolge der Arbeit', () => {
     signInAs('SYSTEM_ADMIN')
     render('/admin/connections/access')
 
@@ -48,12 +48,14 @@ describe('ConnectionsAdminPage', () => {
       'Zugänge',
       'Quellarten',
       'Externe KI-Werkzeuge',
+      'Dienstkonten',
       'Einstellungen',
     ])
     expect(tabs.map((tab) => tab.getAttribute('href'))).toEqual([
       '/admin/connections/access',
       '/admin/connections/source-types',
       '/admin/connections/external-tools',
+      '/admin/connections/service-accounts',
       '/admin/connections/settings',
     ])
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
@@ -63,6 +65,7 @@ describe('ConnectionsAdminPage', () => {
     ['access', 'button', 'Neuer Zugang'],
     ['source-types', 'region', 'Zustand der Quellarten'],
     ['external-tools', 'region', 'So kommt ein Werkzeug an Inhalte'],
+    ['service-accounts', 'button', 'Dienstkonto anlegen'],
     ['settings', 'region', 'Ausgangsproxy'],
   ] as const)('zeigt im Reiter %s seinen Inhalt', async (tab, role, name) => {
     signInAs('SYSTEM_ADMIN')
@@ -80,17 +83,20 @@ describe('ConnectionsAdminPage', () => {
   })
 
   // ADR-0044: switched off, the external tools are named nowhere, also not for the administration.
-  it('führt bei ausgeschalteter Funktion keinen Reiter der externen KI-Werkzeuge', async () => {
-    signInAs('SYSTEM_ADMIN')
-    useAuthStore.setState({ features: { externalAccess: false } })
-    render('/admin/connections/external-tools')
+  it.each(['external-tools', 'service-accounts'])(
+    'führt bei ausgeschalteter Funktion keinen Reiter des Fremdzugangs (%s)',
+    async (tab) => {
+      signInAs('SYSTEM_ADMIN')
+      useAuthStore.setState({ features: { externalAccess: false } })
+      render(`/admin/connections/${tab}`)
 
-    expect(await screen.findByRole('button', { name: 'Neuer Zugang' })).toBeVisible()
-    const tabs = within(
-      screen.getByRole('tablist', { name: 'Bereiche der Anbindungen' }),
-    ).getAllByRole('tab')
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Zugänge', 'Quellarten', 'Einstellungen'])
-    expect(screen.getByRole('tab', { name: 'Zugänge' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
-  })
+      expect(await screen.findByRole('button', { name: 'Neuer Zugang' })).toBeVisible()
+      const tabs = within(
+        screen.getByRole('tablist', { name: 'Bereiche der Anbindungen' }),
+      ).getAllByRole('tab')
+      expect(tabs.map((tab) => tab.textContent)).toEqual(['Zugänge', 'Quellarten', 'Einstellungen'])
+      expect(screen.getByRole('tab', { name: 'Zugänge' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.queryByText(/KI-Werkzeug|Dienstkont/)).not.toBeInTheDocument()
+    },
+  )
 })

@@ -10,7 +10,7 @@ import AreaTabs from '@/shared/ui/AreaTabs'
 import { ConnectionProfilesTab } from '@/features/connection'
 import { ConnectorTypesTab } from '@/features/connection'
 import ConnectionSettingsTab from './ConnectionSettingsTab'
-import { ExternalToolsTab } from '@/features/external-access'
+import { ExternalToolsTab, ServiceAccountsTab } from '@/features/external-access'
 import {
   CONNECTIONS_ADMIN_TABS,
   connectionsAdminRoute,
@@ -22,14 +22,18 @@ const TAB_LABELS: Record<ConnectionsAdminTab, string> = {
   access: 'Zugänge',
   'source-types': 'Quellarten',
   'external-tools': 'Externe KI-Werkzeuge',
+  'service-accounts': 'Dienstkonten',
   settings: 'Einstellungen',
 }
 
-/** The tabs the installation offers: switched off (ADR-0044), the external tools have none. */
+/** The tabs that exist only with external access: the external tools and the service accounts. */
+const EXTERNAL_ACCESS_TABS: readonly ConnectionsAdminTab[] = ['external-tools', 'service-accounts']
+
+/** The tabs the installation offers: switched off (ADR-0044), external access has none. */
 function offeredTabs(externalAccess: boolean): readonly ConnectionsAdminTab[] {
   return externalAccess
     ? CONNECTIONS_ADMIN_TABS
-    : CONNECTIONS_ADMIN_TABS.filter((value) => value !== 'external-tools')
+    : CONNECTIONS_ADMIN_TABS.filter((value) => !EXTERNAL_ACCESS_TABS.includes(value))
 }
 
 function isTab(
@@ -47,6 +51,8 @@ function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
       return <ConnectorTypesTab />
     case 'external-tools':
       return <ExternalToolsTab />
+    case 'service-accounts':
+      return <ServiceAccountsTab />
     case 'settings':
       return <ConnectionSettingsTab />
     default: {
@@ -60,8 +66,8 @@ function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
  * The connections area („Anbindungen“): how OPAA is connected to other systems, in both
  * directions. Connection profiles and source types determine what OPAA reads from; external AI
  * tools read from OPAA. The tabs are routes; an unknown tab leads to the first one instead of
- * silently showing another. If the installation has switched off external access, the tab of the
- * external AI tools does not exist, and the page does not mention them.
+ * silently showing another. If the installation has switched off external access, the tabs of the
+ * external AI tools and the service accounts do not exist, and the page does not mention them.
  */
 export default function ConnectionsAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

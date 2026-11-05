@@ -29,6 +29,7 @@ export const CONNECTIONS_ADMIN_TABS = [
   'access',
   'source-types',
   'external-tools',
+  'service-accounts',
   'settings',
 ] as const
 export type ConnectionsAdminTab = (typeof CONNECTIONS_ADMIN_TABS)[number]

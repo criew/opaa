@@ -4,6 +4,7 @@ import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
+import { LibraryServiceAccountsSection } from '@/features/external-access'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
@@ -25,7 +26,10 @@ interface LibrarySharingTabProps {
   onDismissDiagnosticsLockError: () => void
 }
 
-/** The „Freigaben" area: owner, permissions, external access, diagnostics lock, derivation. */
+/**
+ * The „Freigaben" area: owner, permissions, external access, service accounts, diagnostics lock,
+ * derivation.
+ */
 export default function LibrarySharingTab({
   libraryId,
   library,
@@ -80,10 +84,14 @@ export default function LibrarySharingTab({
         )}
 
         {/* the single values close the tab as rows of the Reiter „Quelle“ under one line:
-           external access, diagnostics lock and derivation */}
+           external access, service accounts, diagnostics lock and derivation */}
         <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
           {sections && externalAccessEnabled && (
             <LibraryExternalAccessSection libraryId={libraryId} />
+          )}
+          {/* service accounts need a consent of their own; the release above does not count */}
+          {sections && externalAccessEnabled && (
+            <LibraryServiceAccountsSection libraryId={libraryId} />
           )}
           {/* every reader sees the lock; only the responsible body gets the text action */}
           {details && (
