@@ -177,7 +177,8 @@ class AccountErasureIntegrationTest {
 
   @Test
   void refusesTheCallersOwnAccount() throws Exception {
-    UUID admin = jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
+    UUID admin =
+        jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
 
     mockMvc
         .perform(post(ERASURE.formatted(admin)).with(dev("dev-admin")))
@@ -188,7 +189,8 @@ class AccountErasureIntegrationTest {
   @Test
   void refusesWhileAHoldOfTheChatDeletionIsRequested() throws Exception {
     UUID person = providerAccount("gone-" + marker, SystemRole.USER);
-    UUID admin = jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
+    UUID admin =
+        jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
     jdbc.update(
         "INSERT INTO chat_cleanup_hold_requests (user_id, organization_id, purpose, reason,"
             + " requested_by_user_id, requested_at) VALUES (?, ?, 'AUTHORITY_OR_COURT_ORDER',"

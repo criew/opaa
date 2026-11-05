@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
  * Deletes the chats of an erased account with their messages, notes and attachments, its personal
  * marks and its ended holds, in the erasure's transaction. A running hold of the chat deletion, and
  * a request for one awaiting its second administrator, refuse the erasure: whoever placed it needs
- * the chats kept, and erasing first must not get around the second person. The originals of
- * the attachments go with {@link ChatAttachmentCleanup}, which removes those whose row is gone.
+ * the chats kept, and erasing first must not get around the second person. The originals of the
+ * attachments go with {@link ChatAttachmentCleanup}, which removes those whose row is gone.
  */
 @Component
 class ChatAccountErasureListener {

@@ -9,9 +9,8 @@ import org.springframework.stereotype.Component;
 /**
  * Removes what names an erased account at the providers of its connections, in the erasure's
  * transaction: the label of each connected account, label and person of the library connections it
- * consented to, and the authorizations still open. The rows of
- * the connected accounts stay for the lifecycle, which ends a remaining one and deletes its secret
- * as for any deactivated account.
+ * consented to, and the authorizations still open. The rows of the connected accounts stay for the
+ * lifecycle, which ends a remaining one and deletes its secret as for any deactivated account.
  */
 @Component
 class ConnectedAccountErasureListener {

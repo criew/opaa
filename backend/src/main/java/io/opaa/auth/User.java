@@ -170,10 +170,10 @@ public class User {
   }
 
   /**
-   * Removes the personal reference (erasure on a request under Art. 17 GDPR): name, address, the last
-   * sign-in and the identity at the provider go, the row stays as a nameless shell under {@link
-   * ErasedAccount#ISSUER} with its own id as subject. Irreversible; no token of any issuer resolves
-   * to it again, so a later sign-in creates a new account.
+   * Removes the personal reference (erasure on a request under Art. 17 GDPR): name, address, the
+   * last sign-in and the identity at the provider go, the row stays as a nameless shell under
+   * {@link ErasedAccount#ISSUER} with its own id as subject. Irreversible; no token of any issuer
+   * resolves to it again, so a later sign-in creates a new account.
    */
   public void erase(Instant at) {
     this.erasedAt = Objects.requireNonNull(at, "at");
