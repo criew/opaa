@@ -19,7 +19,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
 | `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
 | `site-template/` | Vorlage der Vergleichsseite und Beispielkonfiguration `site.example.json` |
-| `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs` |
+| `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs`, `service-accounts.mjs` (Dienstkonten in Verwaltung und Bibliothek) |
 | `lib/` | Browserstart, Messung, Elementhelfer |
 | `calibration/` | Kalibrierseiten `good.html` und `bad.html` |
 
@@ -78,10 +78,11 @@ sich vom Dev-Server mit Mocks in drei Punkten:
 - **Hash-Routing.** Die Route steht hinter `#`: `index.html#/libraries/library-nextcloud-projekte`.
   Deep Links und Neuladen funktionieren ohne Server, der jede Route mit `index.html` beantwortet.
 - **Relative Pfade** (`base: './'`).
-- **Reines ASCII in allen Skripten** und Seitentitel „OPAA-Prototyp“ (`frontend/prototypeOutput.ts`):
-  Das Hosting von claude.ai-Artifacts lehnt Dateien mit bestimmten rohen Zeichen ab, darunter
-  U+FFFD. `build-prototype.mjs` bricht ab, wenn eine Ausgabedatei U+FFFD oder ein Skript ein
-  Nicht-ASCII-Zeichen enthält.
+- **Reines ASCII ohne Steuerzeichen in allen Skripten**, auch in mitgelieferten wie dem
+  PDF-Worker, und Seitentitel „OPAA-Prototyp“ (`frontend/prototypeOutput.ts`): Das Hosting von
+  claude.ai-Artifacts lehnt Dateien mit bestimmten rohen Zeichen ab, darunter U+FFFD und
+  Steuerbytes. `build-prototype.mjs` bricht ab, wenn eine Ausgabedatei U+FFFD oder ein Skript ein
+  Nicht-ASCII-Zeichen oder ein Steuerzeichen außer Tabulator und Zeilenumbruch enthält.
 
 Szenario, Breite und Variante stehen als Suchparameter **vor** dem Hash, z. B.
 `index.html?mockScenario=scale#/libraries/library-s3-protokolle`.

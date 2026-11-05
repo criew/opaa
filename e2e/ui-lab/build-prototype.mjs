@@ -57,8 +57,9 @@ function walk(dir) {
   })
 }
 
-// Static hosts such as claude.ai artifacts reject files carrying U+FFFD; the prototype build
-// escapes every non-ASCII character in its scripts, so any left over is a build defect.
+// Static hosts such as claude.ai artifacts reject files carrying U+FFFD or raw control bytes; the
+// prototype build escapes every non-ASCII and control character in its scripts, so any left over
+// is a build defect.
 const TEXT = /\.(js|css|html|svg|json)$/
 const defects = walk(out)
   .filter((path) => TEXT.test(path))
@@ -67,6 +68,9 @@ const defects = walk(out)
     const name = relative(out, path)
     if (text.includes('\uFFFD')) return [`${name}: contains U+FFFD`]
     if (path.endsWith('.js') && /[^\x00-\x7f]/.test(text)) return [`${name}: non-ASCII character`]
+    if (path.endsWith('.js') && /[^\t\n\r\x20-\x7e]/.test(text)) {
+      return [`${name}: control character`]
+    }
     return []
   })
 if (defects.length > 0) {
