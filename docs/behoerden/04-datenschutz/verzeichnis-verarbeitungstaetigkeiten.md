@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -74,6 +74,10 @@ Stand:                   [Datum]        geprüft durch: [Name]
 - Dokumente in Wissensbibliotheken enthalten oft Daten Dritter, etwa aus Akten. Sie gehören in der
   Regel zu dem Verfahren, aus dem die Dokumente stammen. Ob OPAA dort als weiterer Zweck oder als
   eigene Tätigkeit einzutragen ist, klärt die Behörde mit der oder dem Datenschutzbeauftragten.
+- Ein Fachverfahren, das über ein [Dienstkonto](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten) sucht, ist ein weiterer
+  Empfänger: Es erhält Fundstellen aus den Bibliotheken, deren Verwaltung ihm zugestimmt hat, und
+  gibt sie an die eigenen Nutzenden weiter. Die Behörde trägt es als Empfänger ein; was das
+  Verfahren selbst damit tut und protokolliert, gehört in dessen eigenen Eintrag.
 - Nutzt die Behörde das Muster ihrer Aufsichtsbehörde, überträgt sie die Angaben dorthin.
 
 ## Zum Nachlesen

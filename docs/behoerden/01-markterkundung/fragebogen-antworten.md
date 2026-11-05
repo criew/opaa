@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-23
@@ -39,7 +39,7 @@ nur in den Faktenblättern der jeweiligen Version.
 | Betrieb ohne Internet? | ja, wenn Images und Modelle im Haus stehen; ein nächtlicher Lauf ohne Weg nach außen belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle und erkennt Namensauflösungen und Browser-Abrufe nach außen, Verbindungen an feste IP-Adressen nur über das Log | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}} |
 | Ausfallsicherheit? | mehrere Backend-Instanzen; Update ohne Ausfall, soweit die neue Version es zulässt | [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md#update-ohne-ausfall) |
 | Anmeldung? | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
-| Anbindung anderer KI-Werkzeuge? | MCP-Server mit persönlichen Zugangstokens, abschaltbar | [Externe KI-Werkzeuge](../../handbuch/benutzer/ki-werkzeug-einrichten.md) |
+| Anbindung anderer KI-Werkzeuge? | MCP-Server mit persönlichen Zugangstokens und Dienstkonten für Fachverfahren, abschaltbar | [Externe KI-Werkzeuge](../../handbuch/benutzer/ki-werkzeug-einrichten.md), [Dienstkonten](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten) |
 
 **Datenschutz, Sicherheit, Barrierefreiheit**
 

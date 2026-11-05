@@ -38,8 +38,22 @@ KI-Werkzeuge eingeschaltet hat, und braucht die Rolle *Verwalter*.
 Die Freigabe erlischt am gewählten Datum; vorher kommt eine Erinnerung per Mail, sofern der
 Mailversand eingerichtet ist. Schalter aus nimmt sie sofort für alle Tokens zurück.
 
+## Dienstkonto aufnehmen
+
+Ein Fachverfahren wie ein Antragsportal sucht über ein
+[Dienstkonto](../administration/externe-ki-werkzeuge.md#dienstkonten) der Systemverwaltung. Die
+Freigabe für externe KI-Werkzeuge zählt dafür nicht: Jedes Dienstkonto braucht Ihre eigene,
+befristete Zustimmung.
+
+1. Im Reiter „Freigaben“ in der Zeile „Dienstkonten“ „Verwalten“ wählen.
+2. Oben das Dienstkonto wählen, „Zugriff bis“ setzen und „Aufnehmen“.
+3. Frist ändern oder entfernen geht über das Menü „⋯“ der Zeile darunter.
+
+Vor Ablauf kommt eine Erinnerung an die verantwortliche Person des Dienstkontos und die
+Systemverwaltung. Nach dem Entfernen findet das Verfahren beim nächsten Aufruf nichts mehr.
+
 **Gut zu wissen:**
 
-- Jede Freigabe und jede Übergabe steht im Nachweisprotokoll.
+- Jede Freigabe, Zustimmung für ein Dienstkonto und Übergabe steht im Nachweisprotokoll.
 - Ein KI-Werkzeug sieht nie mehr als die Person, der das Token gehört.
 - Eine private Bibliothek lässt sich nicht teilen.

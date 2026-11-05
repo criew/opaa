@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -51,7 +51,8 @@ Summe der Antworten.
    nutzt, etwa ein Identitätsanbieter in der Cloud
    ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)), ein externer E-Mail-Dienst
    ([E-Mail-Versand](../../handbuch/administration/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
-   Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md)), oder ein
+   Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md)),
+   ein Fachverfahren eines Dritten, das über ein [Dienstkonto](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten) sucht, oder ein
    Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)).
 3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.
 4. **Bei jedem Update nachprüfen:** Ändert ein Update die Datenflüsse, weist das Update-Paket das aus.
