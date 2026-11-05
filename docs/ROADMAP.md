@@ -23,8 +23,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Löschrecht nach DSGVO als Ablauf** — Löschung eines Kontos und seiner Daten über alle abgeleiteten
   Bestände; heute nur Sperrpfad und echte Löschung nie benutzter Konten.
-- **Chat-Löschung nach Sperre auch für andere Sperrarten** — greift nur bei Verwaltungssperre lokaler
-  Konten (Teil-Schnitt).
 
 ### J · Betrieb & Deployment
 

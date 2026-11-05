@@ -280,7 +280,8 @@ settings:
     defaultValue: "true"
     range: true oder false
     effect: >-
-      Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem
+      Ob die Chats von Konten nach der Sperre durch die Verwaltung (lokal) oder durch den
+      Verzeichnisabgleich (Anbieterkonten) gelöscht werden; nach dem
       Wiedereinschalten beginnt jede Frist neu
     bearings: [DATA]
     notes:
@@ -301,8 +302,8 @@ settings:
     defaultValue: "365"
     range: 90 bis 3650 Tage
     effect: >-
-      Frist zwischen der Sperre eines lokalen Kontos durch die Verwaltung und der Löschung seiner
-      Chats; eine Verlängerung ist eine längere Speicherfrist und gehört in die Dienstvereinbarung
+      Frist zwischen der Sperre eines lokalen Kontos durch die Verwaltung oder eines Anbieterkontos
+      durch den Verzeichnisabgleich und der Löschung seiner Chats; eine Verlängerung ist eine längere Speicherfrist und gehört in die Dienstvereinbarung
     bearings: [DATA]
     notes:
       - >-

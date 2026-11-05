@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-05
 
 ## Kontext
 
@@ -75,25 +75,30 @@ Mitglieder sehen die Fristen auf der Seite „Chats“, der archivierte Chat zei
 Protokolliert werden nur das Umlegen des Schalters und jede Änderung der Fristen. Der Lauf schreibt
 nur Gesamtzahlen ins Anwendungslog.
 
-### 8. Löschung der Chats von der Verwaltung gesperrter Konten
+### 8. Löschung der Chats gesperrter Konten
 
-- **Auslöser** ist allein die Sperre durch die Verwaltung. Inaktivität, Fehlversuche, Ablauf und
-  Anbieterzustände sind es nicht. Eine solche Sperre lässt sich ohne Entsperren in eine
-  Verwaltungssperre umwidmen.
+- **Auslöser** ist bei lokalen Konten die Sperre durch die Verwaltung, bei Konten eines
+  Identitätsanbieters die Sperre durch den Verzeichnisabgleich (das Verzeichnis meldet das Konto
+  als deaktiviert oder gar nicht mehr). Inaktivität, Fehlversuche, Ablauf und ein abgeschalteter
+  oder entfernter Anbieter sind es nicht. Eine Sperre wegen Inaktivität lässt sich ohne Entsperren
+  in eine Verwaltungssperre umwidmen. Eine Sperre von Hand für Anbieterkonten gibt es nicht: Die
+  Dienststelle deaktiviert ausgeschiedene Personen im Verzeichnis, OPAA folgt dem. Bei einem
+  Anbieter ohne Verzeichnisabgleich (Gruppen aus dem Token) greift die Frist nicht.
 - **Frist:** einstellbar von der Systemverwaltung, ab Werk 365 Tage, Grenzen 90 bis 3650 Tage, und
   abschaltbar. Sie beginnt mit der aktuellen Sperre, frühestens mit dem letzten Einschalten.
   Entsperren beendet sie.
 - **Umfang:** Gelöscht werden alle privaten Chats des Kontos in allen Spaces, angeheftete
   eingeschlossen. Konto und Standard-Space bleiben, geteilte Chats ebenfalls.
 - **Aussetzen:** Eine offene anlassbezogene Klärung setzt die Löschung aus.
-- **Anhalten:** Eine Anhaltung braucht einen Zweck aus einer festen Liste (Anordnung,
+- **Anhalten:** Nur bei lokalen Konten, bei Anbieterkonten setzt allein eine offene Klärung die
+  Löschung aus. Eine Anhaltung braucht einen Zweck aus einer festen Liste (Anordnung,
   Beweissicherung nach Vorfall, Auskunfts- oder Löschantrag) und eine Begründung. Disziplinarische
   und leistungsbezogene Zwecke sind nicht wählbar. Es gilt das Vier-Augen-Prinzip. Die Höchstdauer
   setzt der Betrieb (ab Werk 180 Tage).
 - **Protokoll:** je Konto und Lauf ein Ereignis mit Fristbeginn und Sperrgrund, ohne Zahl, Titel
   oder Space. Anhaltungen werden ohne Begründung protokolliert.
-- **Sichtbarkeit:** Das früheste Löschdatum steht nur in der Einzelansicht des Kontos und in der
-  Mail zur Sperre. In der Kontenliste gibt es keine Spalte, keinen Filter und keinen Export.
+- **Sichtbarkeit:** Das früheste Löschdatum steht nur in der Einzelansicht eines lokalen Kontos und
+  in der Mail zur Sperre; Anbieterkonten haben keine Einzelansicht. In der Kontenliste gibt es keine Spalte, keinen Filter und keinen Export.
 
 Eine Liste „wird bald gelöscht“ wäre eine Liste der Ausgeschiedenen.
 
