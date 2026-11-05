@@ -893,6 +893,73 @@ class QueryServiceTest {
     assertThat(response.chatId()).isNotNull();
   }
 
+  /**
+   * An earlier attachment of the chat - a file the agent loop generated among them - does not keep
+   * a turn from the tool loop; only a question naming new attachments stays on the ordinary path.
+   */
+  @Test
+  void anEarlierAttachmentOfTheChatDoesNotKeepATurnFromTheToolLoop() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    UUID earlierAttachmentId = UUID.randomUUID();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(chatService.attachmentContext(eq(chat), any(), any()))
+        .thenReturn(
+            new ChatAttachmentContext(List.of(), Set.of(earlierAttachmentId), List.of(), false));
+    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+    QueryResult spikeResult =
+        new QueryResult(
+            "Spike-Antwort",
+            List.of(),
+            new QueryOutcome(
+                "gpt-4o",
+                10,
+                5L,
+                false,
+                false,
+                false,
+                false,
+                List.of(),
+                AnswerCompleteness.COMPLETE),
+            chatId,
+            null,
+            null);
+    when(spikeHandler.handle(
+            eq("@test Korrigiere das PDF"),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any()))
+        .thenReturn(Optional.of(spikeResult));
+    QueryService serviceWithSpikeEnabled =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+            chatMemory,
+            Optional.of(spikeHandler));
+
+    QueryResult response =
+        serviceWithSpikeEnabled.query(
+            "@test Korrigiere das PDF",
+            chatId,
+            caller,
+            true,
+            List.of(),
+            MetadataFilter.NONE,
+            null,
+            null,
+            List.of());
+
+    assertThat(response).isSameAs(spikeResult);
+    verifyNoInteractions(answerGenerationService);
+  }
+
   @Test
   void theChatsAttachmentsAreCitedLikeChunksAndBoundWithTheTurn() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());

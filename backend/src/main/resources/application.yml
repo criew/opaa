@@ -244,6 +244,17 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
+  # SPIKE, development only: the tool run_code of the tool loop above, a Python script in an
+  # OpenSandbox sandbox without network (docker-compose.sandbox.yml). Needs both switches; the
+  # beans behind it (io.opaa.query.spike) only exist while both are set.
+  sandbox:
+    enabled: ${OPAA_SANDBOX_ENABLED:false}
+    base-url: ${OPAA_SANDBOX_BASE_URL:http://opensandbox-server:8090}
+    api-key: ${OPAA_SANDBOX_API_KEY:}
+    image: ${OPAA_SANDBOX_IMAGE:opaa/sandbox-python:1}
+    run-timeout: ${OPAA_SANDBOX_RUN_TIMEOUT:60s}
+    cpu: ${OPAA_SANDBOX_CPU:1}
+    memory: ${OPAA_SANDBOX_MEMORY:1Gi}
   # Installation-wide feature flags (ADR-0044, io.opaa.common.FeatureFlags): every flag is on
   # unless the installation sets it to false; read once at start-up. Switching a feature off hides
   # it and ignores its existing data, it deletes nothing. A new flag is one constant in

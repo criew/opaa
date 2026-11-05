@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../types/chat'
+import type { ChatAttachmentRef } from '@/shared/api/types'
 import { blue, motion } from '@/shared/theme/tokens'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { AiAnswerMark } from './AiNotice'
@@ -66,6 +67,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     },
     [citations],
   )
+  const openAttachment = (attachment: ChatAttachmentRef) =>
+    void downloadChatAttachment(attachment).catch((err: unknown) =>
+      notify(
+        err instanceof Error ? err.message : 'Der Anhang konnte nicht geladen werden.',
+        'error',
+      ),
+    )
   const openAllEvidence = () => {
     setFocusedDocIndexes([])
     setEvidenceOpen(true)
@@ -126,17 +134,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Typography>
           )}
           {isUser && message.attachments && (
-            <ChatAttachmentRefs
-              attachments={message.attachments}
-              onOpen={(attachment) =>
-                void downloadChatAttachment(attachment).catch((err: unknown) =>
-                  notify(
-                    err instanceof Error ? err.message : 'Der Anhang konnte nicht geladen werden.',
-                    'error',
-                  ),
-                )
-              }
-            />
+            <ChatAttachmentRefs attachments={message.attachments} onOpen={openAttachment} />
           )}
           {/* Questions sit in a quiet blue-50 bubble with navy text; answers
               are plain running text without an avatar or a bubble around them. */}
@@ -167,6 +165,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               content={message.content}
               citations={citations}
               onCitationClick={handleCitationClick}
+            />
+          )}
+          {!isUser && message.attachments && (
+            <ChatAttachmentRefs
+              attachments={message.attachments}
+              onOpen={openAttachment}
+              generated
             />
           )}
 

@@ -1,6 +1,7 @@
 package io.opaa.query.spike;
 
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatService;
@@ -72,6 +73,12 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
   static final int MAX_TOOL_CALLS = 4;
 
   /**
+   * The cap while {@link RunCodeTool} is present: search, a script, and room for corrections of a
+   * failing script.
+   */
+  static final int MAX_TOOL_CALLS_WITH_CODE = 8;
+
+  /**
    * Replaces both the raw tool passages and {@link ToolCallLimitExceededException}'s own English
    * sentence when {@link #toolCallLimitReached} fires - neither is fit for a persisted or displayed
    * answer.
@@ -109,8 +116,26 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
       Textstellen; beantworte die Frage erst danach.\
       """;
 
+  /** Appended to {@link #SYSTEM_PROMPT} only while {@link RunCodeTool} is present. */
+  private static final String RUN_CODE_RULES =
+      """
+
+
+      DATEIEN ERZEUGEN:
+      - Wünscht die Person eine Datei (z. B. ein PDF), suche zuerst die Inhalte mit \
+      search_knowledge und erzeuge die Datei dann mit dem Werkzeug run_code: ein vollständiges \
+      Python-Skript, das die Datei in /workspace/out ablegt.
+      - Schreibe die Inhalte aus den Textstellen selbst in das Skript; das Skript hat keinen \
+      Zugriff auf die Wissensbasis und kein Netz.
+      - Meldet run_code einen Fehler, korrigiere das Skript und rufe run_code erneut auf.
+      - Soll eine Datei geändert werden, erzeuge sie mit den Änderungen vollständig neu.
+      - Nenne in der Antwort kurz, welche Datei du erzeugt hast; ein Link ist nicht nötig, die \
+      Datei hängt an der Antwort.\
+      """;
+
   private final ActiveChatModelResolver activeChatModelResolver;
   private final SearchKnowledgeTool searchKnowledgeTool;
+  private final Optional<RunCodeTool> runCodeTool;
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
   private final CitationValidator citationValidator;
@@ -122,6 +147,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
   SpikeToolLoopQueryHandler(
       ActiveChatModelResolver activeChatModelResolver,
       SearchKnowledgeTool searchKnowledgeTool,
+      Optional<RunCodeTool> runCodeTool,
       ChatMemory chatMemory,
       CitationParser citationParser,
       CitationValidator citationValidator,
@@ -131,6 +157,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
       QueryMetrics metrics) {
     this.activeChatModelResolver = activeChatModelResolver;
     this.searchKnowledgeTool = searchKnowledgeTool;
+    this.runCodeTool = runCodeTool;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.citationValidator = citationValidator;
@@ -167,13 +194,25 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     }
     String question = rawQuestion.substring(TEST_PREFIX.length());
 
-    ToolLoopRunState runState = new ToolLoopRunState(searchScope, metadataFilter);
+    ToolLoopRunState runState =
+        new ToolLoopRunState(
+            searchScope,
+            metadataFilter,
+            chat.map(Chat::getId).orElse(null),
+            chat.map(Chat::getSpaceId).orElse(null),
+            chat.map(Chat::getAuthorId).orElse(null));
+    // Code runs only in a persisted chat: its files belong to the chat's space and author.
+    Optional<RunCodeTool> codeTool = chat.isPresent() ? runCodeTool : Optional.empty();
+    List<Object> tools = new ArrayList<>();
+    tools.add(searchKnowledgeTool);
+    codeTool.ifPresent(tools::add);
+    int maxToolCalls = codeTool.isPresent() ? MAX_TOOL_CALLS_WITH_CODE : MAX_TOOL_CALLS;
     List<Message> messages = new ArrayList<>(chatMemory.get(conversationKey));
     messages.add(new UserMessage(question));
 
     ToolCallingManager toolCallingManager =
         ToolCallingManager.builder()
-            .maxTotalToolCalls(MAX_TOOL_CALLS)
+            .maxTotalToolCalls(maxToolCalls)
             // A tool failure (e.g. KnowledgeRetrieval throwing) must abort the turn like any other
             // production error, never be swallowed into a tool-response message that lets the loop
             // continue and #handle report success regardless.
@@ -187,9 +226,11 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
         activeChatModelResolver
             .resolveChatClient()
             .prompt()
-            .system(SYSTEM_PROMPT.formatted(runState.blockId()))
+            .system(
+                SYSTEM_PROMPT.formatted(runState.blockId())
+                    + (codeTool.isPresent() ? RUN_CODE_RULES : ""))
             .messages(messages)
-            .tools(searchKnowledgeTool)
+            .tools(tools.toArray())
             .toolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState))
             .advisors(toolCallingAdvisor)
             .call()
@@ -202,14 +243,17 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     List<Document> chunks = deduplicated(runState.collectedChunks());
     String rawAnswer =
         toolCallLimitReached(response)
-            ? TOOL_CALL_LIMIT_MESSAGE
+            ? toolCallLimitMessage(maxToolCalls)
             : CitationMarkerRepair.repair(ChatResponses.text(response), chunks);
     List<CitationValidator.ValidatedCitation> validatedCitations =
         citationValidator.validate(citationParser.extractCitations(rawAnswer), chunks, rawAnswer);
     List<ChatSource> sources =
         chatSourceAssembler.assemble(chunks, validatedCitations, metadataFilter);
     // Display-only (see this method's own Javadoc): never persisted, never added to chatMemory.
-    String displayAnswer = rawAnswer + searchStepsBlock(runState.searchSteps());
+    String displayAnswer =
+        rawAnswer + searchStepsBlock(runState.searchSteps(), runState.codeRuns().get());
+    List<ChatAttachment> generatedFiles = List.copyOf(runState.generatedFiles());
+    List<UUID> generatedFileIds = generatedFiles.stream().map(ChatAttachment::getId).toList();
 
     // Kept in step with the ordinary path (AnswerGenerationService#generateAnswer): a follow-up
     // turn in the same chat must see this one in its conversation window regardless of which path
@@ -220,7 +264,19 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
         .ifPresent(message -> chatMemory.add(conversationKey, message));
 
     String chatTitle =
-        chat.map(c -> chatService.appendTurn(c, question, usedPrompt, rawAnswer, sources))
+        chat.map(
+                c ->
+                    generatedFileIds.isEmpty()
+                        ? chatService.appendTurn(c, question, usedPrompt, rawAnswer, sources)
+                        : chatService.appendTurn(
+                            c,
+                            question,
+                            usedPrompt,
+                            rawAnswer,
+                            sources,
+                            null,
+                            List.of(),
+                            generatedFileIds))
             .orElse(null);
     chat.ifPresent(
         c -> chatNoteExtractionService.condenseAsync(c.getId(), c.getSpaceId(), question));
@@ -228,8 +284,10 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     // INFO carries counts only, never message content; the sub-questions themselves - user
     // content - are DEBUG only.
     log.info(
-        "Spike tool-loop turn finished with {} tool call(s), {} chunk(s)",
+        "Spike tool-loop turn finished with {} search(es), {} code run(s), {} file(s), {} chunk(s)",
         runState.searchSteps().size(),
+        runState.codeRuns().get(),
+        generatedFiles.size(),
         chunks.size());
     log.debug("Spike tool-loop sub-questions: {}", runState.searchSteps());
 
@@ -249,7 +307,15 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
             chatSourceAssembler.searchedLibraries(searchScope),
             AnswerCompleteness.COMPLETE);
     return Optional.of(
-        new QueryResult(displayAnswer, sources, metadata, effectiveChatId, chatTitle, notePoints));
+        new QueryResult(
+            displayAnswer,
+            sources,
+            metadata,
+            effectiveChatId,
+            chatTitle,
+            notePoints,
+            null,
+            generatedFiles));
   }
 
   /**
@@ -283,14 +349,26 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
   }
 
   /** The debug line replacing streaming (#1789): every teilfrage the model formulated, in order. */
-  private static String searchStepsBlock(List<String> steps) {
-    if (steps.isEmpty()) {
-      return "";
+  private static String searchStepsBlock(List<String> steps, int codeRuns) {
+    StringBuilder block = new StringBuilder();
+    if (!steps.isEmpty()) {
+      block.append("\n\nSuchschritte:");
+      for (String step : steps) {
+        block.append("\n- ").append(step);
+      }
     }
-    StringBuilder block = new StringBuilder("\n\nSuchschritte:");
-    for (String step : steps) {
-      block.append("\n- ").append(step);
+    if (codeRuns > 0) {
+      block.append(steps.isEmpty() ? "\n\n" : "\n").append("Code-Läufe: ").append(codeRuns);
     }
     return block.toString();
+  }
+
+  private static String toolCallLimitMessage(int maxToolCalls) {
+    return maxToolCalls == MAX_TOOL_CALLS
+        ? TOOL_CALL_LIMIT_MESSAGE
+        : "Die Suche wurde nach "
+            + maxToolCalls
+            + " Werkzeugaufrufen beendet. Die folgende Antwort beruht auf den bisher gefundenen"
+            + " Angaben.";
   }
 }

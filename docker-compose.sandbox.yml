@@ -1,0 +1,58 @@
+# Overlay for the run_code tool: OPAA_SANDBOX_API_KEY=<random> docker compose -f docker-compose.yml
+# -f docker-compose.sandbox.yml up --build
+# Adds the OpenSandbox lifecycle server, which starts one container per sandbox through the host's
+# Docker socket. Whoever holds that socket controls the host: development use only.
+services:
+  # One-off build step: produces the sandbox image locally and exits. The server never pulls it.
+  sandbox-image:
+    build:
+      context: ./sandbox
+    image: opaa/sandbox-python:1
+    command: ["true"]
+    network_mode: none
+
+  opensandbox-server:
+    image: opensandbox/server:release-1.1.1
+    restart: unless-stopped
+    environment:
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+      OPENSANDBOX_SERVER_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./sandbox/config.toml:/etc/opensandbox/config.toml:ro
+    # "default" carries the backend's calls; "sandboxes" is how the server reaches execd in each
+    # sandbox. The backend never joins "sandboxes", so sandbox code cannot reach it. Sandbox code
+    # can reach this server, though: its API needs the key (no default, so no guessable value),
+    # and execd in every sandbox needs that sandbox's own token.
+    networks:
+      - default
+      - sandboxes
+    # Loopback only, for manual calls from the host; the backend uses the Compose network.
+    ports:
+      - "127.0.0.1:${OPAA_SANDBOX_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      sandbox-image:
+        condition: service_completed_successfully
+
+  backend:
+    environment:
+      OPAA_SPIKE_TOOL_LOOP_ENABLED: "true"
+      OPAA_SANDBOX_ENABLED: "true"
+      OPAA_SANDBOX_BASE_URL: http://opensandbox-server:8090
+      OPAA_SANDBOX_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}
+      OPAA_SANDBOX_IMAGE: opaa/sandbox-python:1
+    depends_on:
+      opensandbox-server:
+        condition: service_healthy
+
+networks:
+  # Internal: no gateway, so sandboxes have no route to the internet or the host. Fixed name,
+  # because sandbox/config.toml (docker.network_mode) refers to it by name.
+  sandboxes:
+    name: opaa-sandboxes
+    internal: true

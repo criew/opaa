@@ -6,7 +6,7 @@ import io.opaa.chat.ChatAttachmentView;
 import java.util.List;
 
 /** Maps chat attachments onto their generated response counterparts. */
-final class ChatAttachmentResponseMapper {
+public final class ChatAttachmentResponseMapper {
 
   private ChatAttachmentResponseMapper() {}
 
@@ -27,7 +27,8 @@ final class ChatAttachmentResponseMapper {
         .deletionDueAt(view.deletionDueAt());
   }
 
-  static List<ChatAttachmentRef> toRefs(List<ChatAttachment> attachments) {
+  /** The short references a message shows; {@code null} for none, so the field stays absent. */
+  public static List<ChatAttachmentRef> toRefs(List<ChatAttachment> attachments) {
     return attachments == null || attachments.isEmpty()
         ? null
         : attachments.stream()

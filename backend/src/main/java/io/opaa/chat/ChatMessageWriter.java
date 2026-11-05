@@ -47,8 +47,9 @@ class ChatMessageWriter {
    * rollback-isolation reasoning around this call. The sender's own message brings the chat back
    * from the sender's chat archive, in the same transaction as the turn; nobody else's archive
    * changes. {@code usedPrompt} - may be {@code null} - goes onto the question's message only, as
-   * do {@code attachmentIds}, bound to the chat with the turn; one no longer bindable (deleted, or
-   * bound elsewhere meanwhile) rolls the turn back.
+   * do {@code attachmentIds}, bound to the chat with the turn; {@code answerAttachmentIds} - files
+   * a tool produced for the answer - go onto the answer's message the same way. One no longer
+   * bindable (deleted, or bound elsewhere meanwhile) rolls the turn back.
    *
    * @return true if this turn was the chat's very first ({@code nextSequence == 0})
    */
@@ -62,7 +63,8 @@ class ChatMessageWriter {
       String serializedSources,
       String serializedEvidence,
       String derivedTitle,
-      Collection<UUID> attachmentIds) {
+      Collection<UUID> attachmentIds,
+      Collection<UUID> answerAttachmentIds) {
     int nextSequence = nextSequenceFor(chatId);
     ChatMessage questionMessage =
         chatMessageRepository.save(
@@ -80,6 +82,15 @@ class ChatMessageWriter {
         new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources);
     answerMessage.setAnswerEvidence(serializedEvidence);
     chatMessageRepository.save(answerMessage);
+    if (!answerAttachmentIds.isEmpty()) {
+      chatMessageRepository.flush();
+      int bound =
+          chatAttachmentRepository.bindToMessage(
+              answerAttachmentIds, senderId, chatId, answerMessage.getId());
+      if (bound != answerAttachmentIds.size()) {
+        throw new ValidationException("Eine erzeugte Datei ist nicht mehr vorhanden");
+      }
+    }
     chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, derivedTitle);
     chatRepository.touch(chatId, Instant.now(clock));
     if (chatPersonalMarkRepository.clearArchive(chatId, senderId) > 0) {

@@ -257,6 +257,7 @@ export async function sendChatMessage(
       answerEmpty: response.metadata.answerEmpty ?? false,
       privateSourcesInContext: response.privateSourcesInContext,
       ...(response.evidence ? { evidence: response.evidence } : {}),
+      ...(response.generatedFiles?.length ? { attachments: response.generatedFiles } : {}),
       timestamp: new Date(),
     }
     set((state) => ({

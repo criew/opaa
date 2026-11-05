@@ -191,6 +191,51 @@ class ChatAttachmentIntegrationTest {
         .isZero();
   }
 
+  /**
+   * A file a tool produced goes through the upload checks, is bound to the answer's message, and is
+   * refused once the chat with the files of the same turn would exceed max-per-chat.
+   */
+  @Test
+  void aGeneratedFileIsBoundToTheAnswerAndRefusedAboveTheChatsLimit() throws Exception {
+    Chat chat = chatRepository.findById(aChat()).orElseThrow();
+    ChatAttachmentView generated =
+        attachmentService.uploadGenerated(
+            space, chat.getId(), 0, "bericht.txt", TEXT.getBytes(StandardCharsets.UTF_8), devUser);
+
+    chatService.appendTurn(
+        chat,
+        "Erstelle einen Bericht",
+        null,
+        "Erstellt.",
+        List.of(),
+        null,
+        List.of(),
+        List.of(generated.attachment().getId()));
+
+    UUID answerMessage =
+        jdbc.queryForObject(
+            "SELECT id FROM chat_messages WHERE chat_id = ? AND role = 'ASSISTANT'",
+            UUID.class,
+            chat.getId());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT message_id FROM chat_attachments WHERE id = ?",
+                UUID.class,
+                generated.attachment().getId()))
+        .isEqualTo(answerMessage);
+    assertThatThrownBy(
+            () ->
+                attachmentService.uploadGenerated(
+                    space,
+                    chat.getId(),
+                    49,
+                    "noch-einer.txt",
+                    TEXT.getBytes(StandardCharsets.UTF_8),
+                    devUser))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("50 Anhänge");
+  }
+
   @Test
   void anotherPersonsAttachmentIsNoAttachmentOfTheQuestion() throws Exception {
     UUID attachment = upload("Vertrag.txt", TEXT);

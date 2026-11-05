@@ -1,10 +1,12 @@
 package io.opaa.query.web;
 
+import io.opaa.api.dto.ChatAttachmentRef;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
+import io.opaa.chat.web.ChatAttachmentResponseMapper;
 import io.opaa.chat.web.ChatResponseMapper;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.query.QueryOutcome;
@@ -22,16 +24,24 @@ final class QueryResponseMapper {
   private QueryResponseMapper() {}
 
   static QueryResponse toResponse(QueryResult result) {
-    return new QueryResponse(
-            result.answer(),
-            true,
-            ChatResponseMapper.toSourceReferences(result.sources()),
-            ChatSource.anyPrivate(result.sources()),
-            toMetadata(result.metadata()),
-            result.chatId())
-        .evidence(ChatResponseMapper.toEvidence(result.evidence()))
-        .chatTitle(result.chatTitle())
-        .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
+    QueryResponse response =
+        new QueryResponse(
+                result.answer(),
+                true,
+                ChatResponseMapper.toSourceReferences(result.sources()),
+                ChatSource.anyPrivate(result.sources()),
+                toMetadata(result.metadata()),
+                result.chatId())
+            .evidence(ChatResponseMapper.toEvidence(result.evidence()))
+            .chatTitle(result.chatTitle())
+            .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
+    // Left at the DTO's empty list unless a tool produced files: the field is never null.
+    List<ChatAttachmentRef> generatedFiles =
+        ChatAttachmentResponseMapper.toRefs(result.generatedFiles());
+    if (generatedFiles != null) {
+      response.generatedFiles(generatedFiles);
+    }
+    return response;
   }
 
   private static QueryMetadata toMetadata(QueryOutcome outcome) {

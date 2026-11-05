@@ -11,6 +11,7 @@
     "test:multi-instance": "node scripts/run-e2e.mjs --target multi-instance",
     "test:offline": "node scripts/run-e2e.mjs --target offline",
     "test:installation": "node scripts/run-e2e.mjs --target installation",
+    "test:sandbox": "node scripts/run-e2e.mjs --target sandbox",
     "test:playwright": "playwright test",
     "install:browsers": "playwright install --with-deps chromium",
     "typecheck": "tsc --noEmit -p tsconfig.json"
