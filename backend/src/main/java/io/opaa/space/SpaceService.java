@@ -853,6 +853,41 @@ public class SpaceService {
   }
 
   /**
+   * Deletes the personal space of an erased account in the erasure's transaction, like {@link
+   * #deleteSpace}: open intervals of the history closed, audited as {@code SPACE_DELETED} under the
+   * neutral name. Its chats must be gone already; the libraries shared into it lose only the
+   * association. Spaces the account owns besides stay with the nameless account and its succession.
+   */
+  public void deletePersonalSpaceOfErasedAccount(UUID ownerId, UUID actorId) {
+    for (Space space : spaceRepository.findByOwnerId(ownerId)) {
+      if (!space.isDefault()) {
+        continue;
+      }
+      if (spaceChats.existsInSpace(space.getId())) {
+        throw new IllegalStateException("The personal space still holds chats: " + space.getId());
+      }
+      for (SpaceMembership membership : space.getMemberships()) {
+        membershipHistory.recordSpaceDeleted(membership, actorId);
+      }
+      ownershipHistory.recordAssetDeleted(
+          Space.ASSET_TYPE,
+          space.getId(),
+          PermissionSubject.user(space.getOwnerId(), space.getOrganizationId()),
+          actorId);
+      auditEventRecorder.recordUserAction(
+          AuditEvent.builder()
+              .organizationId(space.getOrganizationId())
+              .actor(actorId)
+              .type(AuditEventType.SPACE_DELETED)
+              .object(AuditObjectType.SPACE, space.getId(), space.auditName())
+              .before(spaceAuditPayload(space, auditEventRecorder))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
+      spaceRepository.delete(space);
+    }
+  }
+
+  /**
    * Archives a space - the maintainer-decided way out of a space that {@code
    * fk_chats_space_organization} (ON DELETE RESTRICT) makes permanently undeletable because it
    * still contains a chat authored by someone other than the space owner, who cannot even see - let

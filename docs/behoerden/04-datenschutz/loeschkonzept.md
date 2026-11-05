@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-31
+stand: 2026-11-05
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -63,8 +63,11 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    - dass die Person bei planbarem Ausscheiden vor der Sperre eine Selbstauskunft ziehen kann; danach
      erreicht sie sie nicht mehr.
 4. **Anlässe regeln, die OPAA nicht kennt:**
-   - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
-     nicht gelöscht ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
+   - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird gesperrt, nicht
+     gelöscht ([Löschen oder sperren](../../handbuch/administration/konten.md#sperren-statt-löschen)).
+   - Löschbegehren einer Person: wer nach der Prüfung „Personenbezug entfernen“ auslöst; OPAA
+     anonymisiert das gesperrte Konto und löscht Chats, persönlichen Space, private Bibliotheken,
+     Anmeldedaten und Tokens sofort ([Personenbezug entfernen](../../handbuch/administration/konten.md#personenbezug-entfernen)).
    - Dokumente: Sie folgen ihrer Quelle
      ([Änderungen und Löschungen](../../handbuch/referenz/wie-indexierung-arbeitet.md#läufe)),
      ihre Fristen regelt die Behörde dort; für hochgeladene Dokumente festlegen, wer sie wann prüft.

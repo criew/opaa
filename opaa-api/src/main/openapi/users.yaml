@@ -127,6 +127,47 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/admin/accounts/{id}/erasure:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: eraseAccount
+      tags: [user]
+      summary: Remove the personal reference of a deactivated account (system admin only)
+      description: >
+        The erasure of an account on a request under Art. 17 GDPR, for local accounts and accounts
+        of an identity provider alike, irreversible. The users row stays as a nameless shell, so
+        the rights history and the audit trail keep their references (ADR-0016): display name
+        "Gelöschtes Konto", no address, issuer urn:opaa:erased and the account's own id as
+        subject - a later sign-in at the provider creates a new, empty account. In the same
+        transaction its chats, personal space, local credentials, sessions, action and access
+        tokens, notifications, favourites, personal marks, transcription vocabulary and the labels
+        of its connected accounts are deleted; its private libraries are marked for the erasure of
+        the private library deletion and erased with content, chunks and embeddings right after
+        the commit, or by the next run of that deletion. Memberships, grants, shared objects and
+        the audit trail stay and name only the nameless account. Audited as ACCOUNT_ERASED. An
+        erased account is gone from every list and answers 404. Refused with 409 for the caller's
+        own account (SELF_ERASE), an account still usable or merely resting (ACCOUNT_ACTIVE: lock
+        it first), one with a system role other than USER (SYSTEM_ROLE_HELD), one whose chat
+        deletion is held (CHAT_CLEANUP_HELD) and one named by an open incident scope
+        (INCIDENT_SCOPE_OPEN). Requires a recent sign-in (403 RECENT_LOGIN_REQUIRED, response
+        RecentLoginRequired) before anything is checked or written.
+      responses:
+        "204":
+          description: Personal reference removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/admin/accounts:
     get:
       operationId: listAccounts

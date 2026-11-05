@@ -234,7 +234,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * The member search every organization member may call: {@code pageable} caps the rows, and
    * {@link UserService#searchInOrganization} only calls it with a long enough query. Matches
    * display name and e-mail case-insensitively, every character of {@code query} literally - a
-   * query of {@code %%} or {@code __} must not list the whole organization.
+   * query of {@code %%} or {@code __} must not list the whole organization. An erased account is
+   * never found.
    */
   default List<User> searchByOrganizationId(UUID organizationId, String query, Pageable pageable) {
     return searchByOrganizationIdMatching(organizationId, LikePatterns.containing(query), pageable);
@@ -242,7 +243,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /** {@link #searchByOrganizationId} with {@code pattern} ready to bind ({@link LikePatterns}). */
   @Query(
-      "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "
+      "SELECT u FROM User u WHERE u.organizationId = :organizationId AND u.erasedAt IS NULL AND "
           + "(LOWER(u.displayName) LIKE LOWER(:pattern) ESCAPE '\\' "
           + "OR LOWER(u.email) LIKE LOWER(:pattern) ESCAPE '\\')")
   List<User> searchByOrganizationIdMatching(

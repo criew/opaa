@@ -548,6 +548,11 @@ auditEvents:
     payloadKeys: [role, tokenRole]
   - id: ACCOUNT_DEACTIVATED
     trigger: Ein Konto wird deaktiviert (noch nicht verdrahtet)
+  - id: ACCOUNT_ERASED
+    trigger: >-
+      Die Systemverwaltung entfernt den Personenbezug eines deaktivierten Kontos; die namenlose Hülle
+      bleibt
+    payloadKeys: [origin]
   - id: ACCOUNT_REAUTHENTICATION_FORCED
     trigger: Eine erneute Anmeldung wird erzwungen (noch nicht verdrahtet)
   - id: API_TOKEN_ISSUED

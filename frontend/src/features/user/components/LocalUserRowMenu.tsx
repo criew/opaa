@@ -7,6 +7,12 @@ import { useUserAdminStore } from '../stores/userAdminStore'
 import type { SetupLinkHandover } from './SetupLinkDialog'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { PRIVILEGED_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
+import {
+  ERASE_LABEL,
+  ERASE_NOT_DEACTIVATED_TOOLTIP,
+  ERASE_SYSTEM_ROLE_TOOLTIP,
+  useAccountErasure,
+} from './useAccountErasure'
 
 export const LOCK_CONSEQUENCE =
   'Das Konto kann sich nicht mehr anmelden, und alle laufenden Sitzungen enden sofort. Die Person ' +
@@ -74,6 +80,8 @@ interface LocalUserRowMenuProps {
  * „Entsperren" appears only on a locked account (otherwise 409 `NOT_LOCKED`), „Sperren" on every
  * account not yet locked by the administration (otherwise 409 `ALREADY_LOCKED`), „Löschen" is
  * subordinate below a divider: locking is the regular path (ADR-0033, Entscheidung 11).
+ * „Personenbezug entfernen“ needs an account locked by the administration or expired and without
+ * a system role; the backend decides the rest (held chat deletion, open incident scope).
  */
 export default function LocalUserRowMenu({
   user,
@@ -90,6 +98,7 @@ export default function LocalUserRowMenu({
   const generateUserPassword = useUserAdminStore((s) => s.generateUserPassword)
   const [busy, setBusy] = useState(false)
   const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
+  const erasure = useAccountErasure()
 
   async function run(action: () => Promise<string>, fallback: string, afterConfirmation = false) {
     setBusy(true)
@@ -205,12 +214,20 @@ export default function LocalUserRowMenu({
     : BOOTSTRAP_PASSWORD_TOOLTIP
   const deleteDisabled = isSelf || user.bootstrap
   const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
+  const deactivated = lockedByAdministration || user.status === 'EXPIRED'
+  const eraseDisabledReason = isSelf
+    ? SELF_ACTION_TOOLTIP
+    : user.systemRole !== 'USER'
+      ? ERASE_SYSTEM_ROLE_TOOLTIP
+      : !deactivated
+        ? ERASE_NOT_DEACTIVATED_TOOLTIP
+        : null
 
   return (
     <>
       <RowMenu
         name={user.displayName}
-        disabled={busy}
+        disabled={busy || erasure.busy}
         items={[
           { label: 'Bearbeiten', onClick: () => onEdit(user) },
           user.status === 'LOCKED' && {
@@ -250,9 +267,17 @@ export default function LocalUserRowMenu({
             disabled: deleteDisabled,
             disabledReason: disabledReason,
           },
+          {
+            label: ERASE_LABEL,
+            onClick: () => void erasure.erase(user.id, user.displayName),
+            danger: true,
+            disabled: eraseDisabledReason !== null,
+            disabledReason: eraseDisabledReason ?? undefined,
+          },
         ]}
       />
       {gate.dialog}
+      {erasure.dialog}
     </>
   )
 }

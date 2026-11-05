@@ -1,6 +1,7 @@
 import type { AccountResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { providerLifecycleHint, roleManagedByProviderText } from './accountLabels'
+import { ERASE_LABEL, ERASE_SYSTEM_ROLE_TOOLTIP, useAccountErasure } from './useAccountErasure'
 
 interface ProviderAccountRowMenuProps {
   account: AccountResponse
@@ -9,31 +10,46 @@ interface ProviderAccountRowMenuProps {
 
 /**
  * The row menu of a provider account. It offers exactly what OPAA does on such an
- * account - the role (ADR-0033, Entscheidung 11: one role endpoint for both account types) -
- * and says what happens at the provider: the backend does not know locking, time-limiting and
- * deleting for provider accounts, and a menu must not pretend an action that does not exist.
+ * account - the role (ADR-0033, Entscheidung 11: one role endpoint for both account types) and the
+ * removal of the personal reference - and says what happens at the provider: the backend does not
+ * know locking and time-limiting for provider accounts, and a menu must not pretend an action that
+ * does not exist. Whether the account is deactivated only the backend knows; it refuses an
+ * account still usable with 409.
  */
 export default function ProviderAccountRowMenu({
   account,
   onChangeRole,
 }: ProviderAccountRowMenuProps) {
   const name = account.displayName ?? account.email ?? account.id
+  const erasure = useAccountErasure()
+  const roleHeld = account.systemRole !== 'USER'
   return (
-    <RowMenu
-      name={name}
-      items={[
-        {
-          label: 'Rolle ändern …',
-          onClick: () => onChangeRole(account),
-          disabled: account.roleManagedByProvider,
-          disabledReason: roleManagedByProviderText(account),
-        },
-        {
-          label: 'Anbieter verwalten',
-          to: '/admin/identity-providers',
-        },
-      ]}
-      note={providerLifecycleHint(account)}
-    />
+    <>
+      <RowMenu
+        name={name}
+        disabled={erasure.busy}
+        items={[
+          {
+            label: 'Rolle ändern …',
+            onClick: () => onChangeRole(account),
+            disabled: account.roleManagedByProvider,
+            disabledReason: roleManagedByProviderText(account),
+          },
+          {
+            label: 'Anbieter verwalten',
+            to: '/admin/identity-providers',
+          },
+          {
+            label: ERASE_LABEL,
+            onClick: () => void erasure.erase(account.id, name),
+            danger: true,
+            disabled: roleHeld,
+            disabledReason: roleHeld ? ERASE_SYSTEM_ROLE_TOOLTIP : undefined,
+          },
+        ]}
+        note={providerLifecycleHint(account)}
+      />
+      {erasure.dialog}
+    </>
   )
 }

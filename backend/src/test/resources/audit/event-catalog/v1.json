@@ -1,5 +1,6 @@
 {
   "ACCOUNT_DEACTIVATED": [],
+  "ACCOUNT_ERASED": ["origin"],
   "ACCOUNT_REAUTHENTICATION_FORCED": [],
   "API_TOKEN_EXPIRED": ["reason"],
   "API_TOKEN_ISSUED": ["expiresAt", "libraryIds"],
