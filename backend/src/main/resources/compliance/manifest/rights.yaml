@@ -276,7 +276,7 @@ data:
       settings: []
     visibility: [nur die Person selbst]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Durch die Person, mit Konto oder Asset
+    deletion: Durch die Person, mit Konto oder Asset, beim Entfernen des Personenbezugs
     evaluations: Keine; weder protokolliert noch gezählt
     notes:
       - In der Menge ein Interessenprofil; nur in der Selbstauskunft exportiert

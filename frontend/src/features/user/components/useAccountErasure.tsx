@@ -9,12 +9,17 @@ export const ERASE_LABEL = 'Personenbezug entfernen …'
 
 export const ERASE_CONSEQUENCE =
   'Für ein Löschbegehren nach der DSGVO, nicht umkehrbar. Name, Adresse und Kennung beim ' +
-  'Identitätsanbieter werden entfernt; gelöscht werden die Chats, der persönliche Space, die ' +
+  'Identitätsanbieter werden entfernt; gelöscht werden alle Chats, auch in geteilten Spaces, der ' +
+  'persönliche Space, die ' +
   'privaten Bibliotheken, Anmeldedaten und Tokens. Mitgliedschaften, Rechte, geteilte Inhalte und ' +
   'das Protokoll bleiben und nennen nur noch „Gelöschtes Konto“.'
 
 export const ERASE_NOT_DEACTIVATED_TOOLTIP =
   'Nur ein gesperrtes oder abgelaufenes Konto verliert seinen Personenbezug. Sperren Sie es zuerst.'
+
+export const ERASE_PROVIDER_ACTIVE_TOOLTIP =
+  'Das Konto ist beim Identitätsanbieter noch aktiv. Den Personenbezug entfernen Sie, sobald der ' +
+  'Verzeichnisabgleich es sperrt oder der Anbieter entfernt ist.'
 
 export const ERASE_SYSTEM_ROLE_TOOLTIP =
   'Das Konto hat eine Systemrolle. Entziehen Sie sie, bevor Sie den Personenbezug entfernen.'

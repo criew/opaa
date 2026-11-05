@@ -57,8 +57,8 @@ data:
       Durch die Person, die automatische Bereinigung je Space oder den nächtlichen Lauf nach der
       Sperre eines lokalen Kontos durch die Verwaltung (auf demselben Weg wie durch die Person,
       mit Verlauf, Gesprächsnotiz und persönlichen Merkmalen; Nachweis im Protokoll ohne Zahl,
-      Titel oder Inhalt); nicht mit dem Konto, ein vorhandener Chat verhindert die Löschung des
-      Kontos
+      Titel oder Inhalt) und beim Entfernen des Personenbezugs des Kontos sofort, in allen Spaces; ein vorhandener Chat
+      verhindert die Löschung des Kontos
     evaluations: >-
       Chatsuche der Person über eigene Chats; Export eines eigenen Chats als Markdown- oder
       PDF-Datei durch die Person; keine Auswertung durch andere, Fragen werden nicht protokolliert
@@ -114,8 +114,8 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE, STORAGE]
     deletion: >-
       Durch die Person einzeln (Anhang löschen, auch unter „Meine Uploads“), mit dem Chat auf jedem
-      seiner Löschwege, nach Ablauf der Frist für nie gesendete Anhänge, mit dem Space oder dem
-      Konto; das Original entfernt die stündliche Bereinigung, sobald kein Anhang mehr darauf zeigt
+      seiner Löschwege, nach Ablauf der Frist für nie gesendete Anhänge, mit dem Space, dem Konto
+      oder beim Entfernen des Personenbezugs; das Original entfernt die stündliche Bereinigung, sobald kein Anhang mehr darauf zeigt
     evaluations: >-
       Übersicht „Meine Uploads“ der Person über ihre eigenen Anhänge; keine Auswertung durch
       andere, weder Raum- noch Systemverwaltung sehen Anhänge. Kein Protokolleintrag zu Anhängen;
@@ -173,7 +173,8 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Ablehnen oder Zurückziehen des Antrags, Ablauf der Anhaltung im nächtlichen Lauf, Aufheben
-      durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto; ein Antrag auch mit
+      durch die Systemverwaltung („Löschung fortsetzen“), mit dem Konto oder eine beendete
+      Anhaltung beim Entfernen des Personenbezugs (eine laufende oder beantragte hält es auf); ein Antrag auch mit
       dem Konto der beantragenden Person
     evaluations: >-
       Ob, seit wann, bis wann und zu welchem Zweck die Löschung für ein Konto angehalten ist, mit
@@ -209,7 +210,7 @@ data:
       settings: []
     visibility: [nur die Person selbst]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Durch die Person (Liste leeren), mit dem Konto
+    deletion: Durch die Person (Liste leeren), mit dem Konto oder beim Entfernen des Personenbezugs
     evaluations: Keine; weder protokolliert noch gezählt
     notes:
       - Von der Person selbst gepflegt; die Verwaltung sieht die Liste nicht

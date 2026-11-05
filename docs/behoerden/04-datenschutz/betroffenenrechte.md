@@ -80,7 +80,7 @@ Antwort am:           [Datum]          durch: [ ]
   weil Rechtehistorie und Protokoll darauf verweisen. „Personenbezug entfernen“ nimmt ihm Name,
   Adresse und Kennung beim Anbieter und löscht Chats, persönlichen Space, private Bibliotheken,
   Anmeldedaten und Tokens. Übrig bleibt eine namenlose Kennung, die sich ohne weiteres Wissen keiner
-  Person mehr zuordnen lässt. Eine laufende Anhaltung der Chat-Löschung oder eine offene
+  Person mehr zuordnen lässt. Eine laufende oder beantragte Anhaltung der Chat-Löschung oder eine offene
   anlassbezogene Klärung hält den Schritt auf.
 - **Das Protokoll kennt Pseudonyme**, also Kennungen statt Namen
   ({{faktenblatt:datenkatalog#audit-pseudonyms}}); Klarnamen sieht die Revision nur in den Grenzen

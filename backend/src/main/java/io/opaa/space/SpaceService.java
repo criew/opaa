@@ -864,7 +864,8 @@ public class SpaceService {
         continue;
       }
       if (spaceChats.existsInSpace(space.getId())) {
-        throw new IllegalStateException("The personal space still holds chats: " + space.getId());
+        throw new ConflictException(
+            "Im persönlichen Space liegen noch Chats anderer Personen; der Personenbezug bleibt.");
       }
       for (SpaceMembership membership : space.getMemberships()) {
         membershipHistory.recordSpaceDeleted(membership, actorId);

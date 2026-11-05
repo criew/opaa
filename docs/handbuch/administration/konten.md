@@ -62,7 +62,7 @@ Identitätsanbieters.
 | Was geschieht | Was bleibt |
 |---|---|
 | Name, Adresse und Kennung beim Anbieter verschwinden, überall steht „Gelöschtes Konto“ | Mitgliedschaften, Rechte und deren Historie |
-| Chats, persönlicher Space, Benachrichtigungen, Favoriten und Fachwörter der Spracheingabe werden gelöscht | geteilte Bibliotheken, Spaces und Gruppen; sie stehen auf „Nachfolge offen“ |
+| alle Chats der Person, auch in geteilten Spaces, ihr persönlicher Space, Benachrichtigungen, Favoriten und Fachwörter der Spracheingabe werden gelöscht | geteilte Bibliotheken, Spaces und Gruppen; sie stehen auf „Nachfolge offen“ |
 | private Bibliotheken werden binnen Minuten mit allen Inhalten gelöscht | das Revisionsprotokoll mit seinen Pseudonymen |
 | Anmeldedaten, Sitzungen und Zugangstokens enden | Dokumente, die die Person in geteilte Bibliotheken geladen hat |
 
@@ -74,8 +74,8 @@ entsteht ein neues, leeres Konto.
 - Nur ein gesperrtes oder abgelaufenes Konto ohne Systemrolle lässt sich so behandeln. Konten
   eines Anbieters gelten als deaktiviert, wenn der Verzeichnisabgleich sie sperrt oder der Anbieter
   entfernt wurde.
-- Eine laufende Anhaltung der Chat-Löschung und eine offene anlassbezogene Klärung, die das Konto
-  nennt, verhindern den Schritt, bis sie enden.
+- Eine laufende oder beantragte Anhaltung der Chat-Löschung und eine offene anlassbezogene Klärung,
+  die das Konto nennt, verhindern den Schritt, bis sie enden.
 - Daten über die Person in Dokumenten und in Sicherungen erfasst der Schritt nicht.
 
 ## Liste prüfen

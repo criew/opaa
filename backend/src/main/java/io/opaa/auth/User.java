@@ -170,8 +170,8 @@ public class User {
   }
 
   /**
-   * Removes the personal reference (erasure on a request under Art. 17 GDPR): name, address and the
-   * identity at the provider go, the row stays as a nameless shell under {@link
+   * Removes the personal reference (erasure on a request under Art. 17 GDPR): name, address, the last
+   * sign-in and the identity at the provider go, the row stays as a nameless shell under {@link
    * ErasedAccount#ISSUER} with its own id as subject. Irreversible; no token of any issuer resolves
    * to it again, so a later sign-in creates a new account.
    */
@@ -181,6 +181,7 @@ public class User {
     this.subject = id.toString();
     this.email = null;
     this.displayName = ErasedAccount.DISPLAY_NAME;
+    this.lastLoginAt = null;
   }
 
   public boolean isErased() {

@@ -85,7 +85,6 @@ public class AccountErasureService {
     User user =
         users
             .findByIdAndOrganizationId(userId, actor.organizationId())
-            .filter(found -> !found.isErased())
             .orElseThrow(() -> new NotFoundException("Konto nicht gefunden"));
     if (userId.equals(actor.id())) {
       throw new ConflictException(
@@ -144,6 +143,9 @@ public class AccountErasureService {
     jdbc.update("DELETE FROM local_action_tokens WHERE user_id = ?", userId);
     jdbc.update("DELETE FROM local_credentials WHERE user_id = ?", userId);
     jdbc.update("DELETE FROM notifications WHERE recipient_user_id = ?", userId);
+    // notifications to others about the account, e.g. an auditor role request naming it
+    jdbc.update(
+        "DELETE FROM notifications WHERE object_type = 'USER_ACCOUNT' AND object_id = ?", userId);
     jdbc.update("DELETE FROM self_disclosure_usage WHERE account_id = ?", userId);
     jdbc.update("DELETE FROM auditor_role_requests WHERE user_id = ?", userId);
   }

@@ -63,9 +63,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   /**
    * Used by {@code AuditIncidentScopeService#request} to reject an anlassbezogene Klärung named
    * against a person outside the requester's own organization before a grant row - and later, at
-   * query time, a pseudonym - is ever created for them.
+   * query time, a pseudonym - is ever created for them. An erased account is not found: no role,
+   * grant, request or Klärung can name the nameless shell again.
    */
-  Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
+  @Query(
+      "select u from User u where u.id = :id and u.organizationId = :organizationId"
+          + " and u.erasedAt is null")
+  Optional<User> findByIdAndOrganizationId(
+      @Param("id") UUID id, @Param("organizationId") UUID organizationId);
 
   /**
    * Resolves directory group members to their accounts, scoped to the organization and to the

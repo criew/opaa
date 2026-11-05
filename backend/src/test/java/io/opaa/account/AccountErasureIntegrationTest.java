@@ -26,6 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -67,6 +68,8 @@ class AccountErasureIntegrationTest {
     for (UUID user : createdUsers) {
       jdbc.update("DELETE FROM chats WHERE author_id = ?", user);
       jdbc.update("DELETE FROM chat_cleanup_holds WHERE user_id = ?", user);
+      jdbc.update("DELETE FROM chat_cleanup_hold_requests WHERE user_id = ?", user);
+      jdbc.update("DELETE FROM notifications WHERE object_id = ?", user);
       jdbc.update("DELETE FROM spaces WHERE owner_id = ?", user);
       jdbc.update("DELETE FROM space_membership_history WHERE subject_user_id = ?", user);
       jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", user);
@@ -142,6 +145,59 @@ class AccountErasureIntegrationTest {
     mockMvc
         .perform(post(ERASURE.formatted(person)).with(dev("dev-admin")))
         .andExpect(status().isNotFound());
+    // no role can name the shell again
+    mockMvc
+        .perform(
+            post("/api/v1/admin/users/%s/role".formatted(person))
+                .with(dev("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"SYSTEM_ADMIN\"}"))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void removesNotificationsToOthersThatNameTheAccount() throws Exception {
+    UUID person = providerAccount("gone-" + marker, SystemRole.USER);
+    UUID colleague = providerAccount("opaa-dev", SystemRole.USER);
+    jdbc.update(
+        "INSERT INTO notifications (id, organization_id, recipient_user_id, type, object_type,"
+            + " object_id, title) VALUES (?, ?, ?, 'TEST', 'USER_ACCOUNT', ?, 'Antrag')",
+        UUID.randomUUID(),
+        Organization.DEFAULT_ID,
+        colleague,
+        person);
+
+    mockMvc
+        .perform(post(ERASURE.formatted(person)).with(dev("dev-admin")))
+        .andExpect(status().isNoContent());
+
+    assertThat(count("SELECT count(*) FROM notifications WHERE recipient_user_id = ?", colleague))
+        .isZero();
+  }
+
+  @Test
+  void refusesTheCallersOwnAccount() throws Exception {
+    UUID admin = jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
+
+    mockMvc
+        .perform(post(ERASURE.formatted(admin)).with(dev("dev-admin")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SELF_ERASE"));
+  }
+
+  @Test
+  void refusesWhileAHoldOfTheChatDeletionIsRequested() throws Exception {
+    UUID person = providerAccount("gone-" + marker, SystemRole.USER);
+    UUID admin = jdbc.queryForObject("SELECT id FROM users WHERE subject = 'dev-admin'", UUID.class);
+    jdbc.update(
+        "INSERT INTO chat_cleanup_hold_requests (user_id, organization_id, purpose, reason,"
+            + " requested_by_user_id, requested_at) VALUES (?, ?, 'AUTHORITY_OR_COURT_ORDER',"
+            + " 'Anordnung des Gerichts', ?, now())",
+        person,
+        Organization.DEFAULT_ID,
+        admin);
+
+    refused(person, "CHAT_CLEANUP_HELD");
   }
 
   @Test
