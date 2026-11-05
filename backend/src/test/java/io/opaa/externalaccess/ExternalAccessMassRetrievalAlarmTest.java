@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,9 @@ class ExternalAccessMassRetrievalAlarmTest {
     when(users.findByOrganizationIdAndSystemRole(ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN))
         .thenReturn(List.of(administrator));
     counters = new InMemoryInstallationCounters(clock);
-    alarm = new ExternalAccessMassRetrievalAlarm(settings, users, notifications, counters, clock);
+    alarm =
+        new ExternalAccessMassRetrievalAlarm(
+            settings, users, notifications, counters, tokenId -> Optional.empty(), clock);
   }
 
   private void threshold(int value) {
@@ -88,6 +91,31 @@ class ExternalAccessMassRetrievalAlarmTest {
         .contains(token.toString())
         .contains(String.valueOf(ExternalAccessAlertRetention.RETENTION.toDays()))
         .doesNotContain("4 Abrufe");
+  }
+
+  @Test
+  void theMessageNamesTheServiceAccountOfTheToken() {
+    UUID token = UUID.randomUUID();
+    ExternalAccessMassRetrievalAlarm named =
+        new ExternalAccessMassRetrievalAlarm(
+            settings,
+            users,
+            notifications,
+            counters,
+            tokenId ->
+                Optional.of(
+                    new ServiceAccountTokens.ServiceAccountOfToken(
+                        UUID.randomUUID(), "Bauantrag-Portal", null)),
+            clock);
+
+    for (int i = 0; i < 4; i++) {
+      named.record(ORGANIZATION_ID, token);
+    }
+
+    ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+    verify(notifications)
+        .notify(any(), any(), any(), any(), eq(token), anyString(), body.capture());
+    assertThat(body.getValue()).contains(token.toString()).contains("Bauantrag-Portal");
   }
 
   @Test
@@ -172,7 +200,8 @@ class ExternalAccessMassRetrievalAlarmTest {
   @Test
   void twoInstancesCountIntoOneWindowAndOnlyOneRaisesTheAlert() {
     var secondInstance =
-        new ExternalAccessMassRetrievalAlarm(settings, users, notifications, counters, clock);
+        new ExternalAccessMassRetrievalAlarm(
+            settings, users, notifications, counters, tokenId -> Optional.empty(), clock);
     UUID token = UUID.randomUUID();
 
     for (int i = 0; i < 2; i++) {

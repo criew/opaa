@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,53 @@ class ExternalAccessQuotaTest {
     }
 
     assertThatCode(() -> quota.requireWithinQuota(other)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void theTokensOfOneServiceAccountShareTheAccountsOwnQuota() {
+    UUID account = UUID.randomUUID();
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    ExternalAccessQuota shared =
+        new ExternalAccessQuota(
+            settings,
+            clock,
+            () -> liveInstances,
+            tokenId ->
+                tokenId.equals(first) || tokenId.equals(second)
+                    ? Optional.of(
+                        new ServiceAccountTokens.ServiceAccountOfToken(account, "Portal", 2))
+                    : Optional.empty());
+
+    shared.requireWithinQuota(first);
+    shared.requireWithinQuota(second);
+
+    // Two of the account's own two per hour are used, although each token made fewer calls than
+    // the channel's three - a further token would otherwise multiply the account's share.
+    assertThatThrownBy(() -> shared.requireWithinQuota(first))
+        .isInstanceOf(TooManyRequestsException.class);
+    assertThatCode(() -> shared.requireWithinQuota(UUID.randomUUID())).doesNotThrowAnyException();
+  }
+
+  @Test
+  void aServiceAccountWithoutItsOwnQuotaGetsTheChannelsQuota() {
+    UUID token = UUID.randomUUID();
+    UUID account = UUID.randomUUID();
+    ExternalAccessQuota shared =
+        new ExternalAccessQuota(
+            settings,
+            clock,
+            () -> liveInstances,
+            tokenId ->
+                Optional.of(
+                    new ServiceAccountTokens.ServiceAccountOfToken(account, "Portal", null)));
+
+    for (int i = 0; i < 3; i++) {
+      shared.requireWithinQuota(token);
+    }
+
+    assertThatThrownBy(() -> shared.requireWithinQuota(token))
+        .isInstanceOf(TooManyRequestsException.class);
   }
 
   @Test

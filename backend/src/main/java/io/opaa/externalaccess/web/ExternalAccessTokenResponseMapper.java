@@ -4,6 +4,7 @@ import io.opaa.api.dto.AdminExternalAccessTokenResponse;
 import io.opaa.api.dto.CreatedExternalAccessTokenResponse;
 import io.opaa.api.dto.EligibleExternalAccessLibraryResponse;
 import io.opaa.api.dto.ExternalAccessTokenLibraryResponse;
+import io.opaa.api.dto.ExternalAccessTokenOwnerKind;
 import io.opaa.api.dto.OwnExternalAccessTokenResponse;
 import io.opaa.externalaccess.token.ExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenAdminService.ExternalAccessTokenAdminView;
@@ -11,6 +12,7 @@ import io.opaa.externalaccess.token.ExternalAccessTokenService.EligibleLibrary;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.ExternalAccessTokenView;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.IssuedExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.SelectedLibrary;
+import io.opaa.externalaccess.token.ListedAccessToken;
 import java.time.Instant;
 import java.util.List;
 
@@ -57,16 +59,22 @@ final class ExternalAccessTokenResponseMapper {
   }
 
   static AdminExternalAccessTokenResponse toAdmin(ExternalAccessTokenAdminView view, Instant now) {
-    ExternalAccessToken token = view.token();
-    return new AdminExternalAccessTokenResponse(
-        token.getId(),
-        token.getUserId(),
-        view.ownerDisplayName(),
-        token.getName(),
-        token.getCreatedAt(),
-        token.getExpiresAt(),
-        token.status(now),
-        toLibraries(view.libraries()));
+    ListedAccessToken token = view.token();
+    AdminExternalAccessTokenResponse response =
+        new AdminExternalAccessTokenResponse(
+            token.getId(),
+            view.ownerId(),
+            view.ownerDisplayName(),
+            token.getName(),
+            token.getCreatedAt(),
+            token.getExpiresAt(),
+            token.status(now),
+            toLibraries(view.libraries()));
+    response.setOwnerKind(
+        view.serviceAccount()
+            ? ExternalAccessTokenOwnerKind.SERVICE_ACCOUNT
+            : ExternalAccessTokenOwnerKind.PERSON);
+    return response;
   }
 
   static EligibleExternalAccessLibraryResponse toEligible(EligibleLibrary library) {

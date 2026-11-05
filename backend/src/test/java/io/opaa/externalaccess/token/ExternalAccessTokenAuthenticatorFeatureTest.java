@@ -33,6 +33,8 @@ class ExternalAccessTokenAuthenticatorFeatureTest {
   private final ExternalAccessTokenAuthenticator authenticator =
       new ExternalAccessTokenAuthenticator(
           tokens,
+          mock(ServiceAccountTokenRepository.class),
+          mock(ServiceAccountRepository.class),
           users,
           mock(AccountUsability.class),
           keys,

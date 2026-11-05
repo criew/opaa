@@ -236,7 +236,8 @@ paths:
       tags: [external-access]
       summary: >
         The Bestandsliste of every access token for SYSTEM_ADMIN - owner, name, expiry, libraries
-        and state. It carries no token value, no usage count and deliberately no usage date, and it
+        and state. Tokens of service accounts are listed with the service account as owner
+        (ownerKind SERVICE_ACCOUNT) and without libraries, which they do not select. It carries no token value, no usage count and deliberately no usage date, and it
         offers no filter, no sorting and no output by person; the only filters are over state and
         expiry (ADR-0068, decision 2). The order is fixed:
         soonest expiry first.
@@ -292,7 +293,7 @@ paths:
       operationId: blockExternalAccessTokensOfOwner
       tags: [external-access]
       summary: >
-        Blocks every still-active token of one person at once - the lever for an incident or an
+        Blocks every still-active token of one person, or of one service account, at once - the lever for an incident or an
         account lifecycle. Deliberately a write, not a filter over the list: the list stays without
         an output by person.
       requestBody:
@@ -310,6 +311,332 @@ paths:
                 $ref: "#/components/schemas/BlockedExternalAccessTokensResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/service-accounts:
+    get:
+      operationId: listServiceAccounts
+      tags: [external-access]
+      summary: >
+        Every service account of the caller's organization (SYSTEM_ADMIN only), active ones first,
+        then by name. A service account is an identity of its own for one Fachverfahren - no
+        person, no sign-in, no role - that reaches the external access channel with its own tokens
+        (ADR-0035, Entscheidung 7).
+      responses:
+        "200":
+          description: The service accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createServiceAccount
+      tags: [external-access]
+      summary: >
+        Creates a service account (SYSTEM_ADMIN only). Name and a responsible person are mandatory;
+        the responsible person is an active account of the caller's organization. The account sees
+        nothing until a library administration consents to it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceAccountRequest"
+      responses:
+        "201":
+          description: The created service account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/service-accounts/{serviceAccountId}:
+    parameters:
+      - name: serviceAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getServiceAccount
+      tags: [external-access]
+      summary: >
+        One service account with its tokens and the libraries consented to it (SYSTEM_ADMIN only).
+        Carries no token value, no usage count and no usage date.
+      responses:
+        "200":
+          description: The service account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountDetailResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateServiceAccount
+      tags: [external-access]
+      summary: >
+        Changes name, description, responsible person and hourly quota of a service account
+        (SYSTEM_ADMIN only). A deactivated service account cannot be changed (409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceAccountRequest"
+      responses:
+        "200":
+          description: The changed service account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/service-accounts/{serviceAccountId}/deactivate:
+    post:
+      operationId: deactivateServiceAccount
+      tags: [external-access]
+      summary: >
+        Deactivates a service account for good and revokes every one of its tokens in the same
+        transaction (SYSTEM_ADMIN only); they stop working with the next call. Deactivating an
+        already deactivated account changes nothing.
+      parameters:
+        - name: serviceAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The deactivated service account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/service-accounts/{serviceAccountId}/tokens:
+    parameters:
+      - name: serviceAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listServiceAccountTokens
+      tags: [external-access]
+      summary: The tokens of one service account, newest first (SYSTEM_ADMIN only).
+      responses:
+        "200":
+          description: The tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountTokenListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createServiceAccountToken
+      tags: [external-access]
+      summary: >
+        Issues a token for a service account (SYSTEM_ADMIN only). The plain value is in this
+        response and in no other. Name and expiry are mandatory, the expiry at most the
+        installation-wide ceiling away. The token carries no library selection of its own: it sees
+        what is consented to its service account at the moment of each call. Requires a recent
+        sign-in; refused while the installation switch is off or the account is deactivated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceAccountTokenRequest"
+      responses:
+        "201":
+          description: The token, with its plain value shown exactly once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedServiceAccountTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >-
+            Not the system administration, no recent sign-in (code RECENT_LOGIN_REQUIRED, as
+            described for the response RecentLoginRequired), or the installation switch is off.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/service-accounts/{serviceAccountId}/tokens/{tokenId}:
+    delete:
+      operationId: revokeServiceAccountToken
+      tags: [external-access]
+      summary: >
+        Revokes one token of a service account (SYSTEM_ADMIN only); it stops working with the next
+        call. A token of another service account answers 404.
+      parameters:
+        - name: serviceAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/service-accounts:
+    get:
+      operationId: listLibraryServiceAccountConsents
+      tags: [external-access]
+      summary: >
+        The service accounts a library is consented to ("Fachverfahren mit Zugriff"), with the end
+        of each consent (MANAGER role or above, plus SYSTEM_ADMIN). A consent that ran out is
+        listed as EXPIRED until it is renewed or removed.
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The consents of the library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryServiceAccountConsentListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/service-accounts/{serviceAccountId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: serviceAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: setLibraryServiceAccountConsent
+      tags: [external-access]
+      summary: >
+        Consents a library to one named service account until expiresAt, or moves the end of a
+        running consent (MANAGER role or above, plus SYSTEM_ADMIN - the same bar as the
+        Fremdzugangsfreigabe, which does not count for service accounts). At most
+        opaa.external-access.max-release-days away. Every change starts a new history row; the
+        previous one is ended, never deleted. While the library's succession is open a new or
+        extended consent is refused with 409 and the code SUCCESSION_OPEN. A private library is
+        never consented: 403 with the code OWNER_ONLY_ASSET for its owner, 404 for anybody else.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryServiceAccountConsentRequest"
+      responses:
+        "200":
+          description: The consent in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryServiceAccountConsentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: revokeLibraryServiceAccountConsent
+      tags: [external-access]
+      summary: >
+        Takes a consent back (MANAGER role or above, plus SYSTEM_ADMIN); the library disappears
+        from every token of the service account with the next call. Without a consent it is a
+        no-op.
+      responses:
+        "204":
+          description: Taken back
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/service-account-choices:
+    get:
+      operationId: listServiceAccountChoices
+      tags: [external-access]
+      summary: >
+        The active service accounts of the library's organization a consent may name - name and
+        description, nothing about tokens or the responsible person (MANAGER role or above, plus
+        SYSTEM_ADMIN).
+      parameters:
+        - name: libraryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The selectable service accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceAccountChoiceListResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -479,8 +806,9 @@ components:
           format: int64
           description: >
             How many Zugangstokens currently contain this library - a number, never names,
-            persons or usage. Always 0 until the tokens themselves exist; the field is
-            here from the start so the release view does not change shape when they arrive.
+            persons or usage. Counts the active tokens of every active service account with a
+            consent in force for the library as well, so the library administration sees that a
+            Fachverfahren is connected.
         maxReleaseDays:
           type: integer
           description: >
@@ -681,9 +1009,14 @@ components:
         ownerUserId:
           type: string
           format: uuid
-          description: The owner, so a Sperre je Person can be issued from this row.
+          description: >
+            The owner, so a Sperre je Person can be issued from this row - the person, or for a
+            token of a service account (ownerKind SERVICE_ACCOUNT) the service account.
         ownerDisplayName:
           type: string
+          description: The person's display name, or the name of the service account.
+        ownerKind:
+          $ref: "#/components/schemas/ExternalAccessTokenOwnerKind"
         name:
           type: string
         createdAt:
@@ -715,6 +1048,7 @@ components:
         ownerUserId:
           type: string
           format: uuid
+          description: A person, or a service account as ownerUserId of the list names it.
 
     BlockedExternalAccessTokensResponse:
       type: object
@@ -723,3 +1057,270 @@ components:
         blocked:
           type: integer
           description: How many still-active tokens were blocked by this call.
+
+    ExternalAccessTokenOwnerKind:
+      type: string
+      description: Who a token belongs to - a person, or a service account of a Fachverfahren.
+      enum: [PERSON, SERVICE_ACCOUNT]
+
+    ServiceAccountRequest:
+      type: object
+      required: [name, responsibleUserId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Bauantrag-Portal
+        description:
+          type: string
+          nullable: true
+          description: At most 1000 characters, checked by the service.
+        responsibleUserId:
+          type: string
+          format: uuid
+          description: An active account of the caller's organization, the contact for renewals.
+        rateLimitPerHour:
+          type: integer
+          nullable: true
+          description: >
+            Requests per hour for all tokens of the account together, 1-10000 (checked by the
+            service); absent or null means the setting tokenRateLimitPerHour of the channel.
+
+    ServiceAccountResponse:
+      type: object
+      required:
+        [id, name, active, responsiblePersonMissing, effectiveRateLimitPerHour, activeTokenCount,
+        consentedLibraryCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        deactivatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        responsibleUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent once the responsible account was deleted.
+        responsibleDisplayName:
+          type: string
+          nullable: true
+        responsiblePersonMissing:
+          type: boolean
+          description: >
+            True when the responsible account was deleted, locked or is otherwise no longer usable.
+            The tokens keep working; the reminders then go to the system administration alone.
+        rateLimitPerHour:
+          type: integer
+          nullable: true
+          description: The account's own quota; absent while the channel setting applies.
+        effectiveRateLimitPerHour:
+          type: integer
+          description: The quota in force for all tokens of the account together.
+        activeTokenCount:
+          type: integer
+        consentedLibraryCount:
+          type: integer
+          description: Libraries with a consent in force.
+        nextExpiryAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The earliest end of an active token or of a consent in force.
+        createdAt:
+          type: string
+          format: date-time
+
+    ServiceAccountListResponse:
+      type: object
+      required: [serviceAccounts]
+      properties:
+        serviceAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceAccountResponse"
+
+    ServiceAccountConsentedLibraryResponse:
+      type: object
+      required: [libraryId, libraryName, grantedAt, expiresAt, status]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        grantedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ServiceAccountConsentStatus"
+
+    ServiceAccountDetailResponse:
+      type: object
+      required: [serviceAccount, tokens, libraries]
+      properties:
+        serviceAccount:
+          $ref: "#/components/schemas/ServiceAccountResponse"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceAccountTokenResponse"
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceAccountConsentedLibraryResponse"
+
+    ServiceAccountConsentStatus:
+      type: string
+      description: ACTIVE while the consent is in force, EXPIRED once its end has passed.
+      enum: [ACTIVE, EXPIRED]
+
+    CreateServiceAccountTokenRequest:
+      type: object
+      required: [name, expiresAt]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Produktion
+        expiresAt:
+          type: string
+          format: date-time
+          description: Mandatory, in the future, and at most the installation-wide ceiling away.
+
+    ServiceAccountTokenResponse:
+      type: object
+      required: [id, name, prefix, createdAt, expiresAt, status]
+      description: Deliberately without a usage date and without a usage count.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ExternalAccessTokenStatus"
+
+    CreatedServiceAccountTokenResponse:
+      type: object
+      required: [id, name, prefix, token, createdAt, expiresAt, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+        token:
+          type: string
+          description: The plain value, in this response and in no other - it is not recoverable.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ExternalAccessTokenStatus"
+
+    ServiceAccountTokenListResponse:
+      type: object
+      required: [tokens]
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceAccountTokenResponse"
+
+    LibraryServiceAccountConsentRequest:
+      type: object
+      required: [expiresAt]
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+          description: >
+            The instant the consent stops taking effect; in the future and at most
+            opaa.external-access.max-release-days away.
+
+    LibraryServiceAccountConsentResponse:
+      type: object
+      required: [serviceAccountId, serviceAccountName, serviceAccountActive, grantedAt, expiresAt, status]
+      properties:
+        serviceAccountId:
+          type: string
+          format: uuid
+        serviceAccountName:
+          type: string
+        serviceAccountDescription:
+          type: string
+          nullable: true
+        serviceAccountActive:
+          type: boolean
+          description: False once the system administration deactivated the account.
+        grantedAt:
+          type: string
+          format: date-time
+          description: When the consent in force was given or last moved.
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ServiceAccountConsentStatus"
+
+    LibraryServiceAccountConsentListResponse:
+      type: object
+      required: [consents, maxConsentDays]
+      properties:
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryServiceAccountConsentResponse"
+        maxConsentDays:
+          type: integer
+          description: The longest admissible consent in days (opaa.external-access.max-release-days).
+
+    ServiceAccountChoiceResponse:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    ServiceAccountChoiceListResponse:
+      type: object
+      required: [serviceAccounts]
+      properties:
+        serviceAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceAccountChoiceResponse"

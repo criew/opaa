@@ -167,9 +167,19 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("role", "tokenRole"), SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
     put(keys, Set.of(), ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED);
     put(keys, Set.of("origin"), ACCOUNT_ERASED);
-    put(keys, Set.of("expiresAt"), API_TOKEN_ISSUED);
-    put(keys, Set.of("reason", "by"), API_TOKEN_REVOKED);
-    put(keys, Set.of("reason"), API_TOKEN_EXPIRED);
+    put(keys, Set.of("expiresAt", "serviceAccountId"), API_TOKEN_ISSUED);
+    put(keys, Set.of("reason", "by", "serviceAccountId"), API_TOKEN_REVOKED);
+    put(keys, Set.of("reason", "serviceAccountId"), API_TOKEN_EXPIRED);
+    put(keys, Set.of("rateLimitPerHour"), SERVICE_ACCOUNT_CREATED);
+    put(keys, Set.of("changed", "rateLimitPerHour"), SERVICE_ACCOUNT_CHANGED);
+    put(keys, Set.of("revokedTokens"), SERVICE_ACCOUNT_DEACTIVATED);
+    put(
+        keys,
+        Set.of("serviceAccountId", "expiresAt"),
+        SERVICE_ACCOUNT_CONSENT_GRANTED,
+        SERVICE_ACCOUNT_CONSENT_CHANGED);
+    put(keys, Set.of("serviceAccountId"), SERVICE_ACCOUNT_CONSENT_REVOKED);
+    put(keys, Set.of("serviceAccountId", "expiresAt"), SERVICE_ACCOUNT_CONSENT_EXPIRED);
     put(
         keys,
         Set.of("member", "name", "created", "memberCount", "dissolved"),

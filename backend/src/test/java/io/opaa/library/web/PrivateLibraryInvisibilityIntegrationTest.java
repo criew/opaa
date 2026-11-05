@@ -218,6 +218,11 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getDirectorySyncSettings",
             "listExternalAccessLibraries",
             "listAllExternalAccessTokens",
+            "listServiceAccounts",
+            "getServiceAccount",
+            "listServiceAccountTokens",
+            "listLibraryServiceAccountConsents",
+            "listServiceAccountChoices",
             "listGroups",
             "listGroupEffects",
             "listGroupPage",
@@ -408,6 +413,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("deleteDocumentMetadataValue", same());
     probes.put(
         "setLibraryExternalAccess", same("{\"enabled\": true, \"expiresAt\": \"{expires}\"}"));
+    probes.put("setLibraryServiceAccountConsent", same("{\"expiresAt\": \"{expires}\"}"));
+    probes.put("revokeLibraryServiceAccountConsent", same());
     probes.put("createLibraryFolder", same("{\"name\": \"Neu\"}"));
     probes.put("renameLibraryFolder", same("{\"name\": \"Neu\"}"));
     probes.put("deleteLibraryFolder", same());

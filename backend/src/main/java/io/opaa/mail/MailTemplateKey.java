@@ -380,6 +380,53 @@ public enum MailTemplateKey {
       "displayName",
       "occurredAtHuman"),
 
+  SERVICE_ACCOUNT_TOKEN_EXPIRING(
+      "Token eines Dienstkontos läuft ab",
+      "Ein Token des Dienstkontos „{{serviceAccountName}}“ läuft ab",
+      """
+      Guten Tag {{displayName}},
+
+      das Token „{{tokenName}}“ des Dienstkontos „{{serviceAccountName}}“ in {{productName}} läuft {{expiresAtHuman}} ab. Danach kann das Fachverfahren damit nicht mehr suchen.
+
+      Wird der Zugang weiterhin gebraucht, stellt die Systemverwaltung rechtzeitig ein neues Token aus, das im Fachverfahren hinterlegt wird; danach wird das alte widerrufen. Ein abgelaufenes Token lässt sich nicht verlängern.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Ein Token eines Dienstkontos läuft ab</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">das Token <strong>{{tokenName}}</strong> des Dienstkontos <strong>{{serviceAccountName}}</strong> in <strong>{{productName}}</strong> läuft {{expiresAtHuman}} ab. Danach kann das Fachverfahren damit nicht mehr suchen.</p>
+      <p style="margin:0;font-size:13px;">Wird der Zugang weiterhin gebraucht, stellt die Systemverwaltung rechtzeitig ein neues Token aus, das im Fachverfahren hinterlegt wird; danach wird das alte widerrufen. Ein abgelaufenes Token lässt sich nicht verlängern.</p>
+      """,
+      null,
+      "Das Token {{tokenName}} des Dienstkontos {{serviceAccountName}} läuft {{expiresAtHuman}} ab.",
+      "productName",
+      "displayName",
+      "serviceAccountName",
+      "tokenName",
+      "expiresAtHuman"),
+  SERVICE_ACCOUNT_CONSENT_EXPIRING(
+      "Zustimmung für ein Dienstkonto läuft ab",
+      "Zustimmung für das Dienstkonto „{{serviceAccountName}}“ läuft ab",
+      """
+      Guten Tag {{displayName}},
+
+      die Zustimmung der Bibliothek „{{libraryName}}“ für das Dienstkonto „{{serviceAccountName}}“ in {{productName}} endet {{expiresAtDate}}. Danach findet das Fachverfahren in dieser Bibliothek nichts mehr.
+
+      Ob die Zustimmung erneuert wird, entscheidet die Verwaltung der Bibliothek.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Zustimmung für ein Dienstkonto läuft ab</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">die Zustimmung der Bibliothek <strong>{{libraryName}}</strong> für das Dienstkonto <strong>{{serviceAccountName}}</strong> in <strong>{{productName}}</strong> endet {{expiresAtDate}}. Danach findet das Fachverfahren in dieser Bibliothek nichts mehr.</p>
+      <p style="margin:0;font-size:13px;">Ob die Zustimmung erneuert wird, entscheidet die Verwaltung der Bibliothek.</p>
+      """,
+      null,
+      "Die Zustimmung von „{{libraryName}}“ für das Dienstkonto {{serviceAccountName}} endet {{expiresAtDate}}.",
+      "productName",
+      "displayName",
+      "serviceAccountName",
+      "libraryName",
+      "expiresAtDate"),
+
   TEST_MAIL(
       "Testnachricht",
       "Testnachricht von {{productName}}",
@@ -422,7 +469,8 @@ public enum MailTemplateKey {
           Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"),
           Map.entry("libraryName", "Baugenehmigungen 2024"),
           Map.entry("expiresAtDate", "am 17.09.2027"),
-          Map.entry("tokenName", "Claude Code auf dem Dienstrechner"));
+          Map.entry("tokenName", "Claude Code auf dem Dienstrechner"),
+          Map.entry("serviceAccountName", "Bauantrag-Portal"));
 
   private final String label;
   private final String defaultSubject;

@@ -27,9 +27,13 @@ import io.opaa.externalaccess.token.ExternalAccessTokenRepository;
 import io.opaa.externalaccess.token.ExternalAccessTokenRetentionStep;
 import io.opaa.externalaccess.token.ExternalAccessTokenRevocationReason;
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
+import io.opaa.externalaccess.token.ServiceAccountReminderStep;
+import io.opaa.externalaccess.token.ServiceAccountTokenMaintenanceStep;
 import io.opaa.externalaccess.web.ExternalAccessSettingsController;
 import io.opaa.externalaccess.web.ExternalAccessTokenAdminController;
 import io.opaa.externalaccess.web.ExternalAccessTokenController;
+import io.opaa.externalaccess.web.ServiceAccountAdminController;
+import io.opaa.externalaccess.web.ServiceAccountConsentController;
 import io.opaa.library.LibraryExternalAccessScheduler;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mcp.McpEndpoint;
@@ -154,6 +158,9 @@ class ExternalAccessSwitchedOffIntegrationTest {
             McpStatelessSyncServer.class,
             McpSyncServer.class,
             ExternalAccessTokenExpiryReminderStep.class,
+            ServiceAccountReminderStep.class,
+            ServiceAccountAdminController.class,
+            ServiceAccountConsentController.class,
             LibraryExternalAccessScheduler.class)) {
       assertThat(context.getBeanNamesForType(absent)).as(absent.getSimpleName()).isEmpty();
     }
@@ -166,7 +173,8 @@ class ExternalAccessSwitchedOffIntegrationTest {
         .extracting(step -> ClassUtils.getUserClass(step).getSimpleName())
         .containsExactlyInAnyOrder(
             ExternalAccessTokenLapseStep.class.getSimpleName(),
-            ExternalAccessTokenRetentionStep.class.getSimpleName());
+            ExternalAccessTokenRetentionStep.class.getSimpleName(),
+            ServiceAccountTokenMaintenanceStep.class.getSimpleName());
   }
 
   @Test

@@ -50,6 +50,22 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     request.setAttribute(REQUEST_ATTRIBUTE, CurrentUser.forExternalAccess(user, accessTokenId));
   }
 
+  /**
+   * The service-account sibling of {@link #bindExternalAccessCaller}: binds the snapshot of {@link
+   * CurrentUser#forServiceAccount}, again only for the access-token filter of {@code
+   * io.opaa.externalaccess}.
+   */
+  public static void bindServiceAccountCaller(
+      HttpServletRequest request,
+      UUID serviceAccountId,
+      UUID organizationId,
+      String name,
+      UUID accessTokenId) {
+    request.setAttribute(
+        REQUEST_ATTRIBUTE,
+        CurrentUser.forServiceAccount(serviceAccountId, organizationId, name, accessTokenId));
+  }
+
   @Override
   public boolean supportsParameter(MethodParameter parameter) {
     return parameter.hasParameterAnnotation(Caller.class)

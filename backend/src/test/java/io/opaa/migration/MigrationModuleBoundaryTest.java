@@ -209,7 +209,10 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
               List.of(
                   "external_access_settings",
                   "external_access_tokens",
-                  "external_access_token_libraries")));
+                  "external_access_token_libraries",
+                  "service_accounts",
+                  "service_account_tokens",
+                  "service_account_library_consents")));
 
   private Connection connection;
 

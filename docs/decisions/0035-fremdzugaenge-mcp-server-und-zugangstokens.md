@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -82,7 +82,8 @@ aus dem Haus erreichbar?" auch nach der Löschfrist des Nachweisprotokolls beant
 ist pflichtbefristet auf höchstens `opaa.external-access.max-release-days` (365) mit
 Wiedervorlage per Mail (Vorlauf eine Einstellung der externen KI-Werkzeuge, Werkseinstellung 14 Tage,
 höchstens einen Tag unter der längsten Befristung; Mailweg aus ADR-0033); eine unbefristete Freigabe
-wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants.
+wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants; für Dienstkonten
+tritt an ihre Stelle die Zustimmung aus Entscheidung 7, ein eigenes historisiertes Reichweitenfeld.
 Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Genehmigungsstufe —
 Befristung, Historisierung und die angezeigte Anzahl der Tokens, die die Bibliothek enthalten
 (`tokenCount`), sind die Antwort auf das dahinterliegende Anliegen. Eine zurückgenommene oder
@@ -141,6 +142,32 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
   Ergebnis wird festgehalten. Renovate leistet das nicht; ein Versionssprung des MCP-Starters ist
   kein gewöhnliches Update und gehört in `renovate.json5` in eine Regel ohne Auto-Merge.
 
+### 7. Dienstkonten: ein Fachverfahren hat eine eigene Identität und braucht die Zustimmung der Bibliothek
+
+Ein Fachverfahren hängt nicht an einem persönlichen Token, sondern an einem **Dienstkonto**
+(`service_accounts`): Name, Beschreibung, verantwortliche Person, optionales Stundenkontingent,
+Organisation; keine Anmeldung, keine Rolle, in keiner Personenliste, keiner Verzeichnissynchronisation,
+keiner Inaktivitätsregel. Seine Tokens liegen in einer eigenen Tabelle (`service_account_tokens`)
+mit Format, Präfix und Suchhash der persönlichen; der Personen-Lebenszyklus erreicht sie damit
+nicht, und `external_access_tokens.user_id` bleibt `NOT NULL`. Die Reichweite gibt allein die
+**Zustimmung der Bibliotheksverwaltung** je Dienstkonto und Bibliothek
+(`service_account_library_consents`): gleiche Schranke wie die Freigabe aus Entscheidung 4
+(MANAGER oder Systemverwaltung, nie eine private Bibliothek, kein Weiten bei offener Nachfolge),
+pflichtbefristet auf `max-release-days`, widerrufbar, historisiert (eine Zeile wird beendet, nie
+gelöscht; wie `asset_visibility_history` ohne Fremdschlüssel auf die Bibliothek, sodass die
+Historie deren Löschung überlebt). Das Auslaufen einer Zustimmung schreibt der tägliche Lauf genau
+einmal ins Protokoll (`SERVICE_ACCOUNT_CONSENT_EXPIRED`, Anspruch per bedingtem Update). Die Fremdzugangsfreigabe zählt hier nicht: Sie gilt den Werkzeugen der Beschäftigten,
+nicht der Speisung eines Fachverfahrens. Die Sicht eines Dienstkonto-Tokens ist Zustimmungen ∩
+Installationsschalter ∩ Token aktiv ∩ Dienstkonto aktiv, je Aufruf in
+`ExternalAccessTokenScopeService` gebildet; Pfade, Netzbeschränkung, Notaus und Abflussalarm sind die
+des Kanals, das Kontingent zählt für alle Tokens eines Dienstkontos gemeinsam. Der Aufrufer ist das
+Dienstkonto selbst (`CurrentUser` mit dessen Kennung und Rolle `USER`), keine Person. Deaktivieren
+widerruft alle Tokens sofort; fehlt die verantwortliche Person (gesperrt, gelöscht), bleiben die
+Tokens gültig und das Dienstkonto zeigt die Lücke. Erinnerungen vor dem Ablauf eines Tokens und
+einer Zustimmung gehen an die verantwortliche Person und die Systemverwaltung. Protokolliert werden
+Anlegen, Ändern, Deaktivieren, Tokens und Zustimmungen, nie die einzelne Abfrage; einen Tag der
+letzten Nutzung führt ein Dienstkonto-Token nicht.
+
 ## Konsequenzen
 
 - **Einfacher:** Ein Kanal für alle Werkzeuge; eine Rechtewahrheit; Nachweisbarkeit ohne
@@ -167,7 +194,9 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
 - Eigener, für Werkzeuge optimierter Lesepfad — zweite Qualitäts- und Rechtewahrheit.
 - OpenAI-kompatibler `/v1/chat/completions`, Werkzeug `ask` — reduziert Belege auf ein Textfeld bzw. hängt den Modellverbrauch an ein fremdes Werkzeug.
 - Nachweis der abgerufenen Fundstellen — ein Tätigkeitsprofil je Person; das fremde Werkzeug führt sein eigenes Protokoll.
-- Service-Accounts ohne Person, schreibende Fremdzugänge — Zielbild bzw. eigene Missbrauchsfläche; das Handbuch rät davon ab, ein Fachverfahren an ein persönliches Token zu hängen.
+- Schreibende Fremdzugänge — eigene Missbrauchsfläche.
+- Dienstkonto-Tokens als Zeilen von `external_access_tokens` mit leerer Person — verlangte `DROP NOT NULL` im laufenden Betrieb und hielte den Personen-Lebenszyklus nur durch Disziplin von ihnen fern.
+- Die Fremdzugangsfreigabe als Reichweite eines Dienstkontos — sie gibt Werkzeuge der Beschäftigten frei, nicht die dauernde Speisung eines Fachverfahrens.
 
 ## Offen
 

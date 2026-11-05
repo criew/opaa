@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.IntSupplier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,7 @@ public class ExternalAccessQuota implements AccessTokenQuota {
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
   private final IntSupplier liveInstances;
+  private final ServiceAccountTokens serviceAccounts;
   private final Cache<UUID, Deque<Long>> windows;
   private volatile LiveCount liveCount;
 
@@ -57,15 +59,27 @@ public class ExternalAccessQuota implements AccessTokenQuota {
 
   @Autowired
   public ExternalAccessQuota(
-      ExternalAccessSettingsService settings, Clock clock, InstanceRegistry registry) {
-    this(settings, clock, registry::liveCount);
+      ExternalAccessSettingsService settings,
+      Clock clock,
+      InstanceRegistry registry,
+      ServiceAccountTokens serviceAccounts) {
+    this(settings, clock, registry::liveCount, serviceAccounts);
   }
 
   ExternalAccessQuota(
       ExternalAccessSettingsService settings, Clock clock, IntSupplier liveInstances) {
+    this(settings, clock, liveInstances, tokenId -> Optional.empty());
+  }
+
+  ExternalAccessQuota(
+      ExternalAccessSettingsService settings,
+      Clock clock,
+      IntSupplier liveInstances,
+      ServiceAccountTokens serviceAccounts) {
     this.settings = settings;
     this.clock = clock;
     this.liveInstances = liveInstances;
+    this.serviceAccounts = serviceAccounts;
     this.windows =
         Caffeine.newBuilder()
             // Twice the window, so timestamps still inside it survive an idle stretch.
@@ -79,6 +93,9 @@ public class ExternalAccessQuota implements AccessTokenQuota {
    * TooManyRequestsException} once the window is full - a clear refusal with a waiting hint, never
    * a slow answer. A {@code null} token is a signed-in person and passes untouched: the quota is
    * the token's, and a person already has her own limits.
+   *
+   * <p>A token of a service account counts in the one window of its account, under the account's
+   * own quota where it has one - more tokens buy a Fachverfahren no more requests.
    */
   @Override
   public void requireWithinQuota(UUID accessTokenId) {
@@ -86,8 +103,16 @@ public class ExternalAccessQuota implements AccessTokenQuota {
       return;
     }
     long now = clock.millis();
-    int limit = shareOf(settings.current().values().tokenRateLimitPerHour(), now);
-    Deque<Long> window = windows.get(accessTokenId, key -> new ArrayDeque<>());
+    Optional<ServiceAccountTokens.ServiceAccountOfToken> account =
+        serviceAccounts.serviceAccountOf(accessTokenId);
+    UUID windowKey =
+        account.map(ServiceAccountTokens.ServiceAccountOfToken::id).orElse(accessTokenId);
+    int configured =
+        account
+            .map(ServiceAccountTokens.ServiceAccountOfToken::rateLimitPerHour)
+            .orElseGet(() -> settings.current().values().tokenRateLimitPerHour());
+    int limit = shareOf(configured, now);
+    Deque<Long> window = windows.get(windowKey, key -> new ArrayDeque<>());
     synchronized (window) {
       long cutoff = now - WINDOW.toMillis();
       while (!window.isEmpty() && window.peekFirst() < cutoff) {

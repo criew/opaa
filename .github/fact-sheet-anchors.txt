@@ -42,6 +42,7 @@ datenkatalog#permission-history
 datenkatalog#permission-transfers
 datenkatalog#rights
 datenkatalog#self-disclosure
+datenkatalog#service-accounts
 datenkatalog#settings-editors
 datenkatalog#space-membership-history
 datenkatalog#spaces
@@ -208,6 +209,13 @@ protokollereignisse#search-diagnosis-profile-run
 protokollereignisse#self-disclosure-export-finished
 protokollereignisse#self-disclosure-export-started
 protokollereignisse#self-disclosure-settings-changed
+protokollereignisse#service-account-changed
+protokollereignisse#service-account-consent-changed
+protokollereignisse#service-account-consent-expired
+protokollereignisse#service-account-consent-granted
+protokollereignisse#service-account-consent-revoked
+protokollereignisse#service-account-created
+protokollereignisse#service-account-deactivated
 protokollereignisse#settings-imported
 protokollereignisse#shared-library-quota-changed
 protokollereignisse#space-archived

@@ -65,6 +65,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
   private final UserRepository users;
   private final NotificationService notifications;
   private final InstallationCounters counters;
+  private final ServiceAccountTokens serviceAccounts;
   private final Clock clock;
 
   public ExternalAccessMassRetrievalAlarm(
@@ -72,11 +73,13 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
       UserRepository users,
       NotificationService notifications,
       InstallationCounters counters,
+      ServiceAccountTokens serviceAccounts,
       Clock clock) {
     this.settings = settings;
     this.users = users;
     this.notifications = notifications;
     this.counters = counters;
+    this.serviceAccounts = serviceAccounts;
     this.clock = clock;
   }
 
@@ -122,6 +125,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
             + at
             + " überschritten. Betroffenes Zugangstoken: "
             + accessTokenId
+            + serviceAccountOf(accessTokenId)
             + ". Bitte prüfen Sie den Vorfall und sperren Sie den Zugang, falls nötig. Diese"
             + " Meldung wird nach "
             + ExternalAccessAlertRetention.RETENTION.toDays()
@@ -138,6 +142,17 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
           TITLE,
           body);
     }
+  }
+
+  /**
+   * The Fachverfahren behind a token of a service account, named so the administration knows whom
+   * to call - the account, never its responsible person; empty for a personal token.
+   */
+  private String serviceAccountOf(UUID accessTokenId) {
+    return serviceAccounts
+        .serviceAccountOf(accessTokenId)
+        .map(account -> " (Dienstkonto „" + account.name() + "“)")
+        .orElse("");
   }
 
   /**

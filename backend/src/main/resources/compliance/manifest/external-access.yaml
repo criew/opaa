@@ -28,8 +28,45 @@ data:
     evaluations: >-
       Letzter Nutzungstag je Token; die Nutzung selbst wird nicht protokolliert, der Zähler des
       Abflussalarms lebt nur im Arbeitsspeicher
+  - id: service-accounts
+    title: Dienstkonten für Fachverfahren
+    purpose: >-
+      Eigene, lesende Identität eines Fachverfahrens für den Kanal der externen KI-Werkzeuge,
+      unabhängig vom Lebenszyklus einzelner Beschäftigter; die verantwortliche Person ist
+      Ansprechpartnerin für Erneuerung und Kontakt
+    personalReference: EMPLOYEE
+    tables:
+      - name: service_accounts
+        personalColumns: [responsible_user_id, name, description]
+        nonPersonalColumns:
+          [id, organization_id, rate_limit_per_hour, created_at, deactivated_at, version]
+        person:
+          columns: [responsible_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Bleibt bestehen, auch nach der Deaktivierung; mit der Löschung des Kontos der
+        verantwortlichen Person entfällt der Verweis auf sie
+      settings: []
+    visibility:
+      - "SYSTEM_ADMIN (Name, Beschreibung, verantwortliche Person, Kontingent, Tokens, Bibliotheken)"
+      - Verwaltung einer Bibliothek (Name und Beschreibung aktiver Dienstkonten zur Auswahl)
+      - die verantwortliche Person selbst (Selbstauskunft)
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: >-
+      Keine Löschung des Dienstkontos; die Spalte responsible_user_id wird mit dem Konto der Person
+      oder beim Entfernen ihres Personenbezugs geleert
+    evaluations: >-
+      Welche Dienstkonten eine Person verantwortet; keine Nutzungsdaten, die einzelne Abfrage eines
+      Fachverfahrens wird nicht protokolliert und kein Nutzungsdatum gespeichert
 nonPersonalTables:
   external_access_token_libraries: [token_id, library_id, extinguished_at]
+  service_account_tokens:
+    [id, service_account_id, name, token_prefix, token_lookup_hash, created_at, expires_at,
+    revoked_at, revocation_reason, lapse_recorded_at, expiry_reminded_days]
+  service_account_library_consents:
+    [id, service_account_id, library_id, granted_at, expires_at, ended_at, end_reason,
+    reminder_sent_at, expiry_recorded_at]
 settings:
   - key: external_access_settings.token_max_lifetime_days
     source: DATABASE
