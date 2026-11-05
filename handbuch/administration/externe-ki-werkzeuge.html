@@ -3925,7 +3925,7 @@
 
 <h1 id="externe-ki-werkzeuge-zulassen">Externe KI-Werkzeuge zulassen<a class="headerlink" href="#externe-ki-werkzeuge-zulassen" title="Permanent link">&para;</a></h1>
 <p class="kopf"><strong>Ziel:</strong> Personen durchsuchen freigegebene Bibliotheken aus Werkzeugen wie OpenCode, kontrolliert und befristet.</p>
-<p class="kopf"><strong>Wer:</strong> Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“</p>
+<p class="kopf"><strong>Wer:</strong> Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“ und „Dienstkonten“</p>
 <p>Werkzeuge wie OpenCode holen sich mit einem Zugangstoken Fundstellen aus
 freigegebenen Bibliotheken. Ein Token kann nie mehr als seine Person: Jeder Aufruf sieht nur, was sie
 heute lesen darf, was ihre Bibliothek freigegeben hat und was sie ins Token gewählt hat.</p>
@@ -3958,14 +3958,27 @@ einer Bibliothek zählt die Tokens der Dienstkonten mit.</p>
 einmal an die Systemverwaltung. Die Meldung führt zur Tokenliste und dient Vorfall und Sperre, nicht
 Leistungs- oder Disziplinarfragen.</p>
 <h2 id="dienstkonten">Dienstkonten<a class="headerlink" href="#dienstkonten" title="Permanent link">&para;</a></h2>
-<p>Ein Fachverfahren hängt nicht am Token einer Person, sondern an einem <strong>Dienstkonto</strong> mit eigenen
-Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt hat, je Bibliothek befristet
-wie eine Freigabe und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten zählt hier
-nicht. Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt
-sie weg, laufen die Tokens weiter, und das Dienstkonto zeigt die Lücke. Deaktivieren beendet alle
-Tokens sofort. Grenzen: Eine Rotation von <code>OPAA_AUTH_JWT_SECRET</code> entwertet auch diese Tokens; eine
-Rücksicherung belebt widerrufene Tokens und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was
-das Fachverfahren selbst mit den Fundstellen protokolliert, klärt die Behörde vor der Anbindung.</p>
+<p>Ein Fachverfahren wie ein Antragsportal hängt nicht am Token einer Person, sondern an einem
+<strong>Dienstkonto</strong> mit eigenen Tokens. Es erreicht nur Bibliotheken, deren Verwaltung ihm zugestimmt
+hat, je Bibliothek befristet und jederzeit widerrufbar; die Freigabe für Werkzeuge der Beschäftigten
+zählt hier nicht (<a href="../benutzer/arbeitsmittel-teilen.html#dienstkonto-aufnehmen">Dienstkonto aufnehmen</a>).</p>
+<ol>
+<li>Reiter „Dienstkonten“, „Dienstkonto anlegen“: den Namen des Verfahrens, die verantwortliche
+   Person und bei Bedarf „Anfragen je Stunde“ für alle Tokens zusammen, dann „Weiter“.</li>
+<li>„Erstes Token ausstellen“: Name und Ablauf, „Ausstellen“. Den Wert mit „Kopieren“ übernehmen und
+   auf sicherem Weg an den Betrieb des Verfahrens geben; er erscheint nur dieses eine Mal. „Ohne
+   Token beenden“ legt das Dienstkonto ohne Token an.</li>
+<li>Die Verwaltung jeder Bibliothek, die das Verfahren durchsuchen soll, nimmt das Dienstkonto auf.</li>
+</ol>
+<p>Ein Klick auf eine Zeile der Liste öffnet das Dienstkonto mit Angaben, Tokens und Bibliotheken.
+<strong>Erneuern ohne Ausfall:</strong> „Token ausstellen“, im Verfahren umstellen, dann das alte Token über „⋯“
+„Widerrufen“. „Dienstkonto deaktivieren“ beendet alle Tokens sofort und lässt sich nicht
+zurücknehmen.</p>
+<p>Die verantwortliche Person ist nur Ansprechpartnerin für Erinnerungen und Erneuerung: Fällt sie
+weg, laufen die Tokens weiter, und die Liste zeigt „Verantwortlich fehlt“. Grenzen: Eine Rotation
+von <code>OPAA_AUTH_JWT_SECRET</code> entwertet auch diese Tokens; eine Rücksicherung belebt widerrufene Tokens
+und Zustimmungen wieder; der Kanal bleibt im Hausnetz. Was das Fachverfahren selbst mit den
+Fundstellen protokolliert, klärt die Behörde vor der Anbindung.</p>
 <h2 id="einstellungen">Einstellungen<a class="headerlink" href="#einstellungen" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
