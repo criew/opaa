@@ -158,6 +158,17 @@ describe('userAdminStore', () => {
     expect(sent.setupUrl).toBeUndefined()
   })
 
+  it('erases a locked account, which leaves the list, and refuses an active one', async () => {
+    await state().loadAccounts()
+
+    await state().eraseUser('local-user-vogt')
+
+    expect(state().accounts.some((account) => account.id === 'local-user-vogt')).toBe(false)
+    await expect(state().eraseUser('local-user-klein')).rejects.toSatisfy(
+      (err) => apiErrorCode(err) === 'ACCOUNT_ACTIVE',
+    )
+  })
+
   it('keeps the conflict code of a refused act reachable for the curated message', async () => {
     await state().loadAccounts()
     await expect(state().deleteUser(OWNS_CONTENT_USER_ID)).rejects.toSatisfy(

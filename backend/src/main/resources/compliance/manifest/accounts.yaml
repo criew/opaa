@@ -8,15 +8,15 @@ data:
       - name: users
         personalColumns:
           [subject, issuer, email, display_name, last_login_at, system_role, directory_locked_at]
-        nonPersonalColumns: [id, created_at, organization_id]
+        nonPersonalColumns: [id, created_at, organization_id, erased_at]
         person:
           columns: [subject, issuer]
           note: Die Zeile ist das Konto der Person selbst
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Unbegrenzt; ein Konto bleibt bestehen, solange es nicht gelöscht wird, und löschbar sind in
-        der Praxis nur nie benutzte lokale Konten
+        Unbegrenzt, bis die Systemverwaltung den Personenbezug entfernt; danach bleibt die Zeile als
+        namenlose Hülle ohne Name, Adresse und Kennung beim Anbieter
       settings: []
     visibility:
       - die Person selbst
@@ -24,12 +24,14 @@ data:
       - SYSTEM_ADMIN in der Kontenverwaltung
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
-      Durch die Systemverwaltung nur bei lokalen Konten, auf die nichts verweist (u. a. kein Chat,
-      kein Besitz, keine Rechtevergabe, keine Verbindung, kein Eintrag der Rechtehistorie),
-      praktisch also bei nie benutzten Konten. Ein offener Antrag oder eine noch nutzbare Freigabe
-      der anlassbezogenen Klärung hält die Löschung auf; danach nicht mehr, die Person bleibt dort
-      als Pseudonym bis zu deren Löschfrist. Konten eines
-      Identitätsanbieters haben keinen Löschweg; benutzte Konten werden gesperrt, nicht gelöscht
+      Ein deaktiviertes Konto, lokal oder eines Identitätsanbieters, verliert durch „Personenbezug
+      entfernen“ der Systemverwaltung Name, Adresse und Kennung beim Anbieter; mit ihm gehen Chats,
+      persönlicher Space, private Bibliotheken, Anmeldedaten und Tokens. Die Zeile bleibt namenlos
+      stehen, damit Rechtehistorie und Protokoll gültig bleiben. Ein offener Antrag oder eine noch
+      nutzbare Freigabe der anlassbezogenen Klärung und eine laufende oder beantragte Anhaltung der Chat-Löschung
+      halten das auf. Ganz gelöscht werden nur lokale Konten, auf die nichts verweist (u. a. kein
+      Chat, kein Besitz, keine Rechtevergabe, keine Verbindung, kein Eintrag der Rechtehistorie),
+      praktisch also nie benutzte Konten
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
       lokaler Konten (90-Tage-Fenster), keine Zeitreihe
@@ -86,7 +88,7 @@ data:
         - local_auth_settings.inactive_days
     visibility: ["SYSTEM_ADMIN (Zustand, nie Passwort oder Zähler)", die Person selbst]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Mit dem Konto
+    deletion: Mit dem Konto oder beim Entfernen des Personenbezugs
     evaluations: >-
       Keine; der Fehlversuchszähler wird weder ausgegeben noch historisiert und geht bei Erfolg auf
       null. Die Sitzungsgeneration zählt, wie oft alle Sitzungen des Kontos beendet wurden
@@ -357,7 +359,7 @@ data:
       settings: [io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION]
     visibility: [die empfangende Person]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Mit dem Konto (ON DELETE CASCADE), mit dem Objekt, Alarme täglich nach Frist
+    deletion: Mit dem Konto (ON DELETE CASCADE) oder beim Entfernen des Personenbezugs, auch die an andere über das Konto, mit dem Objekt, Alarme täglich nach Frist
     evaluations: keine
   - id: self-disclosure
     title: Stand der Selbstauskunft
@@ -398,7 +400,7 @@ data:
       settings: []
     visibility: [die Person selbst]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Mit dem Konto (ON DELETE CASCADE)
+    deletion: Mit dem Konto (ON DELETE CASCADE) oder beim Entfernen des Personenbezugs
     evaluations: >-
       In der Anwendung keine: Der letzte Export erscheint in keiner Kontenliste und keiner
       Schnittstelle der Verwaltung. Über die Datenbank je Person der Zeitpunkt des letzten

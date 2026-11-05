@@ -84,7 +84,9 @@ data:
     deletion: >-
       Trennung durch die Person, Profillöschung, Notabschaltung. Eine eigene Verbindung verhindert
       die Löschung des Kontos; offene Freigaben und Autorisierungen enden mit dem Konto, an
-      Bibliotheksverbindungen wird die zustimmende Person geleert. Ein Widerrufsauftrag für den Anbieter
+      Bibliotheksverbindungen wird die zustimmende Person geleert. Beim Entfernen des Personenbezugs leert die
+      Kontobezeichnungen und an Bibliotheksverbindungen Person und Bezeichnung und löscht offene
+      Autorisierungen. Ein Widerrufsauftrag für den Anbieter
       bleibt verschlüsselt bis zu seinem Widerruf, in der Regel Sekunden, und wird dann gelöscht
     evaluations: Gezählte, maskierte Übersicht abgelaufener Verbindungen je Profil
   - id: connection-person-states

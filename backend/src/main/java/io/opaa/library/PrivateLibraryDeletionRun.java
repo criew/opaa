@@ -109,6 +109,17 @@ public class PrivateLibraryDeletionRun {
         libraries.countOwnersNotScheduledForErasure(organizationId, owners));
   }
 
+  /**
+   * Marks the private libraries of an erased account for erasure, in the erasure's transaction; the
+   * marker commits with it, and {@link #continuePending} erases them within minutes - content,
+   * originals, chunks and embeddings - as it does any marked library.
+   */
+  public void markOfErasedAccount(UUID ownerUserId, Instant at) {
+    for (UUID id : libraries.findPrivateIdsByOwnerUserIdIn(Set.of(ownerUserId))) {
+      libraries.requestErasure(id, at, ErasureCause.ACCOUNT_ERASED.name());
+    }
+  }
+
   /** Erases each of {@code ids} on its own; {@code cause} {@code null} keeps the marked one. */
   private Result erase(List<UUID> ids, ErasureCause cause) {
     int erased = 0;

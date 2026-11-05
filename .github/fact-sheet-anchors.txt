@@ -50,6 +50,7 @@ datenkatalog#tabellen-ohne-personenbezug
 datenkatalog#transcription-vocabularies
 protokollereignisse
 protokollereignisse#account-deactivated
+protokollereignisse#account-erased
 protokollereignisse#account-reauthentication-forced
 protokollereignisse#api-token-expired
 protokollereignisse#api-token-issued

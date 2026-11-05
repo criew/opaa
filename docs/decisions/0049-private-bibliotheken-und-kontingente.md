@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 4, 6 und 9), [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidung 9)
 
@@ -59,7 +59,7 @@ Nachweis, die Zeile; Ordner, Metadaten, Abgleichstand, Präsenz und Geheimnisse 
 Originale werden vorher außerhalb der Transaktion entfernt. Am Ende zählt sie jede Ablage nach;
 bleibt etwas übrig, rollt sie zurück, der Marker bleibt, die Fortsetzung beginnt von vorn.
 **Nachweis** `PRIVATE_LIBRARY_ERASED` im Revisionsprotokoll: Anlass (`OWNER_REQUEST`,
-`DELETION_PERIOD_EXPIRED`), Zeitpunkt der Vormerkung, Handelnde, `erasedCompletely` und je
+`DELETION_PERIOD_EXPIRED`, `ACCOUNT_ERASED` beim Entfernen des Personenbezugs der Eigentümerin), Zeitpunkt der Vormerkung, Handelnde, `erasedCompletely` und je
 Inhaltsart nur `NONE` oder `PRESENT` (Maintainer, #2270); die geschwärzten Chat-Belege nennt er
 nicht (`ErasedLibraryReferences#inProof`). Die Historientabellen der Rechte, Verbindungs- und
 Diagnoseprotokoll behalten die Kennung, nie einen Namen. **Löschlauf** `PrivateLibraryDeletionSchedule`:

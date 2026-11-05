@@ -241,10 +241,12 @@ public class UserService {
   /**
    * Scopes the admin user list to the caller's own organization: the organization boundary stops a
    * SYSTEM_ADMIN's reach just as it does everywhere else. The acting person is resolved by {@code
-   * AdminController#listUsers}.
+   * AdminController#listUsers}. An erased account is left out.
    */
   public List<User> findAllInOrganization(UUID organizationId) {
-    return userRepository.findByOrganizationId(organizationId);
+    return userRepository.findByOrganizationId(organizationId).stream()
+        .filter(user -> !user.isErased())
+        .toList();
   }
 
   /**

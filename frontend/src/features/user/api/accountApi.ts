@@ -81,3 +81,16 @@ export async function changeUserRole(id: string, role: SystemRole): Promise<User
     normalizeError(err)
   }
 }
+
+/**
+ * Removes the personal reference of a deactivated account, local or of a provider - irreversible.
+ * The backend answers 409 for an account still usable, one with a system role, one whose chat
+ * deletion is held or one an open incident scope names, and demands a recent sign-in.
+ */
+export async function eraseAccount(id: string): Promise<void> {
+  try {
+    await apiClient.post(`/v1/admin/accounts/${id}/erasure`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
