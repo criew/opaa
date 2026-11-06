@@ -141,8 +141,9 @@ Personendaten in den Chat schreibt, schickt sie mit. Vollständig steht das je M
 **Texterkennung gescannter Dokumente.** Hat ein PDF keine Textebene, kann OPAA es beim Indizieren
 von einem Texterkennungsdienst lesen lassen und damit durchsuchbar machen. Das ist ab Werk zweifach
 ausgeschaltet ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}). Der Dienst bekommt ganze Seiten
-mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}). Die Erkennung
-holt nur nach, was im Dokument steht: Das Original bleibt maßgeblich und abrufbar, der erkannte Text
+mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}). Nach dem Einschalten werden
+auch bereits vorhandene gescannte Dokumente nachträglich erkannt und damit durchsuchbar. Die
+Erkennung holt nur nach, was im Dokument steht: Das Original bleibt maßgeblich und abrufbar, der erkannte Text
 dient der Suche ({{faktenblatt:voreinstellungen#ki-funktion-text-recognition}}). Sie bewertet weder
 Personen noch Leistung und zählt nichts je Person. Läuft der Dienst außerhalb des Hauses, stimmen
 Behörde, Personalrat und DSB das vorher ab.

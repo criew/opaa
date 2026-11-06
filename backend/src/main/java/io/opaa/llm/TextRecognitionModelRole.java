@@ -115,8 +115,9 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
 
   /**
    * Converts a whole PDF with docling-serve within {@link TextRecognitionProperties#callTimeout()}.
-   * A call that does not reach the service moves the role to {@link
-   * TextRecognitionRoleState#UNREACHABLE}; a document refusal leaves the role as it is.
+   * A call the role cannot make as configured (no answer, key refused, wrong address, server error)
+   * moves the role to {@link TextRecognitionRoleState#UNREACHABLE} with the reason; overload and a
+   * document refusal leave the role as it is.
    *
    * @throws IllegalStateException for another connection type or while the operation's switch is
    *     off; nothing was sent
@@ -222,7 +223,9 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
             : status(
                 endpoint,
                 TextRecognitionRoleState.UNREACHABLE,
-                failure.message(),
+                failure.keyRejected()
+                    ? "the service refused the key (" + failure.message() + ")"
+                    : failure.message(),
                 failure.timedOut());
     record(endpoint, probed, true);
     return probed;
@@ -234,7 +237,7 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
       record(endpoint, status(endpoint, TextRecognitionRoleState.READY, null, false), false);
       return result;
     } catch (TextRecognitionClient.TextRecognitionUnavailableException e) {
-      if (!e.answered()) {
+      if (e.roleUnusable()) {
         record(
             endpoint,
             status(endpoint, TextRecognitionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()),

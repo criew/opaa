@@ -318,4 +318,27 @@ class TextRecognitionClientTest {
     assertThat(health.get().method()).isEqualTo("GET");
     assertThat(models.get().headers().get("Authorization")).containsExactly("Bearer k");
   }
+
+  @Test
+  void aWrongKeyIsCaughtByTheDoclingProbeThoughHealthNeedsNone() {
+    respond("/health", 200, "{\"status\":\"ok\"}", null);
+    AtomicReference<Captured> poll = new AtomicReference<>();
+    respond(TextRecognitionClient.KEY_CHECK_PATH, 401, "", poll);
+    AtomicReference<Captured> conversion = new AtomicReference<>();
+    respond("/v1/convert/file", 200, DOCLING_SUCCESS, conversion);
+
+    TextRecognitionClient.ProbeFailure failure = client.probe(docling("wrong"), TIMEOUT);
+
+    assertThat(failure).isNotNull();
+    assertThat(failure.keyRejected()).isTrue();
+    assertThat(poll.get().method()).isEqualTo("GET");
+    assertThat(poll.get().headers().get("X-api-key")).containsExactly("wrong");
+    assertThat(client.test(docling("wrong"), TIMEOUT).outcome())
+        .isEqualTo(TestOutcome.KEY_REJECTED);
+    assertThat(conversion.get()).isNull();
+
+    server.removeContext(TextRecognitionClient.KEY_CHECK_PATH);
+    respond(TextRecognitionClient.KEY_CHECK_PATH, 404, "{\"detail\":\"Task not found.\"}", null);
+    assertThat(client.probe(docling("k"), TIMEOUT)).isNull();
+  }
 }

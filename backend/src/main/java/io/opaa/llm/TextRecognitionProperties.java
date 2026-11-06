@@ -21,7 +21,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param documentTimeout budget of all calls for one document
  * @param maxConcurrent documents recognised at the same time by this instance
  * @param maxPagesPerRun pages one indexing run sends at most; the rest waits for the next run
- * @param callTimeout budget of one call to the service, the test and the probe included
+ * @param callTimeout budget of one call to the service for a document; the connection test has its
+ *     own budget of three minutes in total, the periodic probe 30 seconds
  */
 @PerInstance("limits and timeouts of this process")
 @NoDataImpact("limits and timeouts of text recognition")

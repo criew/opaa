@@ -49,7 +49,7 @@ public class TranscriptionController {
       "Die Spracheingabe ist gerade ausgelastet. Bitte versuchen Sie es gleich erneut oder tippen"
           + " Sie Ihre Frage.";
   static final String UPSTREAM_FAILED_MESSAGE =
-      "Die Texterkennung ist fehlgeschlagen. Bitte versuchen Sie es erneut oder tippen Sie Ihre"
+      "Die Spracherkennung ist fehlgeschlagen. Bitte versuchen Sie es erneut oder tippen Sie Ihre"
           + " Frage.";
 
   private final TranscriptionModelRole role;

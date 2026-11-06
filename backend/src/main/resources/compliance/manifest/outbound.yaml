@@ -94,10 +94,11 @@ dataFlows:
     data: >-
       Ganze Seiten gescannter PDF-Dokumente der Bibliotheken, als PDF (docling-serve) oder als
       Seitenbild (Vision-Modell), mit allem, was darauf steht; Verbindungstest nur die mitgelieferte
-      Testseite ohne Inhalte, Statusprüfung nur die Abfrage von Zustand oder Modellliste
+      Testseite ohne Inhalte, Statusprüfung nur die Abfrage von Zustand und Schlüssel (docling-serve)
+      oder der Modellliste
     trigger: >-
-      Indizierung eines gescannten PDF-Dokuments ohne Textebene, Statusprüfung, Verbindungstest in
-      der Modellverwaltung
+      Statusprüfung und Verbindungstest in der Modellverwaltung; Dokumentseiten nur, wenn die
+      Indizierung die Rolle für ein gescanntes PDF-Dokument ohne Textebene aufruft
     switchOff: >-
       Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
       die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der
