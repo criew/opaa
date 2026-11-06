@@ -359,6 +359,20 @@ public class IndexingRunTemplate {
       incomplete = true;
       category = RunFailureCategory.QUOTA_EXHAUSTED;
     }
+    int deferredScans = events.textRecognitionBudget().deferred();
+    if (!failed && deferredScans > 0) {
+      // like the request budget: the run went on with every other item and is incomplete, the
+      // deferred scans keep their state and the next run reads them
+      incomplete = true;
+      events.recordRunNote(
+          IndexingEventCategory.BUDGET_EXHAUSTED,
+          "Seitenbudget der Texterkennung erschöpft ("
+              + events.textRecognitionBudget().pagesSpent()
+              + " Seiten); "
+              + deferredScans
+              + (deferredScans == 1 ? " Scan folgt" : " Scans folgen")
+              + " im nächsten Lauf");
+    }
     reportThrottling(run);
     recordCost(run, !failed && incomplete);
     log.info(

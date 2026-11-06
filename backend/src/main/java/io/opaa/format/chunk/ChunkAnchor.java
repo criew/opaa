@@ -27,6 +27,10 @@ import java.util.Map;
  * @param quoteStart the chunk's own text from its start, whitespace-normalized, up to {@link
  *     ChunkAnchors#QUOTE_LENGTH} characters cut at a word boundary
  * @param quoteEnd the same from its end; absent when the whole text fits {@code quoteStart}
+ * @param regions the frames of the elements the chunk consists of, one per page, normalized to the
+ *     page size with the origin top left; only text recognition of a scan with layout fills them
+ * @param textOrigin set when the chunk's text was read by text recognition rather than taken from
+ *     the document's own text layer
  */
 public record ChunkAnchor(
     Integer pageFrom,
@@ -38,43 +42,189 @@ public record ChunkAnchor(
     Long rowTo,
     Integer message,
     String quoteStart,
-    String quoteEnd) {
+    String quoteEnd,
+    List<Region> regions,
+    TextOrigin textOrigin) {
 
   public static final ChunkAnchor EMPTY =
-      new ChunkAnchor(null, null, null, null, null, null, null, null, null, null);
+      new ChunkAnchor(null, null, null, null, null, null, null, null, null, null, null, null);
 
   public ChunkAnchor {
     path = path == null || path.isEmpty() ? null : List.copyOf(path);
+    regions = regions == null || regions.isEmpty() ? null : List.copyOf(regions);
   }
+
+  /**
+   * One frame on one page, as fractions of the page's width and height, origin top left: a viewer
+   * draws it at any resolution.
+   *
+   * @param page 1-based page number
+   */
+  public record Region(int page, double x, double y, double width, double height) {
+
+    Map<String, Object> toMetadata() {
+      Map<String, Object> map = new LinkedHashMap<>();
+      map.put("page", page);
+      map.put("x", x);
+      map.put("y", y);
+      map.put("width", width);
+      map.put("height", height);
+      return map;
+    }
+
+    static Region fromMetadata(Object value) {
+      if (!(value instanceof Map<?, ?> map)
+          || !(map.get("page") instanceof Number page)
+          || !(map.get("x") instanceof Number x)
+          || !(map.get("y") instanceof Number y)
+          || !(map.get("width") instanceof Number width)
+          || !(map.get("height") instanceof Number height)) {
+        return null;
+      }
+      return new Region(
+          page.intValue(),
+          x.doubleValue(),
+          y.doubleValue(),
+          width.doubleValue(),
+          height.doubleValue());
+    }
+  }
+
+  /**
+   * The text of the chunk was read by text recognition (OCR), so it may differ from the wording of
+   * the original.
+   *
+   * @param connectionType how the recognising service was connected ({@code DOCLING_SERVE} or
+   *     {@code OPENAI_VISION})
+   */
+  public record TextOrigin(String connectionType) {}
 
   public ChunkAnchor withPages(int from, int to) {
     return new ChunkAnchor(
-        from, to, path, slide, sheet, rowFrom, rowTo, message, quoteStart, quoteEnd);
+        from,
+        to,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public ChunkAnchor withPath(List<String> path) {
     return new ChunkAnchor(
-        pageFrom, pageTo, path, slide, sheet, rowFrom, rowTo, message, quoteStart, quoteEnd);
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public ChunkAnchor withSlide(int slide) {
     return new ChunkAnchor(
-        pageFrom, pageTo, path, slide, sheet, rowFrom, rowTo, message, quoteStart, quoteEnd);
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public ChunkAnchor withRows(String sheet, long from, long to) {
     return new ChunkAnchor(
-        pageFrom, pageTo, path, slide, sheet, from, to, message, quoteStart, quoteEnd);
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        from,
+        to,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public ChunkAnchor withMessage(int message) {
     return new ChunkAnchor(
-        pageFrom, pageTo, path, slide, sheet, rowFrom, rowTo, message, quoteStart, quoteEnd);
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public ChunkAnchor withQuotes(String quoteStart, String quoteEnd) {
     return new ChunkAnchor(
-        pageFrom, pageTo, path, slide, sheet, rowFrom, rowTo, message, quoteStart, quoteEnd);
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
+  }
+
+  public ChunkAnchor withRegions(List<Region> regions) {
+    return new ChunkAnchor(
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
+  }
+
+  public ChunkAnchor withTextOrigin(TextOrigin textOrigin) {
+    return new ChunkAnchor(
+        pageFrom,
+        pageTo,
+        path,
+        slide,
+        sheet,
+        rowFrom,
+        rowTo,
+        message,
+        quoteStart,
+        quoteEnd,
+        regions,
+        textOrigin);
   }
 
   public boolean isEmpty() {
@@ -94,6 +244,12 @@ public record ChunkAnchor(
     putIfSet(map, "message", message);
     putIfSet(map, "quoteStart", quoteStart);
     putIfSet(map, "quoteEnd", quoteEnd);
+    if (regions != null) {
+      map.put("regions", regions.stream().map(Region::toMetadata).toList());
+    }
+    if (textOrigin != null) {
+      map.put("textOrigin", Map.of("connectionType", textOrigin.connectionType()));
+    }
     return map;
   }
 
@@ -115,7 +271,30 @@ public record ChunkAnchor(
         longOf(map.get("rowTo")),
         intOf(map.get("message")),
         stringOf(map.get("quoteStart")),
-        stringOf(map.get("quoteEnd")));
+        stringOf(map.get("quoteEnd")),
+        regionsOf(map.get("regions")),
+        textOriginOf(map.get("textOrigin")));
+  }
+
+  private static List<Region> regionsOf(Object value) {
+    if (!(value instanceof List<?> list)) {
+      return null;
+    }
+    List<Region> regions = new ArrayList<>(list.size());
+    for (Object entry : list) {
+      Region region = Region.fromMetadata(entry);
+      if (region != null) {
+        regions.add(region);
+      }
+    }
+    return regions;
+  }
+
+  private static TextOrigin textOriginOf(Object value) {
+    return value instanceof Map<?, ?> map
+            && stringOf(map.get("connectionType")) instanceof String type
+        ? new TextOrigin(type)
+        : null;
   }
 
   private static void putIfSet(Map<String, Object> map, String key, Object value) {

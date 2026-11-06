@@ -36,9 +36,9 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Deep Research** — eigener Betriebsmodus: Zerlegung in Teilfragen, gegliederter Bericht mit
   Fundstellen und benannten Widersprüchen, Ergebnis als Artefakt, Verbrauch vorab angezeigt.
-- **Texterkennung (OCR) und Bildverständnis** — Scans, Fotos, Diagramme, Handschrift erschließen;
-  OCR-Text als unsicherer gekennzeichnet; Verfügbarkeit je Modell sichtbar. Voraussetzung ist der
-  Docling-PoC samt Abnahmeschwellen. _(#1062, Epic #2640 (geparkt))_
+- **Bildverständnis** — Fotos, Diagramme und Handschrift erschließen; gescannte PDF-Dokumente liest
+  die Texterkennung bereits, ihr Text ist als erkannt gekennzeichnet. Offen: Fotos und
+  Bilddateien, einzelne Scanseiten in PDF mit Textebene, Rahmen im Viewer. _(Epic #2640)_
 - **Filterwerte aus der Frage ableiten** — Metadatenfilter automatisch setzen, sichtbar und mit einem
   Klick entfernbar. _(#1363)_
 - **Geführter Assistent für Bibliotheksschemata** — Zweck erfragen, Stichprobe von 5–20 Dokumenten,

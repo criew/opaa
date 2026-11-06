@@ -97,8 +97,11 @@ dataFlows:
       Testseite ohne Inhalte, Statusprüfung nur die Abfrage von Zustand und Schlüssel (docling-serve)
       oder der Modellliste
     trigger: >-
-      Statusprüfung und Verbindungstest in der Modellverwaltung; Dokumentseiten nur, wenn die
-      Indizierung die Rolle für ein gescanntes PDF-Dokument ohne Textebene aufruft
+      Indizierung eines gescannten PDF-Dokuments ohne Textebene, auch das Nachholen wartender Scans
+      hochgeladener Dokumente alle fünf Minuten, solange die Texterkennung eingeschaltet ist, höchstens
+      opaa.ocr.max-pages-per-run Seiten je Lauf oder Durchgang; nie bei einer Neuindizierung
+      unveränderter Dokumente, die den gespeicherten Erkennungsstand nutzt; Statusprüfung und
+      Verbindungstest in der Modellverwaltung ohne Dokumentseiten
     switchOff: >-
       Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
       die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der

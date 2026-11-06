@@ -35,7 +35,14 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   REMOVED: 'In der Quelle entfernt',
   // The source throttled the run and it slowed down instead of failing - one summary note.
   RATE_LIMITED: 'Ratenbegrenzung',
-  BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
+  // The request budget of the source or the page budget of text recognition; the run is incomplete.
+  BUDGET_EXHAUSTED: 'Budget erschöpft',
+  // Text recognition of scanned PDFs (ADR-0069): read, failed on the service (no lock), locked for
+  // this document, or deferred to the next run by the page budget.
+  TEXT_RECOGNIZED: 'Per Texterkennung gelesen',
+  TEXT_RECOGNITION_FAILED: 'Texterkennung gescheitert',
+  TEXT_RECOGNITION_BLOCKED: 'Texterkennung gesperrt',
+  TEXT_RECOGNITION_PENDING: 'Texterkennung ausstehend',
   // The run's own figures, one note per run for a source that counts them.
   SUMMARY: 'Kennzahlen',
   // Counts per class of what the cleanup after extraction found; the document was indexed.

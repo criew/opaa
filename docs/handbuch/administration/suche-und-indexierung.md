@@ -10,7 +10,7 @@ Die Seite zeigt und diagnostiziert, stellt aber nichts ein.
 
 | Reiter | Zeigt |
 |---|---|
-| „Überblick“ | Modellrollen mit Endpunkt und Erreichbarkeit, Suchpfade Vektor und Volltext |
+| „Überblick“ | Modellrollen (Chat, Einbettung, Reranking, Transkription, Texterkennung) mit Endpunkt und Erreichbarkeit, Suchpfade Vektor und Volltext |
 | „Indexstatus“ | je Bibliothek Dokumente, Chunks, letzter Lauf, Rückstand, „Nachzug ausstehend“, Stand der Kernfelder; private Bibliotheken nur als eine Zeile ohne Namen |
 | „Diagnose“ | eine Testfrage durch die echte Suche, Stufe für Stufe |
 
@@ -51,6 +51,11 @@ und `email`. Hochgeladene Dokumente und das
 Dateisystem werden sofort neu verarbeitet, alle anderen Quellen im nächsten Lauf. Alte Chunks
 verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells steuern Sie unter
 [Modelle verwalten](modelle.md).
+
+Gescannte PDF-Dokumente kommen nach dem Einschalten der Texterkennung nach und nach in den Index:
+Quellen mit ihrem nächsten Lauf, hochgeladene Scans über ein Nachholen alle fünf Minuten. Wartende
+und gesperrte Scans zeigt jede Bibliothek über ihrer Dokumentliste. Der Nachzug der Pipeline
+`pdf-ocr` liest den gespeicherten Erkennungsstand und ruft den Dienst nicht.
 
 **Gut zu wissen:**
 

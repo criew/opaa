@@ -1,5 +1,6 @@
 import type {
   RerankModelSettingsResponse,
+  TextRecognitionModelSettingsResponse,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 
@@ -31,12 +32,40 @@ export function factoryTranscriptionModel(): TranscriptionModelSettingsResponse 
   }
 }
 
+/** Off and unbound; the operation has released text recognition, so the form is shown. */
+export function factoryTextRecognitionModel(): TextRecognitionModelSettingsResponse {
+  return {
+    enabled: false,
+    connectionType: 'DOCLING_SERVE',
+    baseUrl: null,
+    model: null,
+    apiKeySet: false,
+    state: 'DISABLED',
+    textRecognitionAvailable: true,
+    updatedAt: null,
+  }
+}
+
+/** The shipped OCR service, switched on, with a stored key. */
+export function configuredTextRecognitionModel(): TextRecognitionModelSettingsResponse {
+  return {
+    ...factoryTextRecognitionModel(),
+    enabled: true,
+    baseUrl: 'http://opaa-ocr:5001',
+    apiKeySet: true,
+    state: 'ACTIVE',
+    updatedAt: '2026-11-05T09:30:00Z',
+  }
+}
+
 export const mockModelRoles = {
   rerank: factoryRerankModel(),
   transcription: factoryTranscriptionModel(),
+  textRecognition: factoryTextRecognitionModel(),
 }
 
 export function resetMockModelRoles() {
   mockModelRoles.rerank = factoryRerankModel()
   mockModelRoles.transcription = factoryTranscriptionModel()
+  mockModelRoles.textRecognition = factoryTextRecognitionModel()
 }

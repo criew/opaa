@@ -17,6 +17,8 @@ import io.opaa.format.file.office.OdpDocumentFormat;
 import io.opaa.format.file.office.OdtDocumentFormat;
 import io.opaa.format.file.office.PptxDocumentFormat;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
+import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
+import io.opaa.format.file.pdf.PdfPages;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -137,6 +139,22 @@ public class FormatConfiguration {
   PdfDocumentFormat pdfDocumentPipeline(
       HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
     return new PdfDocumentFormat(headingSectionSplitter, parserLimits);
+  }
+
+  /**
+   * The cut of a scanned PDF's stored text recognition (the format chapter of the Handbuch): never
+   * routed by content, handed the recognition by the indexing; registered so the pipeline re-index
+   * and the version overview cover its chunks like any other format's.
+   */
+  @Bean
+  PdfOcrDocumentFormat pdfOcrDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new PdfOcrDocumentFormat(headingSectionSplitter);
+  }
+
+  /** Page count and page images of a PDF for text recognition, under the parser limits. */
+  @Bean
+  PdfPages pdfPages(ParserLimitProperties parserLimits) {
+    return new PdfPages(parserLimits);
   }
 
   /**

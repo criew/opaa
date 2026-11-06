@@ -20,3 +20,17 @@ describe('Kategorie „Auffällige Muster“ im Laufprotokoll', () => {
     })
   }
 })
+
+describe('Kategorien der Texterkennung im Laufprotokoll', () => {
+  it('tragen deutsche Beschriftungen', () => {
+    expect(indexingRunEventCategoryLabel('TEXT_RECOGNIZED')).toBe('Per Texterkennung gelesen')
+    expect(indexingRunEventCategoryLabel('TEXT_RECOGNITION_FAILED')).toBe(
+      'Texterkennung gescheitert',
+    )
+    expect(indexingRunEventCategoryLabel('TEXT_RECOGNITION_BLOCKED')).toBe('Texterkennung gesperrt')
+    expect(indexingRunEventCategoryLabel('TEXT_RECOGNITION_PENDING')).toBe(
+      'Texterkennung ausstehend',
+    )
+    expect(indexingRunEventCategoryLabel('BUDGET_EXHAUSTED')).toBe('Budget erschöpft')
+  })
+})

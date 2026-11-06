@@ -2,6 +2,7 @@ import type {
   EmbeddingReindexStatusResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
+  TextRecognitionBlock,
 } from '@/shared/api/types'
 
 export const mockIndexingIdle: IndexingStatusResponse = {
@@ -86,4 +87,14 @@ export const mockEmbeddingIndexStale: EmbeddingReindexStatusResponse = {
     message:
       'Von der Systemverwaltung abgebrochen. Bereits neu eingebettete Abschnitte bleiben erhalten.',
   },
+}
+
+// Fixture for GET /api/v1/libraries/{libraryId}/text-recognition/blocks - one scan above the
+// page limit
+export const mockTextRecognitionBlock: TextRecognitionBlock = {
+  documentId: 'a1b2c3d4-0000-4000-8000-000000000001',
+  fileName: 'Haushaltsplan-1987.pdf',
+  reason: 'Seitengrenze überschritten (240 Seiten, erlaubt sind 100)',
+  connectionType: 'DOCLING_SERVE',
+  blockedAt: '2026-11-05T08:15:00Z',
 }

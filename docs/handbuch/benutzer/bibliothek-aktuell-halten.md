@@ -27,6 +27,13 @@ fehlgeschlagen · 3 Fehler“. Ein Klick führt zur Ursache. Die häufigsten Mel
 | „Zugang entfernt“ | einen anderen Zugang wählen |
 | „Gesperrt“, „Abgelaufen“ | die Systemverwaltung fragen |
 
+## Gesperrte Scans freigeben
+
+Gescannte PDF-Dokumente ohne Textebene liest die Texterkennung, sofern die Installation sie
+eingeschaltet hat. Über der Dokumentliste steht, wie viele Scans noch darauf warten und für welche
+die Texterkennung gesperrt ist, etwa „Seitengrenze überschritten“. „Anzeigen“ listet sie mit Grund,
+„Freigeben“ lässt den Scan im nächsten Lauf erneut lesen; das steht im Revisionsprotokoll.
+
 **Gut zu wissen:**
 
 - Solange eine Bibliothek ruht, bleibt ihr Bestand durchsuchbar; Belege tragen „Stand vom …“.

@@ -106,8 +106,8 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 
 | Befund | Ergebnis |
 |---|---|
-| Kein Text im ganzen Dokument (Scan ohne Textebene) | abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint in der Admin-Liste der Dokumente ohne Chunks. |
-| Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen | abgewiesen wie ein Scan, „kein extrahierbarer Text". Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet. |
+| Kein Text im ganzen Dokument (Scan ohne Textebene) | mit eingeschalteter Texterkennung erkannt (siehe unten); sonst abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint dann in der Admin-Liste der Dokumente ohne Chunks. |
+| Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen | wie ein Scan: ganz erkannt oder abgewiesen. Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet. |
 | Einzelne eingescannte Seiten, höchstens die Hälfte | indiziert mit dem Text der übrigen Seiten; die Bildseiten fehlen in der Suche |
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
 | Datei nicht lesbar oder beschädigt, Grenzwert gerissen | fehlgeschlagen, „Die Datei konnte nicht verarbeitet werden" |
@@ -121,6 +121,16 @@ unverändertes, schon indiziertes PDF behält bis dahin seinen bisherigen Stand.
 
 Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.
+
+**Texterkennung.** Ist sie eingeschaltet ([Texterkennung einschalten](../../betrieb/modell-endpunkte.md#texterkennung-einschalten)),
+geht ein Scan an den Texterkennungsdienst. Mit docling-serve entsteht der Text mit Überschriften,
+Listen und Tabellen; Kopf- und Fußzeilen der Seiten fallen weg. Geschnitten wird nach den erkannten
+Überschriften, Tabellen zeilenweise mit ihrer Kopfzeile, wie bei einem PDF mit Textebene. Die
+Ortsangabe nennt Seiten und Abschnitt, „S. 2–3 · Abschn. § 4 Gebühren“; jeder Abschnitt trägt
+zusätzlich die Rahmen seiner Zeilen auf der Seite und den Vermerk, dass sein Text erkannt wurde.
+Ein Vision-Modell liefert je Seite Text ohne Rahmen. Der erkannte Text wird mit dem Dokument
+gespeichert, ohne Seitenbilder; ein erneutes Indizieren der unveränderten Datei braucht den Dienst
+nicht. Erkennungsfehler sind möglich, maßgeblich bleibt das Original.
 
 ## 6. Grenzwerte
 
@@ -145,7 +155,7 @@ für das Backend.
 
 ## 7. Nicht verarbeitet
 
-- Texterkennung (OCR) für Scans. Eigenes Vorhaben, siehe Kapitel Indexierung.
+- Einzelne eingescannte Seiten in einem PDF mit Textebene; die Texterkennung liest nur ganze Scans
 - Formularfelder, Anmerkungen und Kommentare
 - eingebettete Dateien und PDF-Portfolios
 - Tabellen ohne vollständiges Gitter aus Linien behalten keine Spaltenstruktur (Abschnitt 3)

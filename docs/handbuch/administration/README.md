@@ -18,7 +18,7 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Wer Bibliotheken, Spaces und Gruppen anlegen darf | [Anlegerechte vergeben](anlegerechte.md) |
 | Wenn jemand geht: Eigentum und Nachfolge | [Ausscheiden und Nachfolge regeln](ausscheiden.md) |
 | Quellen einmal einrichten, für alle | [Zugänge einrichten](zugaenge.md) |
-| Chat-, Embedding-, Reranking- und Sprachmodell | [Modelle verwalten](modelle.md) |
+| Chat-, Embedding-, Reranking-, Sprach- und Texterkennungsmodell | [Modelle verwalten](modelle.md) |
 | Warum findet jemand ein Dokument nicht? | [Suche und Indexierung überwachen](suche-und-indexierung.md) |
 | Externe KI-Werkzeuge wie OpenCode zulassen | [Externe KI-Werkzeuge zulassen](externe-ki-werkzeuge.md) |
 | Fristen und Schalter für Daten von Personen | [Datenschutz einstellen](datenschutz.md) |

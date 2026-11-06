@@ -26,5 +26,12 @@ public final class ChunkMetadataKeys {
    */
   public static final String ANCHOR_LEAD_METADATA_KEY = "anchor_lead";
 
+  /**
+   * Set on a chunk whose text was read by text recognition (OCR): a map naming the connection type
+   * and the recipient ({@code configurationId} of the role that delivered the text). Never part of
+   * the embedding input.
+   */
+  public static final String TEXT_RECOGNITION_METADATA_KEY = "text_recognition";
+
   private ChunkMetadataKeys() {}
 }

@@ -2,11 +2,14 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.asset.AssetRepository;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.DatabaseClock;
 import io.opaa.common.FeatureFlags;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.format.file.mail.MailProperties;
+import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
+import io.opaa.format.file.pdf.PdfPages;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -16,12 +19,16 @@ import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentTextRecognitionStore;
+import io.opaa.indexing.document.TextRecognitionBlocks;
+import io.opaa.indexing.document.TextRecognitionIndexing;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.maintenance.TextRecognitionBacklog;
 import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.registry.StoredDocumentSourceAccess;
@@ -49,6 +56,7 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.TextRecognitionModelRole;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
@@ -65,8 +73,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 @Configuration
 @EnableAsync
@@ -208,7 +218,8 @@ public class IndexingConfiguration {
       ModelMetadataExtractor modelMetadataExtractor,
       FeatureFlags featureFlags,
       MalwareScanService malwareScanService,
-      Clock clock) {
+      Clock clock,
+      TextRecognitionIndexing textRecognitionIndexing) {
     return new DocumentIngestService(
         documentPipelineRegistry,
         documentRepository,
@@ -224,7 +235,65 @@ public class IndexingConfiguration {
         modelMetadataExtractor,
         featureFlags,
         malwareScanService,
+        clock,
+        textRecognitionIndexing);
+  }
+
+  @Bean
+  DocumentTextRecognitionStore documentTextRecognitionStore(JdbcTemplate jdbcTemplate) {
+    return new DocumentTextRecognitionStore(jdbcTemplate);
+  }
+
+  /** Text recognition of scanned PDFs in the indexing (ADR-0069); inert while switched off. */
+  @Bean
+  TextRecognitionIndexing textRecognitionIndexing(
+      TextRecognitionModelRole textRecognitionModelRole,
+      DocumentTextRecognitionStore documentTextRecognitionStore,
+      PdfOcrDocumentFormat pdfOcrDocumentFormat,
+      PdfPages pdfPages,
+      IndexingMetrics indexingMetrics,
+      Clock clock) {
+    return new TextRecognitionIndexing(
+        textRecognitionModelRole,
+        documentTextRecognitionStore,
+        pdfOcrDocumentFormat,
+        pdfPages,
+        indexingMetrics,
         clock);
+  }
+
+  /** The catch-up of uploaded scans for text recognition (ADR-0069), on a thread of its own. */
+  @Bean
+  TextRecognitionBacklog textRecognitionBacklog(
+      TextRecognitionIndexing textRecognitionIndexing,
+      DocumentTextRecognitionStore documentTextRecognitionStore,
+      DocumentRepository documentRepository,
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      DocumentIngestService documentIngestService,
+      StoredDocumentSourceAccess storedDocumentSourceAccess,
+      Clock clock) {
+    return new TextRecognitionBacklog(
+        textRecognitionIndexing,
+        documentTextRecognitionStore,
+        documentRepository,
+        knowledgeLibraryRepository,
+        documentIngestService,
+        storedDocumentSourceAccess,
+        clock);
+  }
+
+  /**
+   * The thread of {@link TextRecognitionBacklog}: a pass waits on the service for minutes and must
+   * not hold the application's shared scheduler.
+   */
+  @Bean(destroyMethod = "shutdown")
+  static TaskScheduler textRecognitionBacklogScheduler() {
+    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+    scheduler.setPoolSize(1);
+    scheduler.setThreadNamePrefix("text-recognition-backlog-");
+    scheduler.setDaemon(true);
+    scheduler.setWaitForTasksToCompleteOnShutdown(false);
+    return scheduler;
   }
 
   @Bean
@@ -362,7 +431,8 @@ public class IndexingConfiguration {
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository,
       SourceConnectionResolver sourceConnectionResolver,
-      DefaultRunModes defaultRunModes) {
+      DefaultRunModes defaultRunModes,
+      TextRecognitionBlocks textRecognitionBlocks) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
@@ -370,7 +440,25 @@ public class IndexingConfiguration {
         libraryAccessService,
         indexingRunEventRepository,
         sourceConnectionResolver,
-        defaultRunModes);
+        defaultRunModes,
+        textRecognitionBlocks);
+  }
+
+  @Bean
+  TextRecognitionBlocks textRecognitionBlocks(
+      DocumentTextRecognitionStore documentTextRecognitionStore,
+      TextRecognitionIndexing textRecognitionIndexing,
+      KnowledgeLibraryRepository libraryRepository,
+      DocumentRepository documentRepository,
+      LibraryAccessService libraryAccessService,
+      AuditEventRecorder auditEventRecorder) {
+    return new TextRecognitionBlocks(
+        documentTextRecognitionStore,
+        textRecognitionIndexing,
+        libraryRepository,
+        documentRepository,
+        libraryAccessService,
+        auditEventRecorder);
   }
 
   /** The run mode of a run nobody chose a mode for, aware of a state of other settings. */

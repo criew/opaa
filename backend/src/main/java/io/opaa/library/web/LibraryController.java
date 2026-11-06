@@ -378,7 +378,9 @@ public class LibraryController {
         .orElse(
             new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now(clock))
                 .message("Kein Indizierungslauf gefunden")
-                .libraryId(libraryId));
+                .libraryId(libraryId))
+        .textRecognitionPending(view.textRecognitionPending())
+        .textRecognitionBlocked(view.textRecognitionBlocked());
   }
 
   @GetMapping("/{libraryId}/indexing/runs")
@@ -481,6 +483,10 @@ public class LibraryController {
       case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;
       case SUMMARY -> IndexingRunEventCategory.SUMMARY;
       case SUSPICIOUS_PATTERNS -> IndexingRunEventCategory.SUSPICIOUS_PATTERNS;
+      case TEXT_RECOGNIZED -> IndexingRunEventCategory.TEXT_RECOGNIZED;
+      case TEXT_RECOGNITION_FAILED -> IndexingRunEventCategory.TEXT_RECOGNITION_FAILED;
+      case TEXT_RECOGNITION_BLOCKED -> IndexingRunEventCategory.TEXT_RECOGNITION_BLOCKED;
+      case TEXT_RECOGNITION_PENDING -> IndexingRunEventCategory.TEXT_RECOGNITION_PENDING;
     };
   }
 

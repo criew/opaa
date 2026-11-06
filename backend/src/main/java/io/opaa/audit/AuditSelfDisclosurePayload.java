@@ -351,6 +351,7 @@ final class AuditSelfDisclosurePayload {
         keys,
         Set.of("enabled", "connectionType", "baseUrl", "model", "apiKeySet", "apiKeyChange"),
         TEXT_RECOGNITION_MODEL_CHANGED);
+    put(keys, Set.of("blocked", "connectionType"), TEXT_RECOGNITION_BLOCK_RELEASED);
     put(
         keys,
         Set.of("validFrom", "validUntil", "revoked"),

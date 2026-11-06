@@ -285,6 +285,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getLibraryFolder",
             "listLibraryIndexingRuns",
             "getLibraryIndexingStatus",
+            "listTextRecognitionBlocks",
             "listLibraryMetadataFields",
             "getLibraryMetadataFieldUsage",
             "getLibraryMetadataFieldValueUsage",
@@ -410,6 +411,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "{\"fieldKey\": \"document_type\", \"value\": {\"state\": \"NOT_DETERMINABLE\"},"
                 + " \"documentIds\": [\"{document}\"]}"));
     probes.put("deleteLibraryDocument", same());
+    probes.put("releaseTextRecognitionBlock", same());
     probes.put("setDocumentMetadataValue", same("{\"state\": \"NOT_DETERMINABLE\"}"));
     probes.put("deleteDocumentMetadataValue", same());
     probes.put(

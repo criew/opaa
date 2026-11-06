@@ -50,6 +50,14 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
     this.jobId = jobId;
   }
 
+  private final TextRecognitionRunBudget textRecognitionBudget = new TextRecognitionRunBudget();
+
+  /** One budget per run: every document and attachment of the run draws from it. */
+  @Override
+  public TextRecognitionRunBudget textRecognitionBudget() {
+    return textRecognitionBudget;
+  }
+
   /**
    * Records one event. {@code message} must already be the final, German, user-facing text - see
    * {@link IndexingRunEvent}'s Javadoc on what {@code reference} may and may not contain (never a

@@ -13,6 +13,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.shared.IngestTextSanitizer;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
@@ -127,6 +128,9 @@ public class DocumentIngestService {
 
   private final Clock clock;
 
+  /** Text recognition of a PDF the {@code pdf} format rejected as without text (ADR-0069). */
+  private final ScannedDocumentRecognition scannedDocumentRecognition;
+
   public DocumentIngestService(
       DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -143,6 +147,42 @@ public class DocumentIngestService {
       FeatureFlags featureFlags,
       MalwareScanService malwareScanService,
       Clock clock) {
+    this(
+        pipelineRegistry,
+        documentRepository,
+        vectorChunkStore,
+        checksumService,
+        metrics,
+        storageQuotaService,
+        indexingProperties,
+        embeddingExecutor,
+        attachmentIndexerProvider,
+        mailAttachmentLimits,
+        documentMetadataService,
+        modelMetadataExtractor,
+        featureFlags,
+        malwareScanService,
+        clock,
+        ScannedDocumentRecognition.NONE);
+  }
+
+  public DocumentIngestService(
+      DocumentFormatRegistry pipelineRegistry,
+      DocumentRepository documentRepository,
+      VectorChunkStore vectorChunkStore,
+      ChecksumService checksumService,
+      IndexingMetrics metrics,
+      LibraryStorageQuotaService storageQuotaService,
+      EmbeddingBatching indexingProperties,
+      Executor embeddingExecutor,
+      ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
+      AttachmentLimits mailAttachmentLimits,
+      DocumentMetadataService documentMetadataService,
+      ModelMetadataExtractor modelMetadataExtractor,
+      FeatureFlags featureFlags,
+      MalwareScanService malwareScanService,
+      Clock clock,
+      ScannedDocumentRecognition scannedDocumentRecognition) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
@@ -160,6 +200,7 @@ public class DocumentIngestService {
     this.featureFlags = featureFlags;
     this.malwareScanService = malwareScanService;
     this.clock = clock;
+    this.scannedDocumentRecognition = scannedDocumentRecognition;
   }
 
   /**
@@ -311,6 +352,7 @@ public class DocumentIngestService {
     Document savedDoc = doc;
     UUID documentId = doc.getId();
     DocumentFormat pipeline = selection.pipeline();
+    Optional<String> routingExtension = selection.routingExtension();
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
     try {
@@ -342,6 +384,16 @@ public class DocumentIngestService {
                 attachmentAtQuota[0] =
                     attachmentAccess.progress().quotaRejections() > rejectedBefore;
               });
+      Optional<ScannedDocumentRecognition.Recognized> recognized =
+          recognizeScan(pipeline, parsed, ingest, documentId, checksum, events);
+      if (recognized.isPresent()) {
+        // the chunks of the stored or new recognition, under their own pipeline id and without a
+        // routing key: the pdf format still claims the file, so a key would make every pipeline
+        // re-index of pdf select this document again
+        parsed = recognized.get().result();
+        pipeline = recognized.get().pipeline();
+        routingExtension = Optional.empty();
+      }
       if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
         log.warn(
             "Re-index of {} ended {}, keeping it as it is",
@@ -403,7 +455,7 @@ public class DocumentIngestService {
               chunks,
               contextTitle,
               pipeline,
-              selection.routingExtension(),
+              routingExtension,
               coreMetadata,
               ingest.context());
 
@@ -430,6 +482,34 @@ public class DocumentIngestService {
     metrics.recordProcessed();
     reportSuspiciousPatterns(library, names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
+  }
+
+  /**
+   * Text recognition for a PDF the {@code pdf} format rejected as without extractable text (both
+   * rules: no text at all, more than half image pages); empty for every other outcome and format,
+   * and whenever the recognition keeps the rejection.
+   */
+  private Optional<ScannedDocumentRecognition.Recognized> recognizeScan(
+      DocumentFormat pipeline,
+      DocumentFormatResult parsed,
+      DocumentIngest ingest,
+      UUID documentId,
+      String checksum,
+      IndexingEventSink events) {
+    if (parsed.outcome() != DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT
+        || !(pipeline instanceof PdfDocumentFormat)
+        || !(ingest.content() instanceof DocumentIngest.File file)) {
+      return Optional.empty();
+    }
+    return scannedDocumentRecognition.recognize(
+        new ScannedDocumentRecognition.Candidate(
+            documentId,
+            checksum,
+            file.path(),
+            ingest.filePath(),
+            ingest.library().loggedNames(),
+            events,
+            ingest.reindex()));
   }
 
   /**

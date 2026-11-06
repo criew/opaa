@@ -29,6 +29,7 @@ import LibraryDocumentsNotices from './LibraryDocumentsNotices'
 import LibraryDocumentUploadArea from './LibraryDocumentUploadArea'
 import LibraryFolderBreadcrumb from './LibraryFolderBreadcrumb'
 import LibraryFolderDialogs from './LibraryFolderDialogs'
+import TextRecognitionNotice from './TextRecognitionNotice'
 
 export { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 
@@ -309,6 +310,11 @@ export default function LibraryDocumentsSection({
           newFolderDialogOpen={newFolderDialogOpen}
           renameFolderTarget={renameFolderTarget}
         />
+        <TextRecognitionNotice
+          libraryId={libraryId}
+          canRelease={canManage}
+          refreshToken={refreshToken}
+        />
         {bulkOutcome}
         {isUploadLibrary && canManage ? (
           <LibraryDocumentUploadArea upload={upload} />
@@ -370,6 +376,11 @@ export default function LibraryDocumentsSection({
         libraryId={libraryId}
         newFolderDialogOpen={newFolderDialogOpen}
         renameFolderTarget={renameFolderTarget}
+      />
+      <TextRecognitionNotice
+        libraryId={libraryId}
+        canRelease={canManage}
+        refreshToken={refreshToken}
       />
 
       {bulkOutcome}

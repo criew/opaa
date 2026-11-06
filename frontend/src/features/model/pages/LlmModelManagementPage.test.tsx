@@ -142,6 +142,19 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
+  it('shows the text recognition role in its own area', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/models/text-recognition')
+
+    expect(await screen.findByRole('tab', { name: 'Texterkennung' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      await screen.findByRole('switch', { name: 'Texterkennung einschalten' }),
+    ).toBeInTheDocument()
+  })
+
   it('sends an unknown area back to the chat models', async () => {
     signInAs('SYSTEM_ADMIN')
     renderPage('/admin/models/quatsch')

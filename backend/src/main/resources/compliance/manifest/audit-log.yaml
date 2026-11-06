@@ -931,6 +931,14 @@ auditEvents:
       Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
       als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
     payloadKeys: [apiKeyChange, apiKeySet, baseUrl, connectionType, enabled, model]
+  - id: TEXT_RECOGNITION_BLOCK_RELEASED
+    trigger: >-
+      Die Sperre der Texterkennung eines gescannten Dokuments wird in seiner Bibliothek für einen
+      neuen Versuch freigegeben
+    details: >-
+      Kennung des Dokuments und Anbindungsart der Texterkennung, vorher gesperrt, nachher frei; kein
+      Dokumentinhalt, kein Dateiname
+    payloadKeys: [blocked, connectionType, documentId]
   - id: DIAGNOSTIC_IMPERSONATION_GRANTED
     trigger: Die Befugnis „Sicht als“ wird einer Person erteilt
     payloadKeys: [revoked, scopeGroupId, validFrom, validUntil]
