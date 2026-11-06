@@ -7,6 +7,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
+import io.opaa.indexing.document.TextRecognitionBlocks;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunDetail;
@@ -50,6 +51,9 @@ public class DocumentIndexingService {
   private final SourceConnectionResolver connectionResolver;
   private final DefaultRunModes defaultRunModes;
 
+  /** Waiting and locked scans for the status; {@code null} where text recognition is absent. */
+  private final TextRecognitionBlocks textRecognitionBlocks;
+
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
@@ -58,6 +62,27 @@ public class DocumentIndexingService {
       IndexingRunEventRepository indexingRunEventRepository,
       SourceConnectionResolver connectionResolver,
       DefaultRunModes defaultRunModes) {
+    this(
+        indexingJobService,
+        executorRegistry,
+        libraryRepository,
+        libraryAccessService,
+        indexingRunEventRepository,
+        connectionResolver,
+        defaultRunModes,
+        null);
+  }
+
+  public DocumentIndexingService(
+      IndexingJobService indexingJobService,
+      IndexingSourceExecutorRegistry executorRegistry,
+      KnowledgeLibraryRepository libraryRepository,
+      LibraryAccessService libraryAccessService,
+      IndexingRunEventRepository indexingRunEventRepository,
+      SourceConnectionResolver connectionResolver,
+      DefaultRunModes defaultRunModes,
+      TextRecognitionBlocks textRecognitionBlocks) {
+    this.textRecognitionBlocks = textRecognitionBlocks;
     this.connectionResolver = connectionResolver;
     this.defaultRunModes = defaultRunModes;
     this.indexingJobService = indexingJobService;
@@ -159,10 +184,16 @@ public class DocumentIndexingService {
             .getLatestListingAssessment(libraryId, library.getOrganizationId())
             .map(IndexingJob::getUnlistedScopeKeys)
             .orElse(List.of());
+    TextRecognitionBlocks.Counts scans =
+        textRecognitionBlocks == null
+            ? TextRecognitionBlocks.Counts.NOT_IN_FORCE
+            : textRecognitionBlocks.counts(library.getId());
     return new IndexingStatusView(
         indexingJobService.getLatestJob(libraryId, library.getOrganizationId()),
         canSeeErrorDetail,
-        unlistedScopeKeys);
+        unlistedScopeKeys,
+        scans.pending(),
+        scans.blocked());
   }
 
   /**

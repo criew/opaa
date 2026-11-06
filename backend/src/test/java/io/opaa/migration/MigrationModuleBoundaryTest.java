@@ -126,6 +126,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "knowledge_libraries",
                   "library_folders",
                   "documents",
+                  "document_text_recognition",
                   "indexing_jobs",
                   "indexing_run_events",
                   "source_sync_state",

@@ -52,5 +52,24 @@ public enum IndexingEventCategory {
    * placeholder. One note per document with counts per class, never with content; the document was
    * indexed.
    */
-  SUSPICIOUS_PATTERNS
+  SUSPICIOUS_PATTERNS,
+  /**
+   * A scanned document was indexed with text read by text recognition (OCR), or cut again from its
+   * stored recognition without the service; the message names the connection type and the
+   * recipient, never an account.
+   */
+  TEXT_RECOGNIZED,
+  /**
+   * Text recognition of a scanned document failed on the service (timeout, key refused, overload,
+   * server or connection error); not locked, the next run tries again.
+   */
+  TEXT_RECOGNITION_FAILED,
+  /**
+   * Text recognition of a scanned document is locked: the service refused this document, or it
+   * exceeds the page limit; it is not sent again until file or procedure change or the lock is
+   * released.
+   */
+  TEXT_RECOGNITION_BLOCKED,
+  /** A scanned document waits for text recognition: the page budget of this run is spent. */
+  TEXT_RECOGNITION_PENDING
 }

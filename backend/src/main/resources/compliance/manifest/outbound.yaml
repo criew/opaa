@@ -96,8 +96,11 @@ dataFlows:
       Seitenbild (Vision-Modell), mit allem, was darauf steht; Verbindungstest nur die mitgelieferte
       Testseite ohne Inhalte, Statusprüfung nur die Abfrage von Zustand oder Modellliste
     trigger: >-
-      Indizierung eines gescannten PDF-Dokuments ohne Textebene, Statusprüfung, Verbindungstest in
-      der Modellverwaltung
+      Indizierung eines gescannten PDF-Dokuments ohne Textebene, auch das Nachholen wartender Scans
+      hochgeladener Dokumente alle fünf Minuten, solange die Texterkennung eingeschaltet ist, höchstens
+      opaa.ocr.max-pages-per-run Seiten je Lauf oder Durchgang; nie bei einer Neuindizierung
+      unveränderter Dokumente, die den gespeicherten Erkennungsstand nutzt; Statusprüfung,
+      Verbindungstest in der Modellverwaltung
     switchOff: >-
       Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
       die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der

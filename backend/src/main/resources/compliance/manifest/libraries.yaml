@@ -109,6 +109,21 @@ data:
         nonPersonalColumns: [id, embedding]
         person:
           excluded: Dokumentinhalt und Einbettungen, keine Daten über die Person
+      - name: document_text_recognition
+        personalColumns: [recognized_content, blocked_reason]
+        nonPersonalColumns:
+          - document_id
+          - checksum
+          - connection_type
+          - configuration_id
+          - pipeline_version
+          - page_count
+          - recognized_at
+          - blocked_at
+        person:
+          excluded: >-
+            Erkannter Text gescannter Dokumente mit Seitenrahmen, ohne Seitenbilder, und Sperrvermerk
+            der Texterkennung; Dokumentinhalt, keine Daten über die Person
       - name: document_metadata_values
         personalColumns: [text_value, actor_user_id]
         nonPersonalColumns:
@@ -146,8 +161,8 @@ data:
         person:
           excluded: Betriebsdaten des Bestands, kein Weg zur Person
     storage: >-
-      Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
-      Originalablage
+      Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex, Erkennungsstand gescannter
+      Dokumente ohne Seitenbilder); Originale in der Originalablage
     retention:
       rule: >-
         Solange das Dokument in der Bibliothek oder der Quelle besteht; private Bibliotheken

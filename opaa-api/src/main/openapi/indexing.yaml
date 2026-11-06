@@ -470,6 +470,68 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/text-recognition/blocks:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listTextRecognitionBlocks
+      tags: [indexing]
+      summary: Scanned PDFs of a library whose text recognition is locked, with the reason
+      description: >
+        Requires the read grant on the library, like the document list that shows a document's
+        error. Lists the locks that hold: of the current pdf-ocr pipeline version and, while text
+        recognition is in force, made by the role's current configuration. Ordered by file name.
+      responses:
+        "200":
+          description: The locked documents, possibly none
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionBlockListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/text-recognition/blocks/{documentId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: releaseTextRecognitionBlock
+      tags: [indexing]
+      summary: Release the text recognition lock of one document for a new attempt
+      description: >
+        Requires EDITOR role or above on the library, like triggering a run. The next run of a
+        source library, or the background catch-up of an upload library, sends the document to
+        text recognition again. Recorded in the audit log when a lock was released; a document
+        without a lock is answered with 204 as well. 404 when the document is not in this
+        library.
+      responses:
+        "204":
+          description: Released
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/indexing/runs:
     parameters:
       - name: libraryId
@@ -704,9 +766,56 @@ components:
             listing yet.
           items:
             type: string
+        textRecognitionPending:
+          type: integer
+          nullable: true
+          description: >
+            Scanned PDFs of this library rejected as without extractable text that text recognition
+            (OCR) still has to read and that are not locked - after switching it on, while a run's
+            page budget is spent or the service failed. Null while text recognition is not in force
+            (operation switch or role off).
+        textRecognitionBlocked:
+          type: integer
+          nullable: true
+          description: >
+            Scanned PDFs of this library whose text recognition is locked, listed with their reason
+            by listTextRecognitionBlocks. Null while text recognition is not in force.
         timestamp:
           type: string
           format: date-time
+
+    TextRecognitionBlock:
+      type: object
+      description: >
+        A scanned PDF that text recognition will not read again: the service refused this document,
+        it exceeds the page limit, or no text was recognised. The lock falls when the file changes,
+        when connection type, address or model of the role change, with a new version of the
+        pdf-ocr pipeline, or when it is released. Names no account.
+      required: [documentId, fileName, reason, connectionType, blockedAt]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        reason:
+          type: string
+          description: German, user-facing reason of the lock.
+          example: Seitengrenze überschritten (240 Seiten, erlaubt sind 100)
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        blockedAt:
+          type: string
+          format: date-time
+
+    TextRecognitionBlockListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TextRecognitionBlock"
 
     IndexingStatus:
       type: string
@@ -742,7 +851,7 @@ components:
       type: string
       description: >
         Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH,
-        UNSCANNED, SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all. Deliberately coarse (eight buckets, not one per exception type)
+        UNSCANNED, SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all. Deliberately coarse (a fixed set of buckets, not one per exception type)
         so the category stays a stable, translatable label rather than growing a new value with
         every executor change:
           * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
@@ -778,6 +887,17 @@ components:
           * SUSPICIOUS_PATTERNS - the cleanup after extraction found patterns typical of prompt
             injection in an indexed document; one note per document with counts per class, never
             with content, and not counted among documentsSkipped/documentsFailed.
+          * TEXT_RECOGNIZED - a scanned PDF was indexed with text read by text recognition (OCR), or
+            cut again from its stored recognition without the service; the message names the
+            connection type and the recipient (configuration of the role), never an account.
+          * TEXT_RECOGNITION_FAILED - text recognition failed on the service (timeout, key refused,
+            overload, server or connection error); the document is not locked and the next run
+            tries again.
+          * TEXT_RECOGNITION_BLOCKED - text recognition of the document is locked (refused by the
+            service for this document, or above the page limit) until file or procedure change or
+            the lock is released.
+          * TEXT_RECOGNITION_PENDING - the scan waits for text recognition because this run's page
+            budget is spent; the next run continues.
       enum:
         [
           REJECTED,
@@ -793,6 +913,10 @@ components:
           BUDGET_EXHAUSTED,
           SUMMARY,
           SUSPICIOUS_PATTERNS,
+          TEXT_RECOGNIZED,
+          TEXT_RECOGNITION_FAILED,
+          TEXT_RECOGNITION_BLOCKED,
+          TEXT_RECOGNITION_PENDING,
         ]
       example: REJECTED
 
