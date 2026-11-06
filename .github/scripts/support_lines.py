@@ -7,7 +7,8 @@ line is supported on a day up to and including its support end (docs/releases.md
   lines          the lines supported on --date (default: today, UTC), one per line
   base-branches  JSON array for Renovate: main and release/X.Y of every supported line
   scan-targets   JSON array for cve-scan.yml: backend and frontend image of the newest final
-                 release of every supported line and of the line of the highest final release
+                 release of every supported line and of the line of the highest final release,
+                 and its OCR image if the release carries the OCR SBOM among its assets
   check-roadmap  the released rows of the roadmap in docs/releases.md match the list
 
 Exit 1 with a message if the file is missing or malformed, or the roadmap differs.
@@ -86,9 +87,21 @@ def line_of(tag: str) -> str:
     return ".".join(tag[1:].split(".")[:2])
 
 
+# The published images. A release carries the OCR image only if its OCR SBOM is among its assets
+# ("assets" of a line of --releases: the asset names), which the releases before it lack.
+IMAGES = ("backend", "frontend", "ocr")
+
+
+def has_image(release: dict, image: str) -> bool:
+    if image != "ocr":
+        return True
+    return f"opaa-ocr-{release['tag_name'][1:]}.cdx.json" in (release.get("assets") or [])
+
+
 def scan_targets(lines: list[str], releases_path: Path, prefix: str) -> list[dict]:
     """Newest final release of every supported line and of the line of the highest final release."""
     finals = []
+    releases: dict[str, dict] = {}
     for raw in releases_path.read_text(encoding="utf-8").splitlines():
         if not raw.strip():
             continue
@@ -96,6 +109,7 @@ def scan_targets(lines: list[str], releases_path: Path, prefix: str) -> list[dic
         tag = release.get("tag_name", "")
         if not release.get("prerelease") and not release.get("draft") and FINAL_TAG.fullmatch(tag):
             finals.append(tag)
+            releases[tag] = release
     newest: dict[str, str] = {}
     for tag in finals:
         line = line_of(tag)
@@ -112,7 +126,7 @@ def scan_targets(lines: list[str], releases_path: Path, prefix: str) -> list[dic
             print(f"::warning::Linie {line} ist unterstützt, hat aber kein finales Release; "
                   "nichts zu scannen", file=sys.stderr)
             continue
-        for image in ("backend", "frontend"):
+        for image in (i for i in IMAGES if has_image(releases[newest[line]], i)):
             targets.append({
                 "name": f"{image}-{line}",
                 "image": f"{prefix}-{image}:{newest[line][1:]}",

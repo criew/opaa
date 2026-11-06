@@ -45,6 +45,7 @@ cat <<EOF
 **Images** (\`linux/amd64\`, \`linux/arm64\`)
 - \`ghcr.io/${owner}/opaa-backend:${version}\`
 - \`ghcr.io/${owner}/opaa-frontend:${version}\`
+- \`ghcr.io/${owner}/opaa-ocr:${version}\` (Texterkennung, optional)
 
 **Helm-Chart**
 - \`oci://ghcr.io/${owner}/charts/opaa\`, Version \`${version}\`
@@ -70,6 +71,8 @@ gh attestation verify oci://ghcr.io/${owner}/opaa-backend:${version} --repo ${re
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify oci://ghcr.io/${owner}/opaa-frontend:${version} --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify oci://ghcr.io/${owner}/opaa-ocr:${version} --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify oci://ghcr.io/${owner}/charts/opaa:${version} --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh release download ${tag} --repo ${repository} --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json'
@@ -78,6 +81,8 @@ gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository} \
 gh attestation verify opaa-backend-${version}.cdx.json --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify opaa-frontend-${version}.cdx.json --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify opaa-ocr-${version}.cdx.json --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 \`\`\`
 
@@ -90,9 +95,9 @@ Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rück
 
 **Update-Paket für Behörden**
 
-Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüfen die Befehle unter „Herkunft prüfen“. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
+Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüfen die Befehle unter „Herkunft prüfen“. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Für das OCR-Image hängen \`opaa-ocr-${version}.cdx.json\` und seine Lizenzübersicht \`opaa-ocr-${version}-lizenzen.md\` am Release, beide attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
 
 **Offline-Bündel**
 
-Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release: beide Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang).
+Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release, wegen der Größengrenze für Release-Dateien in Teilen \`opaa-offline-${version}.tar.part-00\`, \`-01\`, …, die \`cat\` wieder zusammensetzt: die drei Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang).
 EOF

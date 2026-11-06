@@ -1,8 +1,8 @@
 """Self-check for offline_bundle.sh and the wiring of the offline bundle into the release run.
 
 The bundle is built only on a release tag or in the labelled trial (offline-bundle-probe.yml), so
-these cases cover what runs without registry and signing: checksums, packing, the size limit of a
-release asset and the signer the handbook pins.
+these cases cover what runs without registry and signing: checksums, packing, the split at the size
+limit of a release asset and the signer the handbook pins.
 """
 
 import os
@@ -92,14 +92,63 @@ def test_pack_names_the_archive_after_the_directory(bundle: Path, tmp_path: Path
     assert listed_name(sums.strip()) == "opaa-offline-1.2.3.tar"
 
 
-def test_pack_refuses_an_archive_above_the_limit(bundle: Path, tmp_path: Path) -> None:
+def test_split_cuts_an_archive_above_the_limit_into_parts_that_join_again(bundle: Path, tmp_path: Path) -> None:
     out = tmp_path / "out"
+    archive = Path(run("pack", bundle.as_posix(), out.as_posix()).stdout.strip())
+    whole = archive.read_bytes()
 
-    result = run("pack", bundle.as_posix(), out.as_posix(), env={"OFFLINE_BUNDLE_MAX_BYTES": "1000"})
+    result = run("split", archive.as_posix(), env={"OFFLINE_BUNDLE_MAX_BYTES": "4000"})
+
+    assert result.returncode == 0, result.stderr
+    assert not archive.exists()
+    parts = sorted(out.glob("opaa-offline-1.2.3.tar.part-*"))
+    assert [part.name[-2:] for part in parts] == [f"{index:02d}" for index in range(len(parts))]
+    assert len(parts) >= 3
+    assert all(part.stat().st_size <= 4000 for part in parts)
+    assert b"".join(part.read_bytes() for part in parts) == whole
+    assert listed_name((out / "opaa-offline-1.2.3.tar.sha256").read_text(encoding="utf-8").strip()) == archive.name
+
+    joined = run("join", archive.as_posix())
+
+    assert joined.returncode == 0, joined.stderr
+    assert archive.read_bytes() == whole
+    assert not list(out.glob("opaa-offline-1.2.3.tar.part-*"))
+    assert subprocess.run(
+        [BASH, "-c", "sha256sum -c --quiet opaa-offline-1.2.3.tar.sha256"], cwd=out,
+    ).returncode == 0
+
+
+def test_split_keeps_an_archive_within_the_limit_whole(bundle: Path, tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    archive = Path(run("pack", bundle.as_posix(), out.as_posix()).stdout.strip())
+
+    result = run("split", archive.as_posix())
+
+    assert result.returncode == 0, result.stderr
+    assert archive.exists()
+    assert not list(out.glob("*.part-*"))
+
+
+def test_join_without_archive_or_parts_fails(tmp_path: Path) -> None:
+    result = run("join", (tmp_path / "opaa-offline-1.2.3.tar").as_posix())
 
     assert result.returncode == 1
-    assert "above the limit" in result.stderr
-    assert not (out / "opaa-offline-1.2.3.tar").exists()
+    assert "neither" in result.stderr
+
+
+def test_the_bundle_carries_the_ocr_image_and_its_sbom() -> None:
+    script = SCRIPT.read_text(encoding="utf-8")
+
+    assert "for name in backend frontend ocr; do\n    source=" in script
+    assert "for name in backend frontend ocr; do\n    sbom=" in script
+    assert 'for name in "${images[@]}"; do' in script
+
+
+def test_the_release_splits_the_bundle_after_attesting_it() -> None:
+    attest = job("offline-bundle.yml", "attest")
+
+    assert attest.index("id: archive") < attest.index("offline_bundle.sh split")
+    assert "offline_bundle.sh join" not in attest
 
 
 def test_the_default_limit_stays_below_two_gibibytes() -> None:
@@ -120,7 +169,7 @@ def test_the_release_carries_the_offline_bundle() -> None:
     assert "uses: ./.github/workflows/offline-bundle.yml" in bundle_job
     assert "if: startsWith(github.ref, 'refs/tags/v')" in bundle_job
     assert "update-package-from-run: true" in bundle_job
-    assert re.search(r"needs: \[prepare, image-attestation, chart-attestation, update-package-attestation\]", bundle_job)
+    assert re.search(r"needs: \[prepare, image-attestation, chart-attestation, update-package-attestation, ocr-sbom-attestation\]", bundle_job)
 
     release = job("publish-images.yml", "release")
     assert re.search(r"needs: \[.*\boffline-bundle\b.*\]", release)

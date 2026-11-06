@@ -85,6 +85,11 @@ jobs:
           RESULT_DIR: ${{ runner.temp }}/ocr-smoke
         run: .github/scripts/ocr_smoke_test.sh "$IMAGE"
 
+      # models.sha256 comes from a build; every pinned file must also match the Hugging Face API at
+      # the commit of ocr/models.revisions or the hashes the OCR packages of the image declare.
+      - name: Modell-Prüfsummen gegen Herkunft abgleichen
+        run: python3 .github/scripts/ocr_models_verify.py "$IMAGE" ocr/models.sha256 ocr/models.revisions
+
       - name: Antwort des Rauchtests ablegen
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -96,6 +101,10 @@ jobs:
 
       # CycloneDX of the image as Trivy reads it: OS packages of the base image and the Python
       # packages of docling-serve's environment, each with the license of its metadata.
+      # Trivy does not create the directory of its output file.
+      - name: Ablage anlegen
+        run: mkdir -p "$RUNNER_TEMP/sbom" "$RUNNER_TEMP/licenses"
+
       - name: SBOM erzeugen
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
