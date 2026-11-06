@@ -60,24 +60,25 @@ Port und mit API-Schlüssel. opaa programmiert gegen die Schnittstelle von `docl
 - **Eigener Dienst:** Eine Behörde kann einen eigenen Dienst mit derselben Schnittstelle betreiben,
   etwa auf eigener GPU oder beim IT-Dienstleister, und trägt nur Adresse und Schlüssel ein.
 
-Die maßgeblichen Einstellungen schickt opaa bei jedem Aufruf mit: OCR erzwingen, OCR-Engine
-`rapidocr`, Tabellenerkennung an, Ausgabe als JSON und Markdown. Ein fremder Dienst verhält sich dann
-wie der mitgelieferte, sofern er die RapidOCR-Modelle hat.
+Die maßgeblichen Einstellungen würde opaa bei jedem Aufruf mitschicken: OCR erzwingen, OCR-Engine
+`rapidocr` mit Sprache `de` und Modellgröße `medium` (wie gemessen), Tabellenerkennung an, Ausgabe als
+JSON und Markdown. Ein fremder Dienst verhält sich dann wie der mitgelieferte, sofern er die
+RapidOCR-Modelle in derselben Sprache und Größe hat.
 
-Zurück kommt das `DoclingDocument` als JSON. Nur daraus werden die Chunks geschnitten, das Markdown ist
-eine flache Ansicht für Vorschau und Fehlersuche. Am Chunk steht, welches Verfahren den Text geliefert
-hat. Fällt der Dienst aus, bleibt das Dokument wie heute als „kein extrahierbarer Text“ stehen.
+Zurück kommt das `DoclingDocument` als JSON. Nur daraus würden die Chunks geschnitten, das Markdown ist
+eine flache Ansicht für Vorschau und Fehlersuche. Am Chunk stünde, welches Verfahren den Text geliefert
+hat. Fällt der Dienst aus, bliebe das Dokument wie heute als „kein extrahierbarer Text“ stehen.
 
-Gepflegt wird der Dienst als Rolle „Texterkennung“ in der Modellverwaltung der Systemadministration
-(Festlegung im Epic #2640). Es gibt genau zwei Anbindungsarten:
+Gepflegt würde der Dienst als Rolle „Texterkennung“ in der Modellverwaltung der Systemadministration
+(verbindlich festgelegt im Epic #2640). Vorgesehen sind zwei Anbindungsarten:
 
 1. **docling-serve-API:** Das ist der mitgelieferte Container oder ein eigener Dienst. Zugang über
    `X-Api-Key`, Ergebnis ist das JSON mit Fundorten.
 2. **OpenAI-kompatibles Vision-Modell:** etwa PaddleOCR-VL oder GraniteDocling hinter vLLM. Es liefert
    Markdown je Seite, Fundstellen gibt es dort meist nur als Seitensprung.
 
-Eine Adresse, an die opaa Dokumente schickt, ist sicherheitsrelevant. Deshalb darf nur die
-Systemadministration sie eintragen, und opaa prüft das Ziel wie bei den übrigen Modellrollen.
+Eine Adresse, an die opaa Dokumente schickt, ist sicherheitsrelevant. Deshalb soll nur die
+Systemadministration sie eintragen dürfen, und opaa prüft das Ziel wie bei den übrigen Modellrollen.
 
 **Welche Dateien.** Docling verarbeitet nicht nur PDF. Für Scans zählen vor allem die Bildformate:
 JPEG, PNG, TIFF (auch mehrseitig, jede Seite einzeln), BMP, WEBP und GIF. Sie laufen durch dieselbe
@@ -99,7 +100,8 @@ PPTX, XLSX, HTML), liest opaa schon mit eigenen Bordmitteln. Hier bringt Docling
    Tabellen als Raster.
 
 Die OCR-Engine ist eine Einstellung von Docling. Deshalb tragen die Varianten zwei Namen:
-- **EasyOCR** ist Doclings Vorgabe.
+- **EasyOCR** war bisher Doclings Vorgabe. Heute wählt Docling die Engine automatisch und nimmt
+  RapidOCR, wenn onnxruntime installiert ist.
 - **RapidOCR** ist eine schlanke Laufzeit für die Erkennungsmodelle von PaddleOCR (PP-OCRv6, als ONNX
   umgewandelt).
 
@@ -111,8 +113,9 @@ kommen weiter von Docling. Für die Gegenrichtung gilt:
   Docling ganz, mit eigenem Layout, eigenen Tabellen und eigenem Markdown, und wäre ein eigener Dienst
   (PaddleX-Serving).
 - **Eine Paddle-OCR mit Docling-Layout** ist damit schon abgedeckt.
-- **Zeichenerkennung und Tabelleninhalte** sind bei beiden nahezu gleich gut, weil dieselbe
-  Modellfamilie liest (PaddleOCR 0,2 % CER, Docling + RapidOCR 0,9 % im Profil `mittel`).
+- **Zeichenerkennung und Tabelleninhalte** liegen bei beiden auf ähnlichem Niveau, weil dieselbe
+  Modellfamilie liest (PaddleOCR 0,2 % CER, Docling + RapidOCR 0,9 % im Profil `mittel`; im Profil
+  `schlecht` umgekehrt 4,0 % gegenüber 1,3 %).
 - **Die Unterschiede** liegen im Drumherum: Leerzeichen an Zeilenumbrüchen, Spaltenreihenfolge der
   Tabellen, verlorene Absatzzeilen. Hinzu kommen der Ressourcenbedarf (11 GB gegenüber 3 GB RAM) und
   die Laufzeit auf der CPU (70–85 gegenüber 16–22 s je Seite).
@@ -124,7 +127,9 @@ GPU). Über dieselbe Pipeline ließe sich auch ein anderes Modell hinter einer O
 Schnittstelle anbinden, etwa PaddleOCR-VL. Das ist nicht gemessen. Ein VLM erkennt Struktur und Tabellen gut,
 kann aber ganze Textteile verlieren, siehe die Ausreißer unten. Für opaa ändert sich an der
 Schnittstelle nichts: Die VLM-Pipeline nimmt dieselben Eingaben (Scan-PDF und Bilddateien) und liefert
-ebenfalls ein `DoclingDocument`. GraniteDocling gibt dabei Positionsangaben je Element mit aus.
+ebenfalls ein `DoclingDocument`. GraniteDocling gibt dabei Positionsangaben je Element mit aus. Das gilt
+für ein VLM innerhalb von `docling-serve` (Art 1). Spricht opaa ein VLM direkt OpenAI-kompatibel an
+(Art 2), kommt nur Markdown zurück.
 
 ## Fundstellen bei Scans
 
