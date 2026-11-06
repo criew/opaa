@@ -18,12 +18,21 @@ import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
+import TextRecognitionSection from '../components/TextRecognitionSection'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
 import { contentWidth } from '@/shared/theme/tokens'
 
-export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription'
+export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription' | 'text-recognition'
 
 function isLlmModelTab(value: string | undefined): value is LlmModelTab {
-  return tabs.some((tab) => tab.value === value)
+  return visibleTabs().some((tab) => tab.value === value)
+}
+
+/** UI lab (epic #2640): the tab „Texterkennung“ exists only while a lab variant is chosen. */
+function visibleTabs() {
+  return currentUiLabVariant() === null
+    ? tabs
+    : [...tabs, { value: 'text-recognition' as const, label: 'Texterkennung' }]
 }
 
 // „Chat-Modelle" instead of „Chat": the application's main area has that name too, and what is
@@ -223,7 +232,7 @@ export default function LlmModelManagementPage() {
         />
 
         <AreaTabs
-          tabs={tabs}
+          tabs={visibleTabs()}
           value={activeTab}
           href={(value) => `/admin/models/${value}`}
           label="Bereiche der Modellverwaltung"
@@ -234,6 +243,8 @@ export default function LlmModelManagementPage() {
               <ChatModelsSection />
             ) : value === 'embedding' ? (
               <EmbeddingInfoSection />
+            ) : value === 'text-recognition' ? (
+              <TextRecognitionSection />
             ) : (
               <ModelRoleSection key={value} kind={value} />
             )

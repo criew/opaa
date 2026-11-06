@@ -12,8 +12,10 @@ import TocIcon from '@mui/icons-material/Toc'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
 import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
-import type { ChunkAnchor } from '@/shared/api/types'
-import { markHighlight } from '@/shared/theme/tokens'
+import type { ChunkAnchor, ChunkRegion } from '@/shared/api/types'
+import { blue, markHighlight } from '@/shared/theme/tokens'
+import MetaBadge from '@/shared/ui/MetaBadge'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
 import { sha256Hex } from '../utils/sha256'
@@ -36,7 +38,7 @@ export interface PdfViewerProps {
   onError: (error: unknown) => void
 }
 
-type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor'
+type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor' | 'framed' | 'page-only'
 
 interface Passage {
   from: number
@@ -59,8 +61,20 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [page, setPage] = useState(1)
+  // UI lab (epic #2640): only a lab variant reads the frames and the OCR origin of the anchor
+  const variant = currentUiLabVariant()
+  const ocr = variant !== null && anchor?.textOrigin != null
+  const regions = ocr ? (anchor?.regions ?? []) : []
   const [markState, setMarkState] = useState<MarkState>(
-    anchor === null ? 'no-anchor' : anchor?.quoteStart ? 'pending' : 'none',
+    anchor === null
+      ? 'no-anchor'
+      : ocr
+        ? regions.length > 0
+          ? 'pending'
+          : 'page-only'
+        : anchor?.quoteStart
+          ? 'pending'
+          : 'none',
   )
   const [changed, setChanged] = useState(false)
   const reportError = useEffectEvent((error: unknown) => onError(error))
@@ -109,8 +123,28 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
 
         const passage = await passageOf(document, anchor)
         if (cancelled) return
-        if (anchor?.quoteStart && passage === null) setMarkState('not-found')
+        if (!ocr && anchor?.quoteStart && passage === null) setMarkState('not-found')
         let jumped = false
+
+        // A scan has no text layer: the frames of the anchor are drawn over the rendered page,
+        // in page-relative units, so they follow zoom; pdf.js empties the page div on re-render.
+        if (ocr) {
+          eventBus.on(
+            'pagerendered',
+            ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
+              const own = regions.filter((region) => region.page === pageNumber)
+              if (own.length === 0) return
+              drawRegions(source.div, own, variant)
+              if (!jumped && pageNumber === regions[0].page) {
+                jumped = true
+                source.div
+                  .querySelector<HTMLElement>('.ocr-region')
+                  ?.scrollIntoView?.({ block: 'center' })
+                setMarkState('framed')
+              }
+            },
+          )
+        }
 
         eventBus.on('pagesinit', () => {
           viewer.currentScaleValue = 'auto'
@@ -120,7 +154,7 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         eventBus.on(
           'textlayerrendered',
           ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
-            if (!passage || !anchor?.quoteStart) return
+            if (ocr || !passage || !anchor?.quoteStart) return
             if (pageNumber < passage.from || pageNumber > passage.to) return
             const startsHere = pageNumber === passage.from
             const spans = textSpans(source.div)
@@ -164,6 +198,8 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
       abort.abort()
       void task?.destroy()
     }
+    // `ocr`, `regions` and `variant` follow from `anchor` and the page's address
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, anchor])
 
   useEffect(() => {
@@ -226,6 +262,13 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         <Typography component="span" sx={{ fontSize: 14, mx: 1 }}>
           {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
         </Typography>
+        {ocr && variant === 'B' && (
+          <Tooltip title={OCR_NOTICE}>
+            <Box component="span" tabIndex={0} sx={{ mx: 1, borderRadius: 1 }}>
+              <MetaBadge ariaLabel={OCR_NOTICE}>Texterkennung</MetaBadge>
+            </Box>
+          </Tooltip>
+        )}
         <Tooltip title="Verkleinern">
           <IconButton size="small" aria-label="Verkleinern" onClick={() => zoom(1 / ZOOM_STEP)}>
             <RemoveIcon fontSize="small" />
@@ -247,14 +290,26 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         sx={
           changed || markState === 'not-found'
             ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
-            : markState === 'no-anchor'
+            : markState === 'no-anchor' ||
+                markState === 'page-only' ||
+                (ocr && variant === 'A' && markState === 'framed')
               ? { fontSize: 13, color: 'text.secondary' }
               : visuallyHidden
         }
       >
-        {statusText(markState, changed, anchor?.pageFrom != null, page)}
+        {ocr
+          ? ocrStatusText(markState, changed, anchor?.pageFrom ?? page, variant)
+          : statusText(markState, changed, anchor?.pageFrom != null, page)}
       </Typography>
-      <Box sx={{ display: 'flex', flex: 1, minHeight: 0, gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: ocr && variant === 'C' ? 'column' : 'row', sm: 'row' },
+          flex: 1,
+          minHeight: 0,
+          gap: 1,
+        }}
+      >
         {hasOutline && outlineOpen && (
           <Box
             id="pdf-outline"
@@ -272,7 +327,15 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
             <PdfOutline nodes={outline} activeNode={activeNode(outline, page)} onSelect={goTo} />
           </Box>
         )}
-        <Box sx={{ position: 'relative', flex: 1, minWidth: 0, bgcolor: 'action.hover' }}>
+        <Box
+          sx={{
+            position: 'relative',
+            flex: 1,
+            minWidth: 0,
+            minHeight: 160,
+            bgcolor: 'action.hover',
+          }}
+        >
           {!pdf && (
             <CircularProgress
               aria-label="PDF wird geladen"
@@ -294,12 +357,140 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
                 boxShadow: `0 0 0 2px ${markHighlight}`,
                 borderRadius: '2px',
               },
+              ...REGION_SX,
             }}
           >
             <div className="pdfViewer" />
           </Box>
         </Box>
+        {ocr && variant === 'C' && <RecognizedTextPanel anchor={anchor} />}
       </Box>
+    </Box>
+  )
+}
+
+const OCR_NOTICE = 'Text per Texterkennung gelesen, Abweichungen vom Original möglich.'
+
+/** The frames of the three lab variants: A a plain frame, B with a tab, C as a spotlight. */
+const REGION_SX = {
+  '& .ocr-region': {
+    position: 'absolute',
+    zIndex: 3,
+    pointerEvents: 'none',
+    boxSizing: 'border-box',
+    borderRadius: '3px',
+  },
+  '& .ocr-region[data-variant="A"]': {
+    border: `3px solid ${blue[700]}`,
+    backgroundColor: 'rgba(29, 78, 216, 0.08)',
+  },
+  '& .ocr-region[data-variant="B"]': {
+    border: `2px dashed ${blue[700]}`,
+    backgroundColor: markHighlight,
+  },
+  '& .ocr-region[data-variant="B"] .ocr-region-tab': {
+    position: 'absolute',
+    left: -2,
+    bottom: '100%',
+    px: 0.75,
+    py: 0.125,
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.4,
+    color: '#FFFFFF',
+    backgroundColor: blue[700],
+    borderRadius: '3px 3px 0 0',
+    whiteSpace: 'nowrap',
+  },
+  '& .ocr-region[data-variant="C"]': {
+    border: `2px solid ${blue[700]}`,
+    boxShadow: '0 0 0 4000px rgba(15, 23, 42, 0.38)',
+  },
+  '& .page[data-ocr-spotlight]': { overflow: 'hidden' },
+} as const
+
+/** Puts the frames of one page into its rendered page div, once per render. */
+function drawRegions(pageDiv: HTMLElement, regions: ChunkRegion[], variant: string | null) {
+  if (pageDiv.querySelector('.ocr-region')) return
+  if (variant === 'C') pageDiv.setAttribute('data-ocr-spotlight', '')
+  for (const region of regions) {
+    const frame = document.createElement('div')
+    frame.className = 'ocr-region'
+    frame.setAttribute('aria-hidden', 'true')
+    frame.dataset.variant = variant ?? 'A'
+    frame.style.left = `${region.x * 100}%`
+    frame.style.top = `${region.y * 100}%`
+    frame.style.width = `${region.width * 100}%`
+    frame.style.height = `${region.height * 100}%`
+    if (variant === 'B') {
+      const tab = document.createElement('span')
+      tab.className = 'ocr-region-tab'
+      tab.textContent = 'Fundstelle'
+      frame.appendChild(tab)
+    }
+    pageDiv.appendChild(frame)
+  }
+}
+
+function ocrStatusText(
+  markState: MarkState,
+  changed: boolean,
+  page: number,
+  variant: string | null,
+): string {
+  if (changed) return 'Das Original wurde seit der Antwort geändert – der Rahmen kann abweichen.'
+  if (markState === 'page-only') {
+    return `Fundstelle auf Seite ${page}. Dieser Scan wurde ohne Rahmen erkannt, die Stelle ist nicht markiert.`
+  }
+  if (markState !== 'framed') return ''
+  return variant === 'A'
+    ? `Fundstelle auf Seite ${page} umrahmt. ${OCR_NOTICE}`
+    : `Fundstelle auf Seite ${page} umrahmt.`
+}
+
+/** Variant C: the recognized text beside the scan, so the reader compares both. */
+function RecognizedTextPanel({ anchor }: { anchor: ChunkAnchor | null | undefined }) {
+  if (!anchor) return null
+  const quote = [anchor.quoteStart, anchor.quoteEnd].filter(Boolean).join(' … ')
+  return (
+    <Box
+      component="aside"
+      aria-label="Erkannter Text"
+      sx={{
+        width: { xs: 'auto', sm: 220, md: 300 },
+        maxHeight: { xs: '40%', sm: 'none' },
+        flex: 'none',
+        overflow: 'auto',
+        borderLeft: { xs: 0, sm: 1 },
+        borderTop: { xs: 1, sm: 0 },
+        borderColor: 'divider',
+        pl: { xs: 0, sm: 1.5 },
+        pt: { xs: 1, sm: 0 },
+      }}
+    >
+      <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>
+        Erkannter Text
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1 }}>
+        Seite {anchor.pageFrom ?? '–'}
+        {anchor.path?.length ? ` · ${anchor.path[anchor.path.length - 1]}` : ''}
+      </Typography>
+      <Typography
+        component="blockquote"
+        sx={{
+          m: 0,
+          pl: 1.25,
+          borderLeft: 3,
+          borderColor: 'divider',
+          fontSize: 13.5,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {quote}
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 1.5 }}>
+        Per Texterkennung gelesen. Vergleichen Sie Beträge und Paragrafen mit dem Scan.
+      </Typography>
     </Box>
   )
 }

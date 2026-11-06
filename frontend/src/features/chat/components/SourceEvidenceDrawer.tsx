@@ -12,6 +12,10 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SearchIcon from '@mui/icons-material/Search'
+import DocumentScannerOutlinedIcon from '@mui/icons-material/DocumentScannerOutlined'
+import Tooltip from '@mui/material/Tooltip'
+import MetaBadge from '@/shared/ui/MetaBadge'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
@@ -206,6 +210,9 @@ export default function SourceEvidenceDrawer({
       setDownloading(null)
     }
   }
+
+  // UI lab (epic #2640): how a Beleg from text recognition is marked, per variant
+  const variant = currentUiLabVariant()
 
   // Without metadata (ADR-0044) a Beleg carries no filter mark.
   const metadataEnabled = useFeatureEnabled('metadata')
@@ -474,6 +481,9 @@ export default function SourceEvidenceDrawer({
                     {doc.locations.join(' · ')}
                   </Typography>
                 )}
+                {variant && doc.anchor?.textOrigin && (
+                  <OcrMark variant={variant} anchor={doc.anchor} />
+                )}
                 {/* The Leerwert mark of a hit kept under an active filter. */}
                 {doc.filterMatchLabel && (
                   <Typography
@@ -615,4 +625,64 @@ function openingChunk(doc: CitationIndex['docs'][number]): number | undefined {
     if (located) return located.chunkIndex
   }
   return doc.chunkIndexes[0]
+}
+
+const OCR_NOTICE = 'Text per Texterkennung gelesen, Abweichungen vom Original möglich.'
+
+/**
+ * UI lab (epic #2640), surface (b): the mark of a Beleg whose text came from text recognition.
+ * A is a quiet line with a scanner icon, B an outlined label with the full sentence as tooltip,
+ * C the recognized passage itself as a quote, so the reader sees what was read.
+ */
+function OcrMark({ variant, anchor }: { variant: string; anchor: ChunkAnchor }) {
+  if (variant === 'B') {
+    return (
+      <Box sx={{ mt: 0.5 }}>
+        <Tooltip title={OCR_NOTICE}>
+          <Box component="span" tabIndex={0} sx={{ borderRadius: 1 }}>
+            <MetaBadge ariaLabel={OCR_NOTICE}>Texterkennung</MetaBadge>
+          </Box>
+        </Tooltip>
+      </Box>
+    )
+  }
+  if (variant === 'C') {
+    const quote = [anchor.quoteStart, anchor.quoteEnd].filter(Boolean).join(' … ')
+    return (
+      <Box sx={{ mt: 0.75, mb: 0.25 }}>
+        <Typography
+          component="blockquote"
+          sx={{
+            m: 0,
+            pl: 1,
+            borderLeft: 3,
+            borderColor: 'divider',
+            fontSize: 12.5,
+            color: 'text.primary',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {quote}
+        </Typography>
+        <Typography
+          component="span"
+          sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+        >
+          Per Texterkennung gelesen, im Original prüfen
+        </Typography>
+      </Box>
+    )
+  }
+  return (
+    <Box
+      component="span"
+      data-testid="source-ocr"
+      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}
+    >
+      <DocumentScannerOutlinedIcon aria-hidden sx={{ fontSize: 13, color: 'text.secondary' }} />
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        Per Texterkennung gelesen, Abweichungen möglich
+      </Typography>
+    </Box>
+  )
 }
