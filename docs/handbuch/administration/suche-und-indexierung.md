@@ -53,7 +53,8 @@ verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells ste
 [Modelle verwalten](modelle.md).
 
 Gescannte PDF-Dokumente kommen nach dem Einschalten der Texterkennung nach und nach in den Index:
-Quellen mit ihrem nächsten Lauf, hochgeladene Scans über ein Nachholen alle fünf Minuten. Wartende
+Quellen mit ihrem nächsten Lauf, hochgeladene Scans über ein Nachholen, in der Vorgabe alle fünf
+Minuten (`OPAA_OCR_CATCH_UP_INTERVAL`). Wartende
 und gesperrte Scans zeigt jede Bibliothek über ihrer Dokumentliste. Der Nachzug der Pipeline
 `pdf-ocr` liest den gespeicherten Erkennungsstand und ruft den Dienst nicht.
 

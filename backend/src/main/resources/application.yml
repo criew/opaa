@@ -378,6 +378,8 @@ opaa:
     max-concurrent: ${OPAA_OCR_MAX_CONCURRENT:1}
     max-pages-per-run: ${OPAA_OCR_MAX_PAGES_PER_RUN:500}
     call-timeout: ${OPAA_OCR_CALL_TIMEOUT:45m}
+    # Pause before the first and between two passes catching up on uploaded scans, at least 20s.
+    catch-up-interval: ${OPAA_OCR_CATCH_UP_INTERVAL:5m}
   # Malware scan of every file before a library takes it in: a clamd daemon over TCP (INSTREAM).
   # Off by default; enabled without a host refuses the start. on-unavailable: REJECT keeps a file
   # the scanner could not judge out, ACCEPT takes it in unscanned. clamd's StreamMaxLength must

@@ -188,7 +188,7 @@ class TextRecognitionBacklogTest {
         .isLessThan(lock);
     assertThat(
             new io.opaa.llm.TextRecognitionProperties(
-                    true, 0, java.time.Duration.ofHours(3), 0, 0, null)
+                    true, 0, java.time.Duration.ofHours(3), 0, 0, null, null)
                 .documentTimeout())
         .isEqualTo(io.opaa.llm.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT);
   }
