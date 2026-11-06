@@ -161,4 +161,39 @@ class TextRecognitionModelRoleTest {
         .isInstanceOf(IllegalStateException.class);
     verify(client, never()).recognizePageWithVision(any(), any(), any(), any());
   }
+
+  @Test
+  void aRefusedKeyOrAServerErrorMakesTheRoleUnreachableWithTheReason() {
+    when(client.probe(eq(DOCLING), any(Duration.class)))
+        .thenReturn(new TextRecognitionClient.ProbeFailure("HTTP 401", false, true));
+    TextRecognitionModelRole role = role(true);
+
+    TextRecognitionRoleStatus probed = role.refresh();
+
+    assertThat(probed.state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+    assertThat(probed.diagnostic()).contains("refused the key");
+
+    when(client.probe(eq(DOCLING), any(Duration.class))).thenReturn(null);
+    role.refresh();
+    TextRecognitionModelRole.ActiveTextRecognition active = role.active().orElseThrow();
+    for (int status : new int[] {401, 503}) {
+      role.refresh();
+      when(client.convertWithDocling(eq(DOCLING), any(), any()))
+          .thenThrow(
+              new TextRecognitionClient.TextRecognitionUnavailableException(
+                  "HTTP " + status, false, status));
+      assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
+          .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
+      assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+      assertThat(role.currentStatus().diagnostic()).isEqualTo("HTTP " + status);
+    }
+
+    role.refresh();
+    when(client.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenThrow(
+            new TextRecognitionClient.TextRecognitionUnavailableException("HTTP 429", false, 429));
+    assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
+        .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
+    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.READY);
+  }
 }

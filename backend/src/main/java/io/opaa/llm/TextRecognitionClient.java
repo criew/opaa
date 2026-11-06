@@ -40,7 +40,8 @@ import tools.jackson.databind.node.ObjectNode;
  *   <li>{@link TextRecognitionConnectionType#DOCLING_SERVE}: {@code POST {baseUrl}/v1/convert/file}
  *       with the whole PDF and the procedure options of every call ({@link #DOCLING_OPTIONS}: OCR
  *       forced, RapidOCR, German, tables, DoclingDocument JSON), key as {@code X-Api-Key}; {@code
- *       GET {baseUrl}/health} as the probe.
+ *       GET {baseUrl}/health} and, with the key, {@code GET {baseUrl}/v1/status/poll/{id}} of a
+ *       task that does not exist as the probe: 404 there means the key was accepted.
  *   <li>{@link TextRecognitionConnectionType#OPENAI_VISION}: {@code POST
  *       {baseUrl}/chat/completions} with one page image and {@link TextRecognitionVisionPrompt},
  *       key as bearer token; {@code GET {baseUrl}/models} as the probe.
@@ -70,6 +71,9 @@ public class TextRecognitionClient {
   static final String TEST_PAGE_PDF = "/text-recognition/test-page.pdf";
 
   static final String TEST_PAGE_PNG = "/text-recognition/test-page.png";
+
+  /** A task id docling-serve never issues; polling it answers 404 once the key is accepted. */
+  static final String KEY_CHECK_PATH = "/v1/status/poll/opaa-key-check";
 
   /**
    * The procedure options sent with every conversion, the test page included: a foreign
@@ -132,6 +136,18 @@ public class TextRecognitionClient {
     public boolean keyRejected() {
       return status == 401 || status == 403;
     }
+
+    /**
+     * Whether the role cannot be used as configured: no answer, key refused, wrong address (404,
+     * redirect) or a server error. Overload (408, 429) and an unusable body of one answer are not.
+     */
+    public boolean roleUnusable() {
+      return !answered()
+          || keyRejected()
+          || status == 404
+          || (status >= 300 && status < 400)
+          || status >= 500;
+    }
   }
 
   /** The service answered and refused this one document, e.g. a broken PDF. */
@@ -159,8 +175,11 @@ public class TextRecognitionClient {
    */
   public record DoclingConversion(JsonNode document, boolean partial) {}
 
-  /** A probe's failure; {@code null} from {@link #probe} means the service answered. */
-  public record ProbeFailure(String message, boolean timedOut) {}
+  /**
+   * A probe's failure; {@code null} from {@link #probe} means the service answered and accepted the
+   * key.
+   */
+  public record ProbeFailure(String message, boolean timedOut, boolean keyRejected) {}
 
   /** What the connection test found. */
   public enum TestOutcome {
@@ -176,8 +195,22 @@ public class TextRecognitionClient {
     UNREACHABLE
   }
 
-  /** A test result; {@code diagnostic} is technical English without content, {@code null} if OK. */
-  public record TestResult(TestOutcome outcome, String diagnostic, boolean timedOut) {}
+  /** The step of the connection test that failed. */
+  public enum FailedStage {
+    /** The address: no connection, timeout, redirect or an unexpected answer of the probe. */
+    ADDRESS,
+    /** The key: HTTP 401 or 403, at the probe or at the test page. */
+    AUTHENTICATION,
+    /** Reading the test page, timeout and unreadable answer included, or the missing model. */
+    RECOGNITION
+  }
+
+  /**
+   * A test result; {@code diagnostic} is technical English without content, {@code null} if OK;
+   * {@code failedStage} is {@code null} exactly for {@link TestOutcome#READY}.
+   */
+  public record TestResult(
+      TestOutcome outcome, String diagnostic, boolean timedOut, FailedStage failedStage) {}
 
   /**
    * Converts a whole PDF with docling-serve.
@@ -219,60 +252,98 @@ public class TextRecognitionClient {
     return visionText(parse(answer.body()));
   }
 
-  /** Asks the free probe of the connection type; sends no document. */
+  /** Asks the free probe of the connection type, key included; sends no document. */
   public ProbeFailure probe(TextRecognitionEndpoint endpoint, Duration timeout) {
     try {
-      Answer answer = withinDeadline(timeout, () -> exchange(probeRequest(endpoint).build()));
+      Answer answer = probeExchange(endpoint, System.nanoTime() + timeout.toNanos());
       if (answer.status() != 200) {
-        return new ProbeFailure(describeStatus(answer.status()), false);
+        boolean keyRejected = answer.status() == 401 || answer.status() == 403;
+        return new ProbeFailure(describeStatus(answer.status()), false, keyRejected);
       }
       return null;
     } catch (TextRecognitionUnavailableException e) {
-      return new ProbeFailure(e.getMessage(), e.timedOut());
+      return new ProbeFailure(e.getMessage(), e.timedOut(), false);
     }
   }
 
   /**
+   * The probe's decisive answer. docling-serve answers {@code /health} without a key, so the key is
+   * checked on a protected route that converts nothing: polling a task that does not exist answers
+   * 404 with an accepted key and 401 without.
+   */
+  private Answer probeExchange(TextRecognitionEndpoint endpoint, long deadlineNanos) {
+    Answer reachable =
+        withinDeadline(remaining(deadlineNanos), () -> exchange(probeRequest(endpoint).build()));
+    if (reachable.status() != 200
+        || endpoint.connectionType() != TextRecognitionConnectionType.DOCLING_SERVE) {
+      return reachable;
+    }
+    Answer key =
+        withinDeadline(remaining(deadlineNanos), () -> exchange(keyCheckRequest(endpoint)));
+    return key.status() == 404 || key.status() == 200 ? reachable : key;
+  }
+
+  /**
    * The connection test: the probe, then the shipped test page with exactly the options of the
-   * operation. Sends nothing from a library.
+   * operation, all within one {@code timeout}. Sends nothing from a library.
    */
   public TestResult test(TextRecognitionEndpoint endpoint, Duration timeout) {
+    long deadline = System.nanoTime() + timeout.toNanos();
+    Answer probe;
     try {
-      Answer probe = withinDeadline(timeout, () -> exchange(probeRequest(endpoint).build()));
-      if (probe.status() == 401 || probe.status() == 403) {
-        return new TestResult(TestOutcome.KEY_REJECTED, describeStatus(probe.status()), false);
-      }
-      if (probe.status() != 200) {
-        return new TestResult(TestOutcome.UNREACHABLE, describeStatus(probe.status()), false);
-      }
-      if (endpoint.connectionType() == TextRecognitionConnectionType.OPENAI_VISION
-          && !offersModel(probe.body(), endpoint.model())) {
-        return new TestResult(
-            TestOutcome.ENGINE_MISSING, "the endpoint does not list the model", false);
-      }
-      Answer page = withinDeadline(timeout, () -> exchange(testPageRequest(endpoint)));
+      probe = probeExchange(endpoint, deadline);
+    } catch (TextRecognitionUnavailableException e) {
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut(), FailedStage.ADDRESS);
+    }
+    if (probe.status() == 401 || probe.status() == 403) {
+      return new TestResult(
+          TestOutcome.KEY_REJECTED,
+          describeStatus(probe.status()),
+          false,
+          FailedStage.AUTHENTICATION);
+    }
+    if (probe.status() != 200) {
+      return new TestResult(
+          TestOutcome.UNREACHABLE, describeStatus(probe.status()), false, FailedStage.ADDRESS);
+    }
+    if (endpoint.connectionType() == TextRecognitionConnectionType.OPENAI_VISION
+        && !offersModel(probe.body(), endpoint.model())) {
+      return new TestResult(
+          TestOutcome.ENGINE_MISSING,
+          "the endpoint does not list the model",
+          false,
+          FailedStage.RECOGNITION);
+    }
+    try {
+      Answer page = withinDeadline(remaining(deadline), () -> exchange(testPageRequest(endpoint)));
       return testResult(endpoint, page);
     } catch (TextRecognitionUnavailableException e) {
-      return new TestResult(TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut());
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut(), FailedStage.RECOGNITION);
     }
   }
 
   private TestResult testResult(TextRecognitionEndpoint endpoint, Answer page) {
     int status = page.status();
     if (status == 401 || status == 403) {
-      return new TestResult(TestOutcome.KEY_REJECTED, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.KEY_REJECTED, describeStatus(status), false, FailedStage.AUTHENTICATION);
     }
     if (status == 404 || (status >= 300 && status < 400) || status == 408 || status == 429) {
-      return new TestResult(TestOutcome.UNREACHABLE, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.UNREACHABLE, describeStatus(status), false, FailedStage.RECOGNITION);
     }
     if (status != 200) {
-      return new TestResult(TestOutcome.ENGINE_MISSING, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.ENGINE_MISSING, describeStatus(status), false, FailedStage.RECOGNITION);
     }
     JsonNode root;
     try {
       root = parse(page.body());
     } catch (TextRecognitionUnavailableException e) {
-      return new TestResult(TestOutcome.UNREACHABLE, e.getMessage(), false);
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), false, FailedStage.RECOGNITION);
     }
     String text;
     if (endpoint.connectionType() == TextRecognitionConnectionType.DOCLING_SERVE) {
@@ -281,15 +352,17 @@ public class TextRecognitionClient {
         return new TestResult(
             TestOutcome.ENGINE_MISSING,
             "docling-serve could not convert the test page (" + conversion + ")",
-            false);
+            false,
+            FailedStage.RECOGNITION);
       }
       text = doclingText(root.path("document").path("json_content"));
     } else {
       text = visionText(root);
     }
     return text.isBlank()
-        ? new TestResult(TestOutcome.NO_TEXT, "the service returned no text", false)
-        : new TestResult(TestOutcome.READY, null, false);
+        ? new TestResult(
+            TestOutcome.NO_TEXT, "the service returned no text", false, FailedStage.RECOGNITION)
+        : new TestResult(TestOutcome.READY, null, false, null);
   }
 
   /** The text items and table cells of a DoclingDocument, joined; empty when there are none. */
@@ -340,6 +413,12 @@ public class TextRecognitionClient {
             : "/models";
     return authorized(
         HttpRequest.newBuilder(endpointUri(endpoint.baseUrl(), path)).GET(), endpoint);
+  }
+
+  private HttpRequest keyCheckRequest(TextRecognitionEndpoint endpoint) {
+    return authorized(
+            HttpRequest.newBuilder(endpointUri(endpoint.baseUrl(), KEY_CHECK_PATH)).GET(), endpoint)
+        .build();
   }
 
   private HttpRequest testPageRequest(TextRecognitionEndpoint endpoint) {
@@ -461,6 +540,11 @@ public class TextRecognitionClient {
       throw new TextRecognitionUnavailableException(
           "endpoint response is not valid JSON", false, 200);
     }
+  }
+
+  /** What is left of a deadline shared by several requests; zero once it has passed. */
+  private static Duration remaining(long deadlineNanos) {
+    return Duration.ofNanos(Math.max(0, deadlineNanos - System.nanoTime()));
   }
 
   private <T> T withinDeadline(Duration timeout, Callable<T> call) {

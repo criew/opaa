@@ -125,12 +125,12 @@ settings:
   - key: text_recognition_model.enabled
     source: DATABASE
     defaultValue: "false"
-    effect: Ob die Indizierung gescannte Seiten an den Texterkennungsdienst sendet
+    effect: Ob die Rolle Texterkennung eingeschaltet ist und ihr Dienst angesprochen werden darf
     bearings: [DATA_FLOW]
     notes:
       - >-
-        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Texterkennung,
-        begrenzt durch opaa.ocr.enabled
+        Werkseinstellung im Code; die Systemverwaltung schaltet in der Modellverwaltung, begrenzt
+        durch opaa.ocr.enabled
   - key: text_recognition_model.connection_type
     source: DATABASE
     defaultValue: DOCLING_SERVE

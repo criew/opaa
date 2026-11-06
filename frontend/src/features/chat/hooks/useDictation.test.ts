@@ -205,9 +205,12 @@ describe('useDictation', () => {
   }
 
   it("shows the backend's own message for a failed transcription", async () => {
-    const failure = httpError(502, { error: 'Die Texterkennung ist fehlgeschlagen.', status: 502 })
+    const failure = httpError(502, {
+      error: 'Die Spracherkennung ist fehlgeschlagen.',
+      status: 502,
+    })
 
-    expect(await errorShownFor(failure)).toBe('Die Texterkennung ist fehlgeschlagen.')
+    expect(await errorShownFor(failure)).toBe('Die Spracherkennung ist fehlgeschlagen.')
   })
 
   it('shows a German text, never the proxy or library message, without an error envelope', async () => {

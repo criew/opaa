@@ -79,6 +79,12 @@ class TextRecognitionModelAdministrationIntegrationTest {
           respond(exchange, 200, DOCLING_SUCCESS);
         });
     server.createContext(
+        "/docling/v1/status/poll/",
+        exchange -> {
+          boolean accepted = KEY.equals(exchange.getRequestHeaders().getFirst("X-Api-Key"));
+          respond(exchange, accepted ? 404 : 401, "{\"detail\":\"Task not found.\"}");
+        });
+    server.createContext(
         "/vision/v1/models",
         exchange -> {
           authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
@@ -176,7 +182,8 @@ class TextRecognitionModelAdministrationIntegrationTest {
                         + "/docling\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.outcome").value("READY"));
+        .andExpect(jsonPath("$.outcome").value("READY"))
+        .andExpect(jsonPath("$.failedStage").doesNotExist());
     assertThat(apiKeyHeader.get()).isEqualTo(KEY);
     assertThat(authorization.get()).isNull();
 
@@ -204,7 +211,8 @@ class TextRecognitionModelAdministrationIntegrationTest {
                         + "/docling\",\"apiKey\":\"falsch\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.outcome").value("KEY_REJECTED"));
+        .andExpect(jsonPath("$.outcome").value("KEY_REJECTED"))
+        .andExpect(jsonPath("$.failedStage").value("AUTHENTICATION"));
   }
 
   @Test

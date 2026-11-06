@@ -15,6 +15,6 @@ public enum TextRecognitionRoleState {
   /** Switched on, but no usable address (or, for a vision model, no model) is configured. */
   UNCONFIGURED,
 
-  /** Switched on and configured, but the service did not answer. */
+  /** Switched on and configured, but the service did not answer, refused the key or failed. */
   UNREACHABLE
 }
