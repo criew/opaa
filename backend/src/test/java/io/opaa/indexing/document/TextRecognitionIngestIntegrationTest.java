@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.format.DocumentService;
 import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
+import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -60,6 +62,7 @@ class TextRecognitionIngestIntegrationTest {
   @Autowired private TextRecognitionBlocks blocks;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
+  @Autowired private EmbeddingIndexReconciler reconciler;
 
   private final AtomicInteger conversions = new AtomicInteger();
   private volatile int answerStatus = 200;
@@ -70,6 +73,13 @@ class TextRecognitionIngestIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
+    // neighbours in this signature drop the vector table; the chunks of a scan need it
+    jdbcTemplate.execute(
+        "CREATE TABLE IF NOT EXISTS vector_store (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),"
+            + " content text, metadata json, embedding vector("
+            + FakeEmbeddingModel.DIMENSIONS
+            + "))");
+    reconciler.reconcile();
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"

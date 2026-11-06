@@ -141,6 +141,7 @@ class DocumentFormatRegistryRoutingIntegrationTest {
     Map<String, Short> expectedVersionById =
         Map.ofEntries(
             Map.entry("pdf", (short) 6),
+            Map.entry("pdf-ocr", (short) 1),
             Map.entry("docx", (short) 6),
             Map.entry("pptx", (short) 4),
             Map.entry("odt", (short) 5),
@@ -177,6 +178,12 @@ class DocumentFormatRegistryRoutingIntegrationTest {
     Map<String, Set<String>> expectedByPipelineId =
         Map.ofEntries(
             Map.entry("pdf", Set.of(locationAndAnchor)),
+            Map.entry(
+                "pdf-ocr",
+                Set.of(
+                    ChunkMetadataKeys.LOCATION_METADATA_KEY,
+                    ChunkMetadataKeys.ANCHOR_METADATA_KEY,
+                    ChunkMetadataKeys.TEXT_RECOGNITION_METADATA_KEY)),
             Map.entry("docx", Set.of(locationAndAnchor)),
             Map.entry("pptx", Set.of(locationAndAnchor)),
             Map.entry("tabular", Set.of(locationAndAnchor)),

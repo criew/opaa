@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
 
@@ -51,7 +50,7 @@ final class RecognizedPdfBlocks {
 
   private static final Set<String> FURNITURE_LABELS = Set.of("page_header", "page_footer");
 
-  private static final Pattern MARKDOWN_HEADING = Pattern.compile("^(#{1,6})\\s+(.*?)\\s*#*\\s*$");
+  private static final Pattern REFERENCE_SEPARATOR = Pattern.compile("/");
 
   private static final Pattern MARKDOWN_TABLE_RULE = Pattern.compile("^\\|?[\\s:|-]+\\|?$");
 
@@ -132,7 +131,7 @@ final class RecognizedPdfBlocks {
     }
 
     private JsonNode resolve(String ref) {
-      String[] parts = ref.split("/");
+      String[] parts = REFERENCE_SEPARATOR.split(ref);
       if (parts.length != 3 || !parts[0].equals("#")) {
         return null;
       }
@@ -310,16 +309,14 @@ final class RecognizedPdfBlocks {
     for (int index = 0; index < pages.size(); index++) {
       int page = index + 1;
       StringBuilder paragraph = new StringBuilder();
-      for (String line : pages.get(index).split("\\R")) {
+      for (String line : pages.get(index).lines().toList()) {
         String stripped = line.strip();
-        Matcher heading = MARKDOWN_HEADING.matcher(stripped);
-        if (stripped.isEmpty() || heading.matches()) {
+        int level = headingLevel(stripped);
+        if (stripped.isEmpty() || level > 0) {
           flush(blocks, paragraph, page);
-          if (heading.matches() && !heading.group(2).isBlank()) {
-            int level = heading.group(1).length();
-            blocks.add(
-                new Block(
-                    Kind.HEADING, level, heading.group(2).strip(), page, page, null, null, null));
+          String title = level > 0 ? headingTitle(stripped, level) : "";
+          if (!title.isEmpty()) {
+            blocks.add(new Block(Kind.HEADING, level, title, page, page, null, null, null));
           }
           continue;
         }
@@ -334,6 +331,27 @@ final class RecognizedPdfBlocks {
       flush(blocks, paragraph, page);
     }
     return blocks;
+  }
+
+  /** The level of a Markdown ATX heading ("## Titel"), or 0 when the line is none. */
+  private static int headingLevel(String line) {
+    int level = 0;
+    while (level < line.length() && line.charAt(level) == '#') {
+      level++;
+    }
+    if (level == 0 || level > 6) {
+      return 0;
+    }
+    return level == line.length() || Character.isWhitespace(line.charAt(level)) ? level : 0;
+  }
+
+  /** The title of a heading line without its opening and optional closing hashes. */
+  private static String headingTitle(String line, int level) {
+    int end = line.length();
+    while (end > level && line.charAt(end - 1) == '#') {
+      end--;
+    }
+    return line.substring(level, end).strip();
   }
 
   private static void flush(List<Block> blocks, StringBuilder paragraph, int page) {

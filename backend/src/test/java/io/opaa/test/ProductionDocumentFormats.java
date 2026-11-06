@@ -16,6 +16,7 @@ import io.opaa.format.file.office.OdpDocumentFormat;
 import io.opaa.format.file.office.OdtDocumentFormat;
 import io.opaa.format.file.office.PptxDocumentFormat;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
+import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
@@ -62,6 +63,7 @@ public final class ProductionDocumentFormats {
         new OdpDocumentFormat(
             new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
         new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+        new PdfOcrDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
         new MailDocumentFormat(chunking, new MailProperties(0, 0, 0), Clock.systemUTC()));
   }
 

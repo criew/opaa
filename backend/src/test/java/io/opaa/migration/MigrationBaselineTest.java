@@ -167,6 +167,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "chunk_full_text",
             "document_keywords",
             "document_metadata_values",
+            "document_text_recognition",
             "document_type_suffix_exclusions",
             "document_type_suffixes",
             "document_type_synonyms",
