@@ -77,6 +77,7 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
   test('5. Ausgeschaltet: ein Scan wird als „kein extrahierbarer Text“ abgewiesen', async () => {
     lateLibraryId = await createKnowledgeLibraryViaApi('dev-admin', { name: `E2E-Scan-spaet-${suffix}` })
     createdLibraryIds.push(lateLibraryId)
+    const scansBefore = (await stubConversions()).scan
     const api = await apiAs('dev-admin')
     try {
       await uploadDocument(api, lateLibraryId, {
@@ -94,7 +95,7 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
     } finally {
       await api.dispose()
     }
-    expect((await stubConversions()).scan).toBe(0)
+    expect((await stubConversions()).scan).toBe(scansBefore)
   })
 
   test('1. Einrichten: Modelle → Texterkennung, Verbindungstest in Ordnung, eingeschaltet', async ({

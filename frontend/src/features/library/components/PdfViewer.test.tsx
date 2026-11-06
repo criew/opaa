@@ -209,6 +209,8 @@ describe('PdfViewer', () => {
       await open(SCAN, { chunkIndex: 4 })
 
       const panel = screen.getByRole('complementary', { name: 'Erkannter Text' })
+      // the panel scrolls on its own, so it must be reachable by keyboard
+      expect(panel).toHaveAttribute('tabindex', '0')
       expect(within(panel).getByText('Seiten 2–3 · Gebührentarif')).toBeInTheDocument()
       expect(await within(panel).findByTestId('recognized-text')).toHaveTextContent(
         '4 | Zweitausfertigung eines Bescheids | 46,00 Euro',
