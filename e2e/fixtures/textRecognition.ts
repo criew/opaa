@@ -128,6 +128,38 @@ export async function testTextRecognition(
 }
 
 /**
+ * Scenario 1 as the system administration does it: „Modelle → Texterkennung“, switch on,
+ * docling-serve with address and key, „Verbindung testen“ with every stage in order, „Speichern“,
+ * and the tab reports the service as answering. `typingDelay` > 0 types key by key.
+ */
+export async function setUpTextRecognitionInUi(
+  page: Page,
+  service: TextRecognitionService = textRecognitionService(),
+  typingDelay = 0,
+): Promise<void> {
+  await page.goto('/admin/models/text-recognition')
+  await expect(page.getByLabel('Texterkennung einschalten')).toBeVisible()
+  const enter = async (field: Locator, value: string) => {
+    await field.fill('')
+    if (typingDelay > 0) await field.pressSequentially(value, { delay: typingDelay })
+    else await field.fill(value)
+  }
+  await page.getByLabel('Texterkennung einschalten').check()
+  await page.getByRole('radio', { name: /docling-serve/ }).check()
+  await enter(page.getByLabel('Basis-Adresse'), service.baseUrl)
+  await enter(page.getByLabel('Zugangsschlüssel (optional)'), service.apiKey)
+  await page.getByRole('button', { name: 'Verbindung testen' }).click()
+  const result = page.getByRole('region', { name: 'Ergebnis des Verbindungstests' })
+  await expect(result).toBeVisible({ timeout: 300_000 })
+  await expect(result.getByText(/fehlgeschlagen/)).toHaveCount(0)
+  await expect(result.getByText(/in Ordnung/).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.getByText('Zustand: Eingeschaltet, der Dienst antwortet.')).toBeVisible({
+    timeout: 60_000,
+  })
+}
+
+/**
  * Asks `question` scoped to `libraryName` in a fresh chat and opens the drawer of the answer.
  * `typingDelay` > 0 types key by key, for a recording a viewer can follow.
  */

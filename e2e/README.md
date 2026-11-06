@@ -706,7 +706,7 @@ lassen.
 - `tests/text-recognition.spec.ts` (#3606) — Texterkennung gescannter PDFs (ADR-0069) mit
   `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Der Ablauf hat sechs Schritte:
   1. Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“ abgewiesen.
-  2. Verbindungstest und Einschalten über die API. Danach zeigt die Bibliothek
+  2. Einrichten unter „Modelle → Texterkennung“: Verbindungstest, Einschalten, Speichern. Danach zeigt die Bibliothek
      „1 Scan wartet auf die Texterkennung“.
   3. Upload in eine neue Bibliothek, das Dokument wird indiziert.
   4. Drei Fragen, je mit einem Begriff in „…“, sodass ai-stub genau eine Stelle zitiert. Der Beleg
@@ -1084,12 +1084,13 @@ pnpm run test:ocr          # OPAA_OCR_IMAGE wählt das Image, Vorgabe ghcr.io/cr
 Das Ziel startet den Stack der Suite mit `docker-compose.ocr.yml` als Compose-Projekt
 `opaa-ocr-e2e` (Frontend 13008). Der Schlüssel ist je Lauf zufällig, das Backend startet erst, wenn
 `opaa-ocr` seine Modelle geladen hat. Danach führt es `ocr/tests/abnahme.spec.ts` aus: Einrichten
-mit Verbindungstest und Screenshot der Statusseite, Upload, drei Fragen mit Fundstelle. Eine
-gescheiterte Stelle beendet die Aufzeichnung nicht; der Test scheitert am Ende mit allen Befunden.
-Video und Screenshots liegen unter `test-results-ocr/`.
+unter „Modelle → Texterkennung“ mit Verbindungstest und Screenshot, Upload, drei Fragen mit
+Fundstelle. Eine gescheiterte Stelle beendet die Aufzeichnung nicht; der Test scheitert am Ende
+mit allen Befunden. Indexstand, Statuszeile, Rahmen und erkannter Text stehen mit Zeitstempel im
+Log (`[abnahme …]`). Video und Screenshots liegen unter `test-results-ocr/`.
 `.github/workflows/ocr-acceptance.yml` fährt das Ziel auf Zuruf und an einem PR über das Label
-`ocr-abnahme`. Ein Szenario 1 über die Oberfläche („Modelle → Texterkennung“) folgt, sobald der
-Reiter (#3603) auf diesem Stand ist. Bis dahin richtet das Szenario die Rolle über die API ein.
+`ocr-abnahme`. Am Ende des Job-Logs steht die aufgezeichnete Antwort von `opaa-ocr` als gzip und
+base64 zwischen festen Markierungen, falls das Artefakt nicht erreichbar ist.
 
 ## Betrieb ohne Internet
 

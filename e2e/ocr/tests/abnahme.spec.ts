@@ -16,7 +16,8 @@ import {
   SCAN_PATH,
   SCAN_QUESTIONS,
   setTextRecognition,
-  testTextRecognition,
+  setUpTextRecognitionInUi,
+  textRecognitionService,
 } from '../../fixtures/textRecognition'
 
 /**
@@ -140,16 +141,9 @@ test.describe.serial('Abnahme Texterkennung mit opaa-ocr', () => {
     await showPointer(page)
 
     // 1. Einrichten: the shipped service, connection test with the shipped test page, switched on.
-    const result = await testTextRecognition()
-    expect(result, result.message).toMatchObject({ success: true, outcome: 'READY' })
-    await setTextRecognition(true)
-    await page.goto('/admin/search/overview')
-    await expect(
-      page.getByText('Die Texterkennung ist eingeschaltet, die Verbindung zum Dienst ist bereit.'),
-    ).toBeVisible()
-    await page
-      .getByText('Die Texterkennung ist eingeschaltet, die Verbindung zum Dienst ist bereit.')
-      .scrollIntoViewIfNeeded()
+    log('Einrichten: Modelle → Texterkennung')
+    await setUpTextRecognitionInUi(page, textRecognitionService(), TYPING_DELAY_MS)
+    log('Einrichten: Verbindungstest in Ordnung, eingeschaltet')
     await pause(page)
     await testInfo.attach('szenario-1-einrichten', {
       body: await page.screenshot({ fullPage: true }),

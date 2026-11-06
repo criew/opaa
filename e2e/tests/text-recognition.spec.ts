@@ -15,7 +15,7 @@ import {
   SCAN_PATH,
   SCAN_QUESTIONS,
   setTextRecognition,
-  testTextRecognition,
+  setUpTextRecognitionInUi,
 } from '../fixtures/textRecognition'
 
 /**
@@ -97,12 +97,10 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
     expect((await stubConversions()).scan).toBe(0)
   })
 
-  test('1. Einrichten: Verbindungstest erfolgreich, Rolle eingeschaltet', async ({
+  test('1. Einrichten: Modelle → Texterkennung, Verbindungstest in Ordnung, eingeschaltet', async ({
     authenticatedPage: page,
   }) => {
-    const result = await testTextRecognition()
-    expect(result, result.message).toMatchObject({ success: true, outcome: 'READY' })
-    await setTextRecognition(true)
+    await setUpTextRecognitionInUi(page)
     // The scan rejected while the role was off now waits for the catch-up.
     await page.goto(`/libraries/${lateLibraryId}`)
     await expect(page.getByTestId('text-recognition-notice')).toContainText(
