@@ -22,6 +22,7 @@ jederzeit auch lokal ausführen (unten).
 | Mermaid und playwright-core für die Diagramme der HTML-Fassung des Update-Pakets (`.github/tools/mermaid/package.json` + `pnpm-lock.yaml`); eigene Gruppe, die CI rendert jedes Diagramm damit | `npm` | `frontend`, `ci` |
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
+| Basis-Image des OCR-Images (`ocr/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `dockerfile` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
@@ -47,8 +48,9 @@ gleichzeitig offene Update-PRs, Spring-Plattform als ein gebündelter PR, **kein
 Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projektentscheidung,
 siehe `e2e/docker-compose.e2e.yml` und für die Basis-Images der Release-Images
 [releases.md](releases.md#basis-images); Ausnahmen sind das Renovate-Image selbst, siehe
-[unten](#renovate-image-und-token-des-workflows), und die per `docker run` gestarteten Images in
-`retrieval-regression.yml` und `zap-baseline.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
+[unten](#renovate-image-und-token-des-workflows), die per `docker run` gestarteten Images in
+`retrieval-regression.yml` und `zap-baseline.yml` und das Basis-Image des OCR-Images, siehe
+[OCR-Image](#ocr-image)). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
 
 **Labels:** Jeder Update-PR trägt `dependencies` und dazu das Bereichs-Label aus der Tabelle oben.
@@ -71,6 +73,30 @@ Liefert eine Datasource keinen Zeitstempel, bleibt das Update „Pending“
 von pnpm, das Releases unter 24 h ohnehin ablehnt (#954); eine Regel, die die Frist für npm unter
 einen Tag senkt, machte Update-PRs zwangsläufig rot. Ausgenommen von der Frist sind nur die
 Sicherheits-PRs (nächster Abschnitt).
+
+## OCR-Image
+
+`ocr/Dockerfile` baut auf `ghcr.io/docling-project/docling-serve-cpu` mit Version und Digest. Die
+Regel in `renovate.json5` hält beides fest (`pinDigests: true`, `versioning: 'semver'`), wartet
+drei Tage und mergt nie automatisch; `.github/scripts/test_ocr_image_pin.py` prüft, dass FROM-Zeile
+und Regel zusammenpassen.
+
+Das Basis-Image bringt docling-serve, seine Python-Umgebung und die Layout- und Tabellenmodelle.
+Ein Update ändert deshalb oft auch Modelldateien. Dann scheitert im PR der Bau in
+`.github/workflows/ocr-image.yml` an `ocr/models.sha256` und gibt die gefundene Liste aus. So
+geht es weiter, im selben PR:
+
+1. Die ausgegebene Liste prüfen: Welche Dateien sind neu, welche weggefallen, und passt das zu den
+   Release-Notizen von docling-serve? Danach `ocr/models.sha256` durch sie ersetzen.
+2. Für ein geändertes Hugging-Face-Repository den Commit in `ocr/models.revisions` nachziehen:
+   der Commit der Revision, die docling verlangt, aus `https://huggingface.co/api/models/<Repository>`
+   (Feld `sha`), für eine Tag-Revision aus `…/revision/<Tag>`.
+3. Ein neues Modell mit seiner Lizenz in `ocr/models.cdx.json` eintragen.
+
+Der Schritt „Modell-Prüfsummen gegen Herkunft abgleichen“ prüft danach jede Zeile gegen die
+Hugging-Face-API am eingetragenen Commit oder gegen die Prüfsummen des rapidocr-Pakets
+([sbom.md](sbom.md#ocr-image)); der Rauchtest prüft die Texterkennung ohne Netz. Erst wenn beides
+grün ist, wird gemergt.
 
 ## Sicherheits-PRs und Lockfile-Pflege
 

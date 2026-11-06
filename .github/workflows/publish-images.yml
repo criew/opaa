@@ -940,7 +940,7 @@ jobs:
     needs: [publish, image-attestation, chart, chart-attestation, update-package-attestation, ocr-sbom-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    # The offline bundle with the OCR image is about 6 GB to upload.
+    # The offline bundle with the OCR image is several gigabytes to upload.
     timeout-minutes: 60
     permissions:
       contents: write

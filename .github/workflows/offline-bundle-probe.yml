@@ -67,7 +67,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Parts, joined archive and unpacked bundle each take about 6 GB.
+      # Parts, joined archive and unpacked bundle each take several gigabytes.
       - name: Speicherplatz freigeben
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
 

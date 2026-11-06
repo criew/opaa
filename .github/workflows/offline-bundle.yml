@@ -51,7 +51,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # The image archives take about 6 GB, and skopeo stages each one before writing it; the
+      # The image archives take several gigabytes, and skopeo stages each one before writing it; the
       # preinstalled SDKs this job does not use make room.
       - name: Speicherplatz freigeben
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
@@ -131,7 +131,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Bundle content, archive and its parts each take about 6 GB.
+      # Bundle content, archive and its parts each take several gigabytes.
       - name: Speicherplatz freigeben
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
 
