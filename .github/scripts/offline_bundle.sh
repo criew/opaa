@@ -109,6 +109,14 @@ collect() {
       echo "::warning::$(basename "$sbom") is missing; the bundle carries no SBOM for $name" >&2
     fi
   done
+  # The license overview of the OCR image travels with its SBOM, attested like it.
+  local licenses="$UPDATE_PACKAGE_DIR/opaa-ocr-$version-lizenzen.md"
+  if [[ -f "$licenses" ]]; then
+    cp "$licenses" "$dir/sbom/"
+  elif [[ "${REQUIRE_SBOMS:-true}" == true ]]; then
+    echo "$licenses is missing" >&2
+    exit 1
+  fi
 
   # The Sigstore bundles of what the release workflow attested for these files and the chart.
   local subject

@@ -141,7 +141,15 @@ def test_the_bundle_carries_the_ocr_image_and_its_sbom() -> None:
 
     assert "for name in backend frontend ocr; do\n    source=" in script
     assert "for name in backend frontend ocr; do\n    sbom=" in script
+    assert 'licenses="$UPDATE_PACKAGE_DIR/opaa-ocr-$version-lizenzen.md"' in script
     assert 'for name in "${images[@]}"; do' in script
+
+
+def test_the_bundle_reads_a_private_package_with_the_token_of_its_job() -> None:
+    collect = job("offline-bundle.yml", "collect")
+
+    assert collect.index("skopeo login ghcr.io") < collect.index("offline_bundle.sh collect")
+    assert "--pattern 'opaa-ocr-*-lizenzen.md'" in collect
 
 
 def test_the_release_splits_the_bundle_after_attesting_it() -> None:

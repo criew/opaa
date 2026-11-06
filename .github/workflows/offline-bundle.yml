@@ -82,7 +82,15 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: >-
           gh release download "v$VERSION" --dir "$RUNNER_TEMP/update-package"
-          --pattern 'opaa-update-paket-*' --pattern '*.cdx.json'
+          --pattern 'opaa-update-paket-*' --pattern '*.cdx.json' --pattern 'opaa-ocr-*-lizenzen.md'
+
+      # A new package in GHCR starts private (the OCR image at its first release); skopeo reads with
+      # the token of this job, which holds packages: read only.
+      - name: Bei GHCR anmelden
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: skopeo login ghcr.io --username "$ACTOR" --password-stdin <<<"$GH_TOKEN"
 
       - name: Bündel zusammenstellen
         env:
