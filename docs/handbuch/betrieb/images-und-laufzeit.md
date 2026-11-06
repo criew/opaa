@@ -1,6 +1,6 @@
 # Images und Laufzeit
 
-Dieses Kapitel beschreibt die Images von Backend und Frontend: welche Versionen es gibt, wie die
+Dieses Kapitel beschreibt die Images von Backend, Frontend und Texterkennung: welche Versionen es gibt, wie die
 Container zur Laufzeit arbeiten, wie die Plattform sie prüft und wie sie anhalten. Es gilt für jeden
 Betriebsweg und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
 beschreibt die [Betriebsübersicht](README.md).
@@ -8,12 +8,16 @@ beschreibt die [Betriebsübersicht](README.md).
 ## Images und Versionen
 
 Die CI veröffentlicht fertige Images für `linux/amd64` und `linux/arm64`; auf dem Zielsystem wird
-nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
+nichts gebaut. Backend, Frontend und das Texterkennungs-Image laufen immer mit **derselben** Version.
 
 | Image | Tags |
 |-------|------|
 | `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 | `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-ocr` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+
+`opaa-ocr` ist der optionale Dienst für Texterkennung in gescannten Dokumenten
+([OCR-Laufzeitimage](#ocr-laufzeitimage)); wer ihn nicht betreibt, braucht das Image nicht.
 
 - **`X.Y.Z`** ändert sich nie; **`X.Y`** steht für die Linie, zeigt auf ihr jüngstes Patch-Release
   und bringt bis zu ihrem Supportende Sicherheitsupdates und Behebungen kritischer Fehler mit dem
@@ -39,7 +43,7 @@ nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
     --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
   ```
 
-  Dasselbe gilt für `opaa-frontend` und den Chart
+  Dasselbe gilt für `opaa-frontend`, `opaa-ocr` und den Chart
   ([Herkunft prüfen](releases-und-nachweise.md#herkunft-prüfen)).
 
 - **Update-Paket:** Am GitHub-Release hängt ein attestiertes Paket für Datenschutz,
@@ -55,18 +59,24 @@ enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz pr�
 
 | Im Bündel | Inhalt |
 |---|---|
-| `images/` | Backend und Frontend als OCI-Archiv, je für `linux/amd64` und `linux/arm64`, mit SBOM und Provenance |
+| `images/` | Backend, Frontend und Texterkennung als OCI-Archiv, je für `linux/amd64` und `linux/arm64`, mit SBOM und Provenance |
 | `DIGESTS` | der Digest jedes Image, derselbe wie in GHCR |
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket, darin dieses Handbuch |
-| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs, Chart und beiden Images; die Nachweise von Chart und Images beziehen sich auf deren Manifest in der Registry und lassen sich offline nicht gegen die Dateien in `chart/` und `images/` prüfen, die Dateien deckt `SHA256SUMS` ab |
+| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs, Chart und den drei Images; die Nachweise von Chart und Images beziehen sich auf deren Manifest in der Registry und lassen sich offline nicht gegen die Dateien in `chart/` und `images/` prüfen, die Dateien deckt `SHA256SUMS` ab |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihr Herkunftsnachweis |
 
-Nicht im Bündel sind die Datenbank, der Modellserver, ein Identitätsanbieter und Modellgewichte.
-Sie kommen auf eigenem Weg ins Haus.
+Nicht im Bündel sind die Datenbank, der Modellserver, ein Identitätsanbieter und Modellgewichte
+der Sprachmodelle. Sie kommen auf eigenem Weg ins Haus. Die Modelle der Texterkennung stecken im
+Image `opaa-ocr` und kommen mit ihm.
+
+Mit dem Texterkennungs-Image ist das Bündel mehrere Gigabyte groß. Über der Größengrenze für
+Dateien eines GitHub-Release hängt es deshalb in Teilen am Release,
+`opaa-offline-X.Y.Z.tar.part-00`, `-01` und so fort; Prüfsumme und Herkunftsnachweis gelten für
+das zusammengesetzte Archiv.
 
 **Werkzeuge hinter der Schleuse:** `gh` (die GitHub-CLI, erprobt mit Version 2.86.0), `sha256sum` und
-`tar`, zum Einspielen `skopeo` und unter Kubernetes `helm`. Sie kommen wie das Bündel durch die
+`tar`, `cat` für ein geteiltes Archiv, zum Einspielen `skopeo` und unter Kubernetes `helm`. Sie kommen wie das Bündel durch die
 Schleuse. Die Prüfung mit `gh` braucht keine Anmeldung (`gh auth login`) und kein Netz.
 
 **1. Vor der Schleuse**, auf einem Rechner mit Internetzugang, für jedes Release neu:
@@ -81,9 +91,11 @@ durch die Schleuse, aber nicht in das Bündel: Wer das Bündel fälschen könnte
 Anker fälschen. Ein Anker von einem früheren Release kann nach einem Schlüsselwechsel bei Sigstore
 veraltet sein; die Prüfung scheitert dann, sie wird nicht falsch.
 
-**2. Hinter der Schleuse prüfen**, ohne Netz, zuerst das Archiv, dann seinen Inhalt:
+**2. Hinter der Schleuse prüfen**, ohne Netz, zuerst das Archiv, dann seinen Inhalt. Ein geteiltes
+Archiv wird vorher zusammengesetzt; die Teile folgen in der Reihenfolge ihrer Namen:
 
 ```bash
+cat opaa-offline-X.Y.Z.tar.part-* > opaa-offline-X.Y.Z.tar
 gh attestation verify opaa-offline-X.Y.Z.tar --bundle opaa-offline-X.Y.Z.tar.sigstore.json \
   --custom-trusted-root trusted_root.jsonl --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/offline-bundle.yml \
@@ -122,11 +134,13 @@ skopeo copy --all --preserve-digests \
   oci-archive:images/opaa-backend-X.Y.Z.oci.tar docker://registry.intern/opaa/opaa-backend:X.Y.Z
 skopeo copy --all --preserve-digests \
   oci-archive:images/opaa-frontend-X.Y.Z.oci.tar docker://registry.intern/opaa/opaa-frontend:X.Y.Z
+skopeo copy --all --preserve-digests \
+  oci-archive:images/opaa-ocr-X.Y.Z.oci.tar docker://registry.intern/opaa/opaa-ocr:X.Y.Z
 ```
 
 Ohne Registry, etwa für Docker Compose auf einem Host, lädt
 `skopeo copy oci-archive:images/opaa-backend-X.Y.Z.oci.tar docker-daemon:ghcr.io/criew/opaa-backend:X.Y.Z`
-das Image der eigenen Architektur in den lokalen Docker; ebenso das Frontend.
+das Image der eigenen Architektur in den lokalen Docker; ebenso Frontend und Texterkennung.
 
 **4. Installieren:** unter Kubernetes mit dem Chart aus dem Bündel und den Image-Adressen der
 internen Registry ([Kubernetes](kubernetes.md#installation-ohne-internetzugang)), unter Docker
@@ -203,6 +217,40 @@ nginx (`nginxinc/nginx-unprivileged`), lauffähig unter Pod Security Standard `r
 - **Uploadgröße:** fest 52 MB, knapp über der Grenze des Backends (`OPAA_UPLOAD_MAX_FILE_SIZE`). Wer
   diese anhebt, passt das Image und jeden Proxy davor an.
 - Ungültige Werte dieser Variablen brechen den Containerstart mit einer Meldung im Log ab.
+
+## OCR-Laufzeitimage
+
+`opaa-ocr` liest Text aus gescannten Seiten: ein Docling-Dienst (docling-serve) für die CPU mit
+der Texterkennung RapidOCR und den deutschen PP-OCRv6-Modellen. Alle Modelle stecken im Image; der
+Dienst lädt nichts nach und läuft ohne Netzzugang. In dieser Version ruft das Backend den Dienst
+noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkennung.
+
+- **Schlüssel ist Pflicht:** `DOCLING_SERVE_API_KEY` mit mindestens 32 Zeichen ohne Leerzeichen,
+  etwa aus `openssl rand -hex 32`. Ohne ihn oder mit einem kürzeren startet der Container nicht
+  (Exit-Code `64`, die Meldung nennt die Variable). Jede Anfrage trägt ihn im Header `X-Api-Key`;
+  ohne ihn antwortet der Dienst mit `401`.
+- **Ohne Root:** Benutzer `1001`, Port `5001`.
+- **Read-only Filesystem:** schreibt nur unter `/tmp` (Arbeitsdateien und Zwischenspeicher der
+  Bibliotheken). `/tmp` muss ausführbar eingehängt sein und eine gescannte Seite als Bild fassen;
+  einige Gigabyte genügen.
+- **Ohne Netz:** Der Dienst braucht keinen Ausgang; eine Netzrichtlinie darf jeden Egress sperren.
+- **Nur RapidOCR:** Eine Anfrage wählt keine andere Texterkennung und keine eigenen Modelle; andere
+  Voreinstellungen weist der Dienst mit `422` ab. Sprache und Texterkennung der ganzen Seite gibt
+  jede Anfrage selbst an.
+- **Ressourcen:** Die Modelle lädt der Dienst beim Start; bereit ist er nach Sekunden bis wenigen
+  Minuten, je nach Datenträger. Eine Seite braucht auf der CPU einige Sekunden. Nach einer
+  gescannten Seite belegt der Container rund 2,1 bis 2,6 GiB Speicher; große Dokumente brauchen mehr.
+  Ausgangswerte:
+
+  | | Request | Limit |
+  |---|---|---|
+  | Speicher | 3 GiB | 4 GiB |
+  | CPU | 1 | keine |
+
+  Mehr Kerne verkürzen die Umwandlung. Ein `OOMKilled` verlangt ein höheres Limit. Das Image ist
+  entpackt rund 2,0 GB (`linux/amd64`) bzw. 4,4 GB (`linux/arm64`) groß.
+- **Readiness:** `GET /ready` meldet `200`, sobald die Modelle geladen sind; `GET /health` prüft nur
+  den Prozess. Beide brauchen keinen Schlüssel. Das Image bringt einen Health Check auf `/ready` mit.
 
 <a id="bereitschaft-und-lebendigkeit"></a>
 

@@ -95,7 +95,7 @@ class TextRecognitionIndexingTest {
 
   @Test
   void aScanIsReadByTheServiceStoredAndCut() throws IOException {
-    when(role.convertWithDocling(eq(DOCLING), any()))
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
         .thenReturn(new DoclingConversion(fixture(), false));
 
     Optional<ScannedDocumentRecognition.Recognized> recognized =
@@ -133,7 +133,7 @@ class TextRecognitionIndexingTest {
   @ParameterizedTest
   @ValueSource(ints = {0, 401, 403, 429, 500, 503})
   void aFailureOfTheServiceNeverLocksTheScan(int status) {
-    when(role.convertWithDocling(eq(DOCLING), any()))
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
         .thenThrow(TextRecognitionFailures.unavailable(status));
 
     assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
@@ -147,7 +147,8 @@ class TextRecognitionIndexingTest {
 
   @Test
   void aTimeoutNeverLocksTheScan() {
-    when(role.convertWithDocling(eq(DOCLING), any())).thenThrow(TextRecognitionFailures.timedOut());
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenThrow(TextRecognitionFailures.timedOut());
 
     assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
 
@@ -172,7 +173,7 @@ class TextRecognitionIndexingTest {
 
   @Test
   void aRefusalOfTheDocumentLocksIt() {
-    when(role.convertWithDocling(eq(DOCLING), any()))
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
         .thenThrow(TextRecognitionFailures.rejected(422));
 
     assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
@@ -199,7 +200,7 @@ class TextRecognitionIndexingTest {
 
     assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
 
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
     verify(store)
         .block(
             eq(documentId),
@@ -231,7 +232,7 @@ class TextRecognitionIndexingTest {
     assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
 
     verifyNoInteractions(pdfPages);
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
     assertThat(protocol)
         .containsExactly(
             "TEXT_RECOGNITION_BLOCKED Texterkennung gesperrt: Seitengrenze überschritten");
@@ -252,7 +253,7 @@ class TextRecognitionIndexingTest {
                     null,
                     "Der Dienst hat das Dokument abgelehnt (HTTP 422)",
                     Instant.EPOCH)));
-    when(role.convertWithDocling(eq(DOCLING), any()))
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
         .thenReturn(new DoclingConversion(fixture(), false));
 
     assertThat(indexing.recognize(candidate(false, sink(null)))).isPresent();
@@ -266,7 +267,7 @@ class TextRecognitionIndexingTest {
         indexing.recognize(candidate(true, sink(null)));
 
     assertThat(recognized).isPresent();
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
     verifyNoInteractions(pdfPages);
     assertThat(protocol)
         .singleElement()
@@ -282,7 +283,7 @@ class TextRecognitionIndexingTest {
 
     storedRecognition(RECIPIENT);
     assertThat(indexing.recognize(candidate(false, sink(null)))).isPresent();
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
   }
 
   @Test
@@ -290,7 +291,7 @@ class TextRecognitionIndexingTest {
     assertThat(indexing.recognize(candidate(true, sink(null)))).isEmpty();
 
     verifyNoInteractions(pdfPages);
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
   }
 
   @Test
@@ -301,7 +302,7 @@ class TextRecognitionIndexingTest {
     assertThat(indexing.recognize(candidate(false, sink(budget)))).isEmpty();
 
     assertThat(budget.deferred()).isEqualTo(1);
-    verify(role, never()).convertWithDocling(any(), any());
+    verify(role, never()).convertWithDocling(any(), any(), any());
     verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
     assertThat(protocol).singleElement().asString().startsWith("TEXT_RECOGNITION_PENDING ");
   }
@@ -327,7 +328,7 @@ class TextRecognitionIndexingTest {
             })
         .when(pdfPages)
         .render(any(), any());
-    when(role.recognizePage(eq(vision), any(), eq("image/png")))
+    when(role.recognizePage(eq(vision), any(), eq("image/png"), any()))
         .thenReturn("# Bescheid\n\nErste Seite.", "Zweite Seite.");
 
     Optional<ScannedDocumentRecognition.Recognized> recognized =
@@ -350,11 +351,190 @@ class TextRecognitionIndexingTest {
 
   @Test
   void withoutAProtocolTheScanIsStillRecognised() throws IOException {
-    when(role.convertWithDocling(eq(DOCLING), any()))
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
         .thenReturn(new DoclingConversion(fixture(), false));
 
     assertThat(indexing.recognize(candidate(false, null))).isPresent();
     verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+  }
+
+  @Test
+  void aPartialConversionIsNeitherStoredNorLockedAndTriedAgain() throws IOException {
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenReturn(new DoclingConversion(fixture(), true));
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store, never())
+        .saveRecognition(any(), any(), any(), any(), anyInt(), anyInt(), any(), any());
+    verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+    assertThat(protocol)
+        .containsExactly(
+            "TEXT_RECOGNITION_FAILED Texterkennung gescheitert: docling-serve hat das Dokument nur"
+                + " teilweise umgewandelt, nichts gespeichert (Empfänger cfg-docling); der nächste"
+                + " Lauf versucht es erneut");
+    assertThat(
+            meters
+                .counter(
+                    "opaa.ocr.documents", "result", "partial", "connection_type", "DOCLING_SERVE")
+                .count())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aRecognitionWithoutTextIsStoredNotLocked() throws IOException {
+    ActiveTextRecognition vision = vision();
+    when(role.active()).thenReturn(Optional.of(vision));
+    renderTwoPages();
+    when(role.recognizePage(eq(vision), any(), eq("image/png"), any())).thenReturn("", " ");
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+    verify(store)
+        .saveRecognition(
+            eq(documentId),
+            eq(CHECKSUM),
+            eq("OPENAI_VISION"),
+            eq("cfg-vision"),
+            anyInt(),
+            eq(2),
+            anyString(),
+            any());
+    assertThat(protocol)
+        .singleElement()
+        .asString()
+        .startsWith("TEXT_RECOGNIZED Texterkennung ohne erkannten Text (Vision-Modell");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {400, 404, 422})
+  void aVisionModelRefusingTheRequestLocksNoScan(int status) throws IOException {
+    ActiveTextRecognition vision = vision();
+    when(role.active()).thenReturn(Optional.of(vision));
+    renderTwoPages();
+    when(role.recognizePage(eq(vision), any(), eq("image/png"), any()))
+        .thenThrow(TextRecognitionFailures.rejected(status));
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+    assertThat(protocol)
+        .containsExactly(
+            "TEXT_RECOGNITION_FAILED Texterkennung gescheitert: Anfrage abgelehnt (HTTP "
+                + status
+                + "), Modell und Einstellungen prüfen (Empfänger cfg-vision); der nächste Lauf"
+                + " versucht es erneut");
+  }
+
+  @Test
+  void aPageImageTooLargeForTheVisionModelLocksTheScan() throws IOException {
+    ActiveTextRecognition vision = vision();
+    when(role.active()).thenReturn(Optional.of(vision));
+    renderTwoPages();
+    when(role.recognizePage(eq(vision), any(), eq("image/png"), any()))
+        .thenThrow(TextRecognitionFailures.rejected(413));
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store)
+        .block(
+            eq(documentId),
+            eq(CHECKSUM),
+            eq("OPENAI_VISION"),
+            eq("cfg-vision"),
+            anyInt(),
+            eq(2),
+            eq("Der Dienst hat das Dokument abgelehnt (HTTP 413)"),
+            any());
+  }
+
+  @Test
+  void anUnexpectedErrorIsAFailureForANewAttemptNotALock() {
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenThrow(new IllegalArgumentException("kaputt"));
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+    assertThat(protocol)
+        .containsExactly(
+            "TEXT_RECOGNITION_FAILED Texterkennung gescheitert: Unerwarteter Fehler der"
+                + " Texterkennung (Empfänger cfg-docling); der nächste Lauf versucht es erneut");
+  }
+
+  @Test
+  void anUnreadableWorkingFileIsAFailureNotASwitchedOffRole() throws IOException {
+    Files.delete(scan);
+
+    assertThat(indexing.recognize(candidate(false, sink(null)))).isEmpty();
+
+    verify(store, never()).block(any(), any(), any(), any(), anyInt(), any(), any(), any());
+    assertThat(protocol)
+        .containsExactly(
+            "TEXT_RECOGNITION_FAILED Texterkennung gescheitert: Arbeitsdatei nicht lesbar"
+                + " (Empfänger cfg-docling); der nächste Lauf versucht es erneut");
+  }
+
+  @Test
+  void theServiceCallGetsWhatIsLeftOfTheDocumentsDeadline() throws IOException {
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenReturn(new DoclingConversion(fixture(), false));
+
+    indexing.recognize(candidate(false, sink(null)));
+
+    verify(role).convertWithDocling(eq(DOCLING), any(), eq(java.time.Duration.ofMinutes(45)));
+  }
+
+  @Test
+  void anInterruptedWaitForASlotGivesTheBudgetBack() throws Exception {
+    TextRecognitionRunBudget budget = new TextRecognitionRunBudget();
+    java.util.concurrent.CountDownLatch inside = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch leave = new java.util.concurrent.CountDownLatch(1);
+    when(role.convertWithDocling(eq(DOCLING), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              inside.countDown();
+              leave.await();
+              return new DoclingConversion(fixture(), false);
+            });
+    Thread holder = new Thread(() -> indexing.recognize(candidate(false, null)));
+    holder.start();
+    inside.await();
+
+    Thread.currentThread().interrupt();
+    Optional<ScannedDocumentRecognition.Recognized> waited =
+        indexing.recognize(candidate(false, sink(budget)));
+    boolean interrupted = Thread.interrupted();
+    leave.countDown();
+    holder.join();
+
+    assertThat(waited).isEmpty();
+    assertThat(interrupted).isTrue();
+    assertThat(budget.pagesSpent()).isZero();
+  }
+
+  private static ActiveTextRecognition vision() {
+    return new ActiveTextRecognition(
+        new TextRecognitionEndpoint(
+            true,
+            TextRecognitionConnectionType.OPENAI_VISION,
+            "http://vision:8000/v1",
+            "vision-modell",
+            null),
+        "cfg-vision");
+  }
+
+  private void renderTwoPages() throws IOException {
+    doAnswer(
+            invocation -> {
+              PdfPages.PageImageConsumer consumer = invocation.getArgument(1);
+              consumer.accept(1, new byte[] {1});
+              consumer.accept(2, new byte[] {2});
+              return null;
+            })
+        .when(pdfPages)
+        .render(any(), any());
   }
 
   private void storedRecognition(String configurationId) throws IOException {

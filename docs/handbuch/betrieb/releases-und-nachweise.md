@@ -80,10 +80,11 @@ Zu jeder Version gehören:
 
 | Ort | Inhalt |
 |---|---|
-| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM, Provenance und signierter Provenance |
-| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance; es verweist per Digest auf genau diese Images |
+| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` und `ghcr.io/criew/opaa-ocr:X.Y.Z` (Texterkennung, optional) für `linux/amd64` und `linux/arm64`, je mit SBOM, Provenance und signierter Provenance |
+| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance; es verweist per Digest auf die Images von Backend und Frontend |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
-| GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
+| GitHub-Release `OPAA vX.Y.Z` | SBOM und Lizenzübersicht des Texterkennungs-Images, attestiert |
+| GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert, wegen seiner Größe in Teilen ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
 
 Die **Release-Notizen** enthalten:
 
@@ -105,6 +106,8 @@ Stand besteht sie nicht:
 gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 gh attestation verify oci://ghcr.io/criew/opaa-frontend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify oci://ghcr.io/criew/opaa-ocr:X.Y.Z --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
@@ -151,10 +154,16 @@ liefert sie auf zwei Wegen:
   Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge. Sie hängen als
   `opaa-backend-X.Y.Z.cdx.json` und `opaa-frontend-X.Y.Z.cdx.json` am GitHub-Release und liegen im
   Update-Paket unter `sbom/`, beide mit Provenance.
+- **Texterkennung.** Das Image `opaa-ocr` bringt seine Python-Umgebung und die Modelle fertig mit.
+  Seine CycloneDX-SBOM wird deshalb aus dem veröffentlichten Image gelesen und nennt die
+  Python-Pakete und Betriebssystempakete; die eingebauten Modelle stehen mit ihrer Lizenz in der
+  Lizenzübersicht. Beide hängen als `opaa-ocr-X.Y.Z.cdx.json` und `opaa-ocr-X.Y.Z-lizenzen.md` am
+  GitHub-Release, mit Provenance. Jede Modelldatei ist beim Bau gegen eine feste Prüfsumme geprüft,
+  die mit der Herkunftsquelle des Modells abgeglichen ist.
 
 Eine Provenance mit Signatur, prüfbar mit `gh attestation verify`
 ([Herkunft prüfen](#herkunft-prüfen)), liegt außerdem an jedem Image, am Chart, am Update-Paket und
-an beiden SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
+an den SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
 Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut ist.
 
 ## Schwachstellen
@@ -165,7 +174,7 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   Eine Prüfung durch Dritte gab es bisher nicht; Einzelheiten in `SECURITY.md` im Repository.
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
   prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
-  deren Supportende.
+  deren Supportende, das Texterkennungs-Image eingeschlossen.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
 - **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
@@ -178,7 +187,9 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   Wer OPAA verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
   Fassung anbieten.
 - **Abhängigkeiten:** Die CI lässt nur Lizenzen zu, die mit der GPLv3 verträglich sind, sonst eine
-  begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter `lizenzen/`.
+  begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter `lizenzen/`. Für das
+  Texterkennungs-Image gilt dieselbe Prüfung für seine Python-Pakete und die eingebauten Modelle;
+  seine Übersicht hängt am GitHub-Release.
 - **Beiträge:** Wer Änderungen ins Projekt einbringen will, unterzeichnet einmalig das Contributor
   License Agreement (CLA). Ohne CLA pflegt die Behörde eine eigene Abweichung bei jedem Update
   selbst.

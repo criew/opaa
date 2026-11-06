@@ -513,6 +513,29 @@
       matchFileNames: ['.github/workflows/publish-images.yml'],
       automerge: false,
     },
+    // Zweite Ausnahme: Das Basisimage des OCR-Images (ocr/Dockerfile) trägt Version und Digest,
+    // weil es die Python-Umgebung und die Layout- und Tabellenmodelle mitbringt, deren Prüfsummen
+    // ocr/models.sha256 festhält. Ein Update ändert damit oft auch die Modelle: Der Build scheitert
+    // dann an der Prüfsummenliste und gibt die neue aus, die nach Prüfung im selben PR die alte
+    // ersetzt (docs/renovate.md, OCR-Image). Deshalb nie automatisch, und erst nach drei Tagen.
+    {
+      matchManagers: ['dockerfile'],
+      matchFileNames: ['ocr/Dockerfile'],
+      matchDepNames: ['ghcr.io/docling-project/docling-serve-cpu'],
+      versioning: 'semver',
+      pinDigests: true,
+      minimumReleaseAge: '3 days',
+      automerge: false,
+    },
+    // Ein neuer Digest bei gleicher Version heißt, dass der Tag umgehängt wurde; wie beim
+    // Renovate- und ZAP-Image erst nach Freigabe in der Abhängigkeits-Übersicht.
+    {
+      matchManagers: ['dockerfile'],
+      matchFileNames: ['ocr/Dockerfile'],
+      matchDepNames: ['ghcr.io/docling-project/docling-serve-cpu'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+    },
     // gradle/actions bringt im Dependency Graph ein Plugin mit, dem
     // backend/gradle/verification-metadata.xml in genau einer Version vertraut. Hebt ein Update
     // diese Version an, scheitert nur der Resolve-Job, der kein Required Check ist, und danach

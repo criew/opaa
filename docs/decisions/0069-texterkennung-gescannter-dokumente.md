@@ -48,27 +48,38 @@ Die Rahmen rechnet `pdf-ocr` je Element nach dessen `coord_origin` um.
 
 ### 4. Fehlerklassen: Ausfall wartet, Ablehnung sperrt
 
-Zeitüberschreitung, 401/403, 429, 5xx und Verbindungsfehler sagen nichts über die Datei: Der Scan
-bleibt abgewiesen ohne Sperre, der nächste Lauf versucht es erneut. Gesperrt wird nur, was an der
-Datei liegt: eine Ablehnung durch den Dienst (andere 4xx, gescheiterte Umwandlung), die
-Seitengrenze, eine unlesbare Datei oder kein erkannter Text. Die Sperre gilt für Prüfsumme,
-Verbindungstyp, Empfänger und Version von `pdf-ocr`; ändert sich eines, fällt sie. Wer die
-Bibliothek bearbeiten darf, hebt sie auf (`TEXT_RECOGNITION_BLOCK_RELEASED` im Revisionsprotokoll).
+Zeitüberschreitung, 401/403, 429, 5xx, Verbindungsfehler, eine nur teilweise Umwandlung
+(`partial_success`) und unerwartete Fehler sagen nichts über die Datei: Der Scan bleibt abgewiesen
+ohne Sperre, nichts wird gespeichert, der nächste Lauf versucht es erneut. Gesperrt wird nur, was an
+der Datei liegt: eine Ablehnung durch docling-serve (andere 4xx, gescheiterte Umwandlung), die
+Seitengrenze und eine unlesbare Datei. Ein Vision-Modell bekommt Seitenbilder, die OPAA selbst
+erzeugt; weist es eine Anfrage ab, liegt das meist an Modellname oder Einstellung, deshalb sperrt
+dort nur eine zu große Seite (413). Erkennt der Dienst keinen Text, wird das leere Ergebnis
+gespeichert statt gesperrt: Ein falsch eingestelltes Vision-Modell sperrte sonst jeden Scan. Das
+Dokument bleibt ohne Inhalt und wird wieder gelesen, sobald sich Datei oder Empfänger ändern. Die
+Sperre gilt für Prüfsumme, Verbindungstyp, Empfänger und Version von `pdf-ocr`; ändert sich eines,
+fällt sie. Wer die Bibliothek bearbeiten darf, hebt sie auf (`TEXT_RECOGNITION_BLOCK_RELEASED` im
+Revisionsprotokoll). Sperre und Erkennungsstand liegen in derselben Datenbank wie Dokumente und
+Chunks; nach einer Wiederherstellung passen sie zum Stand der Dokumente.
 
-### 5. Seitenbudget je Lauf und Plätze je Instanz
+### 5. Seitenbudget je Lauf, Plätze je Instanz und Frist je Dokument
 
 Ein Lauf sendet höchstens `opaa.ocr.max-pages-per-run` Seiten; der erste Scan passt immer. Was
 darüber liegt, bleibt unverändert, der Lauf endet unvollständig mit einer Notiz und der nächste
 setzt fort. Gleichzeitig erkennt eine Instanz höchstens `opaa.ocr.max-concurrent` Dokumente
-(ADR-0053, je Instanz); ein Lauf wartet auf einen Platz, ein Upload ohne Lauf überlässt den Scan
-bei vollem Platz dem Nachholen.
+(ADR-0053, je Instanz); ein Lauf wartet auf einen Platz, ein Upload ohne Lauf und das Nachholen
+überlassen den Scan bei vollem Platz dem nächsten Durchgang. Ein abgebrochenes Warten gibt die
+reservierten Seiten zurück. `opaa.ocr.document-timeout` ist eine harte Frist für alle Aufrufe eines
+Dokuments, bei docling-serve wie beim Vision-Modell: Jeder Aufruf bekommt höchstens, was von ihr
+übrig ist, und wird bei Ablauf abgebrochen. Sie ist auf 55 Minuten begrenzt.
 
 ### 6. Nachholen hochgeladener Scans
 
 Upload-Bibliotheken haben keine Läufe. Alle fünf Minuten liest ein Durchgang unter der
 ShedLock-Sperre `text-recognition-backlog` (ADR-0053, Entscheidung 7) wartende hochgeladene Scans
-aus der Originalablage, mit eigenem Seitenbudget und höchstens 60 Minuten. Er endet beim ersten
-Ausfall des Dienstes. Quellbibliotheken holen im nächsten Lauf nach, der ein abgewiesenes Dokument
+aus der Originalablage, mit eigenem Seitenbudget; nach 50 Minuten beginnt er kein Dokument mehr.
+Mit der Frist eines Dokuments (höchstens 55 Minuten) und dessen Einbettung bleibt er unter der
+Sperrdauer von zwei Stunden. Er endet beim ersten Ausfall des Dienstes und bei belegtem Platz. Quellbibliotheken holen im nächsten Lauf nach, der ein abgewiesenes Dokument
 ohnehin erneut liest.
 
 ### 7. Keine Personenbezüge in Log und Messwerten
@@ -97,6 +108,8 @@ Verlust kurzer und erster Zeilen werden erst gesetzt, wenn eine Messung ihre Wir
 
 - Erkennen bei jeder Neuindizierung — vervielfacht Rechenzeit und Datenabfluss ohne neuen Inhalt.
 - Sperren bei jedem Fehler — ein Ausfall des Dienstes schlösse den ganzen Bestand aus.
+- Teilergebnis einer Umwandlung speichern — fehlende Seiten blieben dauerhaft unauffindbar, weil
+  eine Neuindizierung den Dienst nicht mehr fragt.
 - Rückfall auf das andere Verfahren oder auf Tesseract — ein zweiter Empfänger ganzer Seiten ohne
   eigene Entscheidung der Verwaltung; Tesseract liest § nicht zuverlässig.
 - Seitenbilder speichern — Datenmenge ohne Nutzen für Suche und Fundstelle.

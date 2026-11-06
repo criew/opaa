@@ -124,10 +124,19 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
    */
   public TextRecognitionClient.DoclingConversion convertWithDocling(
       ActiveTextRecognition active, byte[] pdf) {
+    return convertWithDocling(active, pdf, properties.callTimeout());
+  }
+
+  /**
+   * As {@link #convertWithDocling(ActiveTextRecognition, byte[])}, within {@code timeout} where it
+   * is shorter than the call timeout - what is left of the document's deadline.
+   */
+  public TextRecognitionClient.DoclingConversion convertWithDocling(
+      ActiveTextRecognition active, byte[] pdf, Duration timeout) {
     requireCallable(active, TextRecognitionConnectionType.DOCLING_SERVE);
+    Duration bound = shorter(timeout);
     return observed(
-        active.endpoint(),
-        () -> client.convertWithDocling(active.endpoint(), properties.callTimeout(), pdf));
+        active.endpoint(), () -> client.convertWithDocling(active.endpoint(), bound, pdf));
   }
 
   /**
@@ -136,12 +145,24 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
    * @return the page as Markdown; empty for a page without text
    */
   public String recognizePage(ActiveTextRecognition active, byte[] pageImage, String mediaType) {
+    return recognizePage(active, pageImage, mediaType, properties.callTimeout());
+  }
+
+  /** As {@link #recognizePage(ActiveTextRecognition, byte[], String)}, within {@code timeout}. */
+  public String recognizePage(
+      ActiveTextRecognition active, byte[] pageImage, String mediaType, Duration timeout) {
     requireCallable(active, TextRecognitionConnectionType.OPENAI_VISION);
+    Duration bound = shorter(timeout);
     return observed(
         active.endpoint(),
-        () ->
-            client.recognizePageWithVision(
-                active.endpoint(), properties.callTimeout(), pageImage, mediaType));
+        () -> client.recognizePageWithVision(active.endpoint(), bound, pageImage, mediaType));
+  }
+
+  /** The shorter of {@code timeout} and the call timeout, at least one millisecond. */
+  private Duration shorter(Duration timeout) {
+    Duration bound =
+        timeout.compareTo(properties.callTimeout()) < 0 ? timeout : properties.callTimeout();
+    return bound.compareTo(Duration.ofMillis(1)) < 0 ? Duration.ofMillis(1) : bound;
   }
 
   @Override

@@ -19,3 +19,17 @@ pkg:maven/org.aspectj/aspectjweaver | EPL-2.0 | EPL-2.0 ist nach FSF nicht GPL-v
 
 # Frontend
 pkg:npm/@fontsource/* | OFL-1.1 | SIL Open Font License, FSF-frei und OSI-anerkannt; ausgeliefert werden nur die Schriftdateien als eigenständige Werke neben dem Programm.
+
+# OCR-Image (ocr/models.cdx.json): Modellgewichte, die ins Image eingebacken sind
+pkg:huggingface/docling-project/docling-models | CDLA-Permissive-2.0 AND Apache-2.0 | TableFormer-Gewichte von Docling. Die CDLA-Permissive-2.0 ist eine freizügige Lizenz für Daten (Nutzung, Änderung und Weitergabe ohne Copyleft); die Gewichte werden unverändert als Daten ausgeliefert und nicht mit OPAA-Code verbunden.
+
+# OCR-Image: Python-Pakete aus der Lockfile des Basis-Images docling-serve-cpu, unverändert
+# ausgeliefert. Der OCR-Dienst ist ein eigenständiges Programm in einem eigenen Container, mit dem
+# OPAA nur über HTTP spricht; sein Code wird nicht mit OPAA-Code verbunden.
+pkg:pypi/aiohappyeyeballs | Python-Software-Foundation-License | Name statt SPDX-Kennung; gemeint ist die PSF-Lizenz (SPDX: PSF-2.0), nach FSF frei und GPL-verträglich. Über aiohttp.
+pkg:pypi/defusedxml | Python-Software-Foundation-License | Name statt SPDX-Kennung; gemeint ist die PSF-Lizenz (SPDX: PSF-2.0), nach FSF frei und GPL-verträglich.
+pkg:pypi/distlib | Python-Software-Foundation-License | Name statt SPDX-Kennung; gemeint ist die PSF-Lizenz (SPDX: PSF-2.0), nach FSF frei und GPL-verträglich. Werkzeug der Paketverwaltung im Basis-Image.
+pkg:pypi/typing[-_]extensions | PSF-2.0 | PSF-Lizenz, nach FSF frei und GPL-verträglich, fehlt nur in allowed.txt.
+pkg:pypi/numpy | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Alle Teile freizügig; CC0-1.0 (gebündelte Hilfsdateien) ist nach FSF frei und GPL-verträglich, fehlt nur in allowed.txt.
+pkg:pypi/pillow | MIT-CMU | Historische Pillow-/PIL-Lizenz (HPND-Variante), nach FSF frei und GPL-verträglich, fehlt nur in allowed.txt.
+pkg:pypi/regex | Apache-2.0 AND CNRI-Python | Teile stammen aus dem sre-Modul von CPython unter der CNRI-Python-Lizenz (frei, OSI-anerkannt; nach FSF wegen ihrer Rechtswahlklausel nicht GPL-verträglich). Unverändert im eigenständigen OCR-Dienst, nicht mit OPAA-Code verbunden.

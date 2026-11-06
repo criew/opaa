@@ -658,7 +658,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 2. **Schalter der Rolle** in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
    gibt, setzt die Systemverwaltung sie über die Schnittstelle
    `/api/v1/admin/models/text-recognition`. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
-   Vision-Modell der Modell-Kennung und, falls verlangt, dem Zugangsschlüssel. Jede Änderung steht
+   Vision-Modell die Modell-Kennung und, falls verlangt, der Zugangsschlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 | Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |
@@ -690,13 +690,26 @@ docling-serve, die Rahmen seiner Zeilen auf der Seite; im Beleg steht, dass sein
 Texterkennung gelesen wurde. OPAA speichert den erkannten Text mit dem Dokument, ohne Seitenbilder,
 und löscht ihn mit ihm; eine Neuindizierung unveränderter Dateien liest daraus und ruft den Dienst
 nicht erneut. Fällt der Dienst aus (Zeitüberschreitung, Schlüssel abgelehnt, überlastet, Fehler,
-nicht erreichbar), bleibt der Scan abgewiesen und wartet; der nächste Lauf versucht es erneut,
-hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Lehnt der Dienst die Datei selbst ab
-oder liegt sie über der Seitengrenze, wird sie für dieses Verfahren gesperrt, bis jemand mit
-Bearbeitungsrecht die Sperre in der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Ist das
-Seitenbudget eines Laufs aufgebraucht, endet er „unvollständig“, der nächste setzt fort. Log und
+nicht erreichbar), wandelt docling-serve nur einen Teil um oder geht sonst etwas unerwartet schief,
+bleibt der Scan abgewiesen und wartet; nichts wird gespeichert, der nächste Lauf versucht es
+erneut, hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Weist ein Vision-Modell eine
+Anfrage ab (etwa HTTP 400 bei falschem Modellnamen), gilt das ebenso als Ausfall, nicht als Fehler
+der Datei. Lehnt docling-serve die Datei selbst ab, ist sie unlesbar oder liegt sie über der
+Seitengrenze, wird sie für dieses Verfahren gesperrt. Beim Vision-Modell sperrt nur eine Seite, die
+der Endpunkt als zu groß ablehnt (HTTP 413), die Datei. Die Sperre gilt, bis jemand mit
+Bearbeitungsrecht sie in der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Erkennt der Dienst keinen Text, bleibt
+das Dokument ohne Inhalt im Bestand und wird erst wieder gelesen, wenn sich Datei oder Dienst
+ändern; gesperrt wird es nicht. Ist das Seitenbudget eines Laufs aufgebraucht, endet er
+„unvollständig“, der nächste setzt fort. Log und
 Messwerte (`opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds`) nennen
 Verbindungstyp, Empfänger und Seitenzahl, nie eine Person oder einen Inhalt.
+
+**Rechenzeit.** docling-serve mit RapidOCR braucht auf CPU etwa 16 bis 22 Sekunden je Seite. Ein
+Bestand von 10.000 Seiten kostet einen Worker so in der Größenordnung von 55 Stunden; nach dem
+Einschalten baut sich der Rückstand über viele Läufe ab, begrenzt durch das Seitenbudget je Lauf.
+Mehr Worker oder ein Dienst mit GPU verkürzen das. Eine spätere Neuindizierung (neue Pipeline,
+andere Abschnittsgröße, Wechsel des Einbettungsmodells) liest den gespeicherten Erkennungsstand und
+erkennt nichts neu; sie kostet so viel wie bei jedem anderen Dokument.
 
 > **Externer Dienst.** Ein Vision-Modell oder docling-serve außerhalb des Hauses bekommt ganze
 > Seiten mit allem, was darauf steht, auch Namen und Vorgänge Dritter. Eine solche Anbindung
