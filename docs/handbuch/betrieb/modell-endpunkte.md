@@ -658,7 +658,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 2. **Schalter der Rolle** in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
    gibt, setzt die Systemverwaltung sie über die Schnittstelle
    `/api/v1/admin/models/text-recognition`. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
-   Vision-Modell der Modell-Kennung und, falls verlangt, dem Zugangsschlüssel. Jede Änderung steht
+   Vision-Modell die Modell-Kennung und, falls verlangt, der Zugangsschlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 | Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |
