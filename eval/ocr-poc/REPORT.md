@@ -18,6 +18,83 @@ PaddleOCR liest Zeichen am genauesten, ist auf der CPU aber drei- bis fünfmal l
 11 GB RAM. EasyOCR (Doclings bisherige Vorgabe) und Tesseract scheiden aus, weil sie § nie richtig
 lesen.
 
+## So hängen die Teile zusammen
+
+Die Varianten heißen „Docling + EasyOCR“, „Docling + RapidOCR“ und so weiter, weil Docling selbst kein
+OCR-Verfahren ist. Docling ist ein Dokumentkonverter: Er zerlegt eine Seite in Blöcke und setzt daraus
+ein strukturiertes Dokument zusammen. Den Text in den Blöcken liest eine austauschbare OCR-Engine.
+
+Das Schaubild zeigt den Vorschlag für Stufe 1. Gebaut ist davon heute nur der Bordmittel-Pfad.
+
+```mermaid
+flowchart LR
+    subgraph opaa["opaa-Backend (Java)"]
+        D["Dokument aus einer<br/>Bibliothek oder Quelle"] --> P["Indexierungspipeline"]
+        P --> W{"PDF hat eine<br/>Textebene?"}
+        W -- ja --> T["Bordmittel-Pfad<br/>Tika / PDFBox<br/>(heute schon gebaut)"]
+        W -- "nein, Scan" --> C["OCR-Client<br/>(REST)"]
+        T --> K["Chunks, Embeddings, Index<br/>Pipeline-Version am Chunk"]
+        C -- "Markdown / JSON" --> K
+    end
+
+    C -- "HTTP im internen Netz,<br/>API-Schlüssel" --> S
+
+    subgraph svc["Container docling-serve (Python)"]
+        S["REST-Schnittstelle"] --> R["Seiten rastern"]
+        R --> O["OCR-Engine (austauschbar)<br/>RapidOCR mit PP-OCR-Modellen<br/>oder EasyOCR, Tesseract"]
+        O --> L["Layoutmodell<br/>Überschrift, Absatz,<br/>Tabelle, Liste"]
+        L --> TF["TableFormer<br/>Zeilen und Spalten<br/>der Tabellen"]
+        TF --> A["Zusammenbau<br/>DoclingDocument"]
+        A --> M["Ausgabe als<br/>Markdown oder JSON"]
+    end
+```
+
+**Was opaa aufruft.** Docling läuft als eigener Container `docling-serve` im internen Netz, ohne
+veröffentlichten Port. Das Backend schickt das PDF per REST hin und bekommt Markdown oder JSON zurück.
+Danach geht es weiter wie bei jedem anderen Dokument: Das Ergebnis wird in Chunks zerlegt, eingebettet
+und indexiert. Am Chunk steht, welches Verfahren den Text geliefert hat. Fällt der Dienst aus, bleibt
+das Dokument wie heute als „kein extrahierbarer Text“ stehen. Vorschlag: Adresse und API-Schlüssel des Dienstes
+gehören in die Betriebskonfiguration (Compose, Helm, Umgebungsvariablen), weil der Dienst fest zur
+Installation gehört. Ob die Administration ihn zusätzlich pflegt, etwa je Bibliothek ein- und
+ausschaltet oder den Zustand anzeigt, ist noch nicht entschieden.
+
+**Was in Docling passiert.** Docling rechnet in mehreren Stufen. Keine davon ist ein Sprachmodell:
+
+1. **Rastern:** Docling wandelt jede PDF-Seite in ein Bild um.
+2. **OCR:** Die OCR-Engine findet auf dem Bild die Textzeilen und liest sie.
+3. **Layout:** Ein Layoutmodell erkennt die Blöcke (Überschrift, Absatz, Liste, Tabelle) und ihre
+   Lage. Docling sortiert die gelesenen Zeilen diesen Blöcken zu. Bei diesem Schritt gehen vermutlich
+   die letzten Absatzzeilen verloren, siehe [Auffälligkeiten](#auffälligkeiten).
+4. **Tabellen:** TableFormer bestimmt in Tabellenblöcken Zeilen und Spalten.
+5. **Ausgabe:** Docling baut aus allem ein strukturiertes Dokument und exportiert es als Markdown oder
+   JSON.
+
+Die OCR-Engine ist eine Einstellung von Docling. Deshalb tragen die Varianten zwei Namen:
+- **EasyOCR** ist Doclings Vorgabe.
+- **RapidOCR** ist eine schlanke Laufzeit für die Erkennungsmodelle von PaddleOCR (PP-OCRv6, als ONNX
+  umgewandelt).
+
+**Docling mit Paddle.** Das geht, und es ist genau die empfohlene Variante. Docling + RapidOCR nutzt
+die Texterkennung von PaddleOCR, braucht dafür aber nicht das Framework PaddlePaddle. Layout und Tabellen
+kommen weiter von Docling. Für die Gegenrichtung gilt:
+
+- **„PaddleOCR“ in der Tabelle** meint die komplette Paddle-Pipeline PP-StructureV3. Sie ersetzt
+  Docling ganz, mit eigenem Layout, eigenen Tabellen und eigenem Markdown, und wäre ein eigener Dienst
+  (PaddleX-Serving).
+- **Eine Paddle-OCR mit Docling-Layout** ist damit schon abgedeckt.
+- **Zeichenerkennung und Tabelleninhalte** sind bei beiden nahezu gleich gut, weil dieselbe
+  Modellfamilie liest (PaddleOCR 0,2 % CER, Docling + RapidOCR 0,9 % im Profil `mittel`).
+- **Die Unterschiede** liegen im Drumherum: Leerzeichen an Zeilenumbrüchen, Spaltenreihenfolge der
+  Tabellen, verlorene Absatzzeilen. Hinzu kommen der Ressourcenbedarf (11 GB gegenüber 3 GB RAM) und
+  die Laufzeit auf der CPU (70–85 gegenüber 16–22 s je Seite).
+
+**Bildsprachmodelle (VLM) als zweiter Weg.** Docling hat eine zweite Pipeline. Dort ersetzt ein
+kleines Bildsprachmodell Layout und OCR zugleich: Es bekommt das Seitenbild und schreibt das
+strukturierte Dokument direkt. Gemessen ist GraniteDocling (258 Mio. Parameter, braucht praktisch eine
+GPU). Über dieselbe Pipeline ließe sich auch ein anderes Modell hinter einer OpenAI-kompatiblen
+Schnittstelle anbinden, etwa PaddleOCR-VL. Das ist nicht gemessen. Ein VLM erkennt Struktur und Tabellen gut,
+kann aber ganze Textteile verlieren, siehe die Ausreißer unten.
+
 ## Korpus und Messumgebung
 
 - 72 synthetische Verwaltungsdokumente aus `eval/corpus/verwaltung`, 230 Seiten: Satzungen mit
