@@ -3964,8 +3964,13 @@ fertig war, bleibt indiziert.</p>
   wovon das Dokument handelt.</li>
 <li><strong>Anhänge</strong> (Anlagen einer Mail, Dateien an einer Confluence-Seite) werden eigene Dokumente unter
   ihrem Elterndokument, mit begrenzter Tiefe und Menge.</li>
-<li><strong>Eingescannte PDFs</strong> ohne Textebene werden als „kein extrahierbarer Text“ abgewiesen; eine
-  Texterkennung gibt es nicht.</li>
+<li><strong>Eingescannte PDFs</strong> ohne Textebene liest die Texterkennung, wenn Betrieb und Systemverwaltung
+  sie eingeschaltet haben (<a href="../betrieb/modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>).
+  Ihre Abschnitte tragen Seiten, Rahmen auf der Seite und den Vermerk, dass der Text erkannt wurde.
+  Ohne Texterkennung werden sie als „kein extrahierbarer Text“ abgewiesen. Ein Scan, den der Dienst
+  nicht lesen konnte, wartet auf den nächsten Lauf; einen gesperrten zeigt die Bibliothek über der
+  Dokumentliste. Erkennt der Dienst keinen Text, bleibt der Scan ohne Inhalt, bis sich Datei oder
+  Dienst ändern.</li>
 </ul>
 <h2 id="feste-grenzen">Feste Grenzen<a class="headerlink" href="#feste-grenzen" title="Permanent link">&para;</a></h2>
 <table>
@@ -4034,8 +4039,20 @@ Einträge, je Bibliothek die letzten zehn Läufe.</p>
 <td>nicht aufgenommen / aufgenommen, Endung passt nicht</td>
 </tr>
 <tr>
-<td>Ratenbegrenzung, Anfragebudget erschöpft</td>
-<td>Quelle bremst; der nächste Lauf setzt fort</td>
+<td>Ratenbegrenzung, Budget erschöpft</td>
+<td>Quelle bremst oder Anfrage- bzw. Seitenbudget der Texterkennung verbraucht; der nächste Lauf setzt fort</td>
+</tr>
+<tr>
+<td>Per Texterkennung gelesen</td>
+<td>Scan erkannt oder aus dem gespeicherten Erkennungsstand indiziert, auch „ohne erkannten Text“</td>
+</tr>
+<tr>
+<td>Texterkennung gescheitert / ausstehend</td>
+<td>Dienst nicht verfügbar, nur teilweise umgewandelt oder unerwarteter Fehler bzw. Seitenbudget verbraucht oder kein freier Platz; der Scan wartet auf den nächsten Lauf</td>
+</tr>
+<tr>
+<td>Texterkennung gesperrt</td>
+<td>docling-serve lehnt die Datei ab, sie ist unlesbar oder liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek</td>
 </tr>
 <tr>
 <td>in der Quelle entfernt</td>

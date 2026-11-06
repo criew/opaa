@@ -5180,13 +5180,13 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code></td>
 <td><code>100</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Größter Scan in Seiten, der an den Dienst geht; ein längerer wird nicht versucht</td>
+<td>Größter Scan in Seiten, der an den Dienst geht; ein längerer wird nicht versucht und in seiner Bibliothek als gesperrt gezeigt</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_DOCUMENT_TIMEOUT</code></td>
 <td><code>45m</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Zeitbudget aller Aufrufe für ein Dokument</td>
+<td>Feste Frist aller Aufrufe für ein Dokument, höchstens <code>55m</code> (ein größerer Wert wird darauf gekürzt, damit das Nachholen hochgeladener Scans innerhalb seiner Sperre bleibt); ein laufender Aufruf wird bei Ablauf abgebrochen</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_MAX_CONCURRENT</code></td>
@@ -5198,7 +5198,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_OCR_MAX_PAGES_PER_RUN</code></td>
 <td><code>500</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Seiten, die ein Indexierungslauf höchstens an den Dienst sendet; der Rest wartet auf den nächsten Lauf</td>
+<td>Seiten, die ein Indexierungslauf oder ein Durchgang des Nachholens hochgeladener Scans höchstens an den Dienst sendet; der Lauf endet dann „unvollständig“, der Rest wartet auf den nächsten</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_CALL_TIMEOUT</code></td>

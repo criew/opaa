@@ -4096,11 +4096,11 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 <tbody>
 <tr>
 <td>Kein Text im ganzen Dokument (Scan ohne Textebene)</td>
-<td>abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint in der Admin-Liste der Dokumente ohne Chunks.</td>
+<td>mit eingeschalteter Texterkennung erkannt (siehe unten); sonst abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint dann in der Admin-Liste der Dokumente ohne Chunks.</td>
 </tr>
 <tr>
 <td>Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen</td>
-<td>abgewiesen wie ein Scan, „kein extrahierbarer Text". Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet.</td>
+<td>wie ein Scan: ganz erkannt oder abgewiesen. Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet.</td>
 </tr>
 <tr>
 <td>Einzelne eingescannte Seiten, höchstens die Hälfte</td>
@@ -4124,6 +4124,15 @@ PDF neu oder geändert indiziert wird oder die Bibliothek vollständig neu indiz
 unverändertes, schon indiziertes PDF behält bis dahin seinen bisherigen Stand.</p>
 <p>Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.</p>
+<p><strong>Texterkennung.</strong> Ist sie eingeschaltet (<a href="../../betrieb/modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>),
+geht ein Scan an den Texterkennungsdienst. Mit docling-serve entsteht der Text mit Überschriften,
+Listen und Tabellen; Kopf- und Fußzeilen der Seiten fallen weg. Geschnitten wird nach den erkannten
+Überschriften, Tabellen zeilenweise mit ihrer Kopfzeile, wie bei einem PDF mit Textebene. Die
+Ortsangabe nennt Seiten und Abschnitt, „S. 2–3 · Abschn. § 4 Gebühren“; jeder Abschnitt trägt
+zusätzlich die Rahmen seiner Zeilen auf der Seite und den Vermerk, dass sein Text erkannt wurde.
+Ein Vision-Modell liefert je Seite Text ohne Rahmen. Der erkannte Text wird mit dem Dokument
+gespeichert, ohne Seitenbilder; ein erneutes Indizieren der unveränderten Datei braucht den Dienst
+nicht. Erkennungsfehler sind möglich, maßgeblich bleibt das Original.</p>
 <h2 id="6-grenzwerte">6. Grenzwerte<a class="headerlink" href="#6-grenzwerte" title="Permanent link">&para;</a></h2>
 <p>Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
 Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite,
@@ -4144,7 +4153,7 @@ eine höhere Grenze für einen einzelnen Inhaltsteil braucht zudem entsprechend 
 für das Backend.</p>
 <h2 id="7-nicht-verarbeitet">7. Nicht verarbeitet<a class="headerlink" href="#7-nicht-verarbeitet" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Texterkennung (OCR) für Scans. Eigenes Vorhaben, siehe Kapitel Indexierung.</li>
+<li>Einzelne eingescannte Seiten in einem PDF mit Textebene; die Texterkennung liest nur ganze Scans</li>
 <li>Formularfelder, Anmerkungen und Kommentare</li>
 <li>eingebettete Dateien und PDF-Portfolios</li>
 <li>Tabellen ohne vollständiges Gitter aus Linien behalten keine Spaltenstruktur (Abschnitt 3)</li>

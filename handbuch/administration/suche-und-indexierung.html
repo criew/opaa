@@ -3894,6 +3894,10 @@ und <code>email</code>. Hochgeladene Dokumente und das
 Dateisystem werden sofort neu verarbeitet, alle anderen Quellen im nächsten Lauf. Alte Chunks
 verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells steuern Sie unter
 <a href="modelle.html">Modelle verwalten</a>.</p>
+<p>Gescannte PDF-Dokumente kommen nach dem Einschalten der Texterkennung nach und nach in den Index:
+Quellen mit ihrem nächsten Lauf, hochgeladene Scans über ein Nachholen alle fünf Minuten. Wartende
+und gesperrte Scans zeigt jede Bibliothek über ihrer Dokumentliste. Der Nachzug der Pipeline
+<code>pdf-ocr</code> liest den gespeicherten Erkennungsstand und ruft den Dienst nicht.</p>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
 <li>Die Diagnose ist kein Nachweis über vergangene Zugriffe; dafür gibt es die

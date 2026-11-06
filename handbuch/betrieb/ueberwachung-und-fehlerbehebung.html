@@ -3942,6 +3942,10 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (<code>library</code>: Kennung, für private Bibliotheken gemeinsam <code>private</code>) und Art (<code>class</code>: <code>INVISIBLE_CHARACTERS</code>, <code>ROLE_TOKEN</code>, <code>INSTRUCTION_PHRASE</code>, <code>DATA_URL_PLACEHOLDER</code>; <a href="../referenz/wie-indexierung-arbeitet.html#laufprotokoll">Wissensbibliotheken</a>)</td>
 </tr>
 <tr>
+<td><code>opaa_ocr_documents_total</code>, <code>opaa_ocr_pages_total</code>, <code>opaa_ocr_duration_seconds_*</code></td>
+<td>Texterkennung gescannter Dokumente nach Ergebnis (<code>recognized</code>, <code>reused</code>, <code>failed</code>, <code>blocked</code>, <code>pending</code>) und Verbindungstyp, gesendete Seiten und Dauer; steigt <code>failed</code>, ist der Dienst nicht verfügbar (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
+</tr>
+<tr>
 <td><code>opaa_malware_scans_total</code></td>
 <td>Virenprüfungen nach Ergebnis (<code>clean</code>, <code>infected</code>, <code>failed</code>; <a href="netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">Netz und Sicherheit</a>)</td>
 </tr>
