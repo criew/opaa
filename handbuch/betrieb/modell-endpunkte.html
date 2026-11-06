@@ -5149,8 +5149,9 @@ bleibt der Scan abgewiesen und wartet; nichts wird gespeichert, der nächste Lau
 erneut, hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Weist ein Vision-Modell eine
 Anfrage ab (etwa HTTP 400 bei falschem Modellnamen), gilt das ebenso als Ausfall, nicht als Fehler
 der Datei. Lehnt docling-serve die Datei selbst ab, ist sie unlesbar oder liegt sie über der
-Seitengrenze, wird sie für dieses Verfahren gesperrt, bis jemand mit Bearbeitungsrecht die Sperre in
-der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Erkennt der Dienst keinen Text, bleibt
+Seitengrenze, wird sie für dieses Verfahren gesperrt. Beim Vision-Modell sperrt nur eine Seite, die
+der Endpunkt als zu groß ablehnt (HTTP 413), die Datei. Die Sperre gilt, bis jemand mit
+Bearbeitungsrecht sie in der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Erkennt der Dienst keinen Text, bleibt
 das Dokument ohne Inhalt im Bestand und wird erst wieder gelesen, wenn sich Datei oder Dienst
 ändern; gesperrt wird es nicht. Ist das Seitenbudget eines Laufs aufgebraucht, endet er
 „unvollständig“, der nächste setzt fort. Log und
