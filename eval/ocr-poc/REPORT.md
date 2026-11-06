@@ -141,8 +141,19 @@ ohne Markierung. Entschieden ist deshalb **„Rahmen ohne Kopie“**:
    dafür keine Kopie des Dokuments ab, das Original kommt wie bisher live von der Quelle. ADR-0062, der
    Bounding-Boxes für Text-PDFs verworfen hat, wird für Scans fortgeschrieben.
 
-Das durchsuchbare PDF (Sandwich, unsichtbarer Textlayer über dem Scan) ist verworfen. Es bräuchte eine
-gespeicherte abgeleitete Kopie je Dokument.
+**Verworfene Alternativen:**
+
+- **Durchsuchbares PDF (Sandwich, „Anzeigefassung“).** opaa würde aus dem JSON einen unsichtbaren
+  Textlayer über das Scanbild legen, wie OCRmyPDF. Der bestehende PDF-Viewer könnte dann über die Zitate
+  markieren, und die Suche im Original würde funktionieren.
+
+  Verworfen, weil:
+  - opaa je Scan eine abgeleitete Kopie speichern und pflegen müsste, da Originale sonst live von der
+    Quelle kommen,
+  - das Dokumente in opaa dupliziert, mit Folgen für Speicher, Löschung und Berechtigungen,
+  - die Kopie bei jeder Änderung des Originals neu entstehen müsste.
+- **Nur Seitensprung ohne Markierung.** Das wäre zu ungenau für mehrseitige Satzungen und Tabellen,
+  und das JSON liefert die Koordinaten ohnehin mit.
 
 Das JSON lohnt sich über die Fundstellen hinaus:
 - Chunks folgen der §-Gliederung statt einer Zeichenzahl.
