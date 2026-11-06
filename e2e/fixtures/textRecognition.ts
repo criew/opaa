@@ -281,7 +281,8 @@ export async function expectFramedPassage(
   expected: PageBox,
   recognized: readonly RegExp[],
 ): Promise<void> {
-  await expect(viewer.getByText(`von ${SCAN_PAGES}`)).toBeVisible()
+  // The page counter of the toolbar only: the recognised text can contain "von 5" itself.
+  await expect(viewer.getByText(new RegExp(`^Seite \\d+ von ${SCAN_PAGES}$`))).toBeVisible()
   const frame = viewer.locator(`.page[data-page-number="${expected.page}"] .recognized-region`)
   await expect(frame.first()).toBeInViewport()
   expectFramesAt(await framesOnPage(viewer, expected.page), expected)
