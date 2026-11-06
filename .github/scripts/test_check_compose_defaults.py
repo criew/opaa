@@ -4,7 +4,8 @@ at the key's own indentation), a bind variable that opens by default, the long p
 host_ip 127.0.0.1, ports or environment in flow style, network_mode: host, a bind address beyond
 loopback in an environment template, an enabled OPAA_AUTH_DEV_ALLOW_REMOTE, a frontend bind
 address the backend does not learn, a fixed secret in any spelling or in a service its exception
-does not name, and an exception that no longer matches."""
+does not name, an exception that no longer matches, and a port, even on loopback, of a service
+that must stay unpublished or an entry for such a service that is gone."""
 
 import shutil
 import subprocess
@@ -243,3 +244,29 @@ def test_an_exception_that_matches_nothing_fails(repo: Path) -> None:
         "POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:?set a password}",
     )
     fails_with(run(repo), "carries no fixed value there any more")
+
+
+def test_an_unpublished_service_with_a_loopback_port_fails(repo: Path) -> None:
+    replace(
+        repo,
+        "docker-compose.ocr.yml",
+        "    restart: unless-stopped\n",
+        '    restart: unless-stopped\n    ports:\n      - "127.0.0.1:5001:5001"\n',
+    )
+    fails_with(run(repo), "opaa-ocr publishes a port")
+
+
+def test_an_unpublished_service_with_no_ports_passes(repo: Path) -> None:
+    replace(
+        repo,
+        "docker-compose.ocr.yml",
+        "    restart: unless-stopped\n",
+        "    restart: unless-stopped\n    ports: !reset []\n",
+    )
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+
+
+def test_an_unpublished_service_that_is_gone_fails(repo: Path) -> None:
+    replace(repo, "docker-compose.ocr.yml", "  opaa-ocr:\n", "  ocr-renamed:\n")
+    fails_with(run(repo), "UNPUBLISHED_SERVICES names the service opaa-ocr")

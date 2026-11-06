@@ -189,13 +189,14 @@ ocr:
     # How long the service lets one call wait for its conversion (DOCLING_SERVE_MAX_SYNC_WAIT), in
     # seconds; at least ocr.callTimeout (application default 45 minutes).
     maxSyncWaitSeconds: 2700
-    # One worker on the CPU: about 3 GiB once the models are loaded, more for long documents.
+    # One worker on the CPU holds about 2.3 GiB after a scanned page, long documents need more;
+    # more cores shorten a conversion. An OOMKilled pod needs a higher memory limit.
     resources:
       requests:
-        cpu: "2"
-        memory: 4Gi
+        cpu: "1"
+        memory: 3Gi
       limits:
-        memory: 6Gi
+        memory: 4Gi
     # Loading the models takes seconds to a few minutes, depending on the disk; the startup probe
     # gives it periodSeconds * failureThreshold (here 10 minutes).
     startupProbe:
