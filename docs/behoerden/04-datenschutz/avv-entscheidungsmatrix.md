@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-05
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -23,13 +23,13 @@ bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 ## Was OPAA liefert
 
 Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}}. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
-[Modelle](../../handbuch/betrieb/modell-endpunkte.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
+[Modelle](../../handbuch/betrieb/modell-endpunkte.md#fünf-modellrollen), welche Quellen Cloud-Dienste sind, unter
 [Konnektoren im Überblick](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick).
 
 ## Die Matrix
 
-Die Behörde ordnet ihren Einsatz an drei Fragen ein. Jede Antwort ergibt die Partner in der letzten
-Spalte; die Partner aller drei Antworten zusammen sind die AVV-Partner.
+Die Behörde ordnet ihren Einsatz an vier Fragen ein. Jede Antwort ergibt die Partner in der letzten
+Spalte; die Partner aller vier Antworten zusammen sind die AVV-Partner.
 
 | Frage | Antwort | AVV nötig mit | Worauf achten |
 |---|---|---|---|
@@ -38,6 +38,8 @@ Spalte; die Partner aller drei Antworten zusammen sind die AVV-Partner.
 | | **B3** die Behörde, ein Dritter wartet mit Fernzugriff | der Wartungsfirma, wenn es Auftragsverarbeitung ist | Zugriff nur nach Freigabe, protokolliert, auf die Wartung begrenzt |
 | Wo läuft das Sprachmodell? | **M1** im Haus oder beim Dienstleister aus B2 | niemandem weiter; bei B2 im Vertrag des Dienstleisters | — |
 | | **M2** bei einem externen Anbieter | dem Modellanbieter, direkt oder über den Dienstleister | Verarbeitungsort und Übermittlung in Länder außerhalb der EU, keine Nutzung der Eingaben etwa für Training, Speicherdauer, Unterauftragnehmer; jede Modellrolle einzeln |
+| Wo läuft die Texterkennung? | **T1** ausgeschaltet, im Haus (auch der mitgelieferte OCR-Container) oder beim Dienstleister aus B2 | niemandem weiter; bei B2 im Vertrag des Dienstleisters | auch beim mitgelieferten OCR-Container festhalten, wer ihn betreibt und in welchem Netz er läuft; ein Container bei einem weiteren Dienstleister ist eine Antwort aus B2 |
+| | **T2** bei einem externen Anbieter | dem Anbieter des OCR-Dienstes oder Vision-Modells | er bekommt ganze Seiten gescannter Dokumente mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}); vorab mit DSB und Personalvertretung abstimmen |
 | Wo liegen die Quellen? | **K1** im eigenen Netz oder beim Dienstleister | niemandem weiter | — |
 | | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch OPAA ab ([Zugänge](../../handbuch/administration/zugaenge.md))? |
 
@@ -60,7 +62,7 @@ Summe der Antworten.
 ## Ergebnis festhalten
 
 ```text
-Einordnung:             Betrieb [B1/B2/B3] · Sprachmodell [M1/M2] · Quellen [K1/K2]
+Einordnung:             Betrieb [B1/B2/B3] · Sprachmodell [M1/M2] · Texterkennung [T1/T2] · Quellen [K1/K2]
 Partner mit AVV:        [Name, Gegenstand, Vertrag vom, Unterauftragnehmer]
 Drittlandübermittlung:  [keine / Anbieter, Land, Garantie]
 Weitere Ziele geprüft:  [Liste aus dem Faktenblatt Datenflüsse der Version [OPAA-Version]]

@@ -18,6 +18,8 @@ public class LlmEncryptedColumns implements EncryptedColumns {
       EncryptedColumn.settings("rerank_model", "api_key_ciphertext");
   static final EncryptedColumn TRANSCRIPTION_MODEL_KEY =
       EncryptedColumn.settings("transcription_model", "api_key_ciphertext");
+  static final EncryptedColumn TEXT_RECOGNITION_MODEL_KEY =
+      EncryptedColumn.settings("text_recognition_model", "api_key_ciphertext");
   static final EncryptedColumn EMBEDDING_MODEL_KEY =
       EncryptedColumn.settings("embedding_model", "api_key_ciphertext");
   static final EncryptedColumn PREVIOUS_EMBEDDING_MODEL_KEY =
@@ -28,12 +30,18 @@ public class LlmEncryptedColumns implements EncryptedColumns {
     return RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID);
   }
 
+  /** The binding of the key of the single text recognition model row. */
+  static CipherBinding textRecognitionModelKey() {
+    return TEXT_RECOGNITION_MODEL_KEY.row(TextRecognitionModelSettings.SINGLETON_ID);
+  }
+
   @Override
   public List<EncryptedColumn> encryptedColumns() {
     return List.of(
         CHAT_MODEL_KEY,
         RERANK_MODEL_KEY,
         TRANSCRIPTION_MODEL_KEY,
+        TEXT_RECOGNITION_MODEL_KEY,
         EMBEDDING_MODEL_KEY,
         PREVIOUS_EMBEDDING_MODEL_KEY);
   }

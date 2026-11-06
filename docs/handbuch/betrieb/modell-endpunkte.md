@@ -10,7 +10,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-su
 > Oberfläche zwei Modelle an, ein schnelles für den Alltag und ein größeres zum Vergleich, und
 > schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.
 
-## Vier Modellrollen
+## Fünf Modellrollen
 
 | Rolle | Wofür | Festgelegt über | Wechsel |
 |---|---|---|---|
@@ -18,6 +18,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-su
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Installation oder Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
+| **Texterkennung** | liest gescannte PDF-Seiten ohne Textebene (OCR), optional | Modellverwaltung, bis zum eigenen Reiter über die Schnittstelle `/api/v1/admin/models/text-recognition`; begrenzt durch `OPAA_OCR_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Texterkennung einschalten](#texterkennung-einschalten)) |
 
 Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
 mit einer Weiterleitung (HTTP 3xx), scheitert der Aufruf, und weder Frage noch Textausschnitte gehen
@@ -73,7 +74,7 @@ Konnektoren, und ein Quell-Host dort ist kein erlaubtes Modell. Ein Eintrag `hos
 Port nennen.
 
 Geprüft wird jede Basis-Adresse, die Installation oder Modellverwaltung speichern, testen oder nach
-Modellen abfragen, für Chat-, Embedding-, Rerank- und Transkriptionsmodell gleich. In der
+Modellen abfragen, für Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell gleich. In der
 Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
 die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
 Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
@@ -644,6 +645,53 @@ darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der 
   Instanzen tragen alle denselben Wert: Eine Instanz mit abgeschalteter Spracheingabe verwirft beim
   Abschluss der Installation einen gespeicherten Schritt Transkriptionsmodell.
 
+## Texterkennung einschalten
+
+Gescannte PDF-Dokumente haben oft keine Textebene; ohne Texterkennung (OCR) findet die Suche in
+ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei Stufen, beide ab Werk
+**aus**:
+
+1. **Betriebsschalter** `OPAA_OCR_ENABLED=true`, gelesen beim Start. Ohne ihn wird die Rolle weder
+   ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
+   Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
+   Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.
+2. **Schalter der Rolle** in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
+   gibt, setzt die Systemverwaltung sie über die Schnittstelle
+   `/api/v1/admin/models/text-recognition`. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
+   Vision-Modell die Modell-Kennung und, falls verlangt, der Zugangsschlüssel. Jede Änderung steht
+   im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
+
+| Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |
+|---|---|---|---|
+| **docling-serve** | die ganze PDF an `POST {Basis-Adresse}/v1/convert/file` | Header `X-Api-Key` | `GET {Basis-Adresse}/health`, dazu mit Schlüssel `GET {Basis-Adresse}/v1/status/poll/…` einer nicht vorhandenen Aufgabe |
+| **Vision-Modell** (OpenAI-kompatibel) | je Seite ein Bild an `POST {Basis-Adresse}/chat/completions` | `Authorization: Bearer` | `GET {Basis-Adresse}/models` |
+
+Für docling-serve ist die Basis-Adresse die Wurzel des Dienstes (etwa `http://ocr:5001`), für ein
+Vision-Modell die Adresse mit `/v1`. OPAA fordert docling-serve immer mit denselben Optionen an:
+erzwungene OCR mit RapidOCR, Sprache Deutsch, Tabellenstruktur genau, Ausgabe als JSON. Eine interne
+Adresse gibt der Betrieb wie bei den anderen Rollen über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
+frei; der Aufruf folgt keinem Redirect und geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy).
+
+**Verbindungstest.** Er liest eine mitgelieferte Testseite ohne Inhalte (Text, Umlaute, eine
+Tabelle) genau so, wie es der Betrieb täte, und unterscheidet: bereit, Schlüssel abgelehnt, Engine
+oder Modelle fehlen (der Dienst antwortet, kann die Seite aber nicht lesen oder kennt das Modell
+nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend auf der Seite
+„Suche & Indexierung" (Rolle „Texterkennung"); geprüft werden fortlaufend Erreichbarkeit und
+Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht nutzbar.
+
+**Grenzen.** Seiten je Dokument (`OPAA_OCR_MAX_PAGES_PER_DOCUMENT`), Zeit je Dokument
+(`OPAA_OCR_DOCUMENT_TIMEOUT`), gleichzeitige Dokumente je Instanz (`OPAA_OCR_MAX_CONCURRENT`), Seiten
+je Indexierungslauf (`OPAA_OCR_MAX_PAGES_PER_RUN`) und Zeit eines Aufrufs (`OPAA_OCR_CALL_TIMEOUT`);
+Werte unter [Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen).
+
+In diesem Stand richtet die Rolle Verbindung, Test und Zustand ein; die Indizierung liest gescannte
+Seiten noch nicht über sie.
+
+> **Externer Dienst.** Ein Vision-Modell oder docling-serve außerhalb des Hauses bekommt ganze
+> Seiten mit allem, was darauf steht, auch Namen und Vorgänge Dritter. Eine solche Anbindung
+> stimmt das Haus vorher mit Datenschutzbeauftragten und Personalvertretung ab; das Original
+> bleibt maßgeblich, der erkannte Text dient nur der Suche.
+
 ## vLLM / OpenAI-kompatible Server
 
 Server, die HTTP/2 nicht vertragen, etwa vLLM und andere auf Uvicorn-Basis, brauchen den
@@ -794,6 +842,7 @@ Je Rolle wirkt der Ausfall anders:
 | Embedding | Fragen scheitern, weil die Suche die Frage nicht einbetten kann; neue Dokumente enden als fehlgeschlagen | einen Ersatz-Endpunkt mit demselben Modell vorhalten; ein Wechsel nur des Endpunkts ist kein Modellwechsel | im Reiter „Einbettung" den Ersatz-Endpunkt eintragen, mit eigenem Schlüssel, wenn nötig; wirkt ohne Neustart ([Endpunkt wechseln](#endpunkt-wechseln)). In der Zwischenzeit fehlgeschlagene Dokumente erneut verarbeiten lassen, bei Quellen mit dem nächsten Lauf, bei Uploads mit „erneut verarbeiten". Ein anderes Modell verlangt eine Neueinbettung, bis dahin nur Volltextsuche ([Modell wechseln](#modell-wechseln)) |
 | Reranking | Suche läuft ohne Reranking, die Reihenfolge der Treffer ist schlechter | keine | von selbst, sobald der Endpunkt antwortet |
 | Transkription | Spracheingabe nicht verfügbar | keine | von selbst |
+| Texterkennung | gescannte Seiten bleiben ohne erkannten Text | keine | von selbst, sobald der Dienst antwortet |
 
 Ein Ersatzmodell bei einem anderen Anbieter schickt Fragen und Textausschnitte an einen anderen
 Empfänger; ob es aktiviert werden darf, klärt das Haus vorher mit Datenschutz und
@@ -855,7 +904,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |
 | Reranking „nicht verfügbar" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking |
 | Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
-| „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
+| „Die Spracherkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Entweder liegt der Host im eigenen Netz und fehlt in der Liste der Modelle (ein Eintrag in der Liste der Quellen genügt nicht), oder der Name lässt sich nicht auflösen, etwa wegen eines Tippfehlers. Welches von beidem, steht in der WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |

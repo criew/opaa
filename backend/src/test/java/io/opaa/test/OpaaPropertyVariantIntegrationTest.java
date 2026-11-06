@@ -22,6 +22,12 @@ import org.springframework.test.context.TestPropertySource;
  * channel's routes are absent can only be seen in a context started without them, and the classes
  * above never touch the channel ({@code ExternalAccessSwitchedOffIntegrationTest}).
  *
+ * <p>Text recognition rides along switched on by the operation ({@code opaa.ocr.enabled}, off by
+ * default): its administration can only be exercised against a stub service in a context where the
+ * operation allows it, while the canonical context keeps the default and so shows that nothing is
+ * contacted ({@code TextRecognitionModelAdministrationIntegrationTest}). Without a stored role the
+ * switch changes nothing for the classes above.
+ *
  * <p>The property sets do not contradict each other, so all classes share one context rather than
  * one each.
  */
@@ -34,6 +40,7 @@ import org.springframework.test.context.TestPropertySource;
       "spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1",
       "spring.ai.vectorstore.pgvector.dimensions=1536",
       "spring.ai.vectorstore.pgvector.initialize-schema=false",
-      "opaa.features.external-access.enabled=false"
+      "opaa.features.external-access.enabled=false",
+      "opaa.ocr.enabled=true"
     })
 public @interface OpaaPropertyVariantIntegrationTest {}

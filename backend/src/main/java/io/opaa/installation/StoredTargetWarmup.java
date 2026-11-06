@@ -29,7 +29,8 @@ class StoredTargetWarmup {
       "SELECT base_url FROM llm_models"
           + " UNION SELECT base_url FROM embedding_model"
           + " UNION SELECT base_url FROM rerank_model"
-          + " UNION SELECT base_url FROM transcription_model";
+          + " UNION SELECT base_url FROM transcription_model"
+          + " UNION SELECT base_url FROM text_recognition_model";
 
   private final JdbcTemplate jdbc;
   private final ModelAddressPolicy modelAddresses;

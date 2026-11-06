@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-04 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-06 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
 
 ## Kontext
 
@@ -165,9 +165,10 @@ erreichbar wird.
 
 ### 10. Modelle in der Datenbank, Vektortabelle nach der Wahl des Embedding-Modells
 
-Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellverwaltung; ihre Adressen,
-Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
-schon. Chat-, Embedding-, Rerank- und Transkriptionsmodell lassen sich schon in der Installation
+Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell sind Einträge der
+Modellverwaltung; ihre Adressen, Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration,
+ihre Timeouts und Lastgrenzen schon, bei der Texterkennung auch ihr Betriebsschalter
+([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Chat-, Embedding-, Rerank- und Transkriptionsmodell lassen sich schon in der Installation
 festlegen (Entscheidung 6; das Transkriptionsmodell nur bei eingeschalteter Spracheingabe,
 Entscheidung 16). `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
@@ -255,8 +256,8 @@ Zugänge“ ab, wenn in der Zielinstallation kein Zugang die Quellart übernehme
 Nicht übertragen werden Bestände, die die Installation mit ihren eigenen Diensten verbinden oder
 festlegen, wer sich mit welcher Rolle anmeldet:
 
-- **Chat-, Rerank- und Transkriptionsmodell**: Ihre Adresse empfängt Chats und Spracheingaben, ein
-  Import lenkte diese Daten an ein neues Ziel. Der Schlüssel folgt keiner neuen Adresse, ein
+- **Chat-, Rerank-, Transkriptions- und Texterkennungsmodell**: Ihre Adresse empfängt Chats,
+  Spracheingaben und Seiten von Dokumenten, ein Import lenkte diese Daten an ein neues Ziel. Der Schlüssel folgt keiner neuen Adresse, ein
   übertragenes Modell stünde ohne Schlüssel da. Chat-Modelle haben keinen eindeutigen Namen, über
   den sich abgleichen ließe. Das Embedding-Modell bleibt nach Entscheidung 10 außen vor.
 - **Identitätsanbieter und der Schalter der lokalen Konten**: Sie bilden das Anmeldeverfahren. Ein

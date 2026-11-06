@@ -163,6 +163,15 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
+    // Das docling-serve-Image der Texterkennungs-Suite ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar. Gleicher matchString wie bei Keycloak und Nextcloud.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/integration/docling/DoclingServeContainerTest.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+    },
     // Das Samba-Testcontainer-Image des SMB-Konnektors ist als Java-Konstante gepinnt, für
     // den docker-Manager unsichtbar. Gleicher matchString wie bei Keycloak und Nextcloud.
     {
@@ -429,6 +438,12 @@
     // zur Entscheidung.
     {
       matchPackageNames: ['rustfs/rustfs', 'amazon/aws-cli'],
+      automerge: false,
+    },
+    // Das docling-serve-Image wird nie automatisch gemergt: geprüft wird es nur von
+    // doclingIntegrationTest, das nightly oder per Label läuft und kein Required Check ist.
+    {
+      matchPackageNames: ['quay.io/docling-project/docling-serve-cpu'],
       automerge: false,
     },
     // Keycloak- und Nextcloud-Image werden nie automatisch gemergt: Der Tag steckt in den

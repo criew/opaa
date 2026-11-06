@@ -438,6 +438,11 @@ public enum AuditEventType {
    * administration; the key appears only as set, changed or removed.
    */
   TRANSCRIPTION_MODEL_CHANGED,
+  /**
+   * The text recognition model role (switch, connection type, address, model or key) changed in the
+   * model administration; the key appears only as set, changed or removed.
+   */
+  TEXT_RECOGNITION_MODEL_CHANGED,
 
   // Diagnose in fremdem Rechtekontext ("Sicht als")
   /**

@@ -677,6 +677,29 @@ tasks.register<Test>("nextcloudIntegrationTest") {
     outputs.cacheIf { false }
 }
 
+// The docling-serve container suite (io.opaa.integration.docling.*) reads the shipped test page of
+// the text recognition role with a real docling-serve. The CPU image is several gigabytes and the
+// first conversion loads layout, table and OCR models, so it stays out of build/check. Docker is the
+// only precondition; OPAA_OCR_IT_IMAGE replaces the image. CI runs it nightly and on demand
+// (.github/workflows/docling-integration.yml).
+tasks.register<Test>("doclingIntegrationTest") {
+    description = "Integration tests against a real docling-serve in Docker " +
+        "(io.opaa.integration.docling.*). Needs Docker; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.integration.docling.*")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // ADR-0040: the Google Drive suite against a real Workspace, read-only. It runs only on the
 // maintainer's machine with OPAA_GDRIVE_IT_KEY_FILE pointing at a key file outside the repository
 // and is skipped without it; no CI job, label or secret (README.md beside the test).
@@ -730,6 +753,7 @@ tasks.register<Test>("openAiIntegrationTest") {
         excludeTestsMatching("io.opaa.integration.confluence.*")
         excludeTestsMatching("io.opaa.integration.keycloak.*")
         excludeTestsMatching("io.opaa.integration.nextcloud.*")
+        excludeTestsMatching("io.opaa.integration.docling.*")
     }
     // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
     // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and

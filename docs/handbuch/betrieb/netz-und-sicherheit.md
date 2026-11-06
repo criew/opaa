@@ -232,7 +232,7 @@ Internet bleibt nur diese Seite leer. Was davon belegt ist, nennen Nachweis und 
 - **Images vorab bereitstellen:** Backend, Frontend und Datenbank (unter Kubernetes dazu die Images
   des Charts) in eine interne Registry übernehmen oder auf den Hosts laden. Ein Start ohne
   Internet darf kein Image mehr nachladen.
-- **Modelle im Haus:** Chat- und Embedding-Modell, bei Bedarf Reranking und Transkription, laufen
+- **Modelle im Haus:** Chat- und Embedding-Modell, bei Bedarf Reranking, Transkription und Texterkennung, laufen
   auf einem Modellserver im Netz der Installation ([Modelle](modell-endpunkte.md)); seine Modellgewichte
   werden vorab dort abgelegt.
 - **Anmeldung im Haus:** ein Identitätsanbieter im eigenen Netz oder die lokale Anmeldung

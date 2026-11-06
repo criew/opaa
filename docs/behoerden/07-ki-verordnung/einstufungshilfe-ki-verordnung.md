@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-23
@@ -30,6 +30,10 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 - **Nicht geliefert:** Wasserzeichen im Text, signiertes Manifest, Erkennung, ob ein Text aus OPAA
   stammt. Markieren kann nur das Modell
   ([Handbuch, Modelle](../../handbuch/betrieb/modell-endpunkte.md#kennzeichnung-erzeugter-texte)).
+- **Texterkennung:** Gescannte PDF-Seiten kann ein Texterkennungsdienst oder ein Vision-Modell
+  lesen, ab Werk zweifach aus ({{faktenblatt:voreinstellungen#ki-funktion-text-recognition}},
+  {{faktenblatt:voreinstellungen#opaa-ocr-enabled}}). Der erkannte Text dient nur der Suche, das
+  Original bleibt maßgeblich; die Funktion interagiert nicht mit Personen und bewertet keine.
 - **Kein Schulungsmaterial;** das Handbuch zur Suche taugt als Grundlage einer Einweisung.
 - **Updates:** Das Update-Paket weist geänderte Standardmodelle und Prompts aus.
 

@@ -923,6 +923,14 @@ auditEvents:
       als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“, „geändert“ oder „entfernt“
       (apiKeyChange), nie mit dem Wert
     payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model, vocabulary]
+  - id: TEXT_RECOGNITION_MODEL_CHANGED
+    trigger: >-
+      Schalter, Verbindungstyp, Adresse, Modell oder Zugangsschlüssel der Texterkennung werden
+      durch die Systemverwaltung geändert
+    details: >-
+      Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
+      als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, connectionType, enabled, model]
   - id: DIAGNOSTIC_IMPERSONATION_GRANTED
     trigger: Die Befugnis „Sicht als“ wird einer Person erteilt
     payloadKeys: [revoked, scopeGroupId, validFrom, validUntil]

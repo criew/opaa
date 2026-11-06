@@ -85,6 +85,27 @@ dataFlows:
     settings:
       [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled,
       installation_steps.payload]
+  - id: text-recognition-model
+    group: MODEL
+    viaOutboundProxy: true
+    target: >-
+      Der Texterkennungsdienst, den die Systemverwaltung in der Modellverwaltung hinterlegt: ein
+      docling-serve, etwa der mitgelieferte Container, oder ein OpenAI-kompatibles Vision-Modell
+    data: >-
+      Ganze Seiten gescannter PDF-Dokumente der Bibliotheken, als PDF (docling-serve) oder als
+      Seitenbild (Vision-Modell), mit allem, was darauf steht; Verbindungstest nur die mitgelieferte
+      Testseite ohne Inhalte, Statusprüfung nur die Abfrage von Zustand und Schlüssel (docling-serve)
+      oder der Modellliste
+    trigger: >-
+      Statusprüfung und Verbindungstest in der Modellverwaltung; Dokumentseiten nur, wenn die
+      Indizierung die Rolle für ein gescanntes PDF-Dokument ohne Textebene aufruft
+    switchOff: >-
+      Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
+      die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der
+      Modellverwaltung
+    settings:
+      [opaa.ocr.enabled, text_recognition_model.enabled, text_recognition_model.connection_type,
+      text_recognition_model.base_url]
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true

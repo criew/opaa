@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-06
 
 ## Kontext
 
@@ -24,6 +24,17 @@ Gebaut wurde das in Epic #755 und #762. Die Betriebssicht steht im Handbuch unte
 Alle Modellrollen werden ausschließlich über die OpenAI-kompatible Schnittstelle angebunden. Einen
 eigenen Anbieter-Typ für Ollama gibt es nicht; Ollama wird über seinen Pfad `/v1` eingetragen wie vLLM,
 LiteLLM oder Azure. Ein Weg heißt ein Codepfad, ein Verbindungstest und ein Fehlerbild.
+
+Einzige Ausnahme ist die Texterkennung gescannter PDF-Dokumente (OCR): Für sie gibt es keine
+OpenAI-kompatible Standardschnittstelle, und spezialisierte OCR-Pipelines lesen Tabellen und
+Seitenaufbau deutlich besser als ein allgemeines Vision-Modell. Die Rolle kennt deshalb genau zwei
+Verbindungstypen: die API von docling-serve (ganze PDF, Schlüssel als `X-Api-Key`), auf der auch der
+mitgelieferte OCR-Container beruht, und ein OpenAI-kompatibles Vision-Modell (je Seite ein Bild,
+Schlüssel als Bearer). Weitere Typen kommen nicht hinzu; ein anderer OCR-Dienst wird über einen der
+beiden angebunden. Adressprüfung, Schlüsselbehandlung und Protokollierung gelten unverändert. Über
+der Rolle steht ein Betriebsschalter (`opaa.ocr.enabled`, Voreinstellung aus) wie beim Virenscanner:
+ausgeschaltet wird die Rolle weder ausgewertet noch kontaktiert, weil ganze Seiten von Dokumenten
+einen eigenen Datenfluss bilden, über den der Betrieb entscheidet.
 
 ### 2. Zugangsschlüssel optional
 
@@ -67,6 +78,8 @@ eine Auswahlliste dafür wäre eine Falle.
 ## Konsequenzen
 
 - Einfacher: ein Codepfad für alle Anbieter; Modellwechsel ohne Neustart, wirksam auf allen Instanzen.
+- Schwieriger: Die Texterkennung bringt einen zweiten Codepfad mit eigenem Verbindungstest; er
+  bleibt auf diese eine Rolle und zwei Typen begrenzt.
 - Schwieriger: Ollama-eigene Optionen wie `num_ctx` oder `keep_alive` sind über die Schnittstelle
   nicht setzbar. Sie bleiben Betriebskonfiguration am Ollama-Server, wo sie als Ressourcenfrage der
   Maschine auch hingehören.

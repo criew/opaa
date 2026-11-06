@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-05
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -67,6 +67,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 | Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/referenz/rechte-matrix.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
 | Inhalte erreichen über ein Dienstkonto ein Fachverfahren und dessen Nutzende | Zustimmung der Bibliotheksverwaltung je Dienstkonto, befristet, mit Erinnerung und sofort widerrufbar; Kanal nur im Hausnetz ([Dienstkonten](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten), [Dienstkonto aufnehmen](../../handbuch/benutzer/arbeitsmittel-teilen.md#dienstkonto-aufnehmen)) | wer zustimmt, Protokollierung im Fachverfahren, Kreis seiner Nutzenden | [ ] |
 | Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modell-endpunkte.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
+| Ganze Seiten gescannter Dokumente gehen an einen Texterkennungsdienst | Texterkennung zweistufig ab Werk aus ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}, {{faktenblatt:datenfluesse#text-recognition-model}}), Original bleibt maßgeblich ({{faktenblatt:voreinstellungen#ki-funktion-text-recognition}}) | Auch beim mitgelieferten OCR-Container: wer ihn betreibt (eigener Betrieb oder Dienstleister), in welchem Netz er läuft und wer ihn erreicht, keine Ablage und keine Logs der Seiten; ein externer Dienst nur nach Abstimmung mit DSB und Personalvertretung ([Texterkennung einschalten](../../handbuch/betrieb/modell-endpunkte.md#texterkennung-einschalten)) | [ ] |
 | Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/referenz/wie-die-suche-arbeitet.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
 | Daten bleiben länger als nötig | Fristen und Löschung je Datum ({{faktenblatt:fristen}}) | gewählte Fristen | [ ] |
 | Beschäftigte sollen ihre Selbstauskunft vorlegen, etwa bei Vorgesetzten | Hinweis gegen die Vorlage in Oberfläche und Auskunft, keine Signatur, Download nur nach erneuter Anmeldung, Benachrichtigung bei jedem Start ([Selbstauskunft](../../handbuch/benutzer/meine-daten.md#eigene-daten-herunterladen)) | Regel in [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) oder [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) | [ ] |

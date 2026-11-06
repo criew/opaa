@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-05
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -78,6 +78,10 @@ Stand:                   [Datum]        geprüft durch: [Name]
   Empfänger: Es erhält Fundstellen aus den Bibliotheken, deren Verwaltung ihm zugestimmt hat, und
   gibt sie an die eigenen Nutzenden weiter. Die Behörde trägt es als Empfänger ein; was das
   Verfahren selbst damit tut und protokolliert, gehört in dessen eigenen Eintrag.
+- Ist die Texterkennung eingeschaltet, ist ihr Dienst ein weiterer Empfänger ganzer Seiten
+  gescannter Dokumente ({{faktenblatt:datenfluesse#text-recognition-model}}). Läuft er im Haus,
+  etwa als mitgelieferter OCR-Container, bleibt er Teil des Betriebs; ein externer Anbieter gehört
+  als Auftragsverarbeiter in den Eintrag.
 - Nutzt die Behörde das Muster ihrer Aufsichtsbehörde, überträgt sie die Angaben dorthin.
 
 ## Zum Nachlesen

@@ -13,11 +13,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * The model roles of this instance for the disclosure: every managed chat model, the embedding
- * model and the rerank and transcription roles, each with address and model, never with its key. A
- * role sends data when it is switched on and bound, whether or not its endpoint answers right now.
- * The installed embedding model and the rerank and transcription roles are stored settings: address
- * without credentials and model, with the time they were stored; a role without a row answers its
- * factory default (off, no address) without a time.
+ * model and the rerank, transcription and text recognition roles, each with address and model,
+ * never with its key. A role sends data when it is switched on and bound, whether or not its
+ * endpoint answers right now. The installed embedding model and the other roles are stored
+ * settings: address without credentials and model, with the time they were stored; a role without a
+ * row answers its factory default (off, no address) without a time.
  */
 @Component
 class LlmInstanceState implements InstanceStateSource {
@@ -29,6 +29,8 @@ class LlmInstanceState implements InstanceStateSource {
   private final TranscriptionRoleStatusProvider transcription;
   private final RerankModelSettingsRepository rerankRows;
   private final TranscriptionModelSettingsRepository transcriptionRows;
+  private final TextRecognitionRoleStatusProvider textRecognition;
+  private final TextRecognitionModelSettingsRepository textRecognitionRows;
 
   LlmInstanceState(
       LlmModelRepository models,
@@ -37,7 +39,11 @@ class LlmInstanceState implements InstanceStateSource {
       RerankRoleStatusProvider rerank,
       TranscriptionRoleStatusProvider transcription,
       RerankModelSettingsRepository rerankRows,
-      TranscriptionModelSettingsRepository transcriptionRows) {
+      TranscriptionModelSettingsRepository transcriptionRows,
+      TextRecognitionRoleStatusProvider textRecognition,
+      TextRecognitionModelSettingsRepository textRecognitionRows) {
+    this.textRecognition = textRecognition;
+    this.textRecognitionRows = textRecognitionRows;
     this.rerankRows = rerankRows;
     this.transcriptionRows = transcriptionRows;
     this.models = models;
@@ -97,6 +103,27 @@ class LlmInstanceState implements InstanceStateSource {
                     row.getModelIdentifier(),
                     row.getUpdatedAt()),
             () -> putRole(settings, "transcription_model", false, null, null, null));
+    textRecognitionRows
+        .findStored()
+        .ifPresentOrElse(
+            row -> {
+              putRole(
+                  settings,
+                  "text_recognition_model",
+                  row.isEnabled(),
+                  row.getBaseUrl(),
+                  row.getModelIdentifier(),
+                  row.getUpdatedAt());
+              settings.put(
+                  "text_recognition_model.connection_type",
+                  new StoredValue(row.getConnectionType().name(), row.getUpdatedAt()));
+            },
+            () -> {
+              putRole(settings, "text_recognition_model", false, null, null, null);
+              settings.put(
+                  "text_recognition_model.connection_type",
+                  new StoredValue(TextRecognitionEndpoint.DEFAULT_CONNECTION_TYPE.name(), null));
+            });
     return Map.copyOf(settings);
   }
 
@@ -121,7 +148,8 @@ class LlmInstanceState implements InstanceStateSource {
         "chat-model", !models.findAllByActiveTrue().isEmpty(),
         "embedding-model", embedding.getEmbeddingInfo().installed(),
         "rerank-model", sends(rerank.currentStatus().state()),
-        "transcription-model", sends(transcription.currentStatus().state()));
+        "transcription-model", sends(transcription.currentStatus().state()),
+        "text-recognition-model", sends(textRecognition.currentStatus().state()));
   }
 
   @Override
@@ -156,6 +184,14 @@ class LlmInstanceState implements InstanceStateSource {
             transcriptionStatus.baseUrl(),
             transcriptionStatus.modelIdentifier(),
             sends(transcriptionStatus.state())));
+    TextRecognitionRoleStatus textRecognitionStatus = textRecognition.currentStatus();
+    providers.add(
+        new ModelProvider(
+            "TEXT_RECOGNITION",
+            null,
+            textRecognitionStatus.baseUrl(),
+            textRecognitionStatus.modelIdentifier(),
+            sends(textRecognitionStatus.state())));
     return providers;
   }
 
@@ -165,5 +201,9 @@ class LlmInstanceState implements InstanceStateSource {
 
   private static boolean sends(TranscriptionRoleState state) {
     return state == TranscriptionRoleState.READY || state == TranscriptionRoleState.UNREACHABLE;
+  }
+
+  private static boolean sends(TextRecognitionRoleState state) {
+    return state == TextRecognitionRoleState.READY || state == TextRecognitionRoleState.UNREACHABLE;
   }
 }

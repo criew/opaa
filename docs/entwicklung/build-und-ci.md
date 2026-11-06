@@ -56,6 +56,13 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # braucht Docker, Group Folders zusätzlich den App-Store. Nicht
                                   # Teil von build/test: Image rund 2,1 GB. In CI nightly und per
                                   # Label "nextcloud-suite" (#2152)
+./gradlew doclingIntegrationTest # Texterkennungs-Client gegen ein echtes docling-serve im
+                                  # Container (io.opaa.integration.docling.*): liest die
+                                  # mitgelieferte Testseite mit den Optionen des Betriebs, trennt
+                                  # falschen Schlüssel und nicht erreichbaren Dienst; braucht nur
+                                  # Docker, OPAA_OCR_IT_IMAGE ersetzt das Image (etwa durch das
+                                  # gelieferte opaa-ocr). Nicht Teil von build/test: CPU-Image
+                                  # mehrere GB. In CI nightly und per Label "docling-suite"
 OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIntegrationTest
                                   # Google-Drive-Konnektor gegen ein echtes Workspace, nur
                                   # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei

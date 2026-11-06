@@ -237,6 +237,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getEmbeddingInfo",
             "getRerankModelSettings",
             "getTranscriptionModelSettings",
+            "getTextRecognitionModelSettings",
             "listOidcProviders",
             "getOidcProvider",
             "getOidcProviderImpact",

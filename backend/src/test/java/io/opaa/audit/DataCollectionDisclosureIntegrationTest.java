@@ -239,7 +239,11 @@ class DataCollectionDisclosureIntegrationTest {
           "rerank_model.model_identifier",
           "transcription_model.enabled",
           "transcription_model.base_url",
-          "transcription_model.model_identifier");
+          "transcription_model.model_identifier",
+          "text_recognition_model.enabled",
+          "text_recognition_model.connection_type",
+          "text_recognition_model.base_url",
+          "text_recognition_model.model_identifier");
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
@@ -336,6 +340,10 @@ class DataCollectionDisclosureIntegrationTest {
     jdbcTemplate.update(
         "INSERT INTO transcription_model (id, enabled, base_url, model_identifier, language,"
             + " updated_at) VALUES (1, true, 'http://stt.example/v1', 'whisper', 'de', now())");
+    jdbcTemplate.update(
+        "INSERT INTO text_recognition_model (id, enabled, connection_type, base_url,"
+            + " model_identifier, updated_at) VALUES (1, true, 'OPENAI_VISION',"
+            + " 'http://vlm.example/v1', 'paddle-vl', now())");
 
     JsonNode export = exportAsAdmin();
 
@@ -352,7 +360,11 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("rerank_model.model_identifier", "bge-reranker"),
             Map.entry("transcription_model.enabled", "true"),
             Map.entry("transcription_model.base_url", "http://stt.example/v1"),
-            Map.entry("transcription_model.model_identifier", "whisper"));
+            Map.entry("transcription_model.model_identifier", "whisper"),
+            Map.entry("text_recognition_model.enabled", "true"),
+            Map.entry("text_recognition_model.connection_type", "OPENAI_VISION"),
+            Map.entry("text_recognition_model.base_url", "http://vlm.example/v1"),
+            Map.entry("text_recognition_model.model_identifier", "paddle-vl"));
     assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {
