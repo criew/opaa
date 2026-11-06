@@ -7,8 +7,11 @@ import type {
   ChatSearchResponse,
 } from '@/shared/api/types'
 import { mockQueryResponses } from './queryFixtures'
+import { SCAN_CHAT } from './scanChatFixtures'
 
 const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
+  // an answer from scanned PDFs: frames in the viewer, recognized-text marks on the Belege
+  'chat-scan': SCAN_CHAT,
   'chat-personal-1': {
     id: 'chat-personal-1',
     spaceId: 'space-personal',

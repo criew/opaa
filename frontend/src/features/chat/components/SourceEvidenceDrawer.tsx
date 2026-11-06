@@ -13,6 +13,8 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SearchIcon from '@mui/icons-material/Search'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import RecognizedTextNotice from '@/shared/ui/RecognizedTextNotice'
+import { isRecognizedText } from '@/shared/utils/recognizedText'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   citationRowId,
@@ -87,6 +89,8 @@ interface EvidenceDoc {
   sourceUrl?: string | null
   /** "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
   filterMatchLabel?: string
+  /** The source's passages were read by text recognition from a scan. */
+  recognizedText: boolean
 }
 
 function formatAnsweredAt(answeredAt: Date): string {
@@ -234,6 +238,7 @@ export default function SourceEvidenceDrawer({
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
       filterMatchLabel: metadataFilterMatchLabel(shown(doc.source)),
+      recognizedText: readByTextRecognition(doc.source),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
@@ -249,6 +254,7 @@ export default function SourceEvidenceDrawer({
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
       filterMatchLabel: metadataFilterMatchLabel(shown(source)),
+      recognizedText: readByTextRecognition(source),
     }))
     // Cited rows keep `citations.docs` order, ascending by citation number; uncited ones keep
     // `citations.uncited` order, the pipeline's. Never reordered by relevanceScore - a persisted
@@ -474,6 +480,8 @@ export default function SourceEvidenceDrawer({
                     {doc.locations.join(' · ')}
                   </Typography>
                 )}
+                {/* A passage read by text recognition may differ from the scanned original. */}
+                {doc.recognizedText && <RecognizedTextNotice />}
                 {/* The Leerwert mark of a hit kept under an active filter. */}
                 {doc.filterMatchLabel && (
                   <Typography
@@ -602,6 +610,11 @@ export default function SourceEvidenceDrawer({
       </Box>
     </Drawer>
   )
+}
+
+/** Whether any retrieved passage of `source` carries an anchor from text recognition. */
+function readByTextRecognition(source: SourceReference | undefined): boolean {
+  return (source?.chunkLocations ?? []).some((location) => isRecognizedText(location.anchor))
 }
 
 /**

@@ -9,16 +9,21 @@ import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import FitWidthIcon from '@mui/icons-material/WidthFull'
 import TocIcon from '@mui/icons-material/Toc'
+import SubjectIcon from '@mui/icons-material/Subject'
+import { alpha } from '@mui/material/styles'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
 import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { markHighlight } from '@/shared/theme/tokens'
+import { isRecognizedText, RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
 import { sha256Hex } from '../utils/sha256'
 import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
+import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/recognizedRegions'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
+import RecognizedTextPanel from './RecognizedTextPanel'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -27,6 +32,8 @@ const ZOOM_STEP = 1.25
 const MIN_SCALE = 0.25
 const MAX_SCALE = 5
 
+const RECOGNIZED_TEXT_PANEL_ID = 'pdf-recognized-text'
+
 export interface PdfViewerProps {
   data: ArrayBuffer
   anchor?: ChunkAnchor | null
@@ -34,9 +41,13 @@ export interface PdfViewerProps {
   contentSha256?: string | null
   /** pdf.js could not open or render the file - the caller falls back to the browser viewer. */
   onError: (error: unknown) => void
+  /** The cited document and passage; a scan's side panel shows the passage's recognized text. */
+  documentId?: string | null
+  chunkIndex?: number | null
 }
 
-type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor'
+/** `framed` and `page-only` belong to a scan: frames drawn, or only its page opened. */
+type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor' | 'framed' | 'page-only'
 
 interface Passage {
   from: number
@@ -51,17 +62,29 @@ interface Passage {
  * find leaves the page unmarked and says so, as does an original whose checksum differs from the
  * indexed one. Annotations and forms stay off and no scripting manager is wired in, so an original
  * runs no JavaScript.
+ *
+ * A scan read by text recognition has no text layer to search: its anchor's frames are drawn over
+ * the unchanged original on every page they touch, and the view scrolls to the first one. Without
+ * frames (a vision model) it opens the page and says the passage is not framed. Beside the scan,
+ * „Erkannter Text“ shows what was read.
  */
-export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfViewerProps) {
+export default function PdfViewer({
+  data,
+  anchor,
+  contentSha256,
+  onError,
+  documentId,
+  chunkIndex,
+}: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<PdfJsViewer | null>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [page, setPage] = useState(1)
-  const [markState, setMarkState] = useState<MarkState>(
-    anchor === null ? 'no-anchor' : anchor?.quoteStart ? 'pending' : 'none',
-  )
+  const recognized = isRecognizedText(anchor)
+  const [recognizedOpen, setRecognizedOpen] = useState(true)
+  const [markState, setMarkState] = useState<MarkState>(() => initialMarkState(anchor))
   const [changed, setChanged] = useState(false)
   const reportError = useEffectEvent((error: unknown) => onError(error))
 
@@ -107,20 +130,38 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
           linkService.setDocument(null)
         }
 
-        const passage = await passageOf(document, anchor)
+        const scan = isRecognizedText(anchor)
+        const frames = scan ? framedPages(anchor) : null
+        const passage = scan
+          ? scanPassage(document, anchor, frames)
+          : await passageOf(document, anchor)
         if (cancelled) return
-        if (anchor?.quoteStart && passage === null) setMarkState('not-found')
+        if (!scan && anchor?.quoteStart && passage === null) setMarkState('not-found')
         let jumped = false
 
         eventBus.on('pagesinit', () => {
           viewer.currentScaleValue = 'auto'
           if (passage) viewer.scrollPageIntoView({ pageNumber: passage.from })
         })
+        if (frames) {
+          eventBus.on(
+            'pagerendered',
+            ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
+              const first = drawRegions(source.div, regionsOnPage(anchor, pageNumber))
+              // drawn again after every zoom step, scrolled to only once
+              if (first && pageNumber === frames.from && !jumped) {
+                jumped = true
+                first.scrollIntoView?.({ block: 'center' })
+                setMarkState('framed')
+              }
+            },
+          )
+        }
         eventBus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => setPage(pageNumber))
         eventBus.on(
           'textlayerrendered',
           ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
-            if (!passage || !anchor?.quoteStart) return
+            if (scan || !passage || !anchor?.quoteStart) return
             if (pageNumber < passage.from || pageNumber > passage.to) return
             const startsHere = pageNumber === passage.from
             const spans = textSpans(source.div)
@@ -226,6 +267,21 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         <Typography component="span" sx={{ fontSize: 14, mx: 1 }}>
           {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
         </Typography>
+        {recognized && (
+          <Tooltip
+            title={recognizedOpen ? 'Erkannten Text ausblenden' : 'Erkannten Text einblenden'}
+          >
+            <IconButton
+              size="small"
+              aria-label="Erkannter Text"
+              aria-expanded={recognizedOpen}
+              aria-controls={recognizedOpen ? RECOGNIZED_TEXT_PANEL_ID : undefined}
+              onClick={() => setRecognizedOpen((open) => !open)}
+            >
+              <SubjectIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
         <Tooltip title="Verkleinern">
           <IconButton size="small" aria-label="Verkleinern" onClick={() => zoom(1 / ZOOM_STEP)}>
             <RemoveIcon fontSize="small" />
@@ -247,14 +303,24 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         sx={
           changed || markState === 'not-found'
             ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
-            : markState === 'no-anchor'
+            : markState === 'no-anchor' || markState === 'framed' || markState === 'page-only'
               ? { fontSize: 13, color: 'text.secondary' }
               : visuallyHidden
         }
       >
-        {statusText(markState, changed, anchor?.pageFrom != null, page)}
+        {recognized
+          ? scanStatusText(markState, changed, anchor)
+          : statusText(markState, changed, anchor?.pageFrom != null, page)}
       </Typography>
-      <Box sx={{ display: 'flex', flex: 1, minHeight: 0, gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: recognized ? 'column' : 'row', sm: 'row' },
+          flex: 1,
+          minHeight: 0,
+          gap: 1,
+        }}
+      >
         {hasOutline && outlineOpen && (
           <Box
             id="pdf-outline"
@@ -272,7 +338,15 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
             <PdfOutline nodes={outline} activeNode={activeNode(outline, page)} onSelect={goTo} />
           </Box>
         )}
-        <Box sx={{ position: 'relative', flex: 1, minWidth: 0, bgcolor: 'action.hover' }}>
+        <Box
+          sx={{
+            position: 'relative',
+            flex: 1,
+            minWidth: 0,
+            minHeight: 160,
+            bgcolor: 'action.hover',
+          }}
+        >
           {!pdf && (
             <CircularProgress
               aria-label="PDF wird geladen"
@@ -294,14 +368,63 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
                 boxShadow: `0 0 0 2px ${markHighlight}`,
                 borderRadius: '2px',
               },
+              // The frame lies on the scanned paper, which stays light in both schemes: the
+              // accent's pressed tone stays far above 3:1 there, the solid 3 px line is its shape.
+              [`& .${REGION_CLASS}`]: {
+                position: 'absolute',
+                zIndex: 3,
+                pointerEvents: 'none',
+                boxSizing: 'border-box',
+                border: '3px solid',
+                borderColor: 'primary.dark',
+                borderRadius: '3px',
+                backgroundColor: (theme) => alpha(theme.palette.primary.dark, 0.06),
+              },
             }}
           >
             <div className="pdfViewer" />
           </Box>
         </Box>
+        {recognized && recognizedOpen && anchor && (
+          <RecognizedTextPanel
+            id={RECOGNIZED_TEXT_PANEL_ID}
+            anchor={anchor}
+            documentId={documentId}
+            chunkIndex={chunkIndex}
+          />
+        )}
       </Box>
     </Box>
   )
+}
+
+function initialMarkState(anchor: ChunkAnchor | null | undefined): MarkState {
+  if (anchor === null) return 'no-anchor'
+  if (isRecognizedText(anchor)) return framedPages(anchor) ? 'pending' : 'page-only'
+  return anchor?.quoteStart ? 'pending' : 'none'
+}
+
+/** A scan's status line, visible: the reader compares frame and recognized text with the scan. */
+function scanStatusText(
+  markState: MarkState,
+  changed: boolean,
+  anchor: ChunkAnchor | null | undefined,
+): string {
+  if (changed) return 'Das Original wurde seit der Antwort geändert – der Rahmen kann abweichen.'
+  const frames = framedPages(anchor)
+  if (markState === 'framed' && frames) {
+    const pages =
+      frames.from === frames.to
+        ? `auf Seite ${frames.from}`
+        : `auf den Seiten ${frames.from}–${frames.to}`
+    return `Fundstelle ${pages} umrahmt. ${RECOGNIZED_TEXT_NOTICE}.`
+  }
+  if (markState === 'page-only') {
+    const where =
+      anchor?.pageFrom != null ? `Fundstelle auf Seite ${anchor.pageFrom}, im Scan` : 'Im Scan'
+    return `${where} nicht umrahmt. ${RECOGNIZED_TEXT_NOTICE}.`
+  }
+  return ''
 }
 
 /** What the status line says: warnings visibly, a found passage for screen readers only. */
@@ -335,6 +458,19 @@ function textSpans(pageDiv: HTMLElement): HTMLElement[] {
   return Array.from(pageDiv.querySelectorAll<HTMLElement>('.textLayer span')).filter(
     (span) => !span.classList.contains('markedContent') && span.getAttribute('role') !== 'img',
   )
+}
+
+/** The pages a scan opens at: those of its frames, else the anchor's; never searched. */
+function scanPassage(
+  pdf: PDFDocumentProxy,
+  anchor: ChunkAnchor | null | undefined,
+  frames: { from: number; to: number } | null,
+): Passage | null {
+  const from = frames?.from ?? anchor?.pageFrom
+  if (from == null) return null
+  const first = Math.min(Math.max(from, 1), pdf.numPages)
+  const last = Math.min(Math.max(frames?.to ?? anchor?.pageTo ?? first, first), pdf.numPages)
+  return { from: first, to: last }
 }
 
 /** The pages the anchor's passage spans, clamped to the document; searched when it names none. */

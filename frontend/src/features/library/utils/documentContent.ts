@@ -119,6 +119,9 @@ export interface PdfPreviewResult {
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the citation was made. */
   contentSha256?: string | null
+  /** The cited document and passage, for the recognized text a scan shows beside it. */
+  documentId?: string
+  chunkIndex?: number | null
 }
 
 export interface TextPreviewResult {

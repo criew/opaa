@@ -179,6 +179,51 @@ describe('SourceEvidenceDrawer (#592)', () => {
     expect(fileNames(drawer)).toEqual(['a.md'])
   })
 
+  it('marks a Beleg read by text recognition, and only that one', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-ocr',
+          role: 'assistant',
+          content: 'Erstens【source: scan#4 | scan.pdf】, zweitens【source: text#0 | text.pdf】.',
+          sources: [
+            source('scan.pdf', true, 1, true, {
+              documentId: 'scan',
+              chunkLocations: [
+                {
+                  chunkIndex: 4,
+                  location: 'S. 2',
+                  anchor: {
+                    pageFrom: 2,
+                    quoteStart: 'Zweitausfertigung',
+                    regions: [{ page: 2, x: 0.1, y: 0.3, width: 0.8, height: 0.04 }],
+                    textOrigin: { connectionType: 'DOCLING_SERVE' },
+                  },
+                },
+              ],
+            }),
+            source('text.pdf', true, 0.5, true, {
+              documentId: 'text',
+              chunkLocations: [
+                { chunkIndex: 0, location: 'S. 1', anchor: { pageFrom: 1, quoteStart: 'Gebühr' } },
+              ],
+            }),
+          ],
+          timestamp: new Date('2026-11-05T10:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const [scan, text] = within(drawer).getAllByTestId('evidence-doc')
+    expect(
+      within(scan).getByText('Maschinell erkannt, maßgeblich ist das Original'),
+    ).toBeInTheDocument()
+    expect(within(text).queryByTestId('recognized-text-notice')).not.toBeInTheDocument()
+  })
+
   it('steps an uncited row back by colour, not by opacity', async () => {
     const { user, drawer } = await openDrawer()
     await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))

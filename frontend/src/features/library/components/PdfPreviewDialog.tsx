@@ -101,6 +101,8 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
               data={buffer}
               anchor={preview?.anchor}
               contentSha256={preview?.contentSha256}
+              documentId={preview?.documentId}
+              chunkIndex={preview?.chunkIndex}
               onError={() => setFailedBlob(preview?.blob ?? null)}
             />
           </Suspense>
