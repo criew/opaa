@@ -5231,6 +5231,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Seiten, die ein Indexierungslauf oder ein Durchgang des Nachholens hochgeladener Scans höchstens an den Dienst sendet; der Lauf endet dann „unvollständig“, der Rest wartet auf den nächsten</td>
 </tr>
 <tr>
+<td><code>OPAA_OCR_CATCH_UP_INTERVAL</code></td>
+<td><code>5m</code></td>
+<td>nicht gesetzt (auskommentiert)</td>
+<td>Abstand, in dem OPAA hochgeladene Scans, die auf die Texterkennung warten, selbst nachholt; der erste Durchgang folgt ebenso lange nach dem Start. Mindestens <code>20s</code>, ein kleinerer Wert verhindert den Start</td>
+</tr>
+<tr>
 <td><code>OPAA_OCR_CALL_TIMEOUT</code></td>
 <td><code>45m</code></td>
 <td>nicht gesetzt (auskommentiert)</td>

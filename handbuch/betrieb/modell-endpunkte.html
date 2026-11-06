@@ -5176,7 +5176,8 @@ und löscht ihn mit ihm; eine Neuindizierung unveränderter Dateien liest daraus
 nicht erneut. Fällt der Dienst aus (Zeitüberschreitung, Schlüssel abgelehnt, überlastet, Fehler,
 nicht erreichbar), wandelt docling-serve nur einen Teil um oder geht sonst etwas unerwartet schief,
 bleibt der Scan abgewiesen und wartet; nichts wird gespeichert, der nächste Lauf versucht es
-erneut, hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Weist ein Vision-Modell eine
+erneut, hochgeladene Scans holt OPAA selbst nach, in der Vorgabe alle fünf Minuten
+(<code>OPAA_OCR_CATCH_UP_INTERVAL</code>). Weist ein Vision-Modell eine
 Anfrage ab (etwa HTTP 400 bei falschem Modellnamen), gilt das ebenso als Ausfall, nicht als Fehler
 der Datei. Lehnt docling-serve die Datei selbst ab, ist sie unlesbar oder liegt sie über der
 Seitengrenze, wird sie für dieses Verfahren gesperrt. Beim Vision-Modell sperrt nur eine Seite, die
