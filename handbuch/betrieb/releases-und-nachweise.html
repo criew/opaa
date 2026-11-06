@@ -4083,11 +4083,11 @@ Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstüt
 <tbody>
 <tr>
 <td>GHCR</td>
-<td>die Images <code>ghcr.io/criew/opaa-backend:X.Y.Z</code> und <code>ghcr.io/criew/opaa-frontend:X.Y.Z</code> für <code>linux/amd64</code> und <code>linux/arm64</code>, je mit SBOM, Provenance und signierter Provenance</td>
+<td>die Images <code>ghcr.io/criew/opaa-backend:X.Y.Z</code>, <code>ghcr.io/criew/opaa-frontend:X.Y.Z</code> und <code>ghcr.io/criew/opaa-ocr:X.Y.Z</code> (Texterkennung, optional) für <code>linux/amd64</code> und <code>linux/arm64</code>, je mit SBOM, Provenance und signierter Provenance</td>
 </tr>
 <tr>
 <td>GHCR</td>
-<td>das Helm-Chart <code>oci://ghcr.io/criew/charts/opaa</code> in Version <code>X.Y.Z</code>, mit signierter Provenance; es verweist per Digest auf genau diese Images</td>
+<td>das Helm-Chart <code>oci://ghcr.io/criew/charts/opaa</code> in Version <code>X.Y.Z</code>, mit signierter Provenance; es verweist per Digest auf die Images von Backend und Frontend</td>
 </tr>
 <tr>
 <td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
@@ -4095,7 +4095,11 @@ Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstüt
 </tr>
 <tr>
 <td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
-<td>das Offline-Bündel für Netze ohne Internetzugang, attestiert (<a href="images-und-laufzeit.html#installation-ohne-internetzugang">Installation ohne Internetzugang</a>)</td>
+<td>SBOM und Lizenzübersicht des Texterkennungs-Images, attestiert</td>
+</tr>
+<tr>
+<td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
+<td>das Offline-Bündel für Netze ohne Internetzugang, attestiert, wegen seiner Größe in Teilen (<a href="images-und-laufzeit.html#installation-ohne-internetzugang">Installation ohne Internetzugang</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -4116,6 +4120,8 @@ Stand besteht sie nicht:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>oci://ghcr.io/criew/opaa-backend:X.Y.Z<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/vX.Y.Z
 gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>oci://ghcr.io/criew/opaa-frontend:X.Y.Z<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/vX.Y.Z
+gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>oci://ghcr.io/criew/opaa-ocr:X.Y.Z<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/vX.Y.Z
 gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>oci://ghcr.io/criew/charts/opaa:X.Y.Z<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/vX.Y.Z
@@ -4155,10 +4161,16 @@ liefert sie auf zwei Wegen:</p>
   Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge. Sie hängen als
   <code>opaa-backend-X.Y.Z.cdx.json</code> und <code>opaa-frontend-X.Y.Z.cdx.json</code> am GitHub-Release und liegen im
   Update-Paket unter <code>sbom/</code>, beide mit Provenance.</li>
+<li><strong>Texterkennung.</strong> Das Image <code>opaa-ocr</code> bringt seine Python-Umgebung und die Modelle fertig mit.
+  Seine CycloneDX-SBOM wird deshalb aus dem veröffentlichten Image gelesen und nennt die
+  Python-Pakete und Betriebssystempakete; die eingebauten Modelle stehen mit ihrer Lizenz in der
+  Lizenzübersicht. Beide hängen als <code>opaa-ocr-X.Y.Z.cdx.json</code> und <code>opaa-ocr-X.Y.Z-lizenzen.md</code> am
+  GitHub-Release, mit Provenance. Jede Modelldatei ist beim Bau gegen eine feste Prüfsumme geprüft,
+  die mit der Herkunftsquelle des Modells abgeglichen ist.</li>
 </ul>
 <p>Eine Provenance mit Signatur, prüfbar mit <code>gh attestation verify</code>
 (<a href="#herkunft-prüfen">Herkunft prüfen</a>), liegt außerdem an jedem Image, am Chart, am Update-Paket und
-an beiden SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
+an den SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
 Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut ist.</p>
 <h2 id="schwachstellen">Schwachstellen<a class="headerlink" href="#schwachstellen" title="Permanent link">&para;</a></h2>
 <ul>
@@ -4168,7 +4180,7 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   Eine Prüfung durch Dritte gab es bisher nicht; Einzelheiten in <code>SECURITY.md</code> im Repository.</li>
 <li><strong>Erkennen:</strong> GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
   prüft die Images von <code>main</code> und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
-  deren Supportende.</li>
+  deren Supportende, das Texterkennungs-Image eingeschlossen.</li>
 <li><strong>Behandeln:</strong> Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter <a href="#sicherheitsupdates">Sicherheitsupdates</a>.</li>
 <li><strong>Melden:</strong> Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
@@ -4181,7 +4193,9 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   Wer OPAA verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
   Fassung anbieten.</li>
 <li><strong>Abhängigkeiten:</strong> Die CI lässt nur Lizenzen zu, die mit der GPLv3 verträglich sind, sonst eine
-  begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter <code>lizenzen/</code>.</li>
+  begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter <code>lizenzen/</code>. Für das
+  Texterkennungs-Image gilt dieselbe Prüfung für seine Python-Pakete und die eingebauten Modelle;
+  seine Übersicht hängt am GitHub-Release.</li>
 <li><strong>Beiträge:</strong> Wer Änderungen ins Projekt einbringen will, unterzeichnet einmalig das Contributor
   License Agreement (CLA). Ohne CLA pflegt die Behörde eine eigene Abweichung bei jedem Update
   selbst.</li>
