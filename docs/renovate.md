@@ -78,8 +78,10 @@ Sicherheits-PRs (nächster Abschnitt).
 
 `ocr/Dockerfile` baut auf `ghcr.io/docling-project/docling-serve-cpu` mit Version und Digest. Die
 Regel in `renovate.json5` hält beides fest (`pinDigests: true`, `versioning: 'semver'`), wartet
-drei Tage und mergt nie automatisch; `.github/scripts/test_ocr_image_pin.py` prüft, dass FROM-Zeile
-und Regel zusammenpassen.
+drei Tage und mergt nie automatisch. Ein neuer Digest bei gleicher Version (ein umgehängter Tag)
+bekommt erst nach Freigabe in der Abhängigkeits-Übersicht einen Branch, wie beim Renovate- und
+ZAP-Image. `.github/scripts/test_ocr_image_pin.py` prüft, dass FROM-Zeile und Regeln
+zusammenpassen.
 
 Das Basis-Image bringt docling-serve, seine Python-Umgebung und die Layout- und Tabellenmodelle.
 Ein Update ändert deshalb oft auch Modelldateien. Dann scheitert im PR der Bau in

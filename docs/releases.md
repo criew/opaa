@@ -49,11 +49,12 @@ gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --repo criew/opaa \
 `oci://ghcr.io/criew/opaa-backend@sha256:…`. Images von `main` tragen dieselbe Attestierung mit
 `--source-ref refs/heads/main`.
 
-Das Update-Paket und die SBOMs tragen ebenso je eine signierte Provenance-Attestierung,
+Das Update-Paket, die SBOMs und die Lizenzübersicht des OCR-Images tragen ebenso je eine signierte Provenance-Attestierung,
 abgelegt bei GitHub. Geprüft wird die heruntergeladene Datei:
 
 ```bash
-gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json'
+gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json' \
+  --pattern 'opaa-ocr-*-lizenzen.md'
 gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa \
@@ -61,6 +62,8 @@ gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa \
 gh attestation verify opaa-frontend-X.Y.Z.cdx.json --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 gh attestation verify opaa-ocr-X.Y.Z.cdx.json --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify opaa-ocr-X.Y.Z-lizenzen.md --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 ```
 
@@ -228,13 +231,14 @@ in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
 und Architektur, dann je Image `publish`, `image-digests` und `image-attestation`) und daneben die
 axe-Prüfung (`accessibility`) und nach ihr das Update-Paket (`update-package`, seine Attestierung
-in `update-package-attestation`), dann der Chart mit den bestätigten Digests, sobald beide Images
-attestiert sind, dann seine Attestierung, dann das
+in `update-package-attestation`), dann der Chart mit den bestätigten Digests, sobald alle drei
+Images attestiert sind, dann seine Attestierung. Neben dem Chart liest `ocr-sbom` SBOM und
+Lizenzübersicht aus dem veröffentlichten OCR-Image, `ocr-sbom-attestation` attestiert beide. Dann folgt das
 [Offline-Bündel](#offline-bündel) (`offline-bundle`), zuletzt das GitHub-Release mit Update-Paket und
 Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
 den Lauf rot. Ausnahme sind die drei Jobs je Image: Scheitert `publish` nur für ein Image, laufen
-`image-digests` und `image-attestation` für das andere weiter, damit kein veröffentlichtes Image
-ohne Attestierung bleibt; der Chart folgt erst, wenn beide attestiert sind. Ein gescheitertes Bündel
+`image-digests` und `image-attestation` für die anderen weiter, damit kein veröffentlichtes Image
+ohne Attestierung bleibt; der Chart folgt erst, wenn alle drei attestiert sind. Ein gescheitertes Bündel
 hält das GitHub-Release auf, obwohl Images und Chart schon veröffentlicht sind. Der Chart zeigt also
 nie auf ein Image, das nicht veröffentlicht wurde, und das GitHub-Release kündigt nichts an, was
 fehlt. Wie die Images für zwei Architekturen entstehen,
@@ -491,8 +495,15 @@ beantwortet und ob die Attestierung landet, lässt sich nur dort prüfen. Deshal
 2. Das erste Release als **Vorab-Tag** fahren, etwa `v0.1.0-rc.1`. Ein Fehlschlag kostet dann nur
    eine Vorab-Version, nicht `v0.1.0`.
 3. **Danach** das Paket unter *Packages → charts/opaa → Package settings* auf **Public** stellen,
-   wie die beiden Images. GHCR legt es privat an; bis dahin scheitert `helm install` ohne
+   wie die Images. GHCR legt es privat an; bis dahin scheitert `helm install` ohne
    Anmeldung.
+
+**Erste Veröffentlichung des OCR-Images.** Der erste Lauf von `publish-images.yml` mit dem
+OCR-Image, auf `main` oder an einem Tag, legt das Paket `opaa-ocr` in GHCR an, privat wie jedes neue
+Paket. Einmalig danach das Paket unter *Packages → opaa-ocr → Package settings* auf **Public**
+stellen. Bis dahin scheitert ein Pull ohne Anmeldung, und der nächtliche CVE-Scan lässt
+`opaa-ocr:main` mit einer Warnung aus ([cve-scanning.md](cve-scanning.md)). Release-SBOM und
+Offline-Bündel lesen das Image mit dem Token ihres Laufs und gelingen auch vorher.
 
 ### Backport
 
@@ -1144,6 +1155,19 @@ bricht ab, wenn eine Datei abweicht oder hinzukommt. Ein gleitender Tag ließe j
 scheitern oder unbemerkt andere Modelle einbacken. Renovate schlägt neue Versionen nach drei Tagen
 als PR vor, nie mit Automerge ([renovate.md](renovate.md#ocr-image)). Ein Sicherheitsupdate des
 OCR-Images braucht deshalb einen Commit, anders als bei Backend und Frontend.
+
+**Abrufe beim Bau des OCR-Images.** Außer dem Basis-Image aus GHCR lädt der Bau die PP-OCRv6-Modelle
+von ModelScope (`www.modelscope.cn`, Adressen aus dem rapidocr-Paket, Tag `v3.10.0`); ist
+ModelScope nicht erreichbar, scheitert das `build`-Bein des OCR-Images, und der Release-Lauf hält
+vor `publish` an, ohne ein Image zu veröffentlichen. *Re-run failed jobs* holt es nach; die übrigen Beine behalten ihre Digests. Hugging
+Face braucht der Bau nicht, die Layout- und Tabellenmodelle stecken im Basis-Image; die HF-API
+fragt nur der Herkunftsabgleich in `ocr-image.yml` bei PRs ab ([sbom.md](sbom.md#ocr-image)). Das
+Image wird **flach** gebaut: Eine erste Stufe entfernt, was nicht ausgeliefert wird (ungenutzte
+OCR-Modelle, `ray-haproxy` unter GPL-2.0), eine zweite Stufe `FROM scratch` übernimmt ihr
+Dateisystem in einer Schicht. Die Umgebung des Basis-Images schreibt `ocr/Dockerfile` deshalb
+selbst fest; `ocr-image.yml` prüft sie gegen das Basis-Image (`.github/scripts/ocr_env_check.py`).
+Ray selbst bleibt im Image: docling-serve importiert es bei jedem Start, auch mit der lokalen
+Engine.
 
 ## Mehrere Architekturen
 

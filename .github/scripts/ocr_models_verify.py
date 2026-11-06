@@ -9,7 +9,8 @@ every line to a second source, so a file tampered with on its first download can
                                   any other file at that commit
   RapidOcr/<file>                 the SHA256 in default_models.yaml of the rapidocr package in the
                                   image; a file listed there without one (the dictionary) is fetched
-                                  from its URL there and must match
+                                  from its URL there and must match - the source the build used, so
+                                  this shows only that it still serves the same file (docs/sbom.md)
 
 The package comes from the base image, pinned by digest, which installs it from its lock file.
 

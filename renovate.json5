@@ -512,6 +512,15 @@
       minimumReleaseAge: '3 days',
       automerge: false,
     },
+    // Ein neuer Digest bei gleicher Version heißt, dass der Tag umgehängt wurde; wie beim
+    // Renovate- und ZAP-Image erst nach Freigabe in der Abhängigkeits-Übersicht.
+    {
+      matchManagers: ['dockerfile'],
+      matchFileNames: ['ocr/Dockerfile'],
+      matchDepNames: ['ghcr.io/docling-project/docling-serve-cpu'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+    },
     // gradle/actions bringt im Dependency Graph ein Plugin mit, dem
     // backend/gradle/verification-metadata.xml in genau einer Version vertraut. Hebt ein Update
     // diese Version an, scheitert nur der Resolve-Job, der kein Required Check ist, und danach

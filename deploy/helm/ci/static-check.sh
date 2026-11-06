@@ -373,7 +373,8 @@ for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enfo
   "gh attestation verify oci://ghcr.io/criew/opaa-backend:1.2.3-rc.1 --repo criew/opaa" \
   "gh attestation verify oci://ghcr.io/criew/opaa-frontend:1.2.3-rc.1 --repo criew/opaa" \
   "gh attestation verify oci://ghcr.io/criew/opaa-ocr:1.2.3-rc.1 --repo criew/opaa" \
-  "gh attestation verify opaa-ocr-1.2.3-rc.1.cdx.json --repo criew/opaa"; do
+  "gh attestation verify opaa-ocr-1.2.3-rc.1.cdx.json --repo criew/opaa" \
+  "gh attestation verify opaa-ocr-1.2.3-rc.1-lizenzen.md --repo criew/opaa"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
     echo "The release notes do not contain '$expected':" >&2
     echo "$release_notes" >&2

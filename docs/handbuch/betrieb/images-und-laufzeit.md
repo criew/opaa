@@ -222,7 +222,8 @@ nginx (`nginxinc/nginx-unprivileged`), lauffähig unter Pod Security Standard `r
 
 `opaa-ocr` liest Text aus gescannten Seiten: ein Docling-Dienst (docling-serve) für die CPU mit
 der Texterkennung RapidOCR und den deutschen PP-OCRv6-Modellen. Alle Modelle stecken im Image; der
-Dienst lädt nichts nach und läuft ohne Netzzugang. Ein Backend erreicht ihn im internen Netz.
+Dienst lädt nichts nach und läuft ohne Netzzugang. In dieser Version ruft das Backend den Dienst
+noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkennung.
 
 - **Schlüssel ist Pflicht:** `DOCLING_SERVE_API_KEY` mit mindestens 32 Zeichen ohne Leerzeichen,
   etwa aus `openssl rand -hex 32`. Ohne ihn oder mit einem kürzeren startet der Container nicht

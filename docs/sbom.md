@@ -117,12 +117,18 @@ vertrauen. `ocr-image.yml` gleicht deshalb jede Zeile mit einer vom Bau unabhän
   `ocr/models.revisions`: der LFS-SHA256 großer Dateien, der Inhalt aller übrigen. Ein Commit ist
   unveränderlich; den Commit legt ein Mensch im PR fest.
 - Dateien von RapidOCR mit dem SHA256, den `default_models.yaml` des rapidocr-Pakets im Image für
-  sie nennt; das Paket stammt aus der Lockfile des Basis-Images. Das Wörterbuch hat dort keine
-  Prüfsumme und wird von der dort genannten Adresse am Versions-Tag geladen und verglichen.
+  sie nennt; das Paket stammt aus der Lockfile des Basis-Images. Das Wörterbuch
+  `ppocrv6_dict.txt` hat dort keine Prüfsumme. Der Abgleich lädt es von der dort genannten
+  ModelScope-Adresse am Tag `v3.10.0`, also aus **derselben Quelle** wie der Bau: Er belegt nur,
+  dass die Quelle seither dasselbe liefert, nicht ihre Echtheit. Eine zweite, unabhängige Quelle
+  mit Prüfsumme gibt es dafür bisher nicht. Das Wörterbuch ist eine Textdatei mit den erkennbaren
+  Zeichen, kein ausführbarer Inhalt; eine Fälschung verfälschte die Texterkennung, sie führte keinen
+  Code aus.
 
 Eine Zeile ohne solche Quelle lässt die Prüfung scheitern. Die übrigen OCR-Modelle des
-Basis-Images (EasyOCR, die kleinen PP-OCRv6-Modelle, PyTorch-Checkpoints) entfernt der Bau aus dem
-Dateisystem, weil keine zugelassene Voreinstellung sie nutzt.
+Basis-Images (EasyOCR, die kleinen PP-OCRv6-Modelle, PyTorch-Checkpoints) und das Paket
+`ray-haproxy` (GPL-2.0) entfernt der Bau, bevor er das Dateisystem in eine Schicht übernimmt; sie
+werden nicht ausgeliefert ([releases.md](releases.md#basis-images)).
 
 **Lizenzprüfung.** `.github/scripts/ocr_licenses.sh` prüft die Python-Pakete der Image-SBOM
 (`pkg:pypi`) und die Modelle aus `ocr/models.cdx.json` mit `check_licenses.py` gegen

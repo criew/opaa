@@ -75,7 +75,7 @@ gh attestation verify oci://ghcr.io/${owner}/opaa-ocr:${version} --repo ${reposi
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify oci://ghcr.io/${owner}/charts/opaa:${version} --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
-gh release download ${tag} --repo ${repository} --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json'
+gh release download ${tag} --repo ${repository} --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json' --pattern 'opaa-ocr-*-lizenzen.md'
 gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify opaa-backend-${version}.cdx.json --repo ${repository} \\
@@ -83,6 +83,8 @@ gh attestation verify opaa-backend-${version}.cdx.json --repo ${repository} \\
 gh attestation verify opaa-frontend-${version}.cdx.json --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 gh attestation verify opaa-ocr-${version}.cdx.json --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify opaa-ocr-${version}-lizenzen.md --repo ${repository} \\
   --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
 \`\`\`
 

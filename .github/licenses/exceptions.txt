@@ -33,4 +33,3 @@ pkg:pypi/typing[-_]extensions | PSF-2.0 | PSF-Lizenz, nach FSF frei und GPL-vert
 pkg:pypi/numpy | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Alle Teile freizügig; CC0-1.0 (gebündelte Hilfsdateien) ist nach FSF frei und GPL-verträglich, fehlt nur in allowed.txt.
 pkg:pypi/pillow | MIT-CMU | Historische Pillow-/PIL-Lizenz (HPND-Variante), nach FSF frei und GPL-verträglich, fehlt nur in allowed.txt.
 pkg:pypi/regex | Apache-2.0 AND CNRI-Python | Teile stammen aus dem sre-Modul von CPython unter der CNRI-Python-Lizenz (frei, OSI-anerkannt; nach FSF wegen ihrer Rechtswahlklausel nicht GPL-verträglich). Unverändert im eigenständigen OCR-Dienst, nicht mit OPAA-Code verbunden.
-pkg:pypi/ray-haproxy | GPL-2.0-only | HAProxy als eigenständiges Programm für den Ray-Cluster-Betrieb, den das Image nicht nutzt (docling-serve läuft lokal). Unverändert aus dem Basis-Image weitergegeben; Quelltext bei HAProxy und im Ray-Projekt. Nicht mit OPAA-Code verbunden.

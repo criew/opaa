@@ -71,6 +71,7 @@ jobs:
           driver: docker
 
       - name: OCR-Image bauen
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -84,6 +85,12 @@ jobs:
           EXPECT_ARCH: ${{ matrix.arch }}
           RESULT_DIR: ${{ runner.temp }}/ocr-smoke
         run: .github/scripts/ocr_smoke_test.sh "$IMAGE"
+
+      # The image is flattened FROM scratch and restates the environment of its base image; reported
+      # also when the smoke test failed, since a missing variable is a likely cause.
+      - name: Umgebung des Basis-Images prüfen
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: python3 .github/scripts/ocr_env_check.py "$IMAGE" "linux/$ARCH"
 
       # models.sha256 comes from a build; every pinned file must also match the Hugging Face API at
       # the commit of ocr/models.revisions or the hashes the OCR packages of the image declare.

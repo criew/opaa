@@ -166,8 +166,8 @@ jobs:
     needs: prepare
     runs-on: ${{ matrix.platform.runner }}
     # A leg takes 1-4 minutes, a cold one (release tag, or the cache evicted after 7 days without
-    # access) up to about six; an ocr leg, which never uses the cache, up to about fifteen. A hung leg is cancelled instead of holding the run for hours;
-    # "Re-run failed jobs" resumes the run.
+    # access) up to about six; an ocr leg, which never uses the cache, up to about fifteen. A hung
+    # leg is cancelled instead of holding the run for hours; "Re-run failed jobs" resumes the run.
     timeout-minutes: 30
     # Only runs building the very same commit may cancel each other - a scheduled and a push run of
     # the same tip, where the slower one would otherwise push last and leave :main on the older
@@ -180,6 +180,9 @@ jobs:
       contents: read
       packages: write
     strategy:
+      # A failed leg, such as an OCR model download, must not cancel the others; their digests
+      # stay usable for "Re-run failed jobs".
+      fail-fast: false
       matrix:
         image:
           # Repo-root context for all: backend's Gradle build depends on the sibling opaa-api/
@@ -209,6 +212,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # The OCR base image alone takes several gigabytes in the builder.
+      - name: Speicherplatz freigeben
+        if: matrix.image.name == 'ocr'
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -744,6 +752,8 @@ jobs:
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: ${{ steps.image.outputs.ref }}
+          # Release jobs read and write no gha cache (Trivy binary and databases included).
+          cache: 'false'
           format: cyclonedx
           output: ${{ runner.temp }}/ocr-sbom/opaa-ocr-${{ needs.prepare.outputs.version }}.cdx.json
 
