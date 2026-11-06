@@ -1,0 +1,3224 @@
+{
+  "schema_name": "DoclingDocument",
+  "version": "1.10.0",
+  "name": "document",
+  "origin": {
+    "mimetype": "application/pdf",
+    "binary_hash": 6342335422836532339,
+    "filename": "document.pdf",
+    "uri": null
+  },
+  "furniture": {
+    "self_ref": "#/furniture",
+    "parent": null,
+    "children": [],
+    "content_layer": "furniture",
+    "meta": null,
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "body": {
+    "self_ref": "#/body",
+    "parent": null,
+    "children": [
+      {
+        "$ref": "#/texts/0"
+      },
+      {
+        "$ref": "#/texts/1"
+      },
+      {
+        "$ref": "#/texts/2"
+      },
+      {
+        "$ref": "#/texts/3"
+      },
+      {
+        "$ref": "#/texts/4"
+      },
+      {
+        "$ref": "#/texts/5"
+      },
+      {
+        "$ref": "#/texts/6"
+      },
+      {
+        "$ref": "#/texts/7"
+      },
+      {
+        "$ref": "#/texts/8"
+      },
+      {
+        "$ref": "#/texts/9"
+      },
+      {
+        "$ref": "#/texts/10"
+      },
+      {
+        "$ref": "#/texts/11"
+      },
+      {
+        "$ref": "#/groups/0"
+      },
+      {
+        "$ref": "#/texts/13"
+      },
+      {
+        "$ref": "#/texts/14"
+      },
+      {
+        "$ref": "#/texts/15"
+      },
+      {
+        "$ref": "#/texts/16"
+      },
+      {
+        "$ref": "#/texts/17"
+      },
+      {
+        "$ref": "#/texts/18"
+      },
+      {
+        "$ref": "#/texts/19"
+      },
+      {
+        "$ref": "#/texts/20"
+      },
+      {
+        "$ref": "#/texts/21"
+      },
+      {
+        "$ref": "#/texts/22"
+      },
+      {
+        "$ref": "#/texts/23"
+      },
+      {
+        "$ref": "#/texts/24"
+      },
+      {
+        "$ref": "#/texts/25"
+      },
+      {
+        "$ref": "#/texts/26"
+      },
+      {
+        "$ref": "#/texts/27"
+      },
+      {
+        "$ref": "#/texts/28"
+      },
+      {
+        "$ref": "#/texts/29"
+      },
+      {
+        "$ref": "#/texts/30"
+      },
+      {
+        "$ref": "#/texts/31"
+      },
+      {
+        "$ref": "#/texts/32"
+      },
+      {
+        "$ref": "#/texts/33"
+      },
+      {
+        "$ref": "#/texts/34"
+      },
+      {
+        "$ref": "#/texts/35"
+      },
+      {
+        "$ref": "#/texts/36"
+      },
+      {
+        "$ref": "#/texts/37"
+      },
+      {
+        "$ref": "#/texts/38"
+      },
+      {
+        "$ref": "#/texts/39"
+      },
+      {
+        "$ref": "#/texts/40"
+      },
+      {
+        "$ref": "#/texts/41"
+      },
+      {
+        "$ref": "#/texts/42"
+      },
+      {
+        "$ref": "#/texts/43"
+      },
+      {
+        "$ref": "#/texts/44"
+      },
+      {
+        "$ref": "#/texts/45"
+      },
+      {
+        "$ref": "#/texts/46"
+      },
+      {
+        "$ref": "#/texts/47"
+      },
+      {
+        "$ref": "#/texts/48"
+      },
+      {
+        "$ref": "#/texts/49"
+      },
+      {
+        "$ref": "#/texts/50"
+      },
+      {
+        "$ref": "#/texts/51"
+      },
+      {
+        "$ref": "#/texts/52"
+      },
+      {
+        "$ref": "#/tables/0"
+      },
+      {
+        "$ref": "#/texts/53"
+      },
+      {
+        "$ref": "#/texts/54"
+      },
+      {
+        "$ref": "#/groups/1"
+      },
+      {
+        "$ref": "#/texts/58"
+      }
+    ],
+    "content_layer": "body",
+    "meta": null,
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "groups": [
+    {
+      "self_ref": "#/groups/0",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [
+        {
+          "$ref": "#/texts/12"
+        }
+      ],
+      "content_layer": "body",
+      "meta": null,
+      "name": "list",
+      "label": "list"
+    },
+    {
+      "self_ref": "#/groups/1",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [
+        {
+          "$ref": "#/texts/55"
+        },
+        {
+          "$ref": "#/texts/56"
+        },
+        {
+          "$ref": "#/texts/57"
+        }
+      ],
+      "content_layer": "body",
+      "meta": null,
+      "name": "list",
+      "label": "list"
+    }
+  ],
+  "texts": [
+    {
+      "self_ref": "#/texts/0",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 61.766571044921875,
+            "t": 771.5625118001302,
+            "r": 370.1763509114583,
+            "b": 750.3343522135416,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            30
+          ]
+        }
+      ],
+      "orig": "Baugenehmigungsgebührensatzung",
+      "text": "Baugenehmigungsgebührensatzung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/1",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 61.34351094563802,
+            "t": 742.2676509602865,
+            "r": 531.7847900390625,
+            "b": 698.5376501464843,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            213
+          ]
+        }
+      ],
+      "orig": "Satzung des Bauamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Erteilung von Baugenehmigungen (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+      "text": "Satzung des Bauamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Erteilung von Baugenehmigungen (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/2",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 61.34351094563802,
+            "t": 687.0744441731771,
+            "r": 267.37310791015625,
+            "b": 672.2147334798177,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            28
+          ]
+        }
+      ],
+      "orig": "§1 Geltungsbereich und Zweck",
+      "text": "§1 Geltungsbereich und Zweck",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/3",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 60.497395833333336,
+            "t": 669.2427994791666,
+            "r": 514.4393717447916,
+            "b": 610.6530777994791,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            302
+          ]
+        }
+      ],
+      "orig": "(1) Diese Satzung regelt die Erhebung von Gebühren durch das Bauamt der Stadt Kalkstadt für die Erteilung von Baugenehmigungen. Sie gilt für alle natürlichen und juristischen Personen, die eine entsprechende Amtshandlung bei dem Bauamt beantragen oder in Anspruch nehmen, unabhängig von ihrem Wohnsitz.",
+      "text": "(1) Diese Satzung regelt die Erhebung von Gebühren durch das Bauamt der Stadt Kalkstadt für die Erteilung von Baugenehmigungen. Sie gilt für alle natürlichen und juristischen Personen, die eine entsprechende Amtshandlung bei dem Bauamt beantragen oder in Anspruch nehmen, unabhängig von ihrem Wohnsitz.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/4",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 60.07433573404948,
+            "t": 607.2565730794271,
+            "r": 533.9001057942709,
+            "b": 535.5053930664062,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            336
+          ]
+        }
+      ],
+      "orig": "(2) Zweck dieser Satzung ist es, die Kosten, die dem Bauamt durch die Bearbeitung von Anträgen und die Erbringung von Amtshandlungen entstehen, angemessen auf die Antragstellenden umzulegen, ohne dabei die Erreichbarkeit der Verwaltungsleistung für Personen mit geringem Einkommen zu gefährden. Näheres hierzu regelt § 3 dieser Satzung.",
+      "text": "(2) Zweck dieser Satzung ist es, die Kosten, die dem Bauamt durch die Bearbeitung von Anträgen und die Erbringung von Amtshandlungen entstehen, angemessen auf die Antragstellenden umzulegen, ohne dabei die Erreichbarkeit der Verwaltungsleistung für Personen mit geringem Einkommen zu gefährden. Näheres hierzu regelt § 3 dieser Satzung.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/5",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 59.651275634765625,
+            "t": 531.2597672526042,
+            "r": 528.8234049479166,
+            "b": 488.80342773437496,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            172
+          ]
+        }
+      ],
+      "orig": "(3) Diese Satzung tritt an die Stelle etwaiger früherer Regelungen des Bauamts für die Erteilung von Baugenehmigungen und wird vom Stadtrat der Stadt Kalkstadt beschlossen.",
+      "text": "(3) Diese Satzung tritt an die Stelle etwaiger früherer Regelungen des Bauamts für die Erteilung von Baugenehmigungen und wird vom Stadtrat der Stadt Kalkstadt beschlossen.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/6",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 59.651275634765625,
+            "t": 476.06652994791665,
+            "r": 233.52840169270834,
+            "b": 460.7822688802083,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            24
+          ]
+        }
+      ],
+      "orig": "§ 2 Begriffsbestimmungen",
+      "text": "§ 2 Begriffsbestimmungen",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/7",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 60.07433573404948,
+            "t": 458.2349055989583,
+            "r": 509.7857259114583,
+            "b": 427.66634277343746,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            142
+          ]
+        }
+      ],
+      "orig": "(1) Antragstellende Person im Sinne dieser Satzung ist, wer eine Amtshandlung bei dem Bauamt beantragt, unabhängig vom Ausgang des Verfahrens.",
+      "text": "(1) Antragstellende Person im Sinne dieser Satzung ist, wer eine Amtshandlung bei dem Bauamt beantragt, unabhängig vom Ausgang des Verfahrens.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/8",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 425.11897949218746,
+            "r": 489.0558675130208,
+            "b": 380.9643977864583,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            216
+          ]
+        }
+      ],
+      "orig": "(2) Gebührenschuldnerin oder Gebührenschuldner ist, wer die Amtshandlung veranlasst hat oder in wessen Interesse sie vorgenommen wurde. Bei mehreren Personen haften diese als Gesamtschuldnerinnen und Gesamtschuldner.",
+      "text": "(2) Gebührenschuldnerin oder Gebührenschuldner ist, wer die Amtshandlung veranlasst hat oder in wessen Interesse sie vorgenommen wurde. Bei mehreren Personen haften diese als Gesamtschuldnerinnen und Gesamtschuldner.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/9",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 377.14331217447915,
+            "r": 522.054443359375,
+            "b": 333.41333170572915,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            223
+          ]
+        }
+      ],
+      "orig": "(3) Amtshandlung im Sinne dieser Satzung ist jede Tätigkeit des Bauamts, die auf Antrag oder von Amts wegen für die Erteilung von Baugenehmigungen vorgenommen wird, einschließlich Auskünften, Bescheinigungen und Bescheiden.",
+      "text": "(3) Amtshandlung im Sinne dieser Satzung ist jede Tätigkeit des Bauamts, die auf Antrag oder von Amts wegen für die Erteilung von Baugenehmigungen vorgenommen wird, einschließlich Auskünften, Bescheinigungen und Bescheiden.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/10",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 58.80516052246094,
+            "t": 322.37467610677083,
+            "r": 306.7175699869792,
+            "b": 307.09041503906246,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            36
+          ]
+        }
+      ],
+      "orig": "§ 3 Auskunftsrecht und Akteneinsicht",
+      "text": "§ 3 Auskunftsrecht und Akteneinsicht",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/11",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 58.80516052246094,
+            "t": 303.69388997395833,
+            "r": 503.4398600260417,
+            "b": 260.38847005208333,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            232
+          ]
+        }
+      ],
+      "orig": "(1) Antragstellende haben das Recht, jederzeit über den Bearbeitungsstand ihres Vorgangs bei dem Bauamt Auskunft zu erhalten. Die Auskunft wird formlos, in der Regel telefonisch oder per E-Mail, innerhalb von drei Werktagen erteilt.",
+      "text": "(1) Antragstellende haben das Recht, jederzeit über den Bearbeitungsstand ihres Vorgangs bei dem Bauamt Auskunft zu erhalten. Die Auskunft wird formlos, in der Regel telefonisch oder per E-Mail, innerhalb von drei Werktagen erteilt.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/12",
+      "parent": {
+        "$ref": "#/groups/0"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "list_item",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 57.5359853108724,
+            "t": 256.1428238932291,
+            "r": 528.4003092447916,
+            "b": 183.96708333333333,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            393
+          ]
+        }
+      ],
+      "orig": "(2) Auf schriftlichen Antrag kann Einsicht in die eigene Vorgangsakte gewährt werden, soweit dem keine schutzwürdigen Interessen Dritter entgegenstehen. Über den Antrag entscheidet die zuständige Sachbearbeitung des Bauamts; ist diese Sachbearbeitung nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach der Vertretungsregelung der Stadtverwaltung Kalkstadt.",
+      "text": "Auf schriftlichen Antrag kann Einsicht in die eigene Vorgangsakte gewährt werden, soweit dem keine schutzwürdigen Interessen Dritter entgegenstehen. Über den Antrag entscheidet die zuständige Sachbearbeitung des Bauamts; ist diese Sachbearbeitung nicht erreichbar, etwa wegen Urlaub oder Krankheit, richtet sich die Zuständigkeit nach der Vertretungsregelung der Stadtverwaltung Kalkstadt.",
+      "formatting": null,
+      "hyperlink": null,
+      "enumerated": true,
+      "marker": "(2)"
+    },
+    {
+      "self_ref": "#/texts/13",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 57.11292521158854,
+            "t": 180.57059895833333,
+            "r": 529.6695149739584,
+            "b": 95.65791992187496,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            413
+          ]
+        }
+      ],
+      "orig": "(3) Das Auskunftsrecht nach Absatz 1 ist von der Gebührenermäßigung für eingetragene Vereine nach § 13 dieser Satzung zu unterscheiden: Während § 3 den Zugang zu Informationen über den eigenen Vorgang betrifft, regelt § 13 eine pauschale Ermäßigung für eingetragene, gemeinnützige Vereine unabhängig von einer Auskunftsanfrage. Beide Regelungen stehen unabhängig nebeneinander und dürfen nicht verwechselt werden.",
+      "text": "(3) Das Auskunftsrecht nach Absatz 1 ist von der Gebührenermäßigung für eingetragene Vereine nach § 13 dieser Satzung zu unterscheiden: Während § 3 den Zugang zu Informationen über den eigenen Vorgang betrifft, regelt § 13 eine pauschale Ermäßigung für eingetragene, gemeinnützige Vereine unabhängig von einer Auskunftsanfrage. Beide Regelungen stehen unabhängig nebeneinander und dürfen nicht verwechselt werden.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/14",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "meta": null,
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 189.953369140625,
+            "t": 50.229697265624964,
+            "r": 399.7904866536458,
+            "b": 37.49279947916659,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            43
+          ]
+        }
+      ],
+      "orig": "Stadt Kalkstadt·Bauamt· BAU-S-2024· Seite 1",
+      "text": "Stadt Kalkstadt·Bauamt· BAU-S-2024· Seite 1",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/15",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 56.68986511230469,
+            "t": 761.372997639974,
+            "r": 250.45076497395834,
+            "b": 749.4852311197916,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            27
+          ]
+        }
+      ],
+      "orig": "§ 4 Gebührenschuldnerschaft",
+      "text": "§ 4 Gebührenschuldnerschaft",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/16",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 57.11292521158854,
+            "t": 743.9659033203125,
+            "r": 518.2469075520834,
+            "b": 702.7832759602865,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            172
+          ]
+        }
+      ],
+      "orig": "(1) Zur Zahlung der Gebühr für die Erteilung von Baugenehmigungen ist verpflichtet, wer die Amtshandlung des Bauamts veranlasst oder zu wessen Gunsten sie vorgenommen wird.",
+      "text": "(1) Zur Zahlung der Gebühr für die Erteilung von Baugenehmigungen ist verpflichtet, wer die Amtshandlung des Bauamts veranlasst oder zu wessen Gunsten sie vorgenommen wird.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/17",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 57.5359853108724,
+            "t": 695.9902665201822,
+            "r": 516.9777425130209,
+            "b": 656.5059016927083,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            192
+          ]
+        }
+      ],
+      "orig": "(2) Mehrere Gebührenschuldnerinnen und Gebührenschuldner haften als Gesamtschuldnerinnen und Gesamtschuldner. Es steht dem Bauamt frei, sich an eine beliebige der haftenden Personen zu wenden.",
+      "text": "(2) Mehrere Gebührenschuldnerinnen und Gebührenschuldner haften als Gesamtschuldnerinnen und Gesamtschuldner. Es steht dem Bauamt frei, sich an eine beliebige der haftenden Personen zu wenden.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/18",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 57.5359853108724,
+            "t": 640.7970597330728,
+            "r": 210.6832275390625,
+            "b": 628.4847224934896,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            21
+          ]
+        }
+      ],
+      "orig": "§ 5 Höhe der Gebühren",
+      "text": "§ 5 Höhe der Gebühren",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/19",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 58.382100423177086,
+            "t": 622.9653946940103,
+            "r": 514.8624674479166,
+            "b": 597.0670589192708,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            131
+          ]
+        }
+      ],
+      "orig": "(1) Die Gebühren für die Erteilung von Baugenehmigungen bemessen sich nach dem Gebührenverzeichnis in der Anlage zu dieser Satzung.",
+      "text": "(1) Die Gebühren für die Erteilung von Baugenehmigungen bemessen sich nach dem Gebührenverzeichnis in der Anlage zu dieser Satzung.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/20",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 57.95904541015625,
+            "t": 589.4249080403646,
+            "r": 486.5174967447917,
+            "b": 564.375693359375,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            150
+          ]
+        }
+      ],
+      "orig": "(2) Die Gebührenhöhe wird vom Stadtrat der Stadt Kalkstadt festgesetzt und in regelmäßigen Abständen an die tatsächlichen Verwaltungskosten angepasst.",
+      "text": "(2) Die Gebührenhöhe wird vom Stadtrat der Stadt Kalkstadt festgesetzt und in regelmäßigen Abständen an die tatsächlichen Verwaltungskosten angepasst.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/21",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 58.80516052246094,
+            "t": 548.2422908528645,
+            "r": 273.718994140625,
+            "b": 535.9299536132812,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            32
+          ]
+        }
+      ],
+      "orig": "§ 6 Fälligkeit und Zahlungsweise",
+      "text": "§ 6 Fälligkeit und Zahlungsweise",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/22",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 58.80516052246094,
+            "t": 530.410625813802,
+            "r": 519.093017578125,
+            "b": 506.21053222656246,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            151
+          ]
+        }
+      ],
+      "orig": "(1) Die Gebühr wird mit Bekanntgabe des Gebührenbescheids fällig und ist innerhalb von vier Wochen an die Stadtkasse der Stadt Kalkstadt zu entrichten.",
+      "text": "(1) Die Gebühr wird mit Bekanntgabe des Gebührenbescheids fällig und ist innerhalb von vier Wochen an die Stadtkasse der Stadt Kalkstadt zu entrichten.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/23",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 497.2947200520833,
+            "r": 522.9005533854166,
+            "b": 456.9612239583333,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            209
+          ]
+        }
+      ],
+      "orig": "(2) Die Zahlung kann per Überweisung, per Lastschrifteinzug oder in bar am Schalter des Bauamts geleistet werden. Bei Ratenzahlung entscheidet die Kämmerei der Stadt Kalkstadt über die Höhe und Zahl der Raten.",
+      "text": "(2) Die Zahlung kann per Überweisung, per Lastschrifteinzug oder in bar am Schalter des Bauamts geleistet werden. Bei Ratenzahlung entscheidet die Kämmerei der Stadt Kalkstadt über die Höhe und Zahl der Raten.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/24",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 442.1014827473958,
+            "r": 336.75474039713544,
+            "b": 429.78914550781246,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            38
+          ]
+        }
+      ],
+      "orig": "§ 7 Mahnverfahren und Säumniszuschläge",
+      "text": "§ 7 Mahnverfahren und Säumniszuschläge",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/25",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 423.84529785156246,
+            "r": 534.7462158203125,
+            "b": 385.21004394531246,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            247
+          ]
+        }
+      ],
+      "orig": "(1) Wird die Gebühr nicht fristgemäß entrichtet, wird eine Mahnung mit einer Nachfrist von zwei Wochen versandt. Bleibt auch diese Frist erfolglos, wird ein Säumniszuschlag von einem Prozent des rückständigen Betrags je angefangenem Monat erhoben.",
+      "text": "(1) Wird die Gebühr nicht fristgemäß entrichtet, wird eine Mahnung mit einer Nachfrist von zwei Wochen versandt. Bleibt auch diese Frist erfolglos, wird ein Säumniszuschlag von einem Prozent des rückständigen Betrags je angefangenem Monat erhoben.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/26",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 60.07433573404948,
+            "t": 376.29419108072915,
+            "r": 523.7466634114584,
+            "b": 334.68701334635415,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            169
+          ]
+        }
+      ],
+      "orig": "(2) Das Bauamt kann die Vollstreckung der rückständigen Gebühr bei der Vollstreckungsstelle der Stadt Kalkstadt beantragen, wenn auch nach Mahnung keine Zahlung erfolgt.",
+      "text": "(2) Das Bauamt kann die Vollstreckung der rückständigen Gebühr bei der Vollstreckungsstelle der Stadt Kalkstadt beantragen, wenn auch nach Mahnung keine Zahlung erfolgt.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/27",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 60.07433573404948,
+            "t": 321.52555501302083,
+            "r": 276.68039957682294,
+            "b": 308.36409667968746,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            32
+          ]
+        }
+      ],
+      "orig": "§ 8 Verfahren zur Antragstellung",
+      "text": "§ 8 Verfahren zur Antragstellung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/28",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 60.497395833333336,
+            "t": 303.26932942708333,
+            "r": 532.6309000651041,
+            "b": 264.63407552083333,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            227
+          ]
+        }
+      ],
+      "orig": "(1) Der Antrag auf eine Amtshandlung des Bauamts ist schriftlich, persönlich oder über das Online-Formularportal der Stadt Kalkstadt zu stellen. Formularhinweise des Bauamts enthalten die im Einzelfall erforderlichen Nachweise.",
+      "text": "(1) Der Antrag auf eine Amtshandlung des Bauamts ist schriftlich, persönlich oder über das Online-Formularportal der Stadt Kalkstadt zu stellen. Formularhinweise des Bauamts enthalten die im Einzelfall erforderlichen Nachweise.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/29",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 60.92045593261719,
+            "t": 255.7182633463541,
+            "r": 522.054443359375,
+            "b": 229.81990722656246,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            135
+          ]
+        }
+      ],
+      "orig": "(2) Das Bauamt prüft den Antrag auf Vollständigkeit und fordert fehlende Unterlagen innerhalb von zwei Wochen nach Antragseingang nach.",
+      "text": "(2) Das Bauamt prüft den Antrag auf Vollständigkeit und fordert fehlende Unterlagen innerhalb von zwei Wochen nach Antragseingang nach.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/30",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 61.34351094563802,
+            "t": 214.9602067057291,
+            "r": 289.7952067057292,
+            "b": 202.22330891927083,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            33
+          ]
+        }
+      ],
+      "orig": "§ 9 Zuständigkeit und Bearbeitung",
+      "text": "§ 9 Zuständigkeit und Bearbeitung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/31",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 61.766571044921875,
+            "t": 196.7039811197916,
+            "r": 505.9782307942708,
+            "b": 143.20902669270833,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            265
+          ]
+        }
+      ],
+      "orig": "(1) Zuständig für die Bearbeitung von Anträgen auf die Erteilung von Baugenehmigungen ist die Sachbearbeitung des Bauamts der Stadt Kalkstadt. Die genaue Zuständigkeit innerhalb des Bauamts ergibt sich aus dem Geschäftsverteilungsplan der Stadtverwaltung Kalkstadt.",
+      "text": "(1) Zuständig für die Bearbeitung von Anträgen auf die Erteilung von Baugenehmigungen ist die Sachbearbeitung des Bauamts der Stadt Kalkstadt. Die genaue Zuständigkeit innerhalb des Bauamts ergibt sich aus dem Geschäftsverteilungsplan der Stadtverwaltung Kalkstadt.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/32",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 62.18963114420573,
+            "t": 135.14229492187496,
+            "r": 522.4774983723959,
+            "b": 108.81937825520833,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            116
+          ]
+        }
+      ],
+      "orig": "(2) Ist die zuständige Sachbearbeitung nicht erreichbar, gilt die Vertretungsregelung der Stadtverwaltung Kalkstadt.",
+      "text": "(2) Ist die zuständige Sachbearbeitung nicht erreichbar, gilt die Vertretungsregelung der Stadtverwaltung Kalkstadt.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/33",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "meta": null,
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 2,
+          "bbox": {
+            "l": 195.453125,
+            "t": 48.956015624999964,
+            "r": 405.7132975260417,
+            "b": 39.19104166666659,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            42
+          ]
+        }
+      ],
+      "orig": "Stadt Kalkstadt·Bauamt·BAU-S-2024· Seite 2",
+      "text": "Stadt Kalkstadt·Bauamt·BAU-S-2024· Seite 2",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/34",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 64.30492146809895,
+            "t": 766.89232035319,
+            "r": 249.6046346028646,
+            "b": 750.3343522135416,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            26
+          ]
+        }
+      ],
+      "orig": "§ 10 Widerspruchsverfahren",
+      "text": "§ 10 Widerspruchsverfahren",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/35",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 64.30492146809895,
+            "t": 748.6360998535156,
+            "r": 515.7085774739584,
+            "b": 715.5201737467447,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            146
+          ]
+        }
+      ],
+      "orig": "(1) Gegen einen Gebührenbescheid des Bauamts kann innerhalb eines Monats nach Bekanntgabe schriftlich Widerspruch bei dem Bauamt eingelegt werden.",
+      "text": "(1) Gegen einen Gebührenbescheid des Bauamts kann innerhalb eines Monats nach Bekanntgabe schriftlich Widerspruch bei dem Bauamt eingelegt werden.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/36",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 63.45880635579427,
+            "t": 715.5201737467447,
+            "r": 530.0925699869791,
+            "b": 670.5164811197916,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            186
+          ]
+        }
+      ],
+      "orig": "(2) Über den Widerspruch entscheidet das Bauamt; hilft es dem Widerspruch nicht ab, wird der Vorgang der Widerspruchsstelle der Stadt Kalkstadt zur abschließenden Entscheidung vorgelegt.",
+      "text": "(2) Über den Widerspruch entscheidet das Bauamt; hilft es dem Widerspruch nicht ab, wird der Vorgang der Widerspruchsstelle der Stadt Kalkstadt zur abschließenden Entscheidung vorgelegt.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/37",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 62.612691243489586,
+            "t": 660.3269669596353,
+            "r": 299.94862874348956,
+            "b": 642.4953019205728,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            33
+          ]
+        }
+      ],
+      "orig": "§ 11 Datenschutz und Aktenführung",
+      "text": "§ 11 Datenschutz und Aktenführung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/38",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 61.766571044921875,
+            "t": 642.4953019205728,
+            "r": 527.9772542317709,
+            "b": 594.0951147460937,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            224
+          ]
+        }
+      ],
+      "orig": "(1) Die im Rahmen des Verfahrens des Bauamts erhobenen personenbezogenen Daten werden ausschließlich zum Zweck der Gebührenerhebung und -überwachung verarbeitet und nach Ablauf der gesetzlichen Aufbewahrungsfristen gelöscht.",
+      "text": "(1) Die im Rahmen des Verfahrens des Bauamts erhobenen personenbezogenen Daten werden ausschließlich zum Zweck der Gebührenerhebung und -überwachung verarbeitet und nach Ablauf der gesetzlichen Aufbewahrungsfristen gelöscht.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/39",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 61.766571044921875,
+            "t": 594.5196752929687,
+            "r": 527.1311442057291,
+            "b": 563.101991373698,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            126
+          ]
+        }
+      ],
+      "orig": "(2) Die Vorgänge werden von dem Bauamt in Papier- und elektronischer Form geführt und sind vor unbefugtem Zugriff zu schützen.",
+      "text": "(2) Die Vorgänge werden von dem Bauamt in Papier- und elektronischer Form geführt und sind vor unbefugtem Zugriff zu schützen.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/40",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 60.92045593261719,
+            "t": 554.1861791992187,
+            "r": 307.140625,
+            "b": 535.5053930664062,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            36
+          ]
+        }
+      ],
+      "orig": "§ 12 Sonderregelungen für Härtefälle",
+      "text": "§ 12 Sonderregelungen für Härtefälle",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/41",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 60.497395833333336,
+            "t": 535.5053930664062,
+            "r": 500.0553792317708,
+            "b": 476.4911311848958,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            244
+          ]
+        }
+      ],
+      "orig": "(1) In besonderen Härtefällen, die über das Auskunftsrecht nach § 3 und die Gebührenermäßigung für eingetragene Vereine nach § 13 hinausgehen, kann das Bauamt auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.",
+      "text": "(1) In besonderen Härtefällen, die über das Auskunftsrecht nach § 3 und die Gebührenermäßigung für eingetragene Vereine nach § 13 hinausgehen, kann das Bauamt auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/42",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 60.07433573404948,
+            "t": 473.94372721354165,
+            "r": 515.2855224609375,
+            "b": 442.5260432942708,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            125
+          ]
+        }
+      ],
+      "orig": "(2) Über den Härtefallantrag entscheidet die Amtsleitung des Bauamts, nicht die für den Regelfall zuständige Sachbearbeitung.",
+      "text": "(2) Über den Härtefallantrag entscheidet die Amtsleitung des Bauamts, nicht die für den Regelfall zuständige Sachbearbeitung.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/43",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 433.61023111979165,
+            "r": 402.7518717447917,
+            "b": 413.23120279947915,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            48
+          ]
+        }
+      ],
+      "orig": "§ 13 Gebührenermäßigung für eingetragene Vereine",
+      "text": "§ 13 Gebührenermäßigung für eingetragene Vereine",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/44",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 414.92944498697915,
+            "r": 519.9391682942709,
+            "b": 367.80293945312496,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            230
+          ]
+        }
+      ],
+      "orig": "(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für die Erteilung von Baugenehmigungen zu entrichtenden Gebühren.",
+      "text": "(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für die Erteilung von Baugenehmigungen zu entrichtenden Gebühren.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/45",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 57.95904541015625,
+            "t": 367.37837890624996,
+            "r": 507.6704508463542,
+            "b": 322.37467610677083,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            201
+          ]
+        }
+      ],
+      "orig": "(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts. Die Ermäßigung gilt nicht rückwirkend für bereits bestandskräftig festgesetzte Gebühren.",
+      "text": "(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts. Die Ermäßigung gilt nicht rückwirkend für bereits bestandskräftig festgesetzte Gebühren.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/46",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 57.11292521158854,
+            "t": 319.40275227864583,
+            "r": 532.6309000651041,
+            "b": 247.22701171874996,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            352
+          ]
+        }
+      ],
+      "orig": "(3) Diese Ermäßigung ist unabhängig vom Auskunftsrecht nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 den Zugang zu Informationen über einen eigenen Vorgang betrifft und § 13 eine pauschale Gebührenermäßigung für Vereine regelt, unabhängig von einer Auskunftsanfrage.",
+      "text": "(3) Diese Ermäßigung ist unabhängig vom Auskunftsrecht nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 den Zugang zu Informationen über einen eigenen Vorgang betrifft und § 13 eine pauschale Gebührenermäßigung für Vereine regelt, unabhängig von einer Auskunftsanfrage.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/47",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 56.68986511230469,
+            "t": 237.4620377604166,
+            "r": 336.75474039713544,
+            "b": 217.0830094401041,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            40
+          ]
+        }
+      ],
+      "orig": "§ 14 Übergangsregelung und Inkrafttreten",
+      "text": "§ 14 Übergangsregelung und Inkrafttreten",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/48",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 56.26681009928385,
+            "t": 217.9321305338541,
+            "r": 530.0925699869791,
+            "b": 171.65474609374996,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            231
+          ]
+        }
+      ],
+      "orig": "(1) Diese Satzung in der Fassung 2024 tritt am 1. Januar 2024 in Kraft. Sie ersetzt die Fassung 2023 dieser Satzung, deren Regelungen für vor dem Inkrafttreten entstandene Gebührenansprüche des Bauamts weiterhin maßgeblich bleiben.",
+      "text": "(1) Diese Satzung in der Fassung 2024 tritt am 1. Januar 2024 in Kraft. Sie ersetzt die Fassung 2023 dieser Satzung, deren Regelungen für vor dem Inkrafttreten entstandene Gebührenansprüche des Bauamts weiterhin maßgeblich bleiben.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/49",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 55.42068990071615,
+            "t": 170.80562499999996,
+            "r": 497.093994140625,
+            "b": 126.65108398437496,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            176
+          ]
+        }
+      ],
+      "orig": "(2) Für vor dem Inkrafttreten gestellte, aber noch nicht abschließend bearbeitete Anträge des Bauamts gilt die zum Zeitpunkt der Antragstellung geltende Fassung dieser Satzung.",
+      "text": "(2) Für vor dem Inkrafttreten gestellte, aber noch nicht abschließend bearbeitete Anträge des Bauamts gilt die zum Zeitpunkt der Antragstellung geltende Fassung dieser Satzung.",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/50",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "meta": null,
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 3,
+          "bbox": {
+            "l": 187.41499837239584,
+            "t": 51.078818359374964,
+            "r": 397.2521158854167,
+            "b": 36.64367838541659,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            41
+          ]
+        }
+      ],
+      "orig": "Stadt Kalkstadt·Bauamt·BAU-S-2024·Seite 3",
+      "text": "Stadt Kalkstadt·Bauamt·BAU-S-2024·Seite 3",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/51",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 4,
+          "bbox": {
+            "l": 55.42068990071615,
+            "t": 764.769502360026,
+            "r": 405.7132975260417,
+            "b": 751.6080440266927,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            41
+          ]
+        }
+      ],
+      "orig": "Anlage zur Baugenehmigungsgebührensatzung",
+      "text": "Anlage zur Baugenehmigungsgebührensatzung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/52",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 4,
+          "bbox": {
+            "l": 55.84375,
+            "t": 741.4185298665365,
+            "r": 465.7876383463542,
+            "b": 714.2464819335937,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            105
+          ]
+        }
+      ],
+      "orig": "Gebührenverzeichnis des Bauamts der Stadt Kalkstadt für die Erteilung von Baugenehmigungen (Fassung 2024)",
+      "text": "Gebührenverzeichnis des Bauamts der Stadt Kalkstadt für die Erteilung von Baugenehmigungen (Fassung 2024)",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/53",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "meta": null,
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 4,
+          "bbox": {
+            "l": 197.1453653971354,
+            "t": 48.956015624999964,
+            "r": 407.405517578125,
+            "b": 39.19104166666659,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            44
+          ]
+        }
+      ],
+      "orig": "Stadt Kalkstadt· Bauamt· BAU-S-2024· Seite 4",
+      "text": "Stadt Kalkstadt· Bauamt· BAU-S-2024· Seite 4",
+      "formatting": null,
+      "hyperlink": null
+    },
+    {
+      "self_ref": "#/texts/54",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 5,
+          "bbox": {
+            "l": 59.651275634765625,
+            "t": 766.89232035319,
+            "r": 423.0587158203125,
+            "b": 750.3343522135416,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            43
+          ]
+        }
+      ],
+      "orig": "Anlage 2 zur Baugenehmigungsgebührensatzung",
+      "text": "Anlage 2 zur Baugenehmigungsgebührensatzung",
+      "formatting": null,
+      "hyperlink": null,
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/55",
+      "parent": {
+        "$ref": "#/groups/1"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "list_item",
+      "prov": [
+        {
+          "page_no": 5,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 740.9939693196615,
+            "r": 492.0172932942708,
+            "b": 713.8219213867187,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            90
+          ]
+        }
+      ],
+      "orig": "(1) Gebühren nach dieser Satzung sind an die Stadtkasse der Stadt Kalkstadt zu entrichten.",
+      "text": "Gebühren nach dieser Satzung sind an die Stadtkasse der Stadt Kalkstadt zu entrichten.",
+      "formatting": null,
+      "hyperlink": null,
+      "enumerated": true,
+      "marker": "(1)"
+    },
+    {
+      "self_ref": "#/texts/56",
+      "parent": {
+        "$ref": "#/groups/1"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "list_item",
+      "prov": [
+        {
+          "page_no": 5,
+          "bbox": {
+            "l": 59.22822062174479,
+            "t": 706.6043513997396,
+            "r": 524.5928141276041,
+            "b": 664.9971533203125,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            226
+          ]
+        }
+      ],
+      "orig": "(2) Bei jeder Zahlung ist das Kassenzeichen anzugeben, das im Gebührenbescheid des Bauamts oben rechts aufgeführt ist. Zahlungen ohne Kassenzeichen können nicht zugeordnet werden und gelten bis zur Klärung als nicht geleistet.",
+      "text": "Bei jeder Zahlung ist das Kassenzeichen anzugeben, das im Gebührenbescheid des Bauamts oben rechts aufgeführt ist. Zahlungen ohne Kassenzeichen können nicht zugeordnet werden und gelten bis zur Klärung als nicht geleistet.",
+      "formatting": null,
+      "hyperlink": null,
+      "enumerated": true,
+      "marker": "(2)"
+    },
+    {
+      "self_ref": "#/texts/57",
+      "parent": {
+        "$ref": "#/groups/1"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "list_item",
+      "prov": [
+        {
+          "page_no": 5,
+          "bbox": {
+            "l": 59.651275634765625,
+            "t": 657.7795833333333,
+            "r": 463.249267578125,
+            "b": 630.1829850260416,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            89
+          ]
+        }
+      ],
+      "orig": "(3) Barzahlungen nimmt die Stadtkasse im Rathaus Kalkstadt während der Öffnungszeiten an.",
+      "text": "Barzahlungen nimmt die Stadtkasse im Rathaus Kalkstadt während der Öffnungszeiten an.",
+      "formatting": null,
+      "hyperlink": null,
+      "enumerated": true,
+      "marker": "(3)"
+    },
+    {
+      "self_ref": "#/texts/58",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "meta": null,
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 5,
+          "bbox": {
+            "l": 193.33782958984375,
+            "t": 49.380576171874964,
+            "r": 403.1749674479167,
+            "b": 38.34192057291659,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            42
+          ]
+        }
+      ],
+      "orig": "Stadt Kalkstadt·Bauamt·BAU-S-2024· Seite 5",
+      "text": "Stadt Kalkstadt·Bauamt·BAU-S-2024· Seite 5",
+      "formatting": null,
+      "hyperlink": null
+    }
+  ],
+  "pictures": [],
+  "tables": [
+    {
+      "self_ref": "#/tables/0",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "meta": null,
+      "label": "table",
+      "prov": [
+        {
+          "page_no": 4,
+          "bbox": {
+            "l": 57.79771601632138,
+            "t": 708.1603470359069,
+            "r": 532.4316312198512,
+            "b": 485.11602277110904,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [
+            0,
+            0
+          ]
+        }
+      ],
+      "captions": [],
+      "references": [],
+      "footnotes": [],
+      "image": null,
+      "data": {
+        "table_cells": [
+          {
+            "bbox": {
+              "l": 59.651275634765625,
+              "t": 143.50234985351562,
+              "r": 86.72703043619792,
+              "b": 161.7585652669271,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "Nr.",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 114.22585042317708,
+              "t": 144.35148111979166,
+              "r": 203.4912312825521,
+              "b": 158.362060546875,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Amtshandlung",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 403.5980224609375,
+              "t": 139.68128458658853,
+              "r": 453.0958658854167,
+              "b": 155.81468709309897,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Gebühr",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 61.766571044921875,
+              "t": 168.97614542643228,
+              "r": 74.03527323404948,
+              "b": 184.68497721354166,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "1",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 113.80279541015625,
+              "t": 168.12701416015625,
+              "r": 169.22348022460938,
+              "b": 184.26041666666666,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Erteilung",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 404.0210774739583,
+              "t": 164.30594889322916,
+              "r": 468.3260091145833,
+              "b": 179.1656494140625,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "29,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 404.4441324869792,
+              "t": 188.08148193359375,
+              "r": 468.7490641276042,
+              "b": 202.94120279947916,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "34,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 61.34351094563802,
+              "t": 192.32710774739584,
+              "r": 74.88139343261719,
+              "b": 208.88507080078125,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "2",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 114.64890543619792,
+              "t": 192.7516886393229,
+              "r": 191.64558919270834,
+              "b": 207.18682861328125,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Verlängerung",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 61.766571044921875,
+              "t": 216.5272216796875,
+              "r": 75.30444844563802,
+              "b": 233.0851847330729,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "3",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 113.80279541015625,
+              "t": 214.4043986002604,
+              "r": 172.60795084635416,
+              "b": 232.6606241861979,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Änderung",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 404.8671875,
+              "t": 212.28157552083334,
+              "r": 468.7490641276042,
+              "b": 227.14129638671875,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "39,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 404.8671875,
+              "t": 236.481689453125,
+              "r": 469.172119140625,
+              "b": 251.34138997395834,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "44,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 62.612691243489586,
+              "t": 241.1518758138021,
+              "r": 75.30444844563802,
+              "b": 256.4361572265625,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "4",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 115.9180908203125,
+              "t": 240.7273152669271,
+              "r": 217.02911376953125,
+              "b": 254.7378946940104,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Zweitausfertigung",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 63.035746256510414,
+              "t": 264.9274088541667,
+              "r": 75.30444844563802,
+              "b": 280.21169026692706,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 5,
+            "end_row_offset_idx": 6,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "5",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 116.34114583333333,
+              "t": 264.0782877604167,
+              "r": 242.41263834635416,
+              "b": 278.0888671875,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 5,
+            "end_row_offset_idx": 6,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Rücknahme auf Antrag",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 405.7132975260417,
+              "t": 260.68178304036456,
+              "r": 469.172119140625,
+              "b": 275.116943359375,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 5,
+            "end_row_offset_idx": 6,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "49,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 62.612691243489586,
+              "t": 288.2784016927083,
+              "r": 76.57362874348958,
+              "b": 304.83636474609375,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 6,
+            "end_row_offset_idx": 7,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "6",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 115.9180908203125,
+              "t": 288.7029622395833,
+              "r": 294.0257975260417,
+              "b": 301.01527913411456,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 6,
+            "end_row_offset_idx": 7,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Bearbeitung eines Widerspruchs",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 405.7132975260417,
+              "t": 284.4573160807292,
+              "r": 470.0182291666667,
+              "b": 299.31703694661456,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 6,
+            "end_row_offset_idx": 7,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "54,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 405.7132975260417,
+              "t": 308.2328694661458,
+              "r": 470.4412841796875,
+              "b": 323.0925699869792,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 7,
+            "end_row_offset_idx": 8,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "59,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 63.45880635579427,
+              "t": 313.32761637369794,
+              "r": 76.15056864420573,
+              "b": 328.6118977864583,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 7,
+            "end_row_offset_idx": 8,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "7",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 116.76420084635417,
+              "t": 312.47849527994794,
+              "r": 199.6837158203125,
+              "b": 326.91363525390625,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 7,
+            "end_row_offset_idx": 8,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Eilbearbeitung",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 63.035746256510414,
+              "t": 336.2540283203125,
+              "r": 76.99668375651042,
+              "b": 352.81201171875,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 8,
+            "end_row_offset_idx": 9,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "8",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 116.34114583333333,
+              "t": 336.6785888671875,
+              "r": 319.40932210286456,
+              "b": 348.9909261067708,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 8,
+            "end_row_offset_idx": 9,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "postalische Zustellung des Bescheids",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "bbox": {
+              "l": 406.1363525390625,
+              "t": 332.43296305338544,
+              "r": 470.4412841796875,
+              "b": 347.2926839192708,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 8,
+            "end_row_offset_idx": 9,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "64,00 Euro",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          }
+        ],
+        "num_rows": 9,
+        "num_cols": 3,
+        "orientation": "rot_0",
+        "grid": [
+          [
+            {
+              "bbox": {
+                "l": 59.651275634765625,
+                "t": 143.50234985351562,
+                "r": 86.72703043619792,
+                "b": 161.7585652669271,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 1,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "Nr.",
+              "column_header": true,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 114.22585042317708,
+                "t": 144.35148111979166,
+                "r": 203.4912312825521,
+                "b": 158.362060546875,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 1,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Amtshandlung",
+              "column_header": true,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 403.5980224609375,
+                "t": 139.68128458658853,
+                "r": 453.0958658854167,
+                "b": 155.81468709309897,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 1,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "Gebühr",
+              "column_header": true,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 61.766571044921875,
+                "t": 168.97614542643228,
+                "r": 74.03527323404948,
+                "b": 184.68497721354166,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 1,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "1",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 113.80279541015625,
+                "t": 168.12701416015625,
+                "r": 169.22348022460938,
+                "b": 184.26041666666666,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 1,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Erteilung",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 404.0210774739583,
+                "t": 164.30594889322916,
+                "r": 468.3260091145833,
+                "b": 179.1656494140625,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 1,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "29,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 61.34351094563802,
+                "t": 192.32710774739584,
+                "r": 74.88139343261719,
+                "b": 208.88507080078125,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 2,
+              "end_row_offset_idx": 3,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "2",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 114.64890543619792,
+                "t": 192.7516886393229,
+                "r": 191.64558919270834,
+                "b": 207.18682861328125,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 2,
+              "end_row_offset_idx": 3,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Verlängerung",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 404.4441324869792,
+                "t": 188.08148193359375,
+                "r": 468.7490641276042,
+                "b": 202.94120279947916,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 2,
+              "end_row_offset_idx": 3,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "34,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 61.766571044921875,
+                "t": 216.5272216796875,
+                "r": 75.30444844563802,
+                "b": 233.0851847330729,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 3,
+              "end_row_offset_idx": 4,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "3",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 113.80279541015625,
+                "t": 214.4043986002604,
+                "r": 172.60795084635416,
+                "b": 232.6606241861979,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 3,
+              "end_row_offset_idx": 4,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Änderung",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 404.8671875,
+                "t": 212.28157552083334,
+                "r": 468.7490641276042,
+                "b": 227.14129638671875,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 3,
+              "end_row_offset_idx": 4,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "39,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 62.612691243489586,
+                "t": 241.1518758138021,
+                "r": 75.30444844563802,
+                "b": 256.4361572265625,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 4,
+              "end_row_offset_idx": 5,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "4",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 115.9180908203125,
+                "t": 240.7273152669271,
+                "r": 217.02911376953125,
+                "b": 254.7378946940104,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 4,
+              "end_row_offset_idx": 5,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Zweitausfertigung",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 404.8671875,
+                "t": 236.481689453125,
+                "r": 469.172119140625,
+                "b": 251.34138997395834,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 4,
+              "end_row_offset_idx": 5,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "44,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 63.035746256510414,
+                "t": 264.9274088541667,
+                "r": 75.30444844563802,
+                "b": 280.21169026692706,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 5,
+              "end_row_offset_idx": 6,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "5",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 116.34114583333333,
+                "t": 264.0782877604167,
+                "r": 242.41263834635416,
+                "b": 278.0888671875,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 5,
+              "end_row_offset_idx": 6,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Rücknahme auf Antrag",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 405.7132975260417,
+                "t": 260.68178304036456,
+                "r": 469.172119140625,
+                "b": 275.116943359375,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 5,
+              "end_row_offset_idx": 6,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "49,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 62.612691243489586,
+                "t": 288.2784016927083,
+                "r": 76.57362874348958,
+                "b": 304.83636474609375,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 6,
+              "end_row_offset_idx": 7,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "6",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 115.9180908203125,
+                "t": 288.7029622395833,
+                "r": 294.0257975260417,
+                "b": 301.01527913411456,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 6,
+              "end_row_offset_idx": 7,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Bearbeitung eines Widerspruchs",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 405.7132975260417,
+                "t": 284.4573160807292,
+                "r": 470.0182291666667,
+                "b": 299.31703694661456,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 6,
+              "end_row_offset_idx": 7,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "54,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 63.45880635579427,
+                "t": 313.32761637369794,
+                "r": 76.15056864420573,
+                "b": 328.6118977864583,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 7,
+              "end_row_offset_idx": 8,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "7",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 116.76420084635417,
+                "t": 312.47849527994794,
+                "r": 199.6837158203125,
+                "b": 326.91363525390625,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 7,
+              "end_row_offset_idx": 8,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "Eilbearbeitung",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 405.7132975260417,
+                "t": 308.2328694661458,
+                "r": 470.4412841796875,
+                "b": 323.0925699869792,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 7,
+              "end_row_offset_idx": 8,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "59,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ],
+          [
+            {
+              "bbox": {
+                "l": 63.035746256510414,
+                "t": 336.2540283203125,
+                "r": 76.99668375651042,
+                "b": 352.81201171875,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 8,
+              "end_row_offset_idx": 9,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "8",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 116.34114583333333,
+                "t": 336.6785888671875,
+                "r": 319.40932210286456,
+                "b": 348.9909261067708,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 8,
+              "end_row_offset_idx": 9,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "text": "postalische Zustellung des Bescheids",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            {
+              "bbox": {
+                "l": 406.1363525390625,
+                "t": 332.43296305338544,
+                "r": 470.4412841796875,
+                "b": 347.2926839192708,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 1,
+              "col_span": 1,
+              "start_row_offset_idx": 8,
+              "end_row_offset_idx": 9,
+              "start_col_offset_idx": 2,
+              "end_col_offset_idx": 3,
+              "text": "64,00 Euro",
+              "column_header": false,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          ]
+        ]
+      },
+      "annotations": []
+    }
+  ],
+  "key_value_items": [],
+  "form_items": [],
+  "pages": {
+    "1": {
+      "size": {
+        "width": 595.44,
+        "height": 842.04
+      },
+      "image": null,
+      "page_no": 1
+    },
+    "2": {
+      "size": {
+        "width": 595.44,
+        "height": 842.04
+      },
+      "image": null,
+      "page_no": 2
+    },
+    "3": {
+      "size": {
+        "width": 595.44,
+        "height": 842.04
+      },
+      "image": null,
+      "page_no": 3
+    },
+    "4": {
+      "size": {
+        "width": 595.44,
+        "height": 842.04
+      },
+      "image": null,
+      "page_no": 4
+    },
+    "5": {
+      "size": {
+        "width": 595.44,
+        "height": 842.04
+      },
+      "image": null,
+      "page_no": 5
+    }
+  }
+}

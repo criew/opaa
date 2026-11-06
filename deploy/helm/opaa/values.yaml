@@ -167,6 +167,8 @@ ocr:
   maxPagesPerRun: ""
   # Time budget of one call of the service, e.g. 45m; must not exceed service.maxSyncWaitSeconds.
   callTimeout: ""
+  # Pause between two passes catching up on uploaded scans, e.g. 5m; at least 20s.
+  catchUpInterval: ""
   # The bundled service: Deployment, Service, a ServiceAccount of its own without token and a
   # NetworkPolicy that admits the backend pods (and the pod of helm test) and allows no egress at
   # all. Its address http://<release>-ocr:<service.port> is added to the address check of models.

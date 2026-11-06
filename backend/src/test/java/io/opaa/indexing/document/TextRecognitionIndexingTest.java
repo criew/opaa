@@ -79,7 +79,7 @@ class TextRecognitionIndexingTest {
   @BeforeEach
   void setUp() throws IOException {
     scan = Files.write(tempDir.resolve("scan.pdf"), new byte[] {'%', 'P', 'D', 'F'});
-    when(role.limits()).thenReturn(new TextRecognitionProperties(true, 5, null, 1, 10, null));
+    when(role.limits()).thenReturn(new TextRecognitionProperties(true, 5, null, 1, 10, null, null));
     when(role.active()).thenReturn(Optional.of(DOCLING));
     when(store.find(documentId)).thenReturn(Optional.empty());
     when(pdfPages.count(any())).thenReturn(2);

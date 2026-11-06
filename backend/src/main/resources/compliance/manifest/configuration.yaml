@@ -121,7 +121,8 @@ settings:
       - >-
         Grenzen je Dokument, Lauf und Instanz: OPAA_OCR_MAX_PAGES_PER_DOCUMENT,
         OPAA_OCR_DOCUMENT_TIMEOUT, OPAA_OCR_MAX_CONCURRENT, OPAA_OCR_MAX_PAGES_PER_RUN,
-        OPAA_OCR_CALL_TIMEOUT
+        OPAA_OCR_CALL_TIMEOUT; Abstand des Nachholens hochgeladener Scans:
+        OPAA_OCR_CATCH_UP_INTERVAL
       - >-
         Der Helm-Chart kann den Dienst opaa-ocr mitliefern (ocr.service.enabled, Voreinstellung
         aus): nur von den Backend-Pods erreichbar, ohne Ausgang, mit Pflichtschlüssel; ebenso das

@@ -412,7 +412,7 @@ class ModelRoleAdministrationTest {
 
   @Test
   void aVisionModelNeedsAModelWhileADoclingServeNeedsNone() {
-    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null);
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null, null);
     ModelRoleAdministration administration = administration(true, new MockEnvironment());
 
     assertThatThrownBy(
@@ -447,7 +447,7 @@ class ModelRoleAdministrationTest {
 
   @Test
   void aTextRecognitionAddressWithCredentialsIsRefused() {
-    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null);
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null, null);
     ModelRoleAdministration administration = administration(true, new MockEnvironment());
 
     assertThatThrownBy(

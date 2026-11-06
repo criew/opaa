@@ -31,7 +31,9 @@ class TextRecognitionModelRoleTest {
 
   private TextRecognitionModelRole role(boolean operationEnabled) {
     return new TextRecognitionModelRole(
-        new TextRecognitionProperties(operationEnabled, 0, null, 0, 0, null), stored::get, client);
+        new TextRecognitionProperties(operationEnabled, 0, null, 0, 0, null, null),
+        stored::get,
+        client);
   }
 
   @Test

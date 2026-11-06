@@ -105,6 +105,9 @@ data:
   {{- with .Values.ocr.callTimeout }}
   OPAA_OCR_CALL_TIMEOUT: {{ . | quote }}
   {{- end }}
+  {{- with .Values.ocr.catchUpInterval }}
+  OPAA_OCR_CATCH_UP_INTERVAL: {{ . | quote }}
+  {{- end }}
   {{- with .Values.mail.connectTimeout }}
   OPAA_MAIL_CONNECT_TIMEOUT: {{ . | quote }}
   {{- end }}

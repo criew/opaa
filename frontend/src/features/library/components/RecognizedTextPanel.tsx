@@ -57,6 +57,7 @@ export default function RecognizedTextPanel({
       id={id}
       component="aside"
       aria-label="Erkannter Text"
+      tabIndex={0}
       sx={{
         width: { xs: 'auto', sm: 240, md: 300 },
         maxHeight: { xs: '40%', sm: 'none' },

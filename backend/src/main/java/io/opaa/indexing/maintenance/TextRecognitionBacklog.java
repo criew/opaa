@@ -57,7 +57,11 @@ public class TextRecognitionBacklog {
   /** The cluster lock of a pass; outlasts {@link #PASS_DURATION} and one document (ADR-0053). */
   static final String LOCK_AT_MOST_FOR = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY;
 
-  private static final long INTERVAL_MILLIS = 5 * 60_000L;
+  /**
+   * Covers the clock skew between instances and stays below {@link
+   * io.opaa.llm.TextRecognitionProperties#MIN_CATCH_UP_INTERVAL}, so every due time can take it.
+   */
+  static final String LOCK_AT_LEAST_FOR = "PT10S";
 
   private static final int SELECTION_SIZE = 20;
 
@@ -91,13 +95,18 @@ public class TextRecognitionBacklog {
     static final PassResult IDLE = new PassResult(0, 0, 0, false);
   }
 
+  /**
+   * Every {@code opaa.ocr.catch-up-interval} (default five minutes), first that long after the
+   * start. A pass no longer finds a scan another pass has read as waiting, so the short {@link
+   * #LOCK_AT_LEAST_FOR} lets a further pass on another instance only find less to do.
+   */
   @Scheduled(
-      fixedDelay = INTERVAL_MILLIS,
-      initialDelay = INTERVAL_MILLIS,
+      fixedDelayString = "${opaa.ocr.catch-up-interval:PT5M}",
+      initialDelayString = "${opaa.ocr.catch-up-interval:PT5M}",
       scheduler = "textRecognitionBacklogScheduler")
   @SchedulerLock(
       name = "text-recognition-backlog",
-      lockAtLeastFor = "PT4M",
+      lockAtLeastFor = LOCK_AT_LEAST_FOR,
       lockAtMostFor = LOCK_AT_MOST_FOR)
   public void catchUpPeriodically() {
     PassResult result = catchUp();

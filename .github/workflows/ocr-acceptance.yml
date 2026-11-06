@@ -1,0 +1,162 @@
+name: OCR-Abnahme
+
+# The target "ocr" of the E2E suite (e2e/ocr/tests/abnahme.spec.ts): text recognition of a scanned
+# statute against the real opaa-ocr, from setting up the role to the framed source on the original,
+# recorded as video. Builds opaa-ocr from ocr/Dockerfile (or, on a branch without it, takes the
+# image published from main), keeps the DoclingDocument opaa-ocr made of the scan - the answer the
+# docling-serve stand-in of the regular suite replays - and uploads video, screenshots and report.
+# Minutes of OCR on the runner's CPU: not on every pull request and no required check, on demand
+# and on a pull request labelled "ocr-abnahme".
+on:
+  workflow_dispatch: {}
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: opaa-ocr-e2e
+
+jobs:
+  abnahme:
+    name: Texterkennung mit opaa-ocr (Video)
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ocr-abnahme'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # opaa-ocr takes about 4.5 GB unpacked next to the stack; the preinstalled SDKs this job does
+      # not use make room.
+      - name: Speicherplatz freigeben
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      # Before setup-buildx: the engine's own builder loads the image straight into its store.
+      - name: OCR-Image bereitstellen
+        env:
+          PUBLISHED_IMAGE: ghcr.io/criew/opaa-ocr:main
+        run: |
+          if [ -f ocr/Dockerfile ]; then
+            docker build -f ocr/Dockerfile -t opaa-ocr-acceptance:local .
+          else
+            echo "::notice::ocr/Dockerfile fehlt auf diesem Stand, verwendet wird $PUBLISHED_IMAGE"
+            docker pull "$PUBLISHED_IMAGE"
+            docker tag "$PUBLISHED_IMAGE" opaa-ocr-acceptance:local
+          fi
+          echo "OPAA_OCR_IMAGE=opaa-ocr-acceptance:local" >> "$GITHUB_ENV"
+
+      # The DoclingDocument of the scan, with exactly the options of the backend; replaces
+      # demo/seed/e2e-data/text-recognition/satzung-scan.docling.json after review.
+      - name: Antwort von opaa-ocr zum Testdokument aufzeichnen
+        run: |
+          mkdir -p "$RUNNER_TEMP/docling"
+          demo/seed/e2e-data/text-recognition/capture_docling.sh "$OPAA_OCR_IMAGE" \
+            "$RUNNER_TEMP/docling/satzung-scan.docling.json"
+
+      - name: DoclingDocument ablegen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ocr-docling-json
+          path: ${{ runner.temp }}/docling/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Tagged <project>-<service>:latest, which Compose uses with E2E_SKIP_BUILD=true.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: opaa-ocr-e2e-backend:latest
+          load: true
+          cache-from: type=gha,scope=ocr-acceptance-backend
+          cache-to: type=gha,mode=max,scope=ocr-acceptance-backend
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-ocr-e2e-frontend:latest
+          load: true
+          cache-from: type=gha,scope=ocr-acceptance-frontend
+          cache-to: type=gha,mode=max,scope=ocr-acceptance-frontend
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: e2e/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+
+      # scripts/run-e2e.mjs seeds the e2e data profile with demo/seed/seed.py.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: E2E-Abhängigkeiten installieren und typprüfen
+        working-directory: e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run typecheck
+
+      - name: Playwright-Browser installieren
+        working-directory: e2e
+        timeout-minutes: 15
+        run: pnpm exec playwright install --with-deps chromium
+
+      # The state of an installation: the upload directory belongs to the backend's uid 65532.
+      - name: Eigentümer der Bind-Mounts wie in einer Installation setzen
+        run: |
+          mkdir -p documents uploads
+          sudo chown -R 65532:65532 uploads
+          chmod -R o+rX documents
+
+      - name: Abnahme mit opaa-ocr ausführen
+        working-directory: e2e
+        env:
+          E2E_SKIP_BUILD: 'true'
+        run: pnpm run test:ocr
+
+      # Video, screenshots and report also after a green run: they are the acceptance evidence.
+      # if: !cancelled(): a job that runs into timeout-minutes counts as cancelled, not failed.
+      - name: Video, Screenshots und Bericht hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ocr-abnahme
+          path: |
+            e2e/test-results-ocr/
+            e2e/playwright-report-ocr/
+            e2e/docker-compose.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # The DoclingDocument once more as gzip and base64 at the end of the log, between fixed
+      # markers, so it can be restored from the job log where artifacts cannot be downloaded:
+      # the lines between the markers, joined, base64 -d | gunzip.
+      - name: DoclingDocument ins Log schreiben
+        if: ${{ !cancelled() }}
+        env:
+          DOCLING_JSON: ${{ runner.temp }}/docling/satzung-scan.docling.json
+        run: |
+          if [ ! -f "$DOCLING_JSON" ]; then echo "keine Aufzeichnung"; exit 0; fi
+          echo "sha256 $(sha256sum < "$DOCLING_JSON" | cut -d' ' -f1)"
+          echo "----- BEGIN satzung-scan.docling.json.gz.b64 -----"
+          gzip -9c "$DOCLING_JSON" | base64 -w 4000
+          echo "----- END satzung-scan.docling.json.gz.b64 -----"

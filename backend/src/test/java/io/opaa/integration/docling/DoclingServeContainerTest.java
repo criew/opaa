@@ -128,7 +128,7 @@ class DoclingServeContainerTest {
     ActiveTextRecognition active = new ActiveTextRecognition(endpoint(KEY), "cfg-it");
     TextRecognitionModelRole role = mock(TextRecognitionModelRole.class);
     when(role.active()).thenReturn(Optional.of(active));
-    when(role.limits()).thenReturn(new TextRecognitionProperties(true, 0, null, 0, 0, null));
+    when(role.limits()).thenReturn(new TextRecognitionProperties(true, 0, null, 0, 0, null, null));
     when(role.convertWithDocling(any(), any(), any()))
         .thenAnswer(
             call ->

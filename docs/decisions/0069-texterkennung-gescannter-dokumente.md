@@ -78,6 +78,10 @@ Dokuments, bei docling-serve wie beim Vision-Modell: Jeder Aufruf bekommt höchs
 Upload-Bibliotheken haben keine Läufe. Alle fünf Minuten liest ein Durchgang unter der
 ShedLock-Sperre `text-recognition-backlog` (ADR-0053, Entscheidung 7) wartende hochgeladene Scans
 aus der Originalablage, mit eigenem Seitenbudget; nach 50 Minuten beginnt er kein Dokument mehr.
+Der Abstand ist über `opaa.ocr.catch-up-interval` einstellbar, mindestens 20 Sekunden; die E2E-Suite
+nutzt das, um nicht Minuten zu warten. Die Sperre bleibt mindestens zehn Sekunden gehalten, kürzer
+als jeder zulässige Abstand. Ein Durchgang einer weiteren Instanz direkt danach schadet nicht: Er
+findet die schon gelesenen Scans nicht mehr als wartend.
 Mit der Frist eines Dokuments (höchstens 55 Minuten) und dessen Einbettung bleibt er unter der
 Sperrdauer von zwei Stunden. Er endet beim ersten Ausfall des Dienstes und bei belegtem Platz. Quellbibliotheken holen im nächsten Lauf nach, der ein abgewiesenes Dokument
 ohnehin erneut liest.

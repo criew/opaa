@@ -501,6 +501,11 @@
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
           "description": "Duration such as 30s, 45m or PT45M; empty keeps the application default"
         },
+        "catchUpInterval": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Pause between two catch-up passes of uploaded scans, at least 20s, such as 5m; empty keeps the application default"
+        },
         "service": {
           "type": "object",
           "additionalProperties": false,
