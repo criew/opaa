@@ -21,10 +21,16 @@ OPAA prüft jeden Beleg selbst: Hat die Antwort das Dokument wirklich gesehen, u
 Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** und trägt ein Warnsymbol.
 
 PDFs öffnen auf der Seite der Fundstelle, Office-Dateien und Mails als Textfassung an der Passage,
-Confluence-Seiten an der Quelle.
+Confluence-Seiten an der Quelle. Bei einem gescannten PDF stammt der Text aus der Texterkennung;
+Beleg und Ansicht tragen dann den Hinweis „Maschinell erkannt, maßgeblich ist das Original“.
+„Dokument öffnen“ zeigt den unveränderten Scan und zieht einen Rahmen um die zitierte Stelle,
+daneben steht unter „Erkannter Text“, was gelesen wurde. Kennt die Texterkennung die Lage der Stelle
+nicht, öffnet der Scan nur auf ihrer Seite.
 
 **Gut zu wissen:**
 
 - Ein Beleg öffnet nur Dokumente, die Sie lesen dürfen.
-- „Stand vom …“ heißt: Die Bibliothek wird gerade nicht aktualisiert.
-- „Das Original wurde seit der Antwort geändert“ heißt: Die Datei ist nicht mehr die zitierte Fassung.
+- „Stand vom …“ heißt: Die Bibliothek wird gerade nicht aktualisiert. „Das Original wurde seit der
+  Antwort geändert“ heißt: Die Datei ist nicht mehr die zitierte Fassung.
+- Ein Lesefehler der Texterkennung, etwa ein falsch gelesener Betrag, kann einen Beleg „nicht
+  bestätigt“ machen. Vergleichen Sie dann den erkannten Text mit dem Rahmen im Scan.

@@ -88,6 +88,13 @@ Text als erkannt und nennt das Verfahren. Die Zitate bleiben, sie gelten dem erk
   Ankern (Folie, Blatt, Nachricht, Abschnittspfad, Seite).
 - Ein geändertes Original kann die Zitate unauffindbar machen; der Viewer meldet das, statt still
   daneben zu markieren.
+- Bei erkanntem Text (`textOrigin`) sucht der PDF-Viewer keine Zitate, sondern legt die Rahmen aus
+  `regions` in Anteilen der Seite über das unveränderte Original, auf jeder Seite, die sie
+  berühren; sie folgen damit jedem Zoom. Ohne `regions` springt er nur auf `pageFrom` und sagt das.
+  Daneben zeigt er den erkannten Text der Passage, damit Lesende ihn mit dem Scan vergleichen.
+  Beleg, Viewer und Chunk-Vorschau kennzeichnen erkannten Text mit dem Hinweis „maschinell erkannt,
+  maßgeblich ist das Original“. Die Rahmen gelten der Seite in ihrer gespeicherten Ausrichtung; ein
+  Drehen im Viewer gibt es nicht.
 - Seiten, Folie und Abschnittspfad stehen doppelt im Chunk: maschinenlesbar im Anker, als
   Anzeigetext in `location`. Das kostet wenige Dutzend Byte je Chunk.
 
