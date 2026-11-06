@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -32,7 +32,7 @@ Datenschutzverletzung.
 | **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/referenz/rechte-matrix.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
 | **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Ausleitung an ein Sicherheitsmonitoring ohne Pseudonyme ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)) |
 | **Verfügbarkeit** | Readiness- und Liveness-Probe ([Readiness und Liveness](../../handbuch/betrieb/images-und-laufzeit.md#readiness-und-liveness)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
-| **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}) | Netzregeln, Zielliste am Proxy |
+| **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}); Texterkennung mit eigenem Betriebsschalter, ab Werk aus ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}) | Netzregeln, Zielliste am Proxy; den Texterkennungsdienst, auch den mitgelieferten OCR-Container, ohne Ablage und Logs der Seiten betreiben |
 | **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
 | **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste)), [Schwachstellenerkennung](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 

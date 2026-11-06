@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-31 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-11-06 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061 und ADR-0064
 
 ## Kontext
@@ -182,7 +182,7 @@ Drift; ein Zähler kennt keine Uhr.
   Mails gehen in derselben Transaktion in die Outbox (Entscheidung 11).
 - **Bibliothekszeitplan:** Die Fälligkeit wird je Bibliothek per bedingtem `UPDATE` in der Datenbank
   verbucht, nicht in `lastTickAt`.
-- **Sondierung der Modellrollen** (Rerank, Transkription) nur auf der Instanz, die ihre Sperre hält;
+- **Sondierung der Modellrollen** (Rerank, Transkription, Texterkennung) nur auf der Instanz, die ihre Sperre hält;
   das Ergebnis liegt in der Datenbank (Entscheidung 12).
 
 Umsetzung: #2947.

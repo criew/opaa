@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-31
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -137,6 +137,15 @@ Chatinhalte. Die Frage geht außerdem als Suchanfrage an das Einbettungsmodell. 
 Personendaten in den Chat schreibt, schickt sie mit. Vollständig steht das je Modell in
 {{faktenblatt:datenfluesse#chat-model}}, {{faktenblatt:datenfluesse#embedding-model}} und den
 übrigen Einträgen der {{faktenblatt:datenfluesse}}.
+
+**Texterkennung gescannter Dokumente.** Hat ein PDF keine Textebene, kann OPAA es beim Indizieren
+von einem Texterkennungsdienst lesen lassen und damit durchsuchbar machen. Das ist ab Werk zweifach
+ausgeschaltet ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}). Der Dienst bekommt ganze Seiten
+mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}). Die Erkennung
+holt nur nach, was im Dokument steht: Das Original bleibt maßgeblich und abrufbar, der erkannte Text
+dient der Suche ({{faktenblatt:voreinstellungen#ki-funktion-text-recognition}}). Sie bewertet weder
+Personen noch Leistung und zählt nichts je Person. Läuft der Dienst außerhalb des Hauses, stimmen
+Behörde, Personalrat und DSB das vorher ab.
 
 ## 5. Wie lange bleibt was gespeichert
 
