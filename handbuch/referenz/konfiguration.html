@@ -5165,6 +5165,48 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Umgang mit einer Datei, die der Scanner nicht prüfen konnte: <code>REJECT</code> nimmt sie nicht auf, <code>ACCEPT</code> nimmt sie ungeprüft auf</td>
 </tr>
 <tr>
+<td><strong>Texterkennung</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_ENABLED</code></td>
+<td><code>false</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Betriebsschalter der Texterkennung gescannter PDF-Dokumente: ohne ihn wird die Rolle Texterkennung der Modellverwaltung weder ausgewertet noch kontaktiert und lässt sich nur vorbereiten. Eingeschaltet muss zusätzlich die Rolle selbst eingeschaltet sein (siehe <a href="../betrieb/modell-endpunkte.html#texterkennung-einschalten">„Texterkennung einschalten“</a>). Bei mehreren Instanzen auf allen gleich</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code></td>
+<td><code>100</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Größter Scan in Seiten, der an den Dienst geht; ein längerer wird nicht versucht</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_DOCUMENT_TIMEOUT</code></td>
+<td><code>45m</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Zeitbudget aller Aufrufe für ein Dokument</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_MAX_CONCURRENT</code></td>
+<td><code>1</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Dokumente, die eine Instanz gleichzeitig erkennen lässt; bei mehreren Instanzen die Grenze der Installation geteilt durch die Zahl der Instanzen</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_MAX_PAGES_PER_RUN</code></td>
+<td><code>500</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Seiten, die ein Indexierungslauf höchstens an den Dienst sendet; der Rest wartet auf den nächsten Lauf</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_CALL_TIMEOUT</code></td>
+<td><code>45m</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Zeitbudget eines Aufrufs des Dienstes für ein Dokument. Fest und davon unabhängig: der Verbindungstest höchstens drei Minuten insgesamt, die regelmäßige Erreichbarkeitsprüfung 30 Sekunden</td>
+</tr>
+<tr>
 <td><strong>Bibliothek</strong></td>
 <td></td>
 <td></td>
@@ -6289,6 +6331,11 @@ feste Grenzen stehen hier mit ihrem Wert.</p>
 <td>Spracheingabe</td>
 <td>Größe einer Aufnahme, Zeitbudget einer Transkription, gleichzeitige Transkriptionen je Instanz, Aufnahmen je Konto und Client, Länge einer Aufnahme</td>
 <td><code>OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES</code>, <code>OPAA_TRANSCRIPTION_TIMEOUT</code>, <code>OPAA_TRANSCRIPTION_MAX_CONCURRENT</code>, <code>OPAA_RATE_LIMIT_TRANSCRIPTION_*</code>; darüber <code>413</code>, <code>503</code> bzw. <code>429</code>. Fest: die nginx-Grenze des Frontends 11 MiB, höchstens zwei Minuten je Aufnahme, Ende nach 15 Sekunden Stille (<a href="../betrieb/modell-endpunkte.html#spracheingabe-einschalten">Modelle</a>)</td>
+</tr>
+<tr>
+<td>Texterkennung</td>
+<td>Seiten je Dokument und je Indexierungslauf, Zeit je Dokument und je Aufruf, gleichzeitige Dokumente je Instanz</td>
+<td><code>OPAA_OCR_*</code> (<a href="../betrieb/modell-endpunkte.html#texterkennung-einschalten">Modelle</a>)</td>
 </tr>
 <tr>
 <td>Suchen ohne Antwort, Zugriff externer KI-Werkzeuge</td>

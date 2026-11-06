@@ -2793,10 +2793,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#vier-modellrollen" class="md-nav__link">
+  <a href="#fünf-modellrollen" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Vier Modellrollen
+        Fünf Modellrollen
       
     </span>
   </a>
@@ -3038,6 +3038,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#texterkennung-einschalten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung einschalten
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4088,10 +4099,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#vier-modellrollen" class="md-nav__link">
+  <a href="#fünf-modellrollen" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Vier Modellrollen
+        Fünf Modellrollen
       
     </span>
   </a>
@@ -4337,6 +4348,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#texterkennung-einschalten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung einschalten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#vllm--openai-kompatible-server" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4430,7 +4452,7 @@ Modelle in die Suche eingreifen, steht im Kapitel <a href="../referenz/wie-die-s
 Oberfläche zwei Modelle an, ein schnelles für den Alltag und ein größeres zum Vergleich, und
 schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.</p>
 </blockquote>
-<h2 id="vier-modellrollen">Vier Modellrollen<a class="headerlink" href="#vier-modellrollen" title="Permanent link">&para;</a></h2>
+<h2 id="fünf-modellrollen">Fünf Modellrollen<a class="headerlink" href="#fünf-modellrollen" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4464,6 +4486,12 @@ schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.</p>
 <td>wandelt eine im Chat diktierte Frage in Text um, optional</td>
 <td>Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED</code></td>
 <td>jederzeit, ohne Neustart; aus ist die Werkseinstellung (<a href="#spracheingabe-einschalten">Spracheingabe einschalten</a>)</td>
+</tr>
+<tr>
+<td><strong>Texterkennung</strong></td>
+<td>liest gescannte PDF-Seiten ohne Textebene (OCR), optional</td>
+<td>Modellverwaltung, bis zum eigenen Reiter über die Schnittstelle <code>/api/v1/admin/models/text-recognition</code>; begrenzt durch <code>OPAA_OCR_ENABLED</code></td>
+<td>jederzeit, ohne Neustart; aus ist die Werkseinstellung (<a href="#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -4511,7 +4539,7 @@ Konnektoren, und ein Quell-Host dort ist kein erlaubtes Modell. Ein Eintrag <cod
 (<code>ollama:11434</code>) gibt nur diesen Port frei, ein Eintrag ohne Port jeden Port des Hosts; deshalb den
 Port nennen.</p>
 <p>Geprüft wird jede Basis-Adresse, die Installation oder Modellverwaltung speichern, testen oder nach
-Modellen abfragen, für Chat-, Embedding-, Rerank- und Transkriptionsmodell gleich. In der
+Modellen abfragen, für Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell gleich. In der
 Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
 die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
 Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
@@ -5056,6 +5084,68 @@ darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der 
   Instanzen tragen alle denselben Wert: Eine Instanz mit abgeschalteter Spracheingabe verwirft beim
   Abschluss der Installation einen gespeicherten Schritt Transkriptionsmodell.</li>
 </ul>
+<h2 id="texterkennung-einschalten">Texterkennung einschalten<a class="headerlink" href="#texterkennung-einschalten" title="Permanent link">&para;</a></h2>
+<p>Gescannte PDF-Dokumente haben oft keine Textebene; ohne Texterkennung (OCR) findet die Suche in
+ihnen nichts. Dafür hat OPAA die Modellrolle <strong>Texterkennung</strong>. Sie hat zwei Stufen, beide ab Werk
+<strong>aus</strong>:</p>
+<ol>
+<li><strong>Betriebsschalter</strong> <code>OPAA_OCR_ENABLED=true</code>, gelesen beim Start. Ohne ihn wird die Rolle weder
+   ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
+   Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
+   Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.</li>
+<li><strong>Schalter der Rolle</strong> in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
+   gibt, setzt die Systemverwaltung sie über die Schnittstelle
+   <code>/api/v1/admin/models/text-recognition</code>. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
+   Vision-Modell die Modell-Kennung und, falls verlangt, der Zugangsschlüssel. Jede Änderung steht
+   im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Verbindungstyp</th>
+<th>Was der Dienst bekommt</th>
+<th>Schlüssel</th>
+<th>Erreichbarkeitsprüfung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>docling-serve</strong></td>
+<td>die ganze PDF an <code>POST {Basis-Adresse}/v1/convert/file</code></td>
+<td>Header <code>X-Api-Key</code></td>
+<td><code>GET {Basis-Adresse}/health</code>, dazu mit Schlüssel <code>GET {Basis-Adresse}/v1/status/poll/…</code> einer nicht vorhandenen Aufgabe</td>
+</tr>
+<tr>
+<td><strong>Vision-Modell</strong> (OpenAI-kompatibel)</td>
+<td>je Seite ein Bild an <code>POST {Basis-Adresse}/chat/completions</code></td>
+<td><code>Authorization: Bearer</code></td>
+<td><code>GET {Basis-Adresse}/models</code></td>
+</tr>
+</tbody>
+</table>
+<p>Für docling-serve ist die Basis-Adresse die Wurzel des Dienstes (etwa <code>http://ocr:5001</code>), für ein
+Vision-Modell die Adresse mit <code>/v1</code>. OPAA fordert docling-serve immer mit denselben Optionen an:
+erzwungene OCR mit RapidOCR, Sprache Deutsch, Tabellenstruktur genau, Ausgabe als JSON. Eine interne
+Adresse gibt der Betrieb wie bei den anderen Rollen über <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>
+frei; der Aufruf folgt keinem Redirect und geht über den <a href="netz-und-sicherheit.html#ausgangsproxy">Ausgangsproxy</a>.</p>
+<p><strong>Verbindungstest.</strong> Er liest eine mitgelieferte Testseite ohne Inhalte (Text, Umlaute, eine
+Tabelle) genau so, wie es der Betrieb täte, und unterscheidet: bereit, Schlüssel abgelehnt, Engine
+oder Modelle fehlen (der Dienst antwortet, kann die Seite aber nicht lesen oder kennt das Modell
+nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend auf der Seite
+„Suche &amp; Indexierung" (Rolle „Texterkennung"); geprüft werden fortlaufend Erreichbarkeit und
+Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht nutzbar.</p>
+<p><strong>Grenzen.</strong> Seiten je Dokument (<code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code>), Zeit je Dokument
+(<code>OPAA_OCR_DOCUMENT_TIMEOUT</code>), gleichzeitige Dokumente je Instanz (<code>OPAA_OCR_MAX_CONCURRENT</code>), Seiten
+je Indexierungslauf (<code>OPAA_OCR_MAX_PAGES_PER_RUN</code>) und Zeit eines Aufrufs (<code>OPAA_OCR_CALL_TIMEOUT</code>);
+Werte unter <a href="../referenz/konfiguration.html#alle-umgebungsvariablen">Konfiguration</a>.</p>
+<p>In diesem Stand richtet die Rolle Verbindung, Test und Zustand ein; die Indizierung liest gescannte
+Seiten noch nicht über sie.</p>
+<blockquote>
+<p><strong>Externer Dienst.</strong> Ein Vision-Modell oder docling-serve außerhalb des Hauses bekommt ganze
+Seiten mit allem, was darauf steht, auch Namen und Vorgänge Dritter. Eine solche Anbindung
+stimmt das Haus vorher mit Datenschutzbeauftragten und Personalvertretung ab; das Original
+bleibt maßgeblich, der erkannte Text dient nur der Suche.</p>
+</blockquote>
 <h2 id="vllm--openai-kompatible-server">vLLM / OpenAI-kompatible Server<a class="headerlink" href="#vllm--openai-kompatible-server" title="Permanent link">&para;</a></h2>
 <p>Server, die HTTP/2 nicht vertragen, etwa vLLM und andere auf Uvicorn-Basis, brauchen den
 HTTP/1.1-Modus; der HTTP-Client des Backends bevorzugt sonst HTTP/2, und die Verbindung scheitert:</p>
@@ -5224,6 +5314,12 @@ Je Rolle wirkt der Ausfall anders:</p>
 <td>Spracheingabe nicht verfügbar</td>
 <td>keine</td>
 <td>von selbst</td>
+</tr>
+<tr>
+<td>Texterkennung</td>
+<td>gescannte Seiten bleiben ohne erkannten Text</td>
+<td>keine</td>
+<td>von selbst, sobald der Dienst antwortet</td>
 </tr>
 </tbody>
 </table>
@@ -5395,7 +5491,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail <code>NOT_CONFIGURED<
 <td>Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche &amp; Indexierung" prüfen: Endpunkt oder Modell fehlen, oder <code>GET {Basis-Adresse}/models</code> antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an</td>
 </tr>
 <tr>
-<td>„Die Texterkennung ist fehlgeschlagen"</td>
+<td>„Die Spracherkennung ist fehlgeschlagen"</td>
 <td>Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von <code>OPAA_TRANSCRIPTION_TIMEOUT</code> geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam</td>
 </tr>
 <tr>
