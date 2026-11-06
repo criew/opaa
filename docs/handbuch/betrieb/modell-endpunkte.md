@@ -682,8 +682,19 @@ nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend au
 Zeit eines Aufrufs (`OPAA_OCR_CALL_TIMEOUT`, 45 min), Übersicht unter
 [Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen).
 
-In diesem Stand richtet die Rolle Verbindung, Test und Zustand ein; die Indizierung liest gescannte
-Seiten noch nicht über sie.
+**Was die Indexierung damit tut.** Eine PDF-Datei ohne Textebene geht an den Dienst, der erkannte
+Text wird wie jedes Dokument zerlegt und eingebettet. Jeder Abschnitt trägt Seiten und, bei
+docling-serve, die Rahmen seiner Zeilen auf der Seite; im Beleg steht, dass sein Text per
+Texterkennung gelesen wurde. OPAA speichert den erkannten Text mit dem Dokument, ohne Seitenbilder,
+und löscht ihn mit ihm; eine Neuindizierung unveränderter Dateien liest daraus und ruft den Dienst
+nicht erneut. Fällt der Dienst aus (Zeitüberschreitung, Schlüssel abgelehnt, überlastet, Fehler,
+nicht erreichbar), bleibt der Scan abgewiesen und wartet; der nächste Lauf versucht es erneut,
+hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Lehnt der Dienst die Datei selbst ab
+oder liegt sie über der Seitengrenze, wird sie für dieses Verfahren gesperrt, bis jemand mit
+Bearbeitungsrecht die Sperre in der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Ist das
+Seitenbudget eines Laufs aufgebraucht, endet er „unvollständig“, der nächste setzt fort. Log und
+Messwerte (`opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds`) nennen
+Verbindungstyp, Empfänger und Seitenzahl, nie eine Person oder einen Inhalt.
 
 > **Externer Dienst.** Ein Vision-Modell oder docling-serve außerhalb des Hauses bekommt ganze
 > Seiten mit allem, was darauf steht, auch Namen und Vorgänge Dritter. Eine solche Anbindung

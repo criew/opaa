@@ -57,9 +57,9 @@ Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 
-**[`handbuch/referenz/wie-indexierung-arbeitet.md`](handbuch/referenz/wie-indexierung-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/referenz/wie-indexierung-arbeitet.md`](handbuch/referenz/wie-indexierung-arbeitet.md)** · **[ADR-0069](./decisions/0069-texterkennung-gescannter-dokumente.md)** · **[Roadmap](./ROADMAP.md)**
 
-Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
+Uploads und Konnektoren · Texterkennung gescannter Dokumente · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
 Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
 Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wissensbibliothek.
 

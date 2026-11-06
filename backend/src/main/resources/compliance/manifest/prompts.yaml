@@ -116,6 +116,7 @@ aiFunctions:
     interactsWithPersons: false
     assessesPersons: false
     labelling: >-
-      Das Original bleibt maßgeblich und abrufbar; der erkannte Text dient nur der Suche und als
-      Fundstelle
+      Jeder Abschnitt aus erkanntem Text trägt den Vermerk der Texterkennung mit Verfahren, den der
+      Beleg weitergibt; das Original bleibt maßgeblich und abrufbar, der erkannte Text dient nur der
+      Suche und als Fundstelle
     prompts: [text-recognition-vision]

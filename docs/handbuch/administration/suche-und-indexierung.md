@@ -52,6 +52,11 @@ Dateisystem werden sofort neu verarbeitet, alle anderen Quellen im nächsten Lau
 verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells steuern Sie unter
 [Modelle verwalten](modelle.md).
 
+Gescannte PDF-Dokumente kommen nach dem Einschalten der Texterkennung nach und nach in den Index:
+Quellen mit ihrem nächsten Lauf, hochgeladene Scans über ein Nachholen alle fünf Minuten. Wartende
+und gesperrte Scans zeigt jede Bibliothek über ihrer Dokumentliste. Der Nachzug der Pipeline
+`pdf-ocr` liest den gespeicherten Erkennungsstand und ruft den Dienst nicht.
+
 **Gut zu wissen:**
 
 - Die Diagnose ist kein Nachweis über vergangene Zugriffe; dafür gibt es die
