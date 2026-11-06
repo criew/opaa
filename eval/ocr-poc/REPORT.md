@@ -236,6 +236,115 @@ weiter auf der CPU.
 - **PaddleOCR** lässt an Zeilenumbrüchen Leerzeichen weg (`2023),beschlossen`). Das treibt die
   Wortfehlerrate (2,5 % bei 0,2 % CER) und schadet der Wortsuche.
 
+## Nachmessung mit echten Scans
+
+**Die Empfehlung hält.** An neun echten, gemeinfreien Scans (17 Seiten) liegen Docling + RapidOCR und
+PaddleOCR PP-StructureV3 beim Lesen gleichauf. Docling + RapidOCR erhält Tabellen besser und braucht
+halb so viel Zeit und ein Viertel des Speichers. EasyOCR und Tesseract lesen auch auf echten Scans kein
+einziges §-Zeichen.
+
+### Korpus und Verfahren
+
+| Herkunft | Anzahl | Was |
+|---|---|---|
+| Bundestagsdrucksachen 1949–1987 | 4 | Bleisatz, Schreibmaschine, Anschreiben mit Aktenzeichen, Gesetzestext mit §, Zahlentabellen |
+| Bundesgesetzblatt I 1955 und 1972 | 2 | Inhaltstabellen, Verordnungstext, zum Teil ausgefranste Lettern |
+| Ortsrecht kleiner Gemeinden 2022–2024 | 3 | Bürodruck-Scans mit Unterschrift über dem Text, Stempel, Siegel, Handschrift, grauer Hintergrund |
+
+- Quellen und Rechtsgrundlage (amtliche Werke, § 5 UrhG) stehen in
+  [real/SOURCES.md](real/SOURCES.md).
+- `fetch_real.py` lädt die Dokumente und rastert die gewählten Seiten neu (300 dpi, ohne die alte
+  OCR-Textebene). Die PDFs liegen nicht im Repository.
+- Die Sollwerte habe ich von Hand aus dem Seitenbild abgelesen: 48 Prüfstellen (Beträge, Daten,
+  Aktenzeichen, §-Angaben mit Text, Stempeltext), 7 Tabellenzeilen und je Dokument ein kurzer Absatz
+  als Solltext ([real/truth/](real/truth/)).
+- Bewertet hat `evaluate_real.py`:
+  - **Prüfstellen:** Eine Stelle gilt als gefunden, wenn sie wörtlich im Ergebnis steht. Leerraum,
+    Anführungszeichen, Striche und Trennungen am Zeilenende sind vorher vereinheitlicht.
+  - **Tabellenzeilen:** Eine Zeile zählt nur, wenn alle ihre Zellen in einer Ausgabezeile in richtiger
+    Spaltenfolge stehen.
+- Alle Läufe liefen auf der CPU des Notebooks, nur GraniteDocling auf der GPU.
+
+### Zahlen
+
+| Variante | Prüfstellen | davon mit § | Tabellenzeilen | CER Kurztext (Mittel) | s/Seite | RAM |
+|---|---|---|---|---|---|---|
+| **Docling + RapidOCR** | 41/48 (85 %) | 11/15 | **6/7** | 3,3 % ¹ | **50** | **2,7 GB** |
+| PaddleOCR PP-StructureV3 | **42/48 (88 %)** | **14/15** | 4/7 | **0,3 %** | 100 | 11,3 GB |
+| GraniteDocling (VLM, GPU) | 36/48 (75 %) | 10/15 | 5/7 | 2,1 % | 48 (GPU) | 2,4 GB + VRAM |
+| Tesseract (OCRmyPDF) | 23/48 (48 %) | 0/15 | 0/7 | 7,1 % | 1,9 | 0,2 GB |
+| Docling + EasyOCR | 20/48 (42 %) | 0/15 | 1/7 | 3,7 % | 73 | 6,0 GB |
+
+¹ Der Mittelwert kommt fast ganz aus einem Dokument (Flurneuordnung, CER 32 %). Ohne dieses Dokument
+liegt er unter 0,1 %, der Median ist 0.
+
+Rohdaten: [results/results-real.json](results/results-real.json) mit den verfehlten Prüfstellen je
+Dokument, Tabelle in [results/table-real.md](results/table-real.md).
+
+Bei 48 Prüfstellen ist ein Unterschied von einer Stelle Rauschen. Docling + RapidOCR und PaddleOCR
+lesen also gleich gut. Der Abstand zu GraniteDocling, Tesseract und EasyOCR ist dagegen deutlich.
+
+### Was bei den einzelnen Varianten auffiel
+
+**Docling + RapidOCR**
+- Tabellen werden am vollständigsten erkannt, einschließlich der Haushaltstabellen 1953 und 1987.
+  Einmal stehen zwei Zahlenspalten in einer Zelle (`(1 035 000) (1 125 000)`).
+- Kurze, alleinstehende Zeilen und erste Zeilen gehen verloren:
+  - im Bescheid zur Flurneuordnung (Blocksatz) der Anfang jedes nummerierten Punkts
+    (`1. Im Anhörungstermin am 15.12.2022 …`),
+  - einmal das `§` vor `63`,
+  - die §-Überschrift „§ 2“ im Bundesgesetzblatt 1972.
+  
+  Das ist dasselbe Muster wie die fehlenden letzten Absatzzeilen im synthetischen Korpus. Es bleibt der
+  wichtigste offene Punkt für die Umsetzung.
+- Einmal ist „§ 9“ als „6 §“ gelesen. Der Rahmen des Elements sitzt trotzdem richtig.
+
+**PaddleOCR PP-StructureV3**
+- § wird am sichersten erkannt (14/15), und die Kurztexte sind fast fehlerfrei.
+- Paddle verliert aber ganze Zeilen:
+  - das Datum im Anschreiben der Drucksache 2/200,
+  - zwei Einträge der Inhaltstabelle des Bundesgesetzblatts 1972.
+- Inhaltstabellen werden zu zerrissenen Zeilen.
+- Umlaut-Großbuchstaben verliert es („Anderung“).
+- An Zeilenumbrüchen fehlen wieder Leerzeichen.
+
+**GraniteDocling**
+- Struktur und Tabellen sind gut.
+- Es lässt aber einzelne Zeilen und Überschriften weg (Abgeordnetennamen, „§ 1 Dienstsiegel“, die
+  Siegelumschrift).
+- Die stempelreiche Jagdsatzung brauchte 321 s für zwei Seiten.
+
+**Tesseract und EasyOCR**
+- Beide lesen § auch auf echten Scans ausnahmslos falsch (`$`, `8`, `$8$`).
+- Tabellen erkennen sie nicht oder kaum.
+
+**Alle Varianten**
+- Den Text im Stempel des Landratsamts („Außenstelle Bad Doberan“, „10. 07. 2023“) erkennt keine
+  Variante.
+- Handschrift (Datum, Ort, Unterschriften) ist bewusst nicht Teil der Prüfstellen.
+- Die Unterschrift quer über „Gleichzeitig“ und dem Datum der Glasewitzer Hauptsatzung stört keine der
+  starken Varianten.
+
+### Koordinaten im JSON
+
+Für die Entscheidung „Rahmen ohne Kopie“ habe ich das `DoclingDocument` der Drucksache 11/1000 (drei
+Seiten, Text, §-Gliederung, Haushaltstabelle) geprüft und alle Rahmen auf die Seitenbilder gezeichnet.
+
+- **Seite:** Jedes Element trägt `prov[].page_no` (ab 1), einen Rahmen und `charspan`. Auch alle 72
+  Tabellenzellen haben einen eigenen Rahmen.
+- **Einheit:** PDF-Punkte (1/72 Zoll), bezogen auf `pages[n].size` (hier 595,2 × 841,2 für A4). Die
+  Rasterauflösung spielt keine Rolle: Für Pixel bei d dpi wird mit d/72 multipliziert.
+- **Ursprung:** gemischt.
+  - Die Rahmen der Elemente (`texts`, `tables`, `pictures`) haben `coord_origin: BOTTOMLEFT`.
+  - Die Rahmen der Tabellenzellen (`data.table_cells[].bbox`) haben `coord_origin: TOPLEFT`.
+  - Opaa muss also je Rahmen das Feld `coord_origin` auswerten und für die Anzeige einheitlich
+    umrechnen: `top = Seitenhöhe − t` bei BOTTOMLEFT.
+- **Lage:** Umgerechnet sitzen alle Rahmen exakt auf Text, Überschriften und Zellen, auch in der
+  zweispaltigen Seite und in der Tabelle mit Punktführern.
+
+Für Fundstellen reicht das: Ein Chunk kann die Rahmen seiner Elemente (oder Tabellenzellen) mit Seite
+speichern, und der Viewer rahmt sie auf dem Original ein.
+
 ## Grenzen dieser Messung
 
 - Die Laufzeiten der lokalen Docling-Läufe enthalten noch das Laden der Modelle im jeweils ersten
@@ -246,21 +355,25 @@ weiter auf der CPU.
 - Seit dem Review wird jedes Scanprofil mit einem eigenen Startwert erzeugt (`Dokument/Profil`). Ein
   neu gebauter Korpus weicht deshalb im Detail von dem gemessenen ab. Die Profile selbst sind
   unverändert.
-- Der Korpus ist synthetisch: eine Schrift, sauberer Satz, künstliche Scanfehler. Echte Scans mit
-  Stempeln, Handschrift, Formularen, Mehrspaltensatz und Fraktur sind nicht dabei. Vor einer
-  Umsetzungsentscheidung braucht es 10–20 echte, freigegebene Scans.
+- Der Hauptkorpus ist synthetisch: eine Schrift, sauberer Satz, künstliche Scanfehler. Die
+  Nachmessung mit neun echten Scans bestätigt die Rangfolge. Sie ist aber klein (48 Prüfstellen), und
+  Formulare, Fraktur und Handschrift fehlen weiterhin.
 - Die Sekunden je Seite stammen von einem Notebook-Prozessor. Server-Kerne können anders liegen.
-- Nicht gemessen: Container-Betrieb (`docling-serve`), Offline-Betrieb mit Modellen im Image,
-  Koordinaten für die Fundstellen-Markierung, PaddleOCR-VL auf NVIDIA.
+- Nicht gemessen: Container-Betrieb (`docling-serve`), Offline-Betrieb mit Modellen im Image und
+  PaddleOCR-VL auf NVIDIA.
 
 ## Empfehlung
 
 1. Für die weitere Arbeit (Stufe 1 des Konzepts) Docling mit RapidOCR als Zielvariante setzen,
    betrieben über `docling-serve`.
-2. Vorher in einem kurzen Nachtrag messen:
-   - **echte Scans:** 10–20 freigegebene Dokumente
-   - **die fehlenden Absatzzeilen:** Ursache klären
+2. Erledigt sind:
+   - die Nachmessung mit echten Scans (bestätigt die Wahl),
+   - die Prüfung der Koordinaten im JSON (geeignet, Ursprung je Rahmen auswerten).
+
+   Offen für die Umsetzung bleiben:
+   - **verlorene Zeilen:** Ursache der fehlenden ersten und letzten Zeilen und alleinstehenden
+     §-Überschriften klären (Docling-Option, Zuordnung der OCR-Zeilen zu Layoutblöcken,
+     Upstream-Issue)
    - **`docling-serve` als Container:** Imagegröße, Offline-Start mit `DOCLING_SERVE_ARTIFACTS_PATH`,
      `X-Api-Key`
-   - **Koordinaten im JSON:** ob Seite und Rahmen je Element (auch Tabellenzellen) stabil und im erwarteten Koordinatensystem kommen, damit der Viewer die Fundstelle auf dem Original einrahmen kann
 3. PaddleOCR bleibt die Ausweichoption, falls echte Scans Doclings Layout-Erkennung überfordern.

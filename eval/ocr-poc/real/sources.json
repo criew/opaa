@@ -1,0 +1,20 @@
+[
+ {"id": "btd-1-1", "url": "https://dserver.bundestag.de/btd/01/000/0100001.pdf", "pages": [1],
+  "title": "Drucksache 1/1 (1949): Alphabetisches Verzeichnis der Mitglieder des Bundestags", "kind": "Bundestagsdrucksache"},
+ {"id": "btd-2-200", "url": "https://dserver.bundestag.de/btd/02/002/0200200.pdf", "pages": [1, 3, 9],
+  "title": "Drucksache 2/200 (1953): Entwurf Haushaltsgesetz 1954 mit Anschreiben und Gesamtplan", "kind": "Bundestagsdrucksache"},
+ {"id": "btd-5-500", "url": "https://dserver.bundestag.de/btd/05/005/0500500.pdf", "pages": [1],
+  "title": "Drucksache V/500 (1966): Kleine Anfrage zum Branntweinmonopol", "kind": "Bundestagsdrucksache"},
+ {"id": "btd-11-1000", "url": "https://dserver.bundestag.de/btd/11/010/1101000.pdf", "pages": [1, 6, 12],
+  "title": "Drucksache 11/1000 (1987): Gesetzentwurf ERP-Wirtschaftsplangesetz 1988", "kind": "Bundestagsdrucksache"},
+ {"id": "bgbl1-1955-1", "url": "https://media.offenegesetze.de/bgbl1/1955/bgbl1_1955_1.pdf", "pages": [1, 3],
+  "title": "Bundesgesetzblatt I 1955 Nr. 1", "kind": "Bundesgesetzblatt"},
+ {"id": "bgbl1-1972-1", "url": "https://media.offenegesetze.de/bgbl1/1972/bgbl1_1972_1.pdf", "pages": [1, 3],
+  "title": "Bundesgesetzblatt I 1972 Nr. 1", "kind": "Bundesgesetzblatt"},
+ {"id": "ort-glasewitz-hauptsatzung", "url": "https://www.amt-guestrow-land.de/images/pdf/Glasewitz/Hauptsatzung2024neu.pdf", "pages": [1, 6],
+  "title": "Hauptsatzung der Gemeinde Glasewitz (2024), mit Unterschrift und Siegel", "kind": "Ortsrecht"},
+ {"id": "ort-jagd-siemitz", "url": "https://www.amt-guestrow-land.de/images/pdf/Mistorf/JagdgenossenschaftSiemitz-KaeselowSatzung2023.pdf", "pages": [1, 5],
+  "title": "Satzung der Jagdgenossenschaft Siemitz-Käselow (2023), mit Stempeln und Handschrift", "kind": "Satzung einer Körperschaft"},
+ {"id": "ort-fnv-vietgest", "url": "https://www.amt-guestrow-land.de/images/pdf/Glasewitz/FNVVietgestFeststellungErgebnisseWertermittlung.pdf", "pages": [1],
+  "title": "Flurneuordnungsverfahren Vietgest: Feststellung der Ergebnisse der Wertermittlung (2022)", "kind": "Öffentliche Bekanntmachung"}
+]
