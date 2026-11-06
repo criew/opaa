@@ -915,7 +915,7 @@ GHCR:
   Registry-Zugang.
 - Es liegt neben Update-Paket und SBOMs, die Behörden dort schon holen.
 - Ein Asset darf höchstens 2 GiB groß sein. Ohne OCR-Image war das Bündel rund 600 MB groß
-  (gemessen an `v0.1.0-rc.4`); das OCR-Image ist entpackt rund 2,2 GB (`linux/amd64`) und 4,7 GB (`linux/arm64`) groß und hebt
+  (gemessen an `v0.1.0-rc.4`); das OCR-Image ist entpackt rund 2,0 GB (`linux/amd64`) und 4,4 GB (`linux/arm64`) groß und hebt
   das Bündel über die Grenze.
   `split` teilt das fertige, attestierte Archiv deshalb in Teile knapp unter der Grenze
   (`….tar.part-00`, `-01`, …). Prüfsumme und Attestierung gelten dem ganzen Archiv; hinter der

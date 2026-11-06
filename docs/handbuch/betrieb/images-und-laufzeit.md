@@ -239,7 +239,7 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
   jede Anfrage selbst an.
 - **Ressourcen:** Die Modelle lädt der Dienst beim Start; bereit ist er nach Sekunden bis wenigen
   Minuten, je nach Datenträger. Eine Seite braucht auf der CPU einige Sekunden. Nach einer
-  gescannten Seite belegt der Container rund 2,3 GiB Speicher; große Dokumente brauchen mehr.
+  gescannten Seite belegt der Container rund 2,1 bis 2,6 GiB Speicher; große Dokumente brauchen mehr.
   Ausgangswerte:
 
   | | Request | Limit |
@@ -248,7 +248,7 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
   | CPU | 1 | keine |
 
   Mehr Kerne verkürzen die Umwandlung. Ein `OOMKilled` verlangt ein höheres Limit. Das Image ist
-  entpackt rund 2,2 GB (`linux/amd64`) bzw. 4,7 GB (`linux/arm64`) groß.
+  entpackt rund 2,0 GB (`linux/amd64`) bzw. 4,4 GB (`linux/arm64`) groß.
 - **Readiness:** `GET /ready` meldet `200`, sobald die Modelle geladen sind; `GET /health` prüft nur
   den Prozess. Beide brauchen keinen Schlüssel. Das Image bringt einen Health Check auf `/ready` mit.
 
