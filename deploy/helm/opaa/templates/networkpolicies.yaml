@@ -136,6 +136,15 @@ spec:
         - port: postgresql
           protocol: TCP
     {{- end }}
+    {{- if .Values.ocr.service.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "ocr") | nindent 14 }}
+      ports:
+        - port: http
+          protocol: TCP
+    {{- end }}
     {{- with .Values.networkPolicy.egress.backendRules }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

@@ -87,6 +87,27 @@ data:
   {{- with .Values.transcription.maxConcurrent }}
   OPAA_TRANSCRIPTION_MAX_CONCURRENT: {{ . | quote }}
   {{- end }}
+  {{- if .Values.ocr.enabled }}
+  OPAA_OCR_ENABLED: "true"
+  {{- end }}
+  {{- with .Values.ocr.maxPagesPerDocument }}
+  OPAA_OCR_MAX_PAGES_PER_DOCUMENT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.ocr.documentTimeout }}
+  OPAA_OCR_DOCUMENT_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.ocr.maxConcurrent }}
+  OPAA_OCR_MAX_CONCURRENT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.ocr.maxPagesPerRun }}
+  OPAA_OCR_MAX_PAGES_PER_RUN: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.ocr.callTimeout }}
+  OPAA_OCR_CALL_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.ocr.catchUpInterval }}
+  OPAA_OCR_CATCH_UP_INTERVAL: {{ . | quote }}
+  {{- end }}
   {{- with .Values.mail.connectTimeout }}
   OPAA_MAIL_CONNECT_TIMEOUT: {{ . | quote }}
   {{- end }}

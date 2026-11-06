@@ -1,0 +1,35 @@
+# NICHT-FUER-DEN-PRODUKTIVBETRIEB: the secrets in this file are public test values. The backend
+# refuses them in the "oidc" profile (ci-only-..., AES keys that decode to this marker); a real
+# installation generates its own (docs/handbuch/betrieb/kubernetes.md).
+# Text recognition switched on with the bundled service, its key as a value, its limits set and the
+# egress policies on, so the backend's rule towards the service renders as well.
+publicBaseUrl: https://opaa.example.org
+database:
+  host: postgres.example.org
+embedding:
+  baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
+  model: bge-m3
+secrets:
+  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  databasePassword: ci-only-password
+  credentialsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=
+  settingsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjI=
+  ocrApiKey: ci-only-ocr-api-key-0123456789abcdefghij
+uploads:
+  store: persistentVolumeClaim
+networkPolicy:
+  egress:
+    enabled: true
+ocr:
+  enabled: true
+  maxPagesPerDocument: "200"
+  documentTimeout: 90m
+  maxPagesPerRun: "1000"
+  callTimeout: 60m
+  service:
+    enabled: true
+    replicas: 2
+    maxSyncWaitSeconds: 3600
+backend:
+  installationBudgets:
+    OPAA_OCR_MAX_CONCURRENT: 2

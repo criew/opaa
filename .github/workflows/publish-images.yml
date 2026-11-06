@@ -792,10 +792,11 @@ jobs:
             ${{ runner.temp }}/ocr-sbom/*.cdx.json
             ${{ runner.temp }}/ocr-sbom/*.md
 
-  # The chart follows the attested images; its values pin both to their verified index digests, and
-  # chart version and appVersion are the release version (ADR-0042, Entscheidung 7). A first attempt
-  # fails on a taken chart version like publish. A re-run that finds the version published skips
-  # the push and goes on with the registry's chart if its content is this commit's, else fails.
+  # The chart follows the attested images; its values pin all three to their verified index
+  # digests, and chart version and appVersion are the release version (ADR-0042, Entscheidung 7). A
+  # first attempt fails on a taken chart version like publish. A re-run that finds the version
+  # published skips the push and goes on with the registry's chart if its content is this
+  # commit's, else fails.
   chart:
     needs: [publish, image-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -849,7 +850,8 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/verified
 
-      # package-chart.sh refuses anything but two digests sha256:<64 hex digits>.
+      # package-chart.sh refuses anything but three digests sha256:<64 hex digits>: backend,
+      # frontend and the text recognition service of ocr.service.
       - name: Chart packen
         id: package
         env:
@@ -857,7 +859,8 @@ jobs:
         run: |
           backend=$(cat "$RUNNER_TEMP/verified/backend")
           frontend=$(cat "$RUNNER_TEMP/verified/frontend")
-          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart" "$backend" "$frontend")
+          ocr=$(cat "$RUNNER_TEMP/verified/ocr")
+          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart" "$backend" "$frontend" "$ocr")
           echo "path=$package" >>"$GITHUB_OUTPUT"
 
       - name: Chart veröffentlichen

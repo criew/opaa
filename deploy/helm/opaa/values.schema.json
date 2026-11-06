@@ -172,6 +172,55 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": [
+          "ocr",
+          "secrets"
+        ],
+        "properties": {
+          "ocr": {
+            "required": [
+              "service"
+            ],
+            "properties": {
+              "service": {
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "secrets": {
+            "properties": {
+              "existingSecret": {
+                "const": ""
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "secrets": {
+            "required": [
+              "ocrApiKey"
+            ],
+            "properties": {
+              "ocrApiKey": {
+                "type": "string",
+                "minLength": 32
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -416,6 +465,224 @@
           "type": "string",
           "pattern": "^([1-9][0-9]*)?$",
           "description": "Recordings passed on at the same time; empty keeps the application default"
+        }
+      }
+    },
+    "ocr": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Operation switch of text recognition in the backend (OPAA_OCR_ENABLED); the service itself is set under Modelle > Texterkennung"
+        },
+        "maxPagesPerDocument": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*)?$",
+          "description": "Largest scan in pages that goes to the service; empty keeps the application default"
+        },
+        "documentTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 45m or PT45M; empty keeps the application default"
+        },
+        "maxConcurrent": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*)?$",
+          "description": "Documents one backend pod has recognised at the same time; empty keeps the application default"
+        },
+        "maxPagesPerRun": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*)?$",
+          "description": "Pages one indexing run sends at most; empty keeps the application default"
+        },
+        "callTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 45m or PT45M; empty keeps the application default"
+        },
+        "catchUpInterval": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Pause between two catch-up passes of uploaded scans, at least 20s, such as 5m; empty keeps the application default"
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The bundled text recognition service opaa-ocr; its key comes from the secret (key ocr-api-key)",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "image": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^(sha256:[a-f0-9]{64})?$"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                }
+              },
+              "required": [
+                "repository"
+              ]
+            },
+            "replicas": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Pods of the service, 0 stops it"
+            },
+            "workers": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Conversions one pod runs at the same time (DOCLING_SERVE_ENG_LOC_NUM_WORKERS)"
+            },
+            "maxSyncWaitSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "How long one call waits for its conversion (DOCLING_SERVE_MAX_SYNC_WAIT); at least ocr.callTimeout"
+            },
+            "resources": {
+              "type": "object"
+            },
+            "startupProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "initialDelaySeconds": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "successThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "livenessProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "initialDelaySeconds": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "successThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "readinessProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "initialDelaySeconds": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "successThreshold": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "tmp": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sizeLimit": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "medium": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "Memory"
+                  ]
+                }
+              }
+            },
+            "service": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "port": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "podAnnotations": {
+              "type": "object"
+            },
+            "podLabels": {
+              "type": "object"
+            },
+            "nodeSelector": {
+              "type": "object"
+            },
+            "tolerations": {
+              "type": "array"
+            },
+            "affinity": {
+              "type": "object"
+            }
+          }
         }
       }
     },
@@ -1040,6 +1307,11 @@
           "pattern": "^$|^\\S{32,}$",
           "description": "Token of the installation API, at least 32 characters without spaces (OPAA_INSTALLATION_TOKEN); empty: generated by the first start and printed once"
         },
+        "ocrApiKey": {
+          "type": "string",
+          "pattern": "^$|^\\S{32,}$",
+          "description": "Key of the bundled text recognition service (ocr-api-key), at least 32 characters without spaces; required with ocr.service.enabled unless secrets.existingSecret is set"
+        },
         "rerankApiKey": {
           "type": "string",
           "description": "Without effect since the model administration holds the role (Modelle); still accepted so that value files up to v0.1.0-rc.4 keep rendering.",
@@ -1188,6 +1460,7 @@
             "enum": [
               "OPAA_INDEXING_EMBEDDING_CONCURRENCY",
               "OPAA_TRANSCRIPTION_MAX_CONCURRENT",
+              "OPAA_OCR_MAX_CONCURRENT",
               "OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT",
               "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS",
               "OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS",

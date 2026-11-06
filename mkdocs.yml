@@ -143,6 +143,7 @@ nav:
       - betrieb/installation.md
       - betrieb/authentifizierung.md
       - betrieb/modell-endpunkte.md
+      - betrieb/texterkennung.md
       - betrieb/netz-und-sicherheit.md
       - betrieb/datenbank.md
       - betrieb/originalablage.md

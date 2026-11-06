@@ -29,6 +29,10 @@
 {{- printf "%s-frontend" (include "opaa.fullname" .) }}
 {{- end }}
 
+{{- define "opaa.ocr.fullname" -}}
+{{- printf "%s-ocr" (include "opaa.fullname" .) }}
+{{- end }}
+
 {{- define "opaa.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
@@ -62,6 +66,20 @@ app.kubernetes.io/component: {{ .component }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
+{{- end }}
+
+{{/*
+Account of the text recognition service: one of its own while the chart creates accounts, so the
+annotations of the release's account (cloud identities) never reach it; otherwise the namespace's
+default account.
+*/}}
+{{- define "opaa.ocr.serviceAccountName" -}}
+{{- ternary (include "opaa.ocr.fullname" .) "default" .Values.serviceAccount.create }}
+{{- end }}
+
+{{/* Address of the bundled text recognition service, as the model administration is given it. */}}
+{{- define "opaa.ocr.url" -}}
+{{- printf "http://%s:%v" (include "opaa.ocr.fullname" .) .Values.ocr.service.service.port }}
 {{- end }}
 
 {{/* Image reference; call with (dict "root" $ "image" .Values.backend.image). */}}
@@ -139,6 +157,9 @@ message names the rule no matter which object Helm renders first.
 {{- end }}
 {{- if and .Values.transcription.maxConcurrent (hasKey .Values.backend.installationBudgets "OPAA_TRANSCRIPTION_MAX_CONCURRENT") }}
 {{- fail "transcription.maxConcurrent and backend.installationBudgets.OPAA_TRANSCRIPTION_MAX_CONCURRENT set the same variable; keep one: the budget of the installation, which the chart divides by the pods, or the value per pod." }}
+{{- end }}
+{{- if and .Values.ocr.maxConcurrent (hasKey .Values.backend.installationBudgets "OPAA_OCR_MAX_CONCURRENT") }}
+{{- fail "ocr.maxConcurrent and backend.installationBudgets.OPAA_OCR_MAX_CONCURRENT set the same variable; keep one: the budget of the installation, which the chart divides by the pods, or the value per pod." }}
 {{- end }}
 {{- range .Values.backend.extraEnv }}
 {{- if hasKey $.Values.backend.installationBudgets .name }}
@@ -263,10 +284,11 @@ starts a new job, and stays the same otherwise. At most 63 characters, the limit
 
 {{/*
 Pod-level fields shared by all workloads; call with (dict "root" $ "component" .Values.backend),
-optionally with "podSecurityContext" replacing the chart-wide one.
+optionally with "podSecurityContext" replacing the chart-wide one and "serviceAccountName" the
+release's account.
 */}}
 {{- define "opaa.podSpecCommon" -}}
-serviceAccountName: {{ include "opaa.serviceAccountName" .root }}
+serviceAccountName: {{ .serviceAccountName | default (include "opaa.serviceAccountName" .root) }}
 automountServiceAccountToken: false
 enableServiceLinks: false
 securityContext:
@@ -343,10 +365,15 @@ at every later use (ADR-0060, Entscheidung 9).
 
 {{/*
 OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: targetValidation.modelAllowlist plus host and port of the
-chat and embedding model of the answer file, so they pass the address check of models.
+chat and embedding model of the answer file and, while it runs, of the bundled text recognition
+service, so they pass the address check of models.
 */}}
 {{- define "opaa.modelAllowlist" -}}
-{{- include "opaa.allowlistWithAddresses" (dict "hosts" .Values.targetValidation.modelAllowlist "urls" (list .Values.bootstrap.chatModel.baseUrl .Values.embedding.baseUrl)) }}
+{{- $urls := list .Values.bootstrap.chatModel.baseUrl .Values.embedding.baseUrl }}
+{{- if .Values.ocr.service.enabled }}
+{{- $urls = append $urls (include "opaa.ocr.url" .) }}
+{{- end }}
+{{- include "opaa.allowlistWithAddresses" (dict "hosts" .Values.targetValidation.modelAllowlist "urls" $urls) }}
 {{- end }}
 
 {{/*

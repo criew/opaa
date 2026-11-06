@@ -34,6 +34,7 @@ beim Identitätsanbieter.
 | PostgreSQL mit pgvector | einziger Zustand: Dokumente, Vektoren, Volltext, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
 | Originalablage | Originale der Uploads, im Dateisystem (auch Netzlaufwerk) oder in einem S3-Objektspeicher wie MinIO | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
 | Modelldienste | je Rolle ein OpenAI-kompatibler Endpunkt: Chat und Embedding (Pflicht), Reranking und Spracherkennung (optional) | Chat und Embedding | [Modelle](modell-endpunkte.md) |
+| Texterkennungsdienst | liest gescannte PDF-Seiten; mitgeliefert als `opaa-ocr` oder ein eigener Endpunkt, ohne Zustand | nein | [Texterkennung](texterkennung.md) |
 | Identitätsanbieter | Anmeldung über OpenID Connect, etwa Keycloak; ohne ihn nur lokale Konten | nein | [Authentifizierung](authentifizierung.md) |
 | Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](../administration/e-mail.md) |
 | Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](../benutzer/konnektoren/README.md) |
@@ -89,6 +90,7 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | schnell ausprobieren | [Schnellstart](schnellstart.md) |
 | installieren | [Docker Compose](docker-compose.md) oder [Kubernetes](kubernetes.md) |
 | eine neue Instanz einrichten, im Browser oder mit Antwortdatei | [Installation](installation.md) |
+| gescannte Dokumente durchsuchbar machen, Texterkennungsdienst bemessen | [Texterkennung](texterkennung.md) |
 | Images, Versionen, Container-Grenzen, Probes, Graceful Shutdown | [Images und Laufzeit](images-und-laufzeit.md) |
 | Reverse-Proxy, Härtung, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Virenprüfung, Schlüssel | [Netz und Sicherheit](netz-und-sicherheit.md) |
 | sichern, zurückspielen, Wiederherstellungsprobe | [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) |
