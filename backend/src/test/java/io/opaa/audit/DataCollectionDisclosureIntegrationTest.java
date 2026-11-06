@@ -342,7 +342,7 @@ class DataCollectionDisclosureIntegrationTest {
             + " updated_at) VALUES (1, true, 'http://stt.example/v1', 'whisper', 'de', now())");
     jdbcTemplate.update(
         "INSERT INTO text_recognition_model (id, enabled, connection_type, base_url,"
-            + " model_identifier, updated_at) VALUES (1, false, 'OPENAI_VISION',"
+            + " model_identifier, updated_at) VALUES (1, true, 'OPENAI_VISION',"
             + " 'http://vlm.example/v1', 'paddle-vl', now())");
 
     JsonNode export = exportAsAdmin();
@@ -361,7 +361,7 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("transcription_model.enabled", "true"),
             Map.entry("transcription_model.base_url", "http://stt.example/v1"),
             Map.entry("transcription_model.model_identifier", "whisper"),
-            Map.entry("text_recognition_model.enabled", "false"),
+            Map.entry("text_recognition_model.enabled", "true"),
             Map.entry("text_recognition_model.connection_type", "OPENAI_VISION"),
             Map.entry("text_recognition_model.base_url", "http://vlm.example/v1"),
             Map.entry("text_recognition_model.model_identifier", "paddle-vl"));
