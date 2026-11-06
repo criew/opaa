@@ -396,6 +396,45 @@ class ChatResponseMapperTest {
   }
 
   @Test
+  void toSourceReferenceMapsTheFramesAndTextOriginOfARecognisedScan() {
+    ChatSource source =
+        new ChatSource("scan.pdf", 0.85, 1, true)
+            .chunkLocations(
+                List.of(
+                    new ChatSourceLocation(0)
+                        .location("S. 1")
+                        .anchor(
+                            Map.of(
+                                "pageFrom",
+                                1,
+                                "pageTo",
+                                1,
+                                "regions",
+                                List.of(
+                                    Map.of(
+                                        "page", 1, "x", 0.1, "y", 0.2, "width", 0.5, "height",
+                                        0.05)),
+                                "textOrigin",
+                                Map.of("connectionType", "DOCLING_SERVE")))));
+
+    var anchor =
+        ChatResponseMapper.toSourceReference(source).getChunkLocations().getFirst().getAnchor();
+
+    assertThat(anchor.getRegions())
+        .singleElement()
+        .satisfies(
+            region -> {
+              assertThat(region.getPage()).isEqualTo(1);
+              assertThat(region.getX()).isEqualTo(0.1);
+              assertThat(region.getY()).isEqualTo(0.2);
+              assertThat(region.getWidth()).isEqualTo(0.5);
+              assertThat(region.getHeight()).isEqualTo(0.05);
+            });
+    assertThat(anchor.getTextOrigin().getConnectionType())
+        .isEqualTo(io.opaa.api.types.TextRecognitionConnectionType.DOCLING_SERVE);
+  }
+
+  @Test
   void toSourceReferenceLeavesTheAnchorNullForASourceStoredWithoutOne() {
     ChatSource source =
         new ChatSource("readme.md", 0.5, 1, false)

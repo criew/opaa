@@ -1214,4 +1214,37 @@ class IndexingRunTemplateTest {
     order.verify(jobService).recordEventsTruncated(jobId, 1);
     order.verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
   }
+
+  /**
+   * Scans past the page budget of text recognition wait for the next run; this one is incomplete.
+   */
+  @Test
+  void scansPastThePageBudgetOfTextRecognitionLeaveTheRunIncomplete() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.events().textRecognitionBudget().tryReserve(500, 500);
+          run.events().textRecognitionBudget().tryReserve(3, 500);
+          run.markPresent("/srv/dokumente/a.pdf");
+          run.recordOutcome(DocumentIngestResult.PROCESSED, "/srv/dokumente/a.pdf");
+          return ListingOutcome.complete();
+        });
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.BUDGET_EXHAUSTED
+                        && event
+                            .getMessage()
+                            .equals(
+                                "Seitenbudget der Texterkennung erschöpft (500 Seiten); 1 Scan"
+                                    + " folgt im nächsten Lauf")));
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+    verify(jobService, never()).failJob(any(), any());
+  }
 }
