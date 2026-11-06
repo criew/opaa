@@ -182,7 +182,8 @@ class TextRecognitionModelAdministrationIntegrationTest {
                         + "/docling\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.outcome").value("READY"));
+        .andExpect(jsonPath("$.outcome").value("READY"))
+        .andExpect(jsonPath("$.failedStage").doesNotExist());
     assertThat(apiKeyHeader.get()).isEqualTo(KEY);
     assertThat(authorization.get()).isNull();
 
@@ -210,7 +211,8 @@ class TextRecognitionModelAdministrationIntegrationTest {
                         + "/docling\",\"apiKey\":\"falsch\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.outcome").value("KEY_REJECTED"));
+        .andExpect(jsonPath("$.outcome").value("KEY_REJECTED"))
+        .andExpect(jsonPath("$.failedStage").value("AUTHENTICATION"));
   }
 
   @Test

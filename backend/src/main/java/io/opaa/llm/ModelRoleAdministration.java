@@ -112,7 +112,10 @@ public class ModelRoleAdministration {
 
   /** A text recognition test result: what the test found, with a German message. */
   public record TextRecognitionTestOutcome(
-      boolean success, TextRecognitionClient.TestOutcome outcome, String message) {}
+      boolean success,
+      TextRecognitionClient.TestOutcome outcome,
+      TextRecognitionClient.FailedStage failedStage,
+      String message) {}
 
   private final RerankModelSettingsRepository rerankRows;
   private final TranscriptionModelSettingsRepository transcriptionRows;
@@ -619,6 +622,7 @@ public class ModelRoleAdministration {
     return new TextRecognitionTestOutcome(
         result.outcome() == TextRecognitionClient.TestOutcome.READY,
         result.outcome(),
+        result.failedStage(),
         textRecognitionMessage(type, result));
   }
 
@@ -637,7 +641,14 @@ public class ModelRoleAdministration {
               : "Der Endpunkt ist erreichbar, bietet das Modell aber nicht an oder kann mit ihm"
                   + " keine Bilder lesen. Prüfen Sie die Modell-Kennung.";
       case NO_TEXT -> "Der Dienst hat geantwortet, auf der Testseite aber keinen Text erkannt.";
-      case UNREACHABLE -> german(result.diagnostic(), result.timedOut());
+      case UNREACHABLE ->
+          result.failedStage() == TextRecognitionClient.FailedStage.RECOGNITION
+              ? "Der Dienst ist erreichbar und hat den Zugangsschlüssel angenommen, beim Lesen der"
+                  + " Testseite aber "
+                  + (result.timedOut()
+                      ? "nicht rechtzeitig geantwortet."
+                      : "nicht verwertbar geantwortet: " + german(result.diagnostic(), false))
+              : german(result.diagnostic(), result.timedOut());
     };
   }
 
