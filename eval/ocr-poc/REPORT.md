@@ -32,13 +32,15 @@ flowchart LR
         D["Dokument aus einer<br/>Bibliothek oder Quelle"] --> P["Indexierungspipeline"]
         P --> W{"Text<br/>vorhanden?"}
         W -- "ja, PDF mit Textebene" --> T["Bordmittel-Pfad<br/>Tika / PDFBox<br/>(heute schon gebaut)"]
-        W -- "nein: Scan-PDF,<br/>JPEG, PNG, TIFF" --> C["OCR-Client<br/>(docling-serve-API)"]
+        W -- "nein: Scan-PDF,<br/>JPEG, PNG, TIFF" --> C["OCR-Client"]
+        MV[("Modellverwaltung<br/>Rolle Texterkennung:<br/>Art, Adresse, Schlüssel")] -.-> C
         C -- "JSON: Elemente mit<br/>Seite und Koordinaten" --> CH["Chunker entlang der<br/>Docling-Struktur<br/>(§, Tabellenzeilen)"]
         T --> K["Chunks mit Anker,<br/>Embeddings, Index,<br/>Pipeline-Version am Chunk"]
         CH --> K
     end
 
-    C -- "HTTP im internen Netz,<br/>API-Schlüssel" --> S
+    C -- "Art 1: docling-serve-API,<br/>X-Api-Key" --> S
+    C -. "Art 2: OpenAI-kompatibel,<br/>Markdown je Seite" .-> V["Vision-Modell hinter vLLM<br/>PaddleOCR-VL, GraniteDocling<br/>(GPU)"]
 
     subgraph svc["OCR-Dienst: mitgelieferter docling-serve oder eigener Dienst"]
         S["REST-Schnittstelle<br/>/v1/convert"] --> R["Seiten rastern"]
@@ -66,11 +68,16 @@ Zurück kommt das `DoclingDocument` als JSON. Nur daraus werden die Chunks gesch
 eine flache Ansicht für Vorschau und Fehlersuche. Am Chunk steht, welches Verfahren den Text geliefert
 hat. Fällt der Dienst aus, bleibt das Dokument wie heute als „kein extrahierbarer Text“ stehen.
 
-Wo die Adresse gepflegt wird, ist noch offen:
-- Die **Betriebskonfiguration** (Compose, Helm) passt zum mitgelieferten Container.
-- Eine **Einstellung in der Systemadministration** passt besser zum eigenen Dienst. Sie braucht dann
-  eine Erreichbarkeitsprüfung. Außerdem legt der Admin damit fest, wohin opaa Dokumente schickt, das
-  ist sicherheitsrelevant.
+Gepflegt wird der Dienst als Rolle „Texterkennung“ in der Modellverwaltung der Systemadministration
+(Festlegung im Epic #2640). Es gibt genau zwei Anbindungsarten:
+
+1. **docling-serve-API:** Das ist der mitgelieferte Container oder ein eigener Dienst. Zugang über
+   `X-Api-Key`, Ergebnis ist das JSON mit Fundorten.
+2. **OpenAI-kompatibles Vision-Modell:** etwa PaddleOCR-VL oder GraniteDocling hinter vLLM. Es liefert
+   Markdown je Seite, Fundstellen gibt es dort meist nur als Seitensprung.
+
+Eine Adresse, an die opaa Dokumente schickt, ist sicherheitsrelevant. Deshalb darf nur die
+Systemadministration sie eintragen, und opaa prüft das Ziel wie bei den übrigen Modellrollen.
 
 **Welche Dateien.** Docling verarbeitet nicht nur PDF. Für Scans zählen vor allem die Bildformate:
 JPEG, PNG, TIFF (auch mehrseitig, jede Seite einzeln), BMP, WEBP und GIF. Sie laufen durch dieselbe
