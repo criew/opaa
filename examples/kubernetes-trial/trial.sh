@@ -7,12 +7,14 @@
 # Works on the current kubectl context, or on KUBE_CONTEXT, and only on a local cluster unless
 # TRIAL_ALLOW_CONTEXT names the context. Expects a cluster whose ingress controller is Traefik
 # (k3s, k3d) and reaches it on TRIAL_PORT of this machine. Needs kubectl, helm and openssl.
-# Secrets are generated on the first "up" and kept on every further one.
+# Secrets are generated on the first "up" and kept on every further one. TRIAL_OCR=true adds the
+# text recognition service opaa-ocr of the chart (ocr.service) and switches text recognition on.
 set -euo pipefail
 
 TRIAL_PORT="${TRIAL_PORT:-8088}"
 CHAT_MODEL="${TRIAL_CHAT_MODEL:-qwen2.5:3b}"
 IMAGE_TAG="${OPAA_IMAGE_TAG:-main}"
+OCR="${TRIAL_OCR:-false}"
 # "main" moves, so every restarted pod pulls its current state; a release tag never changes.
 PULL_POLICY=IfNotPresent
 if [[ "$IMAGE_TAG" == main ]]; then PULL_POLICY=Always; fi
@@ -57,6 +59,7 @@ Umgebungsvariablen:
   TRIAL_PORT        Port, unter dem der Ingress-Controller auf diesem Rechner erreichbar ist (${TRIAL_PORT})
   TRIAL_CHAT_MODEL  Chat-Modell, das Ollama zieht und OPAA beim ersten Start übernimmt (${CHAT_MODEL})
   OPAA_IMAGE_TAG    Tag der OPAA-Images (${IMAGE_TAG})
+  TRIAL_OCR         true startet den Texterkennungsdienst opaa-ocr und gibt die Texterkennung frei (${OCR})
   KUBE_CONTEXT      kubectl-Kontext statt des aktuellen
   TRIAL_ALLOW_CONTEXT
                     Name eines Kontexts, der nicht nach lokalem Cluster aussieht, aber gemeint ist
@@ -140,6 +143,7 @@ ensure_secrets() {
     openssl rand -hex 24 | tr -d '\n' >"$dir/installation-admin-password"
     printf 'opaa-%s' "$(openssl rand -hex 6)" >"$dir/OPAA_UPLOAD_S3_ACCESS_KEY"
     openssl rand -hex 24 | tr -d '\n' >"$dir/OPAA_UPLOAD_S3_SECRET_KEY"
+    openssl rand -hex 32 | tr -d '\n' >"$dir/ocr-api-key"
     k -n "$NAMESPACE" create secret generic opaa-secrets --from-file="$dir" >/dev/null
     echo "Geheimnisse von OPAA erzeugt (Secret opaa-secrets)."
   elif [[ -z "$(k -n "$NAMESPACE" get secret opaa-secrets \
@@ -148,6 +152,11 @@ ensure_secrets() {
     # mounts as file; the installation itself is complete and ignores it.
     k -n "$NAMESPACE" patch secret opaa-secrets --type merge -p "{\"data\":{\"installation-admin-password\":\"$(
       k -n "$NAMESPACE" get secret opaa-secrets -o 'jsonpath={.data.OPAA_INITIAL_ADMIN_PASSWORD}')\"}}" >/dev/null
+  fi
+  # The key of the text recognition service, added to a trial set up before it.
+  if [[ -z "$(k -n "$NAMESPACE" get secret opaa-secrets -o 'jsonpath={.data.ocr-api-key}')" ]]; then
+    k -n "$NAMESPACE" patch secret opaa-secrets --type merge \
+      -p "{\"data\":{\"ocr-api-key\":\"$(openssl rand -hex 32 | tr -d '\n' | base64 | tr -d '\n')\"}}" >/dev/null
   fi
   if ! k -n "$SERVICES_NAMESPACE" get secret rustfs-credentials >/dev/null 2>&1; then
     dir="$(new_secret_dir rustfs-credentials)"
@@ -196,6 +205,12 @@ apply_jobs() {
 }
 
 install_opaa() {
+  local ocr_args=()
+  if [[ "$OCR" == true ]]; then
+    ocr_args=(--set ocr.enabled=true --set ocr.service.enabled=true
+      --set-string ocr.service.image.tag="$IMAGE_TAG"
+      --set-string ocr.service.image.pullPolicy="$PULL_POLICY")
+  fi
   h upgrade --install "$RELEASE" "$chart_dir" --namespace "$NAMESPACE" \
     --values "$script_dir/opaa-values.yaml" \
     --set-string publicBaseUrl="$OPAA_URL" \
@@ -209,7 +224,8 @@ install_opaa() {
     --set-string backend.image.tag="$IMAGE_TAG" \
     --set-string frontend.image.tag="$IMAGE_TAG" \
     --set-string backend.image.pullPolicy="$PULL_POLICY" \
-    --set-string frontend.image.pullPolicy="$PULL_POLICY"
+    --set-string frontend.image.pullPolicy="$PULL_POLICY" \
+    ${ocr_args[@]+"${ocr_args[@]}"}
 }
 
 wait_for() {
@@ -261,6 +277,7 @@ up() {
   wait_for_job "$SERVICES_NAMESPACE" ollama-pull-models 2700
   wait_for "$NAMESPACE" deploy/opaa-frontend 300
   wait_for "$NAMESPACE" deploy/opaa-backend 900
+  if [[ "$OCR" == true ]]; then wait_for "$NAMESPACE" deploy/opaa-ocr 900; fi
   wait_for_job "$NAMESPACE" opaa-mail-setup 600
 
   info "Bereit nach ${SECONDS} s"
@@ -273,9 +290,14 @@ Keycloak:  $KEYCLOAK_URL (Verwaltung: admin, Passwort:
              kubectl -n $SERVICES_NAMESPACE get secret keycloak-admin -o jsonpath='{.data.password}' | base64 -d)
 Mailpit:   $(address mailpit.localhost)
 Chat-Modell: $CHAT_MODEL, Embedding-Modell: $EMBEDDING_MODEL
-
-Nur zur Erprobung. Abbauen mit: $0 down
 EOF
+  if [[ "$OCR" == true ]]; then
+    cat <<EOF
+Texterkennung: unter Modelle → Texterkennung docling-serve mit http://opaa-ocr:5001, Schlüssel:
+             kubectl -n $NAMESPACE get secret opaa-secrets -o jsonpath='{.data.ocr-api-key}' | base64 -d
+EOF
+  fi
+  printf '\nNur zur Erprobung. Abbauen mit: %s down\n' "$0"
 }
 
 down() {
