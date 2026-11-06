@@ -1,0 +1,40 @@
+{
+  "paragraph13Heading": {
+    "page": 3,
+    "x": 0.1042,
+    "y": 0.4879,
+    "width": 0.7917,
+    "height": 0.0184
+  },
+  "freistellungsbescheid": {
+    "page": 3,
+    "x": 0.1042,
+    "y": 0.5665,
+    "width": 0.7473,
+    "height": 0.0506
+  },
+  "zweitausfertigung": {
+    "page": 4,
+    "x": 0.1042,
+    "y": 0.2779,
+    "width": 0.7917,
+    "height": 0.0285
+  },
+  "zweitausfertigungAmount": "44,00 Euro",
+  "table": {
+    "page": 4,
+    "x": 0.1042,
+    "y": 0.1639,
+    "width": 0.7917,
+    "height": 0.2566
+  },
+  "kassenzeichen": {
+    "page": 5,
+    "x": 0.1042,
+    "y": 0.1591,
+    "width": 0.7753,
+    "height": 0.0506
+  },
+  "rotatedPage": 5,
+  "pages": 5
+}

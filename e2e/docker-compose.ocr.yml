@@ -1,0 +1,46 @@
+# Overlay of the target "ocr" (scripts/run-e2e.mjs --target ocr), on top of docker-compose.e2e.yml:
+# the real OCR service opaa-ocr (docling-serve with RapidOCR, models baked in) next to the stack,
+# for the acceptance run with video (e2e/ocr/tests). Like the shipped Compose overlay of the
+# operation: an internal network of its own, no published port, reachable only from the backend.
+# The key is random per run (OPAA_OCR_API_KEY, set by run-e2e.mjs); the image defaults to the one
+# published from main and is built from ocr/Dockerfile in .github/workflows/ocr-acceptance.yml.
+services:
+  opaa-ocr:
+    image: ${OPAA_OCR_IMAGE:-ghcr.io/criew/opaa-ocr:main}
+    environment:
+      DOCLING_SERVE_API_KEY: ${OPAA_OCR_API_KEY:?run-e2e.mjs sets OPAA_OCR_API_KEY}
+      DOCLING_SERVE_ENG_LOC_NUM_WORKERS: "1"
+      DOCLING_SERVE_MAX_SYNC_WAIT: "2700"
+    networks:
+      - ocr
+    read_only: true
+    tmpfs:
+      - /tmp:exec,mode=1777,size=2g
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/opt/app-root/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 5s
+
+  backend:
+    depends_on:
+      # `up -d` returns once the models are loaded, so the connection test of the scenario finds
+      # the service ready.
+      opaa-ocr:
+        condition: service_healthy
+    environment:
+      OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: ai-stub:8089,ocr-stub:5001,opaa-ocr:5001
+    networks:
+      - default
+      - ocr
+
+networks:
+  # Internal: no gateway, so the service has no route to the internet or the host.
+  ocr:
+    internal: true

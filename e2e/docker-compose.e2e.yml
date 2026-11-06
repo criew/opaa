@@ -81,7 +81,10 @@ services:
       OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub,nextcloud,dropbox-stub
       # The models of this suite (chat model administration, connection test) are ai-stub as well;
       # the address check of models has its own list, the entry above releases no model.
-      OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: ai-stub:8089
+      OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: ai-stub:8089,ocr-stub:5001
+      # Text recognition of scanned PDFs (ADR-0069) allowed by the operation; the role itself stays
+      # off until text-recognition.spec.ts switches it on against ocr-stub, and off after it.
+      OPAA_OCR_ENABLED: "true"
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.
@@ -217,6 +220,29 @@ services:
       - "127.0.0.1:${OPAA_DROPBOX_STUB_PORT:-18091}:8090"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # Stands in for docling-serve, the OCR service opaa-ocr (e2e/ocr-stub/server.mjs): replays the
+  # DoclingDocument a real opaa-ocr run made of the scenarios' scan and checks key and options.
+  # The key is random per run (run-e2e.mjs, handed to the scenarios as E2E_OCR_API_KEY). The
+  # host port only serves the scenarios' look at /control/conversions.
+  ocr-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ocr-stub:/app:ro
+      - ./demo/seed/e2e-data/text-recognition:/fixtures:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "5001"
+      FIXTURE_DIR: /fixtures
+      OCR_STUB_API_KEY: ${OPAA_OCR_STUB_API_KEY:?run-e2e.mjs sets OPAA_OCR_STUB_API_KEY}
+    ports:
+      - "127.0.0.1:${OPAA_OCR_STUB_PORT:-18094}:5001"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/health"]
       interval: 2s
       timeout: 2s
       retries: 10

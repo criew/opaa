@@ -9,3 +9,5 @@ blob-report/
 .venv/
 ui-lab/out/
 ui-lab/videos/
+test-results-ocr/
+playwright-report-ocr/

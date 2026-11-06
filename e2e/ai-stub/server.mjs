@@ -241,6 +241,28 @@ function answerPromptQuestion(messages) {
   return typeof question?.content === 'string' ? question.content : ''
 }
 
+// --- Citing one passage (text recognition, tests/text-recognition.spec.ts) ---------------------
+//
+// A term in German quotation marks in the person's question („Zweitausfertigung“) narrows the
+// echoed citations to the passages whose text contains it, case-insensitively, so the source a
+// scenario opens is a known passage and its frame has one right place. Without such a term, or
+// when no passage contains it, every passage stays cited as before.
+const QUOTED_TERM_PATTERN = /„([^“\n]{2,80})“/
+const PASSAGE_PATTERN = /<opaaabschnitt kennung="[^"]+">([\s\S]*?)<\/opaaabschnitt kennung="[^"]+">/g
+
+function citedPassages(messages, citations) {
+  const term = QUOTED_TERM_PATTERN.exec(answerPromptQuestion(messages) ?? '')?.[1]?.toLowerCase()
+  if (!term) {
+    return citations
+  }
+  const matching = [...systemTextOf(messages).matchAll(PASSAGE_PATTERN)]
+    .map((passage) => passage[1])
+    .filter((passage) => passage.toLowerCase().includes(term))
+    .flatMap((passage) => [...passage.matchAll(CITATION_PATTERN)].map((match) => match[0]))
+  const narrowed = citations.filter((citation) => matching.includes(citation))
+  return narrowed.length > 0 ? narrowed : citations
+}
+
 function answerFails(messages) {
   return answerPromptQuestion(messages)?.includes(FAILURE_TRIGGER) ?? false
 }
@@ -559,7 +581,7 @@ const server = createServer(async (req, res) => {
       const citations = [...combinedText.matchAll(CITATION_PATTERN)]
         .filter((match) => match[1] !== EXAMPLE_CITATION_DOCUMENT_ID)
         .map((match) => match[0])
-      const uniqueCitations = [...new Set(citations)]
+      const uniqueCitations = citedPassages(messages, [...new Set(citations)])
       const answer =
         (uniqueCitations.length > 0
           ? `Antwort auf Basis der bereitgestellten Dokumente. ${uniqueCitations.join(' ')}`
