@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-30
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -24,9 +24,9 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 | Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/betrieb/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/betrieb/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
 | Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
 | Integrität des Revisionsprotokolls | Prüfsummenkette je Protokollmonat mit Siegel, das an das Sicherheitsmonitoring geht; Prüfweg der Revision je Monat ohne Datenbankzugang | [Prüfsummenkette und Monatssiegel](../../handbuch/betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel), {{faktenblatt:protokollereignisse#audit-log-month-sealed}} |
-| Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
+| Software-Stückliste (SBOM) | woraus jedes Image besteht, auch das optionale Image für Texterkennung mit seinen eingebauten Modellen; Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
 | Prüfung des Codes | Review jeder Änderung vor dem Merge, automatische Prüfungen in jedem Pull Request, wöchentliche Prüfung der Änderungen, Tiefen-Audit zweimal im Jahr und bei Anlass; bisher keine Prüfung durch Dritte | [Wie das Projekt seinen Code prüft](../../../SECURITY.md#wie-das-projekt-seinen-code-prüft), [Prüfrhythmus](../../security-pruefung.md#prüfrhythmus), [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen) |
-| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
+| Schwachstellen | Erkennung in Abhängigkeiten und Images, das Image für Texterkennung eingeschlossen; Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
 | Sicherheitsupdates | Patch-Releases je unterstützter Linie, Supportzeiträume, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
@@ -52,6 +52,9 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
 - Ältere Linien bekommen Korrekturen über eigene Wartungsbranches; der Schwachstellen-Scan prüft
   `main` und das jüngste Patch-Release jeder unterstützten Linie.
+- Geprüfte Artefakte eines Release sind die Images von Backend, Frontend und Texterkennung, das
+  Helm-Chart, das Update-Paket, die SBOMs und das Offline-Bündel; jedes trägt eine signierte
+  Provenance ([Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert)).
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 - Das Nachweisprotokoll lässt sich an ein zentrales Sicherheitsmonitoring ausleiten, als Syslog mit

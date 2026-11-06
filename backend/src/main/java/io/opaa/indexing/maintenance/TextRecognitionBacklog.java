@@ -47,8 +47,15 @@ public class TextRecognitionBacklog {
 
   private static final Logger log = LoggerFactory.getLogger(TextRecognitionBacklog.class);
 
-  /** No further document is started after this; with the timeout of one it stays below the lock. */
-  static final Duration PASS_DURATION = Duration.ofMinutes(60);
+  /**
+   * No further document is started after this. With the hard deadline of one document ({@link
+   * io.opaa.llm.TextRecognitionProperties#MAX_DOCUMENT_TIMEOUT}) and its embedding the pass stays
+   * below {@link #LOCK_AT_MOST_FOR}.
+   */
+  static final Duration PASS_DURATION = Duration.ofMinutes(50);
+
+  /** The cluster lock of a pass; outlasts {@link #PASS_DURATION} and one document (ADR-0053). */
+  static final String LOCK_AT_MOST_FOR = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY;
 
   private static final long INTERVAL_MILLIS = 5 * 60_000L;
 
@@ -91,7 +98,7 @@ public class TextRecognitionBacklog {
   @SchedulerLock(
       name = "text-recognition-backlog",
       lockAtLeastFor = "PT4M",
-      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
+      lockAtMostFor = LOCK_AT_MOST_FOR)
   public void catchUpPeriodically() {
     PassResult result = catchUp();
     if (result.recognized() + result.notRecognized() > 0) {
@@ -128,7 +135,8 @@ public class TextRecognitionBacklog {
         if (textRecognition.active().isEmpty()
             || clock.instant().isAfter(end)
             || budget.deferred() > 0
-            || events.serviceFailed) {
+            || events.serviceFailed
+            || events.slotBusy) {
           return new PassResult(
               recognized, notRecognized, budget.pagesSpent(), budget.deferred() > 0);
         }
@@ -215,6 +223,7 @@ public class TextRecognitionBacklog {
 
     private final TextRecognitionRunBudget budget;
     private volatile boolean serviceFailed;
+    private volatile boolean slotBusy;
 
     PassEvents(TextRecognitionRunBudget budget) {
       this.budget = budget;
@@ -224,6 +233,8 @@ public class TextRecognitionBacklog {
     public void record(IndexingEventCategory category, String message, String reference) {
       if (category == IndexingEventCategory.TEXT_RECOGNITION_FAILED) {
         serviceFailed = true;
+      } else if (category == IndexingEventCategory.TEXT_RECOGNITION_PENDING) {
+        slotBusy = true;
       }
       log.debug("Text recognition catch-up: {} {}", category, message);
     }
@@ -231,6 +242,12 @@ public class TextRecognitionBacklog {
     @Override
     public TextRecognitionRunBudget textRecognitionBudget() {
       return budget;
+    }
+
+    /** A wait for a slot held by a run would push the pass past its lock. */
+    @Override
+    public boolean waitsForTextRecognitionSlot() {
+      return false;
     }
   }
 }

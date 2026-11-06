@@ -175,4 +175,21 @@ class TextRecognitionBacklogTest {
 
     verify(ingestService, never()).ingest(any(), any());
   }
+
+  @Test
+  void aPassWithItsLastDocumentEndsWithinTheClusterLock() {
+    java.time.Duration lock = java.time.Duration.parse(TextRecognitionBacklog.LOCK_AT_MOST_FOR);
+    java.time.Duration embeddingAndCut = java.time.Duration.ofMinutes(10);
+
+    assertThat(
+            TextRecognitionBacklog.PASS_DURATION
+                .plus(io.opaa.llm.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT)
+                .plus(embeddingAndCut))
+        .isLessThan(lock);
+    assertThat(
+            new io.opaa.llm.TextRecognitionProperties(
+                    true, 0, java.time.Duration.ofHours(3), 0, 0, null)
+                .documentTimeout())
+        .isEqualTo(io.opaa.llm.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT);
+  }
 }

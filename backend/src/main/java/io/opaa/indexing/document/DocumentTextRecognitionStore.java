@@ -183,9 +183,9 @@ public class DocumentTextRecognitionStore {
   }
 
   /**
-   * The documents of {@code libraryId} with a lock that still holds: of the current pipeline
-   * version and, while a role is in force, made by its configuration {@code configurationId}
-   * ({@code null}: any).
+   * The documents of {@code libraryId} with a lock that still holds: for the file as it is, of the
+   * current pipeline version and, while a role is in force, made by its configuration {@code
+   * configurationId} ({@code null}: any) - the same condition as the pending count.
    */
   public List<BlockedDocument> blocked(
       UUID libraryId, int pipelineVersion, String configurationId) {
@@ -194,6 +194,7 @@ public class DocumentTextRecognitionStore {
             + " FROM document_text_recognition r JOIN documents d ON d.id = r.document_id"
             + " WHERE d.library_id = ? AND r.blocked_reason IS NOT NULL"
             + " AND r.pipeline_version = ?"
+            + " AND (d.checksum IS NULL OR r.checksum = d.checksum)"
             + " AND (CAST(? AS varchar) IS NULL OR r.configuration_id = ?)"
             + " ORDER BY d.file_name, d.id",
         (rs, row) ->
@@ -248,11 +249,14 @@ public class DocumentTextRecognitionStore {
         limit);
   }
 
-  /** Rejected as without text, a PDF, and without a lock that still holds. */
+  /**
+   * Rejected as without text, a PDF, and neither locked nor already read without text by this
+   * procedure for this very file.
+   */
   private static final String PENDING_CONDITION =
       "d.status = 'FAILED' AND d.error_message = ? AND d.content_type = ?"
           + " AND NOT EXISTS (SELECT 1 FROM document_text_recognition r"
-          + " WHERE r.document_id = d.id AND r.blocked_reason IS NOT NULL"
+          + " WHERE r.document_id = d.id"
           + " AND r.pipeline_version = ?"
           + " AND (CAST(? AS varchar) IS NULL OR r.configuration_id = ?)"
           + " AND (d.checksum IS NULL OR r.checksum = d.checksum))";

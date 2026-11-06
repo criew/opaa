@@ -18,4 +18,12 @@ public interface IndexingEventSink {
   default TextRecognitionRunBudget textRecognitionBudget() {
     return null;
   }
+
+  /**
+   * Whether a scan waits for a busy text recognition slot of this instance; by default a run waits
+   * and a caller without one does not. A bounded pass under a cluster lock does not wait.
+   */
+  default boolean waitsForTextRecognitionSlot() {
+    return textRecognitionBudget() != null;
+  }
 }

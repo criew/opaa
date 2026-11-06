@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { AxiosError } from 'axios'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -29,6 +27,8 @@ import {
   updateRerankModelSettings,
   updateTranscriptionModelSettings,
 } from '../api/modelApi'
+import RoleApiKeyField from './RoleApiKeyField'
+import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
 
 export type { ModelRoleKind }
 
@@ -71,20 +71,6 @@ const STATE_TEXT: Record<SearchModelRoleState, string> = {
   UNREACHABLE: 'Eingeschaltet, aber der Endpunkt antwortet noch nicht.',
 }
 
-/** The field errors of a 400, by the field name after the role prefix (`rerank.baseUrl`). */
-function fieldErrorsOf(err: unknown): Record<string, string> {
-  const cause = err instanceof Error ? err.cause : undefined
-  if (!(cause instanceof AxiosError)) return {}
-  const data = cause.response?.data as
-    { fieldErrors?: { field: string; message: string }[] } | undefined
-  const result: Record<string, string> = {}
-  for (const error of data?.fieldErrors ?? []) {
-    const field = error.field.substring(error.field.indexOf('.') + 1)
-    result[field] ??= error.message
-  }
-  return result
-}
-
 function load(kind: ModelRoleKind): Promise<RoleSettings> {
   return kind === 'rerank' ? getRerankModelSettings() : getTranscriptionModelSettings()
 }
@@ -104,9 +90,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const [model, setModel] = useState('')
   const [language, setLanguage] = useState('')
   const [vocabulary, setVocabulary] = useState('')
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [apiKeyTouched, setApiKeyTouched] = useState(false)
-  const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
+  const [apiKey, setApiKey] = useState<ApiKeyDraft>(UNTOUCHED_API_KEY)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -122,9 +106,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     setModel(stored.model ?? '')
     setLanguage(stored.language ?? '')
     setVocabulary(stored.vocabulary ?? '')
-    setApiKeyInput('')
-    setApiKeyTouched(false)
-    setApiKeyClearRequested(false)
+    setApiKey(UNTOUCHED_API_KEY)
   }
 
   useEffect(() => {
@@ -154,13 +136,6 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     }
   }, [checking, kind])
 
-  /** An empty field keeps the stored key; only the remove button sends the empty text that removes it. */
-  function resolveApiKey(): string | undefined {
-    if (apiKeyClearRequested) return ''
-    if (apiKeyTouched && apiKeyInput.trim() !== '') return apiKeyInput.trim()
-    return undefined
-  }
-
   async function handleSave() {
     setSaving(true)
     setErrors({})
@@ -169,7 +144,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       enabled,
       baseUrl: baseUrl.trim(),
       model: model.trim(),
-      apiKey: resolveApiKey(),
+      apiKey: resolveApiKey(apiKey),
     }
     try {
       const saved =
@@ -194,7 +169,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   async function handleTest() {
     setTesting(true)
     setTestResult(null)
-    const request = { baseUrl: baseUrl.trim(), model: model.trim(), apiKey: resolveApiKey() }
+    const request = { baseUrl: baseUrl.trim(), model: model.trim(), apiKey: resolveApiKey(apiKey) }
     try {
       setTestResult(
         kind === 'rerank' ? await testRerankModel(request) : await testTranscriptionModel(request),
@@ -282,48 +257,13 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           size="small"
           fullWidth
         />
-        <Box>
-          <TextField
-            id={`${prefix}-api-key`}
-            label="Zugangsschlüssel (optional)"
-            type="password"
-            value={apiKeyInput}
-            disabled={apiKeyClearRequested}
-            onChange={(e) => {
-              setApiKeyTouched(true)
-              setApiKeyClearRequested(false)
-              setApiKeyInput(e.target.value)
-            }}
-            error={Boolean(errors.apiKey)}
-            helperText={
-              errors.apiKey ??
-              (apiKeyClearRequested
-                ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
-                : settings.apiKeySet
-                  ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
-                  : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.')
-            }
-            size="small"
-            fullWidth
-            autoComplete="new-password"
-          />
-          {settings.apiKeySet && (
-            <Button
-              size="small"
-              color={apiKeyClearRequested ? 'primary' : 'error'}
-              sx={{ mt: 0.5 }}
-              onClick={() => {
-                setApiKeyClearRequested(!apiKeyClearRequested)
-                setApiKeyTouched(false)
-                setApiKeyInput('')
-              }}
-            >
-              {apiKeyClearRequested
-                ? 'Entfernen rückgängig machen'
-                : 'Gespeicherten Schlüssel entfernen'}
-            </Button>
-          )}
-        </Box>
+        <RoleApiKeyField
+          id={`${prefix}-api-key`}
+          value={apiKey}
+          onChange={setApiKey}
+          apiKeySet={settings.apiKeySet}
+          error={errors.apiKey}
+        />
         {kind === 'transcription' && (
           <TextField
             id={`${prefix}-language`}

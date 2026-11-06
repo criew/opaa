@@ -7,7 +7,8 @@ zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/betrieb/releases-un
 
 ## Ebene 1 — Image-Attestierungen
 
-Jedes in GHCR veröffentlichte Image (`ghcr.io/criew/opaa-backend`, `ghcr.io/criew/opaa-frontend`)
+Jedes in GHCR veröffentlichte Image (`ghcr.io/criew/opaa-backend`, `ghcr.io/criew/opaa-frontend`,
+`ghcr.io/criew/opaa-ocr`)
 trägt je Architektur (`linux/amd64`, `linux/arm64`) eine SBOM- und eine Provenance-Attestierung,
 die BuildKit beim Push erzeugt (`.github/workflows/publish-images.yml`, Job `build`,
 `sbom: true` / `provenance: mode=max`). Jede Architektur wird in einem eigenen Job auf einem Runner
@@ -92,6 +93,48 @@ optionalen Plattform-Binärpakete, die der pnpm-Scan nicht braucht). Ein Release
 keinen Werkzeugstand, den kein PR gesehen hat. Renovate pflegt Version und Lockfile, ohne
 Auto-Merge; ein solcher PR startet `sbom.yml` und probt damit den Aufruf.
 
+## OCR-Image
+
+`ghcr.io/criew/opaa-ocr` hat keine eigene Lockfile in diesem Repository: Die Python-Umgebung von
+docling-serve und die Layout- und Tabellenmodelle kommen mit dem per Digest gepinnten Basis-Image
+([releases.md](releases.md#basis-images)), die PP-OCRv6-Modelle von RapidOCR lädt der Bau dazu
+(`ocr/Dockerfile`). Die Stückliste wird deshalb aus dem Image selbst gelesen:
+
+| Teil | Ort |
+|---|---|
+| CycloneDX-SBOM des Images (Betriebssystem- und Python-Pakete, Trivy) | je Release `opaa-ocr-X.Y.Z.cdx.json` am GitHub-Release, aus dem veröffentlichten Image per Digest (`linux/amd64`; die Python-Pakete sind auf beiden Architekturen dieselben), **attestiert**; bei jedem PR unter `ocr/` als CI-Artefakt `sbom-ocr-<arch>` von `ocr-image.yml`, 90 Tage |
+| Eingebaute Modelle mit Lizenz | `ocr/models.cdx.json` (CycloneDX, Typ `machine-learning-model`) |
+| Prüfsumme jeder Modelldatei | `ocr/models.sha256`; der Bau bricht ab, wenn eine Datei abweicht, fehlt oder hinzukommt |
+| Herkunft der Prüfsummen | `ocr/models.revisions`: der Hugging-Face-Commit je Modell-Repository |
+| Lizenzübersicht | je Release `opaa-ocr-X.Y.Z-lizenzen.md` am GitHub-Release, **attestiert**; im PR CI-Artefakt `sbom-ocr-<arch>` |
+
+**Herkunft der Prüfsummen.** Die Zeilen von `models.sha256` übernimmt ein PR aus der Ausgabe eines
+Baus, der an der alten Liste gescheitert ist; für sich genommen hieße das, dem ersten Download zu
+vertrauen. `ocr-image.yml` gleicht deshalb jede Zeile mit einer vom Bau unabhängigen Quelle ab
+(`.github/scripts/ocr_models_verify.py`):
+
+- Dateien aus Hugging-Face-Repositories mit der Hugging-Face-API am Commit aus
+  `ocr/models.revisions`: der LFS-SHA256 großer Dateien, der Inhalt aller übrigen. Ein Commit ist
+  unveränderlich; den Commit legt ein Mensch im PR fest.
+- Dateien von RapidOCR mit dem SHA256, den `default_models.yaml` des rapidocr-Pakets im Image für
+  sie nennt; das Paket stammt aus der Lockfile des Basis-Images. Das Wörterbuch
+  `ppocrv6_dict.txt` hat dort keine Prüfsumme. Der Abgleich lädt es von der dort genannten
+  ModelScope-Adresse am Tag `v3.10.0`, also aus **derselben Quelle** wie der Bau: Er belegt nur,
+  dass die Quelle seither dasselbe liefert, nicht ihre Echtheit. Eine zweite, unabhängige Quelle
+  mit Prüfsumme gibt es dafür bisher nicht. Das Wörterbuch ist eine Textdatei mit den erkennbaren
+  Zeichen, kein ausführbarer Inhalt; eine Fälschung verfälschte die Texterkennung, sie führte keinen
+  Code aus.
+
+Eine Zeile ohne solche Quelle lässt die Prüfung scheitern. Die übrigen OCR-Modelle des
+Basis-Images (EasyOCR, die kleinen PP-OCRv6-Modelle, PyTorch-Checkpoints) und das Paket
+`ray-haproxy` (GPL-2.0) entfernt der Bau, bevor er das Dateisystem in eine Schicht übernimmt; sie
+werden nicht ausgeliefert ([releases.md](releases.md#basis-images)).
+
+**Lizenzprüfung.** `.github/scripts/ocr_licenses.sh` prüft die Python-Pakete der Image-SBOM
+(`pkg:pypi`) und die Modelle aus `ocr/models.cdx.json` mit `check_licenses.py` gegen
+`.github/licenses/`, wie bei Backend und Frontend; die Betriebssystempakete des Basis-Images sind
+ausgenommen, wie dort. Sie läuft in `ocr-image.yml` bei jedem PR und im Release-Job `ocr-sbom`.
+
 ## Lokal erzeugen
 
 ```bash
@@ -120,7 +163,7 @@ muss dafür nichts.
 | Prüfung | `.github/scripts/check_licenses.py`, Selbstprobe `test_check_licenses.py` |
 | Freigabeliste (SPDX-Kennungen) | `.github/licenses/allowed.txt` |
 | Ausnahmeliste, eine Zeile je Paket mit Begründung | `.github/licenses/exceptions.txt` |
-| Lizenzübersicht (Markdown, generiert) | CI-Artefakte `license-report-backend` und `license-report-frontend`, 90 Tage |
+| Lizenzübersicht (Markdown, generiert) | CI-Artefakte `license-report-backend` und `license-report-frontend`, 90 Tage; für das OCR-Image siehe [OCR-Image](#ocr-image) |
 
 Geprüft wird derselbe Umfang wie in den SBOMs, nur Laufzeit-Abhängigkeiten:
 
@@ -134,6 +177,7 @@ Geprüft wird derselbe Umfang wie in den SBOMs, nur Laufzeit-Abhängigkeiten:
   Entwicklungsläufen mit `VITE_ENABLE_MOCKS`, deshalb löscht `frontend/Dockerfile` ihn nach dem
   Build, und das Image enthält ihn nicht. Wer eine Datei aus einem devDependency-Paket nach
   `public/` legt und ausliefert, muss deren Lizenz selbst prüfen.
+- **OCR-Image:** Python-Pakete und Modelle, siehe [OCR-Image](#ocr-image).
 - **e2e/** wird nicht ausgeliefert und nicht geprüft.
 
 Eine Abhängigkeit besteht, wenn ihr Lizenzausdruck mit der Freigabeliste erfüllt ist (`A OR B`:

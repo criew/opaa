@@ -54,7 +54,8 @@ fertig war, bleibt indiziert.
   Ihre Abschnitte tragen Seiten, Rahmen auf der Seite und den Vermerk, dass der Text erkannt wurde.
   Ohne Texterkennung werden sie als „kein extrahierbarer Text“ abgewiesen. Ein Scan, den der Dienst
   nicht lesen konnte, wartet auf den nächsten Lauf; einen gesperrten zeigt die Bibliothek über der
-  Dokumentliste.
+  Dokumentliste. Erkennt der Dienst keinen Text, bleibt der Scan ohne Inhalt, bis sich Datei oder
+  Dienst ändern.
 
 ## Feste Grenzen
 
@@ -85,9 +86,9 @@ Einträge, je Bibliothek die letzten zehn Läufe.
 | nicht erreichbar | Verbindungsfehler oder Zeitüberschreitung |
 | Format nicht unterstützt / Formatabweichung | nicht aufgenommen / aufgenommen, Endung passt nicht |
 | Ratenbegrenzung, Budget erschöpft | Quelle bremst oder Anfrage- bzw. Seitenbudget der Texterkennung verbraucht; der nächste Lauf setzt fort |
-| Per Texterkennung gelesen | Scan erkannt oder aus dem gespeicherten Erkennungsstand indiziert |
-| Texterkennung gescheitert / ausstehend | Dienst nicht verfügbar bzw. Seitenbudget verbraucht; der Scan wartet auf den nächsten Lauf |
-| Texterkennung gesperrt | Dienst lehnt die Datei ab oder sie liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek |
+| Per Texterkennung gelesen | Scan erkannt oder aus dem gespeicherten Erkennungsstand indiziert, auch „ohne erkannten Text“ |
+| Texterkennung gescheitert / ausstehend | Dienst nicht verfügbar, nur teilweise umgewandelt oder unerwarteter Fehler bzw. Seitenbudget verbraucht oder kein freier Platz; der Scan wartet auf den nächsten Lauf |
+| Texterkennung gesperrt | docling-serve lehnt die Datei ab, das Vision-Modell lehnt eine Seite als zu groß ab (HTTP 413), sie ist unlesbar oder liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek |
 | in der Quelle entfernt | gelöscht, weil die Quelle es nicht mehr hat |
 | Auffällige Muster | aufgenommen, mit Zählung verdächtiger Muster |
 | Fehler | unerwartet gescheitert |

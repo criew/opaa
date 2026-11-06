@@ -48,6 +48,15 @@ export const mockSearchStatus: SearchStatusResponse = {
       detail:
         'Die Spracheingabe ist abgeschaltet (Modelle → Spracheingabe oder die Funktion Spracheingabe des Betriebs). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung, kein Fehler.',
     },
+    {
+      role: 'TEXT_RECOGNITION',
+      state: 'DISABLED',
+      endpoint: null,
+      modelIdentifier: null,
+      faulted: false,
+      detail:
+        'Die Texterkennung ist abgeschaltet (Schalter der Rolle in der Modellverwaltung oder OPAA_OCR_ENABLED des Betriebs) - das ist die Voreinstellung, kein Fehler.',
+    },
   ],
   searchPaths: [
     {

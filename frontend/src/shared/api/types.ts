@@ -416,6 +416,13 @@ export type TranscriptionModelSettingsResponse =
   components['schemas']['TranscriptionModelSettingsResponse']
 export type TranscriptionModelSettingsRequest =
   components['schemas']['TranscriptionModelSettingsRequest']
+export type TextRecognitionConnectionType = components['schemas']['TextRecognitionConnectionType']
+export type TextRecognitionModelSettingsResponse =
+  components['schemas']['TextRecognitionModelSettingsResponse']
+export type TextRecognitionModelSettingsRequest =
+  components['schemas']['TextRecognitionModelSettingsRequest']
+export type TextRecognitionTestRequest = components['schemas']['TextRecognitionTestRequest']
+export type TextRecognitionTestResponse = components['schemas']['TextRecognitionTestResponse']
 export type ModelRoleTestRequest = components['schemas']['ModelRoleTestRequest']
 
 export type MailEncryption = components['schemas']['MailEncryption']
