@@ -9,6 +9,7 @@ import io.opaa.format.file.pdf.PdfPages;
 import io.opaa.format.file.pdf.RecognizedPdf;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.TextRecognitionRunBudget;
+import io.opaa.llm.TextRecognitionClient;
 import io.opaa.llm.TextRecognitionClient.TextRecognitionRejectedException;
 import io.opaa.llm.TextRecognitionClient.TextRecognitionUnavailableException;
 import io.opaa.llm.TextRecognitionModelRole;
@@ -37,15 +38,16 @@ import org.slf4j.LoggerFactory;
  *       service - always in a re-index, which never calls it, and otherwise while the role in force
  *       is the one that made it or none is in force (switched off, nothing is silently dropped).
  *   <li><b>Failure classes.</b> A failure of the service (timeout, 401/403, 429, 5xx, no
- *       connection) leaves the document rejected and unlocked for the next run. Only a refusal of
- *       this document, the page limit or a recognition without text locks the file for this
- *       procedure ({@link DocumentTextRecognitionStore#block}); there is no fallback to another
- *       procedure.
+ *       connection, a partial conversion, an unexpected error) leaves the document rejected and
+ *       unlocked for the next run. Only a refusal of this document, the page limit or a file that
+ *       cannot be read locks the file for this procedure ({@link
+ *       DocumentTextRecognitionStore#block}); a recognition without text is stored, not locked.
+ *       There is no fallback to another procedure.
  *   <li><b>Limits.</b> Pages per document, the run's page budget ({@link TextRecognitionRunBudget},
- *       a deferred scan makes the run incomplete), a deadline per document for the page calls of a
- *       vision model, and {@link TextRecognitionProperties#maxConcurrent()} documents at a time on
- *       this instance (ADR-0053, per instance). A caller without a run sends only while a slot is
- *       free and otherwise leaves the scan to the background catch-up.
+ *       a deferred scan makes the run incomplete), a hard deadline per document for every call, and
+ *       {@link TextRecognitionProperties#maxConcurrent()} documents at a time on this instance
+ *       (ADR-0053, per instance). A caller without a run sends only while a slot is free and
+ *       otherwise leaves the scan to the background catch-up.
  * </ul>
  *
  * <p>Protocol, log and metrics name connection type, recipient ({@code configurationId}), pages and
@@ -126,6 +128,14 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
     }
     DocumentFormatResult result = cut(candidate, entry.content());
     if (result.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
+      record(
+          candidate,
+          IndexingEventCategory.TEXT_RECOGNIZED,
+          "Gespeicherte Texterkennung ohne Text ("
+              + label(entry.connectionType())
+              + ", Empfänger "
+              + entry.configurationId()
+              + "); keine neue Texterkennung");
       return Optional.empty();
     }
     log.info(
@@ -193,20 +203,24 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
       metrics.recordTextRecognition("pending", type, 0, null);
       return Optional.empty();
     }
-    if (!acquireSlot(budget != null)) {
+    boolean wait = candidate.events() != null && candidate.events().waitsForTextRecognitionSlot();
+    if (!acquireSlot(wait)) {
       if (budget != null) {
         budget.release(pages);
       }
+      record(
+          candidate,
+          IndexingEventCategory.TEXT_RECOGNITION_PENDING,
+          "Texterkennung ausstehend: kein freier Platz für die Texterkennung, sie wird nachgeholt");
       metrics.recordTextRecognition("pending", type, 0, null);
       return Optional.empty();
     }
     Instant started = clock.instant();
     try {
-      RecognizedPdf recognized = read(candidate, active, pages, limits.documentTimeout());
-      DocumentFormatResult result = cut(candidate, recognized.toJson());
-      if (result.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
-        return block(candidate, active, pages, "Die Texterkennung hat keinen Text erkannt");
-      }
+      RecognizedPdf recognized =
+          read(candidate, active, pages, started.plus(limits.documentTimeout()));
+      String json = recognized.toJson();
+      DocumentFormatResult result = cut(candidate, json);
       store.saveRecognition(
           candidate.documentId(),
           candidate.checksum(),
@@ -214,9 +228,12 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
           recipient,
           PdfOcrDocumentFormat.VERSION,
           pages,
-          recognized.toJson(),
+          json,
           clock.instant());
       Duration took = Duration.between(started, clock.instant());
+      if (result.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
+        return recognizedWithoutText(candidate, type, recipient, pages, took);
+      }
       log.info(
           "Text recognition read {} ({} pages, {}, recipient {}) in {} ms",
           candidate.names().of(candidate.reference(), candidate.documentId()),
@@ -237,76 +254,167 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
       metrics.recordTextRecognition("recognized", type, pages, took);
       return Optional.of(new Recognized(result, format));
     } catch (TextRecognitionRejectedException e) {
+      if (refusalOfTheDocument(active.connectionType(), e.status())) {
+        return block(
+            candidate,
+            active,
+            pages,
+            "Der Dienst hat das Dokument abgelehnt (" + rejectionReason(e.status()) + ")");
+      }
+      return fail(
+          candidate,
+          active,
+          pages,
+          started,
+          "failed",
+          "Anfrage abgelehnt (HTTP " + e.status() + "), Modell und Einstellungen prüfen",
+          e);
+    } catch (PartialConversion e) {
+      return fail(
+          candidate,
+          active,
+          pages,
+          started,
+          "partial",
+          "docling-serve hat das Dokument nur teilweise umgewandelt, nichts gespeichert",
+          e);
+    } catch (UnrenderablePages e) {
       return block(
           candidate,
           active,
           pages,
-          "Der Dienst hat das Dokument abgelehnt (" + rejectionReason(e.status()) + ")");
-    } catch (TextRecognitionUnavailableException | DeadlineExceeded e) {
-      String reason = failureReason(e);
-      log.warn(
-          "Text recognition of {} failed on the service ({}, recipient {}): {}",
-          candidate.names().of(candidate.reference(), candidate.documentId()),
-          type,
-          recipient,
-          e.getMessage());
-      record(
-          candidate,
-          IndexingEventCategory.TEXT_RECOGNITION_FAILED,
-          "Texterkennung gescheitert: "
-              + reason
-              + " (Empfänger "
-              + recipient
-              + "); der nächste Lauf versucht es erneut");
-      metrics.recordTextRecognition(
-          "failed", type, pages, Duration.between(started, clock.instant()));
-      return Optional.empty();
+          "Die Seiten der PDF-Datei ließen sich nicht als Bild darstellen");
+    } catch (TextRecognitionUnavailableException | DeadlineExceeded | WorkingFileUnreadable e) {
+      return fail(candidate, active, pages, started, "failed", failureReason(e), e);
     } catch (IllegalStateException e) {
-      // the operation or the role was switched off while the document waited: today's rejection
-      log.info(
-          "Text recognition of {} not started: {}",
-          candidate.names().of(candidate.reference(), candidate.documentId()),
-          e.getMessage());
-      return Optional.empty();
+      if (role.active().isEmpty()) {
+        // the operation or the role was switched off while the document waited: today's rejection
+        log.info(
+            "Text recognition of {} not started: {}",
+            candidate.names().of(candidate.reference(), candidate.documentId()),
+            e.getMessage());
+        return Optional.empty();
+      }
+      return fail(
+          candidate, active, pages, started, "failed", "Unerwarteter Fehler der Texterkennung", e);
+    } catch (RuntimeException e) {
+      return fail(
+          candidate, active, pages, started, "failed", "Unerwarteter Fehler der Texterkennung", e);
     } finally {
       slots.release();
     }
   }
 
   /**
+   * A recognition without text is stored, not locked: the document stays without content and is
+   * read again only for a changed file or another recipient. A misconfigured vision model would
+   * otherwise lock every scan.
+   */
+  private Optional<Recognized> recognizedWithoutText(
+      Candidate candidate, String type, String recipient, int pages, Duration took) {
+    log.info(
+        "Text recognition found no text in {} ({} pages, {}, recipient {})",
+        candidate.names().of(candidate.reference(), candidate.documentId()),
+        pages,
+        type,
+        recipient);
+    record(
+        candidate,
+        IndexingEventCategory.TEXT_RECOGNIZED,
+        "Texterkennung ohne erkannten Text ("
+            + label(type)
+            + ", Empfänger "
+            + recipient
+            + "); das Dokument bleibt ohne Inhalt, bis sich die Datei oder der Empfänger ändert");
+    metrics.recordTextRecognition("empty", type, pages, took);
+    return Optional.empty();
+  }
+
+  /**
+   * A failure that says nothing about the file: nothing is stored or locked, the next run or
+   * catch-up tries again.
+   */
+  private Optional<Recognized> fail(
+      Candidate candidate,
+      ActiveTextRecognition active,
+      int pages,
+      Instant started,
+      String result,
+      String reason,
+      Exception failure) {
+    String type = active.connectionType().name();
+    log.warn(
+        "Text recognition of {} failed ({}, recipient {}): {} ({})",
+        candidate.names().of(candidate.reference(), candidate.documentId()),
+        type,
+        active.configurationId(),
+        failure.getClass().getSimpleName(),
+        failure.getMessage());
+    record(
+        candidate,
+        IndexingEventCategory.TEXT_RECOGNITION_FAILED,
+        "Texterkennung gescheitert: "
+            + reason
+            + " (Empfänger "
+            + active.configurationId()
+            + "); der nächste Lauf versucht es erneut");
+    metrics.recordTextRecognition(result, type, pages, Duration.between(started, clock.instant()));
+    return Optional.empty();
+  }
+
+  /**
+   * Whether a refusal concerns this document. docling-serve reads the file itself, so any refusal
+   * does; a vision model gets a page image this application rendered, so only one too large (413)
+   * does - a 400 or 404 there means a wrong model name or setting, which locks no scan.
+   */
+  static boolean refusalOfTheDocument(TextRecognitionConnectionType type, int status) {
+    return type == TextRecognitionConnectionType.DOCLING_SERVE || status == 413;
+  }
+
+  /**
    * The service's reading of the file: the whole PDF for docling-serve, page by page as images for
-   * a vision model, those calls within {@code documentTimeout} together.
+   * a vision model, every call within the document's {@code deadline}.
    */
   private RecognizedPdf read(
-      Candidate candidate, ActiveTextRecognition active, int pages, Duration documentTimeout)
-      throws DeadlineExceeded {
+      Candidate candidate, ActiveTextRecognition active, int pages, Instant deadline)
+      throws DeadlineExceeded, PartialConversion, WorkingFileUnreadable, UnrenderablePages {
     if (active.connectionType() == TextRecognitionConnectionType.DOCLING_SERVE) {
       byte[] pdf;
       try {
         pdf = Files.readAllBytes(candidate.file());
       } catch (IOException e) {
-        throw new IllegalStateException("the scan could not be read from its working file", e);
+        throw new WorkingFileUnreadable(e);
       }
-      return RecognizedPdf.docling(
-          active.configurationId(), role.convertWithDocling(active, pdf).document());
+      TextRecognitionClient.DoclingConversion conversion =
+          role.convertWithDocling(active, pdf, remaining(deadline));
+      if (conversion.partial()) {
+        throw new PartialConversion();
+      }
+      return RecognizedPdf.docling(active.configurationId(), conversion.document());
     }
-    Instant deadline = clock.instant().plus(documentTimeout);
     List<String> markdown = new ArrayList<>(pages);
     try {
       pdfPages.render(
           candidate.file(),
           (page, png) -> {
-            if (clock.instant().isAfter(deadline)) {
+            Duration left = remaining(deadline);
+            if (left.isZero()) {
               throw new DeadlineExceededSignal();
             }
-            markdown.add(role.recognizePage(active, png, PNG));
+            markdown.add(role.recognizePage(active, png, PNG, left));
           });
     } catch (DeadlineExceededSignal e) {
       throw new DeadlineExceeded();
     } catch (IOException e) {
-      throw new IllegalStateException("the scan's pages could not be rendered", e);
+      throw new UnrenderablePages(e);
     }
     return RecognizedPdf.vision(active.configurationId(), markdown);
+  }
+
+  /** What is left until {@code deadline}; zero once it has passed. */
+  private Duration remaining(Instant deadline) {
+    Duration left = Duration.between(clock.instant(), deadline);
+    return left.isNegative() ? Duration.ZERO : left;
   }
 
   private DocumentFormatResult cut(Candidate candidate, String recognition) {
@@ -342,7 +450,8 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
   }
 
   /**
-   * A slot of this instance: a run waits for one, a caller without a run takes one only if free.
+   * A slot of this instance: a run waits for one, any other caller takes one only if free. An
+   * interrupted wait takes none.
    */
   private boolean acquireSlot(boolean wait) {
     if (!wait) {
@@ -353,7 +462,7 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
       return true;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("interrupted while waiting for text recognition", e);
+      return false;
     }
   }
 
@@ -367,6 +476,9 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
   static String failureReason(Exception failure) {
     if (failure instanceof DeadlineExceeded) {
       return "Zeitgrenze je Dokument überschritten";
+    }
+    if (failure instanceof WorkingFileUnreadable) {
+      return "Arbeitsdatei nicht lesbar";
     }
     TextRecognitionUnavailableException e = (TextRecognitionUnavailableException) failure;
     if (e.timedOut()) {
@@ -403,6 +515,27 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
   static final class DeadlineExceeded extends Exception {
     DeadlineExceeded() {
       super("the document's deadline for text recognition passed");
+    }
+  }
+
+  /** docling-serve reported {@code partial_success}: some pages are missing from the answer. */
+  static final class PartialConversion extends Exception {
+    PartialConversion() {
+      super("docling-serve converted the document only partially");
+    }
+  }
+
+  /** The working file of the scan could not be read; says nothing about the scan itself. */
+  static final class WorkingFileUnreadable extends Exception {
+    WorkingFileUnreadable(IOException cause) {
+      super("the scan could not be read from its working file", cause);
+    }
+  }
+
+  /** The pages of the scan could not be rendered as images for a vision model. */
+  static final class UnrenderablePages extends Exception {
+    UnrenderablePages(IOException cause) {
+      super("the scan's pages could not be rendered", cause);
     }
   }
 

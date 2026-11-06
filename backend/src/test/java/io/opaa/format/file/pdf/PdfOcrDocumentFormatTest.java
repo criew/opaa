@@ -122,6 +122,61 @@ class PdfOcrDocumentFormatTest {
   }
 
   @Test
+  void aRowOfATableContinuedOnTheNextPageIsFramedOnThatPage() throws IOException {
+    tools.jackson.databind.node.ObjectNode document =
+        (tools.jackson.databind.node.ObjectNode) fixture("docling-gebuehrensatzung");
+    tools.jackson.databind.node.ObjectNode table =
+        (tools.jackson.databind.node.ObjectNode) document.path("tables").get(0);
+    // the table's part on page 2: from 41.92 to 101.92 points below the top edge
+    tools.jackson.databind.node.ObjectNode part =
+        ((tools.jackson.databind.node.ArrayNode) table.path("prov")).addObject();
+    part.put("page_no", 2);
+    part.putObject("bbox")
+        .put("l", 70.0)
+        .put("t", 800.0)
+        .put("r", 520.0)
+        .put("b", 740.0)
+        .put("coord_origin", "BOTTOMLEFT");
+    tools.jackson.databind.node.ArrayNode cells =
+        (tools.jackson.databind.node.ArrayNode) table.path("data").path("table_cells");
+    cell(cells.addObject(), 3, 0, "Abschrift", 70, 300);
+    cell(cells.addObject(), 3, 1, "3 Euro", 300, 520);
+
+    List<RecognizedPdfBlocks.Block> rows =
+        RecognizedPdfBlocks.of(RecognizedPdf.docling("cfg-1", document)).stream()
+            .filter(block -> block.kind() == RecognizedPdfBlocks.Kind.TABLE_ROW)
+            .toList();
+
+    assertThat(rows)
+        .extracting(RecognizedPdfBlocks.Block::text)
+        .containsExactly("Beglaubigung | 10 Euro", "Auskunft | 5 Euro", "Abschrift | 3 Euro");
+    assertThat(rows.get(1).pageFrom()).isEqualTo(1);
+    RecognizedPdfBlocks.Block continued = rows.get(2);
+    assertThat(continued.pageFrom()).isEqualTo(2);
+    assertThat(continued.pageTo()).isEqualTo(2);
+    assertRegion(continued.regions().getFirst(), 2, 70, 60, 520, 80);
+  }
+
+  private static void cell(
+      tools.jackson.databind.node.ObjectNode cell,
+      int row,
+      int column,
+      String text,
+      double left,
+      double right) {
+    cell.putObject("bbox")
+        .put("l", left)
+        .put("t", 60.0)
+        .put("r", right)
+        .put("b", 80.0)
+        .put("coord_origin", "TOPLEFT");
+    cell.put("start_row_offset_idx", row);
+    cell.put("start_col_offset_idx", column);
+    cell.put("text", text);
+    cell.put("column_header", false);
+  }
+
+  @Test
   void aVisionModelsPagesAreCutByTheirMarkdownHeadingsWithoutFrames() {
     DocumentFormatResult result =
         run(

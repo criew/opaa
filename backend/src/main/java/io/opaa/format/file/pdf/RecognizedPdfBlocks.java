@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
 
@@ -188,7 +189,6 @@ final class RecognizedPdfBlocks {
       if (provenance == null) {
         return;
       }
-      int page = provenance.from();
       TreeMap<Integer, TreeMap<Integer, JsonNode>> rows = new TreeMap<>();
       for (JsonNode cell : table.path("data").path("table_cells")) {
         rows.computeIfAbsent(cell.path("start_row_offset_idx").asInt(0), key -> new TreeMap<>())
@@ -199,16 +199,19 @@ final class RecognizedPdfBlocks {
       for (TreeMap<Integer, JsonNode> row : rows.values()) {
         List<String> cells = new ArrayList<>();
         boolean allHeader = true;
-        List<ChunkAnchor.Region> regions = new ArrayList<>();
+        TreeMap<Integer, List<ChunkAnchor.Region>> regionsByPage = new TreeMap<>();
+        TreeSet<Integer> pages = new TreeSet<>();
         for (JsonNode cell : row.values()) {
           String text = cell.path("text").asString("").strip();
           cells.add(text);
           if (!text.isEmpty() && !cell.path("column_header").asBoolean(false)) {
             allHeader = false;
           }
+          int page = cellPage(cell, table, provenance.from());
+          pages.add(page);
           ChunkAnchor.Region region = region(page, cell.path("bbox"));
           if (region != null) {
-            regions.add(region);
+            regionsByPage.computeIfAbsent(page, key -> new ArrayList<>()).add(region);
           }
         }
         if (cells.stream().allMatch(String::isEmpty)) {
@@ -218,23 +221,70 @@ final class RecognizedPdfBlocks {
           header.add(TableText.row(cells));
           continue;
         }
+        List<ChunkAnchor.Region> regions = new ArrayList<>();
+        regionsByPage.values().forEach(onePage -> regions.add(union(onePage)));
         dataRows.add(
             new Row(
                 TableText.row(cells),
-                regions.isEmpty() ? provenance.regions() : List.of(union(regions))));
+                pages.first(),
+                pages.last(),
+                regions.isEmpty() ? provenance.regions() : regions));
       }
       String headerLine = header.isEmpty() ? null : String.join("\n", header);
       for (Row row : dataRows) {
         blocks.add(
-            new Block(Kind.TABLE_ROW, 0, row.text(), page, page, row.regions(), ref, headerLine));
+            new Block(
+                Kind.TABLE_ROW,
+                0,
+                row.text(),
+                row.from(),
+                row.to(),
+                row.regions(),
+                ref,
+                headerLine));
       }
       if (dataRows.isEmpty() && headerLine != null) {
         blocks.add(
-            new Block(Kind.TEXT, 0, headerLine, page, page, provenance.regions(), null, null));
+            new Block(
+                Kind.TEXT,
+                0,
+                headerLine,
+                provenance.from(),
+                provenance.to(),
+                provenance.regions(),
+                null,
+                null));
       }
     }
 
-    private record Row(String text, List<ChunkAnchor.Region> regions) {}
+    private record Row(String text, int from, int to, List<ChunkAnchor.Region> regions) {}
+
+    /**
+     * The page of a table cell: from its own provenance where it has one, otherwise the page of the
+     * table part whose frame holds the cell's centre - a table continued on the next page has one
+     * provenance per page, its cells none.
+     */
+    private int cellPage(JsonNode cell, JsonNode table, int firstPage) {
+      for (JsonNode prov : cell.path("prov")) {
+        int page = prov.path("page_no").asInt(0);
+        if (page > 0) {
+          return page;
+        }
+      }
+      JsonNode parts = table.path("prov");
+      if (parts.size() <= 1) {
+        return firstPage;
+      }
+      for (JsonNode part : parts) {
+        int page = part.path("page_no").asInt(0);
+        ChunkAnchor.Region frame = region(page, part.path("bbox"));
+        ChunkAnchor.Region box = region(page, cell.path("bbox"));
+        if (frame != null && box != null && holdsCentre(frame, box)) {
+          return page;
+        }
+      }
+      return firstPage;
+    }
 
     private record Provenance(int from, int to, List<ChunkAnchor.Region> regions) {}
 
@@ -286,6 +336,15 @@ final class RecognizedPdfBlocks {
       }
       return new ChunkAnchor.Region(page, round(x0), round(y0), round(x1 - x0), round(y1 - y0));
     }
+  }
+
+  private static boolean holdsCentre(ChunkAnchor.Region frame, ChunkAnchor.Region box) {
+    double x = box.x() + box.width() / 2;
+    double y = box.y() + box.height() / 2;
+    return x >= frame.x()
+        && x <= frame.x() + frame.width()
+        && y >= frame.y()
+        && y <= frame.y() + frame.height();
   }
 
   /** The smallest frame holding every one of {@code regions}, all on one page. */
