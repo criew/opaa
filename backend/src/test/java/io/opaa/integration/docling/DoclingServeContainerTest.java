@@ -95,6 +95,18 @@ class DoclingServeContainerTest {
   }
 
   @Test
+  void theProbeRefusesAWrongKeySoTheRoleIsNotReady() {
+    TextRecognitionClient.ProbeFailure failure =
+        client.probe(endpoint("falsch"), Duration.ofSeconds(30));
+
+    assertThat(failure).isNotNull();
+    assertThat(failure.keyRejected()).isTrue();
+    assertThat(client.probe(endpoint(""), Duration.ofSeconds(30)))
+        .extracting(TextRecognitionClient.ProbeFailure::keyRejected)
+        .isEqualTo(true);
+  }
+
+  @Test
   void aServiceThatIsNotThereIsUnreachable() {
     TextRecognitionEndpoint gone =
         new TextRecognitionEndpoint(

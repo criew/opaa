@@ -79,6 +79,12 @@ class TextRecognitionModelAdministrationIntegrationTest {
           respond(exchange, 200, DOCLING_SUCCESS);
         });
     server.createContext(
+        "/docling/v1/status/poll/",
+        exchange -> {
+          boolean accepted = KEY.equals(exchange.getRequestHeaders().getFirst("X-Api-Key"));
+          respond(exchange, accepted ? 404 : 401, "{\"detail\":\"Task not found.\"}");
+        });
+    server.createContext(
         "/vision/v1/models",
         exchange -> {
           authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));

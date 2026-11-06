@@ -45,9 +45,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * opaa.ocr.enabled} is the limit of the text recognition role, which then can neither be switched
  * on nor tested.
  *
- * <p>The change reaches every instance through the triggers on the two tables; this instance drops
- * its cache and probes the new endpoint right after the commit, so the state on the page follows
- * without waiting for the next scheduled probe.
+ * <p>The change reaches every instance through the triggers on the three tables; this instance
+ * drops its cache and probes the new endpoint right after the commit, so the state on the page
+ * follows without waiting for the next scheduled probe.
  */
 @Service
 public class ModelRoleAdministration {
