@@ -195,8 +195,22 @@ public class TextRecognitionClient {
     UNREACHABLE
   }
 
-  /** A test result; {@code diagnostic} is technical English without content, {@code null} if OK. */
-  public record TestResult(TestOutcome outcome, String diagnostic, boolean timedOut) {}
+  /** The step of the connection test that failed. */
+  public enum FailedStage {
+    /** The address: no connection, timeout, redirect or an unexpected answer of the probe. */
+    ADDRESS,
+    /** The key: HTTP 401 or 403, at the probe or at the test page. */
+    AUTHENTICATION,
+    /** Reading the test page, timeout and unreadable answer included, or the missing model. */
+    RECOGNITION
+  }
+
+  /**
+   * A test result; {@code diagnostic} is technical English without content, {@code null} if OK;
+   * {@code failedStage} is {@code null} exactly for {@link TestOutcome#READY}.
+   */
+  public record TestResult(
+      TestOutcome outcome, String diagnostic, boolean timedOut, FailedStage failedStage) {}
 
   /**
    * Converts a whole PDF with docling-serve.
@@ -275,42 +289,61 @@ public class TextRecognitionClient {
    */
   public TestResult test(TextRecognitionEndpoint endpoint, Duration timeout) {
     long deadline = System.nanoTime() + timeout.toNanos();
+    Answer probe;
     try {
-      Answer probe = probeExchange(endpoint, deadline);
-      if (probe.status() == 401 || probe.status() == 403) {
-        return new TestResult(TestOutcome.KEY_REJECTED, describeStatus(probe.status()), false);
-      }
-      if (probe.status() != 200) {
-        return new TestResult(TestOutcome.UNREACHABLE, describeStatus(probe.status()), false);
-      }
-      if (endpoint.connectionType() == TextRecognitionConnectionType.OPENAI_VISION
-          && !offersModel(probe.body(), endpoint.model())) {
-        return new TestResult(
-            TestOutcome.ENGINE_MISSING, "the endpoint does not list the model", false);
-      }
+      probe = probeExchange(endpoint, deadline);
+    } catch (TextRecognitionUnavailableException e) {
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut(), FailedStage.ADDRESS);
+    }
+    if (probe.status() == 401 || probe.status() == 403) {
+      return new TestResult(
+          TestOutcome.KEY_REJECTED,
+          describeStatus(probe.status()),
+          false,
+          FailedStage.AUTHENTICATION);
+    }
+    if (probe.status() != 200) {
+      return new TestResult(
+          TestOutcome.UNREACHABLE, describeStatus(probe.status()), false, FailedStage.ADDRESS);
+    }
+    if (endpoint.connectionType() == TextRecognitionConnectionType.OPENAI_VISION
+        && !offersModel(probe.body(), endpoint.model())) {
+      return new TestResult(
+          TestOutcome.ENGINE_MISSING,
+          "the endpoint does not list the model",
+          false,
+          FailedStage.RECOGNITION);
+    }
+    try {
       Answer page = withinDeadline(remaining(deadline), () -> exchange(testPageRequest(endpoint)));
       return testResult(endpoint, page);
     } catch (TextRecognitionUnavailableException e) {
-      return new TestResult(TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut());
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), e.timedOut(), FailedStage.RECOGNITION);
     }
   }
 
   private TestResult testResult(TextRecognitionEndpoint endpoint, Answer page) {
     int status = page.status();
     if (status == 401 || status == 403) {
-      return new TestResult(TestOutcome.KEY_REJECTED, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.KEY_REJECTED, describeStatus(status), false, FailedStage.AUTHENTICATION);
     }
     if (status == 404 || (status >= 300 && status < 400) || status == 408 || status == 429) {
-      return new TestResult(TestOutcome.UNREACHABLE, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.UNREACHABLE, describeStatus(status), false, FailedStage.RECOGNITION);
     }
     if (status != 200) {
-      return new TestResult(TestOutcome.ENGINE_MISSING, describeStatus(status), false);
+      return new TestResult(
+          TestOutcome.ENGINE_MISSING, describeStatus(status), false, FailedStage.RECOGNITION);
     }
     JsonNode root;
     try {
       root = parse(page.body());
     } catch (TextRecognitionUnavailableException e) {
-      return new TestResult(TestOutcome.UNREACHABLE, e.getMessage(), false);
+      return new TestResult(
+          TestOutcome.UNREACHABLE, e.getMessage(), false, FailedStage.RECOGNITION);
     }
     String text;
     if (endpoint.connectionType() == TextRecognitionConnectionType.DOCLING_SERVE) {
@@ -319,15 +352,17 @@ public class TextRecognitionClient {
         return new TestResult(
             TestOutcome.ENGINE_MISSING,
             "docling-serve could not convert the test page (" + conversion + ")",
-            false);
+            false,
+            FailedStage.RECOGNITION);
       }
       text = doclingText(root.path("document").path("json_content"));
     } else {
       text = visionText(root);
     }
     return text.isBlank()
-        ? new TestResult(TestOutcome.NO_TEXT, "the service returned no text", false)
-        : new TestResult(TestOutcome.READY, null, false);
+        ? new TestResult(
+            TestOutcome.NO_TEXT, "the service returned no text", false, FailedStage.RECOGNITION)
+        : new TestResult(TestOutcome.READY, null, false, null);
   }
 
   /** The text items and table cells of a DoclingDocument, joined; empty when there are none. */

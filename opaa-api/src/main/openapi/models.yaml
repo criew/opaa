@@ -1177,6 +1177,16 @@ components:
             UNREACHABLE - not reachable, timed out or answered unexpectedly.
           enum: [READY, KEY_REJECTED, ENGINE_MISSING, NO_TEXT, UNREACHABLE]
           example: READY
+        failedStage:
+          type: string
+          nullable: true
+          description: >
+            The step that failed, null exactly for READY. ADDRESS - no connection, timeout,
+            redirect or an unexpected answer before the key was checked; AUTHENTICATION - the
+            service refused the key (HTTP 401 or 403); RECOGNITION - reading the test page failed,
+            timeout and unreadable answer included, or the vision model is not listed.
+          enum: [ADDRESS, AUTHENTICATION, RECOGNITION]
+          example: ADDRESS
         message:
           type: string
           description: German, user-facing outcome.

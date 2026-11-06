@@ -471,32 +471,57 @@ class ModelRoleAdministrationTest {
             ModelRoleAdministration.textRecognitionMessage(
                 TextRecognitionConnectionType.DOCLING_SERVE,
                 new TextRecognitionClient.TestResult(
-                    TextRecognitionClient.TestOutcome.KEY_REJECTED, "HTTP 401", false)))
+                    TextRecognitionClient.TestOutcome.KEY_REJECTED,
+                    "HTTP 401",
+                    false,
+                    TextRecognitionClient.FailedStage.AUTHENTICATION)))
         .contains("Zugangsschlüssel");
     assertThat(
             ModelRoleAdministration.textRecognitionMessage(
                 TextRecognitionConnectionType.DOCLING_SERVE,
                 new TextRecognitionClient.TestResult(
-                    TextRecognitionClient.TestOutcome.ENGINE_MISSING, "HTTP 422", false)))
+                    TextRecognitionClient.TestOutcome.ENGINE_MISSING,
+                    "HTTP 422",
+                    false,
+                    TextRecognitionClient.FailedStage.RECOGNITION)))
         .contains("OCR-Engine");
     assertThat(
             ModelRoleAdministration.textRecognitionMessage(
                 TextRecognitionConnectionType.OPENAI_VISION,
                 new TextRecognitionClient.TestResult(
-                    TextRecognitionClient.TestOutcome.ENGINE_MISSING, "not listed", false)))
+                    TextRecognitionClient.TestOutcome.ENGINE_MISSING,
+                    "not listed",
+                    false,
+                    TextRecognitionClient.FailedStage.RECOGNITION)))
         .contains("Modell");
     assertThat(
             ModelRoleAdministration.textRecognitionMessage(
                 TextRecognitionConnectionType.DOCLING_SERVE,
                 new TextRecognitionClient.TestResult(
-                    TextRecognitionClient.TestOutcome.NO_TEXT, "no text", false)))
+                    TextRecognitionClient.TestOutcome.NO_TEXT,
+                    "no text",
+                    false,
+                    TextRecognitionClient.FailedStage.RECOGNITION)))
         .contains("keinen Text");
     assertThat(
             ModelRoleAdministration.textRecognitionMessage(
                 TextRecognitionConnectionType.DOCLING_SERVE,
                 new TextRecognitionClient.TestResult(
-                    TextRecognitionClient.TestOutcome.UNREACHABLE, "connection refused", false)))
+                    TextRecognitionClient.TestOutcome.UNREACHABLE,
+                    "connection refused",
+                    false,
+                    TextRecognitionClient.FailedStage.ADDRESS)))
         .isEqualTo("Die Verbindung wurde vom Server abgelehnt.");
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.UNREACHABLE,
+                    "request timed out",
+                    true,
+                    TextRecognitionClient.FailedStage.RECOGNITION)))
+        .contains("Zugangsschlüssel angenommen")
+        .contains("nicht rechtzeitig");
   }
 
   private ModelRoleAdministration administration(boolean speechInput, MockEnvironment environment) {
