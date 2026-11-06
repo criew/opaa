@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-11-06 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439
 
 ## Kontext
@@ -42,8 +42,8 @@ Neuinstallation.
 
 ### 3. Externe Dienste werden angebunden, nicht ausgeliefert
 
-PostgreSQL mit pgvector, LLM-, Embedding-, Rerank- und Transkriptionsendpunkte, Objektspeicher,
-Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne Anbieter läuft die
+PostgreSQL mit pgvector, LLM-, Embedding-, Rerank-, Transkriptions- und Texterkennungsendpunkte,
+Objektspeicher, Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne Anbieter läuft die
 lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
 
 | Art | Beispiele | Im Chart |
@@ -57,11 +57,24 @@ Entscheidung 7); ohne `bootstrap.initialAdmin.email` bleibt die Installation dem
 Für die Antwortdatei gibt es keinen dauerhaften Schalter und keinen Rückgriff wie
 `OPAA_OIDC_BOOTSTRAP=force`: Er bliebe in GitOps-Werkzeugen stehen und wirkte bei jedem Neustart.
 Dasselbe gilt für `OPAA_LOCAL_ADMIN_RESET=force`, das einmalig per `kubectl set env` oder befristetem
-`extraEnv` gesetzt und danach entfernt wird. **Einzige Ausnahme** ist eine Erprobungsdatenbank
-(`evaluationDatabase`): ein StatefulSet mit `pgvector/pgvector` und PVC, standardmäßig aus, als nicht
-produktiv gekennzeichnet, ohne Sicherung, Replikation und Aktualisierungspfad. Kein fremder Sub-Chart
-(Bitnami ist kein verlässlicher freier Bezugsweg, ein Operator wie CloudNativePG eine zu große
-Voraussetzung für eine Erprobung).
+`extraEnv` gesetzt und danach entfernt wird.
+
+**Zwei Ausnahmen** liefert der Chart selbst, beide standardmäßig aus:
+
+- **Erprobungsdatenbank** (`evaluationDatabase`): ein StatefulSet mit `pgvector/pgvector` und PVC,
+  als nicht produktiv gekennzeichnet, ohne Sicherung, Replikation und Aktualisierungspfad. Kein
+  fremder Sub-Chart (Bitnami ist kein verlässlicher freier Bezugsweg, ein Operator wie CloudNativePG
+  eine zu große Voraussetzung für eine Erprobung).
+- **Texterkennungsdienst** (`ocr.service`, Image `opaa-ocr`), für den Betrieb gedacht. Er darf
+  mitgeliefert werden, weil er das Haus keinen Fremddienst kostet: Das Image entsteht im eigenen
+  Release, mit SBOM, Lizenzprüfung und signierter Provenance, und der Chart heftet es per Digest an
+  wie Backend und Frontend (Entscheidung 7). Der Dienst hält keinen Datenbestand und ist zustandslos;
+  eine Aktualisierung ist ein Neustart, Sicherung und Migration entfallen. Weil er ganze Seiten von
+  Dokumenten sieht, ist er eng gefasst: Pflichtschlüssel ohne Vorgabe (sonst bricht das Rendern ab),
+  NetworkPolicy mit Eingang nur von den Backend-Pods und dem `helm test`-Pod und ohne jeden Ausgang,
+  eigener ServiceAccount ohne Token, Pod Security `restricted`. Seine Adresse nimmt der Chart in die
+  Freigabeliste der Modelle auf. Der Betriebsschalter des Backends (`ocr.enabled`) ist davon getrennt:
+  Ein Haus mit eigenem Dienst schaltet nur ihn ein.
 
 ### 4. Eingang über Ingress oder Gateway API, TLS beim Cluster
 
@@ -111,14 +124,15 @@ damit Plattformen mit zugewiesenen UIDs (OpenShift `restricted-v2`) ohne Anpassu
 Originalablage auf einem PVC hält, setzt `fsGroup`. NetworkPolicies: Eingang zum Backend an (der
 `helm test`-Pod fragt über das Frontend), Eingang zum Frontend bei gesetzten Controller-Werten, alle
 übrigen (vor allem Ausgang) aus, weil ein gesperrter Ausgang eine frische Installation bräche; das
-Handbuch empfiehlt sie nach der Einrichtung.
+Handbuch empfiehlt sie nach der Einrichtung. Die Policy des Texterkennungsdienstes ist an, sobald er
+läuft: Er braucht keinen Ausgang (Entscheidung 3).
 
 ### 7. Versionierung: eine Nummer für Anwendung und Chart
 
 Ein Release-Tag `vX.Y.Z` erzeugt Images `X.Y.Z` und den Chart mit `version` und `appVersion` `X.Y.Z` in
 einem Lauf (`publish-images.yml`, `deploy/helm/ci/package-chart.sh`); die Vorgabewerte des
 veröffentlichten Charts heften genau diese Images per Index-Digest an (`backend.image.digest`,
-`frontend.image.digest`), Images und Chart tragen je eine signierte Provenance des Laufs. So zieht ein
+`frontend.image.digest`, `ocr.service.image.digest`), Images und Chart tragen je eine signierte Provenance des Laufs. So zieht ein
 Cluster das geprüfte Image, auch wenn ein Tag in der Registry umgehängt würde. Im Repository steht
 `0.0.0-dev`; die CI prüft keine Versionssteigerung (`ct lint --check-version-increment=false`). Ein
 reiner Chart-Fix ist ein Patch-Release der Anwendung — dafür entfällt eine Zuordnungstabelle.
