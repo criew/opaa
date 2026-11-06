@@ -18,9 +18,10 @@ import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
+import TextRecognitionSection from '../components/TextRecognitionSection'
 import { contentWidth } from '@/shared/theme/tokens'
 
-export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription'
+export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription' | 'text-recognition'
 
 function isLlmModelTab(value: string | undefined): value is LlmModelTab {
   return tabs.some((tab) => tab.value === value)
@@ -33,6 +34,7 @@ const tabs: Array<{ value: LlmModelTab; label: string }> = [
   { value: 'embedding', label: 'Einbettung' },
   { value: 'rerank', label: 'Reranking' },
   { value: 'transcription', label: 'Spracheingabe' },
+  { value: 'text-recognition', label: 'Texterkennung' },
 ]
 
 /**
@@ -183,9 +185,10 @@ function EmbeddingInfoSection() {
 }
 
 /**
- * The system administration's model management in four areas: „Chat-Modelle" lists the
+ * The system administration's model management in five areas: „Chat-Modelle" lists the
  * models that answer questions; „Einbettung" names the model that carries the index - and that
- * deliberately cannot be changed; „Reranking" and „Spracheingabe" hold the two optional roles.
+ * deliberately cannot be changed; „Reranking", „Spracheingabe" and „Texterkennung" hold the
+ * optional roles.
  *
  * The areas are routes of their own (`/admin/models/chat`, `/admin/models/embedding`) as on the
  * other area pages: a link should land in the right area, and a reload should keep
@@ -234,6 +237,8 @@ export default function LlmModelManagementPage() {
               <ChatModelsSection />
             ) : value === 'embedding' ? (
               <EmbeddingInfoSection />
+            ) : value === 'text-recognition' ? (
+              <TextRecognitionSection />
             ) : (
               <ModelRoleSection key={value} kind={value} />
             )

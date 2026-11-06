@@ -13,6 +13,10 @@ import type {
   ModelRoleTestRequest,
   RerankModelSettingsRequest,
   RerankModelSettingsResponse,
+  TextRecognitionModelSettingsRequest,
+  TextRecognitionModelSettingsResponse,
+  TextRecognitionTestRequest,
+  TextRecognitionTestResponse,
   TranscriptionModelSettingsRequest,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
@@ -165,6 +169,45 @@ export async function testTranscriptionModel(
   try {
     const { data } = await client.post<LlmModelTestResponse>(
       '/v1/admin/models/transcription/test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getTextRecognitionModelSettings(): Promise<TextRecognitionModelSettingsResponse> {
+  try {
+    const { data } = await client.get<TextRecognitionModelSettingsResponse>(
+      '/v1/admin/models/text-recognition',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateTextRecognitionModelSettings(
+  request: TextRecognitionModelSettingsRequest,
+): Promise<TextRecognitionModelSettingsResponse> {
+  try {
+    const { data } = await client.put<TextRecognitionModelSettingsResponse>(
+      '/v1/admin/models/text-recognition',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testTextRecognitionModel(
+  request: TextRecognitionTestRequest,
+): Promise<TextRecognitionTestResponse> {
+  try {
+    const { data } = await client.post<TextRecognitionTestResponse>(
+      '/v1/admin/models/text-recognition/test',
       request,
     )
     return data
