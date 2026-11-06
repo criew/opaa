@@ -1,6 +1,7 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '../../fixtures/auth'
 import { indexedDocumentStates } from '../../fixtures/chat'
+import { apiAs } from '../../fixtures/externalAccess'
 import { cleanupLibraries } from '../../fixtures/libraries'
 import { createKnowledgeLibraryViaApi } from '../../fixtures/promptLibraries'
 import { assignToDefaultSpace } from '../../fixtures/spaces'
@@ -8,7 +9,9 @@ import {
   askAboutScan,
   expectFramedPassage,
   expectRecognizedEvidence,
-  openFramedScan,
+  framesOnPage,
+  expectFramedStatus,
+  type PageBox,
   SCAN_FILE_NAME,
   SCAN_PATH,
   SCAN_QUESTIONS,
@@ -28,6 +31,48 @@ import {
 
 const PAUSE_MS = 1_800
 const TYPING_DELAY_MS = 35
+
+/** A line in the job log, so a CI run shows what happened without its artifacts. */
+function log(message: string): void {
+  console.log(`[abnahme ${new Date().toISOString()}] ${message}`)
+}
+
+async function documentState(libraryId: string): Promise<string> {
+  const api = await apiAs('dev-admin')
+  try {
+    const response = await api.get(`/api/v1/libraries/${libraryId}/documents?size=5`)
+    const items = ((await response.json()) as {
+      items: Array<{ status: string; errorMessage?: string | null }>
+    }).items
+    return items.map((item) => `${item.status}${item.errorMessage ? ` (${item.errorMessage})` : ''}`).join(', ') || 'kein Dokument'
+  } finally {
+    await api.dispose()
+  }
+}
+
+/** Status line, current page and the frames of every rendered page, into the log. */
+async function logViewer(viewer: Locator, expected: PageBox): Promise<void> {
+  const status = await viewer.getByRole('status').allInnerTexts().catch(() => [])
+  log(`Anzeige: Status ${JSON.stringify(status)}; erwartet ${JSON.stringify(expected)}`)
+  for (let pageNumber = 1; pageNumber <= 5; pageNumber++) {
+    const rendered = await viewer.locator(`.page[data-page-number="${pageNumber}"]`).count()
+    if (rendered === 0) continue
+    const frames = await framesOnPage(viewer, pageNumber).catch(() => [])
+    if (frames.length > 0) {
+      const rounded = frames.map((frame) =>
+        Object.fromEntries(
+          Object.entries(frame).map(([key, value]) => [key, Math.round(value * 1000) / 1000]),
+        ),
+      )
+      log(`Anzeige: Rahmen Seite ${pageNumber}: ${JSON.stringify(rounded)}`)
+    }
+  }
+  const text = await viewer
+    .getByTestId('recognized-text')
+    .innerText({ timeout: 2_000 })
+    .catch(() => '(keine Seitenleiste)')
+  log(`Anzeige: Erkannter Text: ${text.replace(/\s+/g, ' ').slice(0, 300)}`)
+}
 
 async function pause(page: Page, factor = 1): Promise<void> {
   await page.waitForTimeout(PAUSE_MS * factor)
@@ -81,7 +126,8 @@ async function showPointer(page: Page): Promise<void> {
 
 test.describe.serial('Abnahme Texterkennung mit opaa-ocr', () => {
   const createdLibraryIds = cleanupLibraries()
-  const libraryName = `Satzungen Bauamt (Scans) ${Date.now() % 100_000}`
+  // Without blanks: the @ mention of the chat input ends its query at a blank.
+  const libraryName = `Bauamt-Satzungen-Scan-${Date.now() % 100_000}`
   let libraryId = ''
 
   test.afterAll(async () => {
@@ -120,7 +166,19 @@ test.describe.serial('Abnahme Texterkennung mit opaa-ocr', () => {
     await page.getByLabel('Dateien auswählen').setInputFiles(SCAN_PATH)
     await expect(page.getByText(SCAN_FILE_NAME, { exact: true })).toBeVisible()
     await pause(page)
-    await expect(indexedDocumentStates(page)).toHaveCount(1, { timeout: 1_200_000 })
+    // Polled over the API as well, so the log shows how long the recognition takes.
+    const started = Date.now()
+    await expect
+      .poll(
+        async () => {
+          const state = await documentState(libraryId)
+          log(`Indexierung nach ${Math.round((Date.now() - started) / 1000)} s: ${state}`)
+          return state
+        },
+        { timeout: 1_200_000, intervals: [15_000] },
+      )
+      .toMatch(/^(INDEXED|FAILED)/)
+    await expect(indexedDocumentStates(page)).toHaveCount(1, { timeout: 30_000 })
     await pause(page)
 
     // 3. and 4. Fragen, Beleg, Fundstelle - for each of the three places of the scan. A place that
@@ -128,15 +186,26 @@ test.describe.serial('Abnahme Texterkennung mit opaa-ocr', () => {
     const failures: string[] = []
     for (const scenario of SCAN_QUESTIONS) {
       await test.step(scenario.label, async () => {
+        let viewer: Locator | null = null
         try {
-        const drawer = await askAboutScan(page, libraryName, scenario.question, TYPING_DELAY_MS)
-        const row = await expectRecognizedEvidence(drawer)
-        await pause(page)
-        const viewer = await openFramedScan(page, row, scenario.expected.page)
-        await expectFramedPassage(viewer, scenario.expected, scenario.recognized)
-        await pause(page, 2)
+          log(`${scenario.label}: Frage stellen`)
+          const drawer = await askAboutScan(page, libraryName, scenario.question, TYPING_DELAY_MS)
+          log(`${scenario.label}: Belegfenster offen`)
+          const row = await expectRecognizedEvidence(drawer)
+          log(`${scenario.label}: Beleg ${await row.innerText()}`)
+          await pause(page)
+          await row.getByRole('button', { name: 'Dokument öffnen' }).click()
+          viewer = page.getByRole('dialog', { name: SCAN_FILE_NAME })
+          await expectFramedStatus(viewer, scenario.expected.page)
+          await logViewer(viewer, scenario.expected)
+          await expectFramedPassage(viewer, scenario.expected, scenario.recognized)
+          log(`${scenario.label}: Rahmen an der erwarteten Stelle`)
+          await pause(page, 2)
         } catch (error) {
-          failures.push(`${scenario.label}: ${error instanceof Error ? error.message : error}`)
+          const message = error instanceof Error ? error.message : String(error)
+          log(`${scenario.label}: FEHLER ${message.split('\n')[0]}`)
+          if (viewer) await logViewer(viewer, scenario.expected).catch(() => {})
+          failures.push(`${scenario.label}: ${message}`)
           await pause(page, 2)
         } finally {
           await testInfo.attach(`fundstelle-seite-${scenario.expected.page}`, {

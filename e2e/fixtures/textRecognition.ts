@@ -173,11 +173,16 @@ export async function expectRecognizedEvidence(drawer: Locator): Promise<Locator
 export async function openFramedScan(page: Page, row: Locator, expectedPage: number): Promise<Locator> {
   await row.getByRole('button', { name: 'Dokument öffnen' }).click()
   const viewer = page.getByRole('dialog', { name: SCAN_FILE_NAME })
+  await expectFramedStatus(viewer, expectedPage)
+  return viewer
+}
+
+/** The open viewer reports the frame of `expectedPage` in its status line. */
+export async function expectFramedStatus(viewer: Locator, expectedPage: number): Promise<void> {
   await expect(viewer).toBeVisible()
   await expect(
     viewer.getByText(`Fundstelle auf Seite ${expectedPage} umrahmt.`, { exact: false }),
   ).toBeVisible({ timeout: 30_000 })
-  return viewer
 }
 
 /** The frames drawn on one page of the viewer, as fractions of the page as shown. */

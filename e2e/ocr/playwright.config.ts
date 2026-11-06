@@ -30,6 +30,9 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:13008",
     trace: "retain-on-failure",
     screenshot: "on",
+    // Without these a click on an element that never appears waits for the whole test budget.
+    actionTimeout: 60_000,
+    navigationTimeout: 60_000,
     // A calm pace a viewer can follow; the pauses between the steps are in the spec.
     launchOptions: { slowMo: 200 },
   },
