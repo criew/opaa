@@ -1,0 +1,37 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/home/user/opaa/.claude/worktrees/agent-a8cf1a0c918549725/ui-lab/results/A",
+    "flow": "ocr",
+    "variant": "A",
+    "schemes": [
+      "light"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "concurrency": 3,
+    "scenarios": [
+      "small",
+      "default",
+      "scale",
+      "empty",
+      "failed",
+      "partial",
+      "slow"
+    ],
+    "areas": [
+      "tab",
+      "test",
+      "blocked",
+      "vision",
+      "drawer",
+      "viewer",
+      "viewer-vision"
+    ]
+  },
+  "shots": 44,
+  "seconds": 92,
+  "finishedAt": "2026-11-06T08:59:21.707Z"
+}
