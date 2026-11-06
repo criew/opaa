@@ -18,7 +18,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-su
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Installation oder Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
-| **Texterkennung** | liest gescannte PDF-Seiten ohne Textebene (OCR), optional | Modellverwaltung, bis zum eigenen Reiter über die Schnittstelle `/api/v1/admin/models/text-recognition`; begrenzt durch `OPAA_OCR_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Texterkennung einschalten](#texterkennung-einschalten)) |
+| **Texterkennung** | liest gescannte PDF-Seiten ohne Textebene (OCR), optional | Modellverwaltung, Reiter „Texterkennung"; begrenzt durch `OPAA_OCR_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Texterkennung einschalten](#texterkennung-einschalten)) |
 
 Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
 mit einer Weiterleitung (HTTP 3xx), scheitert der Aufruf, und weder Frage noch Textausschnitte gehen
@@ -655,10 +655,10 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
    Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.
-2. **Schalter der Rolle** in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
-   gibt, setzt die Systemverwaltung sie über die Schnittstelle
-   `/api/v1/admin/models/text-recognition`. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
-   Vision-Modell der Modell-Kennung und, falls verlangt, dem Zugangsschlüssel. Jede Änderung steht
+2. **Schalter der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
+   ([Texterkennung einrichten](../administration/modelle.md#texterkennung-einrichten)). Dazu
+   gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
+   verlangt, der Zugangsschlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 | Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |

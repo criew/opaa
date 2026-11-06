@@ -1,6 +1,6 @@
 # Modelle verwalten
 
-**Ziel:** Chat, Suche und Spracheingabe nutzen die Modelle, die das Haus gewählt hat.
+**Ziel:** Chat, Suche, Spracheingabe und Texterkennung nutzen die Modelle, die das Haus gewählt hat.
 {: .kopf }
 
 **Wer:** Systemverwaltung, „Administration → Modelle“
@@ -16,6 +16,7 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 | „Einbettung“ | Vektoren für die Suche | ein anderes Modell bettet den Bestand neu ein |
 | „Reranking“ | ordnet Treffer neu, optional | jederzeit |
 | „Spracheingabe“ | wandelt Diktat in Text, optional | jederzeit |
+| „Texterkennung“ | liest gescannte PDFs (OCR), optional | jederzeit |
 
 ## Chat-Modell anlegen und aktivieren
 
@@ -53,6 +54,28 @@ Grenzen und welche Dienste die Liste auswerten, stehen unter
 speichern. Fehlt der Betriebsschalter für die Spracheingabe, lässt sie sich nur vorbereiten. Die
 Spracheingabe verarbeitet Stimmen; sie gehört vor dem Einschalten mit der Personalvertretung
 geklärt ([Einführung vorbereiten](einfuehrung.md)).
+
+## Texterkennung einrichten
+
+Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie findet. Reiter
+„Texterkennung“:
+
+1. Unter „Anbindung“ wählen: „docling-serve“ für den mitgelieferten OCR-Dienst oder ein eigenes
+   docling-serve, „Vision-Modell (OpenAI-kompatibel)“, wenn im Haus schon ein Modellserver mit
+   Bildeingang läuft.
+2. „Basis-Adresse“ eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
+   „Zugangsschlüssel“, falls der Dienst einen verlangt.
+3. „Verbindung testen“ liest eine mitgelieferte Testseite in drei Stufen: „Adresse“ (der Dienst
+   antwortet), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (Text gelesen). Die
+   Meldung steht an der Stufe, die scheitert.
+4. „Texterkennung einschalten“ und „Speichern“. Bestehende Scans werden danach automatisch
+   nachverarbeitet.
+
+Hat der Betrieb die Texterkennung nicht freigegeben (`OPAA_OCR_ENABLED`), zeigt der Reiter nur
+diesen Hinweis; gescannte PDFs werden dann weiter abgewiesen. Ein Vision-Modell liefert keine Lage
+des Textes: Fundstellen zeigt OPAA nur auf ihrer Seite, nicht als Rahmen. Seiten gehen ganz an den
+Dienst; ein Dienst außerhalb des Hauses gehört vorher mit Datenschutz und Personalvertretung
+geklärt ([Texterkennung im Betrieb](../betrieb/modell-endpunkte.md#texterkennung-einschalten)).
 
 **Gut zu wissen:**
 
