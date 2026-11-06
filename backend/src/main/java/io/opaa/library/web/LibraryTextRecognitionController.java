@@ -7,6 +7,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.document.DocumentTextRecognitionStore;
 import io.opaa.indexing.document.TextRecognitionBlocks;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,10 +33,11 @@ public class LibraryTextRecognitionController {
   @GetMapping
   public TextRecognitionBlockListResponse listTextRecognitionBlocks(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return new TextRecognitionBlockListResponse(
+    List<TextRecognitionBlock> items =
         blocks.list(libraryId, caller).stream()
             .map(LibraryTextRecognitionController::toResponse)
-            .toList());
+            .toList();
+    return new TextRecognitionBlockListResponse(items).pending(blocks.counts(libraryId).pending());
   }
 
   @DeleteMapping("/{documentId}")

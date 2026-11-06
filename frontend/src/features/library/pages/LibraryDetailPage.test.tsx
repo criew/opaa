@@ -1796,7 +1796,7 @@ describe('LibraryDetailPage', () => {
     expect(row).toHaveTextContent('430 Dokumente · unvollständig')
     expect(row).toHaveTextContent('12 min')
     await openRun(user, row)
-    expect(within(row).getByText('Anfragebudget erschöpft · 1')).toBeInTheDocument()
+    expect(within(row).getByText('Budget erschöpft · 1')).toBeInTheDocument()
     const technical = await technicalDetails(user, row)
     expect(technical).toHaveTextContent('Auslöser: per Zeitplan · Vollabgleich')
     expect(technical).toHaveTextContent(

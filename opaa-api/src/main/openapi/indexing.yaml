@@ -482,7 +482,7 @@ paths:
     get:
       operationId: listTextRecognitionBlocks
       tags: [indexing]
-      summary: Scanned PDFs of a library whose text recognition is locked, with the reason
+      summary: Scanned PDFs of a library whose text recognition is locked, and how many wait
       description: >
         Requires the read grant on the library, like the document list that shows a document's
         error. Lists the locks that hold: of the current pdf-ocr pipeline version and, while text
@@ -816,6 +816,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TextRecognitionBlock"
+        pending:
+          type: integer
+          nullable: true
+          description: >
+            Scans of the library waiting for text recognition (rejected as without text, not
+            locked); null while text recognition is not in force.
 
     IndexingStatus:
       type: string
