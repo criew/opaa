@@ -37,6 +37,7 @@ describe('ChatList', () => {
   })
 
   it('shows a placeholder when the space has no chats', async () => {
+    server.use(http.get('/api/v1/spaces/:spaceId/chats', () => HttpResponse.json([])))
     renderWithProviders(<ChatList spaceId="space-phoenix" />)
 
     expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()

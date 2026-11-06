@@ -17,6 +17,8 @@ import Typography from '@mui/material/Typography'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import type { ChunkInspectionResponse } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import RecognizedTextNotice from '@/shared/ui/RecognizedTextNotice'
+import { isRecognizedText } from '@/shared/utils/recognizedText'
 import { visibleChunkMetadata } from '@/features/library'
 import { getSearchChunk } from '../api/searchAdminApi'
 import { formatMetadataValue } from '../utils/searchAdminLabels'
@@ -115,6 +117,11 @@ export default function ChunkPreviewDialog({
               <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
                 Inhalt
               </Typography>
+              {isRecognizedText(chunk.metadata.anchor) && (
+                <Box sx={{ mb: 0.75 }}>
+                  <RecognizedTextNotice fontSize={13} />
+                </Box>
+              )}
               <ChunkContent content={chunk.content} />
             </Box>
             <Box>

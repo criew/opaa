@@ -132,6 +132,14 @@ Ein Vision-Modell liefert je Seite Text ohne Rahmen. Der erkannte Text wird mit 
 gespeichert, ohne Seitenbilder; ein erneutes Indizieren der unveränderten Datei braucht den Dienst
 nicht. Erkennungsfehler sind möglich, maßgeblich bleibt das Original.
 
+Beleg, Fundstellenansicht und die Chunk-Vorschau der Diagnose tragen bei erkanntem Text den Hinweis
+„Maschinell erkannt, maßgeblich ist das Original“. „Dokument öffnen“ zeigt den unveränderten Scan auf
+der Seite der Fundstelle und zeichnet um die zitierte Stelle einen durchgezogenen Rahmen, über eine
+Seitengrenze hinweg auf jeder betroffenen Seite; der Rahmen wächst beim Zoomen mit. Die Seitenleiste
+„Erkannter Text“ daneben zeigt den gelesenen Text des Abschnitts. Ohne Rahmen, beim Vision-Modell
+oder bei Belegen aus der Zeit vor den Rahmen, öffnet der Scan nur auf der Seite und sagt, dass die
+Stelle nicht umrahmt ist.
+
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,

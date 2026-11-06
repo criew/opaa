@@ -80,6 +80,8 @@ export function useDocumentPreview() {
           ...result,
           anchor: document.anchor,
           contentSha256: document.contentSha256,
+          documentId: document.id,
+          chunkIndex: document.chunkIndex,
         })
       } else if (result.kind === 'download') {
         // Every format without a preview (DOCX among them) must give visible feedback - a click

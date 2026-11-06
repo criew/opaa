@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { GETTING_STARTED_PDF_OUTLINE, GETTING_STARTED_PDF_PAGES, mockPdf } from './mockPdf'
+import { mockScanPdf, SCAN_DOCUMENT_IDS, SCAN_PASSAGES } from './mockScanPdf'
 import {
   mockLibraries,
   mockLibraryDetails,
@@ -491,6 +492,7 @@ export const libraryDocumentHandlers = [
     const documentId = String(params.documentId)
     const known =
       documentId === 'doc-slides' ||
+      SCAN_DOCUMENT_IDS.includes(documentId) ||
       Object.values(mockLibraryDocuments)
         .flat()
         .some((doc) => doc.id === documentId)
@@ -502,6 +504,15 @@ export const libraryDocumentHandlers = [
 
   http.get('/api/v1/documents/:documentId/content', ({ params }) => {
     const documentId = String(params.documentId)
+    // the scanned PDFs the mocked answer from text recognition cites
+    if (SCAN_DOCUMENT_IDS.includes(documentId)) {
+      return pdfResponse(
+        documentId === 'doc-scan'
+          ? 'Verwaltungsgebuehrensatzung_2003_Scan.pdf'
+          : 'Gebuehrensatzung_Abschrift_Scan.pdf',
+        mockScanPdf(),
+      )
+    }
     // the PDF the mocked chat answer cites, a real one so the viewer can jump and mark
     if (documentId === 'doc-start') {
       return pdfResponse(
@@ -607,12 +618,14 @@ function documentText(documentId: string, request: Request) {
             quoteStart: quoteStart(entry.text),
           },
         }))
-      : [0, 1, 2].map((chunkIndex) => ({
-          chunkIndex,
-          text: `Abschnitt ${chunkIndex + 1} der Beispieldatei.`,
-          location: null,
-          anchor: null,
-        }))
+      : SCAN_DOCUMENT_IDS.includes(documentId)
+        ? SCAN_PASSAGES.map((passage) => ({ ...passage, anchor: null }))
+        : [0, 1, 2].map((chunkIndex) => ({
+            chunkIndex,
+            text: `Abschnitt ${chunkIndex + 1} der Beispieldatei.`,
+            location: null,
+            anchor: null,
+          }))
   const first = 0
   const last = passages.length - 1
   const from = Number(url.searchParams.get('from') ?? first)

@@ -89,7 +89,7 @@ describe('useDocumentPreview', () => {
     expect(result.current.previewDocument).toBeNull()
   })
 
-  it('opens a PDF in the app viewer with the anchor and checksum the caller passed', async () => {
+  it('opens a PDF in the app viewer with the anchor, checksum and passage the caller passed', async () => {
     const blob = new Blob(['%PDF'], { type: 'application/pdf' })
     const anchor = { pageFrom: 2, pageTo: 3, quoteStart: 'Anfang', quoteEnd: 'Ende' }
     mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'pdf-preview', fileName: 'a.pdf', blob })
@@ -101,6 +101,7 @@ describe('useDocumentPreview', () => {
         fileName: 'fallback.pdf',
         anchor,
         contentSha256: 'ab12',
+        chunkIndex: 4,
       })
     })
 
@@ -110,6 +111,8 @@ describe('useDocumentPreview', () => {
       blob,
       anchor,
       contentSha256: 'ab12',
+      documentId: 'doc-1',
+      chunkIndex: 4,
     })
     expect(result.current.previewDocument).toBeNull()
 
