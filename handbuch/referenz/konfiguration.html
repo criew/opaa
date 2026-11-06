@@ -2530,6 +2530,8 @@
       
         
       
+        
+      
     
     
     
@@ -2739,6 +2741,34 @@
     
   
     Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../betrieb/texterkennung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Texterkennung
   
 
     
@@ -4255,7 +4285,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <tr>
 <td><code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code></td>
 <td>— (leer)</td>
-<td><code>ollama:11434</code> (das Ollama des Stapels)</td>
+<td><code>ollama:11434</code> (das Ollama des Stapels); mit dem Overlay <code>docker-compose.ocr.yml</code> gilt stattdessen der Wert aus Prozessumgebung/<code>.env</code> (ohne ihn <code>ollama:11434</code>), ergänzt um <code>opaa-ocr:5001</code></td>
 <td>Kommagetrennte Einträge interner Modell-Endpunkte (<code>opaa.model.target-validation.allowlist</code>). <code>host:port</code> (IPv6 als <code>[adresse]:port</code>) gibt nur diesen Port frei, ein Eintrag ohne Port jeden Port des Hosts; deshalb den Port nennen. Ein Eintrag hier ist kein erlaubtes Ziel der Konnektoren, ein Eintrag in <code>OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST</code> kein erlaubtes Modell</td>
 </tr>
 <tr>
@@ -5173,38 +5203,80 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <tr>
 <td><code>OPAA_OCR_ENABLED</code></td>
 <td><code>false</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert); das Overlay <code>docker-compose.ocr.yml</code> setzt <code>true</code></td>
 <td>Betriebsschalter der Texterkennung gescannter PDF-Dokumente: ohne ihn wird die Rolle Texterkennung der Modellverwaltung weder ausgewertet noch kontaktiert und lässt sich nur vorbereiten. Eingeschaltet muss zusätzlich die Rolle selbst eingeschaltet sein (siehe <a href="../betrieb/modell-endpunkte.html#texterkennung-einschalten">„Texterkennung einschalten“</a>). Bei mehreren Instanzen auf allen gleich</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code></td>
 <td><code>100</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert)</td>
 <td>Größter Scan in Seiten, der an den Dienst geht; ein längerer wird nicht versucht und in seiner Bibliothek als gesperrt gezeigt</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_DOCUMENT_TIMEOUT</code></td>
 <td><code>45m</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert)</td>
 <td>Feste Frist aller Aufrufe für ein Dokument, höchstens <code>55m</code> (ein größerer Wert wird darauf gekürzt, damit das Nachholen hochgeladener Scans innerhalb seiner Sperre bleibt); ein laufender Aufruf wird bei Ablauf abgebrochen</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_MAX_CONCURRENT</code></td>
 <td><code>1</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert)</td>
 <td>Dokumente, die eine Instanz gleichzeitig erkennen lässt; bei mehreren Instanzen die Grenze der Installation geteilt durch die Zahl der Instanzen</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_MAX_PAGES_PER_RUN</code></td>
 <td><code>500</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert)</td>
 <td>Seiten, die ein Indexierungslauf oder ein Durchgang des Nachholens hochgeladener Scans höchstens an den Dienst sendet; der Lauf endet dann „unvollständig“, der Rest wartet auf den nächsten</td>
 </tr>
 <tr>
 <td><code>OPAA_OCR_CALL_TIMEOUT</code></td>
 <td><code>45m</code></td>
-<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>nicht gesetzt (auskommentiert)</td>
 <td>Zeitbudget eines Aufrufs des Dienstes für ein Dokument. Fest und davon unabhängig: der Verbindungstest höchstens drei Minuten insgesamt, die regelmäßige Erreichbarkeitsprüfung 30 Sekunden</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_API_KEY</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, Pflicht ohne Vorgabe)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Schlüssel des Texterkennungsdienstes <code>opaa-ocr</code>, mindestens 32 Zeichen ohne Leerzeichen; ohne ihn bricht Compose ab, mit einem kürzeren startet der Dienst nicht. Die Systemverwaltung trägt denselben Wert unter Modelle → Texterkennung ein (<a href="../betrieb/texterkennung.html">Texterkennung</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_IMAGE_TAG</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>main</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Tag des Images <code>ghcr.io/criew/opaa-ocr</code>; ein Release nennt seine Version</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_WORKERS</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>1</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Umwandlungen, die der Dienst gleichzeitig ausführt; jede braucht eigenen Arbeitsspeicher</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_MAX_SYNC_WAIT</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>2700</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Sekunden, die der Dienst einen Aufruf auf seine Umwandlung warten lässt; muss <code>OPAA_OCR_CALL_TIMEOUT</code> abdecken</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_CPUS</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>2</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>CPU-Grenze des Dienstes</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_MEMORY</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>6g</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Speichergrenze des Dienstes, einschließlich seines <code>/tmp</code> im Arbeitsspeicher</td>
+</tr>
+<tr>
+<td><code>OPAA_OCR_TMP_SIZE</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>2g</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Größe des <code>/tmp</code> des Dienstes (tmpfs, nach dem Stopp leer); zählt gegen <code>OPAA_OCR_MEMORY</code></td>
 </tr>
 <tr>
 <td><strong>Bibliothek</strong></td>

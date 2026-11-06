@@ -2532,6 +2532,8 @@
       
         
       
+        
+      
     
     
     
@@ -2969,6 +2971,17 @@
     <span class="md-ellipsis">
       
         Modelle, Mail und Adressprüfung
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#texterkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung
       
     </span>
   </a>
@@ -3503,6 +3516,34 @@
     
   
     Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="texterkennung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Texterkennung
   
 
     
@@ -4755,6 +4796,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#texterkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#funktionen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5671,7 +5723,9 @@ dann aus der Datei im Bündel, mit den Image-Adressen der internen Registry:</p>
 <span class="w">  </span>--set<span class="w"> </span>backend.image.repository<span class="o">=</span>registry.intern/opaa/opaa-backend<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>frontend.image.repository<span class="o">=</span>registry.intern/opaa/opaa-frontend
 </code></pre></div>
-<p>Der Chart heftet beide Images per Digest an (<code>backend.image.digest</code>, <code>frontend.image.digest</code>,
+<p>Mit dem <a href="#texterkennung">Texterkennungsdienst</a> kommt
+<code>--set ocr.service.image.repository=registry.intern/opaa/opaa-ocr</code> dazu. Der Chart heftet die Images
+per Digest an (<code>backend.image.digest</code>, <code>frontend.image.digest</code>, <code>ocr.service.image.digest</code>,
 dieselben Werte wie in <code>DIGESTS</code> im Bündel). Sie gelten unverändert in der internen Registry, weil
 <code>skopeo</code> die Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret
 in <code>imagePullSecrets</code>. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in
@@ -5980,6 +6034,12 @@ Wegen:</p>
 <td>Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet</td>
 </tr>
 <tr>
+<td><code>ocr-api-key</code></td>
+<td><code>ocrApiKey</code></td>
+<td>mit <code>ocr.service.enabled</code></td>
+<td>Schlüssel des <a href="#texterkennung">Texterkennungsdienstes</a>, mindestens 32 Zeichen ohne Leerzeichen, erzeugt mit <code>openssl rand -hex 32</code>; nur der Dienst liest ihn, die Systemverwaltung trägt denselben Wert unter Modelle → Texterkennung ein</td>
+</tr>
+<tr>
 <td><code>OPAA_INSTALLATION_TOKEN</code></td>
 <td><code>installationToken</code></td>
 <td>nein</td>
@@ -6268,6 +6328,94 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.</p>
 <td>leer</td>
 <td><code>OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST</code></td>
 <td>Weitere interne Identitätsanbieter als <code>host:port</code> (ohne Port: jeder Port des Hosts); Host und Port aus <code>bootstrap.oidc</code> ergänzt der Chart selbst</td>
+</tr>
+</tbody>
+</table>
+<h3 id="texterkennung">Texterkennung<a class="headerlink" href="#texterkennung" title="Permanent link">&para;</a></h3>
+<p>Zwei getrennte Schalter: <code>ocr.enabled</code> gibt die Rolle im Backend frei, <code>ocr.service.enabled</code> startet
+den mitgelieferten Dienst <code>opaa-ocr</code>. Wer einen eigenen Dienst einträgt, schaltet nur den ersten
+ein. Bemessung, Schlüssel und Fehlerbilder stehen unter <a href="texterkennung.html">Texterkennung</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Wert</th>
+<th>Vorgabe</th>
+<th>Setzt</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ocr.enabled</code></td>
+<td><code>false</code></td>
+<td><code>OPAA_OCR_ENABLED</code></td>
+<td>Betriebsschalter der Texterkennung (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
+</tr>
+<tr>
+<td><code>ocr.maxPagesPerDocument</code>, <code>.documentTimeout</code>, <code>.maxConcurrent</code>, <code>.maxPagesPerRun</code>, <code>.callTimeout</code></td>
+<td>leer (Vorgaben der Anwendung)</td>
+<td><code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code>, <code>OPAA_OCR_DOCUMENT_TIMEOUT</code>, <code>OPAA_OCR_MAX_CONCURRENT</code>, <code>OPAA_OCR_MAX_PAGES_PER_RUN</code>, <code>OPAA_OCR_CALL_TIMEOUT</code></td>
+<td>Grenzen des Backends; <code>maxConcurrent</code> gilt je Pod, das Budget der Installation nimmt <code>backend.installationBudgets.OPAA_OCR_MAX_CONCURRENT</code> (nur einer von beiden)</td>
+</tr>
+<tr>
+<td><code>ocr.service.enabled</code></td>
+<td><code>false</code></td>
+<td>—</td>
+<td>startet Deployment, Service, ServiceAccount ohne Token und NetworkPolicy des Dienstes <code>&lt;Release&gt;-ocr</code>; seine Adresse kommt in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>. Ohne Schlüssel (<code>secrets.ocrApiKey</code> oder <code>secrets.existingSecret</code>) bricht das Rendern ab</td>
+</tr>
+<tr>
+<td><code>ocr.service.image.repository</code>, <code>.tag</code>, <code>.digest</code>, <code>.pullPolicy</code></td>
+<td><code>ghcr.io/criew/opaa-ocr</code>, leer (appVersion), im Release gesetzt, <code>IfNotPresent</code></td>
+<td>—</td>
+<td>Image des Dienstes, wie das Backend-Image</td>
+</tr>
+<tr>
+<td><code>ocr.service.replicas</code></td>
+<td><code>1</code></td>
+<td>—</td>
+<td>Pods des Dienstes; zustandslos, das Backend verteilt seine Aufrufe über den Service</td>
+</tr>
+<tr>
+<td><code>ocr.service.workers</code></td>
+<td><code>1</code></td>
+<td><code>DOCLING_SERVE_ENG_LOC_NUM_WORKERS</code> im Dienst</td>
+<td>Umwandlungen je Pod gleichzeitig; jede braucht eigenen Arbeitsspeicher</td>
+</tr>
+<tr>
+<td><code>ocr.service.maxSyncWaitSeconds</code></td>
+<td><code>2700</code></td>
+<td><code>DOCLING_SERVE_MAX_SYNC_WAIT</code> im Dienst</td>
+<td>Sekunden, die ein Aufruf auf seine Umwandlung warten darf; mindestens so lang wie <code>ocr.callTimeout</code></td>
+</tr>
+<tr>
+<td><code>ocr.service.resources</code></td>
+<td>1 CPU und 3Gi angefordert, 4Gi Grenze</td>
+<td>—</td>
+<td>Ressourcen eines Pods</td>
+</tr>
+<tr>
+<td><code>ocr.service.startupProbe</code>, <code>.livenessProbe</code>, <code>.readinessProbe</code></td>
+<td>Startup bis 10 Minuten</td>
+<td>—</td>
+<td>Startup und Readiness auf <code>/ready</code> (Modelle geladen), Liveness auf <code>/health</code></td>
+</tr>
+<tr>
+<td><code>ocr.service.tmp.sizeLimit</code>, <code>.medium</code></td>
+<td><code>4Gi</code>, leer</td>
+<td>—</td>
+<td><code>/tmp</code> des Dienstes für Arbeitsdateien und Seitenbilder</td>
+</tr>
+<tr>
+<td><code>ocr.service.service.port</code></td>
+<td><code>5001</code></td>
+<td>—</td>
+<td>Port des Service</td>
+</tr>
+<tr>
+<td><code>ocr.service.podAnnotations</code>, <code>.podLabels</code>, <code>.nodeSelector</code>, <code>.tolerations</code>, <code>.affinity</code></td>
+<td>leer</td>
+<td>—</td>
+<td>Planung der Pods, etwa auf Knoten mit viel Arbeitsspeicher</td>
 </tr>
 </tbody>
 </table>
@@ -7147,6 +7295,19 @@ für Modelle frei, die die Verwaltung später anlegt. Ein Ziel der Konnektoren w
 <code>maxInputTokens: 8192</code> (<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze des Embedding-Modells</a>).</p>
 <p>Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe <a href="#networkpolicies">NetworkPolicies</a>).</p>
+<p><strong>Ausnahme Texterkennung:</strong> Den Dienst <code>opaa-ocr</code> bringt der Chart auf Wunsch mit. Er läuft im
+Namespace des Releases, seine Adresse <code>http://&lt;Release&gt;-ocr:5001</code> steht von selbst in der Liste der
+Modelle, und die Regeln für Eingang und Ausgang setzt der Chart:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ocr</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">service</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">secrets</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">existingSecret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa-secrets</span><span class="w">   </span><span class="c1"># mit dem Schlüssel ocr-api-key</span>
+</code></pre></div>
+<p>Danach trägt die Systemverwaltung ihn unter Modelle → Texterkennung ein, mit Verbindungstyp
+docling-serve, der Adresse und dem Schlüssel; den Befehl, der ihn aus dem Secret liest, nennt
+<code>helm install</code> in seinen Hinweisen (<a href="texterkennung.html">Texterkennung</a>).</p>
 <h2 id="netz-und-sicherheit">Netz und Sicherheit<a class="headerlink" href="#netz-und-sicherheit" title="Permanent link">&para;</a></h2>
 <h3 id="eingang">Eingang<a class="headerlink" href="#eingang" title="Permanent link">&para;</a></h3>
 <p>Der Chart legt wahlweise ein Ingress (<code>ingress.enabled</code>) oder eine HTTPRoute der Gateway API
@@ -7267,7 +7428,12 @@ weil sich alle Personen einen Zähler teilen, sind aber nicht umgehbar.</p>
 <tr>
 <td><code>opaa-frontend-egress</code>, <code>opaa-backend-egress</code></td>
 <td><code>networkPolicy.egress.enabled</code></td>
-<td>DNS, Frontend zum Backend, Backend zur Erprobungsdatenbank und zu <code>networkPolicy.egress.backendRules</code></td>
+<td>DNS, Frontend zum Backend, Backend zur Erprobungsdatenbank, zum Texterkennungsdienst und zu <code>networkPolicy.egress.backendRules</code></td>
+</tr>
+<tr>
+<td><code>opaa-ocr</code></td>
+<td><code>ocr.service.enabled</code>, unabhängig von <code>networkPolicy</code></td>
+<td>Eingang nur von den Backend-Pods und dem Pod von <code>helm test</code>, kein Ausgang, auch kein DNS</td>
 </tr>
 </tbody>
 </table>
@@ -7319,7 +7485,7 @@ DNSCache kommt eine <code>ipBlock</code>-Regel für dessen Adresse hinzu. Beides
 <li>ohne eingehängtes Token des ServiceAccounts</li>
 </ul>
 <p><code>runAsUser</code>, <code>runAsGroup</code> und <code>fsGroup</code> bleiben leer. Das Backend-Image läuft dann unter seiner
-Kennung <code>65532</code>, das Frontend-Image unter <code>101</code>; Plattformen, die Kennungen selbst zuweisen, setzen
+Kennung <code>65532</code>, das Frontend-Image unter <code>101</code>, der Texterkennungsdienst unter <code>1001</code>; Plattformen, die Kennungen selbst zuweisen, setzen
 eigene, ohne dass der Chart angepasst wird. Ausnahme ist die Erprobungsdatenbank (siehe
 <a href="#datenbank">Datenbank</a>).</p>
 <p>Was das Backend unter <code>/tmp</code> schreibt und wie groß das Verzeichnis sein sollte, steht unter

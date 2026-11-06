@@ -2532,6 +2532,8 @@
       
         
       
+        
+      
     
     
     
@@ -2812,6 +2814,17 @@
     <span class="md-ellipsis">
       
         Mailpit im lokalen Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#texterkennung-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung im Compose-Stapel
       
     </span>
   </a>
@@ -3175,6 +3188,34 @@
     
   
     Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="texterkennung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Texterkennung
   
 
     
@@ -4298,6 +4339,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#texterkennung-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mehrere-backend-instanzen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4696,6 +4748,12 @@ leere Datenbank im Installationsmodus (<a href="#installation-im-compose-stapel"
 <td>8080</td>
 <td>zwei Backend-Instanzen statt <code>backend</code> (nur Mehrinstanz-Variante)</td>
 </tr>
+<tr>
+<td>opaa-ocr</td>
+<td>—</td>
+<td>5001</td>
+<td>Texterkennung gescannter PDFs (nur mit dem Overlay <code>docker-compose.ocr.yml</code>; kein Host-Port, nur für das Backend erreichbar)</td>
+</tr>
 </tbody>
 </table>
 <p>Das Backend meldet seinen Zustand über einen Health Check auf die
@@ -4919,6 +4977,34 @@ SMTP-Zugang" einzutragen: Server <code>mailpit</code>, Port <code>1025</code>, V
 (<a href="../administration/e-mail.html">E-Mail-Versand</a>). Dieselben Angaben nimmt auch der Schritt E-Mail-Versand des
 Einrichtungs-Assistenten an, wenn <code>OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST=mailpit:1025</code> in
 <code>.env.docker</code> steht (<a href="installation.html#schritte">Installation</a>).</p>
+<h2 id="texterkennung-im-compose-stapel">Texterkennung im Compose-Stapel<a class="headerlink" href="#texterkennung-im-compose-stapel" title="Permanent link">&para;</a></h2>
+<p>Das Overlay <code>docker-compose.ocr.yml</code> startet den Texterkennungsdienst <code>opaa-ocr</code>
+(<a href="texterkennung.html">Texterkennung</a>). Der Schlüssel ist Pflicht und kommt aus der Shell oder einer
+<code>.env</code> im Projektverzeichnis, nicht aus <code>.env.docker</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">"OPAA_OCR_API_KEY=</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>.env
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose.ocr.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p>Ohne ihn bricht Compose mit <code>required variable OPAA_OCR_API_KEY is missing a value</code> ab. Jeder
+weitere Befehl für diesen Stapel nennt beide Dateien.</p>
+<ul>
+<li><strong>Netz:</strong> Der Dienst liegt mit dem Backend in einem eigenen internen Netz ohne Gateway, ohne
+  veröffentlichten Port. Vom Host aus ist er nicht erreichbar, vom Backend aus unter
+  <code>http://opaa-ocr:5001</code>; er selbst erreicht weder das Internet noch den Host.</li>
+<li><strong>Backend:</strong> Das Overlay setzt <code>OPAA_OCR_ENABLED=true</code> und nimmt <code>opaa-ocr:5001</code> in
+  <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code> auf. Die Liste kommt dann aus Shell oder <code>.env</code> (ohne
+  Eintrag dort <code>ollama:11434</code>) und ersetzt den Wert aus <code>.env.docker</code>; wer dort weitere Modellserver
+  eingetragen hat, setzt die Liste in <code>.env</code>.</li>
+<li><strong>Einrichtung:</strong> Unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
+  <code>http://opaa-ocr:5001</code> und denselben Schlüssel eintragen
+  (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>).</li>
+<li><strong>Grenzen:</strong> Health Check auf die Readiness des Dienstes, Read-only Filesystem mit <code>/tmp</code> im
+  Arbeitsspeicher (tmpfs, <code>OPAA_OCR_TMP_SIZE</code>; nach dem Stopp leer), keine Capabilities. CPU und Arbeitsspeicher begrenzen <code>OPAA_OCR_CPUS</code> und
+  <code>OPAA_OCR_MEMORY</code>, das Image wählt <code>OPAA_OCR_IMAGE_TAG</code>
+  (<a href="../referenz/konfiguration.html#alle-umgebungsvariablen">Konfiguration</a>).</li>
+<li><strong>Mehrere Instanzen:</strong> Das Overlay hängt nur <code>backend</code> an das Netz des Dienstes. Mit
+  <code>docker-compose.multi.yml</code> gehören <code>backend-a</code> und <code>backend-b</code> in einer eigenen Override-Datei
+  ebenfalls in die Netze <code>default</code> und <code>ocr</code>, mit denselben beiden Variablen.</li>
+</ul>
 <h2 id="mehrere-backend-instanzen">Mehrere Backend-Instanzen<a class="headerlink" href="#mehrere-backend-instanzen" title="Permanent link">&para;</a></h2>
 <p><code>docker-compose.multi.yml</code> ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
 eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen. Wie die Instanzen
@@ -5144,7 +5230,7 @@ gehören nicht dazu.</p>
 <li><strong>Ports nur an Loopback.</strong> Jeder veröffentlichte Port bindet an <code>127.0.0.1</code>. Nur <code>frontend</code> und
   <code>keycloak</code> lassen sich über <code>OPAA_FRONTEND_BIND_ADDRESS</code> bzw. <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> öffnen,
   beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; <code>network_mode: host</code> kommt
-  nicht vor.</li>
+  nicht vor. Der Texterkennungsdienst veröffentlicht gar keinen Port, auch nicht an Loopback.</li>
 <li><strong>Keine anonyme Systemverwaltung jenseits von Loopback.</strong> Keine Vorlage setzt
   <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code>, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus <code>dev</code> den Start verweigern kann.</li>
