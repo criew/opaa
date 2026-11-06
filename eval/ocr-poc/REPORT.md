@@ -131,22 +131,18 @@ ebenfalls ein `DoclingDocument`. GraniteDocling gibt dabei Positionsangaben je E
 Ein Beleg springt heute über den Anker des Chunks zur Seite und markiert dort fein über zwei Zitate
 (`quoteStart`, `quoteEnd`), die der PDF-Viewer im Textlayer sucht ([ADR-0062](../../docs/decisions/0062-fundstellen-anker-je-chunk.md)). Ein Scan hat
 keinen Textlayer. Würde opaa nur das Markdown indexieren, bliebe für einen Scan nur „Seite 3 öffnen“,
-ohne Markierung. Das JSON von Docling schließt diese Lücke in drei Ausbaustufen:
+ohne Markierung. Entschieden ist deshalb **„Rahmen ohne Kopie“**:
 
-1. **Anker aus dem JSON (Teil der Umsetzung).** Der Chunker schneidet entlang der Docling-Elemente.
-   Jeder Chunk bekommt `pageFrom`/`pageTo`, den vollen Überschriftenpfad (`§ 3 Gebührenbefreiung`) und
-   die Zitate, genau wie ein Text-PDF. Die vorhandene Textfassung im Viewer zeigt den erkannten Text in
-   Lesereihenfolge und markiert die Passage.
-2. **Durchsuchbares PDF (Sandwich).** Aus den Begrenzungsrahmen entsteht ein unsichtbarer Textlayer über
-   dem Scanbild, wie bei OCRmyPDF. Der bestehende PDF-Viewer markiert dann unverändert, auch die Suche
-   im Original funktioniert. Das abgeleitete PDF muss opaa speichern, weil Originale sonst live von der
-   Quelle kommen.
-3. **Rahmen am Chunk.** opaa speichert die Begrenzungsrahmen der Passage und zeichnet sie im Viewer über
-   das Seitenbild. ADR-0062 hat Bounding-Boxes für Text-PDFs verworfen. Für Scans wäre das der direkte
-   Weg, dafür müsste der ADR fortgeschrieben werden.
+1. **Anker aus dem JSON.** Der Chunker schneidet entlang der Docling-Elemente. Jeder Chunk bekommt
+   `pageFrom`/`pageTo`, den vollen Überschriftenpfad (`§ 3 Gebührenbefreiung`) und die Zitate, genau wie
+   ein Text-PDF.
+2. **Rahmen am Chunk.** Zusätzlich speichert opaa die Begrenzungsrahmen der Elemente des Chunks (Seite
+   und Koordinaten aus dem JSON). Der Viewer zeichnet sie als Markierung auf das Original. opaa legt
+   dafür keine Kopie des Dokuments ab, das Original kommt wie bisher live von der Quelle. ADR-0062, der
+   Bounding-Boxes für Text-PDFs verworfen hat, wird für Scans fortgeschrieben.
 
-Ob Stufe 2 oder 3 folgt, entscheidet ein kurzer Test mit echten Scans: Ein Sandwich-PDF aus dem JSON
-eines Scans bauen und prüfen, ob die Markierung sitzt.
+Das durchsuchbare PDF (Sandwich, unsichtbarer Textlayer über dem Scan) ist verworfen. Es bräuchte eine
+gespeicherte abgeleitete Kopie je Dokument.
 
 Das JSON lohnt sich über die Fundstellen hinaus:
 - Chunks folgen der §-Gliederung statt einer Zeichenzahl.
@@ -255,5 +251,5 @@ weiter auf der CPU.
    - **die fehlenden Absatzzeilen:** Ursache klären
    - **`docling-serve` als Container:** Imagegröße, Offline-Start mit `DOCLING_SERVE_ARTIFACTS_PATH`,
      `X-Api-Key`
-   - **Koordinaten im JSON:** ob sie für eine Sandwich-Anzeige reichen
+   - **Koordinaten im JSON:** ob Seite und Rahmen je Element (auch Tabellenzellen) stabil und im erwarteten Koordinatensystem kommen, damit der Viewer die Fundstelle auf dem Original einrahmen kann
 3. PaddleOCR bleibt die Ausweichoption, falls echte Scans Doclings Layout-Erkennung überfordern.
