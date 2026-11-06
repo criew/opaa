@@ -131,7 +131,13 @@ export default function PdfViewer({
         }
 
         const scan = isRecognizedText(anchor)
-        const frames = scan ? framedPages(anchor) : null
+        let frames = scan ? framedPages(anchor) : null
+        // frames beyond the original's last page belong to another file: open the page only
+        if (frames && frames.from > document.numPages) {
+          frames = null
+          setMarkState('page-only')
+        }
+        const firstFramed = frames?.from
         const passage = scan
           ? scanPassage(document, anchor, frames)
           : await passageOf(document, anchor)
@@ -149,7 +155,7 @@ export default function PdfViewer({
             ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
               const first = drawRegions(source.div, regionsOnPage(anchor, pageNumber))
               // drawn again after every zoom step, scrolled to only once
-              if (first && pageNumber === frames.from && !jumped) {
+              if (first && pageNumber === firstFramed && !jumped) {
                 jumped = true
                 first.scrollIntoView?.({ block: 'center' })
                 setMarkState('framed')
@@ -410,7 +416,11 @@ function scanStatusText(
   changed: boolean,
   anchor: ChunkAnchor | null | undefined,
 ): string {
-  if (changed) return 'Das Original wurde seit der Antwort geändert – der Rahmen kann abweichen.'
+  if (changed) {
+    return markState === 'page-only'
+      ? 'Das Original wurde seit der Antwort geändert – die Fundseite kann abweichen.'
+      : 'Das Original wurde seit der Antwort geändert – der Rahmen kann abweichen.'
+  }
   const frames = framedPages(anchor)
   if (markState === 'framed' && frames) {
     const pages =

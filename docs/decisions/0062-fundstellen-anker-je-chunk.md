@@ -93,8 +93,10 @@ Text als erkannt und nennt das Verfahren. Die Zitate bleiben, sie gelten dem erk
   berühren; sie folgen damit jedem Zoom. Ohne `regions` springt er nur auf `pageFrom` und sagt das.
   Daneben zeigt er den erkannten Text der Passage, damit Lesende ihn mit dem Scan vergleichen.
   Beleg, Viewer und Chunk-Vorschau kennzeichnen erkannten Text mit dem Hinweis „maschinell erkannt,
-  maßgeblich ist das Original“. Die Rahmen gelten der Seite in ihrer gespeicherten Ausrichtung; ein
-  Drehen im Viewer gibt es nicht.
+  maßgeblich ist das Original“. Der Viewer legt die Rahmen ohne Umrechnung auf die Seite, wie pdf.js
+  sie anzeigt, also mit angewandtem `/Rotate`; er setzt damit voraus, dass docling-serve die
+  Koordinaten auf dieselbe angezeigte Seite bezieht. Ein Drehen im Viewer gibt es nicht. Rahmen
+  jenseits der letzten Seite des Originals behandelt er wie fehlende Rahmen.
 - Seiten, Folie und Abschnittspfad stehen doppelt im Chunk: maschinenlesbar im Anker, als
   Anzeigetext in `location`. Das kostet wenige Dutzend Byte je Chunk.
 
