@@ -59,6 +59,7 @@ COPY --from=build / /
 ENV container=oci \
     APP_ROOT=/opt/app-root \
     PLATFORM=el9 \
+    NODEJS_VER=22 \
     STI_SCRIPTS_URL=image:///usr/libexec/s2i \
     STI_SCRIPTS_PATH=/usr/libexec/s2i \
     PATH=/opt/app-root/src/.local/bin/:/opt/app-root/src/bin:/opt/app-root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
