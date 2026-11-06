@@ -131,6 +131,9 @@ echo "conversion: HTTP 200 after $(($(date +%s) - convert_start))s," \
   "processing time $(jq -r '.processing_time' "$result_dir/scan-bescheid.json")s"
 python3 "$here/ocr_smoke_check.py" "$result_dir/scan-bescheid.json" ||
   fail "the DoclingDocument of the test page lacks expected content"
+# Peak memory of the container (cgroup v2) up to here, the basis of the sizing in the handbook.
+peak="$(docker exec "$service" cat /sys/fs/cgroup/memory.peak 2>/dev/null || echo 0)"
+echo "memory peak after one page: $((peak / 1024 / 1024)) MiB"
 
 # Offline proof beyond the successful start: nothing in the log may report a download attempt.
 if docker logs "$service" 2>&1 | grep -Ei 'downloading|huggingface\.co|modelscope' >&2; then
