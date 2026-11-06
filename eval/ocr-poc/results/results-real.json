@@ -45,12 +45,12 @@
    "peak_rss_mb": 11276
   },
   "tesseract": {
-   "checks": "23/48",
-   "checks_share": 0.479,
+   "checks": "24/48",
+   "checks_share": 0.5,
    "paragraph_checks": "0/15",
    "table_rows": "0/7",
-   "cer_mean": 0.0708,
-   "cer_median": 0.0112,
+   "cer_mean": 0.057,
+   "cer_median": 0.0,
    "sec_per_page": 1.9,
    "errors": 0,
    "peak_rss_mb": 171
@@ -409,7 +409,7 @@
     ],
     "table_rows_ok": "0/1",
     "cer": [
-     0.06
+     0.021
     ]
    },
    "bgbl1-1972-1": {
@@ -420,7 +420,7 @@
     ],
     "table_rows_ok": "0/1",
     "cer": [
-     0.051
+     0.003
     ]
    },
    "btd-1-1": {
@@ -447,19 +447,18 @@
     "table_rows_ok": "0/1",
     "cer": [
      0.0,
-     0.034
+     0.0
     ]
    },
    "btd-5-500": {
     "missed": [
-     "Haushaltssicherungsgesetzes vom 20. Dezember 1965",
      "von bisher 250 DM für 1 hl auf 1000 DM",
      "Artikels 21 § 2 Abs. 1",
      "Erhöhung auf 1200 DM"
     ],
     "table_rows_ok": "0/0",
     "cer": [
-     0.022
+     0.004
     ]
    },
    "ort-fnv-vietgest": {

@@ -35,7 +35,7 @@ def norm(text):
     text = re.sub(r"[‐‑‒–—―−]", "-", text)
     text = re.sub(r"[#*_]+", " ", text)
     text = re.sub(r"\.{4,}", " ", text)  # dot leaders in tables of contents
-    text = re.sub(r"([a-zäöüß])- +([a-zäöüß])", r"\1\2", text)  # hyphenation at line breaks
+    text = re.sub(r"([a-zäöüß])-\s+([a-zäöüß])", r"\1\2", text)  # hyphenation at line breaks
     return re.sub(r"\s+", " ", text).strip()
 
 

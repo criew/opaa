@@ -9,6 +9,7 @@ Usage: python fetch_real.py --out work/corpus-real   (needs pypdfium2 and pillow
 """
 
 import argparse
+import hashlib
 import json
 import urllib.request
 from pathlib import Path
@@ -33,6 +34,11 @@ def main():
         src = d / "source.pdf"
         if not src.exists():
             src.write_bytes(urllib.request.urlopen(urllib.request.Request(s["url"], headers=UA), timeout=120).read())
+        # the truth values in real/truth/ were read from exactly this version of the document
+        digest = hashlib.sha256(src.read_bytes()).hexdigest()
+        if digest != s["sha256"]:
+            raise SystemExit(f"{s['id']}: source changed (sha256 {digest}, expected {s['sha256']}); "
+                             "the truth values no longer apply, see real/SOURCES.md")
         pdf = pdfium.PdfDocument(str(src))
         imgs = [pdf[n - 1].render(scale=args.dpi / 72, grayscale=True).to_pil().convert("L") for n in s["pages"]]
         imgs[0].save(d / "scan-real.pdf", save_all=True, append_images=imgs[1:], resolution=args.dpi)

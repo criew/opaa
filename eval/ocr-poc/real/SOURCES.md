@@ -15,9 +15,13 @@ Alle Dokumente sind amtliche Werke im Sinne von § 5 UrhG:
   [Hinweise des Bundestages](https://www.bundestag.de/services/faq/dokumente-244896).
 - **Bundesgesetzblatt:** Gesetze und Verordnungen sind amtliche Werke nach § 5 Abs. 1 UrhG. Die Scans
   stellt [Offene Gesetze](https://offenegesetze.de/) bereit.
-- **Ortsrecht** (Hauptsatzung, Satzung einer Körperschaft des öffentlichen Rechts) und amtliche
-  Bekanntmachungen sind amtliche Werke nach § 5 Abs. 1 UrhG. Veröffentlicht sind sie auf der Seite
-  des Amtes Güstrow-Land.
+- **Ortsrecht** (Hauptsatzung einer Gemeinde) und amtliche Bekanntmachungen einer Behörde
+  (Flurneuordnung) sind amtliche Werke nach § 5 Abs. 1 UrhG. Veröffentlicht sind sie auf der Seite des
+  Amtes Güstrow-Land.
+- **Satzung der Jagdgenossenschaft:** Die Jagdgenossenschaft ist eine Körperschaft des öffentlichen
+  Rechts unter Rechtsaufsicht. Ihre Satzung ist von der Jagdbehörde genehmigt und ortsüblich bekannt
+  gemacht, veröffentlicht ist sie in der Ortsrecht-Sammlung des Amtes. Wir behandeln sie wie Ortsrecht
+  als amtliches Werk. Im Repository stehen davon nur kurze Auszüge als Sollwerte.
 
 Die Scans werden nur zur Messung gelesen und nicht weitergegeben. Deshalb stehen hier nur Adressen
 und Seitenangaben, keine Dateien.
@@ -36,5 +40,7 @@ und Seitenangaben, keine Dateien.
 | `ort-jagd-siemitz` | Satzung der Jagdgenossenschaft Siemitz-Käselow (2023): grauer Scan, Handschrift, Stempel und Siegel | 1, 5 | https://www.amt-guestrow-land.de/images/pdf/Mistorf/JagdgenossenschaftSiemitz-KaeselowSatzung2023.pdf |
 | `ort-fnv-vietgest` | Flurneuordnungsverfahren Vietgest, Feststellung der Ergebnisse der Wertermittlung (2022): Aktenzeichen, Wappen | 1 | https://www.amt-guestrow-land.de/images/pdf/Glasewitz/FNVVietgestFeststellungErgebnisseWertermittlung.pdf |
 
-Abgerufen am 6. November 2026. Fehlt eine Quelle später, ist die Nachmessung mit einem Ersatzdokument
-gleicher Art zu wiederholen. Die Sollwerte gelten nur für die hier genannten Fassungen.
+Abgerufen am 6. November 2026. `sources.json` hält die SHA-256-Prüfsumme jeder Datei fest, und
+`fetch_real.py` bricht ab, wenn eine Quelle sich geändert hat. Die Sollwerte gelten nur für genau diese
+Fassungen. Fehlt eine Quelle später oder hat sie sich geändert, ist die Nachmessung mit einem
+Ersatzdokument gleicher Art und neu abgelesenen Sollwerten zu wiederholen.
