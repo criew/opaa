@@ -63,7 +63,10 @@ function renderedPage(lines: string[] = []): HTMLElement {
   return div
 }
 
-async function open(anchor: ChunkAnchor | null, extra: { chunkIndex?: number } = {}) {
+async function open(
+  anchor: ChunkAnchor | null,
+  extra: { chunkIndex?: number; contentSha256?: string } = {},
+) {
   renderWithProviders(
     <PdfViewer
       data={new ArrayBuffer(8)}
@@ -71,6 +74,7 @@ async function open(anchor: ChunkAnchor | null, extra: { chunkIndex?: number } =
       onError={() => {}}
       documentId="doc-scan"
       chunkIndex={extra.chunkIndex}
+      contentSha256={extra.contentSha256}
     />,
   )
   expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
@@ -159,6 +163,44 @@ describe('PdfViewer', () => {
       expect(pdf.scrollPageIntoView).toHaveBeenCalledWith({ pageNumber: 2 })
       expect(screen.getByRole('status')).toHaveTextContent(
         'Fundstelle auf Seite 2, im Scan nicht umrahmt. Maschinell erkannt, maßgeblich ist das Original.',
+      )
+    })
+
+    it('falls back to the page when the frames lie beyond the last page of the original', async () => {
+      await open({
+        pageFrom: 2,
+        pageTo: 2,
+        regions: [{ page: 5, x: 0.1, y: 0.2, width: 0.8, height: 0.1 }],
+        textOrigin: { connectionType: 'DOCLING_SERVE' },
+      })
+
+      fire('pagesinit', {})
+      const page = renderedPage()
+      fire('pagerendered', { pageNumber: 2, source: { div: page } })
+
+      expect(pdf.scrollPageIntoView).toHaveBeenCalledWith({ pageNumber: 2 })
+      expect(page.querySelector('.recognized-region')).toBeNull()
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Fundstelle auf Seite 2, im Scan nicht umrahmt.',
+      )
+    })
+
+    it('warns of a changed original by what it shows: frame or page', async () => {
+      const changed = { contentSha256: 'ff'.repeat(32) }
+      await open({ pageFrom: 2, textOrigin: { connectionType: 'OPENAI_VISION' } }, changed)
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Das Original wurde seit der Antwort geändert – die Fundseite kann abweichen.',
+        ),
+      )
+    })
+
+    it('warns that the frame may be off when a framed original has changed', async () => {
+      await open(SCAN, { contentSha256: 'ff'.repeat(32) })
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Das Original wurde seit der Antwort geändert – der Rahmen kann abweichen.',
+        ),
       )
     })
 
