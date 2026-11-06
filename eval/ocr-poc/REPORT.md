@@ -22,7 +22,7 @@ lesen.
 
 Die Varianten heißen „Docling + EasyOCR“, „Docling + RapidOCR“ und so weiter, weil Docling selbst kein
 OCR-Verfahren ist. Docling ist ein Dokumentkonverter: Er zerlegt eine Seite in Blöcke und setzt daraus
-ein strukturiertes Dokument zusammen. Den Text in den Blöcken liest eine austauschbare OCR-Engine.
+ein strukturiertes Dokument zusammen. Den Text liest eine austauschbare OCR-Engine.
 
 Das Schaubild zeigt den Vorschlag für Stufe 1. Gebaut ist davon heute nur der Bordmittel-Pfad.
 
@@ -30,44 +30,66 @@ Das Schaubild zeigt den Vorschlag für Stufe 1. Gebaut ist davon heute nur der B
 flowchart LR
     subgraph opaa["opaa-Backend (Java)"]
         D["Dokument aus einer<br/>Bibliothek oder Quelle"] --> P["Indexierungspipeline"]
-        P --> W{"PDF hat eine<br/>Textebene?"}
-        W -- ja --> T["Bordmittel-Pfad<br/>Tika / PDFBox<br/>(heute schon gebaut)"]
-        W -- "nein, Scan" --> C["OCR-Client<br/>(REST)"]
-        T --> K["Chunks, Embeddings, Index<br/>Pipeline-Version am Chunk"]
-        C -- "Markdown / JSON" --> K
+        P --> W{"Text<br/>vorhanden?"}
+        W -- "ja, PDF mit Textebene" --> T["Bordmittel-Pfad<br/>Tika / PDFBox<br/>(heute schon gebaut)"]
+        W -- "nein: Scan-PDF,<br/>JPEG, PNG, TIFF" --> C["OCR-Client<br/>(docling-serve-API)"]
+        C -- "JSON: Elemente mit<br/>Seite und Koordinaten" --> CH["Chunker entlang der<br/>Docling-Struktur<br/>(§, Tabellenzeilen)"]
+        T --> K["Chunks mit Anker,<br/>Embeddings, Index,<br/>Pipeline-Version am Chunk"]
+        CH --> K
     end
 
     C -- "HTTP im internen Netz,<br/>API-Schlüssel" --> S
 
-    subgraph svc["Container docling-serve (Python)"]
-        S["REST-Schnittstelle"] --> R["Seiten rastern"]
+    subgraph svc["OCR-Dienst: mitgelieferter docling-serve oder eigener Dienst"]
+        S["REST-Schnittstelle<br/>/v1/convert"] --> R["Seiten rastern"]
         R --> O["OCR-Engine (austauschbar)<br/>RapidOCR mit PP-OCR-Modellen<br/>oder EasyOCR, Tesseract"]
         O --> L["Layoutmodell<br/>Überschrift, Absatz,<br/>Tabelle, Liste"]
         L --> TF["TableFormer<br/>Zeilen und Spalten<br/>der Tabellen"]
-        TF --> A["Zusammenbau<br/>DoclingDocument"]
-        A --> M["Ausgabe als<br/>Markdown oder JSON"]
+        TF --> A["DoclingDocument<br/>(JSON, dazu Markdown)"]
     end
 ```
 
-**Was opaa aufruft.** Docling läuft als eigener Container `docling-serve` im internen Netz, ohne
-veröffentlichten Port. Das Backend schickt das PDF per REST hin und bekommt Markdown oder JSON zurück.
-Danach geht es weiter wie bei jedem anderen Dokument: Das Ergebnis wird in Chunks zerlegt, eingebettet
-und indexiert. Am Chunk steht, welches Verfahren den Text geliefert hat. Fällt der Dienst aus, bleibt
-das Dokument wie heute als „kein extrahierbarer Text“ stehen. Vorschlag: Adresse und API-Schlüssel des Dienstes
-gehören in die Betriebskonfiguration (Compose, Helm, Umgebungsvariablen), weil der Dienst fest zur
-Installation gehört. Ob die Administration ihn zusätzlich pflegt, etwa je Bibliothek ein- und
-ausschaltet oder den Zustand anzeigt, ist noch nicht entschieden.
+**Was opaa aufruft.** Der OCR-Dienst ist ein eigener Container im internen Netz, ohne veröffentlichten
+Port und mit API-Schlüssel. opaa programmiert gegen die Schnittstelle von `docling-serve`
+(`/v1/convert`), nicht gegen einen bestimmten Container. Daraus ergeben sich zwei Betriebswege:
+
+- **Vorgabe:** opaa liefert einen fertig eingestellten Container mit, `docling-serve` mit RapidOCR und
+  den Modellen im Image, damit er offline läuft.
+- **Eigener Dienst:** Eine Behörde kann einen eigenen Dienst mit derselben Schnittstelle betreiben,
+  etwa auf eigener GPU oder beim IT-Dienstleister, und trägt nur Adresse und Schlüssel ein.
+
+Die maßgeblichen Einstellungen schickt opaa bei jedem Aufruf mit: OCR erzwingen, OCR-Engine
+`rapidocr`, Tabellenerkennung an, Ausgabe als JSON und Markdown. Ein fremder Dienst verhält sich dann
+wie der mitgelieferte, sofern er die RapidOCR-Modelle hat.
+
+Zurück kommt das `DoclingDocument` als JSON. Nur daraus werden die Chunks geschnitten, das Markdown ist
+eine flache Ansicht für Vorschau und Fehlersuche. Am Chunk steht, welches Verfahren den Text geliefert
+hat. Fällt der Dienst aus, bleibt das Dokument wie heute als „kein extrahierbarer Text“ stehen.
+
+Wo die Adresse gepflegt wird, ist noch offen:
+- Die **Betriebskonfiguration** (Compose, Helm) passt zum mitgelieferten Container.
+- Eine **Einstellung in der Systemadministration** passt besser zum eigenen Dienst. Sie braucht dann
+  eine Erreichbarkeitsprüfung. Außerdem legt der Admin damit fest, wohin opaa Dokumente schickt, das
+  ist sicherheitsrelevant.
+
+**Welche Dateien.** Docling verarbeitet nicht nur PDF. Für Scans zählen vor allem die Bildformate:
+JPEG, PNG, TIFF (auch mehrseitig, jede Seite einzeln), BMP, WEBP und GIF. Sie laufen durch dieselbe
+Pipeline wie ein Scan-PDF, ebenso durch die VLM-Pipeline weiter unten. Heute weist opaa Bilddateien
+ab. Mit dem OCR-Dienst würden sie wie Scans indexiert. Die übrigen Formate, die Docling kann (DOCX,
+PPTX, XLSX, HTML), liest opaa schon mit eigenen Bordmitteln. Hier bringt Docling nichts Neues.
 
 **Was in Docling passiert.** Docling rechnet in mehreren Stufen. Keine davon ist ein Sprachmodell:
 
-1. **Rastern:** Docling wandelt jede PDF-Seite in ein Bild um.
+1. **Rastern:** Docling wandelt jede Seite in ein Bild um, bei Bilddateien entfällt das.
 2. **OCR:** Die OCR-Engine findet auf dem Bild die Textzeilen und liest sie.
-3. **Layout:** Ein Layoutmodell erkennt die Blöcke (Überschrift, Absatz, Liste, Tabelle) und ihre
-   Lage. Docling sortiert die gelesenen Zeilen diesen Blöcken zu. Bei diesem Schritt gehen vermutlich
-   die letzten Absatzzeilen verloren, siehe [Auffälligkeiten](#auffälligkeiten).
+3. **Layout:** Ein Layoutmodell erkennt die Blöcke (Überschrift, Absatz, Liste, Tabelle, Kopf- und
+   Fußzeile) und ihre Lage. Docling sortiert die gelesenen Zeilen diesen Blöcken zu. Bei diesem
+   Schritt gehen vermutlich die letzten Absatzzeilen verloren, siehe
+   [Auffälligkeiten](#auffälligkeiten).
 4. **Tabellen:** TableFormer bestimmt in Tabellenblöcken Zeilen und Spalten.
-5. **Ausgabe:** Docling baut aus allem ein strukturiertes Dokument und exportiert es als Markdown oder
-   JSON.
+5. **Ausgabe:** Docling baut aus allem das `DoclingDocument`. Jedes Element trägt dort seine Seite und
+   seinen Begrenzungsrahmen. Dazu kommen die Lesereihenfolge, die Überschriftenhierarchie und die
+   Tabellen als Raster.
 
 Die OCR-Engine ist eine Einstellung von Docling. Deshalb tragen die Varianten zwei Namen:
 - **EasyOCR** ist Doclings Vorgabe.
@@ -93,7 +115,38 @@ kleines Bildsprachmodell Layout und OCR zugleich: Es bekommt das Seitenbild und 
 strukturierte Dokument direkt. Gemessen ist GraniteDocling (258 Mio. Parameter, braucht praktisch eine
 GPU). Über dieselbe Pipeline ließe sich auch ein anderes Modell hinter einer OpenAI-kompatiblen
 Schnittstelle anbinden, etwa PaddleOCR-VL. Das ist nicht gemessen. Ein VLM erkennt Struktur und Tabellen gut,
-kann aber ganze Textteile verlieren, siehe die Ausreißer unten.
+kann aber ganze Textteile verlieren, siehe die Ausreißer unten. Für opaa ändert sich an der
+Schnittstelle nichts: Die VLM-Pipeline nimmt dieselben Eingaben (Scan-PDF und Bilddateien) und liefert
+ebenfalls ein `DoclingDocument`. GraniteDocling gibt dabei Positionsangaben je Element mit aus.
+
+## Fundstellen bei Scans
+
+Ein Beleg springt heute über den Anker des Chunks zur Seite und markiert dort fein über zwei Zitate
+(`quoteStart`, `quoteEnd`), die der PDF-Viewer im Textlayer sucht ([ADR-0062](../../docs/decisions/0062-fundstellen-anker-je-chunk.md)). Ein Scan hat
+keinen Textlayer. Würde opaa nur das Markdown indexieren, bliebe für einen Scan nur „Seite 3 öffnen“,
+ohne Markierung. Das JSON von Docling schließt diese Lücke in drei Ausbaustufen:
+
+1. **Anker aus dem JSON (Teil der Umsetzung).** Der Chunker schneidet entlang der Docling-Elemente.
+   Jeder Chunk bekommt `pageFrom`/`pageTo`, den vollen Überschriftenpfad (`§ 3 Gebührenbefreiung`) und
+   die Zitate, genau wie ein Text-PDF. Die vorhandene Textfassung im Viewer zeigt den erkannten Text in
+   Lesereihenfolge und markiert die Passage.
+2. **Durchsuchbares PDF (Sandwich).** Aus den Begrenzungsrahmen entsteht ein unsichtbarer Textlayer über
+   dem Scanbild, wie bei OCRmyPDF. Der bestehende PDF-Viewer markiert dann unverändert, auch die Suche
+   im Original funktioniert. Das abgeleitete PDF muss opaa speichern, weil Originale sonst live von der
+   Quelle kommen.
+3. **Rahmen am Chunk.** opaa speichert die Begrenzungsrahmen der Passage und zeichnet sie im Viewer über
+   das Seitenbild. ADR-0062 hat Bounding-Boxes für Text-PDFs verworfen. Für Scans wäre das der direkte
+   Weg, dafür müsste der ADR fortgeschrieben werden.
+
+Ob Stufe 2 oder 3 folgt, entscheidet ein kurzer Test mit echten Scans: Ein Sandwich-PDF aus dem JSON
+eines Scans bauen und prüfen, ob die Markierung sitzt.
+
+Das JSON lohnt sich über die Fundstellen hinaus:
+- Chunks folgen der §-Gliederung statt einer Zeichenzahl.
+- Eine Tabellenzeile wird ein vollständiger Chunk (`Nr. 4 · Zweitausfertigung · 46,00 Euro`) statt
+  zerrissenem Fließtext.
+- Kopf- und Fußzeilen, Seitenzahlen und Stempel lassen sich als eigene Elementtypen aus dem Index
+  heraushalten.
 
 ## Korpus und Messumgebung
 
