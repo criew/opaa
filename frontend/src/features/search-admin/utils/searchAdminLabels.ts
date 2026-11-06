@@ -22,6 +22,7 @@ export const ROLE_LABELS: Record<SearchModelRole, string> = {
   EMBEDDING: 'Einbettung',
   RERANK: 'Reranking',
   TRANSCRIPTION: 'Transkription',
+  TEXT_RECOGNITION: 'Texterkennung',
 }
 
 export const ROLE_STATE_LABELS: Record<SearchModelRoleStatusResponse['state'], string> = {

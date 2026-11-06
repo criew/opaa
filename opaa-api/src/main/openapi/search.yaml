@@ -1932,8 +1932,9 @@ components:
       description: >
         The model roles of the Modell-Schichtenmodell (ADR-0065, Entscheidung 6):
         reranking sits on the same level as chat and embedding, not inside the search as a built-in
-        procedure. TRANSCRIPTION turns dictated speech into text for the chat input.
-      enum: [CHAT, EMBEDDING, RERANK, TRANSCRIPTION]
+        procedure. TRANSCRIPTION turns dictated speech into text for the chat input;
+        TEXT_RECOGNITION reads scanned PDFs during indexing (OCR).
+      enum: [CHAT, EMBEDDING, RERANK, TRANSCRIPTION, TEXT_RECOGNITION]
       example: RERANK
 
     SearchModelRoleState:

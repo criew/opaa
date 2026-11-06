@@ -2,7 +2,7 @@
 # Merged with all other fragments at build time, see root.yaml.
 tags:
   - name: model
-    description: Chat, embedding, rerank and transcription model configuration.
+    description: Chat, embedding, rerank, transcription and text recognition model configuration.
 paths:
   /api/v1/admin/models:
     get:
@@ -508,6 +508,83 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/models/text-recognition:
+    get:
+      operationId: getTextRecognitionModelSettings
+      tags: [model]
+      summary: Get the text recognition (OCR) model role (system admin only)
+      description: >
+        The text recognition role of the installation: connection type, address, model and key
+        for reading scanned PDFs. textRecognitionAvailable tells whether the operation allows text
+        recognition at all (OPAA_OCR_ENABLED, off by default); while false the role is neither
+        evaluated nor contacted, whatever is stored.
+      responses:
+        "200":
+          description: The text recognition model role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionModelSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateTextRecognitionModelSettings
+      tags: [model]
+      summary: Change the text recognition (OCR) model role (system admin only)
+      description: >
+        As updateRerankModelSettings, with the connection type; model is required for
+        OPENAI_VISION only. Switching the role on is refused (400 with code BLOCKED) while the
+        operation has switched text recognition off; connection type, address, model and key may
+        still be stored. The key is sent only to the stored endpoint, as X-Api-Key to
+        docling-serve and as bearer token to a vision model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextRecognitionModelSettingsRequest"
+      responses:
+        "200":
+          description: The text recognition model role after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionModelSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/text-recognition/test:
+    post:
+      operationId: testTextRecognitionModel
+      tags: [model]
+      summary: Probe a text recognition endpoint, saved or not yet saved (system admin only)
+      description: >
+        DOCLING_SERVE: GET {baseUrl}/health, then the conversion of a test page shipped with OPAA
+        with exactly the options OPAA sends in operation (OCR forced, engine RapidOCR, language de,
+        tables, JSON output). OPENAI_VISION: GET {baseUrl}/models, then the test page as image to
+        {baseUrl}/chat/completions. Never sends content of a library. Key rule and address check as
+        for testRerankModel; refused (400 with code BLOCKED) while the operation has switched text
+        recognition off, so no service is contacted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextRecognitionTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; outcome tells the kind of failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
     LlmModelResponse:
@@ -983,6 +1060,127 @@ components:
           nullable: true
           maxLength: 2000
           description: Plaintext key for this test only, never stored.
+
+    TextRecognitionConnectionType:
+      type: string
+      description: >
+        How the text recognition role reaches its service. DOCLING_SERVE is the docling-serve API
+        (v1), the OCR container shipped with OPAA or an own docling-serve; OPENAI_VISION is an
+        OpenAI-compatible vision model that reads each page as an image.
+      enum: [DOCLING_SERVE, OPENAI_VISION]
+      example: DOCLING_SERVE
+
+    TextRecognitionModelSettingsResponse:
+      type: object
+      required: [enabled, connectionType, apiKeySet, state, textRecognitionAvailable]
+      properties:
+        enabled:
+          type: boolean
+          description: The role's switch; false is the factory default.
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        baseUrl:
+          type: string
+          nullable: true
+          example: http://opaa-ocr:5001
+        model:
+          type: string
+          nullable: true
+          description: The vision model; null for DOCLING_SERVE.
+          example: PaddlePaddle/PaddleOCR-VL
+        apiKeySet:
+          type: boolean
+          description: Whether a key is stored - never the key itself.
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        textRecognitionAvailable:
+          type: boolean
+          description: >
+            Whether the operation allows text recognition (OPAA_OCR_ENABLED); while false the role
+            stays off whatever is stored and no service is contacted.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The last change; null while the factory default applies.
+
+    TextRecognitionModelSettingsRequest:
+      type: object
+      required: [enabled, connectionType]
+      properties:
+        enabled:
+          type: boolean
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Without a path such as /v1/convert or /chat/completions and without userinfo; for a
+            vision model the address of the OpenAI-compatible API including /v1. Required while
+            enabled; empty unbinds.
+          example: http://opaa-ocr:5001
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled with OPENAI_VISION; ignored and not stored for DOCLING_SERVE.
+          example: PaddlePaddle/PaddleOCR-VL
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored key for an unchanged endpoint; an empty
+            string removes it; any other value replaces it.
+
+    TextRecognitionTestRequest:
+      type: object
+      description: >
+        A draft of a text recognition endpoint. apiKey omitted uses the stored key of the role, but
+        only for its stored endpoint; an empty string sends no key.
+      required: [connectionType, baseUrl]
+      properties:
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: http://opaa-ocr:5001
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required for OPENAI_VISION.
+          example: PaddlePaddle/PaddleOCR-VL
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Plaintext key for this test only, never stored.
+
+    TextRecognitionTestResponse:
+      type: object
+      required: [success, outcome, message]
+      properties:
+        success:
+          type: boolean
+          description: Whether the service is reachable and read text from the test page.
+        outcome:
+          type: string
+          description: >
+            READY - reachable and able to read the test page; KEY_REJECTED - the service refused
+            the key (HTTP 401 or 403); ENGINE_MISSING - reachable, but the OCR engine, its models or
+            the vision model are missing; NO_TEXT - the service answered without text;
+            UNREACHABLE - not reachable, timed out or answered unexpectedly.
+          enum: [READY, KEY_REJECTED, ENGINE_MISSING, NO_TEXT, UNREACHABLE]
+          example: READY
+        message:
+          type: string
+          description: German, user-facing outcome.
+          example: Verbindung erfolgreich, der Dienst hat die Testseite gelesen.
 
     EmbeddingInfoResponse:
       type: object
