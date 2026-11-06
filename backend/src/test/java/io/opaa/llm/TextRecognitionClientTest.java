@@ -341,4 +341,72 @@ class TextRecognitionClientTest {
     respond(TextRecognitionClient.KEY_CHECK_PATH, 404, "{\"detail\":\"Task not found.\"}", null);
     assertThat(client.probe(docling("k"), TIMEOUT)).isNull();
   }
+
+  @Test
+  void theTestNamesTheStageThatFailed() throws IOException {
+    respond("/health", 200, "{\"status\":\"ok\"}", null);
+    respond("/v1/convert/file", 200, DOCLING_SUCCESS, null);
+    assertThat(client.test(docling("k"), TIMEOUT).failedStage()).isNull();
+
+    server.removeContext("/v1/convert/file");
+    respond("/v1/convert/file", 404, "", null);
+    TextRecognitionClient.TestResult missingRoute = client.test(docling("k"), TIMEOUT);
+    assertThat(missingRoute.outcome()).isEqualTo(TestOutcome.UNREACHABLE);
+    assertThat(missingRoute.failedStage()).isEqualTo(TextRecognitionClient.FailedStage.RECOGNITION);
+
+    server.removeContext("/v1/convert/file");
+    respond("/v1/convert/file", 200, "not json", null);
+    assertThat(client.test(docling("k"), TIMEOUT).failedStage())
+        .isEqualTo(TextRecognitionClient.FailedStage.RECOGNITION);
+
+    server.removeContext("/v1/convert/file");
+    respond("/v1/convert/file", 401, "", null);
+    assertThat(client.test(docling("k"), TIMEOUT).failedStage())
+        .isEqualTo(TextRecognitionClient.FailedStage.AUTHENTICATION);
+
+    respond(TextRecognitionClient.KEY_CHECK_PATH, 401, "", null);
+    assertThat(client.test(docling("wrong"), TIMEOUT).failedStage())
+        .isEqualTo(TextRecognitionClient.FailedStage.AUTHENTICATION);
+
+    server.removeContext("/health");
+    respond("/health", 302, "", null);
+    assertThat(client.test(docling("k"), TIMEOUT).failedStage())
+        .isEqualTo(TextRecognitionClient.FailedStage.ADDRESS);
+
+    ServerSocket free = new ServerSocket(0);
+    int port = free.getLocalPort();
+    free.close();
+    TextRecognitionClient.TestResult gone =
+        client.test(
+            new TextRecognitionEndpoint(
+                true,
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                "http://127.0.0.1:" + port,
+                null,
+                "k"),
+            TIMEOUT);
+    assertThat(gone.outcome()).isEqualTo(TestOutcome.UNREACHABLE);
+    assertThat(gone.failedStage()).isEqualTo(TextRecognitionClient.FailedStage.ADDRESS);
+  }
+
+  @Test
+  void aTimeoutWhileReadingTheTestPageIsARecognitionFailure() {
+    respond("/health", 200, "{\"status\":\"ok\"}", null);
+    server.createContext(
+        "/v1/convert/file",
+        exchange -> {
+          try {
+            Thread.sleep(3_000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          send(exchange, 200, DOCLING_SUCCESS);
+        });
+
+    TextRecognitionClient.TestResult result = client.test(docling("k"), Duration.ofMillis(800));
+
+    assertThat(result.outcome()).isEqualTo(TestOutcome.UNREACHABLE);
+    assertThat(result.timedOut()).isTrue();
+    assertThat(result.failedStage()).isEqualTo(TextRecognitionClient.FailedStage.RECOGNITION);
+  }
 }

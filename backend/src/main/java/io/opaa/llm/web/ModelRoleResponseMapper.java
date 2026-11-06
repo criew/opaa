@@ -10,6 +10,7 @@ import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
 import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
 import io.opaa.llm.ModelRoleAdministration.TranscriptionModelView;
 import io.opaa.llm.RerankRoleState;
+import io.opaa.llm.TextRecognitionClient;
 import io.opaa.llm.TextRecognitionRoleState;
 import io.opaa.llm.TranscriptionRoleState;
 
@@ -75,15 +76,28 @@ final class ModelRoleResponseMapper {
 
   static TextRecognitionTestResponse toResponse(TextRecognitionTestOutcome outcome) {
     return new TextRecognitionTestResponse(
-        outcome.success(),
-        switch (outcome.outcome()) {
-          case READY -> TextRecognitionTestResponse.OutcomeEnum.READY;
-          case KEY_REJECTED -> TextRecognitionTestResponse.OutcomeEnum.KEY_REJECTED;
-          case ENGINE_MISSING -> TextRecognitionTestResponse.OutcomeEnum.ENGINE_MISSING;
-          case NO_TEXT -> TextRecognitionTestResponse.OutcomeEnum.NO_TEXT;
-          case UNREACHABLE -> TextRecognitionTestResponse.OutcomeEnum.UNREACHABLE;
-        },
-        outcome.message());
+            outcome.success(),
+            switch (outcome.outcome()) {
+              case READY -> TextRecognitionTestResponse.OutcomeEnum.READY;
+              case KEY_REJECTED -> TextRecognitionTestResponse.OutcomeEnum.KEY_REJECTED;
+              case ENGINE_MISSING -> TextRecognitionTestResponse.OutcomeEnum.ENGINE_MISSING;
+              case NO_TEXT -> TextRecognitionTestResponse.OutcomeEnum.NO_TEXT;
+              case UNREACHABLE -> TextRecognitionTestResponse.OutcomeEnum.UNREACHABLE;
+            },
+            outcome.message())
+        .failedStage(failedStage(outcome.failedStage()));
+  }
+
+  private static TextRecognitionTestResponse.FailedStageEnum failedStage(
+      TextRecognitionClient.FailedStage stage) {
+    if (stage == null) {
+      return null;
+    }
+    return switch (stage) {
+      case ADDRESS -> TextRecognitionTestResponse.FailedStageEnum.ADDRESS;
+      case AUTHENTICATION -> TextRecognitionTestResponse.FailedStageEnum.AUTHENTICATION;
+      case RECOGNITION -> TextRecognitionTestResponse.FailedStageEnum.RECOGNITION;
+    };
   }
 
   static ModelRoleCondition condition(TextRecognitionRoleState state) {
