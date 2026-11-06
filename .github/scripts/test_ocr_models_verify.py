@@ -31,7 +31,6 @@ def sources(monkeypatch: pytest.MonkeyPatch) -> dict:
                 "ppocrv6_dict.txt": [["https://example.org/small/dict.txt", None],
                                      ["https://example.org/medium/dict.txt", None]],
             },
-            "easyocr": {"latin_g2.pth": {"expected": "m" * 32, "actual": "m" * 32}},
             "commits": {},
         },
         "web": {
@@ -57,7 +56,6 @@ def run(tmp_path: Path, pins: list[tuple[str, str]], revisions: str) -> int:
 
 
 GOOD = [
-    ("EasyOcr/latin_g2.pth", "e" * 64),
     ("RapidOcr/PP-OCRv6_rec_medium.onnx", "2" * 64),
     ("RapidOcr/ppocrv6_dict.txt", sha(DICT)),
     ("docling-project--heron/README.md", sha(README)),
@@ -70,8 +68,8 @@ def test_every_line_matching_its_source_passes(tmp_path: Path, sources: dict) ->
     assert run(tmp_path, GOOD, REVISIONS) == 0
 
 
-@pytest.mark.parametrize("index, digest", [(1, "3" * 64), (2, "7" * 64), (3, "4" * 64),
-                                           (4, "5" * 64)])
+@pytest.mark.parametrize("index, digest", [(0, "3" * 64), (1, "7" * 64), (2, "4" * 64),
+                                           (3, "5" * 64)])
 def test_a_line_differing_from_its_source_fails(
     tmp_path: Path, sources: dict, index: int, digest: str, capsys: pytest.CaptureFixture,
 ) -> None:
@@ -82,18 +80,12 @@ def test_a_line_differing_from_its_source_fails(
     assert "::error::" in capsys.readouterr().out
 
 
-def test_an_easyocr_file_differing_from_its_md5_fails(tmp_path: Path, sources: dict) -> None:
-    sources["image"]["easyocr"]["latin_g2.pth"]["actual"] = "x" * 32
-
-    assert run(tmp_path, GOOD, REVISIONS) == 1
-
-
 def test_a_repository_without_pinned_commit_fails(tmp_path: Path, sources: dict) -> None:
     assert run(tmp_path, GOOD, "") == 1
 
 
 def test_a_file_without_independent_source_fails(tmp_path: Path, sources: dict) -> None:
-    assert run(tmp_path, GOOD + [("Other/model.bin", "6" * 64)], REVISIONS) == 1
+    assert run(tmp_path, GOOD + [("EasyOcr/latin_g2.pth", "6" * 64)], REVISIONS) == 1
 
 
 def test_a_pinned_repository_without_baked_file_fails(tmp_path: Path, sources: dict) -> None:

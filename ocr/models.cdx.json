@@ -38,18 +38,6 @@
       "name": "PaddlePaddle PP-OCRv6 and PP-OCR classifier, RapidOCR conversions (RapidOcr/)",
       "purl": "pkg:generic/RapidAI/RapidOCR-models",
       "licenses": [{ "license": { "id": "Apache-2.0" } }]
-    },
-    {
-      "type": "machine-learning-model",
-      "name": "EasyOCR recognition models english_g2, latin_g2 (EasyOcr/)",
-      "purl": "pkg:generic/JaidedAI/EasyOCR-models",
-      "licenses": [{ "license": { "id": "Apache-2.0" } }]
-    },
-    {
-      "type": "machine-learning-model",
-      "name": "CRAFT text detector craft_mlt_25k (EasyOcr/)",
-      "purl": "pkg:generic/clovaai/CRAFT-pytorch",
-      "licenses": [{ "license": { "id": "MIT" } }]
     }
   ]
 }

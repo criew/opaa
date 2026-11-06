@@ -10,9 +10,8 @@ every line to a second source, so a file tampered with on its first download can
   RapidOcr/<file>                 the SHA256 in default_models.yaml of the rapidocr package in the
                                   image; a file listed there without one (the dictionary) is fetched
                                   from its URL there and must match
-  EasyOcr/<file>                  the MD5 in easyocr.config of the easyocr package in the image
 
-The packages come from the base image, pinned by digest, which installs them from its lock file.
+The package comes from the base image, pinned by digest, which installs it from its lock file.
 
   ocr_models_verify.py <image> <models.sha256> <models.revisions>
 
@@ -30,12 +29,11 @@ from pathlib import Path
 HF = "https://huggingface.co"
 HF_PREFIX = "docling-project--"
 
-# Runs inside the image without network: the hashes its packages declare and the MD5 of the
-# baked EasyOCR files, as JSON on stdout.
+# Runs inside the image without network: the hashes rapidocr declares and the Hugging Face commits
+# of the downloads, as JSON on stdout.
 IN_IMAGE = r"""
-import hashlib, json, os, pathlib
+import json, os, pathlib
 import yaml, rapidocr
-import easyocr.config as ec
 root = pathlib.Path(os.environ["DOCLING_SERVE_ARTIFACTS_PATH"])
 rapid = {}
 def walk(node):
@@ -54,22 +52,10 @@ def walk(node):
         for value in node:
             walk(value)
 walk(yaml.safe_load((pathlib.Path(rapidocr.__file__).parent / "default_models.yaml").read_text()))
-easy = {}
-models = list(ec.detection_models.values())
-for generation in ec.recognition_models.values():
-    models.extend(generation.values())
-for model in models:
-    path = root / "EasyOcr" / model["filename"]
-    if path.is_file():
-        easy[model["filename"]] = {
-            "expected": model["md5sum"],
-            "actual": hashlib.md5(path.read_bytes()).hexdigest(),
-        }
 commits = {}
 for meta in root.glob("*/.cache/huggingface/download/**/*.metadata"):
     commits.setdefault(meta.parts[len(root.parts)], set()).add(meta.read_text().split("\n", 1)[0])
-print(json.dumps({"rapidocr": rapid, "easyocr": easy,
-                  "commits": {k: sorted(v) for k, v in commits.items()}}))
+print(json.dumps({"rapidocr": rapid, "commits": {k: sorted(v) for k, v in commits.items()}}))
 """
 
 
@@ -167,14 +153,6 @@ def main(argv: list[str]) -> int:
             error = check_rapidocr(rest, digest, found["rapidocr"].get(rest, []))
             if error:
                 errors.append(error)
-        elif folder == "EasyOcr":
-            md5 = found["easyocr"].get(rest)
-            if md5 is None:
-                errors.append(f"{name}: not in easyocr.config")
-            elif md5["expected"] != md5["actual"]:
-                errors.append(f"{name}: MD5 {md5['actual']}, easyocr.config {md5['expected']}")
-            else:
-                print(f"ok: {name} (easyocr.config MD5)")
         else:
             errors.append(f"{name}: no independent source known")
     for repo, files in sorted(hf_files.items()):

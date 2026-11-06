@@ -6,10 +6,16 @@ FROM ghcr.io/docling-project/docling-serve-cpu:v1.38.2@sha256:7a480a1604fa3b42ef
 
 # The only download of the build: the medium PP-OCRv6 detection and recognition models that German
 # resolves to, in the artifacts directory of the base image (DOCLING_SERVE_ARTIFACTS_PATH), next to
-# its layout and table models. Files already present are kept.
+# its layout and table models. Files already present are kept. The OCR models of the base image no
+# preset reaches leave the file system: EasyOCR, the small PP-OCRv6 models and every PyTorch
+# checkpoint (.pth, a pickle) of RapidOCR, which runs on onnxruntime here. Their bytes stay in the
+# base image's layer; at run time no path leads to them.
 RUN docling-tools models download rapidocr \
         --rapidocr-backend-lang onnxruntime:de --rapidocr-model-size medium \
-        -o "$DOCLING_SERVE_ARTIFACTS_PATH"
+        -o "$DOCLING_SERVE_ARTIFACTS_PATH" \
+    && rm -r "$DOCLING_SERVE_ARTIFACTS_PATH/EasyOcr" \
+        "$DOCLING_SERVE_ARTIFACTS_PATH"/RapidOcr/*.pth \
+        "$DOCLING_SERVE_ARTIFACTS_PATH"/RapidOcr/PP-OCRv6_*_small.onnx
 
 # Every model file must match models.sha256, and no other file may exist; the metadata huggingface_hub
 # keeps beside a download is not a model and stays out. On a mismatch the build prints the list it
