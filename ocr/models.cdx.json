@@ -1,0 +1,43 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "metadata": {
+    "component": {
+      "type": "container",
+      "name": "opaa-ocr",
+      "description": "Model files in the OCR image, grouped by origin; every file with its checksum is listed in ocr/models.sha256. The service uses layout, TableFormer and RapidOCR (PP-OCRv6 medium); the other files come with the base image."
+    }
+  },
+  "components": [
+    {
+      "type": "machine-learning-model",
+      "name": "docling-project/docling-layout-heron",
+      "purl": "pkg:huggingface/docling-project/docling-layout-heron",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "docling-project/docling-layout-heron-onnx",
+      "purl": "pkg:huggingface/docling-project/docling-layout-heron-onnx",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "docling-project/docling-models (TableFormer)",
+      "purl": "pkg:huggingface/docling-project/docling-models",
+      "licenses": [{ "expression": "CDLA-Permissive-2.0 AND Apache-2.0" }]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "docling-project/DocumentFigureClassifier-v2.5",
+      "purl": "pkg:huggingface/docling-project/DocumentFigureClassifier-v2.5",
+      "licenses": [{ "license": { "id": "MIT" } }]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "PaddlePaddle PP-OCRv6 and PP-OCR classifier, RapidOCR conversions (RapidOcr/)",
+      "purl": "pkg:generic/RapidAI/RapidOCR-models",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }]
+    }
+  ]
+}
