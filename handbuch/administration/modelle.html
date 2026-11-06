@@ -2256,6 +2256,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#texterkennung-einrichten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung einrichten
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3840,6 +3851,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#texterkennung-einrichten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Texterkennung einrichten
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3858,7 +3880,7 @@
 
 
 <h1 id="modelle-verwalten">Modelle verwalten<a class="headerlink" href="#modelle-verwalten" title="Permanent link">&para;</a></h1>
-<p class="kopf"><strong>Ziel:</strong> Chat, Suche und Spracheingabe nutzen die Modelle, die das Haus gewählt hat.</p>
+<p class="kopf"><strong>Ziel:</strong> Chat, Suche, Spracheingabe und Texterkennung nutzen die Modelle, die das Haus gewählt hat.</p>
 <p class="kopf"><strong>Wer:</strong> Systemverwaltung, „Administration → Modelle“</p>
 <p>OPAA bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
 Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der Betrieb
@@ -3890,6 +3912,11 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 <tr>
 <td>„Spracheingabe“</td>
 <td>wandelt Diktat in Text, optional</td>
+<td>jederzeit</td>
+</tr>
+<tr>
+<td>„Texterkennung“</td>
+<td>liest gescannte PDFs (OCR), optional</td>
 <td>jederzeit</td>
 </tr>
 </tbody>
@@ -3927,6 +3954,27 @@ Grenzen und welche Dienste die Liste auswerten, stehen unter
 speichern. Fehlt der Betriebsschalter für die Spracheingabe, lässt sie sich nur vorbereiten. Die
 Spracheingabe verarbeitet Stimmen; sie gehört vor dem Einschalten mit der Personalvertretung
 geklärt (<a href="einfuehrung.html">Einführung vorbereiten</a>).</p>
+<h2 id="texterkennung-einrichten">Texterkennung einrichten<a class="headerlink" href="#texterkennung-einrichten" title="Permanent link">&para;</a></h2>
+<p>Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie findet. Reiter
+„Texterkennung“:</p>
+<ol>
+<li>Unter „Anbindung“ wählen: „docling-serve“ für den mitgelieferten OCR-Dienst oder ein eigenes
+   docling-serve, „Vision-Modell (OpenAI-kompatibel)“, wenn im Haus schon ein Modellserver mit
+   Bildeingang läuft.</li>
+<li>„Basis-Adresse“ eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
+   „Zugangsschlüssel“, falls der Dienst einen verlangt.</li>
+<li>„Verbindung testen“ liest eine mitgelieferte Testseite in drei Stufen: „Adresse“ (der Dienst
+   ist erreichbar), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (die Testseite
+   wird gelesen; scheitert auch, wenn der Dienst dabei nicht rechtzeitig antwortet). Die Meldung
+   steht an der Stufe, die scheitert.</li>
+<li>„Texterkennung einschalten“ und „Speichern“. Bestehende Scans werden danach automatisch
+   nachverarbeitet.</li>
+</ol>
+<p>Hat der Betrieb die Texterkennung nicht freigegeben (<code>OPAA_OCR_ENABLED</code>), zeigt der Reiter nur
+diesen Hinweis; gescannte PDFs werden dann weiter abgewiesen. Ein Vision-Modell liefert keine Lage
+des Textes: Fundstellen zeigt OPAA nur auf ihrer Seite, nicht als Rahmen. Seiten gehen ganz an den
+Dienst; ein Dienst außerhalb des Hauses gehört vorher mit Datenschutz und Personalvertretung
+geklärt (<a href="../betrieb/modell-endpunkte.html#texterkennung-einschalten">Texterkennung im Betrieb</a>).</p>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
 <li>Ein gespeicherter Schlüssel geht nur an denselben Endpunkt. Bei einer anderen Adresse ist er neu

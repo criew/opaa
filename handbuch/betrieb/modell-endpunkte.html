@@ -4490,7 +4490,7 @@ schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.</p>
 <tr>
 <td><strong>Texterkennung</strong></td>
 <td>liest gescannte PDF-Seiten ohne Textebene (OCR), optional</td>
-<td>Modellverwaltung, bis zum eigenen Reiter über die Schnittstelle <code>/api/v1/admin/models/text-recognition</code>; begrenzt durch <code>OPAA_OCR_ENABLED</code></td>
+<td>Modellverwaltung, Reiter „Texterkennung"; begrenzt durch <code>OPAA_OCR_ENABLED</code></td>
 <td>jederzeit, ohne Neustart; aus ist die Werkseinstellung (<a href="#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
 </tr>
 </tbody>
@@ -5093,10 +5093,10 @@ ihnen nichts. Dafür hat OPAA die Modellrolle <strong>Texterkennung</strong>. Si
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
    Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.</li>
-<li><strong>Schalter der Rolle</strong> in der Modellverwaltung; bis es dafür einen Reiter in der Oberfläche
-   gibt, setzt die Systemverwaltung sie über die Schnittstelle
-   <code>/api/v1/admin/models/text-recognition</code>. Dazu gehören Verbindungstyp, Basis-Adresse, bei einem
-   Vision-Modell die Modell-Kennung und, falls verlangt, der Zugangsschlüssel. Jede Änderung steht
+<li><strong>Schalter der Rolle</strong> in der Modellverwaltung, Reiter „Texterkennung“
+   (<a href="../administration/modelle.html#texterkennung-einrichten">Texterkennung einrichten</a>). Dazu
+   gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
+   verlangt, der Zugangsschlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.</li>
 </ol>
 <table>
