@@ -426,6 +426,10 @@ public final class AuditEventCatalog {
         TRANSCRIPTION_MODEL_CHANGED);
     put(
         keys,
+        Set.of("apiKeyChange", "apiKeySet", "baseUrl", "connectionType", "enabled", "model"),
+        TEXT_RECOGNITION_MODEL_CHANGED);
+    put(
+        keys,
         Set.of("revoked", "scopeGroupId", "validFrom", "validUntil"),
         DIAGNOSTIC_IMPERSONATION_GRANTED,
         DIAGNOSTIC_IMPERSONATION_REVOKED);

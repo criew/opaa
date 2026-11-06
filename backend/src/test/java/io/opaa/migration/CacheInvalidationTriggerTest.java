@@ -83,6 +83,10 @@ class CacheInvalidationTriggerTest extends AbstractBaselineTest {
         "INSERT INTO transcription_model (id, enabled, language, updated_at)"
             + " VALUES (1, false, 'de', now())");
     assertThat(received()).containsExactly("transcription-model");
+    execute(
+        "INSERT INTO text_recognition_model (id, enabled, connection_type, updated_at)"
+            + " VALUES (1, false, 'DOCLING_SERVE', now())");
+    assertThat(received()).containsExactly("text-recognition-model");
   }
 
   @Test

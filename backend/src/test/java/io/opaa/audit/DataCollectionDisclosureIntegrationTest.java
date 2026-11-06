@@ -239,7 +239,11 @@ class DataCollectionDisclosureIntegrationTest {
           "rerank_model.model_identifier",
           "transcription_model.enabled",
           "transcription_model.base_url",
-          "transcription_model.model_identifier");
+          "transcription_model.model_identifier",
+          "text_recognition_model.enabled",
+          "text_recognition_model.connection_type",
+          "text_recognition_model.base_url",
+          "text_recognition_model.model_identifier");
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer

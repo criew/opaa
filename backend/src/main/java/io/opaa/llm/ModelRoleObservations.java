@@ -5,10 +5,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * The last known state of a probed model role - rerank or transcription - shared by every instance
- * of an installation (ADR-0053, Entscheidung 12). Written by the instance that probes the endpoint
- * or calls it for real, read by every instance: a query decides on reranking, and the status page
- * shows the role, the same way whichever instance answers.
+ * The last known state of a probed model role - rerank, transcription or text recognition - shared
+ * by every instance of an installation (ADR-0053, Entscheidung 12). Written by the instance that
+ * probes the endpoint or calls it for real, read by every instance: a query decides on reranking,
+ * and the status page shows the role, the same way whichever instance answers.
  */
 public interface ModelRoleObservations {
 
@@ -17,6 +17,9 @@ public interface ModelRoleObservations {
 
   /** The role of the transcription model. */
   String TRANSCRIPTION = "TRANSCRIPTION";
+
+  /** The role of the text recognition service; its model is keyed with the connection type. */
+  String TEXT_RECOGNITION = "TEXT_RECOGNITION";
 
   /**
    * The state of {@code role} as last recorded by any instance, or empty while none recorded one.

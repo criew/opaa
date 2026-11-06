@@ -109,7 +109,8 @@ io.opaa.api.types.AuditEventType:
     SPACE_ARCHIVED, SPACE_CHANGED,
     SPACE_CREATED, SPACE_DELETED, SPACE_MEMBER_ADDED, SPACE_MEMBER_REMOVED,
     SPACE_MEMBER_ROLE_CHANGED, SUCCESSION_AGING_THRESHOLD_CHANGED, SYSTEM_ADMIN_ROLE_GRANTED,
-    SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED, SYSTEM_ADMIN_ROLE_REVOKED, TRANSCRIPTION_MODEL_CHANGED,
+    SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED, SYSTEM_ADMIN_ROLE_REVOKED, TEXT_RECOGNITION_MODEL_CHANGED,
+    TRANSCRIPTION_MODEL_CHANGED,
     UPLOAD_ORPHAN_ORIGINALS_DELETED
   ]
   pending: []
@@ -334,6 +335,11 @@ io.opaa.api.types.SystemRole:
   attributes: [User.systemRole]
   assessment: SECURITY
   readable: [AUDITOR, SYSTEM_ADMIN, USER]
+  pending: []
+io.opaa.api.types.TextRecognitionConnectionType:
+  attributes: [TextRecognitionModelSettings.connectionType]
+  assessment: STATE
+  readable: [DOCLING_SERVE, OPENAI_VISION]
   pending: []
 io.opaa.asset.AssetVisibilityHistoryCause:
   attributes: [AssetVisibilityHistory.cause]

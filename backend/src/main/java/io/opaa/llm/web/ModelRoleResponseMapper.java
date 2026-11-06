@@ -1,14 +1,19 @@
 package io.opaa.llm.web;
 
 import io.opaa.api.dto.RerankModelSettingsResponse;
+import io.opaa.api.dto.TextRecognitionModelSettingsResponse;
+import io.opaa.api.dto.TextRecognitionTestResponse;
 import io.opaa.api.dto.TranscriptionModelSettingsResponse;
 import io.opaa.api.types.ModelRoleCondition;
 import io.opaa.llm.ModelRoleAdministration.RerankModelView;
+import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
+import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
 import io.opaa.llm.ModelRoleAdministration.TranscriptionModelView;
 import io.opaa.llm.RerankRoleState;
+import io.opaa.llm.TextRecognitionRoleState;
 import io.opaa.llm.TranscriptionRoleState;
 
-/** Maps the views of the rerank and transcription roles; never a key. */
+/** Maps the views of the rerank, transcription and text recognition roles; never a key. */
 final class ModelRoleResponseMapper {
 
   private ModelRoleResponseMapper() {}
@@ -48,6 +53,40 @@ final class ModelRoleResponseMapper {
   }
 
   static ModelRoleCondition condition(TranscriptionRoleState state) {
+    return switch (state) {
+      case DISABLED -> ModelRoleCondition.DISABLED;
+      case READY -> ModelRoleCondition.ACTIVE;
+      case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
+      case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
+    };
+  }
+
+  static TextRecognitionModelSettingsResponse toResponse(TextRecognitionModelView view) {
+    return new TextRecognitionModelSettingsResponse(
+            view.enabled(),
+            view.connectionType(),
+            view.apiKeySet(),
+            condition(view.status().state()),
+            view.textRecognitionAvailable())
+        .baseUrl(view.baseUrl())
+        .model(view.model())
+        .updatedAt(view.updatedAt());
+  }
+
+  static TextRecognitionTestResponse toResponse(TextRecognitionTestOutcome outcome) {
+    return new TextRecognitionTestResponse(
+        outcome.success(),
+        switch (outcome.outcome()) {
+          case READY -> TextRecognitionTestResponse.OutcomeEnum.READY;
+          case KEY_REJECTED -> TextRecognitionTestResponse.OutcomeEnum.KEY_REJECTED;
+          case ENGINE_MISSING -> TextRecognitionTestResponse.OutcomeEnum.ENGINE_MISSING;
+          case NO_TEXT -> TextRecognitionTestResponse.OutcomeEnum.NO_TEXT;
+          case UNREACHABLE -> TextRecognitionTestResponse.OutcomeEnum.UNREACHABLE;
+        },
+        outcome.message());
+  }
+
+  static ModelRoleCondition condition(TextRecognitionRoleState state) {
     return switch (state) {
       case DISABLED -> ModelRoleCondition.DISABLED;
       case READY -> ModelRoleCondition.ACTIVE;

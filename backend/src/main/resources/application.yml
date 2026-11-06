@@ -343,7 +343,7 @@ opaa:
     fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
     context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
   # Address check of every model endpoint the installation or the model administration stores or
-  # tests (chat, embedding, rerank, transcription); separate from opaa.indexing.target-validation,
+  # tests (chat, embedding, rerank, transcription, text recognition); separate from opaa.indexing.target-validation,
   # so a model host released here is no permitted source and vice versa. Entries host or host:port.
   model:
     target-validation:
@@ -367,6 +367,17 @@ opaa:
     timeout: ${OPAA_TRANSCRIPTION_TIMEOUT:120s}
     # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.
     max-concurrent: ${OPAA_TRANSCRIPTION_MAX_CONCURRENT:4}
+  # Text recognition (OCR) of scanned PDFs: the operation's switch and limits. Connection type,
+  # address, model and key are rows of the model administration (text_recognition_model). Off by
+  # default: switched off, the role is neither evaluated nor contacted and can only be prepared.
+  ocr:
+    enabled: ${OPAA_OCR_ENABLED:false}
+    max-pages-per-document: ${OPAA_OCR_MAX_PAGES_PER_DOCUMENT:100}
+    document-timeout: ${OPAA_OCR_DOCUMENT_TIMEOUT:45m}
+    # Documents recognised at the same time by one instance; the service itself sets its own limit.
+    max-concurrent: ${OPAA_OCR_MAX_CONCURRENT:1}
+    max-pages-per-run: ${OPAA_OCR_MAX_PAGES_PER_RUN:500}
+    call-timeout: ${OPAA_OCR_CALL_TIMEOUT:45m}
   # Malware scan of every file before a library takes it in: a clamd daemon over TCP (INSTREAM).
   # Off by default; enabled without a host refuses the start. on-unavailable: REJECT keeps a file
   # the scanner could not judge out, ACCEPT takes it in unscanned. clamd's StreamMaxLength must

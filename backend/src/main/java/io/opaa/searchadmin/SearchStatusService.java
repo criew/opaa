@@ -22,6 +22,8 @@ import io.opaa.llm.LlmModelService;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
+import io.opaa.llm.TextRecognitionRoleStatus;
+import io.opaa.llm.TextRecognitionRoleStatusProvider;
 import io.opaa.llm.TranscriptionRoleStatus;
 import io.opaa.llm.TranscriptionRoleStatusProvider;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
@@ -97,6 +99,7 @@ public class SearchStatusService {
   private final EmbeddingModel embeddingModel;
   private final RerankRoleStatusProvider rerankRoleStatusProvider;
   private final TranscriptionRoleStatusProvider transcriptionRoleStatusProvider;
+  private final TextRecognitionRoleStatusProvider textRecognitionRoleStatusProvider;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextIndexFillStateService fullTextIndexFillStateService;
@@ -176,6 +179,7 @@ public class SearchStatusService {
         null,
         new EmbeddingIndexState(),
         TranscriptionRoleStatus::disabled,
+        TextRecognitionRoleStatus::disabled,
         new ProcessLocalSearchStatusProbeResults(clock));
   }
 
@@ -204,8 +208,10 @@ public class SearchStatusService {
       PrivateLibraryDeletionRun deletionRun,
       EmbeddingIndexState embeddingIndexState,
       TranscriptionRoleStatusProvider transcriptionRoleStatusProvider,
+      TextRecognitionRoleStatusProvider textRecognitionRoleStatusProvider,
       SearchStatusProbeResults probeResults) {
     this.transcriptionRoleStatusProvider = transcriptionRoleStatusProvider;
+    this.textRecognitionRoleStatusProvider = textRecognitionRoleStatusProvider;
     this.probeResults = probeResults;
     this.deletionRun = deletionRun;
     this.embeddingIndexState = embeddingIndexState;
@@ -283,12 +289,18 @@ public class SearchStatusService {
   }
 
   /**
-   * Chat and embedding come from the shared probe results; the rerank and transcription roles are
-   * read fresh because their provider contracts forbid a network round trip to begin with.
+   * Chat and embedding come from the shared probe results; the rerank, transcription and text
+   * recognition roles are read fresh because their provider contracts forbid a network round trip
+   * to begin with.
    */
   private List<ModelRoleStatus> modelRoles() {
     ProbedRoles probed = currentProbes();
-    return List.of(probed.chat(), probed.embedding(), rerankRole(), transcriptionRole());
+    return List.of(
+        probed.chat(),
+        probed.embedding(),
+        rerankRole(),
+        transcriptionRole(),
+        textRecognitionRole(textRecognitionRoleStatusProvider.currentStatus()));
   }
 
   /** Drops the shared probe results; the next status probes again. */
@@ -522,6 +534,50 @@ public class SearchStatusService {
                   + " antwortet, erscheint im Chat kein Mikrofon."
               : "Die Spracheingabe ist eingeschaltet, aber der Endpunkt antwortet nicht. Bis er"
                   + " wieder antwortet, erscheint im Chat kein Mikrofon.";
+    };
+  }
+
+  /** The role's state, service and model as the status page shows them; no usage figures. */
+  static ModelRoleStatus textRecognitionRole(TextRecognitionRoleStatus status) {
+    if (status.diagnostic() != null) {
+      log.debug("Text recognition role reports {}: {}", status.state(), status.diagnostic());
+    }
+    return new ModelRoleStatus(
+        ModelRole.TEXT_RECOGNITION,
+        switch (status.state()) {
+          case DISABLED -> ModelRoleCondition.DISABLED;
+          case READY -> ModelRoleCondition.ACTIVE;
+          case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
+          case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
+        },
+        status.baseUrl(),
+        status.modelIdentifier(),
+        textRecognitionDetail(status));
+  }
+
+  private static String textRecognitionDetail(TextRecognitionRoleStatus status) {
+    return switch (status.state()) {
+      case DISABLED ->
+          "Die Texterkennung ist abgeschaltet (Modelle → Texterkennung oder der Schalter"
+              + " OPAA_OCR_ENABLED des Betriebs). Gescannte PDFs ohne Textebene werden wie bisher"
+              + " abgewiesen - das ist die Voreinstellung, kein Fehler.";
+      case READY ->
+          "Die Texterkennung ist eingeschaltet und der Dienst antwortet. Gescannte PDFs werden"
+              + " bei der Indexierung gelesen.";
+      case UNCONFIGURED ->
+          status.baseUrlRejected()
+              ? "Die Texterkennung ist eingeschaltet, aber die Basis-Adresse enthält Anmeldedaten"
+                  + " und wird abgelehnt. Tragen Sie unter Modelle → Texterkennung die Adresse ohne"
+                  + " Anmeldedaten und den Schlüssel im eigenen Feld ein."
+              : "Die Texterkennung ist eingeschaltet, aber unter Modelle → Texterkennung fehlen"
+                  + " Basis-Adresse oder Modell. Gescannte PDFs werden bis dahin abgewiesen.";
+      case UNREACHABLE ->
+          status.timedOut()
+              ? "Die Texterkennung ist eingeschaltet, aber der Dienst hat nicht rechtzeitig"
+                  + " geantwortet. Gescannte PDFs werden bis dahin abgewiesen und beim nächsten"
+                  + " Lauf erneut versucht."
+              : "Die Texterkennung ist eingeschaltet, aber der Dienst antwortet nicht. Gescannte"
+                  + " PDFs werden bis dahin abgewiesen und beim nächsten Lauf erneut versucht.";
     };
   }
 

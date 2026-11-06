@@ -53,6 +53,7 @@ class ModelRoleTwoInstanceIntegrationTest {
 
   @Autowired private RerankModelSettingsRepository rerankRows;
   @Autowired private TranscriptionModelSettingsRepository transcriptionRows;
+  @Autowired private TextRecognitionModelSettingsRepository textRecognitionRows;
   @Autowired private SettingsEncryptor settingsEncryptor;
   @Autowired private ModelRoleEndpoints endpointsOfA;
 
@@ -77,7 +78,9 @@ class ModelRoleTwoInstanceIntegrationTest {
             Duration.ofMillis(200));
     observationsOfB = new JdbcModelRoleObservations(jdbc, busOfB, databaseClock);
     beansOfB.addBean("observations", observationsOfB);
-    endpointsOfB = new ModelRoleEndpoints(rerankRows, transcriptionRows, settingsEncryptor, busOfB);
+    endpointsOfB =
+        new ModelRoleEndpoints(
+            rerankRows, transcriptionRows, textRecognitionRows, settingsEncryptor, busOfB);
     beansOfB.addBean("endpoints", endpointsOfB);
     busOfB.start();
     assertThat(busOfB.isListening()).isTrue();

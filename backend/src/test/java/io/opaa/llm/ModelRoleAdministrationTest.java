@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.FeatureFlags;
@@ -43,6 +44,11 @@ class ModelRoleAdministrationTest {
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
   private final RerankClient rerankClient = mock(RerankClient.class);
   private final TranscriptionClient transcriptionClient = mock(TranscriptionClient.class);
+  private final TextRecognitionModelSettingsRepository textRecognitionRows =
+      mock(TextRecognitionModelSettingsRepository.class);
+  private final TextRecognitionClient textRecognitionClient = mock(TextRecognitionClient.class);
+  private TextRecognitionProperties textRecognitionProperties =
+      TextRecognitionProperties.disabled();
 
   @Test
   void theTranscriptionRoleCannotBeSwitchedOnWhileTheOperationSwitchedOffSpeechInput() {
@@ -338,9 +344,165 @@ class ModelRoleAdministrationTest {
         .isEqualTo("Der Server antwortete mit HTTP 503.");
   }
 
+  @Test
+  void theTextRecognitionRoleCannotBeSwitchedOnWhileTheOperationSwitchedItOff() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTextRecognition(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    true,
+                    TextRecognitionConnectionType.DOCLING_SERVE,
+                    "http://8.8.8.8:5001",
+                    null,
+                    "geheim"))
+        .isInstanceOf(FieldValidationException.class)
+        .satisfies(
+            e ->
+                assertThat(((FieldValidationException) e).fieldErrors())
+                    .extracting(FieldValidationException.FieldError::code)
+                    .containsExactly("BLOCKED"));
+    verify(textRecognitionRows, never()).save(any());
+    verify(audit, never()).recordUserAction(any());
+  }
+
+  @Test
+  void whileTheOperationSwitchedItOffTheTestContactsNoService() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.testTextRecognition(
+                    TextRecognitionConnectionType.DOCLING_SERVE, "http://8.8.8.8:5001", null, "k"))
+        .isInstanceOf(FieldValidationException.class);
+    verify(textRecognitionClient, never()).test(any(), any());
+    verify(textRecognitionClient, never()).probe(any(), any());
+  }
+
+  @Test
+  void aTextRecognitionEndpointMayStillBePreparedWhileTheOperationSwitchedItOff() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+
+    ModelRoleAdministration.TextRecognitionModelView view =
+        administration.changeTextRecognition(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            false,
+            TextRecognitionConnectionType.DOCLING_SERVE,
+            "http://8.8.8.8:5001",
+            "ignored-for-docling",
+            "geheim");
+
+    assertThat(view.textRecognitionAvailable()).isFalse();
+    assertThat(view.model()).isNull();
+    assertThat(view.apiKeySet()).isTrue();
+    assertThat(view.status().state()).isEqualTo(TextRecognitionRoleState.DISABLED);
+    verify(audit).recordUserAction(event.capture());
+    assertThat(event.getValue().eventType())
+        .isEqualTo(AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED);
+    assertThat(event.getValue().after())
+        .containsEntry("connectionType", "DOCLING_SERVE")
+        .containsEntry("apiKeySet", true)
+        .doesNotContainKey("model")
+        .doesNotContainValue("geheim");
+  }
+
+  @Test
+  void aVisionModelNeedsAModelWhileADoclingServeNeedsNone() {
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null);
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTextRecognition(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    true,
+                    TextRecognitionConnectionType.OPENAI_VISION,
+                    "http://8.8.8.8/v1",
+                    " ",
+                    null))
+        .isInstanceOf(FieldValidationException.class)
+        .satisfies(
+            e ->
+                assertThat(((FieldValidationException) e).fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("textRecognition.model"));
+
+    ModelRoleAdministration.TextRecognitionModelView view =
+        administration.changeTextRecognition(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            true,
+            TextRecognitionConnectionType.DOCLING_SERVE,
+            "http://8.8.8.8:5001",
+            null,
+            null);
+    assertThat(view.enabled()).isTrue();
+    assertThat(view.textRecognitionAvailable()).isTrue();
+  }
+
+  @Test
+  void aTextRecognitionAddressWithCredentialsIsRefused() {
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null);
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTextRecognition(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    true,
+                    TextRecognitionConnectionType.DOCLING_SERVE,
+                    "http://user:secret@8.8.8.8:5001",
+                    null,
+                    null))
+        .isInstanceOf(FieldValidationException.class)
+        .hasMessageNotContaining("secret");
+    verify(textRecognitionRows, never()).save(any());
+  }
+
+  @Test
+  void eachTestOutcomeHasItsOwnMessage() {
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.KEY_REJECTED, "HTTP 401", false)))
+        .contains("Zugangsschlüssel");
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.ENGINE_MISSING, "HTTP 422", false)))
+        .contains("OCR-Engine");
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.OPENAI_VISION,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.ENGINE_MISSING, "not listed", false)))
+        .contains("Modell");
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.NO_TEXT, "no text", false)))
+        .contains("keinen Text");
+    assertThat(
+            ModelRoleAdministration.textRecognitionMessage(
+                TextRecognitionConnectionType.DOCLING_SERVE,
+                new TextRecognitionClient.TestResult(
+                    TextRecognitionClient.TestOutcome.UNREACHABLE, "connection refused", false)))
+        .isEqualTo("Die Verbindung wurde vom Server abgelehnt.");
+  }
+
   private ModelRoleAdministration administration(boolean speechInput, MockEnvironment environment) {
     when(rerankRows.findStored()).thenReturn(Optional.empty());
     when(transcriptionRows.findStored()).thenReturn(Optional.empty());
+    when(textRecognitionRows.findStored()).thenReturn(Optional.empty());
     FeatureFlags features =
         new FeatureFlags(
             new MockEnvironment()
@@ -361,12 +523,18 @@ class ModelRoleAdministrationTest {
     return new ModelRoleAdministration(
         rerankRows,
         transcriptionRows,
+        textRecognitionRows,
         endpoints,
         rerankRole,
         transcriptionRole,
+        new TextRecognitionModelRole(
+            textRecognitionProperties,
+            () -> TextRecognitionEndpoint.FACTORY_DEFAULT,
+            textRecognitionClient),
         features,
         rerankClient,
         transcriptionClient,
+        textRecognitionClient,
         prefixingEncryptor(),
         ModelAddressPolicy.disabled(),
         audit,

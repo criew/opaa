@@ -41,6 +41,9 @@ class SettingsSectionRegistryTest {
           "transcription_model",
               "the transcription model: the address receives speech input, the key never follows"
                   + " a new address",
+          "text_recognition_model",
+              "the text recognition model: the address receives whole pages of documents, the key"
+                  + " never follows a new address",
           "oidc_providers",
               "identity providers: the sign-in procedure and the mapping of claims to system"
                   + " roles; an import could lock the administration out or widen who is admin",

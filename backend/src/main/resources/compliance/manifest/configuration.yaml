@@ -108,6 +108,48 @@ settings:
       - >-
         Auch der Abschluss der Installation legt es fest, wenn der Schritt Transkriptionsmodell
         geprüft ist; die Systemverwaltung ändert es unter Modelle → Spracheingabe
+  - key: opaa.ocr.enabled
+    defaultValue: "false"
+    effect: >-
+      Ob diese Installation gescannte PDF-Dokumente überhaupt an einen Texterkennungsdienst senden
+      darf; zusätzlich muss die Rolle Texterkennung in der Modellverwaltung eingeschaltet sein
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Ausgeschaltet wird die Rolle weder ausgewertet noch kontaktiert; die Systemverwaltung kann
+        sie nur vorbereiten, Gespeichertes bleibt erhalten
+      - >-
+        Grenzen je Dokument, Lauf und Instanz: OPAA_OCR_MAX_PAGES_PER_DOCUMENT,
+        OPAA_OCR_DOCUMENT_TIMEOUT, OPAA_OCR_MAX_CONCURRENT, OPAA_OCR_MAX_PAGES_PER_RUN,
+        OPAA_OCR_CALL_TIMEOUT
+  - key: text_recognition_model.enabled
+    source: DATABASE
+    defaultValue: "false"
+    effect: Ob die Indizierung gescannte Seiten an den Texterkennungsdienst sendet
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Texterkennung,
+        begrenzt durch opaa.ocr.enabled
+  - key: text_recognition_model.connection_type
+    source: DATABASE
+    defaultValue: DOCLING_SERVE
+    effect: >-
+      Art des Texterkennungsdienstes: docling-serve (ganze PDF) oder OpenAI-kompatibles
+      Vision-Modell (je Seite ein Bild)
+    bearings: [DATA_FLOW]
+  - key: text_recognition_model.base_url
+    source: DATABASE
+    defaultValue: ""
+    effect: Adresse des Texterkennungsdienstes; ohne Angabe ist die Rolle nicht gebunden
+    bearings: [DATA_FLOW]
+    notes:
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+  - key: text_recognition_model.model_identifier
+    source: DATABASE
+    defaultValue: ""
+    effect: Vision-Modell der Texterkennung; nur beim Verbindungstyp Vision-Modell nötig
+    bearings: [DATA_FLOW]
   # Funktionen
   - key: opaa.features.prompt-libraries.enabled
     defaultValue: "true"

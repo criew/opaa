@@ -67,6 +67,7 @@ class SecurityInvariantsTest {
                   + " checked with ModelAddressPolicy when it was stored"),
           Map.entry("io.opaa.llm.RerankClient#send", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry("io.opaa.llm.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.audit.SyslogSender#deliver",
               "the SIEM receiver comes from the operator's configuration (opaa.siem-export.*),"

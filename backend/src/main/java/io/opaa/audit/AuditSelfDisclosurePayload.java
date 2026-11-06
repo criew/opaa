@@ -349,6 +349,10 @@ final class AuditSelfDisclosurePayload {
         TRANSCRIPTION_MODEL_CHANGED);
     put(
         keys,
+        Set.of("enabled", "connectionType", "baseUrl", "model", "apiKeySet", "apiKeyChange"),
+        TEXT_RECOGNITION_MODEL_CHANGED);
+    put(
+        keys,
         Set.of("validFrom", "validUntil", "revoked"),
         DIAGNOSTIC_IMPERSONATION_GRANTED,
         DIAGNOSTIC_IMPERSONATION_REVOKED);

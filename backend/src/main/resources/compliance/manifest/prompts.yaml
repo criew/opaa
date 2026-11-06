@@ -52,6 +52,12 @@ prompts:
       kann ihn ändern, die Änderung erzeugt keinen Protokolleintrag
     databaseDefault: external_access_settings.server_instructions
     sha256: "4f1638b7db75eaf01192f176e393cdd0ce7be59ab68af69c142f8d5d2fe4b38d"
+  - id: text-recognition-vision
+    purpose: >-
+      Bittet ein Vision-Modell der Texterkennung, den Text einer gescannten Seite wortgetreu und
+      ohne Zusätze wiederzugeben
+    classes: [io.opaa.llm.TextRecognitionVisionPrompt]
+    sha256: "54c5316716f8591a052e95ac0bc9b407d3368585aac9ec47d8feec423fd422bb"
 aiFunctions:
   - id: chat-answer
     purpose: Beantwortet Fragen einer Person im Chat auf Grundlage der lesbaren Bibliotheken
@@ -102,3 +108,14 @@ aiFunctions:
     assessesPersons: false
     labelling: Der Text erscheint im Eingabefeld und wird von der Person selbst abgeschickt
     prompts: []
+  - id: text-recognition
+    purpose: >-
+      Liest den Text gescannter PDF-Seiten beim Indizieren, damit sie durchsuchbar werden
+      (Texterkennung, OCR)
+    outputKind: TEXT
+    interactsWithPersons: false
+    assessesPersons: false
+    labelling: >-
+      Das Original bleibt maßgeblich und abrufbar; der erkannte Text dient nur der Suche und als
+      Fundstelle
+    prompts: [text-recognition-vision]
