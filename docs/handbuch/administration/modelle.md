@@ -66,8 +66,9 @@ Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie finde
 2. „Basis-Adresse“ eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
    „Zugangsschlüssel“, falls der Dienst einen verlangt.
 3. „Verbindung testen“ liest eine mitgelieferte Testseite in drei Stufen: „Adresse“ (der Dienst
-   antwortet), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (Text gelesen). Die
-   Meldung steht an der Stufe, die scheitert.
+   ist erreichbar), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (die Testseite
+   wird gelesen; scheitert auch, wenn der Dienst dabei nicht rechtzeitig antwortet). Die Meldung
+   steht an der Stufe, die scheitert.
 4. „Texterkennung einschalten“ und „Speichern“. Bestehende Scans werden danach automatisch
    nachverarbeitet.
 

@@ -1,13 +1,13 @@
 import type { TextRecognitionTestResponse } from '@/shared/api/types'
 
-export type TestStage = 'ADDRESS' | 'LOGIN' | 'RECOGNITION'
+export type TestStage = NonNullable<TextRecognitionTestResponse['failedStage']>
 export type TestStageState = 'passed' | 'failed' | 'skipped'
 
-export const TEST_STAGES: readonly TestStage[] = ['ADDRESS', 'LOGIN', 'RECOGNITION']
+export const TEST_STAGES: readonly TestStage[] = ['ADDRESS', 'AUTHENTICATION', 'RECOGNITION']
 
 export const TEST_STAGE_LABELS: Record<TestStage, string> = {
   ADDRESS: 'Adresse',
-  LOGIN: 'Anmeldung',
+  AUTHENTICATION: 'Anmeldung',
   RECOGNITION: 'Erkennung',
 }
 
@@ -19,20 +19,10 @@ export type TextRecognitionTestView =
   | { kind: 'outcome'; response: TextRecognitionTestResponse }
   | { kind: 'addressRefused'; message: string }
 
-/** The stage at which a test stopped; null when every stage passed. */
+/** The stage at which a test stopped, as the server names it; null when every stage passed. */
 export function failedStage(view: TextRecognitionTestView): TestStage | null {
   if (view.kind === 'addressRefused') return 'ADDRESS'
-  switch (view.response.outcome) {
-    case 'READY':
-      return null
-    case 'KEY_REJECTED':
-      return 'LOGIN'
-    case 'ENGINE_MISSING':
-    case 'NO_TEXT':
-      return 'RECOGNITION'
-    case 'UNREACHABLE':
-      return 'ADDRESS'
-  }
+  return view.response.failedStage ?? null
 }
 
 /** Stages before the failed one passed, the failed one failed, those after it were not reached. */

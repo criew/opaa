@@ -69,20 +69,31 @@ function fieldError(field: string, code: string, message: string) {
 /**
  * The test outcome by a word in the draft, so every stage can be clicked through in the mocks:
  * an address with „gesperrt" fails the address check, „unerreichbar" is not reachable, a key
- * „falsch" is rejected, „ohne-engine" lacks the OCR engine and „leer" reads no text.
+ * „falsch" is rejected, „langsam" times out while reading the test page, „ohne-engine" lacks the
+ * OCR engine and „leer" reads no text.
  */
 function textRecognitionTestOutcome(body: TextRecognitionTestRequest): TextRecognitionTestResponse {
   if (body.baseUrl.includes('unerreichbar')) {
     return {
       success: false,
       outcome: 'UNREACHABLE',
+      failedStage: 'ADDRESS',
       message: 'Die Verbindung wurde vom Server abgelehnt.',
+    }
+  }
+  if (body.baseUrl.includes('langsam')) {
+    return {
+      success: false,
+      outcome: 'UNREACHABLE',
+      failedStage: 'RECOGNITION',
+      message: 'Der Dienst hat nicht rechtzeitig geantwortet.',
     }
   }
   if (body.apiKey?.includes('falsch')) {
     return {
       success: false,
       outcome: 'KEY_REJECTED',
+      failedStage: 'AUTHENTICATION',
       message:
         'Der Dienst hat den Zugangsschlüssel abgelehnt (HTTP 401 oder 403). Prüfen Sie den Zugangsschlüssel.',
     }
@@ -91,6 +102,7 @@ function textRecognitionTestOutcome(body: TextRecognitionTestRequest): TextRecog
     return {
       success: false,
       outcome: 'ENGINE_MISSING',
+      failedStage: 'RECOGNITION',
       message:
         'Der Dienst ist erreichbar, kann die Testseite aber nicht mit RapidOCR lesen. Vermutlich fehlen die OCR-Engine oder ihre Modelle.',
     }
@@ -99,12 +111,14 @@ function textRecognitionTestOutcome(body: TextRecognitionTestRequest): TextRecog
     return {
       success: false,
       outcome: 'NO_TEXT',
+      failedStage: 'RECOGNITION',
       message: 'Der Dienst hat geantwortet, auf der Testseite aber keinen Text erkannt.',
     }
   }
   return {
     success: true,
     outcome: 'READY',
+    failedStage: null,
     message: 'Verbindung erfolgreich, der Dienst hat die Testseite gelesen.',
   }
 }

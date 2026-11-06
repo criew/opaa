@@ -177,6 +177,19 @@ describe('TextRecognitionSection', () => {
     expect(stage('Erkennung')).toHaveTextContent(/Erkennung: fehlgeschlagen.*RapidOCR/)
   })
 
+  it('shows a service unreachable while reading the test page at the stage „Erkennung"', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TextRecognitionSection />)
+
+    await user.type(await screen.findByLabelText(/Basis-Adresse/), 'http://langsam:5001')
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })
+    expect(stage('Adresse')).toHaveTextContent('Adresse: in Ordnung')
+    expect(stage('Anmeldung')).toHaveTextContent('Anmeldung: in Ordnung')
+    expect(stage('Erkennung')).toHaveTextContent(/Erkennung: fehlgeschlagen.*nicht rechtzeitig/)
+  })
+
   it('shows a refused address at the field and at the stage „Adresse"', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TextRecognitionSection />)
