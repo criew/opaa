@@ -171,6 +171,16 @@ export const indexingHandlers = [
     return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
   }),
 
+  // no scan is locked unless a test overrides this handler
+  http.get('/api/v1/libraries/:libraryId/text-recognition/blocks', () =>
+    HttpResponse.json({ items: [] }),
+  ),
+
+  http.delete(
+    '/api/v1/libraries/:libraryId/text-recognition/blocks/:documentId',
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
   // like IndexingController: the run log answers from MANAGER on only
   http.get('/api/v1/libraries/:libraryId/indexing/runs', ({ params }) => {
     const role = mockLibraryDetails[params.libraryId as string]?.myRole

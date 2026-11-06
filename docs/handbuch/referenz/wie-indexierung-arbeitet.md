@@ -49,8 +49,13 @@ fertig war, bleibt indiziert.
   wovon das Dokument handelt.
 - **Anhänge** (Anlagen einer Mail, Dateien an einer Confluence-Seite) werden eigene Dokumente unter
   ihrem Elterndokument, mit begrenzter Tiefe und Menge.
-- **Eingescannte PDFs** ohne Textebene werden als „kein extrahierbarer Text“ abgewiesen; eine
-  Texterkennung gibt es nicht.
+- **Eingescannte PDFs** ohne Textebene liest die Texterkennung, wenn Betrieb und Systemverwaltung
+  sie eingeschaltet haben ([Texterkennung einschalten](../betrieb/modell-endpunkte.md#texterkennung-einschalten)).
+  Ihre Abschnitte tragen Seiten, Rahmen auf der Seite und den Vermerk, dass der Text erkannt wurde.
+  Ohne Texterkennung werden sie als „kein extrahierbarer Text“ abgewiesen. Ein Scan, den der Dienst
+  nicht lesen konnte, wartet auf den nächsten Lauf; einen gesperrten zeigt die Bibliothek über der
+  Dokumentliste. Erkennt der Dienst keinen Text, bleibt der Scan ohne Inhalt, bis sich Datei oder
+  Dienst ändern.
 
 ## Feste Grenzen
 
@@ -80,7 +85,10 @@ Einträge, je Bibliothek die letzten zehn Läufe.
 | abgewiesen | Quelle lehnt ab, Kontingent voll, kein Text oder Ort zu lang |
 | nicht erreichbar | Verbindungsfehler oder Zeitüberschreitung |
 | Format nicht unterstützt / Formatabweichung | nicht aufgenommen / aufgenommen, Endung passt nicht |
-| Ratenbegrenzung, Anfragebudget erschöpft | Quelle bremst; der nächste Lauf setzt fort |
+| Ratenbegrenzung, Budget erschöpft | Quelle bremst oder Anfrage- bzw. Seitenbudget der Texterkennung verbraucht; der nächste Lauf setzt fort |
+| Per Texterkennung gelesen | Scan erkannt oder aus dem gespeicherten Erkennungsstand indiziert, auch „ohne erkannten Text“ |
+| Texterkennung gescheitert / ausstehend | Dienst nicht verfügbar, nur teilweise umgewandelt oder unerwarteter Fehler bzw. Seitenbudget verbraucht oder kein freier Platz; der Scan wartet auf den nächsten Lauf |
+| Texterkennung gesperrt | docling-serve lehnt die Datei ab, sie ist unlesbar oder liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek |
 | in der Quelle entfernt | gelöscht, weil die Quelle es nicht mehr hat |
 | Auffällige Muster | aufgenommen, mit Zählung verdächtiger Muster |
 | Fehler | unerwartet gescheitert |

@@ -3,6 +3,7 @@ import type {
   IndexingStatusResponse,
   IndexingRunMode,
   PushSecretResponse,
+  TextRecognitionBlockListResponse,
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
@@ -73,6 +74,32 @@ export async function getIndexingRuns(libraryId: string): Promise<IndexingRunLis
       `/v1/libraries/${libraryId}/indexing/runs`,
     )
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The scans of a library whose text recognition is locked, with the reason (ADR-0069). */
+export async function getTextRecognitionBlocks(
+  libraryId: string,
+): Promise<TextRecognitionBlockListResponse> {
+  try {
+    const { data } = await client.get<TextRecognitionBlockListResponse>(
+      `/v1/libraries/${libraryId}/text-recognition/blocks`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Releases the lock of one scan; the next run or catch-up sends it to the service again. */
+export async function releaseTextRecognitionBlock(
+  libraryId: string,
+  documentId: string,
+): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/text-recognition/blocks/${documentId}`)
   } catch (err) {
     normalizeError(err)
   }

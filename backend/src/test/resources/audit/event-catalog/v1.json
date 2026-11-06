@@ -176,6 +176,7 @@
   "SYSTEM_ADMIN_ROLE_GRANTED": ["provider", "role"],
   "SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED": ["role", "tokenRole"],
   "SYSTEM_ADMIN_ROLE_REVOKED": ["provider", "role"],
+  "TEXT_RECOGNITION_BLOCK_RELEASED": ["blocked", "connectionType", "documentId"],
   "TEXT_RECOGNITION_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "connectionType", "enabled", "model"],
   "TRANSCRIPTION_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model", "vocabulary"],
   "UPLOAD_ORPHAN_ORIGINALS_DELETED": ["deleted", "deletedCount", "requestedCount", "skippedCount"]

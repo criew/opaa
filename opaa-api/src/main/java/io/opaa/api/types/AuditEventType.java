@@ -443,6 +443,11 @@ public enum AuditEventType {
    * model administration; the key appears only as set, changed or removed.
    */
   TEXT_RECOGNITION_MODEL_CHANGED,
+  /**
+   * The text recognition lock of one scanned document was released in its library for a new
+   * attempt; names the document by id and the connection type, never content.
+   */
+  TEXT_RECOGNITION_BLOCK_RELEASED,
 
   // Diagnose in fremdem Rechtekontext ("Sicht als")
   /**

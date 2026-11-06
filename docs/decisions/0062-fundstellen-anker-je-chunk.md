@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-30
+Akzeptiert · zuletzt geändert 2026-11-06
 
 ## Kontext
 
@@ -27,7 +27,8 @@ Jeder Chunk trägt unter dem Metadatum `anchor` ein dünn besetztes Objekt (`Chu
 Struktureinheiten, auf die ein Viewer springt — `pageFrom`/`pageTo`, `path` (voller
 Überschriftenpfad), `slide`, `sheet` mit `rowFrom`/`rowTo`, `message` (Nachricht im Thread) —
 und zwei Zitate `quoteStart`/`quoteEnd`. Ein Format setzt nur die Einheiten, die es kennt; leere
-Felder werden nicht gespeichert. Abschnittspfad und Blattname durchlaufen wie `location` den
+Felder werden nicht gespeichert. Ein Chunk aus erkanntem Text eines Scans trägt zusätzlich
+`regions` und `textOrigin` (Entscheidung 8). Abschnittspfad und Blattname durchlaufen wie `location` den
 Sanitizer von `DocumentFormatRunner`. Das Muster folgt dem Fragment- und dem TextQuote-Selector der W3C
 Web Annotation: grob springen über die Struktur, fein markieren über den Text.
 
@@ -69,6 +70,16 @@ Anzeigedaten, die der Anker bewusst nicht kennt (Folientitel, „Nachricht 1 von
 „Kopf-/Fußzeile“, „Masterfolie“). Kontextpräfix und Passagenleser lesen den Abschnittspfad weiter
 aus `location`, sodass der Embedding-Input unverändert bleibt.
 
+### 8. Rahmen und Herkunft bei erkanntem Text
+
+Für einen Scan gibt es keinen Textlayer, in dem ein Viewer Zitate suchen könnte. Ein Chunk aus
+der Texterkennung (ADR-0069) trägt deshalb `regions`: je Seite einen Rahmen um alle Elemente des
+Chunks, als `{page, x, y, width, height}` in Anteilen der Seite (0 bis 1), Ursprung oben links.
+Die Rahmen stammen aus den Koordinaten von docling-serve, die je Element in PDF-Punkten mit eigenem
+Ursprung (`coord_origin` unten oder oben links) vorliegen und beim Schneiden umgerechnet werden;
+ein Vision-Modell liefert keine, `regions` fehlt dann. `textOrigin.connectionType` kennzeichnet den
+Text als erkannt und nennt das Verfahren. Die Zitate bleiben, sie gelten dem erkannten Text.
+
 ## Konsequenzen
 
 - Jeder Viewer braucht nur den Anker, keine Kenntnis des Schnitts.
@@ -83,8 +94,14 @@ aus `location`, sodass der Embedding-Input unverändert bleibt.
 ## Verworfene Alternativen
 
 - Zeichen-Offsets in die Extraktion — passen nicht zum Text, den ein Viewer rendert.
-- Bounding-Boxes aus PDFBox — für die Markierung reicht der Textlayer des Viewers; Aufwand und
-  Datenmenge ohne Bedarf.
+- Bounding-Boxes aus PDFBox für PDF mit Textebene — dort reicht der Textlayer des Viewers; Rahmen
+  gibt es nur, wo er fehlt (Entscheidung 8).
+- Rahmen je Zeile oder Element statt eines Rahmens je Seite und Chunk — mehr Datenmenge je Chunk,
+  ohne dass der Viewer eine Fundstelle genauer zeigen müsste als den Bereich des Abschnitts.
+- Erkannten Text als unsichtbare Textebene in die PDF schreiben (Sandwich-PDF) und dann wie ein PDF
+  mit Textebene behandeln — verändert das Original oder verlangt eine zweite Datei, deren Ablage
+  und Löschung neben dem Original zu führen wäre; Struktur und Tabellen aus der Erkennung gingen
+  beim Lesen des Textlayers wieder verloren.
 - `location` weiter als einzige Angabe — nicht maschinenlesbar, je Format lückenhaft.
 - `location` beim Lesen aus dem Anker bilden — der Anker müsste reine Anzeigedaten mittragen,
   Alt-Chunks bräuchten bis zum Re-Index einen Rückfall, und Kontextpräfix-Regeln, die heute am Fundort hängen

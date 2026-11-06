@@ -976,6 +976,74 @@ components:
           nullable: true
           description: The same from the end of the chunk's text; null when quoteStart holds it all.
           example: Bescheids schriftlich einzureichen.
+        regions:
+          type: array
+          nullable: true
+          description: >-
+            Text recognition with layout only (pipeline pdf-ocr, connection type DOCLING_SERVE):
+            the frames of the elements the chunk consists of, one per page it touches, normalized
+            to the page size with the origin top left. A viewer draws them over the unchanged
+            scanned original. Null without frames (vision model, text PDFs, citations from before
+            frames existed).
+          items:
+            $ref: "#/components/schemas/ChunkRegion"
+        textOrigin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChunkTextOrigin"
+          description: >-
+            Set when the chunk's text was read by text recognition, so the passage may differ from
+            the original's wording - the original is authoritative; null for text taken from the
+            document's own text layer.
+
+    ChunkRegion:
+      type: object
+      description: >-
+        One frame on one page as fractions of the page's width and height, origin top left, so a
+        viewer draws it independently of its rendering resolution.
+      required: [page, x, y, width, height]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: 1-based page number.
+          example: 2
+        x:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Left edge as a fraction of the page width.
+          example: 0.118
+        y:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Top edge as a fraction of the page height.
+          example: 0.231
+        width:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Width as a fraction of the page width.
+          example: 0.764
+        height:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Height as a fraction of the page height.
+          example: 0.087
+
+    ChunkTextOrigin:
+      type: object
+      description: The chunk's text was read by text recognition (OCR).
+      required: [connectionType]
+      properties:
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
 
     QueryMetadata:
       type: object

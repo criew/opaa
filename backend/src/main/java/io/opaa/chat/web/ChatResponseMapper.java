@@ -12,6 +12,7 @@ import io.opaa.api.dto.SourceFreeze;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
@@ -254,6 +255,34 @@ public final class ChatResponseMapper {
         .rowTo(anchor.rowTo())
         .message(anchor.message())
         .quoteStart(anchor.quoteStart())
-        .quoteEnd(anchor.quoteEnd());
+        .quoteEnd(anchor.quoteEnd())
+        .regions(
+            anchor.regions() == null
+                ? null
+                : anchor.regions().stream()
+                    .map(
+                        region ->
+                            new io.opaa.api.dto.ChunkRegion(
+                                region.page(),
+                                region.x(),
+                                region.y(),
+                                region.width(),
+                                region.height()))
+                    .toList())
+        .textOrigin(toTextOrigin(anchor.textOrigin()));
+  }
+
+  /** The text origin as the API carries it; an unknown connection type is left out, not guessed. */
+  private static io.opaa.api.dto.ChunkTextOrigin toTextOrigin(
+      io.opaa.format.chunk.ChunkAnchor.TextOrigin origin) {
+    if (origin == null) {
+      return null;
+    }
+    for (TextRecognitionConnectionType type : TextRecognitionConnectionType.values()) {
+      if (type.name().equals(origin.connectionType())) {
+        return new io.opaa.api.dto.ChunkTextOrigin(type);
+      }
+    }
+    return null;
   }
 }

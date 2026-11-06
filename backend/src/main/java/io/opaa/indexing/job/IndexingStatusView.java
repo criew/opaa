@@ -12,4 +12,19 @@ import java.util.Optional;
  * necessarily {@code job} - and is empty while that assessment was complete or none exists.
  */
 public record IndexingStatusView(
-    Optional<IndexingJob> job, boolean canSeeErrorDetail, List<String> unlistedScopeKeys) {}
+    Optional<IndexingJob> job,
+    boolean canSeeErrorDetail,
+    List<String> unlistedScopeKeys,
+    Integer textRecognitionPending,
+    Integer textRecognitionBlocked) {
+
+  /**
+   * A status without text recognition figures: {@code textRecognitionPending} and {@code
+   * textRecognitionBlocked} count waiting and locked scans and are {@code null} while text
+   * recognition is not in force.
+   */
+  public IndexingStatusView(
+      Optional<IndexingJob> job, boolean canSeeErrorDetail, List<String> unlistedScopeKeys) {
+    this(job, canSeeErrorDetail, unlistedScopeKeys, null, null);
+  }
+}

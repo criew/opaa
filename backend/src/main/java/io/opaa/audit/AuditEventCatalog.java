@@ -428,6 +428,7 @@ public final class AuditEventCatalog {
         keys,
         Set.of("apiKeyChange", "apiKeySet", "baseUrl", "connectionType", "enabled", "model"),
         TEXT_RECOGNITION_MODEL_CHANGED);
+    put(keys, Set.of("blocked", "connectionType", "documentId"), TEXT_RECOGNITION_BLOCK_RELEASED);
     put(
         keys,
         Set.of("revoked", "scopeGroupId", "validFrom", "validUntil"),

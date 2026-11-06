@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -38,7 +38,7 @@ Faktenblatt.
 | F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) | Handbuch |
 | F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/referenz/glossar.md), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
 | F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
-| F-04 | ja | [Zugelassene Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate) | Handbuch |
+| F-04 | ja; gescannte PDF ohne Textebene über eine Texterkennung im Haus (docling-serve oder Vision-Modell), ab Werk aus | [Zugelassene Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate), [Texterkennung einschalten](../../handbuch/betrieb/modell-endpunkte.md#texterkennung-einschalten), {{faktenblatt:voreinstellungen#ki-funktion-text-recognition}} | Handbuch, Konfiguration, Faktenblatt |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/benutzer/ki-werkzeug-einrichten.md) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/betrieb/modell-endpunkte.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/betrieb/modell-endpunkte.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
 | F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/benutzer/ki-werkzeug-einrichten.md), [Externe KI-Werkzeuge abschalten](../../handbuch/referenz/konfiguration.md#funktionen-abschalten), [KI-Werkzeug einrichten](../../handbuch/benutzer/ki-werkzeug-einrichten.md) | Handbuch, Konfiguration |

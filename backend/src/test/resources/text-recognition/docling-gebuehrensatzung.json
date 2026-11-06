@@ -1,0 +1,177 @@
+{
+  "schema_name": "DoclingDocument",
+  "version": "1.10.0",
+  "name": "gebuehrensatzung",
+  "origin": {
+    "mimetype": "application/pdf",
+    "binary_hash": 1,
+    "filename": "gebuehrensatzung.pdf"
+  },
+  "furniture": {
+    "self_ref": "#/furniture",
+    "children": [{"$ref": "#/texts/0"}, {"$ref": "#/texts/7"}],
+    "content_layer": "furniture",
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "body": {
+    "self_ref": "#/body",
+    "children": [
+      {"$ref": "#/texts/1"},
+      {"$ref": "#/texts/2"},
+      {"$ref": "#/groups/0"},
+      {"$ref": "#/texts/5"},
+      {"$ref": "#/tables/0"},
+      {"$ref": "#/pictures/0"},
+      {"$ref": "#/texts/6"}
+    ],
+    "content_layer": "body",
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "groups": [
+    {
+      "self_ref": "#/groups/0",
+      "parent": {"$ref": "#/body"},
+      "children": [{"$ref": "#/texts/3"}, {"$ref": "#/texts/4"}],
+      "content_layer": "body",
+      "name": "list",
+      "label": "list"
+    }
+  ],
+  "texts": [
+    {
+      "self_ref": "#/texts/0",
+      "parent": {"$ref": "#/furniture"},
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_header",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 820.0, "r": 300.0, "b": 808.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 30]}],
+      "orig": "Amtsblatt der Gemeinde Siemitz",
+      "text": "Amtsblatt der Gemeinde Siemitz"
+    },
+    {
+      "self_ref": "#/texts/1",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "title",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 780.0, "r": 520.0, "b": 760.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 38]}],
+      "orig": "Satzung über die Erhebung von Gebühren",
+      "text": "Satzung über die Erhebung von Gebühren"
+    },
+    {
+      "self_ref": "#/texts/2",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 740.0, "r": 300.0, "b": 725.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 19]}],
+      "orig": "§ 1 Gebührenpflicht",
+      "text": "§ 1 Gebührenpflicht",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/3",
+      "parent": {"$ref": "#/groups/0"},
+      "children": [],
+      "content_layer": "body",
+      "label": "list_item",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 715.0, "r": 500.0, "b": 700.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 43]}],
+      "orig": "1. Für die Benutzung wird eine Gebühr erhoben.",
+      "text": "Für die Benutzung wird eine Gebühr erhoben.",
+      "enumerated": true,
+      "marker": "1."
+    },
+    {
+      "self_ref": "#/texts/4",
+      "parent": {"$ref": "#/groups/0"},
+      "children": [],
+      "content_layer": "body",
+      "label": "list_item",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 695.0, "r": 510.0, "b": 680.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 50]}],
+      "orig": "2. Gebührenschuldner ist, wer die Leistung beantragt.",
+      "text": "Gebührenschuldner ist, wer die Leistung beantragt.",
+      "enumerated": true,
+      "marker": "2."
+    },
+    {
+      "self_ref": "#/texts/5",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 660.0, "r": 280.0, "b": 645.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 16]}],
+      "orig": "§ 2 Gebührenhöhe",
+      "text": "§ 2 Gebührenhöhe",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/6",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [{"page_no": 2, "bbox": {"l": 70.0, "t": 800.0, "r": 520.0, "b": 780.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 62]}],
+      "orig": "Diese Satzung tritt am Tage nach ihrer Bekanntmachung in Kraft.",
+      "text": "Diese Satzung tritt am Tage nach ihrer Bekanntmachung in Kraft."
+    },
+    {
+      "self_ref": "#/texts/7",
+      "parent": {"$ref": "#/furniture"},
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [{"page_no": 1, "bbox": {"l": 280.0, "t": 40.0, "r": 320.0, "b": 30.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 7]}],
+      "orig": "Seite 1",
+      "text": "Seite 1"
+    }
+  ],
+  "pictures": [
+    {
+      "self_ref": "#/pictures/0",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "picture",
+      "prov": [{"page_no": 1, "bbox": {"l": 450.0, "t": 120.0, "r": 520.0, "b": 60.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 0]}],
+      "captions": [],
+      "references": [],
+      "footnotes": [],
+      "image": {"mimetype": "image/png", "dpi": 72, "size": {"width": 70.0, "height": 60.0}, "uri": "data:image/png;base64,iVBORw0KGgo="},
+      "annotations": []
+    }
+  ],
+  "tables": [
+    {
+      "self_ref": "#/tables/0",
+      "parent": {"$ref": "#/body"},
+      "children": [],
+      "content_layer": "body",
+      "label": "table",
+      "prov": [{"page_no": 1, "bbox": {"l": 70.0, "t": 630.0, "r": 520.0, "b": 560.0, "coord_origin": "BOTTOMLEFT"}, "charspan": [0, 0]}],
+      "captions": [],
+      "references": [],
+      "footnotes": [],
+      "data": {
+        "table_cells": [
+          {"bbox": {"l": 70.0, "t": 212.0, "r": 300.0, "b": 232.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 0, "end_row_offset_idx": 1, "start_col_offset_idx": 0, "end_col_offset_idx": 1, "text": "Leistung", "column_header": true, "row_header": false, "row_section": false},
+          {"bbox": {"l": 300.0, "t": 212.0, "r": 520.0, "b": 232.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 0, "end_row_offset_idx": 1, "start_col_offset_idx": 1, "end_col_offset_idx": 2, "text": "Gebühr", "column_header": true, "row_header": false, "row_section": false},
+          {"bbox": {"l": 70.0, "t": 232.0, "r": 300.0, "b": 252.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 1, "end_row_offset_idx": 2, "start_col_offset_idx": 0, "end_col_offset_idx": 1, "text": "Beglaubigung", "column_header": false, "row_header": false, "row_section": false},
+          {"bbox": {"l": 300.0, "t": 232.0, "r": 520.0, "b": 252.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 1, "end_row_offset_idx": 2, "start_col_offset_idx": 1, "end_col_offset_idx": 2, "text": "10 Euro", "column_header": false, "row_header": false, "row_section": false},
+          {"bbox": {"l": 70.0, "t": 252.0, "r": 300.0, "b": 272.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 2, "end_row_offset_idx": 3, "start_col_offset_idx": 0, "end_col_offset_idx": 1, "text": "Auskunft", "column_header": false, "row_header": false, "row_section": false},
+          {"bbox": {"l": 300.0, "t": 252.0, "r": 520.0, "b": 272.0, "coord_origin": "TOPLEFT"}, "row_span": 1, "col_span": 1, "start_row_offset_idx": 2, "end_row_offset_idx": 3, "start_col_offset_idx": 1, "end_col_offset_idx": 2, "text": "5 Euro", "column_header": false, "row_header": false, "row_section": false}
+        ],
+        "num_rows": 3,
+        "num_cols": 2
+      },
+      "annotations": []
+    }
+  ],
+  "key_value_items": [],
+  "form_items": [],
+  "pages": {
+    "1": {"size": {"width": 595.2, "height": 841.92}, "page_no": 1},
+    "2": {"size": {"width": 595.2, "height": 841.92}, "page_no": 2}
+  }
+}

@@ -684,8 +684,31 @@ Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht
 je Indexierungslauf (`OPAA_OCR_MAX_PAGES_PER_RUN`) und Zeit eines Aufrufs (`OPAA_OCR_CALL_TIMEOUT`);
 Werte unter [Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen).
 
-In diesem Stand richtet die Rolle Verbindung, Test und Zustand ein; die Indizierung liest gescannte
-Seiten noch nicht über sie.
+**Was die Indexierung damit tut.** Eine PDF-Datei ohne Textebene geht an den Dienst, der erkannte
+Text wird wie jedes Dokument zerlegt und eingebettet. Jeder Abschnitt trägt Seiten und, bei
+docling-serve, die Rahmen seiner Zeilen auf der Seite; im Beleg steht, dass sein Text per
+Texterkennung gelesen wurde. OPAA speichert den erkannten Text mit dem Dokument, ohne Seitenbilder,
+und löscht ihn mit ihm; eine Neuindizierung unveränderter Dateien liest daraus und ruft den Dienst
+nicht erneut. Fällt der Dienst aus (Zeitüberschreitung, Schlüssel abgelehnt, überlastet, Fehler,
+nicht erreichbar), wandelt docling-serve nur einen Teil um oder geht sonst etwas unerwartet schief,
+bleibt der Scan abgewiesen und wartet; nichts wird gespeichert, der nächste Lauf versucht es
+erneut, hochgeladene Scans holt OPAA alle fünf Minuten selbst nach. Weist ein Vision-Modell eine
+Anfrage ab (etwa HTTP 400 bei falschem Modellnamen), gilt das ebenso als Ausfall, nicht als Fehler
+der Datei. Lehnt docling-serve die Datei selbst ab, ist sie unlesbar oder liegt sie über der
+Seitengrenze, wird sie für dieses Verfahren gesperrt, bis jemand mit Bearbeitungsrecht die Sperre in
+der Bibliothek aufhebt oder sich Datei oder Dienst ändern. Erkennt der Dienst keinen Text, bleibt
+das Dokument ohne Inhalt im Bestand und wird erst wieder gelesen, wenn sich Datei oder Dienst
+ändern; gesperrt wird es nicht. Ist das Seitenbudget eines Laufs aufgebraucht, endet er
+„unvollständig“, der nächste setzt fort. Log und
+Messwerte (`opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds`) nennen
+Verbindungstyp, Empfänger und Seitenzahl, nie eine Person oder einen Inhalt.
+
+**Rechenzeit.** docling-serve mit RapidOCR braucht auf CPU etwa 16 bis 22 Sekunden je Seite. Ein
+Bestand von 10.000 Seiten kostet einen Worker so in der Größenordnung von 55 Stunden; nach dem
+Einschalten baut sich der Rückstand über viele Läufe ab, begrenzt durch das Seitenbudget je Lauf.
+Mehr Worker oder ein Dienst mit GPU verkürzen das. Eine spätere Neuindizierung (neue Pipeline,
+andere Abschnittsgröße, Wechsel des Einbettungsmodells) liest den gespeicherten Erkennungsstand und
+erkennt nichts neu; sie kostet so viel wie bei jedem anderen Dokument.
 
 > **Externer Dienst.** Ein Vision-Modell oder docling-serve außerhalb des Hauses bekommt ganze
 > Seiten mit allem, was darauf steht, auch Namen und Vorgänge Dritter. Eine solche Anbindung

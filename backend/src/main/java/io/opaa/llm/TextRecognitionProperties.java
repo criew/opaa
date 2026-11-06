@@ -18,7 +18,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param enabled whether this installation may send scanned PDFs to a text recognition service at
  *     all; the role in the model administration must be switched on as well
  * @param maxPagesPerDocument the largest scan sent; a longer one is not attempted
- * @param documentTimeout budget of all calls for one document
+ * @param documentTimeout budget of all calls for one document, a hard deadline of at most {@link
+ *     #MAX_DOCUMENT_TIMEOUT}
  * @param maxConcurrent documents recognised at the same time by this instance
  * @param maxPagesPerRun pages one indexing run sends at most; the rest waits for the next run
  * @param callTimeout budget of one call to the service for a document; the connection test has its
@@ -43,10 +44,19 @@ public record TextRecognitionProperties(
   static final int DEFAULT_MAX_PAGES_PER_RUN = 500;
   static final int DEFAULT_CALL_TIMEOUT_MINUTES = 45;
 
+  /**
+   * The longest deadline of one document; a larger value is cut to it, so a catch-up pass with one
+   * document still ends within its cluster lock (ADR-0053).
+   */
+  public static final Duration MAX_DOCUMENT_TIMEOUT = Duration.ofMinutes(55);
+
   public TextRecognitionProperties {
     maxPagesPerDocument = positiveOr(maxPagesPerDocument, DEFAULT_MAX_PAGES_PER_DOCUMENT);
     documentTimeout =
         positiveOr(documentTimeout, Duration.ofMinutes(DEFAULT_DOCUMENT_TIMEOUT_MINUTES));
+    if (documentTimeout.compareTo(MAX_DOCUMENT_TIMEOUT) > 0) {
+      documentTimeout = MAX_DOCUMENT_TIMEOUT;
+    }
     maxConcurrent = positiveOr(maxConcurrent, DEFAULT_MAX_CONCURRENT);
     maxPagesPerRun = positiveOr(maxPagesPerRun, DEFAULT_MAX_PAGES_PER_RUN);
     callTimeout = positiveOr(callTimeout, Duration.ofMinutes(DEFAULT_CALL_TIMEOUT_MINUTES));
