@@ -146,3 +146,17 @@ jobs:
             e2e/docker-compose.log
           if-no-files-found: ignore
           retention-days: 30
+
+      # The DoclingDocument once more as gzip and base64 at the end of the log, between fixed
+      # markers, so it can be restored from the job log where artifacts cannot be downloaded:
+      # the lines between the markers, joined, base64 -d | gunzip.
+      - name: DoclingDocument ins Log schreiben
+        if: ${{ !cancelled() }}
+        env:
+          DOCLING_JSON: ${{ runner.temp }}/docling/satzung-scan.docling.json
+        run: |
+          if [ ! -f "$DOCLING_JSON" ]; then echo "keine Aufzeichnung"; exit 0; fi
+          echo "sha256 $(sha256sum < "$DOCLING_JSON" | cut -d' ' -f1)"
+          echo "----- BEGIN satzung-scan.docling.json.gz.b64 -----"
+          gzip -9c "$DOCLING_JSON" | base64 -w 4000
+          echo "----- END satzung-scan.docling.json.gz.b64 -----"

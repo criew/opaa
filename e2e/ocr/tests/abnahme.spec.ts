@@ -20,7 +20,7 @@ import {
 } from '../../fixtures/textRecognition'
 
 /**
- * Acceptance run of text recognition (#3606) against the real opaa-ocr (docling-serve with
+ * Acceptance run of text recognition against the real opaa-ocr (docling-serve with
  * RapidOCR), recorded as one video: the role is set up and tested, the scanned statute is uploaded
  * and read, then three questions - a row of the fee table, a paragraph of § 13 and a passage on a
  * page stored sideways with /Rotate 90 - each open the original with the passage framed and the
