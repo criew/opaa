@@ -98,6 +98,8 @@ helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; 
                                                 # sie nur als INFO und endet mit Exit 0
 helm template opaa . -f ci/full-values.yaml
 helm template opaa . -f ci/multi-values.yaml    # zwei Backend-Pods mit Migrations-Job (ADR-0053)
+helm template opaa . -f ci/ocr-values.yaml      # Texterkennungsdienst opaa-ocr mit Schlüssel und
+                                                # Ausgangs-Policies (ocr.service)
 
 # Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
 deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
@@ -109,7 +111,9 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
 deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # Chart packen wie der Release-Lauf (publish-images.yml):
                                         # Version und appVersion aus dem Tag, prüft die Image-Tags
-                                        # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
+                                        # der Vorgabewerte, auch des Texterkennungsdienstes;
+                                        # veröffentlicht nichts. Der Release-Lauf übergibt die
+                                        # Digests von Backend, Frontend und opaa-ocr. Das Tag-Format
                                         # steht allein in release-version.sh, die Existenzprüfung
                                         # von Images und Chart in GHCR in oci-published.sh (nur
                                         # HTTP 404 gilt als frei), der Inhaltsvergleich des Charts
@@ -153,6 +157,10 @@ deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert di
 # kubectl-Kontext; nicht für den Betrieb, nicht Teil der CI
 k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
 examples/kubernetes-trial/trial.sh up   # installieren oder aktualisieren, danach http://opaa.localhost:8088
+TRIAL_OCR=true examples/kubernetes-trial/trial.sh up
+                                        # zusätzlich der Texterkennungsdienst opaa-ocr des Charts
+                                        # (ocr.service) mit erzeugtem Schlüssel, Texterkennung
+                                        # freigegeben; rund 4 GiB Arbeitsspeicher mehr
 examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
 ```
 

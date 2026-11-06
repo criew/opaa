@@ -1,0 +1,64 @@
+# Overlay for text recognition of scanned PDFs (docs/handbuch/betrieb/texterkennung.md):
+# OPAA_OCR_API_KEY=$(openssl rand -hex 32) docker compose -f docker-compose.yml -f docker-compose.ocr.yml up -d
+# Adds the service opaa-ocr on an internal network of its own: no published port, no route to the
+# internet or the host, reachable only from the backend. The key is required and has no default;
+# the system administration enters it, with the address http://opaa-ocr:5001, under Modelle >
+# Texterkennung.
+services:
+  opaa-ocr:
+    # main follows the development stack; a release pins its version X.Y.Z, like the other images.
+    image: ghcr.io/criew/opaa-ocr:${OPAA_OCR_IMAGE_TAG:-main}
+    restart: unless-stopped
+    environment:
+      # At least 32 characters without blanks; the container refuses to start otherwise.
+      DOCLING_SERVE_API_KEY: ${OPAA_OCR_API_KEY:?set OPAA_OCR_API_KEY to a random value of at least 32 characters, e.g. openssl rand -hex 32}
+      # Conversions at the same time; each needs its own memory.
+      DOCLING_SERVE_ENG_LOC_NUM_WORKERS: ${OPAA_OCR_WORKERS:-1}
+      # Seconds a call may wait for its conversion; at least OPAA_OCR_CALL_TIMEOUT (default 45m).
+      DOCLING_SERVE_MAX_SYNC_WAIT: ${OPAA_OCR_MAX_SYNC_WAIT:-2700}
+    # Only the internal network: the service neither publishes a port nor reaches anything itself.
+    networks:
+      - ocr
+    read_only: true
+    # The only writable path: working files and page images of a conversion. tmpfs, so nothing
+    # outlives the container; exec, because the libraries load code from there. Its content counts
+    # against the memory limit below.
+    tmpfs:
+      - /tmp:exec,mode=1777,size=${OPAA_OCR_TMP_SIZE:-2g}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Ready once the models are loaded; that takes seconds to a few minutes.
+    healthcheck:
+      test: ["CMD", "/opt/app-root/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 5s
+    # One worker holds about 2.3 GiB after a scanned page, long documents need more; more cores
+    # shorten a conversion.
+    deploy:
+      resources:
+        limits:
+          cpus: "${OPAA_OCR_CPUS:-2}"
+          memory: ${OPAA_OCR_MEMORY:-6g}
+        reservations:
+          memory: 3g
+
+  backend:
+    environment:
+      OPAA_OCR_ENABLED: "true"
+      # Replaces the value of .env.docker: the list comes from the shell or .env (default the
+      # Ollama of this stack), extended by the text recognition service.
+      OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: ${OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST:-ollama:11434},opaa-ocr:5001
+    # Keeps the stack's network and joins the service's; the service never joins "default".
+    networks:
+      - default
+      - ocr
+
+networks:
+  # Internal: no gateway, so the service has no route to the internet or the host.
+  ocr:
+    internal: true

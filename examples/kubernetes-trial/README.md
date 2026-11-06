@@ -14,17 +14,20 @@ Ein Befehl bringt OPAA mit allem, was es zum Ausprobieren braucht, in einen leer
 | Ollama mit Chat- und Einbettungsmodell | `ollama/ollama` | `opaa-trial-services` | nur im Cluster |
 | RustFS als Objektspeicher der Originale, Bucket `opaa-uploads` | `rustfs/rustfs` | `opaa-trial-services` | nur im Cluster |
 | Mailpit als Mailserver | `axllent/mailpit` | `opaa-trial-services` | http://mailpit.localhost:8088 |
+| Texterkennungsdienst des Charts, nur mit `TRIAL_OCR=true` | `ghcr.io/criew/opaa-ocr` | `opaa-trial` | nur für das Backend |
 
 Der Chart bindet diese Dienste nur an und liefert sie nicht mit
 ([ADR-0042](../../docs/decisions/0042-kubernetes-lieferung-mit-helm.md), Entscheidung 3). Das
-Verzeichnis zeigt, wie die Anbindung aussieht, und ändert am Chart nichts.
+Verzeichnis zeigt, wie die Anbindung aussieht, und ändert am Chart nichts. Der Texterkennungsdienst
+ist die Ausnahme: Ihn bringt der Chart selbst mit (`ocr.service`), der Aufbau schaltet ihn nur ein.
 
 ## Voraussetzungen
 
 - Ein lokaler Cluster mit Traefik als Ingress-Controller, am einfachsten
   [k3d](https://k3d.io) (k3s in Docker), auf `linux/amd64` oder `linux/arm64`
 - `kubectl`, `helm` (Helm 4 oder Helm 3 ab 3.8) und `openssl`
-- Rund 6 GiB freier Arbeitsspeicher und 10 GiB Plattenplatz für Images, Modelle und Volumes
+- Rund 6 GiB freier Arbeitsspeicher und 10 GiB Plattenplatz für Images, Modelle und Volumes; mit
+  `TRIAL_OCR=true` rund 4 GiB Arbeitsspeicher und 5 GiB Plattenplatz mehr
 - Ein Browser, der `*.localhost` selbst auf den eigenen Rechner auflöst (Chrome, Edge, Firefox).
   Sonst gehören `opaa.localhost`, `keycloak.localhost` und `mailpit.localhost` mit `127.0.0.1` in
   `/etc/hosts`
@@ -88,6 +91,7 @@ Datenbank, Modellen, Originalen und Geheimnissen. Der Cluster selbst bleibt; ihn
 | `TRIAL_PORT` | `8088` | Port, unter dem der Ingress-Controller auf diesem Rechner erreichbar ist; muss zum Port aus `k3d cluster create -p` passen. Bei `80` entfällt der Port in allen Adressen. Nach dem ersten `up` nicht mehr ändern (siehe unten) |
 | `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und die Installation beim ersten Start einrichtet |
 | `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images; nach dem ersten Release mit Chart eine Versionsnummer. Bei `main` zieht jeder neu gestartete Pod den aktuellen Stand (`pullPolicy: Always`); `kubectl -n opaa-trial rollout restart deploy` holt ihn |
+| `TRIAL_OCR` | `false` | `true` startet den Texterkennungsdienst `opaa-ocr` mit erzeugtem Schlüssel (Secret `opaa-secrets`, Schlüssel `ocr-api-key`) und gibt die Texterkennung frei. Die Systemverwaltung trägt ihn danach unter Modelle → Texterkennung ein, Adresse und Befehl für den Schlüssel nennt `up` am Ende. Ein späteres `up` ohne die Variable entfernt den Dienst wieder |
 | `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
 | `TRIAL_ALLOW_CONTEXT` | leer | Name eines Kontexts, der nicht nach einem lokalen Cluster aussieht und trotzdem gemeint ist |
 

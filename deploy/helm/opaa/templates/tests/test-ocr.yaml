@@ -1,0 +1,54 @@
+{{- if and .Values.ocr.service.enabled (gt (int .Values.ocr.service.replicas) 0) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "opaa.fullname" . }}-test-ocr
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "opaa.serviceAccountName" . }}
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: ocr
+      # busybox wget of the frontend image, as in test-health.
+      image: {{ include "opaa.image" (dict "root" . "image" .Values.frontend.image) | quote }}
+      imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+      securityContext:
+        {{- toYaml .Values.containerSecurityContext | nindent 8 }}
+      # The service is ready, and refuses its API without the key.
+      command:
+        - sh
+        - -c
+        - |
+          base={{ include "opaa.ocr.url" . }}
+          ready=""
+          for attempt in 1 2 3 4 5; do
+            if wget -q -T 10 -O /dev/null "$base/ready"; then ready=1; break; fi
+            sleep 3
+          done
+          if [ -z "$ready" ]; then echo "no ready answer from $base/ready" >&2; exit 1; fi
+          answer="$(wget -T 10 -O /dev/null -S "$base/v1/status/poll/helm-test" 2>&1 || true)"
+          case "$answer" in
+            *" 401 "*) exit 0 ;;
+          esac
+          echo "$base/v1/status/poll without key did not answer 401:" >&2
+          echo "$answer" >&2
+          exit 1
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 32Mi
+{{- end }}

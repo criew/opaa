@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-05
+stand: 2026-11-06
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -23,7 +23,8 @@ Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt
 ## Was OPAA liefert
 
 - **Teile einer Installation** (Zielobjekte): Anwendung, Datenbank, Originalablage, Modelldienste,
-  Container-Plattform, dazu Identitätsanbieter und Quellen des Hauses
+  auf Wunsch der mitgelieferte Texterkennungsdienst, Container-Plattform, dazu Identitätsanbieter
+  und Quellen des Hauses
   ([Betrieb](../../handbuch/betrieb/README.md#bausteine)).
 - **Daten und Voreinstellungen:** {{faktenblatt:datenkatalog}},
   {{faktenblatt:voreinstellungen}}; Nachweise des Projekts in den
@@ -57,8 +58,8 @@ Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (E
 |  | APP.4.4 Kubernetes | [Netz und Sicherheit](../../handbuch/betrieb/kubernetes.md#netz-und-sicherheit) |
 |  | APP.5.3 Allgemeiner E-Mail-Client und -Server (nur mit Mailversand) | [Einrichtung](../../handbuch/administration/e-mail.md#einrichtung), [Zustellung über die Warteschlange](../../handbuch/administration/e-mail.md#zustellung-über-die-warteschlange) |
 |  | APP.6 Allgemeine Software | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Lizenzen](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) |
-| SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/betrieb/images-und-laufzeit.md#backend-laufzeitimage), [Härtung des Compose-Stapels](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels) |
-| NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | Regelvorlage aus {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy) |
+| SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/betrieb/images-und-laufzeit.md#backend-laufzeitimage), [Härtung des Compose-Stapels](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels); der zuschaltbare Texterkennungsdienst `opaa-ocr` ist ein weiterer Container aus dem eigenen Release, ohne Zustand und ohne Root, mit Pflichtschlüssel ([Texterkennung](../../handbuch/betrieb/texterkennung.md)) |
+| NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | Regelvorlage aus {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy); Netztrennung des Texterkennungsdienstes: nur das Backend erreicht ihn, er selbst hat keinen Ausgang, im Compose-Stapel ein internes Netz ohne veröffentlichten Port, in Kubernetes eine NetworkPolicy ([Netz der Texterkennung](../../handbuch/betrieb/texterkennung.md#netz), Datenfluss {{faktenblatt:datenfluesse#text-recognition-model}}) |
 
 Allein beim Betrieb liegen unter anderem ISMS.1, ORP.1 bis ORP.3 und ORP.5, OPS.1.2.5 Fernwartung,
 DER.2.2, DER.2.3 und DER.3.1, die Bausteine für Server, Speicher und Virtualisierung (SYS.1.1, SYS.1.3,

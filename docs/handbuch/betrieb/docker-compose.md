@@ -89,6 +89,7 @@ leere Datenbank im Installationsmodus ([Installation im Compose-Stapel](#install
 | mailpit | 1025 (SMTP), 8025 (Weboberfläche) | 1025, 8025 | Mailserver, der alles annimmt und nichts zustellt (nur `mail`-Profil) |
 | backend-migrate | —   | —               | einmaliger Migrationsschritt (nur [Mehrinstanz-Variante](#mehrere-backend-instanzen)) |
 | backend-a, backend-b | — | 8080           | zwei Backend-Instanzen statt `backend` (nur Mehrinstanz-Variante) |
+| opaa-ocr    | —         | 5001            | Texterkennung gescannter PDFs (nur mit dem Overlay `docker-compose.ocr.yml`; kein Host-Port, nur für das Backend erreichbar) |
 
 Das Backend meldet seinen Zustand über einen Health Check auf die
 [Readiness](images-und-laufzeit.md#readiness-und-liveness); `docker compose ps` zeigt ihn als
@@ -337,6 +338,38 @@ SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`
 Einrichtungs-Assistenten an, wenn `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST=mailpit:1025` in
 `.env.docker` steht ([Installation](installation.md#schritte)).
 
+## Texterkennung im Compose-Stapel
+
+Das Overlay `docker-compose.ocr.yml` startet den Texterkennungsdienst `opaa-ocr`
+([Texterkennung](texterkennung.md)). Der Schlüssel ist Pflicht und kommt aus der Shell oder einer
+`.env` im Projektverzeichnis, nicht aus `.env.docker`:
+
+```bash
+echo "OPAA_OCR_API_KEY=$(openssl rand -hex 32)" >> .env
+docker compose -f docker-compose.yml -f docker-compose.ocr.yml up -d
+```
+
+Ohne ihn bricht Compose mit `required variable OPAA_OCR_API_KEY is missing a value` ab. Jeder
+weitere Befehl für diesen Stapel nennt beide Dateien.
+
+- **Netz:** Der Dienst liegt mit dem Backend in einem eigenen internen Netz ohne Gateway, ohne
+  veröffentlichten Port. Vom Host aus ist er nicht erreichbar, vom Backend aus unter
+  `http://opaa-ocr:5001`; er selbst erreicht weder das Internet noch den Host.
+- **Backend:** Das Overlay setzt `OPAA_OCR_ENABLED=true` und nimmt `opaa-ocr:5001` in
+  `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` auf. Die Liste kommt dann aus Shell oder `.env` (ohne
+  Eintrag dort `ollama:11434`) und ersetzt den Wert aus `.env.docker`; wer dort weitere Modellserver
+  eingetragen hat, setzt die Liste in `.env`.
+- **Einrichtung:** Unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
+  `http://opaa-ocr:5001` und denselben Schlüssel eintragen
+  ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)).
+- **Grenzen:** Health Check auf die Readiness des Dienstes, Read-only Filesystem mit `/tmp` im
+  Arbeitsspeicher (tmpfs, `OPAA_OCR_TMP_SIZE`; nach dem Stopp leer), keine Capabilities. CPU und Arbeitsspeicher begrenzen `OPAA_OCR_CPUS` und
+  `OPAA_OCR_MEMORY`, das Image wählt `OPAA_OCR_IMAGE_TAG`
+  ([Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen)).
+- **Mehrere Instanzen:** Das Overlay hängt nur `backend` an das Netz des Dienstes. Mit
+  `docker-compose.multi.yml` gehören `backend-a` und `backend-b` in einer eigenen Override-Datei
+  ebenfalls in die Netze `default` und `ocr`, mit denselben beiden Variablen.
+
 ## Mehrere Backend-Instanzen
 
 `docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
@@ -581,7 +614,7 @@ gehören nicht dazu.
 - **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend` und
   `keycloak` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` öffnen,
   beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt
-  nicht vor.
+  nicht vor. Der Texterkennungsdienst veröffentlicht gar keinen Port, auch nicht an Loopback.
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.

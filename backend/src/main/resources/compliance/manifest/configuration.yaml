@@ -122,6 +122,13 @@ settings:
         Grenzen je Dokument, Lauf und Instanz: OPAA_OCR_MAX_PAGES_PER_DOCUMENT,
         OPAA_OCR_DOCUMENT_TIMEOUT, OPAA_OCR_MAX_CONCURRENT, OPAA_OCR_MAX_PAGES_PER_RUN,
         OPAA_OCR_CALL_TIMEOUT
+      - >-
+        Der Helm-Chart kann den Dienst opaa-ocr mitliefern (ocr.service.enabled, Voreinstellung
+        aus): nur von den Backend-Pods erreichbar, ohne Ausgang, mit Pflichtschlüssel; ebenso das
+        Compose-Overlay docker-compose.ocr.yml im internen Netz ohne veröffentlichten Port
+    helm:
+      values: ocr.enabled
+      defaultValue: "false"
   - key: text_recognition_model.enabled
     source: DATABASE
     defaultValue: "false"

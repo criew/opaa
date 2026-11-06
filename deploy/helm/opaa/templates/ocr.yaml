@@ -1,0 +1,140 @@
+{{- if .Values.ocr.service.enabled }}
+{{- $name := include "opaa.ocr.fullname" . }}
+{{- $service := .Values.ocr.service }}
+{{- $testPod := dict "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "test" }}
+# The bundled text recognition service opaa-ocr (ADR-0042, Entscheidung 3): stateless, reached by the
+# backend pods only, without any egress; the backend sends it whole scanned documents.
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "opaa.ocr.serviceAccountName" . }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "ocr") | nindent 4 }}
+# The service never talks to the Kubernetes API.
+automountServiceAccountToken: false
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "ocr") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ $service.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "ocr") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "ocr") | nindent 4 }}
+spec:
+  replicas: {{ $service.replicas }}
+  selector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "ocr") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "ocr") | nindent 8 }}
+        {{- with $service.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with $service.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "opaa.podSpecCommon" (dict "root" . "component" $service "serviceAccountName" (include "opaa.ocr.serviceAccountName" .)) | nindent 6 }}
+      containers:
+        - name: ocr
+          image: {{ include "opaa.image" (dict "root" . "image" $service.image) | quote }}
+          imagePullPolicy: {{ $service.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 5001
+              protocol: TCP
+          env:
+            # The image refuses to start without it; every request must carry it as X-Api-Key.
+            - name: DOCLING_SERVE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opaa.secretName" . }}
+                  key: ocr-api-key
+            - name: DOCLING_SERVE_ENG_LOC_NUM_WORKERS
+              value: {{ $service.workers | quote }}
+            - name: DOCLING_SERVE_MAX_SYNC_WAIT
+              value: {{ $service.maxSyncWaitSeconds | quote }}
+          # /ready answers once the models are loaded, /health while the process runs; neither needs
+          # the key.
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: http
+            {{- with $service.startupProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            {{- with $service.livenessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            {{- with $service.readinessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with $service.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          {{- include "opaa.emptyDir" $service.tmp | nindent 10 }}
+---
+# Only the backend pods, and the pod of helm test, reach the service; it reaches nothing, not even
+# DNS, so a document it reads cannot leave the release through it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "ocr") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "ocr") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml $testPod | nindent 14 }}
+      ports:
+        - port: http
+          protocol: TCP
+  egress: []
+{{- end }}

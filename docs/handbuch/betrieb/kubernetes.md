@@ -358,7 +358,9 @@ helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
   --set frontend.image.repository=registry.intern/opaa/opaa-frontend
 ```
 
-Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`,
+Mit dem [Texterkennungsdienst](#texterkennung) kommt
+`--set ocr.service.image.repository=registry.intern/opaa/opaa-ocr` dazu. Der Chart heftet die Images
+per Digest an (`backend.image.digest`, `frontend.image.digest`, `ocr.service.image.digest`,
 dieselben Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil
 `skopeo` die Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret
 in `imagePullSecrets`. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in
@@ -583,6 +585,7 @@ Wegen:
 | `installation-embedding-api-key` | `embeddingApiKey` | mit `embedding.apiKeyInSecret` | Schlüssel des Embedding-Modells der Antwortdatei, als Datei eingehängt |
 | `installation-mail-password` | `mailPassword` | mit `bootstrap.mail.passwordInSecret` | Passwort des Mailservers der Antwortdatei, als Datei eingehängt |
 | `installation-admin-password` | `initialAdminPassword` | für die Installation mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet |
+| `ocr-api-key` | `ocrApiKey` | mit `ocr.service.enabled` | Schlüssel des [Texterkennungsdienstes](#texterkennung), mindestens 32 Zeichen ohne Leerzeichen, erzeugt mit `openssl rand -hex 32`; nur der Dienst liest ihn, die Systemverwaltung trägt denselben Wert unter Modelle → Texterkennung ein |
 | `OPAA_INSTALLATION_TOKEN` | `installationToken` | nein | Installations-Token, mindestens 32 Zeichen; ohne es schreibt der erste Start ein erzeugtes ins Protokoll |
 | `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | `credentialsEncryptionPreviousKeys`, `settingsEncryptionPreviousKeys` | nein | nur während eines [Schlüsselwechsels](netz-und-sicherheit.md#schlüsselwechsel): die abgelösten Schlüssel, durch Kommas getrennt; danach entfernen |
 
@@ -677,6 +680,27 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen, die die Zielprüfung passieren dürfen, am besten als `host:port`; Modell-Hosts gehören nicht hierher |
 | `targetValidation.modelAllowlist` | leer | `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Modell-Endpunkte als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` ergänzt der Chart selbst und dauerhaft, die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Weitere interne Identitätsanbieter als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.oidc` ergänzt der Chart selbst |
+
+### Texterkennung
+
+Zwei getrennte Schalter: `ocr.enabled` gibt die Rolle im Backend frei, `ocr.service.enabled` startet
+den mitgelieferten Dienst `opaa-ocr`. Wer einen eigenen Dienst einträgt, schaltet nur den ersten
+ein. Bemessung, Schlüssel und Fehlerbilder stehen unter [Texterkennung](texterkennung.md).
+
+| Wert | Vorgabe | Setzt | Wirkung |
+|---|---|---|---|
+| `ocr.enabled` | `false` | `OPAA_OCR_ENABLED` | Betriebsschalter der Texterkennung ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
+| `ocr.maxPagesPerDocument`, `.documentTimeout`, `.maxConcurrent`, `.maxPagesPerRun`, `.callTimeout` | leer (Vorgaben der Anwendung) | `OPAA_OCR_MAX_PAGES_PER_DOCUMENT`, `OPAA_OCR_DOCUMENT_TIMEOUT`, `OPAA_OCR_MAX_CONCURRENT`, `OPAA_OCR_MAX_PAGES_PER_RUN`, `OPAA_OCR_CALL_TIMEOUT` | Grenzen des Backends; `maxConcurrent` gilt je Pod, das Budget der Installation nimmt `backend.installationBudgets.OPAA_OCR_MAX_CONCURRENT` (nur einer von beiden) |
+| `ocr.service.enabled` | `false` | — | startet Deployment, Service, ServiceAccount ohne Token und NetworkPolicy des Dienstes `<Release>-ocr`; seine Adresse kommt in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`. Ohne Schlüssel (`secrets.ocrApiKey` oder `secrets.existingSecret`) bricht das Rendern ab |
+| `ocr.service.image.repository`, `.tag`, `.digest`, `.pullPolicy` | `ghcr.io/criew/opaa-ocr`, leer (appVersion), im Release gesetzt, `IfNotPresent` | — | Image des Dienstes, wie das Backend-Image |
+| `ocr.service.replicas` | `1` | — | Pods des Dienstes; zustandslos, das Backend verteilt seine Aufrufe über den Service |
+| `ocr.service.workers` | `1` | `DOCLING_SERVE_ENG_LOC_NUM_WORKERS` im Dienst | Umwandlungen je Pod gleichzeitig; jede braucht eigenen Arbeitsspeicher |
+| `ocr.service.maxSyncWaitSeconds` | `2700` | `DOCLING_SERVE_MAX_SYNC_WAIT` im Dienst | Sekunden, die ein Aufruf auf seine Umwandlung warten darf; mindestens so lang wie `ocr.callTimeout` |
+| `ocr.service.resources` | 1 CPU und 3Gi angefordert, 4Gi Grenze | — | Ressourcen eines Pods |
+| `ocr.service.startupProbe`, `.livenessProbe`, `.readinessProbe` | Startup bis 10 Minuten | — | Startup und Readiness auf `/ready` (Modelle geladen), Liveness auf `/health` |
+| `ocr.service.tmp.sizeLimit`, `.medium` | `4Gi`, leer | — | `/tmp` des Dienstes für Arbeitsdateien und Seitenbilder |
+| `ocr.service.service.port` | `5001` | — | Port des Service |
+| `ocr.service.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung der Pods, etwa auf Knoten mit viel Arbeitsspeicher |
 
 ### Funktionen
 
@@ -1057,6 +1081,23 @@ Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe
 Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe [NetworkPolicies](#networkpolicies)).
 
+**Ausnahme Texterkennung:** Den Dienst `opaa-ocr` bringt der Chart auf Wunsch mit. Er läuft im
+Namespace des Releases, seine Adresse `http://<Release>-ocr:5001` steht von selbst in der Liste der
+Modelle, und die Regeln für Eingang und Ausgang setzt der Chart:
+
+```yaml
+ocr:
+  enabled: true
+  service:
+    enabled: true
+secrets:
+  existingSecret: opaa-secrets   # mit dem Schlüssel ocr-api-key
+```
+
+Danach trägt die Systemverwaltung ihn unter Modelle → Texterkennung ein, mit Verbindungstyp
+docling-serve, der Adresse und dem Schlüssel; den Befehl, der ihn aus dem Secret liest, nennt
+`helm install` in seinen Hinweisen ([Texterkennung](texterkennung.md)).
+
 ## Netz und Sicherheit
 
 ### Eingang
@@ -1159,7 +1200,8 @@ weil sich alle Personen einen Zähler teilen, sind aber nicht umgehbar.
 | `opaa-backend-ingress` | `networkPolicy.backendIngress.enabled`, Vorgabe an | API-Port: Frontend-Pods und `extraFrom`; Management-Port: `metrics.scrapeFrom`, solange Metriken eingeschaltet sind |
 | `opaa-frontend-ingress` | beide Selektoren unter `networkPolicy.frontendIngress` gesetzt | der Controller und der Pod von `helm test` |
 | `opaa-postgresql-ingress` | Erprobungsdatenbank und Eingangs-Policy des Backends | nur das Backend |
-| `opaa-frontend-egress`, `opaa-backend-egress` | `networkPolicy.egress.enabled` | DNS, Frontend zum Backend, Backend zur Erprobungsdatenbank und zu `networkPolicy.egress.backendRules` |
+| `opaa-frontend-egress`, `opaa-backend-egress` | `networkPolicy.egress.enabled` | DNS, Frontend zum Backend, Backend zur Erprobungsdatenbank, zum Texterkennungsdienst und zu `networkPolicy.egress.backendRules` |
+| `opaa-ocr` | `ocr.service.enabled`, unabhängig von `networkPolicy` | Eingang nur von den Backend-Pods und dem Pod von `helm test`, kein Ausgang, auch kein DNS |
 
 Die Eingangs-Policies sperren keinen Ausgang und brechen keine frische Installation. Die
 Ausgangs-Policies sind aus, weil sie vor der Einrichtung Identitätsanbieter, Modelle und Quellen
@@ -1214,7 +1256,7 @@ Alle Pods des Charts laufen unter dem Pod Security Standard `restricted`, ohne A
 - ohne eingehängtes Token des ServiceAccounts
 
 `runAsUser`, `runAsGroup` und `fsGroup` bleiben leer. Das Backend-Image läuft dann unter seiner
-Kennung `65532`, das Frontend-Image unter `101`; Plattformen, die Kennungen selbst zuweisen, setzen
+Kennung `65532`, das Frontend-Image unter `101`, der Texterkennungsdienst unter `1001`; Plattformen, die Kennungen selbst zuweisen, setzen
 eigene, ohne dass der Chart angepasst wird. Ausnahme ist die Erprobungsdatenbank (siehe
 [Datenbank](#datenbank)).
 
