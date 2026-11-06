@@ -10,7 +10,7 @@ from pathlib import Path
 
 WORKFLOW = Path(__file__).resolve().parents[1] / "workflows" / "publish-images.yml"
 CONDITIONAL_GHA = re.compile(
-    r"\$\{\{ github\.ref_type != 'tag' && format\('type=gha,[^']*scope=\{0\}-\{1\}', "
+    r"\$\{\{ github\.ref_type != 'tag' && matrix\.image\.cache && format\('type=gha,[^']*scope=\{0\}-\{1\}', "
     r"matrix\.image\.name, matrix\.platform\.arch\) \|\| '' \}\}"
 )
 
@@ -38,3 +38,23 @@ def test_no_unconditional_gha_cache_reference_remains() -> None:
 
     assert len(lines) == 2
     assert all("github.ref_type != 'tag'" in line for line in lines)
+
+
+def test_the_ocr_image_never_uses_the_gha_cache() -> None:
+    # Its base layers of about 2 GB per architecture would fill the cache of the whole repository.
+    text = WORKFLOW.read_text(encoding="utf-8")
+    entries = re.findall(r"- name: (\w+)\n\s+dockerfile: (\S+)\n\s+cache: (true|false)", text)
+
+    assert ("ocr", "ocr/Dockerfile", "false") in entries
+    assert {name for name, _, cache in entries if cache == "true"} == {"backend", "frontend"}
+
+
+def test_every_trivy_step_turns_its_cache_off() -> None:
+    # trivy-action keeps its binary and databases in the gha cache unless told otherwise; the jobs
+    # calling it here run on release tags.
+    text = WORKFLOW.read_text(encoding="utf-8")
+    steps = [step for step in re.split(r"\n\s+- (?=uses:|name:)", text) if "aquasecurity/trivy-action@" in step]
+
+    assert steps
+    for step in steps:
+        assert re.search(r"^\s+cache: 'false'$", step, re.M), step

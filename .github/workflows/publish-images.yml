@@ -23,7 +23,7 @@ env:
 
 jobs:
   # Runs once, before any image is built: the release guard and the tags, labels and annotations of
-  # both images. Checked here instead of in each build job, so the guard runs exactly once and
+  # all three images. Checked here instead of in each build job, so the guard runs exactly once and
   # nothing is pushed - not even an untagged digest - before it has passed.
   prepare:
     runs-on: ubuntu-latest
@@ -98,7 +98,7 @@ jobs:
             echo "::error::Release-Notizen für $TAG lassen sich nicht erzeugen, siehe Meldung oben (docs/releases.md)"
             exit 1
           fi
-          for ref in "$PREFIX-backend" "$PREFIX-frontend" "$CHART"; do
+          for ref in "$PREFIX-backend" "$PREFIX-frontend" "$PREFIX-ocr" "$CHART"; do
             if ! published=$(deploy/helm/ci/oci-published.sh "$ref" "${TAG#v}"); then
               echo "::error::Abfrage von $ref:${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
               exit 1
@@ -125,6 +125,7 @@ jobs:
           images: |
             ${{ steps.prefix.outputs.image-prefix }}-backend
             ${{ steps.prefix.outputs.image-prefix }}-frontend
+            ${{ steps.prefix.outputs.image-prefix }}-ocr
           # A scheduled rebuild republishes the tags of a commit that already has an image; both
           # tags move to the new digest together, so sha-<commit> is always the newest build of that
           # commit and never diverges from :main. A release build leaves sha-<commit> alone for the
@@ -150,7 +151,7 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
           PREFIX: ${{ steps.prefix.outputs.image-prefix }}
         run: |
-          for image in "$PREFIX-backend" "$PREFIX-frontend"; do
+          for image in "$PREFIX-backend" "$PREFIX-frontend" "$PREFIX-ocr"; do
             if ! grep -qxF "$image:${TAG#v}" <<<"$TAGS"; then
               echo "::error::Aus $TAG entsteht kein Image-Tag ${TAG#v}; keine gültige SemVer-Version (docs/releases.md)"
               exit 1
@@ -165,8 +166,8 @@ jobs:
     needs: prepare
     runs-on: ${{ matrix.platform.runner }}
     # A leg takes 1-4 minutes, a cold one (release tag, or the cache evicted after 7 days without
-    # access) up to about six. A hung leg is cancelled instead of holding the run for hours;
-    # "Re-run failed jobs" resumes the run.
+    # access) up to about six; an ocr leg, which never uses the cache, up to about fifteen. A hung
+    # leg is cancelled instead of holding the run for hours; "Re-run failed jobs" resumes the run.
     timeout-minutes: 30
     # Only runs building the very same commit may cancel each other - a scheduled and a push run of
     # the same tip, where the slower one would otherwise push last and leave :main on the older
@@ -179,15 +180,25 @@ jobs:
       contents: read
       packages: write
     strategy:
+      # A failed leg, such as an OCR model download, must not cancel the others; their digests
+      # stay usable for "Re-run failed jobs".
+      fail-fast: false
       matrix:
         image:
-          # Repo-root context for both: backend's Gradle build depends on the sibling opaa-api/
+          # Repo-root context for all: backend's Gradle build depends on the sibling opaa-api/
           # module via settings.gradle.kts, so a context scoped to backend/ alone would not see
-          # it.
+          # it. cache: false keeps the OCR image out of the gha cache, whose 10 GB per repository
+          # its base layers of about 2 GB per architecture would fill; the image is pinned
+          # completely (ocr/Dockerfile), so a rebuild only downloads the models again.
           - name: backend
             dockerfile: backend/Dockerfile
+            cache: true
           - name: frontend
             dockerfile: frontend/Dockerfile
+            cache: true
+          - name: ocr
+            dockerfile: ocr/Dockerfile
+            cache: false
         # The platforms of the published images; publish refuses an index without exactly these
         # (EXPECTED_PLATFORMS there).
         platform:
@@ -201,6 +212,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # The OCR base image alone takes several gigabytes in the builder.
+      - name: Speicherplatz freigeben
+        if: matrix.image.name == 'ocr'
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -235,8 +251,8 @@ jobs:
           provenance: mode=max
           # A release tag builds without the gha cache: every job that runs on main may write there,
           # whatever scope it names, and a tag run restores from main's cache (docs/renovate.md).
-          cache-from: ${{ github.ref_type != 'tag' && format('type=gha,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
-          cache-to: ${{ github.ref_type != 'tag' && format('type=gha,mode=max,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
+          cache-from: ${{ github.ref_type != 'tag' && matrix.image.cache && format('type=gha,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
+          cache-to: ${{ github.ref_type != 'tag' && matrix.image.cache && format('type=gha,mode=max,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
           # The frontend's runtime stage applies the OS security updates of the build day; a
           # cache hit on that layer would republish the state of an arbitrarily old build, so
           # this one stage is always rebuilt while every earlier stage keeps its cache. The
@@ -442,10 +458,10 @@ jobs:
       contents: read
       packages: write
     strategy:
-      # A failed index of one image must not cancel the other's half-way through its tags.
+      # A failed index of one image must not cancel the others half-way through their tags.
       fail-fast: false
       matrix:
-        name: [backend, frontend]
+        name: [backend, frontend, ocr]
     env:
       IMAGE: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.name }}
       # Sorted, space-separated; must match the platform list of the build matrix.
@@ -591,7 +607,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [backend, frontend]
+        name: [backend, frontend, ocr]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -650,10 +666,10 @@ jobs:
       attestations: write
       packages: write
     strategy:
-      # A failed attestation of one image must not cancel the other's.
+      # A failed attestation of one image must not cancel the others.
       fail-fast: false
       matrix:
-        name: [backend, frontend]
+        name: [backend, frontend, ocr]
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -684,6 +700,97 @@ jobs:
           subject-digest: ${{ steps.digest.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+
+  # The CycloneDX SBOM and the license overview of the OCR image of a release (docs/sbom.md). Its
+  # Python environment and models come with the image, not from a lockfile of this repository, so
+  # both are read from the published image itself, by the digest image-digests verified; the Python
+  # packages are the same for both architectures, linux/amd64 is read. The license check repeats
+  # the one of ocr-image.yml, which every change to the image passed before the merge.
+  ocr-sbom:
+    needs: [prepare, image-digests]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TRIVY_PLATFORM: linux/amd64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Speicherplatz freigeben
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: verified-index-digest-ocr
+          path: ${{ runner.temp }}/verified
+
+      - name: Image-Referenz bestimmen
+        id: image
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image-prefix }}-ocr
+        run: |
+          digest=$(cat "$RUNNER_TEMP/verified/ocr")
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Kein gültiger Index-Digest: '$digest'"
+            exit 1
+          fi
+          echo "ref=$IMAGE@$digest" >>"$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/ocr-sbom"
+
+      - name: SBOM erzeugen
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        # A new package in GHCR starts private; Trivy reads it with the token of this job, which
+        # only this step holds.
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ steps.image.outputs.ref }}
+          # Release jobs read and write no gha cache (Trivy binary and databases included).
+          cache: 'false'
+          format: cyclonedx
+          output: ${{ runner.temp }}/ocr-sbom/opaa-ocr-${{ needs.prepare.outputs.version }}.cdx.json
+
+      - name: Lizenzen prüfen
+        run: >-
+          .github/scripts/ocr_licenses.sh
+          "$RUNNER_TEMP/ocr-sbom/opaa-ocr-$VERSION.cdx.json"
+          "$RUNNER_TEMP/ocr-sbom/opaa-ocr-$VERSION-lizenzen.md"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ocr-sbom
+          path: ${{ runner.temp }}/ocr-sbom/*
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  # Signed SLSA provenance for the SBOM and license overview of the OCR image, like
+  # update-package-attestation; no checkout next to the OIDC token.
+  ocr-sbom-attestation:
+    needs: ocr-sbom
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ocr-sbom
+          path: ${{ runner.temp }}/ocr-sbom
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/ocr-sbom/*.cdx.json
+            ${{ runner.temp }}/ocr-sbom/*.md
 
   # The chart follows the attested images; its values pin all three to their verified index
   # digests, and chart version and appVersion are the release version (ADR-0042, Entscheidung 7). A
@@ -825,7 +932,7 @@ jobs:
   # architectures as OCI archives, chart, update package, SBOMs, their attestations and SHA256SUMS,
   # attested as a whole. Pulled back from GHCR, so it holds exactly what was published.
   offline-bundle:
-    needs: [prepare, image-attestation, chart-attestation, update-package-attestation]
+    needs: [prepare, image-attestation, chart-attestation, update-package-attestation, ocr-sbom-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
@@ -840,14 +947,14 @@ jobs:
   # The GitHub release follows the attested images, chart, update package and offline bundle, so its
   # notes never announce an artifact that failed to publish. Notes come from the merged PRs, grouped
   # by .github/release.yml, plus the fixed part of deploy/helm/ci/release-notes.sh. The attested
-  # archive with its .sha256 file, the attested SBOMs and the offline bundle with its .sha256 file
-  # and Sigstore bundle become assets.
+  # archive with its .sha256 file, the attested SBOMs, the license overview of the OCR image and the
+  # offline bundle (whole or in parts) with its .sha256 file and Sigstore bundle become assets.
   release:
-    needs: [publish, image-attestation, chart, chart-attestation, update-package-attestation, offline-bundle]
+    needs: [publish, image-attestation, chart, chart-attestation, update-package-attestation, ocr-sbom-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    # The offline bundle is several hundred megabytes to upload.
-    timeout-minutes: 30
+    # The offline bundle with the OCR image is several gigabytes to upload.
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -862,6 +969,11 @@ jobs:
         with:
           name: update-package
           path: ${{ runner.temp }}/update-package/
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ocr-sbom
+          path: ${{ runner.temp }}/ocr-sbom/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -897,4 +1009,4 @@ jobs:
             flags+=("--latest=$latest")
           fi
           echo "Latest: $latest, Notizen ab: ${previous:-automatisch}"
-          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/* "$RUNNER_TEMP"/offline-bundle/*
+          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/* "$RUNNER_TEMP"/ocr-sbom/* "$RUNNER_TEMP"/offline-bundle/*

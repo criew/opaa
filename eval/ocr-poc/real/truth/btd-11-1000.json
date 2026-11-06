@@ -1,0 +1,29 @@
+{
+ "id": "btd-11-1000",
+ "checks": [
+  "Sachgebiet 640",
+  "(ERP-Wirtschaftsplangesetz 1988)",
+  "§ 9 Die §§ 2 bis 8 gelten",
+  "§ 13 Abs. 1 des Dritten Überleitungsgesetzes",
+  "Dieses Gesetz tritt am 1. Januar 1988 in Kraft",
+  "215 000 000 DM"
+ ],
+ "table_rows": [
+  [
+   "853 11-330",
+   "Abwasserreinigung",
+   "465 000",
+   "500 000",
+   "309 276"
+  ],
+  [
+   "Umweltschutz",
+   "(1 035 000)",
+   "(1 125 000)",
+   "(603 849)"
+  ]
+ ],
+ "paragraphs": [
+  "Die im Wirtschaftsplan veranschlagten Mittel können unter Einschaltung der Hauptleihinstitute Kreditanstalt für Wiederaufbau, Frankfurt, und Deutsche Ausgleichsbank, Bonn, sowie in Berlin durch die Berliner Industriebank AG, Berlin, vergeben werden."
+ ]
+}

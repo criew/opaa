@@ -237,6 +237,31 @@ def test_scan_targets_take_the_newest_final_release_of_every_supported_line(tmp_
     ]
 
 
+def test_scan_targets_add_the_ocr_image_of_a_release_that_carries_it(tmp_path: Path) -> None:
+    path = tmp_path / "releases.jsonl"
+    path.write_text(
+        json.dumps({"tag_name": "v0.3.0", "prerelease": False, "draft": False,
+                    "assets": ["opaa-ocr-0.3.0.cdx.json", "opaa-backend-0.3.0.cdx.json"]}) + "\n"
+        + json.dumps({"tag_name": "v0.2.4", "prerelease": False, "draft": False,
+                      "assets": ["opaa-ocr-0.2.3.cdx.json"]}) + "\n",
+        encoding="utf-8",
+    )
+
+    result = run(
+        "scan-targets", "--file", write(tmp_path, THREE_LINES[:2]).as_posix(),
+        "--releases", path.as_posix(), "--image-prefix", "ghcr.io/criew/opaa",
+        "--date", "2027-01-15",
+    )
+
+    assert target_images(result) == [
+        ("backend-0.2", "ghcr.io/criew/opaa-backend:0.2.4"),
+        ("frontend-0.2", "ghcr.io/criew/opaa-frontend:0.2.4"),
+        ("backend-0.3", "ghcr.io/criew/opaa-backend:0.3.0"),
+        ("frontend-0.3", "ghcr.io/criew/opaa-frontend:0.3.0"),
+        ("ocr-0.3", "ghcr.io/criew/opaa-ocr:0.3.0"),
+    ]
+
+
 def test_scan_targets_drop_a_line_after_its_support_end(tmp_path: Path) -> None:
     result = scan_targets(tmp_path, THREE_LINES[:2], ["v0.2.3", "v0.3.0"], "2027-02-01")
 
