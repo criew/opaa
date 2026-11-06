@@ -165,6 +165,7 @@ pnpm exec playwright install --with-deps chromium   # Browser installieren (einm
 pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 pnpm run test:local-auth                # lokale Anmeldung im Modus oidc, installiert aus e2e/installation/
 pnpm run test:installation              # Einrichtungs-Assistent gegen einen Stack im Installationsmodus
+pnpm run test:ocr                       # Texterkennung mit echtem opaa-ocr, als Video (siehe unten)
 ```
 
 Die Stacks im Modus `oidc` (local-auth, Demo-Smoke, Zwei-Instanzen, ohne Internet) installieren sich
@@ -280,6 +281,42 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 
 `.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
 `offline-suite`; kein Required Check.
+
+## Texterkennung gescannter Dokumente
+
+Die Texterkennung (ADR-0069) ist in der E2E-Suite zweimal geprüft, beide Male mit demselben
+Testdokument: der verscannten Baugenehmigungsgebührensatzung aus `eval/corpus/verwaltung`
+(synthetisch, CC0) mit Gebührentabelle, §-Gliederung und einer Seite mit `/Rotate 90`. Sie steht
+unter `demo/seed/e2e-data/text-recognition/`. Den Rahmen jeder Fundstelle vergleichen beide mit dem
+Ort, an dem die Stelle gesetzt wurde (`satzung-scan.layout.json`), nicht mit den Boxen der
+Erkennung.
+
+- **Suite:** `e2e/tests/text-recognition.spec.ts` läuft mit `ocr-stub` als docling-serve. Der
+  Ersatzdienst spielt das DoclingDocument ab, das ein echter `opaa-ocr`-Lauf aus dem Testdokument
+  gemacht hat (`satzung-scan.docling.json`). Dabei prüft er Schlüssel und Optionen. Geprüft
+  werden die Szenarien Ausgeschaltet, Einrichten, Hochladen, Fragen und Fundstelle an drei Stellen
+  sowie Nachholen. Für das Nachholen wartet der letzte Schritt auf den Hintergrunddurchgang, der
+  alle fünf Minuten läuft.
+- **Abnahme:** Das Ziel `ocr` startet den Stack der Suite mit `e2e/docker-compose.ocr.yml`, also
+  mit dem echten `opaa-ocr` in einem internen Netz, Schlüssel je Lauf. Es führt
+  `e2e/ocr/tests/abnahme.spec.ts` aus: Einrichten, Hochladen, Fragen und Fundstellen. Das Video wird
+  in ruhigem Tempo und mit sichtbarem Zeiger aufgezeichnet. Die Lage der Rahmen wird mit Toleranz
+  geprüft.
+
+```bash
+# aus e2e/: Compose-Projekt opaa-ocr-e2e, Frontend auf 13008, nach dem Lauf abgebaut;
+# OPAA_OCR_IMAGE wählt das Image (Vorgabe ghcr.io/criew/opaa-ocr:main), Video unter test-results-ocr/
+pnpm run test:ocr
+
+# Antwort des echten opaa-ocr für den Ersatzdienst neu aufzeichnen (aus dem Wurzelverzeichnis),
+# nötig nach einer Änderung am Testdokument oder an den Optionen
+demo/seed/e2e-data/text-recognition/capture_docling.sh ghcr.io/criew/opaa-ocr:main
+```
+
+`.github/workflows/ocr-acceptance.yml` („OCR-Abnahme“) läuft auf Zuruf und an einem PR über das Label
+`ocr-abnahme`. Der Workflow baut `opaa-ocr` aus `ocr/Dockerfile`, zeichnet die Antwort zum
+Testdokument als Artefakt `ocr-docling-json` auf und lädt Video, Screenshots und Bericht als
+`ocr-abnahme` hoch. Er ist kein Required Check.
 
 ## ZAP-Baseline-Scan
 

@@ -64,6 +64,11 @@ e2e/
   offline.env                    Environment des Ziels "offline"
   docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
+  ocr-stub/server.mjs            Ersatz für docling-serve (opaa-ocr), spielt die aufgezeichnete Antwort ab
+  ocr/                           Ziel "ocr": Abnahme der Texterkennung mit echtem opaa-ocr, als Video
+    playwright.config.ts
+    tests/abnahme.spec.ts
+  docker-compose.ocr.yml         Compose-Overlay des Ziels "ocr": opaa-ocr in einem internen Netz
   ui-lab/                        Werkzeuge für UI-Varianten gegen das Frontend mit Mocks (Screenshots,
                                  Kennzahlen, Videos, Vergleich), kein Teil der Suite, siehe ui-lab/README.md
 ```
@@ -698,6 +703,19 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
+- `tests/text-recognition.spec.ts` (#3606) — Texterkennung gescannter PDFs (ADR-0069) mit
+  `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Der Ablauf hat sechs Schritte:
+  1. Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“ abgewiesen.
+  2. Verbindungstest und Einschalten über die API. Danach zeigt die Bibliothek
+     „1 Scan wartet auf die Texterkennung“.
+  3. Upload in eine neue Bibliothek, das Dokument wird indiziert.
+  4. Drei Fragen, je mit einem Begriff in „…“, sodass ai-stub genau eine Stelle zitiert. Der Beleg
+     ist als maschinell erkannt gekennzeichnet. „Dokument öffnen“ zeigt den Rahmen auf der richtigen
+     Seite, sichtbar und an der gesetzten Stelle, daneben „Erkannter Text“. Die drei Stellen sind
+     eine Tabellenzeile, ein Absatz aus § 13 und eine Seite mit `/Rotate 90`.
+  5. Der abgewiesene Scan wird vom Hintergrunddurchgang nachgeholt (bis zu fünf Minuten).
+  6. Die Rolle ist danach wieder aus, weil sie installationsweit gilt.
+
 - `tests/upload-limits.spec.ts` (#3466) — die drei Ablehnungen vor jeder Speicherung in einem
   Upload: Dateigröße, Speicherkontingent der Bibliothek und Virenprüfung (EICAR, siehe
   „Virenprüfung und kleine Aufnahmegrenzen"). Jede Datei steht mit ihrem deutschen Grund in der
@@ -1042,6 +1060,36 @@ Systemverwaltung in die Outbox; die Szenarien 03 und 05 zählen darüber die Mai
 
 `.github/workflows/multi-instance.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request
 über das Label `multi-instance-suite`, je einmal unter Compose und auf kind; kein Required Check.
+
+## Texterkennung (#3606)
+
+Ein Testdokument, zwei Betriebsarten. Das Dokument ist die verscannte Baugenehmigungsgebührensatzung
+unter `demo/seed/e2e-data/text-recognition/`; Herkunft und Neuerzeugung stehen dort in
+`SOURCE.md`.
+
+- **In der Suite** spielt `ocr-stub` (Skript im `node`-Image wie `ai-stub`) docling-serve. Für das
+  Testdokument, erkannt an seiner SHA-256, gibt er das DoclingDocument zurück, das ein echter
+  `opaa-ocr`-Lauf daraus gemacht hat. Für jede andere PDF-Datei, etwa die Testseite des
+  Verbindungstests, gibt er eine Zeile Text zurück. Ohne den Schlüssel dieses Laufs antwortet er mit
+  401, mit anderen Optionen als denen des Backends mit 422. `/control/conversions` auf Port 18094
+  zählt die Umwandlungen. `docker-compose.e2e.yml` erlaubt die Texterkennung im Betrieb
+  (`OPAA_OCR_ENABLED`); die Rolle selbst schaltet nur das Szenario ein und wieder aus.
+- **Abnahme mit echtem `opaa-ocr`**: ein eigenes Ziel. Es ist nie Teil von `pnpm test`.
+
+```bash
+cd e2e
+pnpm run test:ocr          # OPAA_OCR_IMAGE wählt das Image, Vorgabe ghcr.io/criew/opaa-ocr:main
+```
+
+Das Ziel startet den Stack der Suite mit `docker-compose.ocr.yml` als Compose-Projekt
+`opaa-ocr-e2e` (Frontend 13008). Der Schlüssel ist je Lauf zufällig, das Backend startet erst, wenn
+`opaa-ocr` seine Modelle geladen hat. Danach führt es `ocr/tests/abnahme.spec.ts` aus: Einrichten
+mit Verbindungstest und Screenshot der Statusseite, Upload, drei Fragen mit Fundstelle. Eine
+gescheiterte Stelle beendet die Aufzeichnung nicht; der Test scheitert am Ende mit allen Befunden.
+Video und Screenshots liegen unter `test-results-ocr/`.
+`.github/workflows/ocr-acceptance.yml` fährt das Ziel auf Zuruf und an einem PR über das Label
+`ocr-abnahme`. Ein Szenario 1 über die Oberfläche („Modelle → Texterkennung“) folgt, sobald der
+Reiter (#3603) auf diesem Stand ist. Bis dahin richtet das Szenario die Rolle über die API ein.
 
 ## Betrieb ohne Internet
 

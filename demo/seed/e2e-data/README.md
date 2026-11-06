@@ -18,6 +18,9 @@ suite's own UI-driven scenarios (Issue #233) - not the demo (Rheinfurt) corpus, 
   MSG is an Apache POI test file under the Apache License 2.0, see `demo/corpus/SOURCE.md` and
   `demo/corpus/THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`.
 - `test-documents/metadatendokument-*.txt` — the two documents of `library-metadata.spec.ts`.
+- `text-recognition/` — the scanned statute of `text-recognition.spec.ts` and of the target `ocr`,
+  with the places its passages were typeset at and the DoclingDocument a real opaa-ocr run made of
+  it, which `e2e/ocr-stub` replays; origin and how to rebuild in `text-recognition/SOURCE.md`.
 - `rss-feed/htdocs/` — static docroot for `e2e/docker-compose.e2e.yml`'s `rss-feed` service, mounted
   read-only. **Not a seed input at all** - `RssFeedIndexingExecutorTest`-style scenarios
   (`rss-feed-library.spec.ts` #471, `knowledge-library-nacharbeiten.spec.ts` #514) point library
