@@ -11,8 +11,8 @@
 # - carries a fixed secret: a key ending in SECRET, PASSWORD, PASSWD, TOKEN, API_KEY, SECRET_KEY,
 #   SECRET_ACCESS_KEY, ENCRYPTION_KEY or PRIVATE_KEY with a literal value or a ${VAR:-default}
 #   default, unless SECRET_EXCEPTIONS names file, service and key with a reason.
-# An exception or unpublished service that matches nothing any more fails as well. The rules are listed for operators in
-# docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels".
+# An exception or unpublished service that matches nothing any more fails as well. The rules are
+# listed for operators in docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels".
 # Line-based: ports: and environment: in flow style are refused rather than read.
 set -euo pipefail
 

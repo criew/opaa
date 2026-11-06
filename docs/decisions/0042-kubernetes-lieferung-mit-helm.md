@@ -43,8 +43,8 @@ Neuinstallation.
 ### 3. Externe Dienste werden angebunden, nicht ausgeliefert
 
 PostgreSQL mit pgvector, LLM-, Embedding-, Rerank-, Transkriptions- und Texterkennungsendpunkte,
-Objektspeicher, Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne Anbieter läuft die
-lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
+Objektspeicher, Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne
+Anbieter läuft die lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
 
 | Art | Beispiele | Im Chart |
 |---|---|---|
@@ -132,7 +132,8 @@ läuft: Er braucht keinen Ausgang (Entscheidung 3).
 Ein Release-Tag `vX.Y.Z` erzeugt Images `X.Y.Z` und den Chart mit `version` und `appVersion` `X.Y.Z` in
 einem Lauf (`publish-images.yml`, `deploy/helm/ci/package-chart.sh`); die Vorgabewerte des
 veröffentlichten Charts heften genau diese Images per Index-Digest an (`backend.image.digest`,
-`frontend.image.digest`, `ocr.service.image.digest`), Images und Chart tragen je eine signierte Provenance des Laufs. So zieht ein
+`frontend.image.digest`, `ocr.service.image.digest`), Images und Chart tragen je eine signierte
+Provenance des Laufs. So zieht ein
 Cluster das geprüfte Image, auch wenn ein Tag in der Registry umgehängt würde. Im Repository steht
 `0.0.0-dev`; die CI prüft keine Versionssteigerung (`ct lint --check-version-increment=false`). Ein
 reiner Chart-Fix ist ein Patch-Release der Anwendung — dafür entfällt eine Zuordnungstabelle.

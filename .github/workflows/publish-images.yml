@@ -687,8 +687,9 @@ jobs:
 
   # The chart follows the attested images; its values pin all three to their verified index
   # digests, and chart version and appVersion are the release version (ADR-0042, Entscheidung 7). A
-  # first attempt fails on a taken chart version like publish. A re-run that finds the version published skips
-  # the push and goes on with the registry's chart if its content is this commit's, else fails.
+  # first attempt fails on a taken chart version like publish. A re-run that finds the version
+  # published skips the push and goes on with the registry's chart if its content is this
+  # commit's, else fails.
   chart:
     needs: [publish, image-attestation]
     if: startsWith(github.ref, 'refs/tags/v')

@@ -740,8 +740,9 @@ networkPolicy:
     # e.g. { matchLabels: { app.kubernetes.io/name: ingress-nginx } }
     controllerPodSelector: {}
   # Egress of backend and frontend: DNS, the frontend to the backend, the backend to the evaluation
-  # database, to the text recognition service (ocr.service) and to the targets below. Off by default - enabled too early, it blocks identity
-  # provider, models and sources that are not listed yet. Recommended after the setup.
+  # database, to the text recognition service (ocr.service) and to the targets below. Off by
+  # default - enabled too early, it blocks identity provider, models and sources that are not
+  # listed yet. Recommended after the setup.
   egress:
     enabled: false
     # Egress rules to the cluster DNS, for backend and frontend. OpenShift: namespace openshift-dns,

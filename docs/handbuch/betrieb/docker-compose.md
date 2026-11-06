@@ -362,8 +362,8 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
 - **Einrichtung:** Unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
   `http://opaa-ocr:5001` und denselben Schlüssel eintragen
   ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)).
-- **Grenzen:** Health Check auf die Readiness des Dienstes, Read-only Filesystem mit einem Volume
-  unter `/tmp`, keine Capabilities. CPU und Arbeitsspeicher begrenzen `OPAA_OCR_CPUS` und
+- **Grenzen:** Health Check auf die Readiness des Dienstes, Read-only Filesystem mit `/tmp` im
+  Arbeitsspeicher (tmpfs, `OPAA_OCR_TMP_SIZE`; nach dem Stopp leer), keine Capabilities. CPU und Arbeitsspeicher begrenzen `OPAA_OCR_CPUS` und
   `OPAA_OCR_MEMORY`, das Image wählt `OPAA_OCR_IMAGE_TAG`
   ([Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen)).
 - **Mehrere Instanzen:** Das Overlay hängt nur `backend` an das Netz des Dienstes. Mit
