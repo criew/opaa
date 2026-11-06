@@ -14,6 +14,7 @@ export type QueryRequest = components['schemas']['QueryRequest']
 export type QueryMetadata = components['schemas']['QueryMetadata']
 export type ChunkLocation = components['schemas']['ChunkLocation']
 export type ChunkAnchor = components['schemas']['ChunkAnchor']
+export type ChunkRegion = components['schemas']['ChunkRegion']
 export type DocumentTextResponse = components['schemas']['DocumentTextResponse']
 export type DocumentTextPassage = components['schemas']['DocumentTextPassage']
 export type DocumentTextSection = components['schemas']['DocumentTextSection']
@@ -412,6 +413,12 @@ export type TranscriptionModelSettingsResponse =
   components['schemas']['TranscriptionModelSettingsResponse']
 export type TranscriptionModelSettingsRequest =
   components['schemas']['TranscriptionModelSettingsRequest']
+export type TextRecognitionBinding = components['schemas']['TextRecognitionBinding']
+export type TextRecognitionSettingsResponse =
+  components['schemas']['TextRecognitionSettingsResponse']
+export type TextRecognitionSettingsRequest = components['schemas']['TextRecognitionSettingsRequest']
+export type TextRecognitionTestRequest = components['schemas']['TextRecognitionTestRequest']
+export type TextRecognitionTestResponse = components['schemas']['TextRecognitionTestResponse']
 export type ModelRoleTestRequest = components['schemas']['ModelRoleTestRequest']
 
 export type MailEncryption = components['schemas']['MailEncryption']

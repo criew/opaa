@@ -49,6 +49,8 @@ export const ENTRY_GROUPS: { label: string; entries: PrototypeEntry[] }[] = [
       { label: 'Spaces', path: '/spaces' },
       { label: 'Space Engineering', path: '/spaces/space-engineering' },
       { label: 'Chat', path: '/chat' },
+      { label: 'Chat mit Scan-Belegen', path: '/spaces/space-personal/chats/chat-scan' },
+      { label: 'Modelle · Texterkennung', path: '/admin/models/text-recognition' },
       { label: 'Anbindungen', path: '/admin/connections' },
       { label: 'Benutzer', path: '/admin/users' },
       { label: 'Gruppen', path: '/admin/groups' },

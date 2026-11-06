@@ -14,6 +14,10 @@ import type {
   RerankModelSettingsRequest,
   RerankModelSettingsResponse,
   TranscriptionModelSettingsRequest,
+  TextRecognitionSettingsRequest,
+  TextRecognitionSettingsResponse,
+  TextRecognitionTestRequest,
+  TextRecognitionTestResponse,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
@@ -230,6 +234,47 @@ export async function changeEmbeddingModelEndpoint(
     const { data } = await client.put<EmbeddingReindexStatusResponse>(
       '/v1/admin/models/embedding/endpoint',
       draft,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// The text recognition role (epic #2640): binding, endpoint and key; the operation switch comes
+// with the response as operationEnabled.
+export async function getTextRecognitionSettings(): Promise<TextRecognitionSettingsResponse> {
+  try {
+    const { data } = await client.get<TextRecognitionSettingsResponse>(
+      '/v1/admin/models/text-recognition',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateTextRecognitionSettings(
+  request: TextRecognitionSettingsRequest,
+): Promise<TextRecognitionSettingsResponse> {
+  try {
+    const { data } = await client.put<TextRecognitionSettingsResponse>(
+      '/v1/admin/models/text-recognition',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testTextRecognition(
+  request: TextRecognitionTestRequest,
+): Promise<TextRecognitionTestResponse> {
+  try {
+    const { data } = await client.post<TextRecognitionTestResponse>(
+      '/v1/admin/models/text-recognition/test',
+      request,
     )
     return data
   } catch (err) {

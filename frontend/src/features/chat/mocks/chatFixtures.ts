@@ -7,8 +7,11 @@ import type {
   ChatSearchResponse,
 } from '@/shared/api/types'
 import { mockQueryResponses } from './queryFixtures'
+import { SCAN_CHAT } from './scanChatFixtures'
 
 const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
+  // UI lab of epic #2640: an answer citing scans; left out of unit tests, which count chats
+  ...(import.meta.env.MODE === 'test' ? {} : { 'chat-scan': SCAN_CHAT }),
   'chat-personal-1': {
     id: 'chat-personal-1',
     spaceId: 'space-personal',

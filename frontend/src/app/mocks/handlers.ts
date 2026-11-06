@@ -38,6 +38,7 @@ import { identityProviderHandlers } from '@/features/identity-provider/mocks/ide
 // model
 import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 import { modelRoleHandlers } from '@/features/model/mocks/modelRoleHandlers'
+import { textRecognitionHandlers } from '@/features/model/mocks/textRecognitionHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
@@ -121,6 +122,7 @@ export const handlers = [
   // identity-provider
   ...identityProviderHandlers,
   // model
+  ...textRecognitionHandlers,
   ...modelRoleHandlers,
   ...modelHandlers,
   // mail

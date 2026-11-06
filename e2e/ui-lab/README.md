@@ -19,7 +19,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
 | `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
 | `site-template/` | Vorlage der Vergleichsseite und Beispielkonfiguration `site.example.json` |
-| `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs`, `service-accounts.mjs` (Dienstkonten in Verwaltung und Bibliothek) |
+| `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs`, `service-accounts.mjs` (Dienstkonten in Verwaltung und Bibliothek), `ocr.mjs` (Texterkennung: Reiter der Modellverwaltung, Beleg und Scan-Viewer) |
 | `lib/` | Browserstart, Messung, Elementhelfer |
 | `calibration/` | Kalibrierseiten `good.html` und `bad.html` |
 
@@ -124,6 +124,15 @@ des Tabs, Navigation und Neuladen behalten sie; `?mockScenario=default` setzt zu
 | `slow` | wie `default`, Antwort nach 3 s (`sessionStorage` `opaa.mockSlowMs` überschreibt die Dauer) | wie `default`, nach 3 s | – |
 | `failed` | HTTP 403 (SharePoint, Drive, S3) bzw. 502 (Confluence, Nextcloud, SMB, Dropbox) mit deutscher Meldung | `reachable:false`, `credentialsVerified:false` mit passender Ablehnung; Webverzeichnis und RSS HTTP 502 | `lastScheduledRunsFailed`, 3 fehlgeschlagene Läufe |
 | `partial` | 6 Sites · 8 Bibliotheken · 30 Ordner, 4 Ebenen · 40 Spaces · 25 Bereiche · 30 Buckets · 30 Ordner; alle `complete:false` mit Meldung | Teilfehler je Bereich: jeder 2. Bereich scheitert (`details.scopes`, `details.libraries`, `details.folders`, `details.unreadableSpaces`) | Lauf mit 17 Fehlern |
+
+**Texterkennung** (Lab-Branch `feature/2640_ui-lab-base`): `GET/PUT /admin/models/text-recognition`
+liefert je Szenario `default`/`slow` docling-serve eingerichtet, `small`/`empty` die leere Rolle,
+`scale` ein Vision-Modell mit langer Adresse, `failed` einen nicht erreichbaren Dienst mit
+abgelehntem Schlüssel, `partial` den Betriebsschalter aus. Eine Adresse mit Anmeldedaten oder einem
+internen Ziel außer `opaa-ocr` scheitert an der Zielprüfung (400, `BLOCKED`). Der Chat
+`/spaces/space-personal/chats/chat-scan` zitiert ein Scan-PDF ohne Textebene mit Rahmen
+(`e2e/ui-lab/fixtures/make_scan_pdf.py`), einen per Vision-Modell gelesenen Scan ohne Rahmen und ein
+Text-PDF.
 
 Weitere Abfrageformen für Entwürfe, die tiefer browsen: Nextcloud, SMB und Dropbox nehmen
 `query.path` (auch `query.folder`) und liefern die direkten Unterordner; S3 nimmt `query.bucket`

@@ -508,8 +508,185 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/models/text-recognition:
+    get:
+      operationId: getTextRecognitionModelSettings
+      tags: [model]
+      summary: Get the text recognition role (system admin only)
+      description: >
+        The OCR service of the installation with one of two bindings, DOCLING_SERVE or
+        OPENAI_VISION. operationEnabled tells whether the operation allows text recognition at
+        all (OPAA_OCR_ENABLED); while false the role is neither evaluated nor called.
+      responses:
+        "200":
+          description: The text recognition role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateTextRecognitionModelSettings
+      tags: [model]
+      summary: Change the text recognition role (system admin only)
+      description: >
+        As updateRerankModelSettings, with the address check of models (no userinfo, internal
+        targets only via the allowlist, no redirects; 400 with code BLOCKED). Switching the role on
+        is refused (400) while the operation switch is off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextRecognitionSettingsRequest"
+      responses:
+        "200":
+          description: The text recognition role after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/text-recognition/test:
+    post:
+      operationId: testTextRecognitionModel
+      tags: [model]
+      summary: Probe an OCR endpoint, saved or not yet saved (system admin only)
+      description: >
+        DOCLING_SERVE: health check, then one bundled test page with the options OPAA sends in
+        operation. OPENAI_VISION: model list and the test page as image. Never sends library
+        content. Key rule and address check as for testRerankModel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextRecognitionTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; outcome names the failed stage.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextRecognitionTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
+    TextRecognitionBinding:
+      type: string
+      description: How OPAA talks to the OCR service.
+      enum: [DOCLING_SERVE, OPENAI_VISION]
+
+    TextRecognitionSettingsResponse:
+      type: object
+      required: [enabled, binding, apiKeySet, state, operationEnabled, retiredVariables]
+      properties:
+        enabled:
+          type: boolean
+          description: The role's switch; false is the factory default.
+        binding:
+          $ref: "#/components/schemas/TextRecognitionBinding"
+        baseUrl:
+          type: string
+          nullable: true
+          example: http://opaa-ocr:5001
+        model:
+          type: string
+          nullable: true
+          description: OPENAI_VISION only.
+          example: PaddlePaddle/PaddleOCR-VL
+        apiKeySet:
+          type: boolean
+          description: Whether a key is stored - never the key itself.
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        operationEnabled:
+          type: boolean
+          description: The operation switch OPAA_OCR_ENABLED; false is the factory default.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        retiredVariables:
+          type: array
+          items:
+            type: string
+
+    TextRecognitionSettingsRequest:
+      type: object
+      required: [enabled, binding]
+      properties:
+        enabled:
+          type: boolean
+        binding:
+          $ref: "#/components/schemas/TextRecognitionBinding"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled with OPENAI_VISION.
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored key; an empty string removes it; any other
+            value replaces it.
+
+    TextRecognitionTestRequest:
+      type: object
+      required: [binding, baseUrl]
+      properties:
+        binding:
+          $ref: "#/components/schemas/TextRecognitionBinding"
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+
+    TextRecognitionTestResponse:
+      type: object
+      required: [success, outcome, message]
+      properties:
+        success:
+          type: boolean
+        outcome:
+          type: string
+          description: The stage that decided the test.
+          enum: [OK, UNREACHABLE, KEY_REJECTED, ENGINE_MISSING, NO_TEXT, BLOCKED]
+        message:
+          type: string
+          description: German, user-facing, never names the key.
+        pages:
+          type: integer
+          nullable: true
+          description: Pages of the test page recognized, on success.
+        durationMs:
+          type: integer
+          format: int64
+          nullable: true
+
     LlmModelResponse:
       type: object
       description: >

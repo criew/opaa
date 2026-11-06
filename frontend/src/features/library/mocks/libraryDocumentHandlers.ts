@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { GETTING_STARTED_PDF_OUTLINE, GETTING_STARTED_PDF_PAGES, mockPdf } from './mockPdf'
+import { SCAN_PDF_BASE64 } from './scanPdfFixture'
 import {
   mockLibraries,
   mockLibraryDetails,
@@ -509,6 +510,29 @@ export const libraryDocumentHandlers = [
         mockPdf(GETTING_STARTED_PDF_PAGES, GETTING_STARTED_PDF_OUTLINE),
       )
     }
+    // the scans the OCR answer cites: image-only pages, no text layer (epic #2640)
+    if (documentId === 'doc-scan' || documentId === 'doc-scan-vision') {
+      return pdfResponse(
+        documentId === 'doc-scan'
+          ? 'Verwaltungsgebuehrensatzung_2003_Scan.pdf'
+          : 'Bauakte_Hauptstrasse_12_1998_Scan.pdf',
+        scanPdf(),
+      )
+    }
+    if (documentId === 'doc-kasse') {
+      return pdfResponse(
+        'Dienstanweisung_Stadtkasse_2024.pdf',
+        mockPdf([
+          [
+            'Dienstanweisung Stadtkasse',
+            '',
+            '2 Zahlungswege',
+            'Gebühren werden bar, mit Karte oder per Überweisung',
+            'an der Stadtkasse entrichtet.',
+          ],
+        ]),
+      )
+    }
     if (documentId === 'doc-slides') {
       return new HttpResponse(new Blob(['mock pptx content']), {
         status: 200,
@@ -640,6 +664,13 @@ function documentText(documentId: string, request: Request) {
     sections,
     sectionsTruncated: false,
   }
+}
+
+function scanPdf(): Uint8Array<ArrayBuffer> {
+  const binary = atob(SCAN_PDF_BASE64)
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length))
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
 }
 
 function pdfResponse(fileName: string, pdf: Uint8Array<ArrayBuffer>) {
