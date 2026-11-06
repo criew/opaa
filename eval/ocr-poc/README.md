@@ -31,5 +31,19 @@ python run_paddle.py --corpus work/corpus --out work/out
 python evaluate.py
 ```
 
+### Nachmessung mit echten Scans
+
+Neun gemeinfreie Scans (Bundestagsdrucksachen, Bundesgesetzblatt, Ortsrecht). Quellen stehen in
+[real/SOURCES.md](real/SOURCES.md), die von Hand abgelesenen Sollwerte in `real/truth/`. Die PDFs liegen
+nicht im Repository. `fetch_real.py` lädt sie und rastert die gewählten Seiten neu, ohne die alte
+Textebene. Danach laufen die vorhandenen Läufer mit dem Profil `real`.
+
+```bash
+python fetch_real.py --out work/corpus-real
+python run_docling.py --variant docling-rapidocr --corpus work/corpus-real --out work/out-real --profiles real
+python run_paddle.py --corpus work/corpus-real --out work/out-real --profiles real   # ebenso die übrigen Läufer
+python evaluate_real.py                              # Prüfstellen, §, Tabellenzeilen, CER der Kurztexte, s/Seite
+```
+
 Die Modelle laden Docling und PaddleOCR beim ersten Lauf nach (Hugging Face, ModelScope). Ergebnis und Bewertung
 stehen in [REPORT.md](REPORT.md), Rohdaten und die Notizen des GPU-Laufs unter `results/`.

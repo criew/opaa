@@ -1,0 +1,8 @@
+# Hugging Face commit of every repository whose files ocr/models.sha256 pins; the check
+# .github/scripts/ocr_models_verify.py compares those files with the repository at this commit.
+# Each commit was read from the Hugging Face API (/api/models/<repository>[/revision/<rev>]) for the
+# revision docling 2.147.0 requests: "main", for docling-models the tag "v2.3.0".
+docling-project/DocumentFigureClassifier-v2.5 f859dfbff5c9916cd996942d4b0db7fa25808220
+docling-project/docling-layout-heron 8f39ad3c0b4c58e9c2d2c84a38465abf757272d8
+docling-project/docling-layout-heron-onnx 40bde044036bb181c130ddf6c51792187268748f
+docling-project/docling-models fc0f2d45e2218ea24bce5045f58a389aed16dc23
