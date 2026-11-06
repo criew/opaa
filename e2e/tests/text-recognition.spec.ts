@@ -27,7 +27,8 @@ import {
  *
  * The role is installation-wide state: off before the first scenario, off again after the last.
  * The scan uploaded while it is off is rejected and later picked up by the background catch-up,
- * which runs every five minutes - the last scenario waits for it.
+ * which runs every 20 seconds in this stack (OPAA_OCR_CATCH_UP_INTERVAL) - the last scenario waits
+ * for it.
  */
 
 const STUB_BASE_URL = process.env.E2E_OCR_STUB_BASE_URL ?? 'http://localhost:18094'
@@ -55,8 +56,8 @@ async function uploadScanInUi(page: Page, libraryId: string): Promise<void> {
   await page.getByLabel('Dateien auswählen').setInputFiles(SCAN_PATH)
   await expect(page.getByText(SCAN_FILE_NAME, { exact: true })).toBeVisible()
   // A conversion of the stand-in takes milliseconds; a background catch-up holding the one slot
-  // of this instance (max-concurrent 1) can leave the upload to the next pass.
-  await expect(indexedDocumentStates(page)).toHaveCount(1, { timeout: 360_000 })
+  // of this instance (max-concurrent 1) can leave the upload to the next pass, 20 s later.
+  await expect(indexedDocumentStates(page)).toHaveCount(1, { timeout: 60_000 })
 }
 
 test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
@@ -112,7 +113,7 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
   test('2. Hochladen: der Scan wird per Texterkennung indiziert', async ({
     authenticatedPage: page,
   }) => {
-    test.setTimeout(420_000)
+    test.setTimeout(120_000)
     libraryId = await createKnowledgeLibraryViaApi('dev-admin', { name: libraryName })
     createdLibraryIds.push(libraryId)
     await assignToDefaultSpace('dev-admin', 'KNOWLEDGE_LIBRARY', libraryId)
@@ -130,19 +131,19 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
       const drawer = await askAboutScan(page, libraryName, scenario.question)
       const row = await expectRecognizedEvidence(drawer)
       const viewer = await openFramedScan(page, row, scenario.expected.page)
-      await expectFramedPassage(viewer, scenario.expected, scenario.recognized)
+      await expectFramedPassage(viewer, scenario, 'exact')
     })
   }
 
   test('6. Nachholen: der vorher abgewiesene Scan wird nach dem Einschalten indiziert', async () => {
-    // The catch-up runs every five minutes after the start of the backend (TextRecognitionBacklog).
-    test.setTimeout(480_000)
+    // The catch-up runs every 20 seconds in this stack (TextRecognitionBacklog).
+    test.setTimeout(120_000)
     const api = await apiAs('dev-admin')
     try {
       await expect
         .poll(async () => (await documentsOf(api, lateLibraryId)).map((d) => d.status).join(','), {
-          timeout: 420_000,
-          intervals: [5_000],
+          timeout: 90_000,
+          intervals: [2_000],
         })
         .toBe('INDEXED')
     } finally {

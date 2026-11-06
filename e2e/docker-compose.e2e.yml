@@ -85,6 +85,8 @@ services:
       # Text recognition of scanned PDFs (ADR-0069) allowed by the operation; the role itself stays
       # off until text-recognition.spec.ts switches it on against ocr-stub, and off after it.
       OPAA_OCR_ENABLED: "true"
+      # Catch up on waiting scans every 20 s instead of every five minutes.
+      OPAA_OCR_CATCH_UP_INTERVAL: 20s
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.

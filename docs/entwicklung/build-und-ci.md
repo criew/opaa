@@ -288,20 +288,23 @@ Die Texterkennung (ADR-0069) ist in der E2E-Suite zweimal geprüft, beide Male m
 Testdokument: der verscannten Baugenehmigungsgebührensatzung aus `eval/corpus/verwaltung`
 (synthetisch, CC0) mit Gebührentabelle, §-Gliederung und einer Seite mit `/Rotate 90`. Sie steht
 unter `demo/seed/e2e-data/text-recognition/`. Den Rahmen jeder Fundstelle vergleichen beide mit dem
-Ort, an dem die Stelle gesetzt wurde (`satzung-scan.layout.json`), nicht mit den Boxen der
-Erkennung.
+Ort, an dem Stelle und Abschnitt gesetzt wurden (`satzung-scan.layout.json`), nicht mit den Boxen
+der Erkennung. Gerahmt wird der ganze Abschnitt, aus dem die Fundstelle stammt: der Tabellenkörper
+ohne Kopfzeile, § 13 von der Überschrift bis Absatz 3, der Textblock der gedrehten Seite.
 
 - **Suite:** `e2e/tests/text-recognition.spec.ts` läuft mit `ocr-stub` als docling-serve. Der
   Ersatzdienst spielt das DoclingDocument ab, das ein echter `opaa-ocr`-Lauf aus dem Testdokument
-  gemacht hat (`satzung-scan.docling.json`). Dabei prüft er Schlüssel und Optionen. Geprüft
+  gemacht hat (`satzung-scan.docling.json`). Dabei prüft er Schlüssel und Optionen. Weil die
+  Antwort feststeht, liegt jede Kante des Rahmens höchstens 0,02 Seite neben der des Abschnitts. Geprüft
   werden die Szenarien Ausgeschaltet, Einrichten, Hochladen, Fragen und Fundstelle an drei Stellen
   sowie Nachholen. Für das Nachholen wartet der letzte Schritt auf den Hintergrunddurchgang, der
-  alle fünf Minuten läuft.
+  im E2E-Stack alle 20 Sekunden läuft (`OPAA_OCR_CATCH_UP_INTERVAL`, Vorgabe fünf Minuten).
 - **Abnahme:** Das Ziel `ocr` startet den Stack der Suite mit `e2e/docker-compose.ocr.yml`, also
   mit dem echten `opaa-ocr` in einem internen Netz, Schlüssel je Lauf. Es führt
   `e2e/ocr/tests/abnahme.spec.ts` aus: Einrichten, Hochladen, Fragen und Fundstellen. Das Video wird
-  in ruhigem Tempo und mit sichtbarem Zeiger aufgezeichnet. Die Lage der Rahmen wird mit Toleranz
-  geprüft.
+  in ruhigem Tempo und mit sichtbarem Zeiger aufgezeichnet. Weil eine echte Erkennung schwankt,
+  muss der Rahmen hier nur die Stelle enthalten und innerhalb des Abschnitts liegen, beides auf
+  0,02 Seite genau.
 
 ```bash
 # aus e2e/: Compose-Projekt opaa-ocr-e2e, Frontend auf 13008, nach dem Lauf abgebaut;

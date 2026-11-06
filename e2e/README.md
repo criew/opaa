@@ -704,17 +704,22 @@ lassen.
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
 - `tests/text-recognition.spec.ts` (#3606) — Texterkennung gescannter PDFs (ADR-0069) mit
-  `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Der Ablauf hat sechs Schritte:
-  1. Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“ abgewiesen.
-  2. Einrichten unter „Modelle → Texterkennung“: Verbindungstest, Einschalten, Speichern. Danach zeigt die Bibliothek
-     „1 Scan wartet auf die Texterkennung“.
-  3. Upload in eine neue Bibliothek, das Dokument wird indiziert.
-  4. Drei Fragen, je mit einem Begriff in „…“, sodass ai-stub genau eine Stelle zitiert. Der Beleg
-     ist als maschinell erkannt gekennzeichnet. „Dokument öffnen“ zeigt den Rahmen auf der richtigen
-     Seite, sichtbar und an der gesetzten Stelle, daneben „Erkannter Text“. Die drei Stellen sind
-     eine Tabellenzeile, ein Absatz aus § 13 und eine Seite mit `/Rotate 90`.
-  5. Der abgewiesene Scan wird vom Hintergrunddurchgang nachgeholt (bis zu fünf Minuten).
-  6. Die Rolle ist danach wieder aus, weil sie installationsweit gilt.
+  `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Die Nummern sind die der Testtitel
+  (Szenarien des Issues); ausgeführt wird in dieser Reihenfolge:
+  - **5. Ausgeschaltet:** Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“
+    abgewiesen.
+  - **1. Einrichten:** unter „Modelle → Texterkennung“ Verbindungstest, Einschalten, Speichern.
+    Danach zeigt die Bibliothek „1 Scan wartet auf die Texterkennung“.
+  - **2. Hochladen:** Upload in eine neue Bibliothek, das Dokument wird indiziert.
+  - **3./4. Frage und Fundstelle (1–3):** je ein Begriff in „…“, sodass ai-stub nur den Abschnitt
+    mit der Stelle zitiert. Der Beleg ist als maschinell erkannt gekennzeichnet. „Dokument öffnen“
+    zeigt den Rahmen auf der richtigen Seite, sichtbar und auf jeder Kante höchstens 0,02 Seite
+    neben dem gesetzten Abschnitt, daneben „Erkannter Text“. Die drei Abschnitte sind der
+    Tabellenkörper, § 13 und eine Seite mit `/Rotate 90`.
+  - **6. Nachholen:** Der abgewiesene Scan wird vom Hintergrunddurchgang nachgeholt, im E2E-Stack
+    nach höchstens etwa 20 Sekunden (`OPAA_OCR_CATCH_UP_INTERVAL`).
+
+  Die Rolle ist danach wieder aus, weil sie installationsweit gilt.
 
 - `tests/upload-limits.spec.ts` (#3466) — die drei Ablehnungen vor jeder Speicherung in einem
   Upload: Dateigröße, Speicherkontingent der Bibliothek und Virenprüfung (EICAR, siehe

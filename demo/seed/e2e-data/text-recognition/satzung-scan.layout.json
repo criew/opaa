@@ -1,24 +1,24 @@
 {
-  "paragraph13Heading": {
+  "paragraph13": {
     "page": 3,
     "x": 0.1042,
-    "y": 0.4879,
-    "width": 0.7917,
-    "height": 0.0184
+    "y": 0.4931,
+    "width": 0.7915,
+    "height": 0.2146
   },
   "freistellungsbescheid": {
     "page": 3,
     "x": 0.1042,
-    "y": 0.5665,
+    "y": 0.5712,
     "width": 0.7473,
-    "height": 0.0506
+    "height": 0.0462
   },
   "zweitausfertigung": {
     "page": 4,
-    "x": 0.1042,
-    "y": 0.2779,
-    "width": 0.7917,
-    "height": 0.0285
+    "x": 0.1142,
+    "y": 0.2874,
+    "width": 0.6739,
+    "height": 0.0125
   },
   "zweitausfertigungAmount": "44,00 Euro",
   "table": {
@@ -28,12 +28,26 @@
     "width": 0.7917,
     "height": 0.2566
   },
+  "tableBody": {
+    "page": 4,
+    "x": 0.1142,
+    "y": 0.2019,
+    "width": 0.6739,
+    "height": 0.212
+  },
   "kassenzeichen": {
     "page": 5,
     "x": 0.1042,
-    "y": 0.1591,
+    "y": 0.1639,
     "width": 0.7753,
-    "height": 0.0506
+    "height": 0.0462
+  },
+  "rotatedPageBlock": {
+    "page": 5,
+    "x": 0.1042,
+    "y": 0.0923,
+    "width": 0.7753,
+    "height": 0.1587
   },
   "rotatedPage": 5,
   "pages": 5

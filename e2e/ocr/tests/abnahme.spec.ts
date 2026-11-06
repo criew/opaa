@@ -192,7 +192,7 @@ test.describe.serial('Abnahme Texterkennung mit opaa-ocr', () => {
           viewer = page.getByRole('dialog', { name: SCAN_FILE_NAME })
           await expectFramedStatus(viewer, scenario.expected.page)
           await logViewer(viewer, scenario.expected)
-          await expectFramedPassage(viewer, scenario.expected, scenario.recognized)
+          await expectFramedPassage(viewer, scenario, 'within')
           log(`${scenario.label}: Rahmen an der erwarteten Stelle`)
           await pause(page, 2)
         } catch (error) {

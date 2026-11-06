@@ -40,12 +40,18 @@ export interface PageBox {
 interface ScanLayout {
   zweitausfertigung: PageBox
   zweitausfertigungAmount: string
+  tableBody: PageBox
   freistellungsbescheid: PageBox
+  paragraph13: PageBox
   kassenzeichen: PageBox
+  rotatedPageBlock: PageBox
   rotatedPage: number
 }
 
-/** Where the passages lie on the original, from the typesetting, not from any recognition. */
+/**
+ * Where the passages and the chunks holding them lie on the original, as the ink extent of the
+ * typeset lines, not from any recognition.
+ */
 export const SCAN_LAYOUT = JSON.parse(
   readFileSync(join(FIXTURE_DIR, 'satzung-scan.layout.json'), 'utf8'),
 ) as ScanLayout
@@ -56,18 +62,21 @@ export const SCAN_QUESTIONS = [
     label: 'Zeile der Gebührentabelle',
     question: 'Wie hoch ist die Gebühr für eine „Zweitausfertigung“ der Baugenehmigung?',
     expected: SCAN_LAYOUT.zweitausfertigung,
+    chunk: SCAN_LAYOUT.tableBody,
     recognized: [/Zweitausfertigung/, /44,00/],
   },
   {
     label: 'Absatz eines Paragrafen',
     question: 'Welchen Nachweis verlangt § 13 – reicht der „Freistellungsbescheid“ des Finanzamts?',
     expected: SCAN_LAYOUT.freistellungsbescheid,
+    chunk: SCAN_LAYOUT.paragraph13,
     recognized: [/Freistellungsbescheid/, /Gemeinnützigkeit/],
   },
   {
     label: 'Seite mit /Rotate 90',
     question: 'Was muss bei der Zahlung an die Stadtkasse als „Kassenzeichen“ angegeben werden?',
     expected: SCAN_LAYOUT.kassenzeichen,
+    chunk: SCAN_LAYOUT.rotatedPageBlock,
     recognized: [/Kassenzeichen/],
   },
 ] as const
@@ -237,39 +246,66 @@ export async function framesOnPage(viewer: Locator, pageNumber: number): Promise
   return frames
 }
 
-function overlap(a0: number, a1: number, b0: number, b1: number): number {
-  return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0))
+/**
+ * How closely the frames are checked. `exact`: the stand-in replays a fixed recognition, so the
+ * union of the frames matches the chunk on every edge. `within`: a live recognition varies, so the
+ * union holds the passage and stays inside the chunk.
+ */
+export type FrameCheck = 'exact' | 'within'
+
+function union(frames: PageBox[]): { left: number; top: number; right: number; bottom: number } {
+  return {
+    left: Math.min(...frames.map((frame) => frame.x)),
+    top: Math.min(...frames.map((frame) => frame.y)),
+    right: Math.max(...frames.map((frame) => frame.x + frame.width)),
+    bottom: Math.max(...frames.map((frame) => frame.y + frame.height)),
+  }
+}
+
+function edges(box: PageBox): { left: number; top: number; right: number; bottom: number } {
+  return union([box])
 }
 
 /**
- * The frames sit at the expected place: one of them covers at least half the height of the
- * expected box and overlaps it horizontally, and together they stay a passage, not the page -
- * their union holds the expected box's centre within `tolerance` and is less than half a page high.
+ * The frames sit where the cited chunk lies on the original: their union matches `chunk` on every
+ * edge within `tolerance` (`exact`), or holds `passage` and lies inside `chunk` within `tolerance`
+ * (`within`).
  */
-export function expectFramesAt(frames: PageBox[], expected: PageBox, tolerance = 0.02): void {
-  const describe = JSON.stringify({ expected, frames })
-  expect(frames.length, `keine Rahmen auf Seite ${expected.page}: ${describe}`).toBeGreaterThan(0)
-  const hit = frames.some(
-    (frame) =>
-      overlap(frame.y, frame.y + frame.height, expected.y, expected.y + expected.height) >=
-        expected.height * 0.5 &&
-      overlap(frame.x, frame.x + frame.width, expected.x, expected.x + expected.width) > 0,
-  )
-  expect(hit, `kein Rahmen über der erwarteten Stelle: ${describe}`).toBe(true)
-  const top = Math.min(...frames.map((frame) => frame.y))
-  const bottom = Math.max(...frames.map((frame) => frame.y + frame.height))
-  const left = Math.min(...frames.map((frame) => frame.x))
-  const right = Math.max(...frames.map((frame) => frame.x + frame.width))
-  const centreX = expected.x + expected.width / 2
-  const centreY = expected.y + expected.height / 2
+export function expectFramesAt(
+  frames: PageBox[],
+  passage: PageBox,
+  chunk: PageBox,
+  check: FrameCheck,
+  tolerance = 0.02,
+): void {
+  const describe = JSON.stringify({ passage, chunk, frames })
+  expect(frames.length, `keine Rahmen auf Seite ${chunk.page}: ${describe}`).toBeGreaterThan(0)
+  const framed = union(frames)
+  const block = edges(chunk)
+  if (check === 'exact') {
+    for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+      expect(
+        Math.abs(framed[edge] - block[edge]),
+        `Kante ${edge} weicht vom Abschnitt ab: ${describe}`,
+      ).toBeLessThanOrEqual(tolerance)
+    }
+    return
+  }
+  const stelle = edges(passage)
   expect(
-    centreX >= left - tolerance &&
-      centreX <= right + tolerance &&
-      centreY >= top - tolerance &&
-      centreY <= bottom + tolerance,
-    `Rahmen verfehlen die Mitte der erwarteten Stelle: ${describe}`,
+    framed.left <= stelle.left + tolerance &&
+      framed.top <= stelle.top + tolerance &&
+      framed.right >= stelle.right - tolerance &&
+      framed.bottom >= stelle.bottom - tolerance,
+    `Rahmen enthält die Stelle nicht: ${describe}`,
   ).toBe(true)
-  expect(bottom - top, `Rahmen umfassen fast die ganze Seite: ${describe}`).toBeLessThan(0.5)
+  expect(
+    framed.left >= block.left - tolerance &&
+      framed.top >= block.top - tolerance &&
+      framed.right <= block.right + tolerance &&
+      framed.bottom <= block.bottom + tolerance,
+    `Rahmen reicht über den Abschnitt hinaus: ${describe}`,
+  ).toBe(true)
 }
 
 /**
@@ -278,14 +314,15 @@ export function expectFramesAt(frames: PageBox[], expected: PageBox, tolerance =
  */
 export async function expectFramedPassage(
   viewer: Locator,
-  expected: PageBox,
-  recognized: readonly RegExp[],
+  scenario: { expected: PageBox; chunk: PageBox; recognized: readonly RegExp[] },
+  check: FrameCheck,
 ): Promise<void> {
+  const { expected, chunk, recognized } = scenario
   // The page counter of the toolbar only: the recognised text can contain "von 5" itself.
   await expect(viewer.getByText(new RegExp(`^Seite \\d+ von ${SCAN_PAGES}$`))).toBeVisible()
   const frame = viewer.locator(`.page[data-page-number="${expected.page}"] .recognized-region`)
   await expect(frame.first()).toBeInViewport()
-  expectFramesAt(await framesOnPage(viewer, expected.page), expected)
+  expectFramesAt(await framesOnPage(viewer, expected.page), expected, chunk, check)
   const panel = viewer.getByRole('complementary', { name: 'Erkannter Text' })
   await expect(panel).toBeVisible()
   for (const text of recognized) {

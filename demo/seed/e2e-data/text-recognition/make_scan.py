@@ -7,8 +7,9 @@ of eval/ocr-poc/build_corpus.py (slight skew, blur, grey paper, noise). The resu
 PDF without a text layer, A4 in PDF points.
 
 Besides the PDF it writes satzung-scan.layout.json: where the scenarios' passages lie on the
-original, as fractions of the page with the origin top left - the frame drawn in the viewer is
-compared against these, never against the recognition's own boxes.
+original, and the enclosing block of the chunk each passage is indexed in, as the ink extent of
+the typeset lines in fractions of the page with the origin top left - the frame drawn in the viewer
+is compared against these, never against the recognition's own boxes.
 
 Deterministic: same input, same bytes. Needs reportlab, Pillow, numpy and pdftoppm (poppler).
 Usage: python make_scan.py
@@ -119,6 +120,24 @@ def box(page, left, top, right, bottom):
     }
 
 
+class Ink:
+    """Ink extent of the strings drawn while it is open: left, top, right, bottom in PDF points."""
+
+    def __init__(self):
+        self.left = self.bottom = float("inf")
+        self.right = self.top = float("-inf")
+
+    def add(self, x, baseline, text, font, size):
+        ascent, descent = pdfmetrics.getAscentDescent(font, size)
+        self.left = min(self.left, x)
+        self.right = max(self.right, x + pdfmetrics.stringWidth(text, font, size))
+        self.top = max(self.top, baseline + ascent)
+        self.bottom = min(self.bottom, baseline + descent)
+
+    def box(self, page):
+        return box(page, self.left, self.top, self.right, self.bottom)
+
+
 def typeset(path):
     """The clean PDF and the boxes of the passages the scenarios ask about."""
     pdfmetrics.registerFont(TTFont("Serif", str(FONT_DIR / "DejaVuSerif.ttf")))
@@ -141,6 +160,7 @@ def typeset(path):
         page += 1
         y = HEIGHT - MARGIN_TOP
 
+    section13 = None
     blocks = statute_blocks()
     for index, (kind, text) in enumerate(blocks):
         font, size, before, after = {
@@ -157,18 +177,23 @@ def typeset(path):
         if y - needed < MARGIN_BOTTOM:
             new_page()
         y -= before
-        top = y
+        if kind == "heading":
+            section13 = Ink() if text.startswith("§ 13") else None
+        ink = Ink()
         pdf.setFont(font, size)
         for line in lines:
             y -= leading
-            pdf.drawString(MARGIN_X, y + (leading - size) * 0.6, line)
-        bottom = y
+            baseline = y + (leading - size) * 0.6
+            pdf.drawString(MARGIN_X, baseline, line)
+            ink.add(MARGIN_X, baseline, line, font, size)
+            if section13:
+                section13.add(MARGIN_X, baseline, line, font, size)
         y -= after
         if kind == "paragraph" and "Freistellungsbescheids" in text:
-            right = MARGIN_X + max(pdfmetrics.stringWidth(line, font, size) for line in lines)
-            layout["freistellungsbescheid"] = box(page, MARGIN_X, top, right, bottom)
-        if kind == "heading" and text.startswith("§ 13"):
-            layout["paragraph13Heading"] = box(page, MARGIN_X, top, MARGIN_X + text_width, bottom)
+            layout["freistellungsbescheid"] = ink.box(page)
+        if section13:
+            # § 13 from its heading through paragraph (3), indexed as one chunk
+            layout["paragraph13"] = section13.box(page)
 
     # The fee schedule, a ruled table on a page of its own.
     new_page()
@@ -193,39 +218,54 @@ def typeset(path):
     table_top = y
     pdf.setLineWidth(0.9)
     rows = [header] + fee_rows()
+    body = Ink()
     for row_index, row in enumerate(rows):
-        top, bottom = y, y - row_height
+        bottom = y - row_height
+        font = "Serif-Bold" if row_index == 0 else "Serif"
+        ink = Ink()
         for column, value in enumerate(row):
-            pdf.setFont("Serif-Bold" if row_index == 0 else "Serif", BODY_SIZE)
+            pdf.setFont(font, BODY_SIZE)
             pdf.drawString(columns[column] + 6, bottom + 8, value)
+            ink.add(columns[column] + 6, bottom + 8, value, font, BODY_SIZE)
+            if row_index > 0:
+                body.add(columns[column] + 6, bottom + 8, value, font, BODY_SIZE)
         pdf.line(columns[0], bottom, columns[-1], bottom)
         if row_index > 0 and row[1] == "Zweitausfertigung":
-            layout["zweitausfertigung"] = box(page, columns[0], top, columns[-1], bottom)
+            layout["zweitausfertigung"] = ink.box(page)
             layout["zweitausfertigungAmount"] = row[2]
         y = bottom
     pdf.line(columns[0], table_top, columns[-1], table_top)
     for x in columns:
         pdf.line(x, table_top, x, y)
     layout["table"] = box(page, columns[0], table_top, columns[-1], y)
+    # the table body without its header row, indexed as one chunk
+    layout["tableBody"] = body.box(page)
 
     # A page scanned sideways: typeset upright here, stored turned and shown upright through
     # /Rotate 90 (see main), the way a scanner files a landscape-fed sheet.
     new_page()
+    block = Ink()
     pdf.setFont("Serif-Bold", 13)
     y -= 13 * 1.35
-    pdf.drawString(MARGIN_X, y, "Anlage 2 zur Baugenehmigungsgebührensatzung")
+    title = "Anlage 2 zur Baugenehmigungsgebührensatzung"
+    pdf.drawString(MARGIN_X, y, title)
+    block.add(MARGIN_X, y, title, "Serif-Bold", 13)
     y -= 12
     pdf.setFont("Serif", BODY_SIZE)
     for text in ROTATED_PAGE_PARAGRAPHS:
         lines = simpleSplit(text, "Serif", BODY_SIZE, text_width)
-        top = y
+        ink = Ink()
         for line in lines:
             y -= LEADING
-            pdf.drawString(MARGIN_X, y + (LEADING - BODY_SIZE) * 0.6, line)
+            baseline = y + (LEADING - BODY_SIZE) * 0.6
+            pdf.drawString(MARGIN_X, baseline, line)
+            ink.add(MARGIN_X, baseline, line, "Serif", BODY_SIZE)
+            block.add(MARGIN_X, baseline, line, "Serif", BODY_SIZE)
         if "Kassenzeichen" in text:
-            right = MARGIN_X + max(pdfmetrics.stringWidth(line, "Serif", BODY_SIZE) for line in lines)
-            layout["kassenzeichen"] = box(page, MARGIN_X, top, right, y)
+            layout["kassenzeichen"] = ink.box(page)
         y -= 6
+    # the whole page, heading and paragraphs, indexed as one chunk
+    layout["rotatedPageBlock"] = block.box(page)
     layout["rotatedPage"] = page
     footer()
     pdf.showPage()
