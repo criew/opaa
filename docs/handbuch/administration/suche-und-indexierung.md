@@ -10,7 +10,7 @@ Die Seite zeigt und diagnostiziert, stellt aber nichts ein.
 
 | Reiter | Zeigt |
 |---|---|
-| „Überblick“ | Modellrollen mit Endpunkt und Erreichbarkeit, Suchpfade Vektor und Volltext |
+| „Überblick“ | Modellrollen (Chat, Einbettung, Reranking, Transkription, Texterkennung) mit Endpunkt und Erreichbarkeit, Suchpfade Vektor und Volltext |
 | „Indexstatus“ | je Bibliothek Dokumente, Chunks, letzter Lauf, Rückstand, „Nachzug ausstehend“, Stand der Kernfelder; private Bibliotheken nur als eine Zeile ohne Namen |
 | „Diagnose“ | eine Testfrage durch die echte Suche, Stufe für Stufe |
 
