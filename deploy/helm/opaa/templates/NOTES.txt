@@ -128,6 +128,25 @@ ERPROBUNGSDATENBANK - NICHT FÜR DEN BETRIEB
   Datenbank des Rechenzentrums oder einen Operator wie CloudNativePG anbinden.
 {{- end }}
 
+{{- if .Values.ocr.service.enabled }}
+
+TEXTERKENNUNG
+  Der Texterkennungsdienst läuft als {{ include "opaa.ocr.fullname" . }}, erreichbar nur für die
+  Backend-Pods, ohne Ausgang. Unter Modelle → Texterkennung eintragen: Verbindungstyp docling-serve,
+  Adresse {{ include "opaa.ocr.url" . }}, Schlüssel aus dem Secret:
+    kubectl -n {{ .Release.Namespace }} get secret {{ include "opaa.secretName" . }} -o jsonpath='{.data.ocr-api-key}' | base64 -d
+{{- if not .Values.ocr.enabled }}
+  ocr.enabled ist aus: Das Backend sendet keine Seite an den Dienst, die Rolle lässt sich nur
+  vorbereiten.
+{{- end }}
+{{- else if .Values.ocr.enabled }}
+
+TEXTERKENNUNG
+  Die Texterkennung ist freigegeben, der mitgelieferte Dienst läuft nicht (ocr.service.enabled).
+  Ein Dienst des Hauses wird unter Modelle → Texterkennung eingetragen; sein Host gehört nach
+  targetValidation.modelAllowlist.
+{{- end }}
+
 ORIGINALABLAGE
 {{- if eq .Values.uploads.store "s3" }}
   Objektspeicher: Bucket {{ .Values.uploads.s3.bucket }}{{ with .Values.uploads.s3.endpoint }} auf {{ . }}{{ end }}.
@@ -209,14 +228,19 @@ ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   nach frontend.cspConnectSrcExtra.
 {{- end }}
 {{- end }}
-{{- range $name := list "backend" "frontend" }}
-{{- $image := (index $.Values $name).image }}
+{{- $images := dict "backend" .Values.backend.image "frontend" .Values.frontend.image }}
+{{- $paths := dict "backend" "backend" "frontend" "frontend" "ocr" "ocr.service" }}
+{{- if .Values.ocr.service.enabled }}{{ $_ := set $images "ocr" .Values.ocr.service.image }}{{ end }}
+{{- range $name := list "backend" "frontend" "ocr" }}
+{{- if hasKey $images $name }}
+{{- $image := get $images $name }}
+{{- $path := get $paths $name }}
 {{- if and $image.digest $image.tag }}
 
 {{ upper $name }}-IMAGE: TAG OHNE WIRKUNG
-  {{ $name }}.image.tag ist "{{ $image.tag }}", {{ $name }}.image.digest ebenfalls gesetzt. Der Digest
+  {{ $path }}.image.tag ist "{{ $image.tag }}", {{ $path }}.image.digest ebenfalls gesetzt. Der Digest
   hat Vorrang; der Cluster zieht {{ $image.repository }}@{{ $image.digest }}.
-  Für den Tag den Digest leeren: --set {{ $name }}.image.digest=
+  Für den Tag den Digest leeren: --set {{ $path }}.image.digest=
 {{- end }}
 {{- $prefix := index $.Chart.Annotations "opaa/image-prefix" | default "" }}
 {{- if and $image.digest $prefix (ne $image.repository (printf "%s-%s" $prefix $name)) }}
@@ -224,7 +248,8 @@ ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
 {{ upper $name }}-IMAGE AUS EIGENER REGISTRY PER DIGEST
   Der Cluster zieht {{ $image.repository }}@{{ $image.digest }}. Diesen Digest gibt es dort
   nur, wenn der Spiegel mit skopeo copy --all --preserve-digests gefüllt ist; sonst bleibt der
-  Pod in ImagePullBackOff. Ohne Digest: --set {{ $name }}.image.digest=
+  Pod in ImagePullBackOff. Ohne Digest: --set {{ $path }}.image.digest=
+{{- end }}
 {{- end }}
 {{- end }}
 

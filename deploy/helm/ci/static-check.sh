@@ -287,6 +287,63 @@ if [[ "$probe" != *"- pg_isready - -h - 127.0.0.1 "* ]]; then
 fi
 echo "probes over TCP as expected"
 
+# Text recognition (ADR-0042, Entscheidung 3): switched off, nothing of it renders; switched on, the
+# bundled service takes its key from the secret, admits the backend pods (and helm test) only,
+# reaches nothing, and its address passes the address check of models.
+echo "--- text recognition"
+for set_name in "${value_sets[@]}"; do
+  set_name="$(basename "$set_name" -values.yaml)"
+  [[ "$set_name" == ocr ]] && continue
+  for unexpected in OPAA_OCR_ ocr-api-key "component: ocr" opaa-ocr DOCLING_SERVE_; do
+    if grep -qF -- "$unexpected" "$work_dir/$set_name.yaml"; then
+      echo "Value set $set_name renders '$unexpected' without text recognition." >&2
+      exit 1
+    fi
+  done
+done
+for expected in 'OPAA_OCR_ENABLED: "true"' 'OPAA_OCR_MAX_PAGES_PER_DOCUMENT: "200"' \
+  'OPAA_OCR_CALL_TIMEOUT: "60m"' 'OPAA_OCR_MAX_CONCURRENT: "2"' \
+  'OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: "ollama.ai.svc.cluster.local:11434,opaa-ocr:5001"' \
+  'ocr-api-key: "ci-only-ocr-api-key-0123456789abcdefghij"' "key: ocr-api-key" \
+  'image: "ghcr.io/criew/opaa-ocr:0.0.0-dev"' "serviceAccountName: opaa-ocr" \
+  'value: "3600"' "name: opaa-test-ocr" "base=http://opaa-ocr:5001"; do
+  expect_rendered_set ocr "$expected"
+done
+# Prints the NetworkPolicy documents of one template of the ocr value set.
+ocr_policies() {
+  helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/ocr-values.yaml" --show-only "$1" |
+    awk 'BEGIN { RS = "\n---\n" } /\nkind: NetworkPolicy\n/ && /\n  name: '"$2"'\n/ { print }'
+}
+policy="$(ocr_policies templates/ocr.yaml opaa-ocr)"
+if [[ "$policy" != *"- Egress"* || "$policy" != *"egress: []"* || "$policy" != *"component: backend"* ||
+  "$policy" != *"component: test"* || "$(grep -c 'podSelector:' <<<"$policy")" != 3 ||
+  "$policy" == *namespaceSelector* || "$policy" == *ipBlock* ]]; then
+  echo "The NetworkPolicy of the text recognition service must admit the backend pods and helm test only and allow no egress:" >&2
+  echo "$policy" >&2
+  exit 1
+fi
+if [[ "$(ocr_policies templates/networkpolicies.yaml opaa-backend-egress)" != *"component: ocr"* ]]; then
+  echo "The backend's egress policy of the ocr value set does not reach the text recognition service." >&2
+  exit 1
+fi
+echo "service, key, network policies and address check as expected"
+expect_refusal "ocrApiKey" --set ocr.service.enabled=true
+expect_refusal "ocrApiKey" --set ocr.service.enabled=true --set-string secrets.ocrApiKey=too-short
+expect_refusal "ocrApiKey" --set ocr.service.enabled=true \
+  --set-string "secrets.ocrApiKey=with a space 0123456789abcdefghijklmnop"
+expect_refusal "keep one" --set backend.installationBudgets.OPAA_OCR_MAX_CONCURRENT=2 \
+  --set-string ocr.maxConcurrent=1
+# With an existing secret the key is read from it, and the chart renders no value of it.
+helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" \
+  --set secrets.existingSecret=opaa-secrets --set ocr.service.enabled=true >"$work_dir/ocr-existing.yaml"
+expect_rendered_set ocr-existing "key: ocr-api-key"
+expect_rendered_set ocr-existing "name: opaa-secrets"
+if grep -qF "ocr-api-key:" "$work_dir/ocr-existing.yaml"; then
+  echo "With secrets.existingSecret the chart must not render a key of its own for the text recognition service." >&2
+  exit 1
+fi
+echo "key from an existing secret as expected"
+
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format
 # itself comes from release-version.sh, which the image release guard calls as well.
@@ -302,23 +359,25 @@ for tag in v1.2.3 v1.2.3-rc.1; do
   CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" >/dev/null
   echo "packaged as expected: $tag"
 done
-# The release passes the index digests of both images: the packaged values pin exactly these two
-# images by digest, the evaluation database keeps its own. A malformed digest is refused.
+# The release passes the index digests of the three images: the packaged values pin exactly these
+# three images by digest, the evaluation database keeps its own. A malformed digest is refused.
 backend_digest="sha256:$(printf '%064d' 1)"
 frontend_digest="sha256:$(printf '%064d' 2)"
+ocr_digest="sha256:$(printf '%064d' 3)"
 CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/pinned" \
-  "$backend_digest" "$frontend_digest" >/dev/null
+  "$backend_digest" "$frontend_digest" "$ocr_digest" >/dev/null
 pinned_values="$(helm show values "$work_dir/pinned/opaa-1.2.3.tgz")"
-if [[ "$(grep -c '^ *digest: "sha256:' <<<"$pinned_values")" != 2 ]] ||
+if [[ "$(grep -c '^ *digest: "sha256:' <<<"$pinned_values")" != 3 ]] ||
   ! grep -qxF "    digest: \"$backend_digest\"" <<<"$pinned_values" ||
-  ! grep -qxF "    digest: \"$frontend_digest\"" <<<"$pinned_values"; then
-  echo "The packaged values must pin backend and frontend by digest, nothing else:" >&2
+  ! grep -qxF "    digest: \"$frontend_digest\"" <<<"$pinned_values" ||
+  ! grep -qxF "      digest: \"$ocr_digest\"" <<<"$pinned_values"; then
+  echo "The packaged values must pin backend, frontend and the text recognition service by digest, nothing else:" >&2
   grep -n 'digest:' <<<"$pinned_values" >&2
   exit 1
 fi
 echo "packaged as expected: v1.2.3 with image digests"
 if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/pinned" \
-  "$backend_digest" "sha256:1234" 2>&1)" || [[ "$output" != *"is not an image digest"* ]]; then
+  "$backend_digest" "$frontend_digest" "sha256:1234" 2>&1)" || [[ "$output" != *"is not an image digest"* ]]; then
   echo "Expected release packaging to refuse a malformed digest:" >&2
   echo "$output" >&2
   exit 1
@@ -332,7 +391,7 @@ awk -v digest="$frontend_digest" '
   { print }
 ' "$CHART_DIR/values.yaml" >"$work_dir/prefilled-chart/values.yaml"
 if output="$(CHART_DIR="$work_dir/prefilled-chart" deploy/helm/ci/package-chart.sh v1.2.3 \
-  "$work_dir/prefilled" "$backend_digest" "$frontend_digest" 2>&1)" ||
+  "$work_dir/prefilled" "$backend_digest" "$frontend_digest" "$ocr_digest" 2>&1)" ||
   [[ "$output" != *"no single empty digest"* ]]; then
   echo "Expected release packaging to refuse values with a digest already set:" >&2
   echo "$output" >&2
@@ -731,6 +790,40 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
     echo "$csp_failures CSP warning case(s) failed." >&2
     exit 1
   fi
+  # The text recognition note names the service address and the key's secret; a service image
+  # pinned by digest outside the release prefix warns like the backend and frontend images.
+  ocr_key=(--set ocr.service.enabled=true --set-string secrets.ocrApiKey=notes-check-only-0123456789abcdefgh)
+  output="$(notes)"
+  if [[ "$output" == *TEXTERKENNUNG* ]]; then
+    echo "Expected no text recognition note without ocr.enabled and ocr.service.enabled." >&2
+    exit 1
+  fi
+  output="$(notes "${ocr_key[@]}" --set ocr.enabled=true)"
+  if [[ "$output" != *"Adresse http://opaa-ocr:5001"* || "$output" != *"{.data.ocr-api-key}"* ||
+    "$output" == *"ocr.enabled ist aus"* ]]; then
+    echo "Expected the text recognition note with address and key:" >&2
+    sed -n '/^TEXTERKENNUNG/,/^$/p' <<<"$output" >&2
+    exit 1
+  fi
+  output="$(notes "${ocr_key[@]}")"
+  if [[ "$output" != *"ocr.enabled ist aus"* ]]; then
+    echo "Expected the note that ocr.enabled is off while the service runs." >&2
+    exit 1
+  fi
+  output="$(notes --set ocr.enabled=true)"
+  if [[ "$output" != *"der mitgelieferte Dienst läuft nicht"* ]]; then
+    echo "Expected the note on an own text recognition endpoint." >&2
+    exit 1
+  fi
+  output="$(notes "${ocr_key[@]}" --set ocr.service.image.repository=registry.example.org/opaa-ocr \
+    --set-string "ocr.service.image.digest=sha256:$(printf '%064d' 3)" --set-string ocr.service.image.tag=1.2.3)"
+  if [[ "$output" != *"OCR-IMAGE AUS EIGENER REGISTRY PER DIGEST"* || "$output" != *"OCR-IMAGE: TAG OHNE WIRKUNG"* ||
+    "$output" != *"--set ocr.service.image.digest="* ]]; then
+    echo "Expected the image warnings for the text recognition service:" >&2
+    sed -n '/^OCR-IMAGE/,/^$/p' <<<"$output" >&2
+    exit 1
+  fi
+  echo "text recognition notes as expected"
 else
   echo "skipped: Helm $(helm version --short) has no client-side dry run"
 fi

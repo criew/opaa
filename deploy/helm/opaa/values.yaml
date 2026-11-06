@@ -1,6 +1,7 @@
 # Values of the OPAA chart. The chart runs the backend, one instance by default or several under the
-# conditions of backend.replicas (ADR-0053), next to the frontend; PostgreSQL with pgvector, the
-# model endpoints and an identity provider are operated outside of it and only connected (ADR-0042).
+# conditions of backend.replicas (ADR-0053), next to the frontend, and on request the bundled text
+# recognition service (ocr.service); PostgreSQL with pgvector, the model endpoints and an identity
+# provider are operated outside of it and only connected (ADR-0042).
 #
 # Three kinds of configuration (ADR-0042, Entscheidung 3):
 #   - deployment values, read on every start: everything outside of "bootstrap"
@@ -146,6 +147,80 @@ transcription:
   # Recordings passed on at the same time across the installation; empty keeps the application
   # default (4).
   maxConcurrent: ""
+
+# Text recognition (OCR) of scanned PDF documents. Two switches, both off by default: "enabled" is
+# the backend's operation switch (OPAA_OCR_ENABLED) - without it no page goes to any text
+# recognition service; "service" runs the bundled service opaa-ocr in the release. Connection type,
+# address and key of the service are set by the system administration under Modelle >
+# Texterkennung; an endpoint of the house needs no "service", its host belongs in
+# targetValidation.modelAllowlist.
+ocr:
+  enabled: false
+  # Limits of the backend; empty keeps the application default.
+  # Largest scan in pages that goes to the service.
+  maxPagesPerDocument: ""
+  # Time budget of all calls for one document, e.g. 45m.
+  documentTimeout: ""
+  # Documents one backend pod has recognised at the same time; see backend.installationBudgets.
+  maxConcurrent: ""
+  # Pages one indexing run sends at most; the rest waits for the next run.
+  maxPagesPerRun: ""
+  # Time budget of one call of the service, e.g. 45m; must not exceed service.maxSyncWaitSeconds.
+  callTimeout: ""
+  # The bundled service: Deployment, Service, a ServiceAccount of its own without token and a
+  # NetworkPolicy that admits the backend pods (and the pod of helm test) and allows no egress at
+  # all. Its address http://<release>-ocr:<service.port> is added to the address check of models.
+  # The key comes from the secret (key ocr-api-key): secrets.ocrApiKey, or that key in
+  # secrets.existingSecret; without it the rendering aborts or the pod does not start.
+  service:
+    enabled: false
+    image:
+      repository: ghcr.io/criew/opaa-ocr
+      # Defaults to the chart's appVersion, see backend.image.tag.
+      tag: ""
+      # Set by a release like backend.image.digest.
+      digest: ""
+      pullPolicy: IfNotPresent
+    # Stateless; several pods share the conversions of every backend pod.
+    replicas: 1
+    # Conversions one pod runs at the same time (DOCLING_SERVE_ENG_LOC_NUM_WORKERS); each needs
+    # its own memory. Further calls wait, and their wait counts against the backend's time budgets.
+    workers: 1
+    # How long the service lets one call wait for its conversion (DOCLING_SERVE_MAX_SYNC_WAIT), in
+    # seconds; at least ocr.callTimeout (application default 45 minutes).
+    maxSyncWaitSeconds: 2700
+    # One worker on the CPU: about 3 GiB once the models are loaded, more for long documents.
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+      limits:
+        memory: 6Gi
+    # Loading the models takes seconds to a few minutes, depending on the disk; the startup probe
+    # gives it periodSeconds * failureThreshold (here 10 minutes).
+    startupProbe:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 60
+    livenessProbe:
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    # /tmp is the only writable path: working files and the page images of a conversion.
+    tmp:
+      sizeLimit: 4Gi
+      medium: ""
+    service:
+      port: 5001
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
 
 # Malware scan of every file before a library takes it in, against a clamd daemon of the house
 # (TCP, INSTREAM). The chart runs no scanner itself. clamd's StreamMaxLength must cover the largest
@@ -320,6 +395,7 @@ secrets:
   #   no longer read: OPAA_INITIAL_ADMIN_PASSWORD, OPAA_OPENAI_EMBEDDING_API_KEY (up to
   #             v0.1.0-rc.4)
   #   no longer read: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY (set under Modelle)
+  #   with ocr.service.enabled: ocr-api-key (the key of the bundled text recognition service)
   #   optional: OPAA_INSTALLATION_TOKEN
   #   during a key change: OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS,
   #             OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS
@@ -355,6 +431,10 @@ secrets:
   # 32 characters, e.g. openssl rand -base64 48. Empty: the first start generates one and prints
   # it once into its log.
   installationToken: ""
+  # Key of the bundled text recognition service (ocr-api-key), required with ocr.service.enabled:
+  # at least 32 characters without spaces, e.g. openssl rand -hex 32. The system administration
+  # enters the same key under Modelle > Texterkennung.
+  ocrApiKey: ""
 
 backend:
   image:
@@ -372,8 +452,8 @@ backend:
   # every pod sees: uploads.store s3, or uploads.persistence.accessModes [ReadWriteMany]; otherwise
   # the rendering aborts (ADR-0053, Entscheidung 15). The global rate-limit ceilings
   # (OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS) count for the installation; every other budget (rate
-  # limits per client, embedding concurrency, transcription and attachment slots) counts per pod,
-  # see installationBudgets.
+  # limits per client, embedding concurrency, transcription, text recognition and attachment
+  # slots) counts per pod, see installationBudgets.
   replicas: 1
 
   # Budgets of the whole installation for the limits that count per pod (ADR-0053, Entscheidung 12):
@@ -659,7 +739,7 @@ networkPolicy:
     # e.g. { matchLabels: { app.kubernetes.io/name: ingress-nginx } }
     controllerPodSelector: {}
   # Egress of backend and frontend: DNS, the frontend to the backend, the backend to the evaluation
-  # database and to the targets below. Off by default - enabled too early, it blocks identity
+  # database, to the text recognition service (ocr.service) and to the targets below. Off by default - enabled too early, it blocks identity
   # provider, models and sources that are not listed yet. Recommended after the setup.
   egress:
     enabled: false

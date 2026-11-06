@@ -5,7 +5,8 @@ Betrieb von OPAA unter Kubernetes: das Backend mit einer Instanz oder, unter den
 Frontend. Grundlage ist [ADR-0042](../../../docs/decisions/0042-kubernetes-lieferung-mit-helm.md).
 
 PostgreSQL mit pgvector, Modell-Endpunkte und gegebenenfalls ein Identitätsanbieter werden angebunden,
-nicht mitgeliefert.
+nicht mitgeliefert. Mitliefern kann der Chart auf Wunsch den Texterkennungsdienst `opaa-ocr`
+(`ocr.service`, Vorgabe aus).
 
 ## Voraussetzungen
 
@@ -117,6 +118,7 @@ den Weg.
 | `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher, Datenbank und Quellen (etwa Confluence, Nextcloud, Webverzeichnis und Feed) |
 | `embedding`, `rerank` | Modell-Endpunkte, auch im Cluster (etwa Ollama über seinen Service) |
 | `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver setzt `bootstrap.mail` oder die Oberfläche |
+| `ocr` | Betriebsschalter und Grenzen der Texterkennung; `ocr.service` startet den mitgelieferten Dienst `opaa-ocr` mit Pflichtschlüssel `secrets.ocrApiKey`, erreichbar nur für die Backend-Pods, ohne Ausgang; seine Adresse kommt in die Liste der Modelle |
 | `targetValidation` | Ausnahmen der Adressprüfung für Quellen, Modelle und Identitätsanbieter im eigenen Netz, je eine eigene Liste. Host und Port von `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` stehen dauerhaft in der Liste der Modelle und gelten dann für jede Modellrolle auf diesem Host und Port |
 
 ## Was der Chart festlegt
