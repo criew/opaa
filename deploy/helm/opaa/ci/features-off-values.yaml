@@ -33,3 +33,5 @@ features:
     enabled: false
   chatUpload:
     enabled: false
+  quickTour:
+    enabled: false

@@ -72,4 +72,18 @@ class RequestLoggingFilterTest {
     assertThat(logAppender.list).hasSize(1);
     assertThat(logAppender.list.get(0).getFormattedMessage()).startsWith("POST /api/v1/query 201");
   }
+
+  @Test
+  void writesNoLineForTheMarkerOfTheQuickTourHintInAnySpelling()
+      throws ServletException, IOException {
+    for (String path :
+        new String[] {"/api/v1/me/quick-tour-hint", "/api/v1/me/quick%2Dtour-hint"}) {
+      var response = new MockHttpServletResponse();
+      response.setStatus(204);
+
+      filter.doFilter(new MockHttpServletRequest("PUT", path), response, new MockFilterChain());
+    }
+
+    assertThat(logAppender.list).isEmpty();
+  }
 }

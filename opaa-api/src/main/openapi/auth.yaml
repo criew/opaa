@@ -30,6 +30,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserInfoResponse"
 
+  /api/v1/me/quick-tour-hint:
+    put:
+      operationId: markQuickTourHintDone
+      tags: [auth]
+      summary: Marks the "Neu hier?" hint of the quick tour as done for the caller's own account.
+      description: >
+        Idempotent; there is no way back to "not done" for the person, and no operation touches
+        another account. Only the yes/no value of quickTourHintDone is stored - no point in time,
+        no counter, no progress - and setting it writes no audit entry, no metric and no log line
+        about the person. The route exists only while the quick tour is switched on
+        (opaa.features.quick-tour.enabled); switched off, nothing is written and the call is
+        answered like any unknown address.
+      responses:
+        "204":
+          description: The hint is done for the caller's account, now or before.
+
   /api/v1/auth/local/login:
     post:
       operationId: localLogin
@@ -513,7 +529,7 @@ components:
         feature is switched on. Every flag is on unless the installation switched it off; the values
         are fixed at start-up and readable before sign-in. The property name is the camel-case form
         of the flag key, e.g. prompt-libraries -> promptLibraries.
-      required: [promptLibraries, metadata, speechInput, externalAccess, chatUpload]
+      required: [promptLibraries, metadata, speechInput, externalAccess, chatUpload, quickTour]
       properties:
         promptLibraries:
           type: boolean
@@ -539,6 +555,12 @@ components:
             Attaching documents to a chat question (opaa.features.chat-upload.enabled). Switched
             off, the chat offers neither drop zone nor attach button and the chat attachment
             operations answer 404; existing attachments are kept but no longer read.
+        quickTour:
+          type: boolean
+          description: >
+            The quick tour for new users (opaa.features.quick-tour.enabled): the "Neu hier?" hint
+            in the empty chat and the entry in the profile menu. Switched off, neither appears and
+            markQuickTourHintDone does not exist; the stored quickTourHintDone values are kept.
 
     LocalAccountsConfig:
       type: object
@@ -840,3 +862,12 @@ components:
             this endpoint carries it and the user settings show it. Null for an account of an
             identity provider, which has no such reason.
           example: Projektbefristung Digitalisierung bis 31.12.2026
+        quickTourHintDone:
+          type: boolean
+          description: >
+            Whether the person has dealt with the "Neu hier?" hint of the quick tour, by starting
+            the tour or by declining it (markQuickTourHintDone); false for every account until
+            then. Only a yes/no value, part of the person's own self-disclosure and shown in no
+            administration view. Delivered whether or not the quick tour is switched on; a client
+            shows the hint only while FeaturesConfig.quickTour is true and this field is present
+            and false - an older backend without the field means no hint.

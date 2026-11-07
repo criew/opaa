@@ -17,7 +17,8 @@ public enum Feature {
   METADATA,
   SPEECH_INPUT,
   EXTERNAL_ACCESS,
-  CHAT_UPLOAD;
+  CHAT_UPLOAD,
+  QUICK_TOUR;
 
   static final String PREFIX = "opaa.features";
 

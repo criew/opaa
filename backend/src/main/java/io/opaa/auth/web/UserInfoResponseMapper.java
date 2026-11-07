@@ -12,11 +12,13 @@ final class UserInfoResponseMapper {
 
   private UserInfoResponseMapper() {}
 
-  static UserInfoResponse toResponse(CurrentUser caller, String createdReason) {
+  static UserInfoResponse toResponse(
+      CurrentUser caller, String createdReason, boolean quickTourHintDone) {
     UserInfoResponse response =
         new UserInfoResponse(
             caller.id(), caller.email(), caller.displayName(), caller.systemRole().name());
     response.setCreatedReason(createdReason);
+    response.setQuickTourHintDone(quickTourHintDone);
     return response;
   }
 }

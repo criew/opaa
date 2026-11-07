@@ -25,6 +25,7 @@ export const mockFeaturesConfig: FeaturesConfig = {
   speechInput: true,
   externalAccess: true,
   chatUpload: true,
+  quickTour: true,
 }
 
 export let mockAuthConfig: AuthConfig = {
