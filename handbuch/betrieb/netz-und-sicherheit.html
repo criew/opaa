@@ -4354,8 +4354,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.</li>
 <li><strong>Ein Hostname mit Zeichen außerhalb von ASCII</strong> wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (<code>xn--…</code>) eintragen.</li>
-<li>Nur <code>http</code> und <code>https</code>; Redirects nur auf demselben Origin, nie auf <code>http</code> herab. Zertifikate
-  werden immer geprüft.</li>
+<li>Nur <code>http</code> und <code>https</code>; Redirects nie von <code>https</code> auf <code>http</code> herab. Einem Redirect auf einen
+  fremden Host folgen nur das Webverzeichnis, der RSS-Feed selbst und Confluence-Anhänge, dann ohne
+  Zugangsdaten, sowie Downloads aus Microsoft Graph auf das von Graph genannte <code>https</code>-Ziel; alle
+  anderen Abrufe bleiben auf ihrem Origin. Zertifikate werden immer geprüft.</li>
 <li><strong>Grenze:</strong> Hinter dem <a href="#ausgangsproxy">Ausgangsproxy</a> löst der Proxy den Namen auf; OPAA bindet
   und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
   Egress auf Netzebene bleibt die zweite Linie.</li>
@@ -4367,7 +4369,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
 Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
 einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
 noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
-<code>opaa_target_validation_refused_connection_checks_total</code>. Ist die
+<code>opaa_target_validation_refused_connection_checks_total</code>. Ein einzelner Lauf des RSS-Feed-,
+Webverzeichnis- und Confluence-Konnektors fragt höchstens <code>OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN</code>
+verschiedene Hosts an, Redirects eingeschlossen; Redirects auf ständig neue Namen füllen die
+Bindungen deshalb nicht. Ist die
 Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
 Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
 zählt <code>opaa_target_validation_refused_checks_total</code>; bewachte Namen bleiben bewacht, ein Neustart

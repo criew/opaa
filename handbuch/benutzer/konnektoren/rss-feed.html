@@ -4204,8 +4204,15 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.</p>
 <td><code>opaa.indexing.http.request-budget-per-run</code>, <code>…max-rate-limit-wait-per-run</code></td>
 <td>„unvollständig, wird fortgesetzt", Zustand nicht gespeichert</td>
 </tr>
+<tr>
+<td>Verschiedene Hosts je Lauf, Redirects eingeschlossen</td>
+<td><code>opaa.indexing.http.max-hosts-per-run</code></td>
+<td>Eintrag oder Anlage auf einem weiteren Host zurückgestellt</td>
+</tr>
 </tbody>
 </table>
+<p>Ein gesetztes Anfragebudget muss einen vollen Lauf decken: Nach einer Änderung des Inhaltsselektors
+oder des Anlagenprofils verarbeitet jeder Lauf den Feed von vorn, bis einer ihn ganz durchlaufen hat.</p>
 <p>Timeouts: 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage. Der Speicherbedarf
 liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.</p>
 <h2 id="8-protokoll-und-fehlerbilder">8. Protokoll und Fehlerbilder<a class="headerlink" href="#8-protokoll-und-fehlerbilder" title="Permanent link">&para;</a></h2>
@@ -4247,6 +4254,11 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.</p>
 <td>„Detailseite nicht erreichbar"</td>
 <td>Verbindungsfehler, Timeout, Seite zu groß; zurückgestellt</td>
 <td>nichts</td>
+</tr>
+<tr>
+<td>„Der Lauf hat bereits … verschiedene Hosts angefragt …"</td>
+<td>die Einträge verweisen auf mehr Server, als ein Lauf anfragt; zurückgestellt</td>
+<td>bei einem Sammel-Feed <code>opaa.indexing.http.max-hosts-per-run</code> anheben</td>
 </tr>
 <tr>
 <td>„Inhaltstyp der Detailseite wird nicht unterstützt"</td>

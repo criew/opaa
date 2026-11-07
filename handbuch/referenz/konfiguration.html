@@ -4634,13 +4634,19 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN</code></td>
 <td><code>0</code></td>
 <td><code>0</code></td>
-<td>Anfragebudget je Lauf des RSS-Feed- und des Webverzeichnis-Konnektors: Anfragen einschließlich Wiederholungen nach <code>429</code>, bevor der Lauf <strong>geordnet als „unvollständig, wird fortgesetzt"</strong> endet — kein Fehler; der nächste Lauf sieht den Feed bzw. das Verzeichnis erneut. <code>0</code> (Standard) schaltet das Budget ab. Confluence (<code>OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN</code>) und S3 (<code>OPAA_INDEXING_S3_REQUEST_BUDGET_PER_RUN</code>) behalten ihre eigenen Budgets</td>
+<td>Anfragebudget je Lauf des RSS-Feed- und des Webverzeichnis-Konnektors: Anfragen einschließlich Wiederholungen nach <code>429</code>, bevor der Lauf <strong>geordnet als „unvollständig, wird fortgesetzt"</strong> endet — kein Fehler; der nächste Lauf sieht den Feed bzw. das Verzeichnis erneut. <code>0</code> (Standard) schaltet das Budget ab. Beim RSS-Feed muss ein gesetztes Budget einen vollen Lauf decken: Nach geänderten Angaben der Bibliothek verarbeitet ein Lauf jeden Eintrag neu und beginnt damit jedes Mal von vorn, bis ein Lauf den ganzen Feed durchlaufen hat; ein kleineres Budget lässt diese Neuverarbeitung nie enden. Confluence (<code>OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN</code>) und S3 (<code>OPAA_INDEXING_S3_REQUEST_BUDGET_PER_RUN</code>) behalten ihre eigenen Budgets</td>
 </tr>
 <tr>
 <td><code>OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN</code></td>
 <td><code>15m</code></td>
 <td><code>15m</code></td>
 <td>Deckel der Summe aller <code>429</code>-Wartezeiten eines Laufs beim RSS-Feed- und Webverzeichnis-Konnektor; eine Wartezeit, die den Deckel überschreiten würde, wird nicht mehr abgewartet, der Lauf endet <strong>geordnet als „unvollständig, wird fortgesetzt"</strong>. <code>0</code> fällt auf den Standard zurück. Confluence und S3 sind nicht betroffen</td>
+</tr>
+<tr>
+<td><code>OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN</code></td>
+<td><code>100</code></td>
+<td><code>100</code></td>
+<td>Verschiedene Hosts, die ein Lauf des RSS-Feed-, Webverzeichnis- und Confluence-Konnektors anfragt, jeden Redirect eingeschlossen. Eine Anfrage an einen weiteren Host weist der Lauf ab, bevor er ihn prüft oder kontaktiert; das Element wird mit „Der Lauf hat bereits … verschiedene Hosts angefragt …" übersprungen, der Lauf geht weiter. Die Grenze hält einen Lauf davon ab, mit Redirects auf ständig neue Namen die Bindungen der <a href="../betrieb/netz-und-sicherheit.html#zielprüfung-abrufe-des-servers">Zielprüfung</a> zu füllen. Anheben, wenn ein Feed auf Detailseiten bei mehr Servern verweist. <code>0</code> fällt auf den Standard zurück</td>
 </tr>
 <tr>
 <td><code>OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT</code></td>
