@@ -943,7 +943,8 @@ abhängt, per `kcadm` in den bestehenden Realm:
 - den Client `opaa-directory` (vertraulich, nur Dienstkonto), die Rollen `view-users` und
   `query-groups` aus `realm-management` und den Standard-Client-Scope `kc-admin-api` (ab Keycloak
   26.8.2 nötig, sonst weist die Admin-API das Dienstkonto ab; Keycloak setzt ihn nur bei seinen
-  eigenen Admin-Clients, ein älteres Keycloak kennt ihn nicht und überspringt den Schritt),
+  eigenen Admin-Clients, auch nach einem Update bestehender Realms; vor 26.8.2 gibt es ihn nicht,
+  das Skript überspringt den Schritt dann und gehört nach dem Update erneut ausgeführt),
 - den Audience-Mapper `opaa-frontend-audience` am Client `opaa-seed`.
 
 Das Skript ist idempotent: Es prüft jeden Punkt und legt nur an, was fehlt; ein zweiter Lauf ändert
