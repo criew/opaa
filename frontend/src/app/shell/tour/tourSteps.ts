@@ -1,19 +1,18 @@
 /**
- * The stations of the first-login tour (UI lab #2312). Each station names the element it explains;
- * on narrow screens, where rail and space column sit in the drawer, stations of the drawer point
- * at the menu button instead and say so in their text.
+ * The stations of the first-login tour (UI lab #2312). Each station names the element it explains.
+ * On narrow screens rail and space column sit in the drawer; their stations collapse into one
+ * station at the menu button, so the tour never points at the same element twice in a row.
  */
 export interface TourStep {
   id: string
   title: string
   text: string
-  /** Text on narrow screens, where the element lives behind the menu button. */
-  narrowText?: string
-  /** Finds the element the station explains on wide screens. */
+  /** Finds the element the station explains. */
   anchor: () => HTMLElement | null
-  /** Whether the element sits in the drawer below the `md` breakpoint. */
-  inDrawer?: boolean
-  adminOnly?: boolean
+  /** The card goes above the anchor and also above this element, which the next station shows. */
+  keepVisible?: () => HTMLElement | null
+  /** Shows a copy of an answer with footnote marks; the tour needs no sample chat for it. */
+  withAnswerSample?: boolean
 }
 
 const byLabel = (label: string) => () =>
@@ -40,64 +39,79 @@ function spaceKnowledgeChip(): HTMLElement | null {
   return Array.from(chips).find((chip) => chip.textContent?.startsWith('@Space-Wissen')) ?? null
 }
 
-export const MENU_BUTTON = byLabel('Menü öffnen')
-
-export const TOUR_STEPS: TourStep[] = [
-  {
-    id: 'ask',
-    title: 'Fragen stellen',
-    text: 'Fragen Sie in eigenen Worten. Jede Antwort nennt ihre Fundstellen als Ziffern; ein Klick zeigt die Stelle im Dokument.',
-    anchor: chatInput,
-  },
-  {
-    id: 'knowledge',
-    title: 'Worauf die Antwort sich stützt',
-    text: '@Space-Wissen ist das Wissen, das diesem Space zugeordnet ist und das Sie lesen dürfen. Mit @ wählen Sie einzelne Bibliotheken.',
-    anchor: spaceKnowledgeChip,
-  },
-  {
-    id: 'spaces',
-    title: 'Privat oder im Team',
-    text: 'Im privaten Bereich arbeiten Sie allein. Ein Space teilt Chats und Wissen mit seinen Mitgliedern.',
-    narrowText:
-      'Im Menü wechseln Sie zwischen dem privaten Bereich, in dem Sie allein arbeiten, und Spaces, die Chats und Wissen mit ihren Mitgliedern teilen.',
-    anchor: byLabel('Spaces'),
-    inDrawer: true,
-  },
-  {
-    id: 'catalog',
-    title: 'Wissen finden',
-    text: 'Der Katalog zeigt alle Bibliotheken und Prompts, die Sie lesen dürfen. Von dort ordnen Sie sie einem Space zu.',
-    narrowText:
-      'Im Menü führt „Katalog“ zu allen Bibliotheken und Prompts, die Sie lesen dürfen. Von dort ordnen Sie sie einem Space zu.',
-    anchor: railLink('/catalog'),
-    inDrawer: true,
-  },
-  {
-    id: 'admin',
-    title: 'Systemverwaltung',
-    text: 'Unter „Admin“ legen Sie Konten, Anbindungen und Modelle an. Diesen Eintrag sehen nur Personen in der Systemverwaltung.',
-    narrowText:
-      'Im Menü legen Sie unter „Admin“ Konten, Anbindungen und Modelle an. Diesen Eintrag sehen nur Personen in der Systemverwaltung.',
-    anchor: railLink('/admin/users'),
-    inDrawer: true,
-    adminOnly: true,
-  },
-  {
-    id: 'again',
-    title: 'Rundgang wiederholen',
-    text: 'Über Ihr Profil starten Sie diesen Rundgang jederzeit erneut.',
-    narrowText: 'Im Menü starten Sie über Ihr Profil diesen Rundgang jederzeit erneut.',
-    anchor: byLabel('Profil und Einstellungen'),
-    inDrawer: true,
-  },
-]
-
-export function stepsFor(isAdmin: boolean): TourStep[] {
-  return TOUR_STEPS.filter((step) => !step.adminOnly || isAdmin)
+const ASK: TourStep = {
+  id: 'ask',
+  title: 'Fragen stellen',
+  text: 'Fragen Sie in eigenen Worten. Jede Antwort nennt ihre Fundstellen als Ziffern; ein Klick zeigt die Stelle im Dokument.',
+  anchor: chatInput,
+  keepVisible: spaceKnowledgeChip,
+  withAnswerSample: true,
 }
 
-/** Puts the caret into the chat input, the one action every variant ends with. */
+const KNOWLEDGE: TourStep = {
+  id: 'knowledge',
+  title: 'Worauf die Antwort sich stützt',
+  text: '@Space-Wissen ist das Wissen, das diesem Space zugeordnet ist und das Sie lesen dürfen. Mit @ wählen Sie einzelne Bibliotheken.',
+  anchor: spaceKnowledgeChip,
+  keepVisible: spaceKnowledgeChip,
+}
+
+const ADMIN_SENTENCE =
+  'Unter „Admin“ verwalten Sie Konten, Gruppen und Modelle; diesen Eintrag sehen nur Personen in der Systemverwaltung.'
+
+function wideSteps(isAdmin: boolean): TourStep[] {
+  const admin: TourStep[] = isAdmin
+    ? [
+        {
+          id: 'admin',
+          title: 'Systemverwaltung',
+          text: ADMIN_SENTENCE,
+          anchor: railLink('/admin/users'),
+        },
+      ]
+    : []
+  return [
+    ASK,
+    KNOWLEDGE,
+    {
+      id: 'spaces',
+      title: 'Privat oder im Team',
+      text: 'Im privaten Bereich arbeiten Sie allein. Ein Space teilt Chats und Wissen mit seinen Mitgliedern.',
+      anchor: byLabel('Spaces'),
+    },
+    {
+      id: 'catalog',
+      title: 'Wissen finden',
+      text: 'Der Katalog zeigt alle Bibliotheken und Prompts, die Sie lesen dürfen. Von dort ordnen Sie sie einem Space zu.',
+      anchor: railLink('/catalog'),
+    },
+    ...admin,
+    {
+      id: 'again',
+      title: 'Rundgang wiederholen',
+      text: 'Über Ihr Profil starten Sie diesen Rundgang jederzeit erneut.',
+      anchor: byLabel('Profil und Einstellungen'),
+    },
+  ]
+}
+
+function narrowSteps(isAdmin: boolean): TourStep[] {
+  const menuText = [
+    'Im Menü wechseln Sie zwischen Ihrem privaten Bereich und Spaces, finden im Katalog alle Bibliotheken und Prompts und starten über Ihr Profil diesen Rundgang erneut.',
+    ...(isAdmin ? [ADMIN_SENTENCE] : []),
+  ].join(' ')
+  return [
+    ASK,
+    KNOWLEDGE,
+    { id: 'menu', title: 'Alles Weitere im Menü', text: menuText, anchor: byLabel('Menü öffnen') },
+  ]
+}
+
+export function stepsFor(isAdmin: boolean, isDesktop: boolean): TourStep[] {
+  return isDesktop ? wideSteps(isAdmin) : narrowSteps(isAdmin)
+}
+
+/** Puts the caret into the chat input, where every way out of the tour ends. */
 export function focusChatInput(): void {
   document.querySelector<HTMLElement>('[aria-label="Nachricht eingeben"]')?.focus()
 }

@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
 import Modal from '@mui/material/Modal'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import CloseIcon from '@mui/icons-material/Close'
 import { useAuthStore } from '@/shared/session/authStore'
+import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import { carbon, motion, navy, radius, shadow } from '@/shared/theme/tokens'
-import { MENU_BUTTON, focusChatInput, stepsFor } from './tourSteps'
+import { focusChatInput, stepsFor } from './tourSteps'
+import { AnswerMiniature } from './TourMiniatures'
 import { useTourStore } from './tourStore'
 
 const CARD_WIDTH = 340
@@ -35,13 +34,23 @@ function clampToViewport(box: DOMRect): Rect {
   return { left, top, width: right - left, height: bottom - top }
 }
 
-/** Places the card beside a rail or column anchor, else below it, else above it. */
-function placeCard(anchor: Rect | null, card: { width: number; height: number }) {
+/**
+ * Places the card beside a rail or column anchor, else below it, else above it. With a ceiling
+ * (the top of an element the tour shows next) the card goes above that ceiling instead.
+ */
+function placeCard(
+  anchor: Rect | null,
+  card: { width: number; height: number },
+  ceiling: number | null,
+) {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const clampX = (x: number) => Math.min(Math.max(GUTTER, x), vw - card.width - GUTTER)
   const clampY = (y: number) => Math.min(Math.max(GUTTER, y), vh - card.height - GUTTER)
   if (!anchor) return { left: clampX((vw - card.width) / 2), top: clampY((vh - card.height) / 2) }
+  if (ceiling !== null) {
+    return { left: clampX(anchor.left), top: clampY(ceiling - CUTOUT_PAD - GUTTER - card.height) }
+  }
   const right = anchor.left + anchor.width + CUTOUT_PAD + GUTTER
   if (anchor.left < vw / 3 && right + card.width <= vw - GUTTER) {
     return { left: right, top: clampY(anchor.top - CUTOUT_PAD) }
@@ -55,7 +64,7 @@ function placeCard(anchor: Rect | null, card: { width: number; height: number })
 }
 
 /**
- * Variant B (and the second half of D): the tour as coachmarks over the real interface. The
+ * Variant B and the tour of D: the tour as coachmarks over the real interface. The
  * station's element stays visible in a cutout of the scrim, a card beside it explains it. The card
  * is a modal dialog - focus stays in it, Escape and the ✕ end the tour, arrow keys page.
  */
@@ -65,10 +74,9 @@ export default function CoachmarkTour() {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { open, step, goTo, finish } = useTourStore()
-  const steps = stepsFor(isAdmin)
+  const steps = stepsFor(isAdmin, isDesktop)
   const current = steps[Math.min(step, steps.length - 1)]
-  const behindMenu = !isDesktop && Boolean(current.inDrawer)
-  const text = behindMenu ? (current.narrowText ?? current.text) : current.text
+  const text = current.text
   const isLast = step >= steps.length - 1
 
   const cardRef = useRef<HTMLDivElement>(null)
@@ -77,14 +85,18 @@ export default function CoachmarkTour() {
   const [cardPos, setCardPos] = useState<{ left: number; top: number } | null>(null)
 
   const measure = useCallback(() => {
-    const element = behindMenu ? MENU_BUTTON() : current.anchor()
+    const element = current.anchor()
     element?.scrollIntoView({ block: 'nearest' })
     const box = element?.getBoundingClientRect()
     const next = box && box.width > 0 ? clampToViewport(box) : null
     setAnchor(next)
+    const keep = current.keepVisible?.()?.getBoundingClientRect()
+    const ceiling = next && keep ? Math.min(next.top, keep.top) : null
     const card = cardRef.current
-    if (card) setCardPos(placeCard(next, { width: card.offsetWidth, height: card.offsetHeight }))
-  }, [behindMenu, current])
+    if (card) {
+      setCardPos(placeCard(next, { width: card.offsetWidth, height: card.offsetHeight }, ceiling))
+    }
+  }, [current])
 
   // Measured in the next frame: the card must be laid out before its size places it.
   useLayoutEffect(() => {
@@ -106,12 +118,12 @@ export default function CoachmarkTour() {
 
   if (!open) return null
 
-  const end = () => finish()
-  const next = () => {
-    if (!isLast) return goTo(step + 1)
+  // Every way out - ✕, Escape, "Fertig" - ends in the chat input, where the person starts.
+  const end = () => {
     finish()
     window.setTimeout(focusChatInput, 0)
   }
+  const next = () => (isLast ? end() : goTo(step + 1))
   const back = () => step > 0 && goTo(step - 1)
 
   const isDark = theme.palette.mode === 'dark'
@@ -129,7 +141,8 @@ export default function CoachmarkTour() {
         aria-labelledby={titleId}
         aria-describedby={textId}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowRight') next()
+          // The last station ends only on its button, never on an arrow key.
+          if (event.key === 'ArrowRight' && !isLast) next()
           if (event.key === 'ArrowLeft') back()
         }}
         sx={{ position: 'fixed', inset: 0, outline: 'none' }}
@@ -170,31 +183,22 @@ export default function CoachmarkTour() {
             borderColor: 'divider',
             borderRadius: `${radius.md}px`,
             boxShadow: shadow.overlay,
-            p: 2.5,
-            pt: 1.5,
+            pb: 2.5,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          <DialogTitleWithClose id={titleId} onClose={end}>
+            {current.title}
+          </DialogTitleWithClose>
+          <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {current.withAnswerSample && <AnswerMiniature compact />}
+            <Typography id={textId} variant="body2" sx={{ color: 'text.secondary' }}>
+              {text}
+            </Typography>
+          </Box>
+          <Box sx={{ px: 3, pt: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', mr: 'auto' }}>
               {step + 1} von {steps.length}
             </Typography>
-            <Tooltip title="Rundgang beenden">
-              <IconButton onClick={end} aria-label="Rundgang beenden" sx={{ mr: -1 }}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Typography
-            id={titleId}
-            component="h2"
-            sx={{ fontSize: 17, fontWeight: 600, lineHeight: 1.25, mb: 1 }}
-          >
-            {current.title}
-          </Typography>
-          <Typography id={textId} variant="body2" sx={{ color: 'text.secondary', mb: 2.5 }}>
-            {text}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             {step > 0 && (
               <Button variant="text" onClick={back}>
                 Zurück

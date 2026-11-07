@@ -1,9 +1,11 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { useAuthStore } from '@/shared/session/authStore'
 import { radius } from '@/shared/theme/tokens'
-import { stepsFor } from './tourSteps'
+import { focusChatInput, stepsFor } from './tourSteps'
 import { useTourStore } from './tourStore'
 
 /**
@@ -13,7 +15,8 @@ import { useTourStore } from './tourStore'
 export default function TourInvite() {
   const isAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { start, finish } = useTourStore()
-  const count = stepsFor(isAdmin).length
+  const isDesktop = useMediaQuery(useTheme().breakpoints.up('md'))
+  const count = stepsFor(isAdmin, isDesktop).length
 
   return (
     <Box
@@ -47,7 +50,14 @@ export default function TourInvite() {
         <Button variant="outlined" onClick={start}>
           Rundgang starten
         </Button>
-        <Button variant="text" onClick={finish}>
+        <Button
+          variant="text"
+          onClick={() => {
+            // The invitation unmounts; the focus goes where the person starts, not to <body>.
+            finish()
+            window.setTimeout(focusChatInput, 0)
+          }}
+        >
           Nicht jetzt
         </Button>
       </Box>

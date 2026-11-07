@@ -14,18 +14,18 @@ import { fontFamily, motion, radius } from '@/shared/theme/tokens'
  * answer, the input with @Space-Wissen, the space rows, the catalog tiles. All of it is
  * `aria-hidden`; the page's sentence carries the meaning.
  */
-function Stage({ children }: { children: ReactNode }) {
+function Stage({ children, compact }: { children: ReactNode; compact?: boolean }) {
   return (
     <Box
       aria-hidden
       sx={{
-        minHeight: 176,
+        minHeight: compact ? 0 : 176,
         bgcolor: 'background.default',
         border: 1,
         borderColor: 'divider',
-        borderRadius: `${radius.lg}px`,
-        px: { xs: 2, sm: 3 },
-        py: 2,
+        px: compact ? 2 : { xs: 2, sm: 3 },
+        py: compact ? 1.5 : 2,
+        borderRadius: `${compact ? radius.md : radius.lg}px`,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -73,43 +73,48 @@ function Mark({ n, delay }: { n: number; delay: number }) {
   )
 }
 
-export function AnswerMiniature() {
+/** An answer with footnote marks; `compact` drops the pill for the tour's card. */
+export function AnswerMiniature({ compact }: { compact?: boolean }) {
   return (
-    <Stage>
+    <Stage compact={compact}>
       <Typography sx={{ fontSize: 14, lineHeight: 1.7, color: 'text.primary' }}>
         Fristverlängerungen bearbeitet das Referat 21 in zehn Arbeitstagen.
         <Mark n={1} delay={500} /> Für Eilfälle gilt die Dienstanweisung 4/2025.
         <Mark n={2} delay={800} />
       </Typography>
-      <Box
-        sx={{
-          height: '1px',
-          background: (t) => `linear-gradient(90deg, ${t.palette.divider}, transparent)`,
-        }}
-      />
-      <Box
-        sx={{
-          alignSelf: 'flex-start',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 1,
-          border: 1,
-          borderColor: 'divider',
-          borderRadius: `${radius.pill}px`,
-          pl: 0.75,
-          pr: 1.25,
-          py: 0.5,
-        }}
-      >
-        <Box sx={{ display: 'inline-flex' }}>
-          <Mark n={1} delay={1100} />
-          <Mark n={2} delay={1200} />
-        </Box>
-        <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
-          Belege anzeigen
-        </Typography>
-        <ArrowForwardIcon sx={{ fontSize: 14, color: 'primary.main' }} />
-      </Box>
+      {!compact && (
+        <>
+          <Box
+            sx={{
+              height: '1px',
+              background: (t) => `linear-gradient(90deg, ${t.palette.divider}, transparent)`,
+            }}
+          />
+          <Box
+            sx={{
+              alignSelf: 'flex-start',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 1,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: `${radius.pill}px`,
+              pl: 0.75,
+              pr: 1.25,
+              py: 0.5,
+            }}
+          >
+            <Box sx={{ display: 'inline-flex' }}>
+              <Mark n={1} delay={1100} />
+              <Mark n={2} delay={1200} />
+            </Box>
+            <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
+              Belege anzeigen
+            </Typography>
+            <ArrowForwardIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+          </Box>
+        </>
+      )}
     </Stage>
   )
 }

@@ -4,7 +4,8 @@
     "out": "/Users/mk/Projects/opaa-2312/ui-lab/results/D",
     "flow": "quick-tour",
     "scenarios": [
-      "small"
+      "small",
+      "empty"
     ],
     "schemes": [
       "light",
@@ -23,7 +24,7 @@
       "again"
     ]
   },
-  "shots": 16,
-  "seconds": 39,
-  "finishedAt": "2026-11-07T09:21:08.433Z"
+  "shots": 32,
+  "seconds": 40,
+  "finishedAt": "2026-11-07T09:34:37.421Z"
 }
