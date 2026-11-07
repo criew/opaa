@@ -146,6 +146,35 @@ class InstallationServiceTextRecognitionTest {
   }
 
   @Test
+  void theSavedStepIsAuditedWithItsConnectionTypeAndTheModelOnlyForAVisionModel() {
+    when(rules.toStored(any(), any(), any()))
+        .thenReturn(new StepRules.Stored(TEXT_RECOGNITION, null))
+        .thenReturn(
+            new StepRules.Stored(
+                "{\"connectionType\":\"OPENAI_VISION\",\"baseUrl\":\"http://vllm:8000/v1\","
+                    + "\"model\":\"paddle-vl\"}",
+                null));
+    ArgumentCaptor<AuditEvent> events = ArgumentCaptor.forClass(AuditEvent.class);
+    InstallationService service = service(true);
+
+    service.save(
+        new StepInput.TextRecognitionModel(
+            TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null, null));
+    service.save(
+        new StepInput.TextRecognitionModel(
+            TextRecognitionConnectionType.OPENAI_VISION, "http://vllm:8000/v1", "paddle-vl", null));
+
+    verify(audit, org.mockito.Mockito.times(2)).recordSystemProcessAction(events.capture());
+    assertThat(events.getAllValues().getFirst().after())
+        .containsEntry("connectionType", "DOCLING_SERVE")
+        .containsEntry("baseUrl", "http://opaa-ocr:5001")
+        .doesNotContainKey("model");
+    assertThat(events.getAllValues().getLast().after())
+        .containsEntry("connectionType", "OPENAI_VISION")
+        .containsEntry("model", "paddle-vl");
+  }
+
+  @Test
   void withoutTheOperationsReleaseTheStepCannotBeSavedCheckedOrSkipped() {
     InstallationService service = service(false);
 

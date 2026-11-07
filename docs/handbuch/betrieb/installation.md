@@ -252,7 +252,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   von Hand ein, denselben wie bei `OPAA_OCR_API_KEY` oder `ocr-api-key` im Secret; OPAA liest ihn
   nicht von dort. „Prüfen und weiter“ lässt den Dienst die Testseite lesen, in den Stufen Adresse,
   Anmeldung und Erkennung, und nennt bei einem Fehler die Stufe; die erste Umwandlung kann einige
-  Minuten dauern. Der Abschluss nennt, ob er die Texterkennung einschaltet.
+  Minuten dauern. OPAA wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
+  bricht er trotzdem ab, liest er den Stand neu und geht weiter, wenn die Prüfung inzwischen
+  gelungen ist, sonst sagt er, dass sie im Hintergrund weiterläuft. Der Abschluss nennt, ob er die Texterkennung einschaltet.
 - **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
   E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
   senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Ein Satz

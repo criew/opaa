@@ -5,6 +5,7 @@ import {
   completeInstallation,
   discoverInstallationModels,
   getInstallation,
+  isClientTimeout,
   saveInstallationStep,
   skipInstallationStep,
 } from '../api/installationApi'
@@ -48,6 +49,8 @@ const INITIAL: WizardState = {
 
 const SAVE_FAILED = 'Die Angaben konnten nicht gespeichert werden.'
 const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
+const CHECK_STILL_RUNNING =
+  'Die Prüfung dauert länger, als der Assistent wartet; OPAA prüft im Hintergrund weiter. Bitte etwas warten und die Seite dann neu laden: Ist der Schritt geprüft, geht es ohne neue Prüfung weiter.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
 const DISCOVERY_FAILED = 'Die Modelle konnten nicht abgerufen werden.'
@@ -55,6 +58,16 @@ const SKIP_FAILED = 'Der Schritt konnte nicht übersprungen werden.'
 
 function failed(message: string): WizardResult {
   return { ok: false, failure: { kind: 'other', message, fieldErrors: [] } }
+}
+
+/** After the client gave up waiting: whether the backend has meanwhile stored a passed check. */
+async function checkedMeanwhile(token: string, step: InstallationStepId): Promise<boolean> {
+  try {
+    const installation = await getInstallation(token)
+    return installation.steps.some((s) => s.step === step && s.checked)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -128,9 +141,15 @@ export function useInstallationWizard() {
         const checked = await checkInstallationStep(token, step, checkOptions)
         if (!checked.checked) result = failed(checked.checkMessage ?? CHECK_FAILED)
       } catch (err) {
-        const failure = installationFailure(err, values ? SAVE_FAILED : CHECK_FAILED)
-        if (leaveOn(failure)) return { ok: false, failure }
-        result = { ok: false, failure }
+        if (isClientTimeout(err)) {
+          result = (await checkedMeanwhile(token, step))
+            ? { ok: true }
+            : failed(CHECK_STILL_RUNNING)
+        } else {
+          const failure = installationFailure(err, values ? SAVE_FAILED : CHECK_FAILED)
+          if (leaveOn(failure)) return { ok: false, failure }
+          result = { ok: false, failure }
+        }
       }
       await refresh(token, (installation) => (result.ok ? nextView(installation, step) : step))
       return result

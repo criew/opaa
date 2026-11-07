@@ -4,6 +4,7 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
@@ -894,7 +895,9 @@ public class InstallationService {
       case InstallationOverview.TextRecognitionModel model -> {
         summary.put("connectionType", model.connectionType().name());
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
-        summary.put("model", orDash(model.model()));
+        if (model.connectionType() == TextRecognitionConnectionType.OPENAI_VISION) {
+          summary.put("model", orDash(model.model()));
+        }
         summary.put("apiKeySet", model.apiKeySet());
       }
       case InstallationOverview.Mail mail -> {

@@ -501,4 +501,35 @@ class InstallationStartupTest {
 
     verify(installation).applyAnswersAtStartup(argThat(inputs -> inputs.size() == 2));
   }
+
+  @Test
+  void aTranscriptionPartWithoutSpeechInputIsLeftOutWithoutReadingItsKeyFile() throws Exception {
+    when(installation.offers(InstallationStep.TRANSCRIPTION_MODEL)).thenReturn(false);
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+                + "\"model\":\"whisper\",\"apiKeyFile\":\""
+                + directory.resolve("missing-stt-key")
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isTrue();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 2
+                        && inputs.stream()
+                            .noneMatch(input -> input instanceof StepInput.TranscriptionModel)));
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(
+            message -> message.contains("TRANSCRIPTION_MODEL") && message.contains("ignored"));
+  }
 }
