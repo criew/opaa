@@ -3,14 +3,26 @@ package io.opaa.installation;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.ratelimit.RateLimitService;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * The budget per instance (ADR-0053) for the probes of the model steps, one for all four steps and
+ * The budget per instance (ADR-0053) for the probes of the model steps, one for all model steps and
  * all clients together, apart from the budget of model discoveries and the API's own. Every probed
  * model step takes one request; a refused call keeps none.
  */
 final class ModelCheckBudget {
+
+  /** The steps whose check probes a model endpoint: those with a model list, and OCR. */
+  static final Set<InstallationStep> CHECKED_STEPS =
+      Set.copyOf(
+          EnumSet.of(
+              InstallationStep.CHAT_MODEL,
+              InstallationStep.EMBEDDING_MODEL,
+              InstallationStep.RERANK_MODEL,
+              InstallationStep.TRANSCRIPTION_MODEL,
+              InstallationStep.TEXT_RECOGNITION_MODEL));
 
   static final int MAX_MODEL_CHECKS = 30;
   static final int WINDOW_SECONDS = 600;
@@ -46,7 +58,7 @@ final class ModelCheckBudget {
   Grant acquire(List<InstallationStep> steps) {
     List<RateLimitService.Decision> granted = new ArrayList<>();
     for (InstallationStep step : steps) {
-      if (!InstallationModelDiscovery.MODEL_STEPS.contains(step)) {
+      if (!CHECKED_STEPS.contains(step)) {
         continue;
       }
       RateLimitService.Decision decision = budget.tryAcquire(BUDGET_KEY);

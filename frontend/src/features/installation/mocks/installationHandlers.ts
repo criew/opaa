@@ -17,6 +17,7 @@ import {
   type InstallationRerankModel,
   type InstallationStepCheckRequest,
   type InstallationStepState,
+  type InstallationTextRecognitionModel,
   type InstallationTranscriptionModel,
 } from '../api/types'
 import {
@@ -138,6 +139,22 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
       },
     }
   }
+  if (step.step === 'TEXT_RECOGNITION_MODEL') {
+    const { apiKey, connectionType, model, ...rest } = part as InstallationTextRecognitionModel
+    const keySet =
+      apiKey === undefined || apiKey === null
+        ? Boolean(step.textRecognitionModel?.apiKeySet)
+        : apiKey !== ''
+    const type = connectionType ?? 'DOCLING_SERVE'
+    return {
+      textRecognitionModel: {
+        ...rest,
+        connectionType: type,
+        model: type === 'OPENAI_VISION' ? (model ?? null) : null,
+        apiKeySet: keySet,
+      },
+    }
+  }
   if (step.step === 'MAIL') {
     const { password, ...rest } = part as InstallationMail
     const passwordSet =
@@ -180,6 +197,7 @@ function checkMessageOf(step: InstallationStepState): string | null {
       step.embeddingModel ??
       step.rerankModel ??
       step.transcriptionModel ??
+      step.textRecognitionModel ??
       step.signIn ??
       step.mail ??
       {},
@@ -187,6 +205,9 @@ function checkMessageOf(step: InstallationStepState): string | null {
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
   if (step.step === 'MAIL') {
     return 'Die Verbindung zum Mailserver ist fehlgeschlagen: ConnectException: Connection refused'
+  }
+  if (step.step === 'TEXT_RECOGNITION_MODEL') {
+    return 'Gescheitert an der Stufe „Adresse“: Die Verbindung wurde vom Server abgelehnt.'
   }
   return step.step === 'SIGN_IN'
     ? 'Die Discovery-Adresse des Anbieters ist nicht erreichbar. Prüfen Sie die Issuer-URI.'
@@ -309,7 +330,9 @@ export const installationHandlers = [
             ? 'Verbindung erfolgreich, der Endpunkt hat die Probe bewertet.'
             : step.step === 'TRANSCRIPTION_MODEL'
               ? 'Verbindung erfolgreich, der Endpunkt hat geantwortet.'
-              : 'Prüfung erfolgreich.'
+              : step.step === 'TEXT_RECOGNITION_MODEL'
+                ? 'Adresse, Anmeldung und Erkennung in Ordnung. Verbindung erfolgreich, der Dienst hat die Testseite gelesen.'
+                : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -340,6 +363,7 @@ export const installationHandlers = [
       embeddingModel: undefined,
       rerankModel: undefined,
       transcriptionModel: undefined,
+      textRecognitionModel: undefined,
       mail: undefined,
       branding: undefined,
     })

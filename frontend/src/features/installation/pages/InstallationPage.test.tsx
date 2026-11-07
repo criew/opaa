@@ -18,6 +18,7 @@ import {
   withMockBrandingStep,
   withMockEmbeddingStep,
   withMockRerankStep,
+  withMockTextRecognitionStep,
   withMockTranscriptionStep,
   withoutMockStep,
 } from '../mocks/installationFixtures'
@@ -335,6 +336,9 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Transkriptionsmodell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Texterkennung')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Branding')).toBeInTheDocument()
@@ -343,10 +347,11 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(6)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(7)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
     expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Die Spracheingabe bleibt aus/)).toBeInTheDocument()
+    expect(screen.getByText(/Die Texterkennung bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
     expect(mockSkippedSteps()).toEqual([
@@ -354,6 +359,7 @@ describe('InstallationPage', () => {
       'EMBEDDING_MODEL',
       'RERANK_MODEL',
       'TRANSCRIPTION_MODEL',
+      'TEXT_RECOGNITION_MODEL',
       'MAIL',
       'BRANDING',
     ])
@@ -1030,6 +1036,143 @@ describe('InstallationPage', () => {
       expect(
         mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')?.saved,
       ).toBe(false)
+    })
+  })
+
+  describe('with the text recognition step', () => {
+    beforeEach(() => {
+      withMockTextRecognitionStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openTextRecognitionStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Texterkennung')
+    }
+
+    it('is missing while the API does not list it, as without OPAA_OCR_ENABLED', async () => {
+      withoutMockStep('TEXT_RECOGNITION_MODEL')
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+
+      await stepHeading('Abschluss')
+      const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
+      expect(within(optional).queryByText('Texterkennung')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Texterkennung/)).not.toBeInTheDocument()
+    })
+
+    it('starts at the bundled service with its address and asks for its key by hand', async () => {
+      const user = userEvent.setup()
+      await openTextRecognitionStep(user)
+
+      expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+      const services = screen.getByRole('radiogroup', { name: 'Dienst' })
+      expect(
+        within(services)
+          .getAllByRole('radio')
+          .map((tile) => tile.textContent),
+      ).toEqual([
+        expect.stringMatching(/^Mitgelieferter Dienst/),
+        expect.stringMatching(/^Eigener Endpunkt/),
+      ])
+      expect(within(services).getByRole('radio', { name: /Mitgelieferter Dienst/ })).toBeChecked()
+      expect(screen.queryByRole('radiogroup', { name: 'Anbindung' })).not.toBeInTheDocument()
+      expect(field('Basis-Adresse')).toHaveValue('http://opaa-ocr:5001')
+      expect(field('Basis-Adresse')).toHaveAccessibleDescription(/http:\/\/<Release>-ocr:5001/)
+      expect(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' })).toHaveValue('')
+      expect(
+        screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }),
+      ).toHaveAccessibleDescription(/OPAA liest ihn nicht von dort/)
+    })
+
+    it('checks the bundled service and switches text recognition on at the completion', async () => {
+      const user = userEvent.setup()
+      await openTextRecognitionStep(user)
+
+      const baseUrl = field('Basis-Adresse')
+      await user.clear(baseUrl)
+      await user.type(baseUrl, 'http://kaputt-ocr:5001')
+      await submitStep(user)
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Gescheitert an der Stufe „Adresse“',
+      )
+
+      await user.clear(field('Basis-Adresse'))
+      await user.type(field('Basis-Adresse'), 'http://opaa-ocr:5001')
+      await user.type(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }), 'ocr-key')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      const textRecognition = mockInstallationState().steps.find(
+        (s) => s.step === 'TEXT_RECOGNITION_MODEL',
+      )
+      expect(textRecognition).toMatchObject({
+        checked: true,
+        textRecognitionModel: {
+          connectionType: 'DOCLING_SERVE',
+          baseUrl: 'http://opaa-ocr:5001',
+          model: null,
+          apiKeySet: true,
+        },
+      })
+      await openFromStepList(user, 'Abschluss')
+      expect(
+        screen.getByText(/Die Texterkennung gescannter PDFs wird mit dem geprüften Dienst/),
+      ).toBeInTheDocument()
+    })
+
+    it('offers an own docling-serve or vision model and asks a vision model for its identifier', async () => {
+      const user = userEvent.setup()
+      await openTextRecognitionStep(user)
+
+      await user.click(screen.getByRole('radio', { name: /Eigener Endpunkt/ }))
+      expect(field('Basis-Adresse')).toHaveValue('')
+      const connections = screen.getByRole('radiogroup', { name: 'Anbindung' })
+      expect(
+        within(connections)
+          .getAllByRole('radio')
+          .map((tile) => tile.textContent),
+      ).toEqual([
+        expect.stringMatching(/^docling-serve/),
+        expect.stringMatching(/^Vision-Modell \(OpenAI-kompatibel\)/),
+      ])
+      expect(queryField('Modell-Kennung')).not.toBeInTheDocument()
+
+      await user.click(within(connections).getByRole('radio', { name: /Vision-Modell/ }))
+      expect(
+        screen.getByText(/Ein Vision-Modell liefert keine Lage des Textes/),
+      ).toBeInTheDocument()
+      await user.type(field('Basis-Adresse'), 'http://vllm:8000/v1')
+      await submitStep(user)
+      expect(field('Modell-Kennung')).toHaveAccessibleDescription(
+        'Bitte die Modell-Kennung angeben.',
+      )
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TEXT_RECOGNITION_MODEL')?.saved,
+      ).toBe(false)
+
+      await user.type(field('Modell-Kennung'), 'paddle-vl')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TEXT_RECOGNITION_MODEL'),
+      ).toMatchObject({
+        checked: true,
+        textRecognitionModel: {
+          connectionType: 'OPENAI_VISION',
+          baseUrl: 'http://vllm:8000/v1',
+          model: 'paddle-vl',
+          apiKeySet: false,
+        },
+      })
     })
   })
 

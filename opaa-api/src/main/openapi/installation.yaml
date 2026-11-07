@@ -49,7 +49,8 @@ paths:
         other parts are ignored. Network, budget and token are checked before the body is read;
         a body above 64 KiB is unreadable (400). Saving discards an earlier check of the step. A password is stored
         only as a hash, a model key only encrypted. TRANSCRIPTION_MODEL exists only while
-        OPAA_FEATURES_SPEECH_INPUT_ENABLED is on, otherwise every operation on it answers 400.
+        OPAA_FEATURES_SPEECH_INPUT_ENABLED is on, TEXT_RECOGNITION_MODEL only while
+        OPAA_OCR_ENABLED is on; otherwise every operation on the step answers 400.
         Same token and network rules as getInstallation.
       requestBody:
         required: true
@@ -92,13 +93,17 @@ paths:
         embedding model, which also determines its vector size, for RERANK_MODEL the probe of the
         rerank model administration (one rerank request with a test document), for
         TRANSCRIPTION_MODEL the probe of the transcription model administration (GET
-        {baseUrl}/models, no audio), or for MAIL a connection to the
+        {baseUrl}/models, no audio), for TEXT_RECOGNITION_MODEL the staged test of the text
+        recognition administration with its test page (address, sign-in, recognition; the message
+        names the stage that failed, and the first conversion may take up to three minutes), or for
+        MAIL a connection to the
         mail server with sign-in when a user name is set, without sending anything. A failed MAIL
         check names one of four fixed reasons (not reachable, TLS failed, sign-in refused, no mail
         server), the cause goes to the log only. BRANDING is checked against the rules of the
         branding administration again, without any connection. For MAIL only, testRecipient additionally sends
         the test message to that address. Per instance and for all clients together at most 30
-        checks of CHAT_MODEL, EMBEDDING_MODEL, RERANK_MODEL and TRANSCRIPTION_MODEL together in
+        checks of CHAT_MODEL, EMBEDDING_MODEL, RERANK_MODEL, TRANSCRIPTION_MODEL and
+        TEXT_RECOGNITION_MODEL together in
         10 minutes (429 with code MODEL_CHECK_LIMIT), at most 30 MAIL checks in 10 minutes (429
         with code MAIL_CHECK_LIMIT) and at most 10 test messages in 10 minutes (429 with code
         MAIL_TEST_LIMIT); the per-address budget of the installation API answers 429 without code. Every wait on the mail server is bounded by
@@ -150,7 +155,8 @@ paths:
         Skips an optional step (400 for a mandatory one): discards its saved values and their
         check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
         EMBEDDING_MODEL, no model is set up, for RERANK_MODEL, reranking stays off, for
-        TRANSCRIPTION_MODEL, speech input stays off, for MAIL,
+        TRANSCRIPTION_MODEL, speech input stays off, for TEXT_RECOGNITION_MODEL, text recognition
+        stays off, for MAIL,
         sending stays off, for BRANDING, the OPAA
         default stays. A skipped step does not
         hold up the completion; a saved optional step does until its check succeeded or it is
@@ -239,9 +245,10 @@ paths:
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
-        embeddingModel, rerankModel, transcriptionModel, mail and branding are optional; an optional
-        part left out counts as skipped and discards what the assistant saved for it.
-        transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off. Every model
+        embeddingModel, rerankModel, transcriptionModel, textRecognitionModel, mail and branding are
+        optional; an optional part left out counts as skipped and discards what the assistant saved
+        for it. transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off,
+        textRecognitionModel while OPAA_OCR_ENABLED is off. Every model
         part counts as one check against the budget of model checks (429 with code
         MODEL_CHECK_LIMIT); the check of mail sends no test message and counts against the budget
         of MAIL checks (429 with code MAIL_CHECK_LIMIT). A refused call counts against neither. Same token and
@@ -291,13 +298,15 @@ paths:
         model and the embedding model with the vector table of its probed size from the checked
         steps, takes a checked RERANK_MODEL step over into the rerank model administration and
         switches reranking on, switches the transcription model role on with a checked
-        TRANSCRIPTION_MODEL step through the write path of the model administration, takes a
+        TRANSCRIPTION_MODEL step and the text recognition role with a checked
+        TEXT_RECOGNITION_MODEL step through the write path of the model administration, takes a
         checked MAIL step over into the mail settings and switches sending on,
         takes a checked BRANDING step over into the branding settings with the rules of the
         branding administration, discards the token and the saved steps and switches every instance to normal operation. A
         skipped optional step leaves what it would set out: without the embedding model there is
         no vector table until the model administration sets the first one, without the rerank model
-        reranking stays off, without the transcription model speech input. Same token and network
+        reranking stays off, without the transcription model speech input, without the text
+        recognition model text recognition. Same token and network
         rules as getInstallation.
       responses:
         "200":
@@ -351,9 +360,11 @@ components:
         local emergency account of ADR-0033) and SIGN_IN the sign-in method are mandatory;
         CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model, RERANK_MODEL the rerank
         model (ADR-0060, Entscheidung 10), TRANSCRIPTION_MODEL the transcription model of speech
-        input (Entscheidung 16), MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and
+        input (Entscheidung 16), TEXT_RECOGNITION_MODEL the text recognition (OCR) model of scanned
+        PDFs (Entscheidung 18), MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and
         BRANDING, the texts and accent colour of the branding without its images, are
-        optional. TRANSCRIPTION_MODEL is listed only while OPAA_FEATURES_SPEECH_INPUT_ENABLED is on.
+        optional. TRANSCRIPTION_MODEL is listed only while OPAA_FEATURES_SPEECH_INPUT_ENABLED is on,
+        TEXT_RECOGNITION_MODEL only while OPAA_OCR_ENABLED is on.
       enum:
         [
           FIRST_ADMIN,
@@ -362,6 +373,7 @@ components:
           EMBEDDING_MODEL,
           RERANK_MODEL,
           TRANSCRIPTION_MODEL,
+          TEXT_RECOGNITION_MODEL,
           MAIL,
           BRANDING,
         ]
@@ -427,6 +439,8 @@ components:
           $ref: "#/components/schemas/InstallationRerankModelView"
         transcriptionModel:
           $ref: "#/components/schemas/InstallationTranscriptionModelView"
+        textRecognitionModel:
+          $ref: "#/components/schemas/InstallationTextRecognitionModelView"
         mail:
           $ref: "#/components/schemas/InstallationMailView"
         branding:
@@ -448,6 +462,8 @@ components:
           $ref: "#/components/schemas/InstallationRerankModel"
         transcriptionModel:
           $ref: "#/components/schemas/InstallationTranscriptionModel"
+        textRecognitionModel:
+          $ref: "#/components/schemas/InstallationTextRecognitionModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:
@@ -687,6 +703,55 @@ components:
           type: string
           description: The language passed to the model; empty lets the model detect it.
 
+    InstallationTextRecognitionModel:
+      type: object
+      description: >
+        The text recognition (OCR) model of scanned PDFs, with the rules of
+        updateTextRecognitionModelSettings for a switched-on role; the completion switches the role
+        on with it. Unlike there, the address must pass the address check of models even if the
+        model administration stored it before.
+      required: [baseUrl]
+      properties:
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        baseUrl:
+          type: string
+          maxLength: 500
+          description: >
+            For DOCLING_SERVE without the path /v1, for OPENAI_VISION with it; without userinfo.
+            The bundled service answers at http://opaa-ocr:5001 in Docker Compose and at
+            http://<release>-ocr:5001 in Kubernetes.
+          example: http://opaa-ocr:5001
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: The vision model, required for OPENAI_VISION; ignored for DOCLING_SERVE.
+          example: PaddlePaddle/PaddleOCR-VL
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Stored encrypted; omitted keeps a key saved before, but only for the same address;
+            empty removes it. The bundled service needs the value of OPAA_OCR_API_KEY, which the
+            backend does not read itself.
+
+    InstallationTextRecognitionModelView:
+      type: object
+      required: [connectionType, baseUrl, apiKeySet]
+      properties:
+        connectionType:
+          $ref: "#/components/schemas/TextRecognitionConnectionType"
+        baseUrl:
+          type: string
+        model:
+          type: string
+          nullable: true
+          description: The vision model; null for DOCLING_SERVE.
+        apiKeySet:
+          type: boolean
+
     InstallationModelDiscoveryRequest:
       type: object
       description: The endpoint of a model step whose models are to be listed; nothing is saved.
@@ -715,10 +780,12 @@ components:
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
         that the API cannot read files of the backend. chatModel, embeddingModel, rerankModel, mail
-        and branding are optional, and so is transcriptionModel; without one its step is skipped,
-        without rerankModel reranking stays off, without transcriptionModel speech input stays off
-        (transcriptionModel is accepted but ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is
-        off), without mail sending stays off,
+        and branding are optional, and so are transcriptionModel and textRecognitionModel; without
+        one its step is skipped, without rerankModel reranking stays off, without
+        transcriptionModel speech input stays off (transcriptionModel is accepted but ignored while
+        OPAA_FEATURES_SPEECH_INPUT_ENABLED is off), without textRecognitionModel text recognition
+        stays off (accepted but ignored while OPAA_OCR_ENABLED is off), without mail sending stays
+        off,
         without branding the OPAA default stays. Parts of later steps (outboundProxy) are not
         evaluated by this version.
       required: [firstAdmin, signIn]
@@ -735,6 +802,8 @@ components:
           $ref: "#/components/schemas/InstallationRerankModel"
         transcriptionModel:
           $ref: "#/components/schemas/InstallationTranscriptionModel"
+        textRecognitionModel:
+          $ref: "#/components/schemas/InstallationTextRecognitionModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:

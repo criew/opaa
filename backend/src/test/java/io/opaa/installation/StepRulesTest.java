@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
@@ -825,5 +826,104 @@ class StepRulesTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("transcriptionModel.apiKey"));
+  }
+
+  @Test
+  void theTextRecognitionModelIsStoredWithItsKeyEncryptedAndWithoutAModelForDocling() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(
+                null, " http://ollama:5001 ", "ignored-for-docling", "ocr-key"),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("ocr-key").doesNotContain("ignored-for-docling");
+    assertThat(
+            encryptor.decrypt(
+                stored.secret(),
+                InstallationEncryptedColumns.of(InstallationStep.TEXT_RECOGNITION_MODEL)))
+        .isEqualTo("ocr-key");
+    assertThat(rules.textRecognitionModelPayload(stored.payload()))
+        .isEqualTo(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://ollama:5001", null));
+    assertThat(
+            rules.view(InstallationStep.TEXT_RECOGNITION_MODEL, stored.payload(), stored.secret()))
+        .isEqualTo(
+            new InstallationOverview.TextRecognitionModel(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://ollama:5001", null, true));
+
+    StepRules.Stored vision =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(
+                TextRecognitionConnectionType.OPENAI_VISION,
+                "http://ollama:5001",
+                " paddle-vl ",
+                null),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.textRecognitionModelPayload(vision.payload()).model()).isEqualTo("paddle-vl");
+    assertThat(vision.secret()).isEqualTo(stored.secret());
+  }
+
+  @Test
+  void theTextRecognitionModelFollowsTheRulesOfTheAdministrationAndTheAddressCheck() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(
+                        TextRecognitionConnectionType.OPENAI_VISION, "", " ", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("textRecognitionModel.baseUrl", "textRecognitionModel.model"));
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(null, "http://10.0.0.5:5001", null, null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::code)
+                    .containsExactly("BLOCKED"));
+  }
+
+  @Test
+  void aSavedTextRecognitionKeyDoesNotFollowAChangedAddress() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(null, "http://ollama:5001", null, "ocr-key"),
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(
+                        null, "http://ollama.example.org:5001", null, null),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("textRecognitionModel.apiKey"));
+  }
+
+  @Test
+  void theTextRecognitionStepNeverPrintsItsKey() {
+    assertThat(
+            new StepInput.TextRecognitionModel(null, "http://ollama:5001", null, "ocr-key")
+                .toString())
+        .doesNotContain("ocr-key")
+        .contains("apiKey=***");
   }
 }

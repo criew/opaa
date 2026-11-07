@@ -36,8 +36,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * What the system administration does with the rerank, transcription and text recognition model
  * roles (ADR-0060, Entscheidung 10; ADR-0067, Entscheidung 1): read, change and test them; the
- * installation stores a checked rerank or transcription step through the same write path
- * (Entscheidung 16 for transcription). A change is validated like every model endpoint ({@link
+ * installation stores a checked rerank, transcription or text recognition step through the same
+ * write path (Entscheidungen 16 and 18). A change is validated like every model endpoint ({@link
  * ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored one), stored
  * with the key encrypted, and recorded with the values before and after (Entscheidung 11); a change
  * to the same values writes nothing. The speech-input feature is the operation's limit: the
@@ -497,7 +497,7 @@ public class ModelRoleAdministration {
         status ->
             storeTextRecognition(
                 organizationId,
-                actorUserId,
+                AuditActor.user(actorUserId),
                 enabled,
                 type,
                 address,
@@ -512,28 +512,69 @@ public class ModelRoleAdministration {
   }
 
   /**
-   * The rules of a text recognition endpoint as field errors: those of every model endpoint, an
-   * address while switched on, and a model only for a vision model.
+   * Switches the text recognition role on with the checked step of the installation, as {@link
+   * #installRerank} (ADR-0060, Entscheidung 18). The operation's limit applies as in {@link
+   * #changeTextRecognition}: while {@code opaa.ocr.enabled} is off this refuses, so the
+   * installation calls it only while it offers the step.
+   *
+   * @throws FieldValidationException for an endpoint the rules of the role refuse
    */
+  public TextRecognitionModelView installTextRecognition(
+      UUID organizationId,
+      String systemActor,
+      TextRecognitionConnectionType connectionType,
+      String baseUrl,
+      String model,
+      String apiKey) {
+    TextRecognitionConnectionType type =
+        connectionType == null ? TextRecognitionEndpoint.DEFAULT_CONNECTION_TYPE : connectionType;
+    String address = trimmed(baseUrl);
+    String identifier = TextRecognitionEndpoint.needsModel(type) ? trimmed(model) : "";
+    requireNoErrors(textRecognitionErrors(true, type, address, identifier, null));
+    return transactions.execute(
+        status ->
+            storeTextRecognition(
+                organizationId,
+                AuditActor.systemProcess(systemActor),
+                true,
+                type,
+                address,
+                identifier,
+                row -> encryptInstalled(TEXT_RECOGNITION, apiKey)));
+  }
+
   private static List<FieldError> textRecognitionErrors(
       boolean enabled,
       TextRecognitionConnectionType type,
       String address,
       String identifier,
       String apiKey) {
+    return textRecognitionErrors(TEXT_RECOGNITION, enabled, type, address, identifier, apiKey);
+  }
+
+  /**
+   * The rules of a text recognition endpoint as field errors under {@code prefix}: those of every
+   * model endpoint, an address while switched on, and a model only for a vision model. {@code
+   * address} and {@code identifier} are trimmed, never {@code null}.
+   */
+  public static List<FieldError> textRecognitionErrors(
+      String prefix,
+      boolean enabled,
+      TextRecognitionConnectionType type,
+      String address,
+      String identifier,
+      String apiKey) {
     List<FieldError> errors = new ArrayList<>();
-    ModelEndpointRules.endpointErrors(TEXT_RECOGNITION, address, identifier, apiKey, false, errors);
+    ModelEndpointRules.endpointErrors(prefix, address, identifier, apiKey, false, errors);
     if (enabled && address.isEmpty()) {
       errors.add(
           new FieldError(
-              TEXT_RECOGNITION + ".baseUrl",
-              ModelEndpointRules.REQUIRED,
-              "Die Basis-Adresse fehlt."));
+              prefix + ".baseUrl", ModelEndpointRules.REQUIRED, "Die Basis-Adresse fehlt."));
     }
     if (enabled && TextRecognitionEndpoint.needsModel(type) && identifier.isEmpty()) {
       errors.add(
           new FieldError(
-              TEXT_RECOGNITION + ".model",
+              prefix + ".model",
               ModelEndpointRules.REQUIRED,
               "Die Modell-Kennung fehlt; ein Vision-Modell braucht sie."));
     }
@@ -543,7 +584,7 @@ public class ModelRoleAdministration {
   /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
   private TextRecognitionModelView storeTextRecognition(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       boolean enabled,
       TextRecognitionConnectionType type,
       String address,
@@ -577,7 +618,7 @@ public class ModelRoleAdministration {
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
     record(
         organizationId,
-        AuditActor.user(actorUserId),
+        actor,
         AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED,
         "text_recognition_model",
         "Texterkennung",
@@ -615,9 +656,25 @@ public class ModelRoleAdministration {
                 .map(TextRecognitionModelSettings::getApiKeyCiphertext)
                 .orElse(null),
             textRecognitionErrors(true, type, address, identifier, apiKey));
+    return probeTextRecognition(type, address, identifier, key);
+  }
+
+  /**
+   * The test of {@link #testTextRecognition} with the shipped test page, without an address check
+   * of its own; the same precondition as {@link #probeRerank}. Refused while the operation's switch
+   * is off. Call outside any transaction: the first conversion may take minutes.
+   */
+  public TextRecognitionTestOutcome probeTextRecognition(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model, String apiKey) {
+    if (!textRecognitionRole.operationEnabled()) {
+      throw FieldValidationException.of(
+          TEXT_RECOGNITION + ".enabled", ModelEndpointRules.BLOCKED, TEXT_RECOGNITION_OFF);
+    }
+    TextRecognitionConnectionType type =
+        connectionType == null ? TextRecognitionEndpoint.DEFAULT_CONNECTION_TYPE : connectionType;
     TextRecognitionClient.TestResult result =
         textRecognitionClient.test(
-            new TextRecognitionEndpoint(true, type, address, identifier, key),
+            new TextRecognitionEndpoint(true, type, baseUrl, model, apiKey),
             TEXT_RECOGNITION_TEST_TIMEOUT);
     return new TextRecognitionTestOutcome(
         result.outcome() == TextRecognitionClient.TestOutcome.READY,

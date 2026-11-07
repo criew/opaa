@@ -12,6 +12,7 @@ import io.opaa.api.dto.InstallationSignInMode;
 import io.opaa.api.dto.InstallationStatusResponse;
 import io.opaa.api.dto.InstallationStep;
 import io.opaa.api.dto.InstallationStepState;
+import io.opaa.api.dto.InstallationTextRecognitionModelView;
 import io.opaa.api.dto.InstallationTranscriptionModelView;
 import io.opaa.installation.InstallationOverview;
 import io.opaa.installation.StepInput;
@@ -70,6 +71,13 @@ final class InstallationResponseMapper {
           response.setTranscriptionModel(
               new InstallationTranscriptionModelView(
                   model.baseUrl(), model.model(), model.apiKeySet(), model.language()));
+      case InstallationOverview.TextRecognitionModel model -> {
+        InstallationTextRecognitionModelView view =
+            new InstallationTextRecognitionModelView(
+                model.connectionType(), model.baseUrl(), model.apiKeySet());
+        view.setModel(model.model());
+        response.setTextRecognitionModel(view);
+      }
       case InstallationOverview.Mail mail -> {
         InstallationMailView view =
             new InstallationMailView(

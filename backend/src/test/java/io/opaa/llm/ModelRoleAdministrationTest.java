@@ -446,6 +446,92 @@ class ModelRoleAdministrationTest {
   }
 
   @Test
+  void theInstallationSwitchesTextRecognitionOnWithItsCiphertextUnderTheSystemProcess() {
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null, null);
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<TextRecognitionModelSettings> row =
+        ArgumentCaptor.forClass(TextRecognitionModelSettings.class);
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+
+    ModelRoleAdministration.TextRecognitionModelView view =
+        administration.installTextRecognition(
+            UUID.randomUUID(),
+            "installation",
+            TextRecognitionConnectionType.DOCLING_SERVE,
+            " http://8.8.8.8:5001 ",
+            "ignored-for-docling",
+            "ocr-key");
+
+    verify(textRecognitionRows).save(row.capture());
+    assertThat(row.getValue().isEnabled()).isTrue();
+    assertThat(row.getValue().getConnectionType())
+        .isEqualTo(TextRecognitionConnectionType.DOCLING_SERVE);
+    assertThat(row.getValue().getBaseUrl()).isEqualTo("http://8.8.8.8:5001");
+    assertThat(row.getValue().getModelIdentifier()).isNull();
+    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("enc:ocr-key");
+    assertThat(view.enabled()).isTrue();
+    verify(audit).recordSystemProcessAction(event.capture());
+    verify(audit, never()).recordUserAction(any());
+    assertThat(event.getValue().actorRef()).isEqualTo("installation");
+    assertThat(event.getValue().eventType())
+        .isEqualTo(AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED);
+    assertThat(event.getValue().after())
+        .containsEntry("enabled", true)
+        .containsEntry("apiKeyChange", "SET")
+        .doesNotContainValue("ocr-key")
+        .doesNotContainValue("enc:ocr-key");
+  }
+
+  @Test
+  void theInstallationCannotSwitchOnTextRecognitionWhileTheOperationSwitchedItOff() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.installTextRecognition(
+                    UUID.randomUUID(),
+                    "installation",
+                    TextRecognitionConnectionType.DOCLING_SERVE,
+                    "http://8.8.8.8:5001",
+                    null,
+                    null))
+        .isInstanceOf(FieldValidationException.class);
+    assertThatThrownBy(
+            () ->
+                administration.probeTextRecognition(
+                    TextRecognitionConnectionType.DOCLING_SERVE, "http://8.8.8.8:5001", null, "k"))
+        .isInstanceOf(FieldValidationException.class);
+    verify(textRecognitionRows, never()).save(any());
+    verify(textRecognitionClient, never()).test(any(), any());
+  }
+
+  @Test
+  void theProbeOfTheInstallationSendsExactlyTheGivenKeyAndNamesTheStage() {
+    textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null, null);
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<TextRecognitionEndpoint> endpoint =
+        ArgumentCaptor.forClass(TextRecognitionEndpoint.class);
+    when(textRecognitionClient.test(endpoint.capture(), any()))
+        .thenReturn(
+            new TextRecognitionClient.TestResult(
+                TextRecognitionClient.TestOutcome.KEY_REJECTED,
+                "HTTP 401",
+                false,
+                TextRecognitionClient.FailedStage.AUTHENTICATION));
+
+    ModelRoleAdministration.TextRecognitionTestOutcome outcome =
+        administration.probeTextRecognition(
+            TextRecognitionConnectionType.OPENAI_VISION, "http://8.8.8.8/v1", "paddle-vl", "k");
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.failedStage()).isEqualTo(TextRecognitionClient.FailedStage.AUTHENTICATION);
+    assertThat(endpoint.getValue().apiKey()).isEqualTo("k");
+    assertThat(endpoint.getValue().model()).isEqualTo("paddle-vl");
+    assertThat(endpoint.getValue().connectionType())
+        .isEqualTo(TextRecognitionConnectionType.OPENAI_VISION);
+  }
+
+  @Test
   void aTextRecognitionAddressWithCredentialsIsRefused() {
     textRecognitionProperties = new TextRecognitionProperties(true, 0, null, 0, 0, null, null);
     ModelRoleAdministration administration = administration(true, new MockEnvironment());

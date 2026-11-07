@@ -140,6 +140,7 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.installation.StepChecks#chatModel", WIZARD_STEP_KEY),
           Map.entry("io.opaa.installation.StepChecks#rerankModel", WIZARD_STEP_KEY),
           Map.entry("io.opaa.installation.StepChecks#transcriptionModel", WIZARD_STEP_KEY),
+          Map.entry("io.opaa.installation.StepChecks#textRecognitionModel", WIZARD_STEP_KEY),
           Map.entry(
               "io.opaa.installation.StepRules#apiKey",
               "turns a saved wizard step, address and key stored together, into the settings the"

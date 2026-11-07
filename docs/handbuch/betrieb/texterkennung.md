@@ -30,9 +30,12 @@ flowchart LR
 | **Vision-Modell** (OpenAI-kompatibel) | ein Modellserver mit Bildeingang steht bereit | Adresse und Modell unter Modelle → Texterkennung; liefert nur Seiten, keine Rahmen für die Markierung im Original |
 
 Der Betriebsschalter `OPAA_OCR_ENABLED` und der Dienst sind getrennt: Das Compose-Overlay und
-`ocr.service` starten den Dienst, der Schalter gibt die Rolle frei. Den Dienst trägt die
-Systemverwaltung danach von Hand ein, mit Verbindungstyp **docling-serve**, der Adresse und dem
-Schlüssel; einen automatischen Eintrag gibt es nicht.
+`ocr.service` starten den Dienst, der Schalter gibt die Rolle frei. Eingetragen wird der Dienst mit
+Verbindungstyp **docling-serve**, der Adresse und dem Schlüssel: bei der Installation im Schritt
+„Texterkennung“ des Einrichtungs-Assistenten oder im Abschnitt `textRecognitionModel` der
+Antwortdatei ([Installation](installation.md#einrichtungs-assistent-im-browser)), danach von der
+Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest OPAA nicht vom Dienst; er wird
+dort eingetragen.
 
 | Betriebsweg | Adresse des mitgelieferten Dienstes |
 |---|---|

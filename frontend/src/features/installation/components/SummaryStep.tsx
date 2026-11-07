@@ -58,6 +58,12 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
     : transcription.checked
       ? ' Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet.'
       : ' Die Spracheingabe bleibt aus; sie lässt sich später unter „Modelle → Spracheingabe“ einrichten.'
+  const textRecognition = findStep(installation, 'TEXT_RECOGNITION_MODEL')
+  const textRecognitionSentence = !textRecognition
+    ? ''
+    : textRecognition.checked
+      ? ' Die Texterkennung gescannter PDFs wird mit dem geprüften Dienst eingeschaltet.'
+      : ' Die Texterkennung bleibt aus; sie lässt sich später unter „Modelle → Texterkennung“ einrichten.'
   const branding = findStep(installation, 'BRANDING')
   const brandingSentence = !branding
     ? ''
@@ -86,7 +92,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${rerankSentence}${transcriptionSentence}${mailSentence}${brandingSentence}`
+          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${rerankSentence}${transcriptionSentence}${textRecognitionSentence}${mailSentence}${brandingSentence}`
         )
       }
       failure={failure}

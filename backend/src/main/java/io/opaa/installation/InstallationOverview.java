@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -41,6 +42,11 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
 
   /** The transcription model; {@code language} empty lets the model detect it. */
   public record TranscriptionModel(String baseUrl, String model, boolean apiKeySet, String language)
+      implements SavedValues {}
+
+  /** The text recognition model; {@code model} is {@code null} for docling-serve. */
+  public record TextRecognitionModel(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model, boolean apiKeySet)
       implements SavedValues {}
 
   /** The mail server; {@code passwordSet} says whether a password is saved, never which. */

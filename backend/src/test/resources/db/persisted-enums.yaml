@@ -419,7 +419,7 @@ io.opaa.installation.InstallationStep:
   assessment: STATE
   readable: [
     BRANDING, CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, MAIL, RERANK_MODEL, SIGN_IN,
-    TRANSCRIPTION_MODEL
+    TEXT_RECOGNITION_MODEL, TRANSCRIPTION_MODEL
   ]
   pending: []
 io.opaa.knowledge.ErasureCause:

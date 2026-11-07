@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
 import io.opaa.branding.BrandingSettingsRules;
@@ -13,6 +14,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
+import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.TextRecognitionEndpoint;
 import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.mail.MailSettingsRules;
 import io.opaa.mail.MailSettingsService;
@@ -48,6 +51,7 @@ class StepRules {
   private static final String BRANDING_PREFIX = "branding.";
   private static final String RERANK_PREFIX = "rerankModel";
   private static final String TRANSCRIPTION_PREFIX = "transcriptionModel";
+  private static final String TEXT_RECOGNITION_PREFIX = "textRecognitionModel";
 
   /**
    * A host name or address: no whitespace and no control character in the Unicode sense (U+0085,
@@ -91,6 +95,13 @@ class StepRules {
 
   /** The transcription model; {@code language} is never {@code null}, empty for detection. */
   record TranscriptionModelPayload(String baseUrl, String model, String language) {}
+
+  /**
+   * The text recognition model without its key; {@code connectionType} is never {@code null},
+   * {@code model} is {@code null} for docling-serve.
+   */
+  record TextRecognitionModelPayload(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model) {}
 
   /** The mail server without its password; {@code encryption} is never {@code null}. */
   record MailPayload(
@@ -150,6 +161,8 @@ class StepRules {
       case StepInput.RerankModel model -> rerankModel(model, previousPayload, previousSecret);
       case StepInput.TranscriptionModel model ->
           transcriptionModel(model, previousPayload, previousSecret);
+      case StepInput.TextRecognitionModel model ->
+          textRecognitionModel(model, previousPayload, previousSecret);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
       case StepInput.Branding branding -> branding(branding);
     };
@@ -188,6 +201,11 @@ class StepRules {
         TranscriptionModelPayload model = transcriptionModelPayload(payload);
         yield new InstallationOverview.TranscriptionModel(
             model.baseUrl(), model.model(), secret != null, model.language());
+      }
+      case TEXT_RECOGNITION_MODEL -> {
+        TextRecognitionModelPayload model = textRecognitionModelPayload(payload);
+        yield new InstallationOverview.TextRecognitionModel(
+            model.connectionType(), model.baseUrl(), model.model(), secret != null);
       }
       case MAIL -> {
         MailPayload mail = mailPayload(payload);
@@ -334,6 +352,10 @@ class StepRules {
 
   TranscriptionModelPayload transcriptionModelPayload(String payload) {
     return json.readValue(payload, TranscriptionModelPayload.class);
+  }
+
+  TextRecognitionModelPayload textRecognitionModelPayload(String payload) {
+    return json.readValue(payload, TextRecognitionModelPayload.class);
   }
 
   private Stored firstAdmin(StepInput.FirstAdmin input) {
@@ -518,6 +540,38 @@ class StepRules {
                 baseUrl,
                 model,
                 language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language)),
+        secret);
+  }
+
+  /**
+   * The rules of the text recognition administration for a switched-on role (an address, a model
+   * only for a vision model), with the address check of the installation for every address.
+   */
+  private Stored textRecognitionModel(
+      StepInput.TextRecognitionModel input, String previousPayload, String previousSecret) {
+    TextRecognitionConnectionType type =
+        input.connectionType() == null
+            ? TextRecognitionEndpoint.DEFAULT_CONNECTION_TYPE
+            : input.connectionType();
+    String baseUrl = trimmed(input.baseUrl());
+    String model = TextRecognitionEndpoint.needsModel(type) ? trimmed(input.model()) : "";
+    List<FieldError> errors =
+        new ArrayList<>(
+            ModelRoleAdministration.textRecognitionErrors(
+                TEXT_RECOGNITION_PREFIX, true, type, baseUrl, model, input.apiKey()));
+    blockedAddressError(TEXT_RECOGNITION_PREFIX, baseUrl, errors);
+    requireNoErrors(errors);
+    String secret =
+        secretOf(
+            InstallationStep.TEXT_RECOGNITION_MODEL,
+            TEXT_RECOGNITION_PREFIX,
+            input.apiKey(),
+            previousSecret == null ? null : textRecognitionModelPayload(previousPayload).baseUrl(),
+            baseUrl,
+            previousSecret);
+    return new Stored(
+        json.writeValueAsString(
+            new TextRecognitionModelPayload(type, baseUrl, model.isEmpty() ? null : model)),
         secret);
   }
 
