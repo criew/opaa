@@ -394,6 +394,7 @@ die die Variable nennt, ebenso bei `OPAA_SUCCESSION_DETECTION_CRON`. Deshalb lä
 | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `true` | nicht gesetzt (auskommentiert) | `false` schaltet die Spracheingabe im Chat ab, auch wenn ein Transkriptionsdienst eingetragen ist: kein Mikrofon, die Endpunkte der Spracheingabe gibt es nicht, und die Rolle Transkription prüft keinen Dienst |
 | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | nicht gesetzt (auskommentiert) | `false` schaltet den Zugriff externer KI-Werkzeuge für die Installation ab, auch bei eingeschaltetem Schalter der Verwaltung: kein MCP-Server, keine Adressen und keine Oberfläche für externe KI-Werkzeuge, kein Token wirkt, keine Erinnerungsmail und kein Nachtlauf der Bibliotheksfreigaben; Tokens, Freigaben und Einstellungen bleiben gespeichert, die Löschfristen der Tokens laufen weiter (siehe [„Funktionen abschalten"](#funktionen-abschalten) und [Externe KI-Werkzeuge](../administration/externe-ki-werkzeuge.md)) |
 | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `true` | nicht gesetzt (auskommentiert) | `false` schaltet Dateianhänge im Chat ab: keine Büroklammer, kein Ablegen von Dateien, kein Bereich „Meine Uploads“, die Endpunkte der Anhänge gibt es nicht; vorhandene Anhänge bleiben gespeichert und werden mit ihrem Chat gelöscht (siehe [Dateien anhängen und Spracheingabe](../benutzer/anhaengen-und-diktieren.md)) |
+| `OPAA_FEATURES_QUICK_TOUR_ENABLED` | `true` | nicht gesetzt (auskommentiert) | `false` schaltet den Rundgang für neue Nutzer samt Schreibroute ab. Je Konto ist nur gespeichert, ob der Hinweis zum Rundgang erledigt ist, ohne Zeitpunkt; dieser Merker bleibt beim Abschalten erhalten |
 | **Chat-Anhänge** | | | |
 | `OPAA_CHAT_ATTACHMENTS_MAX_PER_MESSAGE` | `10` | nicht gesetzt | Höchstzahl der Anhänge einer Frage (1 bis 10) |
 | `OPAA_CHAT_ATTACHMENTS_MAX_PER_CHAT` | `50` | nicht gesetzt | Höchstzahl der Anhänge eines Chats |
@@ -457,8 +458,10 @@ eigene Variable der Form `OPAA_FEATURES_<FUNKTION>_ENABLED`; die vorhandenen ste
   Schnittstelle, ihre vorhandenen Daten bleiben unverändert liegen und werden nur nicht mehr
   beachtet. Wird die Funktion wieder eingeschaltet, ist der frühere Stand wieder da.
 - **Wirkt nach einem Neustart.** Das Backend liest die Schalter beim Start; eine Änderung zur
-  Laufzeit gibt es nicht. Das Frontend erfährt den Stand mit der Anmeldekonfiguration, also schon
-  vor der Anmeldung.
+  Laufzeit gibt es nicht. Die Schalter gehören zum
+  [Konfigurationsabdruck](../betrieb/mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck):
+  Bei mehreren Instanzen heißt Umschalten Neustart aller Instanzen. Das Frontend erfährt den Stand
+  mit der Anmeldekonfiguration, also schon vor der Anmeldung.
 
 Unter Kubernetes setzt der Abschnitt `features` der Werte-Datei die Variablen (siehe
 [Kubernetes](../betrieb/kubernetes.md#funktionen)).

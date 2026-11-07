@@ -19,7 +19,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The category {@code accounts}: the person's own {@code users} row - identity at the provider,
- * address, display name, last sign-in, system role, lock by the directory sync and creation.
+ * address, display name, last sign-in, system role, lock by the directory sync, creation and
+ * whether the hint of the quick tour is done.
  */
 @Component
 public class AccountSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -43,7 +44,11 @@ public class AccountSelfDisclosureExporter implements SelfDisclosureExporter {
                           "directoryLockedAt",
                           "Gesperrt durch den Verzeichnisabgleich seit",
                           "users.directory_locked_at"),
-                      Field.of("createdAt", "Angelegt", "users.created_at")))));
+                      Field.of("createdAt", "Angelegt", "users.created_at"),
+                      Field.of(
+                          "quickTourHintDone",
+                          "Hinweis „Neu hier?“ zum Rundgang erledigt",
+                          "users.quick_tour_hint_done")))));
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
@@ -67,7 +72,7 @@ public class AccountSelfDisclosureExporter implements SelfDisclosureExporter {
             status ->
                 jdbc.query(
                     "SELECT subject, issuer, email, display_name, last_login_at, system_role,"
-                        + " directory_locked_at, created_at FROM users"
+                        + " directory_locked_at, created_at, quick_tour_hint_done FROM users"
                         + " WHERE id = ? AND organization_id = ?",
                     (rs, i) -> {
                       Map<String, Object> record = new LinkedHashMap<>();
@@ -80,6 +85,7 @@ public class AccountSelfDisclosureExporter implements SelfDisclosureExporter {
                       record.put(
                           "directoryLockedAt", instant(rs.getTimestamp("directory_locked_at")));
                       record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      record.put("quickTourHintDone", rs.getBoolean("quick_tour_hint_done"));
                       return record;
                     },
                     subject.accountId(),

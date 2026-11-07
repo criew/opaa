@@ -809,6 +809,19 @@
             }
           },
           "description": "Documents attached to a chat question"
+        },
+        "quickTour": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Quick tour for new users: hint in the empty chat and entry in the profile menu"
         }
       }
     },

@@ -148,6 +148,8 @@ public class AccountErasureService {
         "DELETE FROM notifications WHERE object_type = 'USER_ACCOUNT' AND object_id = ?", userId);
     jdbc.update("DELETE FROM self_disclosure_usage WHERE account_id = ?", userId);
     jdbc.update("DELETE FROM auditor_role_requests WHERE user_id = ?", userId);
+    // User does not map the marker, so the shell's save below leaves this value alone
+    jdbc.update("UPDATE users SET quick_tour_hint_done = false WHERE id = ?", userId);
   }
 
   private void recordErasure(CurrentUser actor, User user) {

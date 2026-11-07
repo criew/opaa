@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.QuickTourHint;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.auth.web.UserInfoController;
@@ -120,6 +121,7 @@ class LocalAdminNetworkChainTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private UserService userService;
   @MockitoBean private LocalAccountSelfDisclosure localAccountSelfDisclosure;
+  @MockitoBean private QuickTourHint quickTourHint;
 
   @BeforeEach
   void signedInAsLocalAdministrator() {

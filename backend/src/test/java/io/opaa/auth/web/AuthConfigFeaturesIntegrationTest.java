@@ -26,6 +26,8 @@ class AuthConfigFeaturesIntegrationTest {
         .andExpect(jsonPath("$.features.promptLibraries").value(true))
         .andExpect(jsonPath("$.features.metadata").value(true))
         .andExpect(jsonPath("$.features.speechInput").value(true))
-        .andExpect(jsonPath("$.features.externalAccess").value(true));
+        .andExpect(jsonPath("$.features.externalAccess").value(true))
+        .andExpect(jsonPath("$.features.chatUpload").value(true))
+        .andExpect(jsonPath("$.features.quickTour").value(true));
   }
 }

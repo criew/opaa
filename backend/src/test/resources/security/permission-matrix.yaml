@@ -81,6 +81,7 @@ operations:
   updatePermissionHistoryRetention:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getAuthConfig:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}
   getCurrentUser:                            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  markQuickTourHintDone:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   localLogin:                                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "404 under dev, where the local account management does not exist"}
   localRefresh:                              {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 403, note: "the local account management does not exist under dev (404); anonymous it is reached in oidc mode and refused for lack of the CSRF token"}
   localLogout:                               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 403, note: "the local account management does not exist under dev (404); anonymous it is reached in oidc mode and refused for lack of the CSRF token"}

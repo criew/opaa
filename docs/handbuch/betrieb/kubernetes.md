@@ -711,9 +711,14 @@ ein. Bemessung, Schlüssel und Fehlerbilder stehen unter [Texterkennung](texterk
 | `features.speechInput.enabled` | `true` | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `false` schaltet die Spracheingabe im Chat ab, auch mit eingetragenem Transkriptionsdienst |
 | `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](../referenz/konfiguration.md#funktionen-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
 | `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Dateien anhängen und Spracheingabe](../benutzer/anhaengen-und-diktieren.md)) |
+| `features.quickTour.enabled` | `true` | `OPAA_FEATURES_QUICK_TOUR_ENABLED` | `false` schaltet den Rundgang für neue Nutzer samt Schreibroute ab; der gespeicherte Merker je Konto bleibt (siehe [Funktionen abschalten](../referenz/konfiguration.md#funktionen-abschalten)) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
-Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
+Unterstrichen. Die Schalter gehören zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck):
+Umschalten heißt Neustart aller Backend-Pods, und mit mehr als einem Pod gehört
+`--set backend.updateStrategy=Recreate` an den Aufruf von `helm upgrade`, sonst bliebe ein Rolling
+Update am ersten neuen Pod stehen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
 Tippfehler; eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
 Konfiguration unter [„Funktionen abschalten"](../referenz/konfiguration.md#funktionen-abschalten).
 

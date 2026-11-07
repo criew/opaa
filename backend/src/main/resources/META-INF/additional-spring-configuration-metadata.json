@@ -49,6 +49,12 @@
       "sourceType": "io.opaa.common.Feature"
     },
     {
+      "name": "opaa.features.quick-tour.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of the quick tour for new users and its write route (ADR-0044); off keeps the stored per-account marker.",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
       "name": "opaa.features.speech-input.enabled",
       "type": "java.lang.Boolean",
       "description": "Feature flag of dictation in the chat input (ADR-0044); it also needs the transcription model role.",
