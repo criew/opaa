@@ -23,6 +23,7 @@ jederzeit auch lokal ausführen (unten).
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Basis-Image des OCR-Images (`ocr/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `dockerfile` | `ci` |
+| Python-Pakete, die das OCR-Image im Basis-Image ersetzt (`ocr/requirements-overrides.txt`), mit Hashes, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `pip_requirements` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
@@ -99,6 +100,13 @@ Der Schritt „Modell-Prüfsummen gegen Herkunft abgleichen“ prüft danach jed
 Hugging-Face-API am eingetragenen Commit oder gegen die Prüfsummen des rapidocr-Pakets
 ([sbom.md](sbom.md#ocr-image)); der Rauchtest prüft die Texterkennung ohne Netz. Erst wenn beides
 grün ist, wird gemergt.
+
+Bringt das Basis-Image ein Python-Paket mit bekannter Schwachstelle mit und gibt es noch keine
+docling-serve-Version mit der Fix-Version, ersetzt `ocr/Dockerfile` das Paket im Bau durch die
+Version aus `ocr/requirements-overrides.txt` (mit Hashes, ohne Abhängigkeiten); `pip check` im Bau
+scheitert, wenn der Tausch eine Anforderung der Umgebung bricht. Renovate pflegt die Datei wie die
+übrigen Requirements, ohne Auto-Merge. Ein Eintrag entfällt, sobald das Basis-Image die
+Fix-Version selbst mitbringt.
 
 ## Sicherheits-PRs und Lockfile-Pflege
 

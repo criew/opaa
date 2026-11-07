@@ -338,6 +338,15 @@
       addLabels: ['ci'],
       automerge: false,
     },
+    // Python-Pakete, die ocr/Dockerfile im Basis-Image durch eine CVE-freie Version ersetzt, mit
+    // Hashes. Nie automatisch: Erst der Bau in ocr-image.yml (kein Required Check) zeigt mit
+    // pip check und Rauchtest, ob die neue Version zur Umgebung des Basis-Images passt.
+    {
+      matchManagers: ['pip_requirements'],
+      matchFileNames: ['ocr/requirements-overrides.txt'],
+      addLabels: ['ci'],
+      automerge: false,
+    },
     {
       matchManagers: ['nvm'],
       addLabels: ['frontend'],

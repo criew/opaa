@@ -1,9 +1,12 @@
 buildscript {
     dependencies {
-        // Lifts the Jackson versions the build plugins pin on the buildscript classpath to the
-        // CVE-fixed releases; the dependencyManagement override only reaches project configurations.
+        // Lifts the Jackson, Guava and Commons Lang versions the build plugins pin on the buildscript
+        // classpath to the CVE-fixed releases; the dependencyManagement override only reaches project
+        // configurations.
         classpath(platform(libs.jackson3.bom))
         classpath(platform(libs.jackson2.buildscript.bom))
+        classpath(libs.guava.buildscript)
+        classpath(libs.commons.lang3.buildscript)
     }
 }
 
