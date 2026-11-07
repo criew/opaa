@@ -32,8 +32,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * The marker of the quick-tour hint set through the token path of the {@code oidc} mode - bearer
  * token, JWT decoder, provisioning - with every logger at DEBUG: no line names the account by id,
  * subject, issuer, address or display name, and no line of OPAA's own loggers mentions the call.
- * Spring Security's own DEBUG lines name path and client address of every call, this one included;
- * the operations handbook names that level a diagnostic only.
+ * Spring's own DEBUG lines (security, web, jdbc) name every call, this one included, by path,
+ * client address, handler or SQL; the operations handbook names that level a diagnostic only.
  */
 @OpaaLocalAuthMockMvcTest
 class QuickTourHintTokenLogIntegrationTest {
