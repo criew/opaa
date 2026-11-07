@@ -346,6 +346,7 @@ voreinstellungen#opaa-features-chat-upload-enabled
 voreinstellungen#opaa-features-external-access-enabled
 voreinstellungen#opaa-features-metadata-enabled
 voreinstellungen#opaa-features-prompt-libraries-enabled
+voreinstellungen#opaa-features-quick-tour-enabled
 voreinstellungen#opaa-features-speech-input-enabled
 voreinstellungen#opaa-indexing-dropbox-api-base
 voreinstellungen#opaa-indexing-dropbox-authorization-endpoint

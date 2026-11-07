@@ -268,6 +268,10 @@ features:
   # attachment endpoints. Existing attachments stay until their chat is deleted.
   chatUpload:
     enabled: true
+  # Quick tour for new users: the hint in the empty chat and the entry in the profile menu; false
+  # removes both, the stored per-account marker "hint done" stays.
+  quickTour:
+    enabled: true
 
 # Host names exempted from the address check (SSRF protection), which refuses private and
 # cluster-internal addresses by default.

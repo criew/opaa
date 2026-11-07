@@ -8,6 +8,7 @@ import io.opaa.account.LocalAccountSelfDisclosure;
 import io.opaa.api.dto.UserInfoResponse;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.QuickTourHint;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -15,20 +16,23 @@ import org.junit.jupiter.api.Test;
 class UserInfoControllerTest {
 
   @Test
-  void meAnswersFromTheCallerSnapshotAndTheCreationReason() {
+  void meAnswersFromTheCallerSnapshotTheCreationReasonAndTheQuickTourHint() {
     UUID id = UUID.randomUUID();
     CurrentUser caller =
         CurrentUser.of(id, UUID.randomUUID(), SystemRole.AUDITOR, "Admin", "admin@opaa.local");
     LocalAccountSelfDisclosure disclosure = mock(LocalAccountSelfDisclosure.class);
     when(disclosure.createdReasonOf(id)).thenReturn(Optional.of("Notanker-Konto"));
+    QuickTourHint quickTourHint = mock(QuickTourHint.class);
+    when(quickTourHint.isDone(id)).thenReturn(true);
 
-    UserInfoResponse response = new UserInfoController(disclosure).me(caller);
+    UserInfoResponse response = new UserInfoController(disclosure, quickTourHint).me(caller);
 
     assertThat(response.getId()).isEqualTo(id);
     assertThat(response.getEmail()).isEqualTo("admin@opaa.local");
     assertThat(response.getDisplayName()).isEqualTo("Admin");
     assertThat(response.getSystemRole()).isEqualTo("AUDITOR");
     assertThat(response.getCreatedReason()).isEqualTo("Notanker-Konto");
+    assertThat(response.getQuickTourHintDone()).isTrue();
   }
 
   // An account of an identity provider has no local_credentials row at all; "absent" must read as
@@ -40,8 +44,10 @@ class UserInfoControllerTest {
     LocalAccountSelfDisclosure disclosure = mock(LocalAccountSelfDisclosure.class);
     when(disclosure.createdReasonOf(caller.id())).thenReturn(Optional.empty());
 
-    UserInfoResponse response = new UserInfoController(disclosure).me(caller);
+    UserInfoResponse response =
+        new UserInfoController(disclosure, mock(QuickTourHint.class)).me(caller);
 
     assertThat(response.getCreatedReason()).isNull();
+    assertThat(response.getQuickTourHintDone()).isFalse();
   }
 }

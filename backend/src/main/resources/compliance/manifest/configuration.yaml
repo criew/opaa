@@ -200,6 +200,15 @@ settings:
     helm:
       values: features.chatUpload.enabled
       defaultValue: "true"
+  - key: opaa.features.quick-tour.enabled
+    defaultValue: "true"
+    effect: >-
+      Der Rundgang für neue Nutzer ist angeboten; dafür wird je Konto nur festgehalten, ob der
+      Hinweis „Neu hier?“ erledigt ist. Ausgeschaltet bleibt dieser Merker unverändert erhalten
+    bearings: [DATA]
+    helm:
+      values: features.quickTour.enabled
+      defaultValue: "true"
   - key: opaa.demo.chat-import.enabled
     defaultValue: "false"
     effect: Ob vorbereitete Chatverläufe ohne Modellaufruf eingespielt werden können (nur Demo)

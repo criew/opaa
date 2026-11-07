@@ -116,6 +116,7 @@ class OidcUnknownIssuerAccessTest {
   // Der Controller dieser Scheibe liest seit ADR-0033 den Anlagegrund des eigenen Kontos; die
   // @WebMvcTest-Scheibe scannt das Paket io.opaa.account nicht mit.
   @MockitoBean private LocalAccountSelfDisclosure localAccountSelfDisclosure;
+  @MockitoBean private QuickTourHint quickTourHint;
 
   @BeforeAll
   static void generateKey() throws Exception {

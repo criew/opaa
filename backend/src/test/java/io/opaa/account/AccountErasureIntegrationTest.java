@@ -103,6 +103,7 @@ class AccountErasureIntegrationTest {
         Organization.DEFAULT_ID,
         person);
     UUID library = privateLibraryOf(person);
+    jdbc.update("UPDATE users SET quick_tour_hint_done = true WHERE id = ?", person);
 
     mockMvc
         .perform(post(ERASURE.formatted(person)).with(dev("dev-admin")))
@@ -110,13 +111,15 @@ class AccountErasureIntegrationTest {
 
     Map<String, Object> row =
         jdbc.queryForMap(
-            "SELECT subject, issuer, email, display_name, erased_at FROM users WHERE id = ?",
+            "SELECT subject, issuer, email, display_name, erased_at, quick_tour_hint_done"
+                + " FROM users WHERE id = ?",
             person);
     assertThat(row.get("display_name")).isEqualTo(ErasedAccount.DISPLAY_NAME);
     assertThat(row.get("email")).isNull();
     assertThat(row.get("issuer")).isEqualTo(ErasedAccount.ISSUER);
     assertThat(row.get("subject")).isEqualTo(person.toString());
     assertThat(row.get("erased_at")).isNotNull();
+    assertThat(row.get("quick_tour_hint_done")).isEqualTo(false);
     assertThat(count("SELECT count(*) FROM chats WHERE author_id = ?", person)).isZero();
     assertThat(count("SELECT count(*) FROM spaces WHERE owner_id = ?", person)).isZero();
     assertThat(count("SELECT count(*) FROM transcription_vocabularies WHERE user_id = ?", person))

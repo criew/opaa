@@ -7,6 +7,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.auth.QuickTourHint;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
@@ -49,6 +50,7 @@ class DirectoryAccountLockIntegrationTest {
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private QuickTourHint quickTourHint;
 
   private static final List<UUID> createdUserIds = new ArrayList<>();
   private static final List<UUID> createdProviderIds = new ArrayList<>();
@@ -167,6 +169,23 @@ class DirectoryAccountLockIntegrationTest {
     assertThat(chain.get(2).getState()).isEqualTo(AccountState.ACTIVE);
     assertThat(chain.get(2).getCause()).isEqualTo(AccountStateHistoryCause.DIRECTORY_UNLOCKED);
     assertThat(chain.get(2).getValidTo()).isNull();
+  }
+
+  /** Lock and unlock write the account row, but never the marker of the quick-tour hint. */
+  @Test
+  void aLockAndAnUnlockLeaveTheQuickTourHintMarkerAlone() {
+    UUID account = createAccount("subject-gone", SystemRole.USER);
+    quickTourHint.markDone(account);
+
+    respondWithAccounts(new DirectoryAccount("subject-gone", false));
+    directorySyncService.run(organizationId, syncProvider.getId());
+    assertThat(userRepository.findById(account).orElseThrow().isDirectoryLocked()).isTrue();
+    assertThat(quickTourHint.isDone(account)).isTrue();
+
+    respondWithAccounts(new DirectoryAccount("subject-gone", true));
+    directorySyncService.run(organizationId, syncProvider.getId());
+    assertThat(userRepository.findById(account).orElseThrow().isDirectoryLocked()).isFalse();
+    assertThat(quickTourHint.isDone(account)).isTrue();
   }
 
   /** The empty-result protection of #237, on the account side: a hard abort, not a plan. */

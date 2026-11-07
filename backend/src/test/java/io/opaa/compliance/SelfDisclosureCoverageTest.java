@@ -130,7 +130,8 @@ class SelfDisclosureCoverageTest {
             Field.of("name", "Name", "users.display_name"),
             Field.of("lastLogin", "Letzte Anmeldung", "users.last_login_at"),
             Field.of("role", "Rolle", "users.system_role"),
-            Field.of("locked", "Gesperrt", "users.directory_locked_at"));
+            Field.of("locked", "Gesperrt", "users.directory_locked_at"),
+            Field.of("hintDone", "Hinweis erledigt", "users.quick_tour_hint_done"));
 
     ComplianceManifest withoutExport = withoutExportPath(MANIFEST, "accounts");
 
