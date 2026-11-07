@@ -27,7 +27,7 @@ export function useQuickTourHintVisible(): boolean {
 
 /**
  * Both answers of the hint - "Rundgang starten" and "Nicht jetzt" - set the one marker. The hint
- * closes at once; a failed call leaves it closed without a message (rolling update, epic #2312),
+ * closes at once; a failed call leaves it closed without a message, as during a rolling update,
  * and the server's value decides again on the next load.
  */
 export function answerQuickTourHint(): void {
@@ -41,14 +41,17 @@ const CHAT_PATH = /^\/spaces\/[^/]+\/chats\/[^/]+$/
 
 /**
  * Starts the tour from the profile menu. The stations explain the chat, so a start elsewhere first
- * opens a new chat; the drawer closes so the tour points at the page, not at the menu.
+ * opens a new chat; the drawer closes so the tour points at the page, not at the menu. A hint still
+ * open is answered by this start, like by its own "Rundgang starten".
  */
 export function useStartQuickTour(): () => void {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const start = useQuickTourStore((s) => s.start)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
+  const hintOpen = useQuickTourHintVisible()
   return () => {
+    if (hintOpen) answerQuickTourHint()
     setSidebarOpen(false)
     if (!CHAT_PATH.test(pathname)) navigate('/chat')
     start()

@@ -41,6 +41,7 @@ export default function QuickTour() {
 
   const cardRef = useRef<HTMLDivElement>(null)
   const primaryRef = useRef<HTMLButtonElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
   const [cutout, setCutout] = useState<Rect | null>(null)
   const [cardPos, setCardPos] = useState<{ left: number; top: number } | null>(null)
 
@@ -82,15 +83,25 @@ export default function QuickTour() {
     }
   }, [open, index, measure])
 
-  // Keyboard users keep their place on the primary button from station to station. The modal's
-  // portal mounts the card after this component, so the first focus comes from the ref callback.
+  // The modal's own trap re-subscribes on every render of the modal and misses a focus the page
+  // sets in that commit (the chat arriving after a route change). This guard lives as long as the
+  // tour is open; the trap's sentinels belong to the modal root and keep their Tab cycling.
+  useEffect(() => {
+    if (!open) return
+    const guard = (event: FocusEvent) => {
+      const root = modalRef.current
+      if (root && event.target instanceof Node && !root.contains(event.target)) {
+        primaryRef.current?.focus()
+      }
+    }
+    document.addEventListener('focusin', guard)
+    return () => document.removeEventListener('focusin', guard)
+  }, [open])
+
+  // Keyboard users keep their place on the primary button from station to station.
   useEffect(() => {
     if (open) primaryRef.current?.focus()
   }, [open, index])
-  const attachPrimary = useCallback((button: HTMLButtonElement | null) => {
-    primaryRef.current = button
-    button?.focus()
-  }, [])
 
   if (!open) return null
 
@@ -107,12 +118,17 @@ export default function QuickTour() {
   const slide = reducedMotion ? 'none' : `transform ${motion.durationSlowMs}ms ${motion.easeOut}`
 
   return (
-    <Modal open onClose={end} hideBackdrop disableAutoFocus disableRestoreFocus>
+    <Modal ref={modalRef} open onClose={end} hideBackdrop disableRestoreFocus>
       <Box
         role="dialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}
         aria-describedby={TEXT_ID}
+        // The modal's focus trap focuses this container on opening and whenever focus escapes
+        // (a page behind the tour focusing its own field); it is handed on to the primary button.
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) primaryRef.current?.focus()
+        }}
         onKeyDown={(event) => {
           // The last station ends only on its button, never on an arrow key.
           if (event.key === 'ArrowRight' && !isLast) page(index + 1)
@@ -182,7 +198,7 @@ export default function QuickTour() {
                 Zurück
               </Button>
             )}
-            <Button ref={attachPrimary} variant="contained" onClick={next}>
+            <Button ref={primaryRef} variant="contained" onClick={next}>
               {isLast ? 'Fertig' : 'Weiter'}
             </Button>
           </Box>

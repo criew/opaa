@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
@@ -25,10 +26,28 @@ function matchMediaFor(isWide: boolean) {
   })
 }
 
+/**
+ * A page behind the tour that focuses its own field in the very commit in which the tour renders
+ * anew - like the chat arriving after a route change. Rendered before the tour, so its effect runs
+ * between the cleanup and the new subscription of the effects inside the tour.
+ */
+function FieldGrabber() {
+  const paged = useQuickTourStore((s) => s.paged)
+  useEffect(() => {
+    if (paged) {
+      document
+        .querySelector<HTMLTextAreaElement>('textarea[aria-label="Nachricht eingeben"]')
+        ?.focus()
+    }
+  }, [paged])
+  return null
+}
+
 /** The anchors of the real shell and chat, with the question field the tour returns to. */
-function Page() {
+function Page({ grabFocus = false }: { grabFocus?: boolean }) {
   return (
     <>
+      {grabFocus && <FieldGrabber />}
       <button type="button" {...tourAnchor('menu')}>
         Menü öffnen
       </button>
@@ -73,7 +92,7 @@ function recordRequests(): string[] {
   return seen
 }
 
-const input = () => screen.getByRole('textbox', { name: 'Nachricht eingeben' })
+const input = () => screen.getByRole('textbox', { name: 'Nachricht eingeben', hidden: true })
 
 describe('quick tour', () => {
   const originalMatchMedia = window.matchMedia
@@ -178,10 +197,10 @@ describe('quick tour', () => {
   })
 
   describe('the tour', () => {
-    async function openTour() {
+    async function openTour(grabFocus = false) {
       signIn({ quickTourHintDone: true })
       const user = userEvent.setup()
-      renderWithProviders(<Page />)
+      renderWithProviders(<Page grabFocus={grabFocus} />)
       useQuickTourStore.getState().start()
       const dialog = await screen.findByRole('dialog', { name: 'Fragen stellen' })
       await waitFor(() =>
@@ -192,6 +211,8 @@ describe('quick tour', () => {
 
     it('pages with the arrow keys and announces every change politely', async () => {
       const { user } = await openTour()
+      // The opening is read out as the dialog's name and description, not a second time.
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
 
       await user.keyboard('{ArrowRight}')
       expect(
@@ -217,6 +238,35 @@ describe('quick tour', () => {
       await user.click(screen.getByRole('button', { name: 'Fertig' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       await waitFor(() => expect(input()).toHaveFocus())
+    })
+
+    it('takes the focus back when the page behind focuses its own field', async () => {
+      const { user, dialog } = await openTour()
+
+      act(() => input().focus())
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
+      )
+      await user.keyboard('abc')
+      expect(input()).toHaveValue('')
+      await user.keyboard('{ArrowRight}')
+      expect(
+        screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' }),
+      ).toBeInTheDocument()
+    })
+
+    it('takes the focus back from a field the page focuses while the tour renders anew', async () => {
+      const { user, dialog } = await openTour(true)
+
+      // Same station, new render of the tour - the page grabs the focus in that commit.
+      act(() => useQuickTourStore.getState().goTo(0))
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
+      )
+      await user.keyboard('abc')
+      expect(input()).toHaveValue('')
     })
 
     it('ends on Escape with the focus in the input', async () => {
