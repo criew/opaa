@@ -5,6 +5,8 @@ interface QuickTourState {
   open: boolean
   /** Index of the current station; only meaningful while open. */
   step: number
+  /** The person has moved on from the first station since opening; changes are announced. */
+  paged: boolean
   start: () => void
   goTo: (step: number) => void
   close: () => void
@@ -18,10 +20,11 @@ interface QuickTourState {
 export const useQuickTourStore = create<QuickTourState>((set) => ({
   open: false,
   step: 0,
-  start: () => set({ open: true, step: 0 }),
-  goTo: (step) => set({ step }),
-  close: () => set({ open: false, step: 0 }),
-  reset: () => set({ open: false, step: 0 }),
+  paged: false,
+  start: () => set({ open: true, step: 0, paged: false }),
+  goTo: (step) => set({ step, paged: true }),
+  close: () => set({ open: false, step: 0, paged: false }),
+  reset: () => set({ open: false, step: 0, paged: false }),
 }))
 
 registerSessionStore(useQuickTourStore)

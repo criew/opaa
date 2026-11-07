@@ -11,7 +11,7 @@ import AppShell from './shell/AppShell'
 import PageLoading from './shell/PageLoading'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import { renderSpaceChats } from './themeSeams'
+import { emptyChatHint, renderSpaceChats } from './themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
@@ -213,7 +213,10 @@ export default function App() {
                 <Route path="chat" element={<ChatRedirect />} />
 
                 <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
-                <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
+                <Route
+                  path="spaces/:spaceId/chats/:chatId"
+                  element={<ChatPage emptyChatHint={emptyChatHint} />}
+                />
                 <Route
                   path="spaces/:spaceId"
                   element={<SpacePage renderChats={renderSpaceChats} />}

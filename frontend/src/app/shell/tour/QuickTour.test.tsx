@@ -151,7 +151,9 @@ describe('quick tour', () => {
       expect(dialog).toHaveAccessibleDescription(
         'Fragen Sie in eigenen Worten. Jede Antwort nennt ihre Fundstellen als Ziffern; ein Klick zeigt die Stelle im Dokument.',
       )
-      await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus())
+      await waitFor(() =>
+        expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
+      )
       expect(screen.queryByRole('region', { name: 'Neu hier?' })).not.toBeInTheDocument()
       await waitFor(() => expect(requests).toEqual(['PUT /api/v1/me/quick-tour-hint']))
     })
@@ -182,7 +184,9 @@ describe('quick tour', () => {
       renderWithProviders(<Page />)
       useQuickTourStore.getState().start()
       const dialog = await screen.findByRole('dialog', { name: 'Fragen stellen' })
-      await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus())
+      await waitFor(() =>
+        expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
+      )
       return { user, dialog }
     }
 
@@ -190,7 +194,9 @@ describe('quick tour', () => {
       const { user } = await openTour()
 
       await user.keyboard('{ArrowRight}')
-      expect(screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('2 von 5')).toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent(
         'Schritt 2 von 5: Worauf die Antwort sich stützt. @Space-Wissen ist das Wissen',

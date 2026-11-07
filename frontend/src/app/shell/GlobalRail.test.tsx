@@ -8,6 +8,7 @@ import { createAppTheme } from '@/shared/theme/theme'
 import GlobalRail from './GlobalRail'
 import { useAuthStore } from '@/shared/session/authStore'
 import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
+import { useQuickTourStore } from './tour/quickTourStore'
 
 const mockNavigate = vi.fn()
 
@@ -208,6 +209,45 @@ describe('GlobalRail', () => {
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
     expect(rail).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  describe('"Rundgang starten" in the profile menu', () => {
+    beforeEach(() => useQuickTourStore.getState().reset())
+
+    it('starts the tour on the chat it is on', async () => {
+      const user = userEvent.setup()
+      useAuthStore.setState({ features: { quickTour: true } })
+      renderRailAt('/spaces/s-1/chats/new')
+
+      await user.click(screen.getByRole('button', { name: 'Profil und Einstellungen' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Rundgang starten' }))
+
+      expect(useQuickTourStore.getState()).toMatchObject({ open: true, step: 0 })
+      expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
+    it('opens a new chat first when started elsewhere, because the stations explain the chat', async () => {
+      const user = userEvent.setup()
+      useAuthStore.setState({ features: { quickTour: true } })
+      renderRailAt('/catalog')
+
+      await user.click(screen.getByRole('button', { name: 'Profil und Einstellungen' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Rundgang starten' }))
+
+      expect(mockNavigate).toHaveBeenCalledWith('/chat')
+      expect(useQuickTourStore.getState().open).toBe(true)
+    })
+
+    it('is missing while the quick tour is switched off', async () => {
+      const user = userEvent.setup()
+      useAuthStore.setState({ features: { quickTour: false } })
+      renderRailAt('/spaces/s-1/chats/new')
+
+      await user.click(screen.getByRole('button', { name: 'Profil und Einstellungen' }))
+
+      expect(screen.getByRole('menuitem', { name: 'Einstellungen' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Rundgang starten' })).not.toBeInTheDocument()
+    })
   })
 
   it('shows the user initial in the avatar', () => {

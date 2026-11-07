@@ -33,6 +33,7 @@ import {
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 
@@ -154,6 +155,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
           <Box
             component="nav"
             aria-label="Spaces"
+            {...tourAnchor('spaces')}
             sx={{ px: 1.5, pt: 1.5, pb: 1, flexShrink: 0, maxHeight: '45%', overflowY: 'auto' }}
           >
             <SidebarSpaceList

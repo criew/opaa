@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -23,7 +23,15 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
 
-export default function ChatPage() {
+interface ChatPageProps {
+  /**
+   * Shown below the greeting of an empty chat. The application frame passes it in, so the chat
+   * knows nothing of what the shell offers there (the quick tour's hint).
+   */
+  emptyChatHint?: ReactNode
+}
+
+export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
   const navigate = useNavigate()
   // `?message=` opens the chat at a chat search hit; it survives a reload like the chat id itself.
@@ -364,6 +372,7 @@ export default function ChatPage() {
         isLoading={isLoading}
         targetMessageId={targetMessageId}
         streamingAnswer={streamingAnswer}
+        emptyStateHint={emptyChatHint}
       />
       <SearchAvailabilityNotice />
       <ChatInput
