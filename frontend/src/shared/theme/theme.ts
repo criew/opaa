@@ -25,6 +25,17 @@ import {
   white,
 } from './tokens'
 
+declare module '@mui/material/styles' {
+  interface TypeBackground {
+    /**
+     * The scrim behind a floating layer of level 3 (guidelines 4.3), in the tone of the scheme.
+     * Dialogs get it through MuiBackdrop; a layer without a backdrop, such as the quick tour's
+     * cutout, reads it from here.
+     */
+    scrim: string
+  }
+}
+
 export const CHAT_MAX_WIDTH = '896px'
 
 /** Guidelines 5.1: comfortable and compact control heights. */
@@ -104,6 +115,7 @@ export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrid
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
   const { accent, accentSurface, accentHover, accentPress } = resolveAccent(roles, branding)
+  const scrim = isDark ? alpha(carbon[950], 0.72) : alpha(navy[900], 0.42)
   // One opaque focus ring for everything interactive, in both schemes (guidelines 4.4). MUI
   // components draw it through `focusVisible` below, which also insets it where a scrolling
   // container would clip it (menu items, list items, tabs); the global rule covers the rest.
@@ -152,6 +164,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         background: {
           default: roles.bg1,
           paper: roles.bg1,
+          scrim,
         },
         divider: roles.border,
         text: {
@@ -463,7 +476,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           styleOverrides: {
             root: {
               '&:not(.MuiBackdrop-invisible)': {
-                backgroundColor: isDark ? alpha(carbon[950], 0.72) : alpha(navy[900], 0.42),
+                backgroundColor: scrim,
                 backdropFilter: 'blur(2px)',
               },
             },

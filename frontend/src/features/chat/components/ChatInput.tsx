@@ -22,6 +22,7 @@ import type { ChatAttachmentRef } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
@@ -449,6 +450,7 @@ export default function ChatInput({
 
       <Box
         ref={setInputBoxEl}
+        {...tourAnchor('chat-input')}
         sx={(theme) => ({
           display: 'flex',
           alignItems: 'flex-end',

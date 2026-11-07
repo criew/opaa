@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
@@ -24,6 +24,8 @@ interface MessageListProps {
   targetMessageId?: string | null
   /** The provisional answer while the model writes it, null before its first part. */
   streamingAnswer?: string | null
+  /** Shown below the greeting of an empty chat; the application frame decides what. */
+  emptyStateHint?: ReactNode
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -40,6 +42,7 @@ export default function MessageList({
   isLoading,
   targetMessageId,
   streamingAnswer = null,
+  emptyStateHint,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const targetRef = useRef<HTMLDivElement>(null)
@@ -129,6 +132,7 @@ export default function MessageList({
           Womit kann ich Ihnen heute helfen?
         </Typography>
         <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+        {emptyStateHint}
         <AiNotice variant="prominent" />
         {liveRegion}
       </Box>

@@ -85,6 +85,11 @@ export interface AuthUser {
    * it. Absent for an account of an identity provider - it has none.
    */
   createdReason?: string | null
+  /**
+   * Whether the person has answered the "Neu hier?" hint of the quick tour. Absent from an older
+   * backend, which means "no hint" - only an explicit `false` shows it.
+   */
+  quickTourHintDone?: boolean
 }
 
 export type UserInfoResponse = components['schemas']['UserInfoResponse']
