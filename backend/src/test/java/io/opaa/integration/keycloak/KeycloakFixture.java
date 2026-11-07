@@ -297,8 +297,9 @@ final class KeycloakFixture {
   }
 
   /**
-   * A confidential client with a service account. With {@code withRights}, exactly the two roles
-   * ADR-0036 names; without, none at all - what a misconfigured deployment looks like.
+   * A confidential client with a service account and the Admin API audience scope. With {@code
+   * withRights}, exactly the two roles ADR-0036 names; without, none at all - what a misconfigured
+   * deployment looks like, refused for the missing roles rather than the audience.
    */
   private void createDirectoryClient(String clientId, String secret, boolean withRights) {
     String location =
@@ -310,10 +311,11 @@ final class KeycloakFixture {
                 + "\"standardFlowEnabled\":false,\"directAccessGrantsEnabled\":false,\"secret\":\""
                 + secret
                 + "\"}");
+    String clientUuid = lastPathSegment(location);
+    assignAdminApiScope(clientUuid);
     if (!withRights) {
       return;
     }
-    String clientUuid = lastPathSegment(location);
     JsonNode serviceAccount =
         adminGet("/admin/realms/" + REALM + "/clients/" + clientUuid + "/service-account-user");
     JsonNode realmManagement =
@@ -349,6 +351,28 @@ final class KeycloakFixture {
             + "/role-mappings/clients/"
             + realmManagement.path("id").asString(),
         wanted.append(']').toString());
+  }
+
+  /**
+   * Adds the realm's built-in client scope {@code kc-admin-api} as a default scope: from Keycloak
+   * 26.8.2 on, its audience mapper is what lets a token through to the Admin API. Older lines lack
+   * the scope and need no audience, so a missing scope is skipped.
+   */
+  private void assignAdminApiScope(String clientUuid) {
+    for (JsonNode scope : adminGet("/admin/realms/" + REALM + "/client-scopes")) {
+      if (scope.path("name").asString().equals("kc-admin-api")) {
+        adminPut(
+            "/admin/realms/"
+                + REALM
+                + "/clients/"
+                + clientUuid
+                + "/default-client-scopes/"
+                + scope.path("id").asString(),
+            null);
+        return;
+      }
+    }
+    log.info("Keycloak {} has no client scope kc-admin-api; none assigned", IMAGE);
   }
 
   // -------------------------------------------------------------------------------- admin calls

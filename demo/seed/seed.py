@@ -491,7 +491,8 @@ def ensure_directory_sync(
         raise SystemExit(
             f"Verbindungstest des Verzeichniszugangs fehlgeschlagen: {probe['message']} "
             f"Das Dienstkonto '{directory_sync.client_id}' braucht im Realm dasselbe Geheimnis, das "
-            "der Seed übergibt, und die Rollen view-users und query-groups. " + REALM_SCRIPT_HINT
+            "der Seed übergibt, die Rollen view-users und query-groups und den Standard-Client-Scope "
+            "kc-admin-api. " + REALM_SCRIPT_HINT
         )
     print(f"  Verbindungstest: {probe['message']}")
 

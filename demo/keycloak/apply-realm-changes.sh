@@ -6,7 +6,8 @@
 # What it brings in line with the export (realm "opaa" unless KC_REALM says otherwise):
 #   - the groups "Bürgerbüro Rheinfurt", "Meldewesen", "Kfz-Zulassung" and their memberships,
 #   - the confidential service-account client "opaa-directory" of the directory sync and exactly
-#     the realm-management roles view-users and query-groups,
+#     the realm-management roles view-users and query-groups, plus the default client scope
+#     kc-admin-api whose audience the Admin API demands from Keycloak 26.8.2 on,
 #   - the audience mapper "opaa-frontend-audience" on the seed client "opaa-seed".
 # It never removes a group, a member, a role or a client, and it touches no password. The secret
 # of opaa-directory is set when the client is created, and on an existing client only when
@@ -37,6 +38,7 @@ else
   SECRET_GIVEN=false
   DIRECTORY_CLIENT_SECRET="RheinfurtVerzeichnis!2026"
 fi
+ADMIN_API_SCOPE="kc-admin-api"
 SEED_CLIENT_ID="opaa-seed"
 AUDIENCE_MAPPER="opaa-frontend-audience"
 AUDIENCE_CLIENT_ID="opaa-frontend"
@@ -145,6 +147,20 @@ fi
 kc add-roles -r "$KC_REALM" --uusername "service-account-$DIRECTORY_CLIENT_ID" \
   --cclientid realm-management --rolename view-users --rolename query-groups
 echo "  Rollen des Dienstkontos: view-users, query-groups (realm-management)"
+
+# Built into every realm from Keycloak 26.8.2 on; an older Keycloak has none and needs none.
+directory_uuid="$(client_uuid "$DIRECTORY_CLIENT_ID")"
+scope_id="$(kc get client-scopes -r "$KC_REALM" --fields id,name --format csv --noquotes \
+  | tr -d '\r' | awk -F, -v name="$ADMIN_API_SCOPE" '$2 == name { print $1; exit }')"
+if [ -z "$scope_id" ]; then
+  echo "  Client-Scope $ADMIN_API_SCOPE fehlt im Realm (Keycloak vor 26.8.2), übersprungen" >&2
+elif kc get "clients/$directory_uuid/default-client-scopes" -r "$KC_REALM" --fields name \
+  --format csv --noquotes | tr -d '\r' | grep -Fxq "$ADMIN_API_SCOPE"; then
+  echo "  Standard-Client-Scope vorhanden: $DIRECTORY_CLIENT_ID → $ADMIN_API_SCOPE"
+else
+  kc update "clients/$directory_uuid/default-client-scopes/$scope_id" -r "$KC_REALM"
+  echo "  Standard-Client-Scope zugewiesen: $DIRECTORY_CLIENT_ID → $ADMIN_API_SCOPE"
+fi
 
 seed_uuid="$(client_uuid "$SEED_CLIENT_ID")"
 if [ -z "$seed_uuid" ]; then

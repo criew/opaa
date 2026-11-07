@@ -443,7 +443,8 @@ Demo-Konten, `demo-admin` eingeschlossen — genau die Mindestgruppengröße der
 führt dafür das Dienstkonto `opaa-directory` (vertraulicher Client ohne Anmeldefluss, Geheimnis
 `RheinfurtVerzeichnis!2026` — ein offener Demo-Wert nur für lokale und CI-Stacks; eine erreichbare
 Instanz bekommt ein eigenes, siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen" —,
-Rollen `view-users` und `query-groups` aus `realm-management`), und der Seed richtet am Anbieter „Verzeichnisdienst" ein
+Rollen `view-users` und `query-groups` aus `realm-management`, Standard-Client-Scope `kc-admin-api`,
+den die Admin-API ab Keycloak 26.8.2 für ihre Audience verlangt), und der Seed richtet am Anbieter „Verzeichnisdienst" ein
 (Schritt 2 unten):
 
 | Einstellung | Wert in der Demo |
@@ -939,8 +940,10 @@ abhängt, per `kcadm` in den bestehenden Realm:
 
 - die Gruppen „Bürgerbüro Rheinfurt", „Meldewesen", „Kfz-Zulassung" und die Mitgliedschaften der
   fünf Demo-Konten darin,
-- den Client `opaa-directory` (vertraulich, nur Dienstkonto) und die Rollen `view-users` und
-  `query-groups` aus `realm-management`,
+- den Client `opaa-directory` (vertraulich, nur Dienstkonto), die Rollen `view-users` und
+  `query-groups` aus `realm-management` und den Standard-Client-Scope `kc-admin-api` (ab Keycloak
+  26.8.2 nötig, sonst weist die Admin-API das Dienstkonto ab; Keycloak setzt ihn nur bei seinen
+  eigenen Admin-Clients, ein älteres Keycloak kennt ihn nicht und überspringt den Schritt),
 - den Audience-Mapper `opaa-frontend-audience` am Client `opaa-seed`.
 
 Das Skript ist idempotent: Es prüft jeden Punkt und legt nur an, was fehlt; ein zweiter Lauf ändert
