@@ -3930,6 +3930,17 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
   Datenbankfehler können Inhalte nennen: Ein Log über <code>INFO</code> wie Inhalte behandeln.</li>
 <li><strong>Handlungen von Personen</strong> stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
   Anwendung (<a href="../referenz/rechte-matrix.html">Rechte-Matrix</a>).</li>
+<li><strong>Ohne Spur im Regelbetrieb:</strong> Den Aufruf <code>PUT /api/v1/me/quick-tour-hint</code>, mit dem eine Person den Hinweis
+  zum Rundgang für neue Nutzer erledigt, schreiben weder das Anfrageprotokoll des Backends noch das
+  Zugriffslog des Frontend-Containers, und er zählt in keiner Metrik. Ein vorgelagerter Reverse
+  Proxy oder Ingress-Controller protokolliert ihn trotzdem; dort richtet der Betrieb dieselbe
+  Ausnahme ein. Spuren bleiben nur bei Störungen und in der Fehlersuche: Ist das Backend nicht
+  erreichbar, nennt das Fehlerlog des Frontend-Containers Pfad und Client-Adresse jeder gescheiterten
+  Anfrage; scheitert der Datenbankzugriff, steht ein Stacktrace mit Zeitstempel, aber ohne Konto im
+  Fehlerlog des Backends. Auf <code>DEBUG</code> nennen die Spring-Komponenten jeden Aufruf, auch diesen: die
+  Anmeldeschicht (<code>org.springframework.security</code>) mit Pfad und Client-Adresse, die Web-Schicht
+  (<code>org.springframework.web</code>) mit Pfad und Controller, der Datenbankzugriff
+  (<code>org.springframework.jdbc</code>) mit der SQL-Anweisung.</li>
 <li><strong>Metriken</strong> im Prometheus-Format unter <code>/actuator/prometheus</code>, einzeln unter <code>/actuator/metrics</code>.
   Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (<code>MANAGEMENT_SERVER_PORT</code>, unter Kubernetes <code>backend.managementPort</code>),

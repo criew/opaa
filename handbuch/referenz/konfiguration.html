@@ -6131,6 +6131,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>false</code> schaltet Dateianhänge im Chat ab: keine Büroklammer, kein Ablegen von Dateien, kein Bereich „Meine Uploads“, die Endpunkte der Anhänge gibt es nicht; vorhandene Anhänge bleiben gespeichert und werden mit ihrem Chat gelöscht (siehe <a href="../benutzer/anhaengen-und-diktieren.html">Dateien anhängen und Spracheingabe</a>)</td>
 </tr>
 <tr>
+<td><code>OPAA_FEATURES_QUICK_TOUR_ENABLED</code></td>
+<td><code>true</code></td>
+<td>nicht gesetzt (auskommentiert)</td>
+<td><code>false</code> schaltet den Rundgang für neue Nutzer samt Schreibroute ab. Je Konto ist nur gespeichert, ob der Hinweis zum Rundgang erledigt ist, ohne Zeitpunkt; dieser Merker bleibt beim Abschalten erhalten</td>
+</tr>
+<tr>
 <td><strong>Chat-Anhänge</strong></td>
 <td></td>
 <td></td>
@@ -6340,8 +6346,10 @@ eigene Variable der Form <code>OPAA_FEATURES_&lt;FUNKTION&gt;_ENABLED</code>; di
   Schnittstelle, ihre vorhandenen Daten bleiben unverändert liegen und werden nur nicht mehr
   beachtet. Wird die Funktion wieder eingeschaltet, ist der frühere Stand wieder da.</li>
 <li><strong>Wirkt nach einem Neustart.</strong> Das Backend liest die Schalter beim Start; eine Änderung zur
-  Laufzeit gibt es nicht. Das Frontend erfährt den Stand mit der Anmeldekonfiguration, also schon
-  vor der Anmeldung.</li>
+  Laufzeit gibt es nicht. Die Schalter gehören zum
+  <a href="../betrieb/mehrere-instanzen.html#gleiche-konfiguration-der-konfigurationsabdruck">Konfigurationsabdruck</a>:
+  Bei mehreren Instanzen heißt Umschalten Neustart aller Instanzen. Das Frontend erfährt den Stand
+  mit der Anmeldekonfiguration, also schon vor der Anmeldung.</li>
 </ul>
 <p>Unter Kubernetes setzt der Abschnitt <code>features</code> der Werte-Datei die Variablen (siehe
 <a href="../betrieb/kubernetes.html#funktionen">Kubernetes</a>).</p>

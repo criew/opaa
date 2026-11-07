@@ -6460,10 +6460,20 @@ ein. Bemessung, Schlüssel und Fehlerbilder stehen unter <a href="texterkennung.
 <td><code>OPAA_FEATURES_CHAT_UPLOAD_ENABLED</code></td>
 <td><code>false</code> schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe <a href="../benutzer/anhaengen-und-diktieren.html">Dateien anhängen und Spracheingabe</a>)</td>
 </tr>
+<tr>
+<td><code>features.quickTour.enabled</code></td>
+<td><code>true</code></td>
+<td><code>OPAA_FEATURES_QUICK_TOUR_ENABLED</code></td>
+<td><code>false</code> schaltet den Rundgang für neue Nutzer samt Schreibroute ab; der gespeicherte Merker je Konto bleibt (siehe <a href="../referenz/konfiguration.html#funktionen-abschalten">Funktionen abschalten</a>)</td>
+</tr>
 </tbody>
 </table>
 <p>Ein Schalter setzt die Variable <code>OPAA_FEATURES_&lt;NAME&gt;_ENABLED</code>, der Name in Großbuchstaben mit
-Unterstrichen. Wie überall lehnt <code>values.schema.json</code> einen unbekannten Namen ab, etwa einen
+Unterstrichen. Die Schalter gehören zum
+<a href="mehrere-instanzen.html#gleiche-konfiguration-der-konfigurationsabdruck">Konfigurationsabdruck</a>:
+Umschalten heißt Neustart aller Backend-Pods, und mit mehr als einem Pod gehört
+<code>--set backend.updateStrategy=Recreate</code> an den Aufruf von <code>helm upgrade</code>, sonst bliebe ein Rolling
+Update am ersten neuen Pod stehen. Wie überall lehnt <code>values.schema.json</code> einen unbekannten Namen ab, etwa einen
 Tippfehler; eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
 Konfiguration unter <a href="../referenz/konfiguration.html#funktionen-abschalten">„Funktionen abschalten"</a>.</p>
 <h3 id="originalablage-dateisystem-quellen-und-zertifikate">Originalablage, Dateisystem-Quellen und Zertifikate<a class="headerlink" href="#originalablage-dateisystem-quellen-und-zertifikate" title="Permanent link">&para;</a></h3>
