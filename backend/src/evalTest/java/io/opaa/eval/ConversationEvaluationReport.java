@@ -95,8 +95,11 @@ public record ConversationEvaluationReport(
    *
    * <p>Version 11: the shared pipeline fixed points gained {@code fusion} and {@code
    * relevanceCutoff}. Re-measured.
+   *
+   * <p>Version 12: {@code PdfOcrDocumentFormat} ({@code pdf-ocr:1}) joined the registry -
+   * fingerprint-only, no corpus document reaches a stored text recognition.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 11;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 12;
 
   /**
    * The Einpfad-Regel of ADR-0012, recorded <b>once per report</b>: a multi-turn case can only ever

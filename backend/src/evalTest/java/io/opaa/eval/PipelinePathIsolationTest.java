@@ -15,15 +15,23 @@ import io.opaa.format.file.office.OdpDocumentFormat;
 import io.opaa.format.file.office.OdtDocumentFormat;
 import io.opaa.format.file.office.PptxDocumentFormat;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
+import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
+import java.lang.reflect.Modifier;
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AssignableTypeFilter;
 
 /**
  * Guards the promise that adding the pipeline measurement path left the raw-vector path measuring
@@ -57,7 +65,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(16);
+        .isEqualTo(17);
   }
 
   @Test
@@ -81,12 +89,14 @@ class PipelinePathIsolationTest {
     // plus 1 from issues #2327/#2328 (nine format versions moved, oversized sections split),
     // plus 1 from issue #2331 (nine format versions moved, tiny sections combined), plus 1 from
     // issue #2373 (production top-k 8 -> 20, ranking window @20; this path only), plus 1 from
-    // issue #2386 (fusion and relevance cutoff as fixed points; this path only)
+    // issue #2386 (fusion and relevance cutoff as fixed points; this path only), plus 1 from
+    // issue #3622 (PdfOcrDocumentFormat joined the registry, pdf-ocr:1)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331 bumps)
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331/#3622
+    // bumps)
     // moves
     // for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(21);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(22);
   }
 
   /**
@@ -368,6 +378,55 @@ class PipelinePathIsolationTest {
               domain.pipelineBaselineFileName())
           .isEqualTo(actual);
     }
+
+    EvalDomainConfig conversationDomain = EvalDomainConfig.VERWALTUNG;
+    ConversationBaseline conversationBaseline =
+        ConversationBaseline.load(
+            RepoPaths.evalDir()
+                .resolve("baseline")
+                .resolve(conversationDomain.conversationBaselineFileName()));
+    assertThat(conversationBaseline.fixedPoints().pipeline().ingestionPipelineFingerprint())
+        .as(
+            "%s: a registered pipeline's version moved without this baseline's "
+                + "ingestionPipelineFingerprint (and, per ADR-0012 decision 29, the "
+                + "conversationMeasurementContractVersion) being updated to match",
+            conversationDomain.conversationBaselineFileName())
+        .isEqualTo(actual);
+  }
+
+  /**
+   * The hand-built registry below covers every concrete {@link DocumentFormat} the production code
+   * declares: a new format class missing there would leave the fingerprint watchdog above green
+   * while the nightly run, wired by Spring, already sees the moved fingerprint.
+   */
+  @Test
+  void theWatchdogRegistryCoversEveryProductionDocumentFormat() {
+    ClassPathScanningCandidateComponentProvider scanner =
+        new ClassPathScanningCandidateComponentProvider(false);
+    scanner.addIncludeFilter(new AssignableTypeFilter(DocumentFormat.class));
+    Set<String> declared =
+        scanner.findCandidateComponents("io.opaa").stream()
+            .map(BeanDefinition::getBeanClassName)
+            .filter(name -> !name.startsWith("io.opaa.eval."))
+            .filter(PipelinePathIsolationTest::isProductionClass)
+            .collect(Collectors.toCollection(TreeSet::new));
+    Set<String> wired =
+        realDocumentPipelineRegistry().pipelines().stream()
+            .map(pipeline -> pipeline.getClass().getName())
+            .collect(Collectors.toCollection(TreeSet::new));
+
+    assertThat(wired).isEqualTo(declared);
+  }
+
+  private static boolean isProductionClass(String className) {
+    try {
+      Class<?> type = Class.forName(className);
+      return !type.isInterface()
+          && !Modifier.isAbstract(type.getModifiers())
+          && type.getProtectionDomain().getCodeSource().getLocation().getPath().contains("/main");
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   /**
@@ -394,6 +453,7 @@ class PipelinePathIsolationTest {
             new OdpDocumentFormat(
                 new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
             new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new PdfOcrDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
             new MailDocumentFormat(null, new MailProperties(0, 0, 0), Clock.systemUTC()),
             new ConfluenceStorageFormat(HeadingSectionSplitterFixture.DEFAULT));
     return new DocumentFormatRegistry(pipelines, fallback);
