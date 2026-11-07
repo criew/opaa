@@ -170,8 +170,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
-- Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
-  werden immer geprüft.
+- Nur `http` und `https`; Redirects nie von `https` auf `http` herab. Einem Redirect auf einen
+  fremden Host folgen nur das Webverzeichnis, der RSS-Feed selbst und Confluence-Anhänge, dann ohne
+  Zugangsdaten, sowie Downloads aus Microsoft Graph auf das von Graph genannte `https`-Ziel; alle
+  anderen Abrufe bleiben auf ihrem Origin. Zertifikate werden immer geprüft.
 - **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
   und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
   Egress auf Netzebene bleibt die zweite Linie.
@@ -183,7 +185,10 @@ Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine
 Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
 einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
 noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
-`opaa_target_validation_refused_connection_checks_total`. Ist die
+`opaa_target_validation_refused_connection_checks_total`. Ein einzelner Lauf des RSS-Feed-,
+Webverzeichnis- und Confluence-Konnektors fragt höchstens `OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN`
+verschiedene Hosts an, Redirects eingeschlossen; Redirects auf ständig neue Namen füllen die
+Bindungen deshalb nicht. Ist die
 Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
 Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
 zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart

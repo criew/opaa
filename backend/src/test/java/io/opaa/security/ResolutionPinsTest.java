@@ -254,6 +254,34 @@ class ResolutionPinsTest {
   }
 
   /**
+   * Regression guard: a full table drops expired pins by the age of their answer, not by when they
+   * were pinned - a pin made later from a reused, older answer expires first.
+   */
+  @Test
+  void aFullConnectionTableDropsTheOldestAnswerEvenWhenItWasPinnedLast() throws Exception {
+    answers.next("203.0.113.7");
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    later(Duration.ofSeconds(1));
+    for (int i = 1; i < CONNECTION_CAPACITY; i++) {
+      String host = "hop" + i + ".example";
+      pins.pinConnection(host, pins.resolveForCheck(host));
+    }
+    later(Duration.ofSeconds(2));
+    assertThat(pins.pinConnection(HOST, pins.resolveForCheck(HOST))).isTrue();
+    later(ResolutionPins.PIN_LIFETIME.minusSeconds(3).plusMillis(500));
+    answers.next("203.0.113.8");
+
+    assertThat(pins.pinConnection("late.example", pins.resolveForCheck("late.example")))
+        .as("the pin of %s, from an answer 60.5 s old, gives way", HOST)
+        .isTrue();
+    assertThat(pins.refusedConnectionChecks()).isZero();
+    answers.next("127.0.0.1");
+    for (int i = 1; i < CONNECTION_CAPACITY; i++) {
+      assertThat(pins.lookup("hop" + i + ".example", ANY)).containsExactly(ip("203.0.113.7"));
+    }
+  }
+
+  /**
    * Regression guard: a bound name never falls through to an unchecked answer of another family.
    */
   @Test

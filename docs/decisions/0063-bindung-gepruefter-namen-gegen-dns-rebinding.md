@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29
+Akzeptiert · zuletzt geändert 2026-11-07
 
 ## Kontext
 
@@ -57,12 +57,17 @@ Jeder Aufrufer nennt den Geltungsbereich (`TargetAddressValidator.Scope`; es gib
 
 | Geltungsbereich | Aufrufer | Wirkung |
 |---|---|---|
-| `PER_CONNECTION` | `RedirectFollowingFetcher` (jeder Hop der HTTP-Konnektoren, Zugänge, OAuth, MCP, Graph, Originalabruf), `S3RequestGuard`, `S3ClientFactory`, `UploadS3TargetPolicy`, `SmbShareClient`, `SmbSourceConnector`, `NextcloudSourceConnector` | nur die Bindung aus Entscheidung 2, in einer eigenen Tabelle von höchstens `MAX_CONNECTION_PINS` (50 000) Einträgen; nur abgelaufene Bindungen weichen, ist die Tabelle voll gültiger Bindungen, wird die Prüfung eines neuen Namens abgelehnt |
+| `PER_CONNECTION` | `RedirectFollowingFetcher` (jeder Hop der HTTP-Konnektoren, Zugänge, OAuth, MCP, Graph, Originalabruf), `S3RequestGuard`, `S3ClientFactory`, `UploadS3TargetPolicy`, `SmbShareClient`, `SmbSourceConnector`, `NextcloudSourceConnector` | nur die Bindung aus Entscheidung 2, in einer eigenen Tabelle von höchstens `MAX_CONNECTION_PINS` (50 000) Einträgen; nur abgelaufene Bindungen weichen, die mit der ältesten Antwort zuerst; ist die Tabelle voll gültiger Bindungen, wird die Prüfung eines neuen Namens abgelehnt |
 | `STORED_TARGET` | `ModelAddressPolicy` (alle Modellrollen), `OidcAddressPolicy` (Discovery, JWK-Set, Verzeichnisabgleich), `InstallationMailTargets` | Bindung und Wächter aus Entscheidung 4 |
 
 `PER_CONNECTION` braucht keinen Wächter: Jeder dieser Clients prüft unmittelbar vor jedem neuen
 Verbindungsaufbau, ein späterer Adresswechsel trifft also auf eine neue Prüfung, und das Fenster
-zwischen Prüfung und Verbindung schließt die Bindung. `RedirectFollowingFetcher` prüft vor jedem
+zwischen Prüfung und Verbindung schließt die Bindung. Daraus folgt die Pflicht jedes Aufrufers: Er
+verbindet unmittelbar nach der Prüfung, spätestens innerhalb der 60 Sekunden der Bindung, und prüft
+vor jeder späteren Verbindung erneut. Eine Prüfung ohne folgende Verbindung ist zulässig, etwa die
+Ablehnung eines Ziels vor dem Speichern (`S3ClientFactory`, `SmbSourceConnector`,
+`NextcloudSourceConnector`). `PerConnectionCheckCallersTest` führt jeden Aufrufer mit Begründung; ein
+neuer lässt ihn fehlschlagen, bis er eingetragen ist. `RedirectFollowingFetcher` prüft vor jedem
 `send`, auch vor jeder Wiederholung nach `429`; alle JDK-Clients folgen keiner Weiterleitung selbst
 (`Redirect.NEVER`), ein Pool baut eine neue Verbindung also nur innerhalb eines `send` auf.
 `S3RequestGuard` prüft vor jedem Übertragungsversuch des AWS SDK, bevor der Pool von Apache
@@ -133,6 +138,22 @@ einmal je Minute und zählt `opaa_target_validation_refused_checks_total`;
 volle Tabelle sucht nichts. Begründung: Verdrängen machte gerade den Namen wieder angreifbar, den ein
 Angreifer zuvor prüfen ließ; die Zahl gespeicherter Ziele begrenzt die Konfiguration.
 
+### 9. Ein Lauf fragt höchstens 100 verschiedene Hosts an
+
+Ein Lauf des RSS-, Webverzeichnis- und Confluence-Konnektors zählt die verschiedenen Hostnamen, die er
+anfragt, jeden Hop einer Weiterleitung eingeschlossen. Ab `opaa.indexing.http.max-hosts-per-run`
+(Standard 100, `0` fällt auf ihn zurück) lehnt `RequestBudget` den Hop zu einem weiteren Host ab,
+bevor er geprüft oder kontaktiert wird; die Ablehnung gilt als abgelehnte Zieladresse, das Element
+entfällt, der Lauf geht weiter. Ständig neue Namen erreicht ein Lauf nur über diese drei
+Konnektoren: Weiterleitungen auf fremde Origins folgen Verzeichnisseiten und Dateien des
+Webverzeichnisses, der Feed selbst und Confluence-Anhänge (`DROP_AUTHORIZATION_OFF_ORIGIN`, bis zu
+fünf Hops), und die Detailseiten eines Feeds liegen auf Hosts, die der Feed nennt. Graph-Downloads
+folgen nur dem Ziel, das Graph unter fester Adresse nennt; alle übrigen Abrufe folgen keiner
+Weiterleitung auf einen fremden Origin. Begründung: Ohne Grenze füllte ein Lauf mit Weiterleitungen
+auf Zufallsnamen die Tabelle aus Entscheidung 3, und neue Namen würden für alle bis zu 60 Sekunden
+abgelehnt; mit ihr braucht das 500 Läufe binnen einer Minute, während gewöhnliche Quellen wenige Hosts
+anfragen.
+
 ## Konsequenzen
 
 **Einfacher:** Eine Stelle für alle Clients, auch künftige; kein Client braucht eigenen Code, TLS
@@ -149,9 +170,12 @@ nennt, scheitert.
 **Restrisiken:**
 
 - Verbindungen über den Ausgangsproxy und Namen der Allowlist bindet OPAA nicht.
-- Prüft jemand in kurzer Zeit mehr als 50 000 verschiedene Namen vor einer Verbindung, lehnt die
-  Instanz weitere neue Namen ab, bis die ältesten Bindungen nach 60 Sekunden ablaufen; das zählt
+- Prüfen viele Läufe zusammen, oder Abrufe außerhalb eines Laufs (Verbindungstest, „Original
+  öffnen“, Zugänge), in kurzer Zeit mehr als 50 000 verschiedene Namen vor einer Verbindung, lehnt
+  die Instanz weitere neue Namen ab, bis die ältesten Bindungen nach 60 Sekunden ablaufen; das zählt
   `opaa_target_validation_refused_connection_checks_total`.
+- Ein Feed, dessen Einträge auf mehr als 100 Hosts verweisen, verliert die Einträge darüber, bis der
+  Betrieb `max-hosts-per-run` anhebt.
 - Ein gespeichertes Ziel, das beim Vorwärmen abgelehnt wird oder dessen Prüfung scheitert, bleibt
   unbewacht, bis es erneut erfolgreich geprüft wird.
 - Die Wächter-Tabelle füllt nur, wer gespeicherte Ziele anlegen darf: Systemverwaltung (Modelle,
@@ -175,6 +199,8 @@ nennt, scheitert.
 - Älteste Bewachung verdrängen, wenn die Tabelle voll ist — macht einen bewachten Namen wieder angreifbar.
 - Jede Prüfung bewachen — Weiterleitungen auf Zufallsnamen füllen die Tabelle und sperren neue Ziele für alle.
 - Basisadressen von Quellen als gespeicherte Ziele bewachen — jedes Konto mit Anlagerecht könnte die Tabelle füllen, und ihre Clients prüfen ohnehin jede Verbindung.
+- Standardwert für das Anfragebudget statt einer Grenze der Hosts — zählt Anfragen statt Namen, schneidet große Verzeichnisse ab und ließe die Neuverarbeitung eines Feeds nach geänderten Angaben, die bei jedem Lauf von vorn beginnt, nie enden, wenn er kleiner ist als ein voller Lauf.
+- Verbindungstabelle vergrößern — verschiebt nur die Zahl der Namen, die ein einzelner Lauf erzeugen kann.
 - Nur Egress-Regeln — bleiben empfohlen, liegen aber außerhalb von OPAA.
 
 ## Offen

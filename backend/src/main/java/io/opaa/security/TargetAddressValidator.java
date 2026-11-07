@@ -104,6 +104,13 @@ public class TargetAddressValidator {
    * </ul>
    */
   public enum Scope {
+    /**
+     * The caller connects right after the check, at the latest within the pin lifetime of 60
+     * seconds; after it the name resolves unchecked again. Every later connection, a retry or a
+     * pooled client's new one included, is checked again first. A check followed by no connection,
+     * such as a refusal before a setting is stored, is fine. {@code PerConnectionCheckCallersTest}
+     * lists the callers.
+     */
     PER_CONNECTION,
     STORED_TARGET
   }
@@ -510,7 +517,7 @@ public class TargetAddressValidator {
    * Thrown by {@link #validate} when the target is rejected - message is German and user-facing.
    */
   public static class TargetAddressBlockedException extends IOException {
-    TargetAddressBlockedException(String message) {
+    protected TargetAddressBlockedException(String message) {
       super(message);
     }
   }

@@ -66,4 +66,19 @@ class SourceRequestPolicyTest {
         .as("zero falls back to the default cap")
         .isEqualTo(Duration.ofMinutes(15));
   }
+
+  @Test
+  void theBoundOfHostsDefaultsToAHundredFallsBackForZeroAndSurvivesDerivation() {
+    SourceRequestPolicy policy =
+        new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, d -> {});
+    assertThat(policy.maxHostsPerRun()).isEqualTo(100);
+
+    SourceRequestPolicy bounded = policy.withMaxHostsPerRun(7);
+    assertThat(bounded.withRateLimit(RateLimitPolicy.NONE).maxHostsPerRun()).isEqualTo(7);
+    assertThat(bounded.withSleeper(d -> {}).maxHostsPerRun()).isEqualTo(7);
+    assertThat(bounded.withRunBounds(3, Duration.ofMinutes(1)).maxHostsPerRun()).isEqualTo(7);
+    assertThat(policy.withMaxHostsPerRun(0).maxHostsPerRun())
+        .as("zero falls back to the default, the bound cannot be switched off")
+        .isEqualTo(SourceRequestPolicy.DEFAULT_MAX_HOSTS_PER_RUN);
+  }
 }

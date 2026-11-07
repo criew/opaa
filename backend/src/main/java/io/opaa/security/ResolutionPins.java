@@ -13,11 +13,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,10 +29,10 @@ import org.slf4j.LoggerFactory;
  * The names the target address check admitted (ADR-0063). Every resolution in this JVM passes
  * {@link #lookup} through {@link PinnedAddressResolverProvider}. For {@link #PIN_LIFETIME} after a
  * check a name answers exactly the addresses it vetted: a check before a connection pins it in a
- * bounded table that drops its oldest entry, a check of stored configuration also guards it until
- * restart, so afterwards every fresh answer loses its blocked addresses. Only an allowlist entry of
- * the guarding policy ends a guard; a full guard table refuses new names instead of dropping one.
- * Other names pass unchanged. Held per instance (ADR-0053).
+ * bounded table that drops its oldest expired entry, a check of stored configuration also guards it
+ * until restart, so afterwards every fresh answer loses its blocked addresses. Only an allowlist
+ * entry of the guarding policy ends a guard; a full guard table refuses new names instead of
+ * dropping one. Other names pass unchanged. Held per instance (ADR-0053).
  */
 final class ResolutionPins {
 
@@ -61,6 +61,12 @@ final class ResolutionPins {
 
   private static final Logger log = LoggerFactory.getLogger(ResolutionPins.class);
 
+  /** Initialised before {@link #PROCESS}, whose table of connection pins is ordered by it. */
+  private static final Comparator<AgedPin> OLDEST_FIRST =
+      Comparator.comparingLong(AgedPin::fetchedAt)
+          .thenComparingLong(pin -> pin.key().high())
+          .thenComparingLong(pin -> pin.key().low());
+
   private static final ResolutionPins PROCESS =
       new ResolutionPins(System::nanoTime, MAX_GUARDED_NAMES, MAX_CONNECTION_PINS);
 
@@ -73,6 +79,9 @@ final class ResolutionPins {
   /** An upstream answer for a name and when it was fetched. */
   record Answer(List<InetAddress> addresses, long fetchedAt) {}
 
+  /** A connection pin's place in the order of age: fetch time first, the name to break ties. */
+  private record AgedPin(long fetchedAt, NameKey key) {}
+
   /**
    * A guarded name: its latest vetted addresses ({@code null} once the pin expired) and the
    * policies that guard it.
@@ -83,6 +92,10 @@ final class ResolutionPins {
   private final int capacity;
   private final ConcurrentHashMap<NameKey, Guard> guards = new ConcurrentHashMap<>();
   private final Map<NameKey, Answer> connectionPins;
+
+  /** The keys of {@link #connectionPins} by the age of their answer; guarded by that map. */
+  private final TreeSet<AgedPin> connectionPinsByAge = new TreeSet<>(OLDEST_FIRST);
+
   private final int connectionCapacity;
   private final AtomicLong refusals = new AtomicLong();
   private final AtomicLong refusedConnectionChecks = new AtomicLong();
@@ -95,7 +108,7 @@ final class ResolutionPins {
     this.nanoTime = nanoTime;
     this.capacity = capacity;
     this.connectionCapacity = connectionCapacity;
-    this.connectionPins = Collections.synchronizedMap(new LinkedHashMap<>());
+    this.connectionPins = Collections.synchronizedMap(new HashMap<>());
   }
 
   /** The guards every resolution of this JVM consults. */
@@ -171,7 +184,7 @@ final class ResolutionPins {
 
   /**
    * Pins {@code host} to {@code vetted} after a check right before a connection, without a guard.
-   * Expired pins give way to a new name, a pin in force never does.
+   * Expired pins give way to a new name, the oldest answer first; a pin in force never does.
    *
    * @return {@code false}, pinning nothing, when the table is full of pins in force
    */
@@ -183,13 +196,14 @@ final class ResolutionPins {
     long now = nanoTime.getAsLong();
     Answer pinned = new Answer(List.copyOf(vetted.addresses()), vetted.fetchedAt());
     synchronized (connectionPins) {
-      connectionPins.remove(key);
-      Iterator<Answer> oldest = connectionPins.values().iterator();
-      while (connectionPins.size() >= connectionCapacity && oldest.hasNext()) {
-        if (now - oldest.next().fetchedAt() < PIN_LIFETIME.toNanos()) {
-          break;
-        }
-        oldest.remove();
+      Answer previous = connectionPins.remove(key);
+      if (previous != null) {
+        connectionPinsByAge.remove(new AgedPin(previous.fetchedAt(), key));
+      }
+      while (connectionPins.size() >= connectionCapacity
+          && !connectionPinsByAge.isEmpty()
+          && now - connectionPinsByAge.first().fetchedAt() >= PIN_LIFETIME.toNanos()) {
+        connectionPins.remove(connectionPinsByAge.pollFirst().key());
       }
       if (connectionPins.size() >= connectionCapacity) {
         refusedConnectionChecks.incrementAndGet();
@@ -202,6 +216,7 @@ final class ResolutionPins {
         return false;
       }
       connectionPins.put(key, pinned);
+      connectionPinsByAge.add(new AgedPin(pinned.fetchedAt(), key));
     }
     return true;
   }
