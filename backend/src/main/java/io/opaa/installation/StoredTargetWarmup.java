@@ -54,23 +54,31 @@ class StoredTargetWarmup {
     Thread.ofVirtual().name("stored-target-warmup").start(this::warmUp);
   }
 
+  /**
+   * Checks the stored targets; a failure is logged by its type alone, since the message of a
+   * database error can carry connection details.
+   */
   void warmUp() {
     try {
       warmUpModels();
     } catch (RuntimeException e) {
-      log.warn("Stored model endpoints could not be checked at start: {}", e.toString());
+      log.warn("Stored model endpoints could not be checked at start: {}", e.getClass().getName());
     }
     try {
       warmUpMail();
     } catch (RuntimeException e) {
-      log.warn("The stored mail server could not be checked at start: {}", e.toString());
+      log.warn("The stored mail server could not be checked at start: {}", e.getClass().getName());
     }
   }
 
+  /** The stored base URLs of every model role, without duplicates; {@code null} where unset. */
+  List<String> storedModelEndpoints() {
+    return jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class);
+  }
+
   private void warmUpModels() {
-    List<String> endpoints = jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class);
     long refused =
-        endpoints.stream()
+        storedModelEndpoints().stream()
             .filter(url -> url != null && !url.isBlank())
             .filter(url -> modelAddresses.blockedReason(url) != null)
             .count();

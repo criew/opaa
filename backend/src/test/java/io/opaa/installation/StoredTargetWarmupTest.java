@@ -9,6 +9,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.mail.MailSettingsService;
@@ -18,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -57,6 +61,31 @@ class StoredTargetWarmupTest {
     assertThatCode(warmup::warmUp).doesNotThrowAnyException();
 
     verify(mailTargets).guardStoredServer("smtp.example", 25);
+  }
+
+  /** Regression guard: the log names only the type of a failure, never its message. */
+  @Test
+  void aFailureIsLoggedByItsTypeWithoutTheMessageOfTheDatabaseError() {
+    String details = "jdbc:postgresql://db.intern:5432/opaa?user=opaa&password=geheim";
+    when(jdbc.queryForList(anyString(), eq(String.class)))
+        .thenThrow(new DataAccessResourceFailureException("Connection to " + details + " refused"));
+    when(mail.snapshot()).thenThrow(new IllegalStateException("mail store at " + details));
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    Logger logger = (Logger) LoggerFactory.getLogger(StoredTargetWarmup.class);
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      warmup.warmUp();
+    } finally {
+      logger.detachAppender(appender);
+    }
+
+    assertThat(appender.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .hasSize(2)
+        .noneMatch(line -> line.contains("db.intern") || line.contains("geheim"))
+        .anyMatch(line -> line.endsWith(DataAccessResourceFailureException.class.getName()))
+        .anyMatch(line -> line.endsWith(IllegalStateException.class.getName()));
   }
 
   @Test

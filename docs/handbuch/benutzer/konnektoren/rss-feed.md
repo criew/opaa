@@ -186,6 +186,10 @@ Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Stand
 | Anlagen je Eintrag | `max-attachments-per-entry` | weitere entfallen |
 | Anlage | `max-attachment-size-bytes` | diese Anlage entfällt |
 | Anfragen je Lauf, Summe der 429-Wartezeiten | `opaa.indexing.http.request-budget-per-run`, `…max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt", Zustand nicht gespeichert |
+| Verschiedene Hosts je Lauf, Redirects eingeschlossen | `opaa.indexing.http.max-hosts-per-run` | Eintrag oder Anlage auf einem weiteren Host zurückgestellt |
+
+Ein gesetztes Anfragebudget muss einen vollen Lauf decken: Nach einer Änderung des Inhaltsselektors
+oder des Anlagenprofils verarbeitet jeder Lauf den Feed von vorn, bis einer ihn ganz durchlaufen hat.
 
 Timeouts: 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage. Der Speicherbedarf
 liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
@@ -200,6 +204,7 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 | „Weiterleitung auf einen fremden Host abgelehnt" / „Weiterleitung von https auf http abgelehnt" / „Weiterleitung der Detailseite ungültig" | Redirect verlässt den Ursprung oder ist unbrauchbar | nichts |
 | „Zieladresse … ist nicht zugelassen oder nicht erreichbar" | Zieladressprüfung: gesperrter Adressbereich oder nicht auflösbarer Name, die Ursache nennt die Zeile „Rejecting fetch to …“ im Backend-Log | Namen prüfen oder Hostnamen freigeben |
 | „Detailseite nicht erreichbar" | Verbindungsfehler, Timeout, Seite zu groß; zurückgestellt | nichts |
+| „Der Lauf hat bereits … verschiedene Hosts angefragt …" | die Einträge verweisen auf mehr Server, als ein Lauf anfragt; zurückgestellt | bei einem Sammel-Feed `opaa.indexing.http.max-hosts-per-run` anheben |
 | „Inhaltstyp der Detailseite wird nicht unterstützt" | der Link zeigt direkt auf ein PDF o. ä. | nichts |
 | „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | Inhaltsselektor der Bibliothek prüfen |
 | Verbindungstest: „Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags nichts …" | ein Lauf nähme die ganze Seite samt Seitenrahmen | Selektor an der Detailseite anpassen |

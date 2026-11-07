@@ -227,6 +227,7 @@ Parameter stehen unter `opaa.indexing.confluence.*` (`OPAA_INDEXING_CONFLUENCE_*
 | Anhang | `max-attachment-size-bytes` | dieser Anhang entfällt |
 | Seiten je Auflistung | `max-listing-pages` (mal `page-size` Einträge) | Auflistung bricht mit Fehler ab; der Vollabgleich bereinigt nichts |
 | Anfragen je Lauf | `request-budget-per-run` | „unvollständig, wird fortgesetzt" |
+| Verschiedene Hosts je Lauf, Redirects eingeschlossen | `opaa.indexing.http.max-hosts-per-run` | Anhang auf einem weiteren Host entfällt |
 | Spaces je Bibliothek | 500, fest | wird beim Anlegen abgewiesen; unter „Alle Spaces" scheitert der Lauf, der Bestand bleibt |
 
 Timeouts: `request-timeout` je JSON-Anfrage, `detection-timeout` je Sonde der Editionserkennung,
