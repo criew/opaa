@@ -1,1 +1,2 @@
-// Public interface of the auth theme; no other theme depends on it yet.
+// Public interface of the auth theme: the one write call of the quick tour, for the shell.
+export { markQuickTourHintDone } from './api/quickTourHintApi'

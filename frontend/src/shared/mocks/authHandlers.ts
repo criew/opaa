@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw'
-import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
+import {
+  mockAuthConfig,
+  mockLocalAccount,
+  mockLocalTokenResponse,
+  mockQuickTourHintDone,
+  mockUser,
+} from './authFixtures'
 import { isMockInstallationPending } from '@/features/installation/mocks/installationFixtures'
 
 export const authHandlers = [
@@ -92,6 +98,6 @@ export const authHandlers = [
   }),
 
   http.get('/api/v1/auth/me', () => {
-    return HttpResponse.json(mockUser)
+    return HttpResponse.json({ ...mockUser, quickTourHintDone: mockQuickTourHintDone })
   }),
 ]
