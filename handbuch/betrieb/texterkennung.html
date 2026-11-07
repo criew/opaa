@@ -4017,9 +4017,12 @@ SBOM und signierter Provenance (<a href="images-und-laufzeit.html">Images und La
 </tbody>
 </table>
 <p>Der Betriebsschalter <code>OPAA_OCR_ENABLED</code> und der Dienst sind getrennt: Das Compose-Overlay und
-<code>ocr.service</code> starten den Dienst, der Schalter gibt die Rolle frei. Den Dienst trägt die
-Systemverwaltung danach von Hand ein, mit Verbindungstyp <strong>docling-serve</strong>, der Adresse und dem
-Schlüssel; einen automatischen Eintrag gibt es nicht.</p>
+<code>ocr.service</code> starten den Dienst, der Schalter gibt die Rolle frei. Eingetragen wird der Dienst mit
+Verbindungstyp <strong>docling-serve</strong>, der Adresse und dem Schlüssel: bei der Installation im Schritt
+„Texterkennung“ des Einrichtungs-Assistenten oder im Abschnitt <code>textRecognitionModel</code> der
+Antwortdatei (<a href="installation.html#einrichtungs-assistent-im-browser">Installation</a>), danach von der
+Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest OPAA nicht vom Dienst; er wird
+dort eingetragen.</p>
 <table>
 <thead>
 <tr>

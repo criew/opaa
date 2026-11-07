@@ -4994,7 +4994,8 @@ weitere Befehl für diesen Stapel nennt beide Dateien.</p>
   <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code> auf. Die Liste kommt dann aus Shell oder <code>.env</code> (ohne
   Eintrag dort <code>ollama:11434</code>) und ersetzt den Wert aus <code>.env.docker</code>; wer dort weitere Modellserver
   eingetragen hat, setzt die Liste in <code>.env</code>.</li>
-<li><strong>Einrichtung:</strong> Unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
+<li><strong>Einrichtung:</strong> Im Schritt „Texterkennung“ des <a href="installation.html#einrichtungs-assistent-im-browser">Einrichtungs-Assistenten</a>
+  oder später unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
   <code>http://opaa-ocr:5001</code> und denselben Schlüssel eintragen
   (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>).</li>
 <li><strong>Grenzen:</strong> Health Check auf die Readiness des Dienstes, Read-only Filesystem mit <code>/tmp</code> im

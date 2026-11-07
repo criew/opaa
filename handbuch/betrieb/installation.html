@@ -3998,8 +3998,8 @@
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
 <p>Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
-Rerank-Modell, das Transkriptionsmodell der <a href="modell-endpunkte.html#spracheingabe-einschalten">Spracheingabe</a>, der
-Mailserver für den <a href="../administration/e-mail.html">E-Mail-Versand</a> und das <a href="../administration/branding.html">Branding</a>. Bis dahin steht sie im
+Rerank-Modell, das Transkriptionsmodell der <a href="modell-endpunkte.html#spracheingabe-einschalten">Spracheingabe</a>, die
+<a href="texterkennung.html">Texterkennung</a> gescannter PDFs, der Mailserver für den <a href="../administration/e-mail.html">E-Mail-Versand</a> und das <a href="../administration/branding.html">Branding</a>. Bis dahin steht sie im
 <strong>Installationsmodus</strong> und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 <a href="#einrichtungs-assistent-im-browser">Einrichtungs-Assistenten</a>, über die Installations-API Schritt
@@ -4090,12 +4090,15 @@ lehnt es ab.</p>
 <p>Jeder Aufruf trägt das Token als <code>Authorization: Bearer &lt;Token&gt;</code>. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
 verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
-Anmeldeverfahren; Chat-Modell, Embedding-Modell, Rerank-Modell, Transkriptionsmodell, E-Mail-Versand
-und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED</code>
+Anmeldeverfahren; Chat-Modell, Embedding-Modell, Rerank-Modell, Transkriptionsmodell, Texterkennung,
+E-Mail-Versand und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED</code>
 nicht <code>false</code> ist: Sonst fehlt der Schritt in Assistent und API, und die Antwortdatei übergeht seinen
 Teil. Den Wert der Variable tragen alle Instanzen gleich: Schließt eine Instanz mit
 abgeschalteter Spracheingabe die Installation ab, verwirft sie einen gespeicherten Schritt
-Transkriptionsmodell.</p>
+Transkriptionsmodell. Die Texterkennung gibt es umgekehrt nur, solange der Betrieb sie mit
+<code>OPAA_OCR_ENABLED=true</code> freigibt (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>):
+Ohne die Freigabe fehlt der Schritt, Speichern, Prüfen und Überspringen antworten mit <code>400</code>, und die
+Antwortdatei übergeht ihren Teil. Auch diesen Wert tragen alle Instanzen gleich.</p>
 <table>
 <thead>
 <tr>
@@ -4150,6 +4153,13 @@ Transkriptionsmodell.</p>
 <td>Modelle, Reiter „Spracheingabe“ (<a href="modell-endpunkte.html#spracheingabe-einschalten">Spracheingabe einschalten</a>)</td>
 </tr>
 <tr>
+<td>Texterkennung (<code>TEXT_RECOGNITION_MODEL</code>)</td>
+<td>nein</td>
+<td>Anbindung docling-serve oder Vision-Modell, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung, Zugangsschlüssel</td>
+<td>Adressprüfung der Modelle; der gestufte Verbindungstest wie unter Modelle → Texterkennung: Adresse, Anmeldung, Erkennung einer mitgelieferten Testseite</td>
+<td>Modelle, Reiter „Texterkennung“ (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
+</tr>
+<tr>
 <td>E-Mail-Versand (<code>MAIL</code>)</td>
 <td>nein</td>
 <td>Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername</td>
@@ -4191,7 +4201,7 @@ bleibt (Schema, Host, Port, Pfad); wer die Adresse ändert, gibt den Schlüssel 
 ihn. Ebenso geht ein gespeichertes Passwort des Mailservers nicht an einen anderen Server, Port,
 Benutzernamen oder eine andere Verschlüsselung.</p>
 <p><strong>Adressprüfung der Modelle.</strong> Weil die Installation vor jedem Konto läuft, prüft OPAA die
-Adressen von Chat-, Embedding-, Rerank- und Transkriptionsmodell beim Speichern und unmittelbar vor
+Adressen von Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell beim Speichern und unmittelbar vor
 Verbindungstest, Probeeinbettung und Probe, auch eine Adresse, die die Modellverwaltung schon
 gespeichert hat: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
 dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
@@ -4226,10 +4236,12 @@ wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
 übernimmt ein geprüftes Rerank-Modell in die Modellverwaltung und schaltet das Reranking ein,
 schaltet mit einem geprüften Transkriptionsmodell die Spracheingabe ein wie die Modellverwaltung,
+trägt einen geprüften Dienst der Texterkennung ein und schaltet die Rolle ein,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
 Versand ein, übernimmt ein geprüftes Branding wie die Branding-Verwaltung und verwirft Token und
 Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Rerank-Modell bleibt das
-Reranking aus, ohne Transkriptionsmodell die Spracheingabe; ist der E-Mail-Versand übersprungen,
+Reranking aus, ohne Transkriptionsmodell die Spracheingabe, ohne Texterkennung bleiben Scans
+ohne Textebene unauffindbar; ist der E-Mail-Versand übersprungen,
 bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
 OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
@@ -4241,7 +4253,7 @@ auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein F
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
 <a href="../administration/konten.html">Administration</a> ab. Jeder Schritt, jede Prüfung,
 jedes Überspringen, das Einschalten der lokalen Konten, die Übernahme des Rerank-Modells
-(„Rerank-Modell“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.</p>
+(„Rerank-Modell“) und der Texterkennung („Texterkennung“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.</p>
 <h2 id="einrichtungs-assistent-im-browser">Einrichtungs-Assistent im Browser<a class="headerlink" href="#einrichtungs-assistent-im-browser" title="Permanent link">&para;</a></h2>
 <p>Solange die Installation aussteht, führt jede Adresse der Oberfläche zum Assistenten unter
 <code>/installation</code>, etwa <code>https://opaa.stadt.example/installation</code>. Er führt durch dieselben Schritte
@@ -4252,7 +4264,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.</p>
   (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
   „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
   optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
-  „Optional · später unter …“ (bei Chat-, Embedding-, Rerank- und Transkriptionsmodell „Modelle“,
+  „Optional · später unter …“ (bei Chat-, Embedding-, Rerank-, Transkriptionsmodell und Texterkennung „Modelle“,
   beim E-Mail-Versand
   „E-Mail“, beim Branding „Branding“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
   „Überspringen“ in einem schon gespeicherten Schritt verwirft dessen Angaben, auch nach einer
@@ -4275,7 +4287,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.</p>
   Adresse von Hand sendet ihn erst „Modelle abrufen“ an die neue Adresse. Ein gespeicherter
   Schlüssel gilt nur für die gespeicherte Adresse. Meldet der Endpunkt mehr als 500 Modelle,
   zeigt die Auswahl die ersten 500 und sagt das. Je Instanz sind 30 Modellabrufe des Assistenten
-  in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der vier Modellschritte haben
+  in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der fünf Modellschritte haben
   ein eigenes, gemeinsames Budget; die Antwortdatei über die API zählt jedes Modell darin vorab als
   eine Prüfung, auch wenn sie danach abgelehnt wird.</li>
 <li><strong>Embedding-Modell.</strong> Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
@@ -4296,6 +4308,20 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.</p>
   Mitbestimmung verlangt der Schritt nicht (<a href="modell-endpunkte.html#spracheingabe-und-mitbestimmung">Spracheingabe und
   Mitbestimmung</a>). Der Abschluss nennt, ob er die
   Spracheingabe einschaltet.</li>
+<li><strong>Texterkennung.</strong> Der Schritt steht nur in der Liste, wenn der Betrieb <code>OPAA_OCR_ENABLED=true</code>
+  gesetzt hat, und hat die Anbindungen, Texte und Regeln von „Modelle → Texterkennung“. Zuerst
+  wählt man den Dienst: „Mitgelieferter Dienst“ ist vorgewählt und trägt <code>http://opaa-ocr:5001</code>
+  ein, die Adresse im Compose-Stapel; im Kubernetes-Betrieb heißt sie <code>http://&lt;Release&gt;-ocr:5001</code>,
+  wie <code>helm install</code> sie in seinen Hinweisen nennt (<a href="texterkennung.html#mitgelieferter-dienst-oder-eigener-endpunkt">Texterkennung</a>).
+  „Eigener Endpunkt“ bietet docling-serve oder ein Vision-Modell (OpenAI-kompatibel) an, beim
+  Vision-Modell mit Modell-Kennung und dem Hinweis, dass Fundstellen nur auf ihrer Seite, nicht als
+  Rahmen erscheinen. Eine Modellliste ruft der Schritt nicht ab. Den Schlüssel des Dienstes trägt man
+  von Hand ein, denselben wie bei <code>OPAA_OCR_API_KEY</code> oder <code>ocr-api-key</code> im Secret; OPAA liest ihn
+  nicht von dort. „Prüfen und weiter“ lässt den Dienst die Testseite lesen, in den Stufen Adresse,
+  Anmeldung und Erkennung, und nennt bei einem Fehler die Stufe; die erste Umwandlung kann einige
+  Minuten dauern. OPAA wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
+  bricht er trotzdem ab, liest er den Stand neu und geht weiter, wenn die Prüfung inzwischen
+  gelungen ist, sonst sagt er, dass sie im Hintergrund weiterläuft. Der Abschluss nennt, ob er die Texterkennung einschaltet.</li>
 <li><strong>E-Mail-Versand.</strong> Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
   E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
   senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Ein Satz
@@ -4372,6 +4398,11 @@ Prüfungen, alles oder nichts.</p>
 <span class="w">    </span><span class="nt">"apiKeyFile"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">"language"</span><span class="p">:</span><span class="w"> </span><span class="s2">"de"</span>
 <span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"textRecognitionModel"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"connectionType"</span><span class="p">:</span><span class="w"> </span><span class="s2">"DOCLING_SERVE"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"baseUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://opaa-ocr:5001"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"apiKeyFile"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/run/secrets/opaa-ocr-api-key"</span>
+<span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">"mail"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">"host"</span><span class="p">:</span><span class="w"> </span><span class="s2">"smtp.stadt.example"</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">"port"</span><span class="p">:</span><span class="w"> </span><span class="mi">587</span><span class="p">,</span>
@@ -4406,8 +4437,8 @@ Prüfungen, alles oder nichts.</p>
   Passwort und Schlüssel dann als <code>password</code> und <code>apiKey</code> im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.</li>
-<li><strong>Optionale Teile:</strong> <code>chatModel</code>, <code>embeddingModel</code>, <code>rerankModel</code>, <code>transcriptionModel</code>, <code>mail</code> und
-  <code>branding</code> sind optional. Fehlt ein Teil,
+<li><strong>Optionale Teile:</strong> <code>chatModel</code>, <code>embeddingModel</code>, <code>rerankModel</code>, <code>transcriptionModel</code>,
+  <code>textRecognitionModel</code>, <code>mail</code> und <code>branding</code> sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.</li>
 <li><strong>Rerank-Modell:</strong> Ohne den Abschnitt <code>rerankModel</code> bleibt das Reranking aus. Mit ihm prüft OPAA
@@ -4421,6 +4452,13 @@ Prüfungen, alles oder nichts.</p>
   <code>language</code> gilt <code>de</code>, eine leere Sprache lässt das Modell sie erkennen. Ist die Spracheingabe mit
   <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED=false</code> abgeschaltet, übergeht OPAA den Abschnitt und meldet das
   im Log, die Datei gilt trotzdem.</li>
+<li><strong>Texterkennung:</strong> Ohne den Abschnitt <code>textRecognitionModel</code> bleibt die Texterkennung aus. Mit ihm
+  prüft OPAA Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
+  Abschluss trägt den Dienst ein und schaltet die Rolle ein. <code>connectionType</code> ist <code>DOCLING_SERVE</code>
+  (Vorgabe) oder <code>OPENAI_VISION</code>, dann mit <code>model</code>; der Schlüssel steht als <code>apiKeyFile</code>, derselbe
+  Wert wie beim Dienst. Ohne <code>OPAA_OCR_ENABLED=true</code> übergeht OPAA den Abschnitt, ohne seine
+  Schlüsseldatei zu lesen, und meldet das im Log; die Datei gilt trotzdem. Ebenso liest OPAA die
+  Schlüsseldatei eines übergangenen Abschnitts <code>transcriptionModel</code> nicht.</li>
 <li><strong>Branding:</strong> Ohne den Abschnitt <code>branding</code> gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (<code>productName</code>, <code>claim</code>, <code>aiNotice</code>,
   <code>primaryColor</code>), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
@@ -4545,6 +4583,26 @@ Prüfungen, alles oder nichts.</p>
 <td>Schritt auslassen, oder die Variable entfernen und neu starten</td>
 </tr>
 <tr>
+<td><code>400</code> „Den Schritt TEXT_RECOGNITION_MODEL gibt es in dieser Installation nicht …“</td>
+<td>die Texterkennung ist im Betrieb nicht freigegeben (<code>OPAA_OCR_ENABLED</code>)</td>
+<td>Schritt auslassen, oder <code>OPAA_OCR_ENABLED=true</code> setzen und neu starten</td>
+</tr>
+<tr>
+<td>Prüfung der Texterkennung „Gescheitert an der Stufe „Adresse“: …“</td>
+<td>die Adresse ist gesperrt oder der Dienst nicht erreichbar, etwa weil <code>opaa-ocr:5001</code> nicht in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code> steht oder der Dienst noch startet</td>
+<td>Adresse und Freigabeliste prüfen, im Kubernetes-Betrieb <code>http://&lt;Release&gt;-ocr:5001</code> eintragen</td>
+</tr>
+<tr>
+<td>Prüfung der Texterkennung „Gescheitert an der Stufe „Anmeldung“: …“</td>
+<td>der Dienst lehnt den Schlüssel ab</td>
+<td>denselben Schlüssel wie beim Dienst eintragen (<a href="texterkennung.html#schlüssel">Schlüssel</a>)</td>
+</tr>
+<tr>
+<td>Prüfung der Texterkennung „Gescheitert an der Stufe „Erkennung“: …“</td>
+<td>der Dienst antwortet, liest die Testseite aber nicht: Engine oder Modelle fehlen, beim Vision-Modell eine falsche Modell-Kennung, oder die Umwandlung dauert zu lange</td>
+<td>Dienst und Kennung prüfen (<a href="texterkennung.html#fehlerbilder">Fehlerbilder der Texterkennung</a>)</td>
+</tr>
+<tr>
 <td><code>400</code> am Feld Sprache „Die Sprache ist ein Kürzel aus zwei Buchstaben …“</td>
 <td>die Sprache des Transkriptionsmodells ist kein Kürzel nach ISO 639-1</td>
 <td>Kürzel wie <code>de</code> eintragen oder das Feld leeren</td>
@@ -4645,8 +4703,8 @@ ohne die Variable, ersetzt sie das gesetzte Token durch ein erzeugtes und schrei
 einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.</p>
 <p>Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
-Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank- und
-Transkriptionsmodell zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
+Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank-,
+Transkriptionsmodell und Texterkennung zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
 die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei danach ablehnt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
 10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
 keinem dieser Budgets; ohne Eintrag in <code>OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST</code> nur die Ports 25,
