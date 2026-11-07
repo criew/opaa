@@ -13,6 +13,7 @@ import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
 import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
 import { useCopyAnnouncement } from './copyAnnouncer'
+import { renderEmptyChatGreeting } from '@/shared/ui/emptyChatGreeting'
 
 interface MessageListProps {
   messages: ChatMessage[]
@@ -111,6 +112,16 @@ export default function MessageList({
   )
 
   if (messages.length === 0 && !isLoading) {
+    const greeting = (
+      <>
+        <SmartToyIcon sx={{ fontSize: 48 }} />
+        {/* Level 2: this heading follows the page's h1 directly; the h6 look is only visual. */}
+        <Typography variant="h6" component="h2">
+          Womit kann ich Ihnen heute helfen?
+        </Typography>
+        <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+      </>
+    )
     return (
       <Box
         sx={{
@@ -123,12 +134,7 @@ export default function MessageList({
           color: 'text.secondary',
         }}
       >
-        <SmartToyIcon sx={{ fontSize: 48 }} />
-        {/* Level 2: this heading follows the page's h1 directly; the h6 look is only visual. */}
-        <Typography variant="h6" component="h2">
-          Womit kann ich Ihnen heute helfen?
-        </Typography>
-        <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+        {renderEmptyChatGreeting(greeting)}
         <AiNotice variant="prominent" />
         {liveRegion}
       </Box>

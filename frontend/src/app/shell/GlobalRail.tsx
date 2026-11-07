@@ -14,11 +14,13 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
+import { useTourMenuEntry } from './tour/tourMenuEntry'
 import { handbookUrl } from './handbookLink'
 import BrandMark from '@/shared/ui/BrandMark'
 import { NotificationBell } from '@/features/notification'
@@ -57,6 +59,7 @@ export default function GlobalRail() {
   const branding = useBrandingStore((s) => s.branding)
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const tourEntry = useTourMenuEntry()
 
   const appTheme = useTheme()
   const appMode = appTheme.palette.mode
@@ -234,6 +237,19 @@ export default function GlobalRail() {
                   </ListItemIcon>
                   Einstellungen
                 </MenuItem>
+                {tourEntry && (
+                  <MenuItem
+                    onClick={() => {
+                      closeUserMenu()
+                      tourEntry.run()
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ExploreOutlinedIcon fontSize="small" />
+                    </ListItemIcon>
+                    {tourEntry.label}
+                  </MenuItem>
+                )}
                 {/* Product name, version and the demo hint are shown here instead of permanently
                    under every page. */}
                 <MenuItem

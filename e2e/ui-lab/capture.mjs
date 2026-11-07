@@ -21,7 +21,7 @@ import { launch, pinVariant, schemeContext } from './lib/browser.mjs'
 import { createRecorder } from './lib/measure.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const FLOWS = ['libraries', 'pages', 'service-accounts']
+const FLOWS = ['libraries', 'pages', 'service-accounts', 'quick-tour']
 
 function parseArgs(argv) {
   const args = { base: 'http://localhost:5191', out: path.join(HERE, 'out'), flow: 'libraries' }

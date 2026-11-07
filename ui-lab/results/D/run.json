@@ -1,0 +1,29 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/Users/mk/Projects/opaa-2312/ui-lab/results/D",
+    "flow": "quick-tour",
+    "scenarios": [
+      "small"
+    ],
+    "schemes": [
+      "light",
+      "dark"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "variant": "invite",
+    "concurrency": 2,
+    "areas": [
+      "start",
+      "step",
+      "last",
+      "again"
+    ]
+  },
+  "shots": 16,
+  "seconds": 39,
+  "finishedAt": "2026-11-07T09:21:08.433Z"
+}

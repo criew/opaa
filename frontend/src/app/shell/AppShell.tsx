@@ -18,6 +18,7 @@ import { useUiStore } from '@/shared/stores/uiStore'
 import { SpaceListContext } from '@/features/asset'
 import { loadSpaceList } from '../themeSeams'
 import PageLoading from './PageLoading'
+import TourHost from './tour/TourHost'
 
 export default function AppShell() {
   const theme = useTheme()
@@ -130,6 +131,7 @@ export default function AppShell() {
       <IndexingSnackbar />
       <NotificationHost />
       <ConfirmHost />
+      <TourHost />
     </Box>
   )
 }
