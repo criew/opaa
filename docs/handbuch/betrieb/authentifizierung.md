@@ -377,10 +377,13 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.
 2. **Credentials**: das Client-Geheimnis notieren.
 3. **Service accounts roles → Assign role → Filter by clients → `realm-management`**: genau
    **`view-users`** und **`query-groups`**. Mehr braucht und sollte das Konto nicht haben.
+4. **Client scopes → Add client scope**: **`kc-admin-api`** als **Default**. Ab Keycloak 26.8.2 lässt
+   die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
+   seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.
 
 In OPAA wird der Zugang im Seitenpanel des Anbieters unter **Verzeichniszugang** hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
-Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden fehlenden Rollen. Erreicht das Backend
+Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` statt
 `http://localhost:8180` —, gehört die Backend-Adresse in das Feld der Admin-API; ohne Angabe leitet
 OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe [Adressprüfung](#adressprüfung-und-tokenprüfung)
@@ -447,7 +450,7 @@ ersten Import:
 | Bootstrap-Administrator `admin`/`admin` | voller Zugriff auf den Identitätsanbieter | **Zwingend:** `KC_BOOTSTRAP_ADMIN_USERNAME`/`_PASSWORD` in der Compose-Datei durch eigene Werte ersetzen, etwa als Platzhalter aus `.env` oder der Shell-Umgebung (der Dienst liest `.env.docker` nicht), und das Passwort nach der Ersteinrichtung ändern |
 | `start-dev --import-realm` ohne persistentes Datenverzeichnis | Die eingebaute Entwicklungsdatenbank geht mit jedem neuen Container verloren — und mit ihr jede Härtung: `admin`/`admin` und `testuser` sind nach dem nächsten Update wieder da | **Zwingend:** `start` statt `start-dev` (startet ohne TLS- und Proxy-Einrichtung gar nicht erst) und eine externe, persistente Datenbank (`KC_DB`, `KC_DB_URL` u. a.) |
 | Client `opaa-seed` mit Passwort-Grant und ohne Secret, nur für das Befüllen der Demo | ein zweiter, passwortbasierter Tokenweg gegen jedes Konto des Realms | **Zwingend:** entfernen oder auf `enabled: false`; wer erneut befüllen will, aktiviert ihn nur für die Dauer des Laufs |
-| Client `opaa-directory` mit dem Geheimnis `RheinfurtVerzeichnis!2026` und den Rollen `view-users` und `query-groups` | Wer das Geheimnis kennt, liest den ganzen Gruppenbaum, alle Mitgliedschaften und alle Konten | **Zwingend:** ein eigenes Geheimnis erzeugen (`openssl rand -base64 32`), vor dem Import setzen oder in Keycloak unter **Credentials** neu erzeugen, und denselben Wert im [Verzeichniszugang](#keycloak-als-verzeichnis) hinterlegen. Ohne Verzeichnisabgleich den Client entfernen |
+| Client `opaa-directory` mit dem Geheimnis `RheinfurtVerzeichnis!2026`, den Rollen `view-users` und `query-groups` und dem Standard-Client-Scope `kc-admin-api` | Wer das Geheimnis kennt, liest den ganzen Gruppenbaum, alle Mitgliedschaften und alle Konten | **Zwingend:** ein eigenes Geheimnis erzeugen (`openssl rand -base64 32`), vor dem Import setzen oder in Keycloak unter **Credentials** neu erzeugen, und denselben Wert im [Verzeichniszugang](#keycloak-als-verzeichnis) hinterlegen. Ohne Verzeichnisabgleich den Client entfernen |
 
 Dazu bleibt die Port-Bindung des Dienstes `keycloak` an `127.0.0.1` (Vorgabe), sonst ist die
 Admin-Konsole am Proxy vorbei erreichbar ([Docker Compose](docker-compose.md#härtung-des-compose-stapels)).

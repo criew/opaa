@@ -694,6 +694,7 @@ def test_realm_export_carries_the_directory_service_account() -> None:
     assert client["standardFlowEnabled"] is False
     assert client["directAccessGrantsEnabled"] is False
     assert client["secret"] == sync.client_secret
+    assert "kc-admin-api" in client["defaultClientScopes"]
     service_account = next(
         u for u in realm()["users"] if u.get("serviceAccountClientId") == sync.client_id
     )
@@ -714,7 +715,7 @@ def test_every_realm_user_keeps_a_fixed_id() -> None:
 
 def test_apply_script_carries_the_realm_export_values() -> None:
     """The script transfers the realm changes into a Keycloak that keeps its volume: it has to
-    name the same groups, memberships, client, secret and roles as the export."""
+    name the same groups, memberships, client, secret, roles and client scope as the export."""
     script = APPLY_SCRIPT.read_text(encoding="utf-8")
     sync = DEMO.directory_sync
     for group_name, keys in realm_group_members().items():
@@ -725,6 +726,7 @@ def test_apply_script_carries_the_realm_export_values() -> None:
     assert sync.client_id in script
     assert sync.client_secret in script
     assert "view-users" in script and "query-groups" in script
+    assert '"kc-admin-api"' in script
     assert "opaa-frontend-audience" in script
 
 

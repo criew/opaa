@@ -79,7 +79,7 @@
     },
     {
       "clientId": "opaa-directory",
-      "description": "Dienstkonto des Verzeichnisabgleichs (ADR-0036): vertraulich, ohne Anmeldefluss, nur view-users und query-groups. Das Geheimnis ist ein dokumentierter Demo-Wert (demo/README.md).",
+      "description": "Dienstkonto des Verzeichnisabgleichs (ADR-0036): vertraulich, ohne Anmeldefluss, nur view-users und query-groups, Scope kc-admin-api für die Admin-API-Audience. Das Geheimnis ist ein dokumentierter Demo-Wert (demo/README.md).",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
@@ -87,7 +87,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "basic",
+        "roles",
+        "kc-admin-api"
+      ]
     }
   ],
   "groups": [

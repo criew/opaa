@@ -489,7 +489,8 @@ components:
       description: >
         The service account a directory run signs in with. For KEYCLOAK this is a confidential
         client with service accounts enabled, holding the realm-management roles view-users and
-        query-groups.
+        query-groups and the default client scope kc-admin-api (required from Keycloak 26.8.2 on
+        for the Admin REST API audience).
       properties:
         type:
           $ref: "#/components/schemas/DirectoryConnectorType"

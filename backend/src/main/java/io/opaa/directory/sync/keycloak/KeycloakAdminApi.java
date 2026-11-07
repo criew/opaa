@@ -31,9 +31,11 @@ import tools.jackson.databind.json.JsonMapper;
  * target would not have.
  *
  * <p><b>Every failure is a {@link DirectoryUnavailableException}</b>, including a rejected sign-in
- * and a {@code 403} from a service account that lacks {@code view-users}/{@code query-groups}.
- * Anything else would let a rights problem at the source look like "this directory has no groups",
- * and that is the one reading a synchronisation must never act on.
+ * and a {@code 401}/{@code 403} from a service account that lacks {@code view-users}/{@code
+ * query-groups} or the default client scope {@code kc-admin-api}, whose audience the Admin API
+ * requires from Keycloak 26.8.2 on. Anything else would let a rights problem at the source look
+ * like "this directory has no groups", and that is the one reading a synchronisation must never act
+ * on.
  *
  * <p>The access token lives about five minutes; a large realm outlasts it. The token is therefore
  * re-fetched once whenever the current one is within {@link #TOKEN_REFRESH_MARGIN} of expiry, so a
@@ -214,8 +216,8 @@ class KeycloakAdminApi {
         throw new DirectoryUnavailableException(
             "Das Dienstkonto wurde abgewiesen (HTTP "
                 + status
-                + "). Prüfen Sie Client-ID und Geheimnis sowie die Rollen „view-users“ und"
-                + " „query-groups“.");
+                + "). Prüfen Sie Client-ID und Geheimnis, die Rollen „view-users“ und"
+                + " „query-groups“ sowie den Client-Scope „kc-admin-api“.");
       }
       if (status == 404) {
         throw new DirectoryUnavailableException(
