@@ -22,7 +22,6 @@ import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
-import java.lang.reflect.Modifier;
 import java.time.Clock;
 import java.util.List;
 import java.util.Set;
@@ -93,9 +92,7 @@ class PipelinePathIsolationTest {
     // issue #3622 (PdfOcrDocumentFormat joined the registry, pdf-ocr:1)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
     // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331/#3622
-    // bumps)
-    // moves
-    // for unrelated reasons at unrelated points in its history.
+    // bumps) moves for unrelated reasons at unrelated points in its history.
     assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(22);
   }
 
@@ -418,12 +415,14 @@ class PipelinePathIsolationTest {
     assertThat(wired).isEqualTo(declared);
   }
 
+  /** Same class output as {@link DocumentFormat} itself, i.e. the production source set. */
   private static boolean isProductionClass(String className) {
     try {
-      Class<?> type = Class.forName(className);
-      return !type.isInterface()
-          && !Modifier.isAbstract(type.getModifiers())
-          && type.getProtectionDomain().getCodeSource().getLocation().getPath().contains("/main");
+      return Class.forName(className)
+          .getProtectionDomain()
+          .getCodeSource()
+          .getLocation()
+          .equals(DocumentFormat.class.getProtectionDomain().getCodeSource().getLocation());
     } catch (ClassNotFoundException e) {
       throw new IllegalStateException(e);
     }

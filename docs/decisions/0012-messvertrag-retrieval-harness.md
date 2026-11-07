@@ -480,10 +480,13 @@ Festpunkt wird dagegen nicht abgewiesen, sondern als `null` unvergleichbar gemel
 
 `PipelinePathIsolationTest` (sechs Einzelfragen-Baselines) und `ConversationPathIsolationTest`
 (Mehrrunden-Baseline) halten die committeten Dateien gegen `EvalOllamaEndpoint.PINNED_IMAGE`,
-`EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`, die reale
-`DocumentFormatRegistry`, `QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`.
-Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des verursachenden PRs auf,
-nicht erst im nächtlichen Docker-Lauf.
+`EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`,
+`QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`. Den
+`ingestionPipelineFingerprint` aller sieben Baselines prüft `PipelinePathIsolationTest` gegen eine
+nachgebaute `DocumentFormatRegistry`; ein Klassenpfad-Scan verlangt, dass sie jede konkrete
+`DocumentFormat`-Klasse des Produktionscodes enthält, damit ein neues Format nicht am Wächter
+vorbeiläuft. Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des
+verursachenden PRs auf, nicht erst im nächtlichen Docker-Lauf.
 
 #### 28. `ingestionPipelineFingerprint` (mit 24, 25)
 
