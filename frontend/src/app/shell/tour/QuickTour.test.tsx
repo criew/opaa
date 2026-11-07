@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import Dialog from '@mui/material/Dialog'
+import TextField from '@mui/material/TextField'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -285,13 +287,35 @@ describe('quick tour', () => {
       await waitFor(() => expect(input()).toHaveFocus())
     })
 
-    it('keeps Tab inside the card', async () => {
+    it('keeps Tab inside the card and reaches every button of it', async () => {
       const { user, dialog } = await openTour()
       await user.keyboard('{ArrowRight}')
-      for (let i = 0; i < 5; i++) {
-        await user.tab()
-        expect(dialog).toContainElement(document.activeElement as HTMLElement)
-      }
+      const button = (name: string) => within(dialog).getByRole('button', { name })
+
+      await user.tab()
+      expect(button('Schließen')).toHaveFocus()
+      await user.tab()
+      expect(button('Zurück')).toHaveFocus()
+      await user.tab()
+      expect(button('Weiter')).toHaveFocus()
+      await user.tab({ shift: true })
+      expect(button('Zurück')).toHaveFocus()
+    })
+
+    it('leaves the focus to a modal opened above the tour', async () => {
+      const { user } = await openTour()
+      renderWithProviders(
+        <Dialog open aria-label="Darüber">
+          <TextField label="Feld darüber" />
+        </Dialog>,
+      )
+      const upper = await screen.findByRole('textbox', { name: 'Feld darüber' })
+
+      await user.click(upper)
+      await user.keyboard('abc')
+
+      expect(upper).toHaveFocus()
+      expect(upper).toHaveValue('abc')
     })
 
     it('ends below 900 px on the one step at the menu button', async () => {

@@ -85,12 +85,14 @@ export default function QuickTour() {
 
   // The modal's own trap re-subscribes on every render of the modal and misses a focus the page
   // sets in that commit (the chat arriving after a route change). This guard lives as long as the
-  // tour is open; the trap's sentinels belong to the modal root and keep their Tab cycling.
+  // tour is open; the trap's sentinels belong to the modal root and keep their Tab cycling. A
+  // modal opened above the tour hides the tour's root (aria-hidden) and keeps its own focus.
   useEffect(() => {
     if (!open) return
     const guard = (event: FocusEvent) => {
       const root = modalRef.current
-      if (root && event.target instanceof Node && !root.contains(event.target)) {
+      if (!root || root.getAttribute('aria-hidden') === 'true') return
+      if (event.target instanceof Node && !root.contains(event.target)) {
         primaryRef.current?.focus()
       }
     }
