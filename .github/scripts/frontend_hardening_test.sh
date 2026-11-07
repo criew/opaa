@@ -4,7 +4,8 @@
 # when client-supplied Forwarded/X-Forwarded-Host/-Port/-Prefix reach the upstream on none of the
 # proxy paths, every response carries the Permissions-Policy and the cross-origin isolation headers
 # (Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy), only the self-disclosure download
-# may be framed (by the application itself), and the start refuses an invalid
+# may be framed (by the application itself), the access log leaves out the marker of the
+# quick-tour hint, and the start refuses an invalid
 # OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
 # OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
@@ -144,6 +145,23 @@ done
 got="$(framing POST /api/v1/me/self-disclosure/download)"
 [[ "$got" == "SAMEORIGIN|frame-ancestors 'self'" ]] && echo "same-origin frame: download" ||
   fail "the self-disclosure download carries framing '$got', expected SAMEORIGIN and 'self'"
+
+echo "--- access log"
+# The marker of the quick-tour hint leaves no access log line, in any spelling of its path; the
+# control request beside it does.
+for path in /api/v1/me/quick-tour-hint "/api/v1/me/quick%2Dtour-hint" \
+  "/api/v1/me/quick-tour-hint?x=1" /api/v1/me/quick-tour-control; do
+  curl -sS -o /dev/null --max-time 10 -X PUT "$base$path" || true
+done
+access_lines="$(docker logs "$frontend" 2>/dev/null | grep '" [0-9][0-9][0-9] ' || true)"
+if grep -q 'quick%2Dtour-hint\|quick-tour-hint' <<<"$access_lines"; then
+  fail "the access log names the marker of the quick-tour hint"
+else
+  echo "left out as expected: the marker of the quick-tour hint"
+fi
+grep -q '"PUT /api/v1/me/quick-tour-control ' <<<"$access_lines" &&
+  echo "logged as expected: the control request" ||
+  fail "the access log lacks the control request"
 
 echo "--- OPAA_CSP_CONNECT_SRC_EXTRA"
 # Starts the image with the value and reports whether nginx came up within a few seconds.

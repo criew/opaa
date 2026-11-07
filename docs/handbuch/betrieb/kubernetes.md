@@ -711,7 +711,7 @@ ein. Bemessung, Schlüssel und Fehlerbilder stehen unter [Texterkennung](texterk
 | `features.speechInput.enabled` | `true` | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `false` schaltet die Spracheingabe im Chat ab, auch mit eingetragenem Transkriptionsdienst |
 | `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](../referenz/konfiguration.md#funktionen-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
 | `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Dateien anhängen und Spracheingabe](../benutzer/anhaengen-und-diktieren.md)) |
-| `features.quickTour.enabled` | `true` | `OPAA_FEATURES_QUICK_TOUR_ENABLED` | `false` schaltet den Rundgang für neue Nutzer ab (Hinweis im leeren Chat, Eintrag im Profilmenü); der gespeicherte Merker je Konto bleibt (siehe [Funktionen abschalten](../referenz/konfiguration.md#funktionen-abschalten)) |
+| `features.quickTour.enabled` | `true` | `OPAA_FEATURES_QUICK_TOUR_ENABLED` | `false` schaltet den Rundgang für neue Nutzer samt Schreibroute ab; der gespeicherte Merker je Konto bleibt (siehe [Funktionen abschalten](../referenz/konfiguration.md#funktionen-abschalten)) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Die Schalter gehören zum

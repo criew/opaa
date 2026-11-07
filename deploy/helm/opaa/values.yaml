@@ -268,8 +268,8 @@ features:
   # attachment endpoints. Existing attachments stay until their chat is deleted.
   chatUpload:
     enabled: true
-  # Quick tour for new users: the hint in the empty chat and the entry in the profile menu; false
-  # removes both, the stored per-account marker "hint done" stays.
+  # Quick tour for new users; false switches it off together with its write route, the stored
+  # per-account marker "hint done" stays.
   quickTour:
     enabled: true
 

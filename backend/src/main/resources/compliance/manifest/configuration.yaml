@@ -203,8 +203,9 @@ settings:
   - key: opaa.features.quick-tour.enabled
     defaultValue: "true"
     effect: >-
-      Der Rundgang für neue Nutzer ist angeboten; dafür wird je Konto nur festgehalten, ob der
-      Hinweis „Neu hier?“ erledigt ist. Ausgeschaltet bleibt dieser Merker unverändert erhalten
+      Der Rundgang für neue Nutzer samt Schreibroute ist eingeschaltet; je Konto wird nur
+      festgehalten, ob der Hinweis zum Rundgang erledigt ist. Ausgeschaltet bleibt dieser Merker
+      unverändert erhalten
     bearings: [DATA]
     helm:
       values: features.quickTour.enabled

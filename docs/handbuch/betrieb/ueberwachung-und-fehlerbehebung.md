@@ -23,6 +23,14 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
 - **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
   Anwendung ([Rechte-Matrix](../referenz/rechte-matrix.md)).
+- **Ohne jede Spur:** Den Aufruf `PUT /api/v1/me/quick-tour-hint`, mit dem eine Person den Hinweis
+  zum Rundgang für neue Nutzer erledigt, schreiben weder das Anfrageprotokoll des Backends noch das
+  Zugriffslog des Frontend-Containers, und er zählt in keiner Metrik. Ein vorgelagerter Reverse
+  Proxy oder Ingress-Controller protokolliert ihn trotzdem; dort richtet der Betrieb dieselbe
+  Ausnahme ein. Spuren bleiben nur bei Störungen und in der Fehlersuche: Ist das Backend nicht
+  erreichbar, nennt das Fehlerlog des Frontend-Containers Pfad und Client-Adresse jeder gescheiterten
+  Anfrage, und auf `DEBUG` schreibt die Anmeldeschicht (`org.springframework.security`) zu jedem
+  Aufruf Pfad und Client-Adresse, auch zu diesem.
 - **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
   Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),

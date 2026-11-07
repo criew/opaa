@@ -32,7 +32,7 @@ data:
       - Mitglieder geteilter Spaces und Gruppen (Anzeigename)
       - SYSTEM_ADMIN in der Kontenverwaltung (ohne den Merker zum Rundgang-Hinweis)
       - >-
-        Merker „Hinweis zum Rundgang erledigt“: nur die Person selbst (Oberfläche, Selbstauskunft)
+        Merker „Hinweis zum Rundgang erledigt“: nur die Person selbst (eigene Kontodaten, Selbstauskunft)
         und ausdrücklich der Datenbankzugriff des Betriebs; keine Ansicht der Verwaltung
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
@@ -48,8 +48,13 @@ data:
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
       lokaler Konten (90-Tage-Fenster), keine Zeitreihe. Der Merker zum Rundgang-Hinweis ist ein
-      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; keine Auswertung, kein
-      Protokolleintrag, keine Metrik
+      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; OPAA wertet ihn nicht aus, und
+      sein Setzen erzeugt keinen Revisionseintrag, keine Zeile im Anfrageprotokoll des Backends oder
+      im Zugriffslog des Frontend-Containers und keine Metrik; Spuren bleiben nur in einem
+      vorgelagerten Proxy, im Fehlerlog des Frontend-Containers bei unerreichbarem Backend und in der
+      Debug-Ausgabe der Anmeldeschicht, die der Betrieb steuert. Über den Datenbankzugriff möglich ist
+      der Abgleich mit der letzten Anmeldung: wer sich seit dem Update angemeldet, den Hinweis aber
+      nicht beantwortet hat
     notes:
       - last_login_at ist ein Anwesenheitsmerkmal; Verhaltenskontrolle prüfen
       - >-

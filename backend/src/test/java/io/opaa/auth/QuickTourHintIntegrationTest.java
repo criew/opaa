@@ -143,7 +143,12 @@ class QuickTourHintIntegrationTest {
     assertThat(quickTourHint.isDone(person.getId())).isTrue();
     assertThat(auditEntries()).isEqualTo(auditEntriesBefore);
     List<String> identifiers =
-        Stream.of(person.getId().toString(), person.getEmail(), person.getDisplayName())
+        Stream.of(
+                person.getId().toString(),
+                person.getSubject(),
+                person.getIssuer(),
+                person.getEmail(),
+                person.getDisplayName())
             .filter(Objects::nonNull)
             .filter(value -> !value.isBlank())
             .toList();
@@ -152,11 +157,7 @@ class QuickTourHintIntegrationTest {
       for (String identifier : identifiers) {
         assertThat(line).as("log line of %s", event.getLoggerName()).doesNotContain(identifier);
       }
-      // the request line every API call writes names method, path, status and duration only
-      boolean requestLine =
-          event.getLoggerName().equals("io.opaa.api.RequestLoggingFilter")
-              && line.matches("PUT " + HINT + " 204 \\d+ms");
-      if (event.getLoggerName().startsWith("io.opaa") && !requestLine) {
+      if (event.getLoggerName().startsWith("io.opaa")) {
         assertThat(line.toLowerCase(Locale.ROOT))
             .as("log line of %s", event.getLoggerName())
             .doesNotContain("quick")
@@ -168,6 +169,7 @@ class QuickTourHintIntegrationTest {
       assertThat(id.getTags().stream().map(Tag::getValue))
           .as("tags of meter %s", id.getName())
           .noneMatch(value -> identifiers.stream().anyMatch(value::contains));
+      assertThat(id.getTag("uri")).as("uri tag of meter %s", id.getName()).isNotEqualTo(HINT);
       if (!metersBefore.contains(id)) {
         assertThat(id.getName().toLowerCase(Locale.ROOT))
             .doesNotContain("quick")

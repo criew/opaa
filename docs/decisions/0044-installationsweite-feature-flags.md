@@ -55,7 +55,7 @@ einer im Werteschema hinzu (Entscheidung 8).
 | `SPEECH_INPUT` | Diktat im Chat; das Mikrofon erscheint nur, solange auch die Transkription konfiguriert ist | #2629 |
 | `EXTERNAL_ACCESS` | Fremdzugänge (ADR-0035): Zugangstokens, Bibliotheksfreigaben und der MCP-Server; aus gibt es weder die Filterkette des Kanals noch `/mcp` (`McpServerSwitch` hält den Starter heraus), offen ist der Kanal nur mit Flag und Schalter der Installation | #2749 |
 | `CHAT_UPLOAD` | Dateianhänge an Chatfragen; aus gibt es die Routen der Anhänge nicht, vorhandene Anhänge bleiben bis zur Löschung ihres Chats | #3518 |
-| `QUICK_TOUR` | Rundgang für neue Nutzer: Hinweis im leeren Chat und Eintrag im Profilmenü; aus gibt es die Route zum Setzen des Merkers „Hinweis erledigt“ nicht, der gespeicherte Merker je Konto bleibt | #3626 |
+| `QUICK_TOUR` | Rundgang für neue Nutzer; aus gibt es die Route zum Setzen des Merkers „Hinweis erledigt“ nicht, der gespeicherte Merker je Konto bleibt | #3626 |
 
 ### 6. Zwei Wege, ein Flag zu beachten
 

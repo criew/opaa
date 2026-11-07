@@ -51,7 +51,7 @@
     {
       "name": "opaa.features.quick-tour.enabled",
       "type": "java.lang.Boolean",
-      "description": "Feature flag of the quick tour for new users: the hint in the empty chat and the entry in the profile menu (ADR-0044); off keeps the stored per-account marker.",
+      "description": "Feature flag of the quick tour for new users and its write route (ADR-0044); off keeps the stored per-account marker.",
       "sourceType": "io.opaa.common.Feature"
     },
     {
