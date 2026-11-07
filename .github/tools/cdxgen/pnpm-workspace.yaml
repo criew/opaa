@@ -3,5 +3,10 @@
 
 # cdxgen pins body-parser 2.3.0 exactly (GHSA-27r3-jxmh-p828); drop the override once a cdxgen
 # release depends on 2.4.0 or later.
+# cdxgen pins glob 13.0.6 exactly (GHSA-3g3m-2fjr-6pw4), which brings minimatch 10
+# (GHSA-g3hv-75wg-m249); both are fixed only in the next major. The frontend SBOM lists the same
+# components with glob 14 and minimatch 11; drop both overrides once cdxgen depends on glob 14.
 overrides:
   body-parser: 2.4.0
+  glob@13: 14.0.4
+  minimatch@10: 11.0.5
