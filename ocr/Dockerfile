@@ -32,6 +32,21 @@ RUN rm -r "$DOCLING_SERVE_ARTIFACTS_PATH/EasyOcr" \
     && if [[ -n "$left" ]]; then echo "still present: $left" >&2; exit 1; fi \
     && rm -rf /tmp/* /var/tmp/*
 
+# Python packages of the base image with a known CVE, replaced by the fixed release from
+# ocr/requirements-overrides.txt; pip check fails the build if that breaks a requirement. Then
+# gone what the service never runs and what only carried findings: pip itself, Ray's Java side
+# (ray/jars, for Java workers) and the aiohttp and multidict copies that Ray's runtime-env agent
+# puts ahead of the environment's own. That agent runs only inside a Ray node, which the local
+# engine never starts.
+COPY ocr/requirements-overrides.txt /tmp/requirements-overrides.txt
+RUN /opt/app-root/bin/python -m pip install --no-cache-dir --no-deps --only-binary=:all: \
+        --require-hashes -r /tmp/requirements-overrides.txt \
+    && /opt/app-root/bin/python -m pip check \
+    && /opt/app-root/bin/python -m pip uninstall --yes pip \
+    && site="$(/opt/app-root/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
+    && rm -r "$site/ray/jars" "$site/ray/_private/runtime_env/agent/thirdparty_files" \
+    && rm -rf /tmp/* /var/tmp/*
+
 # Every model file must match models.sha256, and no other file may exist; the metadata huggingface_hub
 # keeps beside a download is not a model and stays out. On a mismatch the build prints the list it
 # found, which replaces models.sha256 after review (docs/renovate.md, "OCR-Image").

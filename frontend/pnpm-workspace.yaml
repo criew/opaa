@@ -17,3 +17,9 @@ allowBuilds:
 peerDependencyRules:
   allowedVersions:
     'openapi-typescript>typescript': '>=6.0.0'
+
+# The ESLint toolchain still requires minimatch 10, which is affected by GHSA-g3hv-75wg-m249 and
+# fixed only in 11. ESLint lints the same files with 11; drop the override once eslint,
+# @eslint/config-array and @typescript-eslint/typescript-estree depend on minimatch 11.
+overrides:
+  minimatch@10: 11.0.5

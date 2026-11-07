@@ -1,0 +1,13 @@
+# Python packages of the base image that ocr/Dockerfile replaces with a fixed release: the version
+# docling-serve-cpu ships is affected by the CVEs named here. Installed without dependencies and
+# with hashes; pip check in the build proves every requirement of the environment is still met.
+# Remove an entry once the base image ships the fixed version itself (docs/renovate.md, OCR-Image).
+
+# pyasn1 0.6.4: CVE-2026-119194, CVE-2026-119195, CVE-2026-119196, CVE-2026-119197
+pyasn1==0.6.5 \
+    --hash=sha256:4017b0fce125096b8573b39c989fdb1a4b19cf761e683398184550fea0e66587 \
+    --hash=sha256:6b11616a6bcf3a40e635f082bb232fa57b5e0dd7f517bd7ddd69ec3794508a47
+# oauthlib 4.0.0: CVE-2026-49272
+oauthlib==4.0.1 \
+    --hash=sha256:498a298876e996301950a5b053d12c31628bb7b895db03666430c69ce182eb61 \
+    --hash=sha256:3d73febdb6faa00f277c81fb04be7b7586fb96fc3b7f0b9c772dada69a25ede7
