@@ -4936,10 +4936,13 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.</p>
 <li><strong>Credentials</strong>: das Client-Geheimnis notieren.</li>
 <li><strong>Service accounts roles → Assign role → Filter by clients → <code>realm-management</code></strong>: genau
    <strong><code>view-users</code></strong> und <strong><code>query-groups</code></strong>. Mehr braucht und sollte das Konto nicht haben.</li>
+<li><strong>Client scopes → Add client scope</strong>: <strong><code>kc-admin-api</code></strong> als <strong>Default</strong>. Ab Keycloak 26.8.2 lässt
+   die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
+   seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.</li>
 </ol>
 <p>In OPAA wird der Zugang im Seitenpanel des Anbieters unter <strong>Verzeichniszugang</strong> hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
-Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden fehlenden Rollen. Erreicht das Backend
+Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel <code>http://keycloak:8180</code> statt
 <code>http://localhost:8180</code> —, gehört die Backend-Adresse in das Feld der Admin-API; ohne Angabe leitet
 OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe <a href="#adressprüfung-und-tokenprüfung">Adressprüfung</a>
@@ -5026,7 +5029,7 @@ ersten Import:</p>
 <td><strong>Zwingend:</strong> entfernen oder auf <code>enabled: false</code>; wer erneut befüllen will, aktiviert ihn nur für die Dauer des Laufs</td>
 </tr>
 <tr>
-<td>Client <code>opaa-directory</code> mit dem Geheimnis <code>RheinfurtVerzeichnis!2026</code> und den Rollen <code>view-users</code> und <code>query-groups</code></td>
+<td>Client <code>opaa-directory</code> mit dem Geheimnis <code>RheinfurtVerzeichnis!2026</code>, den Rollen <code>view-users</code> und <code>query-groups</code> und dem Standard-Client-Scope <code>kc-admin-api</code></td>
 <td>Wer das Geheimnis kennt, liest den ganzen Gruppenbaum, alle Mitgliedschaften und alle Konten</td>
 <td><strong>Zwingend:</strong> ein eigenes Geheimnis erzeugen (<code>openssl rand -base64 32</code>), vor dem Import setzen oder in Keycloak unter <strong>Credentials</strong> neu erzeugen, und denselben Wert im <a href="#keycloak-als-verzeichnis">Verzeichniszugang</a> hinterlegen. Ohne Verzeichnisabgleich den Client entfernen</td>
 </tr>
