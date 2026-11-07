@@ -63,7 +63,7 @@ class InstallationStartupDecisionTest {
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
-            new FeatureFlags(new MockEnvironment()),
+            new OfferedSteps(new FeatureFlags(new MockEnvironment()), false),
             mock(AuditEventRecorder.class),
             users,
             mock(DatabaseInstallationStatus.class),

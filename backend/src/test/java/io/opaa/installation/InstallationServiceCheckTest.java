@@ -66,7 +66,7 @@ class InstallationServiceCheckTest {
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
-            new FeatureFlags(new MockEnvironment()),
+            new OfferedSteps(new FeatureFlags(new MockEnvironment()), false),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),

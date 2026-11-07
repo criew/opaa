@@ -476,6 +476,7 @@ public final class AuditEventCatalog {
             "apiKeySet",
             "baseUrl",
             "claim",
+            "connectionType",
             "defaultColorScheme",
             "encryption",
             "fromAddress",

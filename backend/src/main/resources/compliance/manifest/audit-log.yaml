@@ -1035,10 +1035,11 @@ auditEvents:
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
       Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
       ob ein eigener gesetzt ist;
-      beim Transkriptionsmodell Adresse, Modell und Sprache
-    payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, defaultColorScheme, encryption,
-      fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor, productName,
-      signInMode, step, username]
+      beim Transkriptionsmodell Adresse, Modell und Sprache; bei der Texterkennung Verbindungstyp,
+      Adresse und, bei einem Vision-Modell, das Modell
+    payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, connectionType, defaultColorScheme,
+      encryption, fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor,
+      productName, signInMode, step, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     details: >-

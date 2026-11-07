@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
 
 /**
@@ -101,6 +102,34 @@ public sealed interface StepInput {
           + (apiKey == null ? "null" : "***")
           + ", language="
           + language
+          + "]";
+    }
+  }
+
+  /**
+   * The text recognition (OCR) model. {@code connectionType} {@code null} means docling-serve;
+   * {@code model} is read for a vision model only. {@code apiKey}: {@code null} keeps a key saved
+   * before, but only for the same address; an empty value removes it.
+   */
+  record TextRecognitionModel(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model, String apiKey)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.TEXT_RECOGNITION_MODEL;
+    }
+
+    /** Without the key, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "TextRecognitionModel[connectionType="
+          + connectionType
+          + ", baseUrl="
+          + baseUrl
+          + ", model="
+          + model
+          + ", apiKey="
+          + (apiKey == null ? "null" : "***")
           + "]";
     }
   }

@@ -1,8 +1,5 @@
 package io.opaa.installation;
 
-import io.opaa.common.Feature;
-import io.opaa.common.FeatureFlags;
-
 /**
  * The steps of the installation this version knows (ADR-0060, Entscheidung 6). The installation
  * completes only when every mandatory step is saved and successfully checked, and every optional
@@ -31,7 +28,13 @@ public enum InstallationStep {
    * the write path of the model administration; skipped, speech input stays off. Offered only while
    * the feature speech-input is on (ADR-0060, Entscheidung 16).
    */
-  TRANSCRIPTION_MODEL(false, Feature.SPEECH_INPUT),
+  TRANSCRIPTION_MODEL(false, Limit.SPEECH_INPUT),
+  /**
+   * The text recognition (OCR) model, optional: the completion switches the role on through the
+   * write path of the model administration; skipped, text recognition stays off. Offered only while
+   * the operation releases text recognition (ADR-0060, Entscheidung 18).
+   */
+  TEXT_RECOGNITION_MODEL(false, Limit.TEXT_RECOGNITION),
   /**
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).
@@ -44,27 +47,32 @@ public enum InstallationStep {
    */
   BRANDING(false);
 
+  /** The limit of the operation a step depends on (ADR-0060, Entscheidung 2). */
+  enum Limit {
+    /** {@code opaa.features.speech-input.enabled}, on by default. */
+    SPEECH_INPUT,
+    /** {@code opaa.ocr.enabled}, off by default. */
+    TEXT_RECOGNITION
+  }
+
   private final boolean mandatory;
-  private final Feature feature;
+  private final Limit limit;
 
   InstallationStep(boolean mandatory) {
     this(mandatory, null);
   }
 
-  InstallationStep(boolean mandatory, Feature feature) {
+  InstallationStep(boolean mandatory, Limit limit) {
     this.mandatory = mandatory;
-    this.feature = feature;
+    this.limit = limit;
   }
 
   public boolean isMandatory() {
     return mandatory;
   }
 
-  /**
-   * Whether this installation offers the step: a step of a switched-off feature is neither listed
-   * nor saved, checked or completed, and its part of an answer is ignored.
-   */
-  public boolean isOfferedWith(FeatureFlags features) {
-    return feature == null || features.isEnabled(feature);
+  /** The limit of the operation the step depends on, {@code null} for none. */
+  Limit limit() {
+    return limit;
   }
 }

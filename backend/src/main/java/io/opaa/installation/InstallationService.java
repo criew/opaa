@@ -10,7 +10,6 @@ import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.ConflictException;
-import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
@@ -31,7 +30,6 @@ import io.opaa.ratelimit.RateLimitService;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -116,7 +114,7 @@ public class InstallationService {
   private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
   private final BrandingSettingsService brandingSettings;
-  private final FeatureFlags features;
+  private final OfferedSteps offered;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
@@ -141,7 +139,7 @@ public class InstallationService {
       ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
       BrandingSettingsService brandingSettings,
-      FeatureFlags features,
+      OfferedSteps offered,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
@@ -159,7 +157,7 @@ public class InstallationService {
     this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
     this.brandingSettings = brandingSettings;
-    this.features = features;
+    this.offered = offered;
     this.audit = audit;
     this.users = users;
     this.status = status;
@@ -270,8 +268,9 @@ public class InstallationService {
 
   /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
-   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input. A
-   * step saved while its feature was on and offered no longer is left out as well.
+   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input, a
+   * skipped text recognition step text recognition. A step saved while its limit of the operation
+   * was on and offered no longer is left out as well.
    *
    * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
    *     optional step is saved but not successfully checked
@@ -361,45 +360,39 @@ public class InstallationService {
             }));
   }
 
-  /**
-   * The steps this installation offers, in their order ({@link InstallationStep#isOfferedWith}).
-   */
+  /** Whether this installation offers {@code step} ({@link OfferedSteps}). */
+  public boolean offers(InstallationStep step) {
+    return offered.isOffered(step);
+  }
+
+  /** The steps this installation offers, in their order ({@link OfferedSteps}). */
   private List<InstallationStep> offeredSteps() {
-    return Arrays.stream(InstallationStep.values())
-        .filter(step -> step.isOfferedWith(features))
-        .toList();
+    return offered.steps();
   }
 
   /**
-   * @throws ValidationException for a step of a switched-off feature
+   * @throws ValidationException for a step whose limit of the operation is off
    */
   private void requireOffered(InstallationStep step) {
-    if (!step.isOfferedWith(features)) {
-      throw new ValidationException(notOffered(step));
+    if (!offered.isOffered(step)) {
+      throw new ValidationException(OfferedSteps.notOffered(step));
     }
   }
 
-  static String notOffered(InstallationStep step) {
-    return "Den Schritt "
-        + step.name()
-        + " gibt es in dieser Installation nicht: Die Spracheingabe ist im Betrieb abgeschaltet"
-        + " (OPAA_FEATURES_SPEECH_INPUT_ENABLED).";
-  }
-
-  /** The answers without the parts of a switched-off feature, which are ignored, not refused. */
+  /** The answers without the parts of a switched-off limit, which are ignored, not refused. */
   private List<StepInput> offeredAnswers(List<StepInput> answers) {
-    List<StepInput> offered =
-        answers.stream().filter(input -> input.step().isOfferedWith(features)).toList();
-    if (offered.size() < answers.size()) {
+    List<StepInput> kept =
+        answers.stream().filter(input -> offered.isOffered(input.step())).toList();
+    if (kept.size() < answers.size()) {
       log.info(
           "The answers name steps this installation does not offer; they are ignored: {}",
           answers.stream()
               .map(StepInput::step)
-              .filter(step -> !step.isOfferedWith(features))
+              .filter(step -> !offered.isOffered(step))
               .map(Enum::name)
               .toList());
     }
-    return offered;
+    return kept;
   }
 
   /** The values of a saved step as a check read them. */
@@ -653,8 +646,12 @@ public class InstallationService {
       installRerankModel(rerankStep);
     }
     InstallationStepRecord transcriptionStep = saved.get(InstallationStep.TRANSCRIPTION_MODEL);
-    if (transcriptionStep != null && InstallationStep.TRANSCRIPTION_MODEL.isOfferedWith(features)) {
+    if (transcriptionStep != null && offered.isOffered(InstallationStep.TRANSCRIPTION_MODEL)) {
       installTranscriptionModel(transcriptionStep);
+    }
+    InstallationStepRecord textRecognitionStep = saved.get(InstallationStep.TEXT_RECOGNITION_MODEL);
+    if (textRecognitionStep != null && offered.isOffered(InstallationStep.TEXT_RECOGNITION_MODEL)) {
+      installTextRecognitionModel(textRecognitionStep);
     }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
@@ -754,6 +751,22 @@ public class InstallationService {
         model.model(),
         rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, step.getSecret()),
         model.language());
+  }
+
+  /**
+   * The text recognition model of the step through the write path of the model administration,
+   * which switches the role on and records it under the installation (ADR-0060, Entscheidung 18).
+   */
+  private void installTextRecognitionModel(InstallationStepRecord step) {
+    StepRules.TextRecognitionModelPayload model =
+        rules.textRecognitionModelPayload(step.getPayload());
+    modelRoles.installTextRecognition(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        model.connectionType(),
+        model.baseUrl(),
+        model.model(),
+        rules.apiKey(InstallationStep.TEXT_RECOGNITION_MODEL, step.getSecret()));
   }
 
   /**
@@ -877,6 +890,12 @@ public class InstallationService {
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());
         summary.put("language", model.language());
+      }
+      case InstallationOverview.TextRecognitionModel model -> {
+        summary.put("connectionType", model.connectionType().name());
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", orDash(model.model()));
+        summary.put("apiKeySet", model.apiKeySet());
       }
       case InstallationOverview.Mail mail -> {
         summary.put("host", mail.host());

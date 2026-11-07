@@ -14,6 +14,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.account.LocalAdminReset;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
@@ -55,6 +56,7 @@ class InstallationStartupTest {
     when(status.isPending()).thenReturn(true);
     when(installation.completeAtStartupIfDue(anyBoolean()))
         .thenReturn(new InstallationService.StartupDecision(false, null));
+    when(installation.offers(any())).thenReturn(true);
     logs = new ListAppender<>();
     logs.start();
     ((Logger) LoggerFactory.getLogger(InstallationStartup.class)).addAppender(logs);
@@ -420,5 +422,83 @@ class InstallationStartupTest {
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .anyMatch(message -> message.contains("nicht im Klartext"))
         .noneMatch(message -> message.contains("sk-stt-im-klartext"));
+  }
+
+  @Test
+  void anAnswerFileWithATextRecognitionModelReadsItsKeyFromTheFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("ocr-key"), "ocr-schluessel\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"connectionType\":\"DOCLING_SERVE\","
+                + "\"baseUrl\":\"http://opaa-ocr:5001\",\"apiKeyFile\":\""
+                + key
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 3
+                        && inputs
+                            .getLast()
+                            .equals(
+                                new StepInput.TextRecognitionModel(
+                                    TextRecognitionConnectionType.DOCLING_SERVE,
+                                    "http://opaa-ocr:5001",
+                                    null,
+                                    "ocr-schluessel"))));
+  }
+
+  @Test
+  void aTextRecognitionKeyInPlainTextRefusesTheAnswerFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"baseUrl\":\"http://opaa-ocr:5001\","
+                + "\"apiKey\":\"ocr-im-klartext\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isFalse();
+
+    verify(installation, never()).applyAnswersAtStartup(any());
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("ocr-im-klartext"));
+  }
+
+  @Test
+  void aTextRecognitionPartNotOfferedIsLeftOutWithoutReadingItsKeyFile() throws Exception {
+    when(installation.offers(InstallationStep.TEXT_RECOGNITION_MODEL)).thenReturn(false);
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"baseUrl\":\"http://opaa-ocr:5001\","
+                + "\"apiKeyFile\":\""
+                + directory.resolve("missing-ocr-key")
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation).applyAnswersAtStartup(argThat(inputs -> inputs.size() == 2));
   }
 }

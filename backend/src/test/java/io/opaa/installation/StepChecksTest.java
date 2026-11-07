@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.llm.EmbeddingEndpoint;
@@ -17,6 +18,7 @@ import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.TextRecognitionClient;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.CipherFormatGate;
@@ -290,5 +292,72 @@ class StepChecksTest {
     assertThat(outcome.message())
         .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
     assertThat(outcome.dimensions()).isNull();
+  }
+
+  @Test
+  void aBlockedTextRecognitionAddressFailsAtTheAddressStageWithoutAnyRequest() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://169.254.169.254:5001", null));
+
+    StepChecks.Outcome outcome =
+        checks.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, null, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).startsWith("Gescheitert an der Stufe „Adresse“: ");
+    verifyNoInteractions(modelRoles);
+  }
+
+  @Test
+  void theTextRecognitionModelIsCheckedWithTheStagedTestOfTheAdministrationAndItsOwnKey() {
+    StepChecks open =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles);
+    when(modelRoles.probeTextRecognition(
+            TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null, "ocr-key"))
+        .thenReturn(
+            new ModelRoleAdministration.TextRecognitionTestOutcome(
+                true,
+                TextRecognitionClient.TestOutcome.READY,
+                null,
+                "Verbindung erfolgreich, der Dienst hat die Testseite gelesen."));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null));
+    String secret =
+        encryptor.encrypt(
+            "ocr-key", InstallationEncryptedColumns.of(InstallationStep.TEXT_RECOGNITION_MODEL));
+
+    StepChecks.Outcome outcome =
+        open.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, secret, null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message())
+        .isEqualTo(
+            "Adresse, Anmeldung und Erkennung in Ordnung. Verbindung erfolgreich, der Dienst hat"
+                + " die Testseite gelesen.");
+
+    when(modelRoles.probeTextRecognition(any(), any(), any(), any()))
+        .thenReturn(
+            new ModelRoleAdministration.TextRecognitionTestOutcome(
+                false,
+                TextRecognitionClient.TestOutcome.KEY_REJECTED,
+                TextRecognitionClient.FailedStage.AUTHENTICATION,
+                "Der Dienst hat den Zugangsschlüssel abgelehnt."));
+    StepChecks.Outcome refused =
+        open.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, secret, null);
+    assertThat(refused.succeeded()).isFalse();
+    assertThat(refused.message())
+        .isEqualTo(
+            "Gescheitert an der Stufe „Anmeldung“: Der Dienst hat den Zugangsschlüssel abgelehnt.");
   }
 }

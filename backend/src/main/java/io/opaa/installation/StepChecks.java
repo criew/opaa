@@ -6,6 +6,7 @@ import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.TextRecognitionClient;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.SettingsEncryptor;
@@ -16,12 +17,13 @@ import org.springframework.stereotype.Component;
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, a probe embedding for the
  * embedding model, which also yields its vector size (Entscheidung 10), the probes of the model
- * administration for the rerank and the transcription model (Entscheidung 16 for transcription), a
- * connection to the mail server that sends nothing unless a test recipient is named, and the rules
- * of the branding administration once more for the branding, without any connection. A model
- * address and a mail server are checked against the address check of the installation again right
- * before the connection. The outcome is German and user-facing; a failed check is a result, never
- * an exception.
+ * administration for the rerank and the transcription model (Entscheidung 16 for transcription),
+ * the staged test of the model administration for text recognition (Entscheidung 18), a connection
+ * to the mail server that sends nothing unless a test recipient is named, and the rules of the
+ * branding administration once more for the branding, without any connection. A model address and a
+ * mail server are checked against the address check of the installation again right before the
+ * connection. The outcome is German and user-facing; a failed check is a result, never an
+ * exception.
  */
 @Component
 class StepChecks {
@@ -86,6 +88,8 @@ class StepChecks {
       case RERANK_MODEL -> rerankModel(rules.rerankModelPayload(payload), secret);
       case TRANSCRIPTION_MODEL ->
           transcriptionModel(rules.transcriptionModelPayload(payload), secret);
+      case TEXT_RECOGNITION_MODEL ->
+          textRecognitionModel(rules.textRecognitionModelPayload(payload), secret);
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
       case BRANDING -> branding(rules.brandingPayload(payload));
     };
@@ -173,6 +177,45 @@ class StepChecks {
     ModelRoleAdministration.TestOutcome outcome =
         modelRoles.probeTranscription(model.baseUrl(), model.model(), apiKey);
     return new Outcome(outcome.success(), outcome.message());
+  }
+
+  /**
+   * The staged test of the text recognition administration with its test page; the message names
+   * the stage a failure stopped at (address, sign-in, recognition).
+   */
+  private Outcome textRecognitionModel(StepRules.TextRecognitionModelPayload model, String secret) {
+    String blocked = StepRules.blockedModelAddress(modelAddresses, model.baseUrl());
+    if (blocked != null) {
+      return new Outcome(false, stageMessage(TextRecognitionClient.FailedStage.ADDRESS, blocked));
+    }
+    String apiKey;
+    try {
+      apiKey =
+          settingsEncryptor.decrypt(
+              secret, InstallationEncryptedColumns.of(InstallationStep.TEXT_RECOGNITION_MODEL));
+    } catch (IllegalStateException e) {
+      return new Outcome(false, UNREADABLE_KEY);
+    }
+    ModelRoleAdministration.TextRecognitionTestOutcome outcome =
+        modelRoles.probeTextRecognition(
+            model.connectionType(), model.baseUrl(), model.model(), apiKey);
+    return outcome.success()
+        ? new Outcome(true, "Adresse, Anmeldung und Erkennung in Ordnung. " + outcome.message())
+        : new Outcome(false, stageMessage(outcome.failedStage(), outcome.message()));
+  }
+
+  /** A failed staged test, the stage named first; without a stage the message alone. */
+  static String stageMessage(TextRecognitionClient.FailedStage stage, String message) {
+    if (stage == null) {
+      return message;
+    }
+    String name =
+        switch (stage) {
+          case ADDRESS -> "Adresse";
+          case AUTHENTICATION -> "Anmeldung";
+          case RECOGNITION -> "Erkennung";
+        };
+    return "Gescheitert an der Stufe „" + name + "“: " + message;
   }
 
   private Outcome mail(StepRules.MailPayload mail, String secret, String testRecipient) {

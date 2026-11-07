@@ -21,6 +21,10 @@ export type InstallationRerankModelView = Schemas['InstallationRerankModelView']
 export type InstallationTranscriptionModel = Schemas['InstallationTranscriptionModel']
 export type InstallationTranscriptionModelView = Schemas['InstallationTranscriptionModelView']
 
+/** The text recognition (OCR) model; the API lists its step only while the operation releases it. */
+export type InstallationTextRecognitionModel = Schemas['InstallationTextRecognitionModel']
+export type InstallationTextRecognitionModelView = Schemas['InstallationTextRecognitionModelView']
+
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
@@ -39,7 +43,7 @@ export type InstallationStatusResponse = Schemas['InstallationStatusResponse']
 
 export type InstallationModelDiscoveryRequest = Schemas['InstallationModelDiscoveryRequest']
 
-/** The steps whose endpoint lists its models. */
+/** The steps whose endpoint lists its models; the text recognition step has no model list. */
 export type ModelStepId = Extract<
   InstallationStepId,
   'CHAT_MODEL' | 'EMBEDDING_MODEL' | 'RERANK_MODEL' | 'TRANSCRIPTION_MODEL'
@@ -61,6 +65,7 @@ export interface StepInput {
   EMBEDDING_MODEL: InstallationEmbeddingModel
   RERANK_MODEL: InstallationRerankModel
   TRANSCRIPTION_MODEL: InstallationTranscriptionModel
+  TEXT_RECOGNITION_MODEL: InstallationTextRecognitionModel
   MAIL: InstallationMail
   BRANDING: InstallationBranding
 }
@@ -73,6 +78,7 @@ export const STEP_REQUEST_KEY = {
   EMBEDDING_MODEL: 'embeddingModel',
   RERANK_MODEL: 'rerankModel',
   TRANSCRIPTION_MODEL: 'transcriptionModel',
+  TEXT_RECOGNITION_MODEL: 'textRecognitionModel',
   MAIL: 'mail',
   BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>

@@ -215,9 +215,11 @@ class InstallationServiceSpeechInputTest {
         modelRoles,
         mock(MailSettingsService.class),
         mock(BrandingSettingsService.class),
-        new FeatureFlags(
-            new MockEnvironment()
-                .withProperty("opaa.features.speech-input.enabled", "" + speechInput)),
+        new OfferedSteps(
+            new FeatureFlags(
+                new MockEnvironment()
+                    .withProperty("opaa.features.speech-input.enabled", "" + speechInput)),
+            false),
         audit,
         mock(UserRepository.class),
         mock(DatabaseInstallationStatus.class),

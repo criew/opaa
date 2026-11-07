@@ -10,6 +10,7 @@ import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModel;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
+import io.opaa.api.dto.InstallationTextRecognitionModel;
 import io.opaa.api.dto.InstallationTranscriptionModel;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
@@ -36,6 +37,7 @@ final class InstallationRequestMapper {
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
       case RERANK_MODEL -> rerankModel(request.getRerankModel());
       case TRANSCRIPTION_MODEL -> transcriptionModel(request.getTranscriptionModel());
+      case TEXT_RECOGNITION_MODEL -> textRecognitionModel(request.getTextRecognitionModel());
       case MAIL -> mail(request.getMail());
       case BRANDING -> branding(request.getBranding());
     };
@@ -59,6 +61,9 @@ final class InstallationRequestMapper {
     }
     if (body.getTranscriptionModel() != null) {
       inputs.add(transcriptionModel(body.getTranscriptionModel()));
+    }
+    if (body.getTextRecognitionModel() != null) {
+      inputs.add(textRecognitionModel(body.getTextRecognitionModel()));
     }
     if (body.getMail() != null) {
       InstallationMail mail = body.getMail();
@@ -129,6 +134,14 @@ final class InstallationRequestMapper {
     }
     return new StepInput.TranscriptionModel(
         model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getLanguage());
+  }
+
+  private static StepInput textRecognitionModel(InstallationTextRecognitionModel model) {
+    if (model == null) {
+      throw missing("textRecognitionModel");
+    }
+    return new StepInput.TextRecognitionModel(
+        model.getConnectionType(), model.getBaseUrl(), model.getModel(), model.getApiKey());
   }
 
   private static StepInput mail(InstallationMail mail) {

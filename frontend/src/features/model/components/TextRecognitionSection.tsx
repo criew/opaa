@@ -17,6 +17,12 @@ import type {
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import StateDot from '@/shared/ui/StateDot'
+import {
+  TEXT_RECOGNITION_CONNECTION_TYPE_ORDER as CONNECTION_TYPE_ORDER,
+  TEXT_RECOGNITION_CONNECTION_TYPES as CONNECTION_TYPES,
+  TEXT_RECOGNITION_PURPOSE,
+  TEXT_RECOGNITION_VISION_NOTICE as VISION_NOTICE,
+} from '@/shared/ui/textRecognition/textRecognitionTexts'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { notify } from '@/shared/stores/notificationStore'
 import {
@@ -38,33 +44,9 @@ import {
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
 
-const INTRO =
-  'Die Texterkennung liest gescannte PDFs ohne Textebene, damit sie durchsuchbar und zitierfähig werden. Ab Werk ist sie aus.'
+const INTRO = `${TEXT_RECOGNITION_PURPOSE} Ab Werk ist sie aus.`
 
 const CATCH_UP_HINT = 'Bestehende Scans werden nach dem Einschalten automatisch nachverarbeitet.'
-
-const VISION_NOTICE =
-  'Ein Vision-Modell liefert keine Lage des Textes: Fundstellen werden nur auf ihrer Seite angezeigt, nicht als Rahmen markiert.'
-
-const CONNECTION_TYPES: Record<
-  TextRecognitionConnectionType,
-  { label: string; description: string; addressHint: string }
-> = {
-  DOCLING_SERVE: {
-    label: 'docling-serve',
-    description:
-      'Der mitgelieferte OCR-Dienst oder ein eigenes docling-serve; passt für die meisten Installationen.',
-    addressHint: 'Ohne den Pfad /v1, etwa http://opaa-ocr:5001.',
-  },
-  OPENAI_VISION: {
-    label: 'Vision-Modell (OpenAI-kompatibel)',
-    description:
-      'Ein Modell mit Bildeingang, etwa PaddleOCR-VL; passt, wenn ein solcher Modellserver schon im Haus läuft.',
-    addressHint: 'Mit dem Pfad /v1, etwa http://vllm:8000/v1.',
-  },
-}
-
-const CONNECTION_TYPE_ORDER: TextRecognitionConnectionType[] = ['DOCLING_SERVE', 'OPENAI_VISION']
 
 const STATE_TEXT: Record<SearchModelRoleState, string> = {
   DISABLED: 'Ausgeschaltet.',
