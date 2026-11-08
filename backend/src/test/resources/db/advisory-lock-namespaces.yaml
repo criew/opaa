@@ -43,6 +43,9 @@ namespaces:
       - java/io/opaa/indexing/chunk/EmbeddingIndexStore.java
       - java/io/opaa/indexing/chunk/VectorIndexSchema.java
       - java/io/opaa/knowledge/VectorTableCreator.java
+  - number: 214
+    purpose: intake of chat attachments of one account, or of one organization with its quota set
+    owners: [java/io/opaa/chat/ChatAttachmentRepository.java]
   - number: 230
     purpose: the boundaries of the permission history, installation-wide monotonic
     owners: [resources/db/migration/rights/V1.3__rights_baseline.sql]
