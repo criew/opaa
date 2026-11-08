@@ -67,14 +67,21 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # The site packages install from wheels only, so pip runs no build step whose build
+      # requirements would escape --require-hashes; their Python is the newest one PyYAML ships
+      # wheels for (.github/requirements-docs.txt). Same setup as the site build in ci.yml.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: docs-python
         with:
-          python-version: '3.15'
+          python-version: '3.14'
+          update-environment: false
 
       - name: Handbuch-Website bauen
+        env:
+          DOCS_PYTHON: ${{ steps.docs-python.outputs.python-path }}
         run: |
-          python -m venv "$RUNNER_TEMP/mkdocs"
-          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: --no-binary=pyyaml -r .github/requirements-docs.txt
+          "$DOCS_PYTHON" -m venv "$RUNNER_TEMP/mkdocs"
+          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: -r .github/requirements-docs.txt
           NO_MKDOCS_2_WARNING=1 "$RUNNER_TEMP/mkdocs/bin/mkdocs" build --strict
 
       - name: Handbuch-Website ablegen
