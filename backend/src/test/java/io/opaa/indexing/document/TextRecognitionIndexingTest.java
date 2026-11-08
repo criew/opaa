@@ -1,6 +1,7 @@
 package io.opaa.indexing.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -19,6 +20,7 @@ import io.opaa.format.file.pdf.PdfOcrDocumentFormat;
 import io.opaa.format.file.pdf.PdfPages;
 import io.opaa.format.file.pdf.RecognizedPdf;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.indexing.job.TextRecognitionRunBudget;
@@ -36,12 +38,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -447,6 +453,58 @@ class TextRecognitionIndexingTest {
             eq(2),
             eq("Der Dienst hat das Dokument abgelehnt (HTTP 413)"),
             any());
+  }
+
+  // regression guard for #3637: an oversized page is locked, neither allocated nor retried
+  @Test
+  void aPageTooLargeToRenderLocksTheScanInsteadOfFailingIt() throws IOException {
+    ActiveTextRecognition vision = vision();
+    when(role.active()).thenReturn(Optional.of(vision));
+    Path oversized = tempDir.resolve("riesig.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      doc.addPage(new PDPage(PDRectangle.A4));
+      doc.addPage(new PDPage(new PDRectangle(14_400, 14_400)));
+      doc.save(oversized.toFile());
+    }
+    TextRecognitionIndexing realPages =
+        new TextRecognitionIndexing(
+            role,
+            store,
+            new PdfOcrDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new PdfPages(ParserLimitProperties.DEFAULTS),
+            new IndexingMetrics(meters),
+            Clock.fixed(Instant.parse("2026-11-06T10:00:00Z"), ZoneOffset.UTC));
+    when(role.recognizePage(eq(vision), any(), eq("image/png"), any())).thenReturn("Erste Seite.");
+
+    Optional<ScannedDocumentRecognition.Recognized> recognized =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(20),
+            () ->
+                realPages.recognize(
+                    new ScannedDocumentRecognition.Candidate(
+                        documentId,
+                        CHECKSUM,
+                        oversized,
+                        "ordner/riesig.pdf",
+                        LoggedName.OPEN,
+                        sink(null),
+                        false)));
+
+    assertThat(recognized).isEmpty();
+    verify(role).recognizePage(eq(vision), any(), eq("image/png"), any());
+    verify(store)
+        .block(
+            eq(documentId),
+            eq(CHECKSUM),
+            eq("OPENAI_VISION"),
+            eq("cfg-vision"),
+            anyInt(),
+            eq(2),
+            eq(
+                "Seite 2 überschreitet die Grenzen der Bilddarstellung (Seitenmaß, Bildgröße oder"
+                    + " Rechenzeit)"),
+            any());
+    assertThat(protocol).singleElement().asString().startsWith("TEXT_RECOGNITION_BLOCKED ");
   }
 
   @Test

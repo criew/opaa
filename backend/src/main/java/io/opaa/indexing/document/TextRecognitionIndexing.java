@@ -279,11 +279,7 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
           "docling-serve hat das Dokument nur teilweise umgewandelt, nichts gespeichert",
           e);
     } catch (UnrenderablePages e) {
-      return block(
-          candidate,
-          active,
-          pages,
-          "Die Seiten der PDF-Datei ließen sich nicht als Bild darstellen");
+      return block(candidate, active, pages, unrenderableReason(e));
     } catch (TextRecognitionUnavailableException | DeadlineExceeded | WorkingFileUnreadable e) {
       return fail(candidate, active, pages, started, "failed", failureReason(e), e);
     } catch (IllegalStateException e) {
@@ -499,6 +495,17 @@ public class TextRecognitionIndexing implements ScannedDocumentRecognition {
     return e.status() == 200
         ? "Antwort des Dienstes nicht verwertbar"
         : "Dienst nicht verfügbar (HTTP " + e.status() + ")";
+  }
+
+  /** The German reason a scan whose pages could not be rendered is locked for. */
+  static String unrenderableReason(UnrenderablePages failure) {
+    if (failure.getCause() instanceof PdfPages.PageOverLimitException overLimit) {
+      return "Seite "
+          + overLimit.pageNumber()
+          + " überschreitet die Grenzen der Bilddarstellung (Seitenmaß, Bildgröße oder"
+          + " Rechenzeit)";
+    }
+    return "Die Seiten der PDF-Datei ließen sich nicht als Bild darstellen";
   }
 
   private static String rejectionReason(int status) {
