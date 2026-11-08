@@ -54,7 +54,7 @@ public final class PdfPages {
 
   /** The number of pages of {@code file}. */
   public int count(Path file) throws IOException {
-    try (PDDocument doc = PdfLoading.load(file, PdfReadBudget.of(limits))) {
+    try (PDDocument doc = PdfLoading.loadStructure(file, PdfReadBudget.of(limits))) {
       return doc.getNumberOfPages();
     }
   }

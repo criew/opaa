@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.zip.Deflater;
@@ -22,6 +23,7 @@ import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSInteger;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
+import org.apache.pdfbox.pdfwriter.compress.CompressParameters;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -128,6 +130,24 @@ class PdfFontHostileInputTest {
       page.getCOSObject().setItem(COSName.CONTENTS, stream(doc, "/G0 gs BT 100 100 Td (ab) Tj ET"));
       doc.save(file.toFile());
     }
+
+    assertRefusedOnBothPaths(file);
+  }
+
+  // regression guard for #3637: PDFBox finds an object missing from the xref when first resolved
+  @Test
+  void aFontProgramBombBehindAFreedCrossReferenceEntryIsRefusedOnBothPaths() throws IOException {
+    Path file = pageWithFont(this::trueTypeBomb, false);
+    byte[] pdf = Files.readAllBytes(file);
+    String text = new String(pdf, StandardCharsets.ISO_8859_1);
+    int descriptor = text.indexOf("/Type /FontDescriptor");
+    int header = text.lastIndexOf(" 0 obj", descriptor);
+    int number = Integer.parseInt(text.substring(text.lastIndexOf('\n', header) + 1, header));
+    int entries = text.indexOf('\n', text.lastIndexOf("\nxref") + 6) + 1;
+    assertThat(text.substring(entries + 20 * number, entries + 20 * number + 18)).endsWith(" n");
+    byte[] free = "0000000000 65535 f".getBytes(StandardCharsets.US_ASCII);
+    System.arraycopy(free, 0, pdf, entries + 20 * number, free.length);
+    Files.write(file, pdf);
 
     assertRefusedOnBothPaths(file);
   }
@@ -268,7 +288,7 @@ class PdfFontHostileInputTest {
         page.setResources(new PDResources(resources));
         page.getCOSObject().setItem(COSName.CONTENTS, stream(doc, text));
       }
-      doc.save(file.toFile());
+      doc.save(file.toFile(), CompressParameters.NO_COMPRESSION);
     }
     return file;
   }

@@ -80,15 +80,33 @@ final class PdfLoading {
 
   private PdfLoading() {}
 
-  /** The document in {@code file}, its loading charged to {@code budget}. */
+  /**
+   * The document in {@code file}, its loading charged to {@code budget}, its font streams measured
+   * by {@link #requireFontStreams}.
+   */
   static PDDocument load(Path file, PdfReadBudget budget) throws IOException {
+    return load(file, budget, true);
+  }
+
+  /**
+   * The document in {@code file} without measuring its font streams, for reading its structure
+   * only: no fonts may be loaded from it.
+   */
+  static PDDocument loadStructure(Path file, PdfReadBudget budget) throws IOException {
+    return load(file, budget, false);
+  }
+
+  private static PDDocument load(Path file, PdfReadBudget budget, boolean measureFonts)
+      throws IOException {
     RandomAccessRead source = new RandomAccessReadBufferedFile(file.toFile());
     try {
       MeasuringParser parser = new MeasuringParser(source, budget);
       PDDocument document = parser.parse();
       parser.loaded = true;
       try {
-        requireFontStreams(document.getDocument(), budget);
+        if (measureFonts) {
+          requireFontStreams(document.getDocument(), budget);
+        }
       } catch (IOException | RuntimeException | Error e) {
         IOUtils.closeQuietly(document);
         throw e;
@@ -103,38 +121,40 @@ final class PdfLoading {
   /**
    * Measures every stream PDFBox reads into memory as a whole when it loads a font - the programs
    * under {@code /FontFile}, {@code /FontFile2} and {@code /FontFile3}, a stream {@code /Encoding}
-   * or {@code /UseCMap}, {@code /CIDToGIDMap} and {@code /ToUnicode} - in every object of {@code
-   * document}, direct or nested, wherever the font is used: content, graphics states, form
-   * resources or annotations. Matched by key, not by {@code /Type}, which PDFBox does not require.
+   * or {@code /UseCMap}, {@code /CIDToGIDMap} and {@code /ToUnicode} - wherever it is reachable
+   * from the trailer or a cross-reference entry, every reference resolved now as PDFBox would
+   * resolve it later, including objects only its brute-force lookup finds. Matched by key, not by
+   * {@code /Type}, which PDFBox does not require.
    */
   static void requireFontStreams(COSDocument document, PdfReadBudget budget) throws IOException {
+    Set<COSBase> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     Set<COSStream> measured = Collections.newSetFromMap(new IdentityHashMap<>());
     Deque<COSBase> pending = new ArrayDeque<>();
+    pending.push(document.getTrailer());
     for (COSObjectKey key : new ArrayList<>(document.getXrefTable().keySet())) {
-      budget.requireTime();
-      COSObject object = document.getObjectFromPool(key);
-      pending.push(object.getObject());
-      while (!pending.isEmpty()) {
-        COSBase base = pending.pop();
-        if (base instanceof COSArray array) {
-          for (COSBase element : array) {
-            if (!(element instanceof COSObject)) {
-              pending.push(element);
-            }
+      pending.push(document.getObjectFromPool(key));
+    }
+    while (!pending.isEmpty()) {
+      COSBase base = pending.pop();
+      if (!(base instanceof COSObject || base instanceof COSArray || base instanceof COSDictionary)
+          || !seen.add(base)) {
+        continue;
+      }
+      if (base instanceof COSObject reference) {
+        budget.requireTime();
+        pending.push(reference.getObject());
+      } else if (base instanceof COSArray array) {
+        array.forEach(pending::push);
+      } else if (base instanceof COSDictionary dictionary) {
+        for (Map.Entry<COSName, COSBase> entry : dictionary.entrySet()) {
+          COSBase value = entry.getValue();
+          COSBase resolved = value instanceof COSObject reference ? reference.getObject() : value;
+          if (FONT_STREAM_KEYS.contains(entry.getKey())
+              && resolved instanceof COSStream stream
+              && measured.add(stream)) {
+            budget.requireFontStream(stream);
           }
-        } else if (base instanceof COSDictionary dictionary) {
-          for (Map.Entry<COSName, COSBase> entry : dictionary.entrySet()) {
-            COSBase value = entry.getValue();
-            if (value instanceof COSObject reference) {
-              if (FONT_STREAM_KEYS.contains(entry.getKey())
-                  && reference.getObject() instanceof COSStream stream
-                  && measured.add(stream)) {
-                budget.requireFontStream(stream);
-              }
-            } else {
-              pending.push(value);
-            }
-          }
+          pending.push(value);
         }
       }
     }
