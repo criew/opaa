@@ -6,7 +6,7 @@ package io.opaa.common;
  * StackOverflowError} ({@link OutOfMemoryError} above all), after which the process itself is no
  * longer trustworthy, and a {@link LinkageError}, which means a broken deployment and would fail
  * every unit alike. A {@link StackOverflowError} unwinds cleanly and is caused by the one input, as
- * does the {@link #isMissingOptionalCodec missing class of an optional codec}.
+ * is the {@link #isMissingOptionalCodec missing class of an optional codec}.
  */
 public final class FatalErrors {
 

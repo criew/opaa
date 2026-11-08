@@ -12,6 +12,11 @@ class FatalErrorsTest {
     assertThat(FatalErrors.isFatal(new NoClassDefFoundError())).isTrue();
     assertThat(FatalErrors.isFatal(new UnsatisfiedLinkError("com/github/luben/zstd/Zstd")))
         .isTrue();
+    assertThat(
+            FatalErrors.isFatal(
+                new NoClassDefFoundError(
+                    "Could not initialize class com.github.luben.zstd.ZstdInputStreamNoFinalizer")))
+        .isTrue();
   }
 
   // regression guard for #3619: the codec zstd-jni is not shipped, one zstd entry needs it
