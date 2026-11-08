@@ -1,29 +1,40 @@
 package io.opaa.format.file.pdf;
 
 import io.opaa.format.shared.ParserLimitExceededException;
+import java.awt.Paint;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.contentstream.operator.OperatorName;
+import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
 import org.apache.pdfbox.pdmodel.graphics.color.PDPattern;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.image.PDInlineImage;
 import org.apache.pdfbox.pdmodel.graphics.pattern.PDAbstractPattern;
+import org.apache.pdfbox.pdmodel.graphics.pattern.PDTilingPattern;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream;
 import org.apache.pdfbox.rendering.ImageType;
@@ -35,10 +46,11 @@ import org.apache.pdfbox.util.Matrix;
 /**
  * Renders single pages in grey with bounded memory and time. A page is rendered at the requested
  * resolution or, when that would exceed {@link #MAX_PAGE_PIXELS}, at the lower one that fits; below
- * {@link #MIN_RENDER_DPI} it is refused. Every operator, content stream, image and transparency
- * group counts against the page's {@link PdfReadBudget} or the limits here before PDFBox allocates
- * for it; a breach throws {@link ParserLimitExceededException} out of the rendering. Images are
- * subsampled to the resolution they are drawn at.
+ * {@link #MIN_RENDER_DPI} it is refused. Every operator, content stream, image, shading, pattern,
+ * transparency group and Type 3 glyph counts against the page's {@link PdfReadBudget} or the limits
+ * here before PDFBox allocates for it; a breach throws {@link ParserLimitExceededException} out of
+ * the rendering. Images are subsampled to the resolution they are drawn at. The hooks follow where
+ * PDFBox 3.0.8 allocates and which methods it routes through; a PDFBox update needs them checked.
  */
 final class PdfPageRenderer {
 
@@ -48,20 +60,36 @@ final class PdfPageRenderer {
   /** The lowest resolution a large page is rendered at; one pixel per point. */
   static final float MIN_RENDER_DPI = 72f;
 
-  /** The most pixels an image, its mask, its JPEG header or its CCITT data may declare. */
-  static final long MAX_IMAGE_PIXELS = 100_000_000;
+  /**
+   * The most bytes drawing one image may hold at once: its decoded data and the rasters PDFBox
+   * builds for it and its masks, four bytes per raster pixel. Weighted by bytes, a bilevel scan of
+   * a large plan passes where a colour image of the same size does not.
+   */
+  static final long MAX_IMAGE_BYTES = 256L * 1024 * 1024;
 
-  /** The most pixels of an image after subsampling, which PDFBox holds as one raster. */
-  static final long MAX_DRAWN_IMAGE_PIXELS = 2 * MAX_PAGE_PIXELS;
+  /** The most pixels an image may declare; PDFBox multiplies width and height as {@code int}. */
+  static final long MAX_IMAGE_PIXELS = 1L << 30;
 
-  /** The most bytes an image stream may decode to ahead of its codec, held in memory by PDFBox. */
-  static final long MAX_IMAGE_BYTES = 128L * 1024 * 1024;
+  /** The most bytes a shading, function or colour space stream may decode to. */
+  static final long MAX_RESOURCE_STREAM_BYTES = 8L * 1024 * 1024;
 
   /**
    * The most transparency groups and soft masks open at once; each holds a raster of up to the
    * page's size while the ones inside it are drawn.
    */
   static final int MAX_GROUP_DEPTH = 4;
+
+  /**
+   * The most tiling patterns open at once: a pattern's content may not paint with another. PDFBox
+   * allocates each pattern's raster before it parses the content.
+   */
+  static final int MAX_PATTERN_DEPTH = 1;
+
+  /** The most Type 3 glyphs drawn inside one another. */
+  static final int MAX_TYPE3_DEPTH = 4;
+
+  /** The most objects one shading, function or colour space may reach. */
+  private static final int MAX_RESOURCE_OBJECTS = 10_000;
 
   private final LimitedRenderer renderer;
 
@@ -131,6 +159,11 @@ final class PdfPageRenderer {
     }
   }
 
+  /** Four bytes per pixel of a {@code width} x {@code height} raster read every {@code step}. */
+  private static long raster(long width, long height, long step) {
+    return 4 * ((width + step - 1) / step) * ((height + step - 1) / step);
+  }
+
   private static final class LimitedRenderer extends PDFRenderer {
 
     private final PDDocument document;
@@ -150,14 +183,16 @@ final class PdfPageRenderer {
 
   /**
    * Charges what it draws against the budget before PDFBox acts on it, as the text strippers do,
-   * and checks every image and transparency group against the limits of {@link PdfPageRenderer}.
-   * Throws only unchecked, which PDFBox passes through where it swallows an image's {@code
-   * IOException}.
+   * and checks every image, shading, pattern, transparency group and Type 3 glyph against the
+   * limits of {@link PdfPageRenderer}. Throws only unchecked, which PDFBox passes through where it
+   * swallows an image's {@code IOException}.
    */
   private static final class LimitedPageDrawer extends PageDrawer {
 
     private final PdfReadBudget budget;
     private int groupDepth;
+    private int patternDepth;
+    private int type3Depth;
 
     LimitedPageDrawer(PageDrawerParameters parameters, PdfReadBudget budget) throws IOException {
       super(parameters);
@@ -170,9 +205,11 @@ final class PdfPageRenderer {
       String name = operator.getName();
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
-      } else if (OperatorName.NON_STROKING_COLOR_N.equals(name)
-          || OperatorName.STROKING_COLOR_N.equals(name)) {
-        chargePattern(operands);
+      } else if ((OperatorName.NON_STROKING_COLORSPACE.equals(name)
+              || OperatorName.STROKING_COLORSPACE.equals(name))
+          && !operands.isEmpty()
+          && operands.getFirst() instanceof COSName colorSpace) {
+        requireResources(namedResource(COSName.COLORSPACE, colorSpace));
       }
       super.processOperator(operator, operands);
     }
@@ -192,7 +229,7 @@ final class PdfPageRenderer {
     @Override
     public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
       budget.chargeContent(form.getCOSObject());
-      enterGroup();
+      groupDepth = enter(groupDepth, MAX_GROUP_DEPTH, "transparency groups");
       try {
         super.showTransparencyGroup(form);
       } finally {
@@ -203,7 +240,7 @@ final class PdfPageRenderer {
     @Override
     protected void processSoftMask(PDTransparencyGroup group) throws IOException {
       budget.chargeContent(group.getCOSObject());
-      enterGroup();
+      groupDepth = enter(groupDepth, MAX_GROUP_DEPTH, "transparency groups");
       try {
         super.processSoftMask(group);
       } finally {
@@ -215,7 +252,12 @@ final class PdfPageRenderer {
     protected void processType3Stream(PDType3CharProc charProc, Matrix textRenderingMatrix)
         throws IOException {
       budget.chargeContent(charProc.getCOSObject());
-      super.processType3Stream(charProc, textRenderingMatrix);
+      type3Depth = enter(type3Depth, MAX_TYPE3_DEPTH, "Type 3 glyphs");
+      try {
+        super.processType3Stream(charProc, textRenderingMatrix);
+      } finally {
+        type3Depth--;
+      }
     }
 
     @Override
@@ -225,25 +267,65 @@ final class PdfPageRenderer {
       super.processAnnotation(annotation, appearance);
     }
 
+    /**
+     * A tiling pattern's paint renders its content into a raster as it is created, inside this
+     * call, so a pattern that paints with itself nests here; a shading pattern's paint reads its
+     * shading's streams.
+     */
+    @Override
+    protected Paint getPaint(PDColor color) throws IOException {
+      if (!(color.getColorSpace() instanceof PDPattern space)) {
+        return super.getPaint(color);
+      }
+      PDAbstractPattern pattern = space.getPattern(color);
+      if (pattern instanceof PDTilingPattern tiling
+          && tiling.getCOSObject() instanceof COSStream stream) {
+        budget.chargeContent(stream);
+        patternDepth = enter(patternDepth, MAX_PATTERN_DEPTH, "tiling patterns");
+        try {
+          return super.getPaint(color);
+        } finally {
+          patternDepth--;
+        }
+      }
+      if (pattern != null) {
+        requireResources(pattern.getCOSObject().getDictionaryObject(COSName.SHADING));
+      }
+      return super.getPaint(color);
+    }
+
+    @Override
+    public void shadingFill(COSName shadingName) throws IOException {
+      requireResources(namedResource(COSName.SHADING, shadingName));
+      super.shadingFill(shadingName);
+    }
+
     @Override
     public void drawImage(PDImage image) throws IOException {
       AffineTransform at =
           getGraphicsState().getCurrentTransformationMatrix().createAffineTransform();
-      requirePixels(image.getWidth(), image.getHeight(), MAX_IMAGE_PIXELS, "image");
-      int subsampling = getSubsampling(image, at);
-      requireDrawn(image.getWidth(), image.getHeight(), subsampling);
-      if (image instanceof PDImageXObject xobject) {
-        budget.requireImage(xobject.getCOSObject(), MAX_IMAGE_PIXELS, MAX_IMAGE_BYTES);
-        for (PDImageXObject mask :
-            new PDImageXObject[] {xobject.getSoftMask(), xobject.getMask()}) {
-          if (mask != null) {
-            requirePixels(mask.getWidth(), mask.getHeight(), MAX_IMAGE_PIXELS, "image mask");
-            requireDrawn(mask.getWidth(), mask.getHeight(), subsampling);
-            budget.requireImage(mask.getCOSObject(), MAX_IMAGE_PIXELS, MAX_IMAGE_BYTES);
-          }
-        }
+      long width = image.getWidth();
+      long height = image.getHeight();
+      requirePixels(width, height, MAX_IMAGE_PIXELS, "image");
+      boolean patternStencil =
+          image.isStencil() && getGraphicsState().getNonStrokingColorSpace() instanceof PDPattern;
+      long bytes;
+      if (image.isStencil()) {
+        // a stencil is drawn at its full size, through a pattern into a second raster as well
+        bytes = raster(width, height, 1) * (patternStencil ? 2 : 1);
+      } else {
+        bytes = raster(width, height, Math.max(1, getSubsampling(image, at)));
       }
-      if (image.isStencil() && getGraphicsState().getNonStrokingColorSpace() instanceof PDPattern) {
+      if (image instanceof PDImageXObject xobject) {
+        bytes += xobjectBytes(xobject, image.isStencil() ? 1 : getSubsampling(image, at));
+      } else if (image instanceof PDInlineImage inline) {
+        bytes += inline.getData() == null ? 0 : inline.getData().length;
+      }
+      if (bytes > MAX_IMAGE_BYTES) {
+        throw new ParserLimitExceededException(
+            "PDF image would take " + bytes + " bytes to draw, more than " + MAX_IMAGE_BYTES);
+      }
+      if (patternStencil) {
         // PDFBox paints a pattern stencil into a raster of the image's extent in user space
         Rectangle2D extent =
             at.createTransformedShape(new Rectangle2D.Float(0, 0, 1, 1)).getBounds2D();
@@ -256,21 +338,35 @@ final class PdfPageRenderer {
       super.drawImage(image);
     }
 
-    private static void requireDrawn(long width, long height, int subsampling) {
+    /**
+     * The decoded data of an image XObject and of its masks, and the rasters of the masks and of
+     * the image combined with them, which PDFBox builds at the larger of both sizes.
+     */
+    private long xobjectBytes(PDImageXObject image, int subsampling) throws IOException {
       long step = Math.max(1, subsampling);
-      requirePixels(
-          (width + step - 1) / step,
-          (height + step - 1) / step,
-          MAX_DRAWN_IMAGE_PIXELS,
-          "subsampled image");
+      requireResources(image.getCOSObject().getDictionaryObject(COSName.COLORSPACE));
+      long bytes = budget.requireImage(image.getCOSObject(), MAX_IMAGE_BYTES);
+      for (PDImageXObject mask : new PDImageXObject[] {image.getSoftMask(), image.getMask()}) {
+        if (mask != null) {
+          requirePixels(mask.getWidth(), mask.getHeight(), MAX_IMAGE_PIXELS, "image mask");
+          bytes += budget.requireImage(mask.getCOSObject(), MAX_IMAGE_BYTES);
+          bytes += raster(mask.getWidth(), mask.getHeight(), step);
+          bytes +=
+              raster(
+                  Math.max(image.getWidth(), mask.getWidth()),
+                  Math.max(image.getHeight(), mask.getHeight()),
+                  step);
+        }
+      }
+      return bytes;
     }
 
-    private void enterGroup() {
-      if (++groupDepth > MAX_GROUP_DEPTH) {
-        groupDepth--;
+    private static int enter(int depth, int limit, String subject) {
+      if (depth + 1 > limit) {
         throw new ParserLimitExceededException(
-            "PDF page nests more than " + MAX_GROUP_DEPTH + " transparency groups");
+            "PDF page nests " + subject + " deeper than " + limit);
       }
+      return depth + 1;
     }
 
     /**
@@ -299,26 +395,59 @@ final class PdfPageRenderer {
         stream.setItem(COSName.DECODE_PARMS, decodeParms);
       }
       stream.setInt(COSName.HEIGHT, height);
-      budget.requireImage(stream, MAX_IMAGE_PIXELS, MAX_IMAGE_BYTES);
+      budget.requireImage(stream, MAX_IMAGE_BYTES);
+      COSBase colorSpace = parameters.getDictionaryObject(COSName.CS, COSName.COLORSPACE);
+      requireResources(
+          colorSpace instanceof COSName name
+              ? namedResource(COSName.COLORSPACE, name)
+              : colorSpace);
+    }
+
+    /** The raw entry {@code name} of the current resources' {@code category}, or null. */
+    private COSBase namedResource(COSName category, COSName name) {
+      PDResources resources = getResources();
+      if (resources == null) {
+        return null;
+      }
+      COSDictionary entries = resources.getCOSObject().getCOSDictionary(category);
+      return entries == null ? null : entries.getDictionaryObject(name);
     }
 
     /**
-     * Charges a tiling pattern's content stream when a colour operator selects it, since PDFBox
-     * parses it without a hook of its own here.
+     * Checks every stream {@code root} reaches - shading data, functions, colour profiles and
+     * lookup tables, which PDFBox reads into memory as a whole - against {@link
+     * #MAX_RESOURCE_STREAM_BYTES}; a structure past {@link #MAX_RESOURCE_OBJECTS} is refused.
      */
-    private void chargePattern(List<COSBase> operands) throws IOException {
-      if (operands.isEmpty() || !(operands.getLast() instanceof COSName name)) {
-        return;
+    private void requireResources(COSBase root) throws IOException {
+      Set<COSBase> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+      Deque<COSBase> pending = new ArrayDeque<>();
+      if (root != null) {
+        pending.push(root);
       }
-      PDResources resources = getResources();
-      PDAbstractPattern pattern;
-      try {
-        pattern = resources == null ? null : resources.getPattern(name);
-      } catch (IOException e) {
-        return;
-      }
-      if (pattern != null && pattern.getCOSObject() instanceof COSStream stream) {
-        budget.chargeContent(stream);
+      while (!pending.isEmpty()) {
+        COSBase next = pending.pop();
+        if (next instanceof COSObject reference) {
+          next = reference.getObject();
+        }
+        if (next == null || !seen.add(next)) {
+          continue;
+        }
+        if (seen.size() > MAX_RESOURCE_OBJECTS) {
+          throw new ParserLimitExceededException(
+              "PDF resource reaches more than " + MAX_RESOURCE_OBJECTS + " objects");
+        }
+        if (next instanceof COSStream stream) {
+          budget.requireResourceStream(stream, MAX_RESOURCE_STREAM_BYTES);
+        }
+        if (next instanceof COSDictionary dictionary) {
+          for (COSBase value : dictionary.getValues()) {
+            pending.push(value);
+          }
+        } else if (next instanceof COSArray array) {
+          for (int i = 0; i < array.size(); i++) {
+            pending.push(array.get(i));
+          }
+        }
       }
     }
   }

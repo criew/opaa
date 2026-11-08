@@ -34,14 +34,14 @@ public final class PdfPages {
 
   /**
    * A page that cannot be rendered within the limits: too large even at the lowest resolution, an
-   * image past its limits, or the page's read budget used up. It says something about the file, so
-   * rendering it again fails the same way.
+   * image past its limits, drawing nested past the stack, or the page's read budget used up. It
+   * says something about the file, so rendering it again fails the same way.
    */
   public static final class PageOverLimitException extends IOException {
 
     private final int pageNumber;
 
-    PageOverLimitException(int pageNumber, ParserLimitExceededException cause) {
+    PageOverLimitException(int pageNumber, Throwable cause) {
       super("PDF page " + pageNumber + " cannot be rendered within the limits", cause);
       this.pageNumber = pageNumber;
     }
@@ -67,10 +67,13 @@ public final class PdfPages {
    * IOException}; what {@code consumer} throws passes through unchanged.
    */
   public void render(Path file, PageImageConsumer consumer) throws IOException {
-    try (PDDocument doc = PdfLoading.load(file, PdfReadBudget.of(limits))) {
+    PdfReadBudget loading = PdfReadBudget.of(limits);
+    try (PDDocument doc = PdfLoading.load(file, loading)) {
       PdfPageRenderer renderer = new PdfPageRenderer(doc);
       int pages = doc.getNumberOfPages();
       for (int index = 0; index < pages; index++) {
+        // PDFBox resolves objects as it renders, charged to the loading budget
+        loading.restartClock();
         byte[] png = renderPage(renderer, index);
         consumer.accept(index + 1, png);
       }
@@ -82,7 +85,7 @@ public final class PdfPages {
     BufferedImage image;
     try {
       image = renderer.render(index, RENDER_DPI, PdfReadBudget.of(limits));
-    } catch (ParserLimitExceededException e) {
+    } catch (ParserLimitExceededException | StackOverflowError e) {
       throw new PageOverLimitException(index + 1, e);
     } catch (RuntimeException e) {
       throw new IOException("PDF page " + (index + 1) + " could not be rendered", e);
