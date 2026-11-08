@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
@@ -79,7 +81,7 @@ public class ModelRoleAdministration {
       String baseUrl,
       String model,
       boolean apiKeySet,
-      RerankRoleStatus status,
+      OptionalRoleStatus status,
       Instant updatedAt,
       List<String> retiredVariables) {}
 
@@ -91,7 +93,7 @@ public class ModelRoleAdministration {
       boolean apiKeySet,
       String language,
       String vocabulary,
-      TranscriptionRoleStatus status,
+      OptionalRoleStatus status,
       boolean speechInputAvailable,
       Instant updatedAt,
       List<String> retiredVariables) {}
@@ -103,7 +105,7 @@ public class ModelRoleAdministration {
       String baseUrl,
       String model,
       boolean apiKeySet,
-      TextRecognitionRoleStatus status,
+      OptionalRoleStatus status,
       boolean textRecognitionAvailable,
       Instant updatedAt) {}
 
@@ -117,12 +119,12 @@ public class ModelRoleAdministration {
       TextRecognitionClient.FailedStage failedStage,
       String message) {}
 
-  private final RerankModelSettingsRepository rerankRows;
-  private final TranscriptionModelSettingsRepository transcriptionRows;
-  private final TextRecognitionModelSettingsRepository textRecognitionRows;
+  private final RoleTable<RerankModelSettings> rerankTable;
+  private final RoleTable<TranscriptionModelSettings> transcriptionTable;
+  private final RoleTable<TextRecognitionModelSettings> textRecognitionTable;
   private final ModelRoleEndpoints endpoints;
-  private final RerankRoleStatusResolver rerankRole;
-  private final TranscriptionRoleStatusResolver transcriptionRole;
+  private final OptionalRoleStatusResolver<RerankEndpoint> rerankRole;
+  private final OptionalRoleStatusResolver<TranscriptionEndpoint> transcriptionRole;
   private final boolean speechInputAvailable;
   private final TextRecognitionModelRole textRecognitionRole;
   private final RerankClient rerankClient;
@@ -142,8 +144,8 @@ public class ModelRoleAdministration {
       TranscriptionModelSettingsRepository transcriptionRows,
       TextRecognitionModelSettingsRepository textRecognitionRows,
       ModelRoleEndpoints endpoints,
-      RerankRoleStatusResolver rerankRole,
-      TranscriptionRoleStatusResolver transcriptionRole,
+      OptionalRoleStatusResolver<RerankEndpoint> rerankRole,
+      OptionalRoleStatusResolver<TranscriptionEndpoint> transcriptionRole,
       TextRecognitionModelRole textRecognitionRole,
       FeatureFlags featureFlags,
       RerankClient rerankClient,
@@ -157,13 +159,47 @@ public class ModelRoleAdministration {
       PlatformTransactionManager transactionManager,
       JdbcTemplate jdbc,
       Clock clock) {
-    this.rerankRows = rerankRows;
-    this.transcriptionRows = transcriptionRows;
-    this.textRecognitionRows = textRecognitionRows;
+    boolean speechInput = featureFlags.isEnabled(Feature.SPEECH_INPUT);
+    this.rerankTable =
+        new RoleTable<>(
+            "rerank_model",
+            RERANK,
+            rerankRows,
+            RerankModelSettings::new,
+            AuditEventType.RERANK_MODEL_CHANGED,
+            "Rerank-Modell",
+            ModelRoleSettingsChangedEvent.Role.RERANK,
+            () -> true,
+            null,
+            ModelRoleAdministration::rerankPayload);
+    this.transcriptionTable =
+        new RoleTable<>(
+            "transcription_model",
+            TRANSCRIPTION,
+            transcriptionRows,
+            TranscriptionModelSettings::new,
+            AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
+            "Transkriptionsmodell",
+            ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION,
+            () -> speechInput,
+            SPEECH_INPUT_OFF,
+            ModelRoleAdministration::transcriptionPayload);
+    this.textRecognitionTable =
+        new RoleTable<>(
+            "text_recognition_model",
+            TEXT_RECOGNITION,
+            textRecognitionRows,
+            TextRecognitionModelSettings::new,
+            AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED,
+            "Texterkennung",
+            ModelRoleSettingsChangedEvent.Role.TEXT_RECOGNITION,
+            textRecognitionRole::operationEnabled,
+            TEXT_RECOGNITION_OFF,
+            ModelRoleAdministration::textRecognitionPayload);
     this.endpoints = endpoints;
     this.rerankRole = rerankRole;
     this.transcriptionRole = transcriptionRole;
-    this.speechInputAvailable = featureFlags.isEnabled(Feature.SPEECH_INPUT);
+    this.speechInputAvailable = speechInput;
     this.textRecognitionRole = textRecognitionRole;
     this.rerankClient = rerankClient;
     this.transcriptionClient = transcriptionClient;
@@ -180,12 +216,13 @@ public class ModelRoleAdministration {
 
   @Transactional(readOnly = true)
   public RerankModelView rerank() {
-    return rerankRows.findStored().map(this::rerankView).orElseGet(() -> rerankView(null));
+    return rerankTable.rows().findStored().map(this::rerankView).orElseGet(() -> rerankView(null));
   }
 
   @Transactional(readOnly = true)
   public TranscriptionModelView transcription() {
-    return transcriptionRows
+    return transcriptionTable
+        .rows()
         .findStored()
         .map(this::transcriptionView)
         .orElseGet(() -> transcriptionView(null));
@@ -193,7 +230,8 @@ public class ModelRoleAdministration {
 
   @Transactional(readOnly = true)
   public TextRecognitionModelView textRecognition() {
-    return textRecognitionRows
+    return textRecognitionTable
+        .rows()
         .findStored()
         .map(this::textRecognitionView)
         .orElseGet(() -> textRecognitionView(null));
@@ -217,19 +255,20 @@ public class ModelRoleAdministration {
     String identifier = trimmed(model);
     List<FieldError> errors = new ArrayList<>();
     ModelEndpointRules.endpointErrors(RERANK, address, identifier, apiKey, enabled, errors);
-    blockedAddressError(RERANK, address, storedRerankAddress(), errors);
+    blockedAddressError(RERANK, address, storedAddress(rerankTable), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
-            storeRerank(
-                organizationId,
-                AuditActor.user(actorUserId),
-                enabled,
-                address,
-                identifier,
-                row ->
-                    secretOf(
-                        RERANK, apiKey, row.getBaseUrl(), address, row.getApiKeyCiphertext())));
+            rerankView(
+                store(
+                    rerankTable,
+                    organizationId,
+                    AuditActor.user(actorUserId),
+                    enabled,
+                    address,
+                    identifier,
+                    changedSecret(RERANK, apiKey, address),
+                    (row, stored) -> OwnColumns.none())));
   }
 
   /**
@@ -249,13 +288,22 @@ public class ModelRoleAdministration {
     requireNoErrors(errors);
     return transactions.execute(
         status ->
-            storeRerank(
-                organizationId,
-                AuditActor.systemProcess(systemActor),
-                true,
-                address,
-                identifier,
-                row -> encryptInstalled(RERANK, apiKey)));
+            rerankView(
+                store(
+                    rerankTable,
+                    organizationId,
+                    AuditActor.systemProcess(systemActor),
+                    true,
+                    address,
+                    identifier,
+                    row -> encryptInstalled(RERANK, apiKey),
+                    (row, stored) -> OwnColumns.none())));
+  }
+
+  /** The key a change stores, derived from the stored row as {@link #secretOf} decides it. */
+  private Function<OptionalRoleSettings, String> changedSecret(
+      String prefix, String apiKey, String address) {
+    return row -> secretOf(prefix, apiKey, row.getBaseUrl(), address, row.getApiKeyCiphertext());
   }
 
   /** The key of an installation step, encrypted for the row of the role, or none. */
@@ -277,45 +325,90 @@ public class ModelRoleAdministration {
     }
   }
 
-  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
-  private RerankModelView storeRerank(
+  /**
+   * The write path of every role, under the table lock: {@code ciphertextOf} derives the key to
+   * store from the stored row, {@code own} the role's own columns from the stored row and whether
+   * there is one. Refuses to switch on a role the operation does not allow, unless it is on
+   * already; a change to the same values writes nothing.
+   *
+   * @return the row as stored, {@code null} for an unchanged factory default
+   */
+  private <R extends OptionalRoleSettings> R store(
+      RoleTable<R> table,
       UUID organizationId,
       AuditActor actor,
       boolean enabled,
       String address,
       String identifier,
-      Function<RerankModelSettings, String> ciphertextOf) {
-    jdbc.execute("LOCK TABLE rerank_model IN SHARE ROW EXCLUSIVE MODE");
-    RerankModelSettings existing = rerankRows.findStored().orElse(null);
-    RerankModelSettings row =
-        existing == null ? new RerankModelSettings(clock.instant()) : existing;
+      Function<? super R, String> ciphertextOf,
+      BiFunction<R, Boolean, OwnColumns<R>> own) {
+    jdbc.execute("LOCK TABLE " + table.name() + " IN SHARE ROW EXCLUSIVE MODE");
+    R existing = table.rows().findStored().orElse(null);
+    boolean stored = existing != null;
+    R row = stored ? existing : table.newRow().apply(clock.instant());
+    if (enabled && !table.operationAllows().getAsBoolean() && !(stored && row.isEnabled())) {
+      throw FieldValidationException.of(
+          table.prefix() + ".enabled", ModelEndpointRules.BLOCKED, table.operationOff());
+    }
+    OwnColumns<R> columns = own.apply(row, stored);
     String previousCiphertext = row.getApiKeyCiphertext();
     String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
             && Objects.equals(row.getModelIdentifier(), emptyToNull(identifier))
-            && Objects.equals(previousCiphertext, ciphertext);
+            && Objects.equals(previousCiphertext, ciphertext)
+            && columns.unchanged();
     if (unchanged) {
-      return rerankView(existing);
+      return existing;
     }
-    Map<String, Object> before = rerankPayload(existing);
-    row.replace(
+    Map<String, Object> before = table.payload().apply(existing);
+    row.replaceEndpoint(
         enabled, emptyToNull(address), emptyToNull(identifier), ciphertext, clock.instant());
-    rerankRows.save(row);
-    Map<String, Object> after = rerankPayload(row);
+    columns.replace(row);
+    table.rows().save(row);
+    Map<String, Object> after = table.payload().apply(row);
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
-    record(
-        organizationId,
-        actor,
-        AuditEventType.RERANK_MODEL_CHANGED,
-        "rerank_model",
-        "Rerank-Modell",
-        before,
-        after);
-    afterCommit(ModelRoleSettingsChangedEvent.Role.RERANK);
-    return rerankView(row);
+    record(organizationId, actor, table.changed(), table.name(), table.label(), before, after);
+    afterCommit(table.role());
+    return row;
   }
+
+  /** A role's own columns of one change: whether they stay as stored, and how to write them. */
+  private interface OwnColumns<R> {
+
+    boolean unchanged();
+
+    void replace(R row);
+
+    static <R> OwnColumns<R> none() {
+      return new OwnColumns<>() {
+        @Override
+        public boolean unchanged() {
+          return true;
+        }
+
+        @Override
+        public void replace(R row) {}
+      };
+    }
+  }
+
+  /**
+   * One role's row as the write path needs it: table, field prefix, audit event and label, the
+   * change event, the operation's limit and the audit state of a row.
+   */
+  private record RoleTable<R extends OptionalRoleSettings>(
+      String name,
+      String prefix,
+      OptionalRoleSettingsRepository<R> rows,
+      Function<Instant, R> newRow,
+      AuditEventType changed,
+      String label,
+      ModelRoleSettingsChangedEvent.Role role,
+      BooleanSupplier operationAllows,
+      String operationOff,
+      Function<R, Map<String, Object>> payload) {}
 
   /**
    * Stores the transcription role, as {@link #changeRerank}. {@code language} {@code null} keeps
@@ -345,25 +438,20 @@ public class ModelRoleAdministration {
               ModelEndpointRules.INVALID,
               TranscriptionVocabulary.RULE));
     }
-    blockedAddressError(TRANSCRIPTION, address, storedTranscriptionAddress(), errors);
+    blockedAddressError(TRANSCRIPTION, address, storedAddress(transcriptionTable), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
-            storeTranscription(
-                organizationId,
-                AuditActor.user(actorUserId),
-                enabled,
-                address,
-                identifier,
-                lang,
-                terms,
-                row ->
-                    secretOf(
-                        TRANSCRIPTION,
-                        apiKey,
-                        row.getBaseUrl(),
-                        address,
-                        row.getApiKeyCiphertext())));
+            transcriptionView(
+                store(
+                    transcriptionTable,
+                    organizationId,
+                    AuditActor.user(actorUserId),
+                    enabled,
+                    address,
+                    identifier,
+                    changedSecret(TRANSCRIPTION, apiKey, address),
+                    (row, stored) -> transcriptionColumns(row, stored, lang, terms))));
   }
 
   /**
@@ -387,15 +475,16 @@ public class ModelRoleAdministration {
     requireNoErrors(transcriptionErrors(true, address, identifier, null, lang));
     return transactions.execute(
         status ->
-            storeTranscription(
-                organizationId,
-                AuditActor.systemProcess(systemActor),
-                true,
-                address,
-                identifier,
-                lang,
-                null,
-                row -> encryptInstalled(TRANSCRIPTION, apiKey)));
+            transcriptionView(
+                store(
+                    transcriptionTable,
+                    organizationId,
+                    AuditActor.systemProcess(systemActor),
+                    true,
+                    address,
+                    identifier,
+                    row -> encryptInstalled(TRANSCRIPTION, apiKey),
+                    (row, stored) -> transcriptionColumns(row, stored, lang, null))));
   }
 
   /** The rules of a transcription endpoint and its language, as field errors. */
@@ -413,63 +502,32 @@ public class ModelRoleAdministration {
     return errors;
   }
 
-  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
-  private TranscriptionModelView storeTranscription(
-      UUID organizationId,
-      AuditActor actor,
-      boolean enabled,
-      String address,
-      String identifier,
+  /**
+   * The transcription role's own columns: {@code null} keeps what is stored, the factory language
+   * for a first row, blank removes it.
+   */
+  private static OwnColumns<TranscriptionModelSettings> transcriptionColumns(
+      TranscriptionModelSettings row,
+      boolean stored,
       String requestedLanguage,
-      String requestedVocabulary,
-      Function<TranscriptionModelSettings, String> ciphertextOf) {
-    jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
-    TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
-    boolean stored = existing != null;
-    TranscriptionModelSettings row =
-        stored ? existing : new TranscriptionModelSettings(clock.instant());
-    if (enabled && !speechInputAvailable && !(stored && row.isEnabled())) {
-      throw FieldValidationException.of(TRANSCRIPTION + ".enabled", "BLOCKED", SPEECH_INPUT_OFF);
-    }
+      String requestedVocabulary) {
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String storedVocabulary = stored ? row.getVocabulary() : null;
     String vocabulary =
         requestedVocabulary == null ? storedVocabulary : emptyToNull(requestedVocabulary);
-    String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext = ciphertextOf.apply(row);
-    boolean unchanged =
-        row.isEnabled() == enabled
-            && Objects.equals(row.getBaseUrl(), emptyToNull(address))
-            && Objects.equals(row.getModelIdentifier(), emptyToNull(identifier))
-            && Objects.equals(previousCiphertext, ciphertext)
-            && Objects.equals(storedLanguage, language)
+    return new OwnColumns<>() {
+      @Override
+      public boolean unchanged() {
+        return Objects.equals(storedLanguage, language)
             && Objects.equals(storedVocabulary, vocabulary);
-    if (unchanged) {
-      return transcriptionView(existing);
-    }
-    Map<String, Object> before = transcriptionPayload(existing);
-    row.replace(
-        enabled,
-        emptyToNull(address),
-        emptyToNull(identifier),
-        ciphertext,
-        language,
-        vocabulary,
-        clock.instant());
-    transcriptionRows.save(row);
-    Map<String, Object> after = transcriptionPayload(row);
-    AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
-    record(
-        organizationId,
-        actor,
-        AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
-        "transcription_model",
-        "Transkriptionsmodell",
-        before,
-        after);
-    afterCommit(ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION);
-    return transcriptionView(row);
+      }
+
+      @Override
+      public void replace(TranscriptionModelSettings target) {
+        target.replaceOwn(language, vocabulary);
+      }
+    };
   }
 
   /**
@@ -491,24 +549,20 @@ public class ModelRoleAdministration {
     String address = trimmed(baseUrl);
     String identifier = TextRecognitionEndpoint.needsModel(type) ? trimmed(model) : "";
     List<FieldError> errors = textRecognitionErrors(enabled, type, address, identifier, apiKey);
-    blockedAddressError(TEXT_RECOGNITION, address, storedTextRecognitionAddress(), errors);
+    blockedAddressError(TEXT_RECOGNITION, address, storedAddress(textRecognitionTable), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
-            storeTextRecognition(
-                organizationId,
-                AuditActor.user(actorUserId),
-                enabled,
-                type,
-                address,
-                identifier,
-                row ->
-                    secretOf(
-                        TEXT_RECOGNITION,
-                        apiKey,
-                        row.getBaseUrl(),
-                        address,
-                        row.getApiKeyCiphertext())));
+            textRecognitionView(
+                store(
+                    textRecognitionTable,
+                    organizationId,
+                    AuditActor.user(actorUserId),
+                    enabled,
+                    address,
+                    identifier,
+                    changedSecret(TEXT_RECOGNITION, apiKey, address),
+                    (row, stored) -> textRecognitionColumns(row, type))));
   }
 
   /**
@@ -533,14 +587,16 @@ public class ModelRoleAdministration {
     requireNoErrors(textRecognitionErrors(true, type, address, identifier, null));
     return transactions.execute(
         status ->
-            storeTextRecognition(
-                organizationId,
-                AuditActor.systemProcess(systemActor),
-                true,
-                type,
-                address,
-                identifier,
-                row -> encryptInstalled(TEXT_RECOGNITION, apiKey)));
+            textRecognitionView(
+                store(
+                    textRecognitionTable,
+                    organizationId,
+                    AuditActor.systemProcess(systemActor),
+                    true,
+                    address,
+                    identifier,
+                    row -> encryptInstalled(TEXT_RECOGNITION, apiKey),
+                    (row, stored) -> textRecognitionColumns(row, type))));
   }
 
   private static List<FieldError> textRecognitionErrors(
@@ -581,51 +637,19 @@ public class ModelRoleAdministration {
     return errors;
   }
 
-  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
-  private TextRecognitionModelView storeTextRecognition(
-      UUID organizationId,
-      AuditActor actor,
-      boolean enabled,
-      TextRecognitionConnectionType type,
-      String address,
-      String identifier,
-      Function<TextRecognitionModelSettings, String> ciphertextOf) {
-    jdbc.execute("LOCK TABLE text_recognition_model IN SHARE ROW EXCLUSIVE MODE");
-    TextRecognitionModelSettings existing = textRecognitionRows.findStored().orElse(null);
-    boolean stored = existing != null;
-    TextRecognitionModelSettings row =
-        stored ? existing : new TextRecognitionModelSettings(clock.instant());
-    if (enabled && !textRecognitionRole.operationEnabled() && !(stored && row.isEnabled())) {
-      throw FieldValidationException.of(
-          TEXT_RECOGNITION + ".enabled", ModelEndpointRules.BLOCKED, TEXT_RECOGNITION_OFF);
-    }
-    String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext = ciphertextOf.apply(row);
-    boolean unchanged =
-        row.isEnabled() == enabled
-            && row.getConnectionType() == type
-            && Objects.equals(row.getBaseUrl(), emptyToNull(address))
-            && Objects.equals(row.getModelIdentifier(), emptyToNull(identifier))
-            && Objects.equals(previousCiphertext, ciphertext);
-    if (unchanged) {
-      return textRecognitionView(existing);
-    }
-    Map<String, Object> before = textRecognitionPayload(existing);
-    row.replace(
-        enabled, type, emptyToNull(address), emptyToNull(identifier), ciphertext, clock.instant());
-    textRecognitionRows.save(row);
-    Map<String, Object> after = textRecognitionPayload(row);
-    AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
-    record(
-        organizationId,
-        actor,
-        AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED,
-        "text_recognition_model",
-        "Texterkennung",
-        before,
-        after);
-    afterCommit(ModelRoleSettingsChangedEvent.Role.TEXT_RECOGNITION);
-    return textRecognitionView(row);
+  private static OwnColumns<TextRecognitionModelSettings> textRecognitionColumns(
+      TextRecognitionModelSettings row, TextRecognitionConnectionType type) {
+    return new OwnColumns<>() {
+      @Override
+      public boolean unchanged() {
+        return row.getConnectionType() == type;
+      }
+
+      @Override
+      public void replace(TextRecognitionModelSettings target) {
+        target.replaceOwn(type);
+      }
+    };
   }
 
   /**
@@ -650,11 +674,8 @@ public class ModelRoleAdministration {
             TEXT_RECOGNITION,
             address,
             apiKey,
-            storedTextRecognitionAddress(),
-            textRecognitionRows
-                .findStored()
-                .map(TextRecognitionModelSettings::getApiKeyCiphertext)
-                .orElse(null),
+            storedAddress(textRecognitionTable),
+            storedCiphertext(textRecognitionTable),
             textRecognitionErrors(true, type, address, identifier, apiKey));
     return probeTextRecognition(type, address, identifier, key);
   }
@@ -722,8 +743,8 @@ public class ModelRoleAdministration {
             address,
             identifier,
             apiKey,
-            storedRerankAddress(),
-            rerankRows.findStored().map(RerankModelSettings::getApiKeyCiphertext).orElse(null));
+            storedAddress(rerankTable),
+            storedCiphertext(rerankTable));
     return probeRerank(address, identifier, key);
   }
 
@@ -751,11 +772,8 @@ public class ModelRoleAdministration {
             address,
             identifier,
             apiKey,
-            storedTranscriptionAddress(),
-            transcriptionRows
-                .findStored()
-                .map(TranscriptionModelSettings::getApiKeyCiphertext)
-                .orElse(null));
+            storedAddress(transcriptionTable),
+            storedCiphertext(transcriptionTable));
     return probeTranscription(address, identifier, key);
   }
 
@@ -883,19 +901,12 @@ public class ModelRoleAdministration {
         row == null ? null : row.getUpdatedAt());
   }
 
-  private String storedTextRecognitionAddress() {
-    return textRecognitionRows
-        .findStored()
-        .map(TextRecognitionModelSettings::getBaseUrl)
-        .orElse(null);
+  private static String storedAddress(RoleTable<?> table) {
+    return table.rows().findStored().map(OptionalRoleSettings::getBaseUrl).orElse(null);
   }
 
-  private String storedRerankAddress() {
-    return rerankRows.findStored().map(RerankModelSettings::getBaseUrl).orElse(null);
-  }
-
-  private String storedTranscriptionAddress() {
-    return transcriptionRows.findStored().map(TranscriptionModelSettings::getBaseUrl).orElse(null);
+  private static String storedCiphertext(RoleTable<?> table) {
+    return table.rows().findStored().map(OptionalRoleSettings::getApiKeyCiphertext).orElse(null);
   }
 
   /** The address check of a valid address, as a field error under {@code prefix}. */

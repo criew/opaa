@@ -10,7 +10,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +27,8 @@ import org.springframework.stereotype.Service;
  * known state is the installation's ({@link ModelRoleObservations}, ADR-0053, Entscheidung 12).
  */
 @Service
-public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvider {
+public class TextRecognitionModelRole extends OptionalModelRole<TextRecognitionEndpoint>
+    implements TextRecognitionRoleStatusProvider {
 
   private static final Logger log = LoggerFactory.getLogger(TextRecognitionModelRole.class);
 
@@ -38,9 +38,7 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
   static final Duration PROBE_TIMEOUT = Duration.ofSeconds(30);
 
   private final TextRecognitionProperties properties;
-  private final Supplier<TextRecognitionEndpoint> endpoints;
   private final TextRecognitionClient client;
-  private final ModelRoleObservations observations;
 
   /** A role whose state lives in this process only - for a context without a database. */
   public TextRecognitionModelRole(
@@ -64,10 +62,9 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
       Supplier<TextRecognitionEndpoint> endpoints,
       TextRecognitionClient client,
       ModelRoleObservations observations) {
+    super(ModelRoleObservations.TEXT_RECOGNITION, "text recognition", endpoints, observations);
     this.properties = properties;
-    this.endpoints = endpoints;
     this.client = client;
-    this.observations = observations;
   }
 
   /**
@@ -94,6 +91,11 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
     return properties.enabled();
   }
 
+  @Override
+  protected boolean operationAllows() {
+    return properties.enabled();
+  }
+
   /** The operation's limits; the indexing evaluates them. */
   public TextRecognitionProperties limits() {
     return properties;
@@ -106,7 +108,7 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
    * TextRecognitionClient.TextRecognitionUnavailableException}. Never probes.
    */
   public Optional<ActiveTextRecognition> active() {
-    TextRecognitionEndpoint endpoint = endpoints.get();
+    TextRecognitionEndpoint endpoint = endpoint();
     if (!callable(endpoint)) {
       return Optional.empty();
     }
@@ -116,7 +118,7 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
   /**
    * Converts a whole PDF with docling-serve within {@link TextRecognitionProperties#callTimeout()}.
    * A call the role cannot make as configured (no answer, key refused, wrong address, server error)
-   * moves the role to {@link TextRecognitionRoleState#UNREACHABLE} with the reason; overload and a
+   * moves the role to {@link OptionalRoleState#UNREACHABLE} with the reason; overload and a
    * document refusal leave the role as it is.
    *
    * @throws IllegalStateException for another connection type or while the operation's switch is
@@ -165,57 +167,6 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
     return bound.compareTo(Duration.ofMillis(1)) < 0 ? Duration.ofMillis(1) : bound;
   }
 
-  @Override
-  public TextRecognitionRoleStatus currentStatus() {
-    return statusFor(endpoints.get());
-  }
-
-  /** The state of the role for {@code endpoint}, from the last known observation; never probes. */
-  public TextRecognitionRoleStatus statusFor(TextRecognitionEndpoint endpoint) {
-    if (!properties.enabled() || !endpoint.enabled()) {
-      return TextRecognitionRoleStatus.disabled();
-    }
-    if (ModelEndpointUri.containsCredentials(endpoint.baseUrl())) {
-      return new TextRecognitionRoleStatus(
-          TextRecognitionRoleState.UNCONFIGURED,
-          endpoint.connectionType(),
-          null,
-          emptyToNull(endpoint.model()),
-          "the stored base URL carries credentials and was rejected",
-          false,
-          true);
-    }
-    if (!endpoint.bound()) {
-      return new TextRecognitionRoleStatus(
-          TextRecognitionRoleState.UNCONFIGURED,
-          endpoint.connectionType(),
-          emptyToNull(endpoint.baseUrl()),
-          emptyToNull(endpoint.model()),
-          "no base URL and/or model is stored for the text recognition role",
-          false,
-          false);
-    }
-    return observations
-        .current(ModelRoleObservations.TEXT_RECOGNITION)
-        .filter(known -> known.isFor(endpoint.baseUrl(), endpoint.observedModel()))
-        .map(
-            known ->
-                known.reachable()
-                    ? status(endpoint, TextRecognitionRoleState.READY, null, false)
-                    : status(
-                        endpoint,
-                        TextRecognitionRoleState.UNREACHABLE,
-                        known.diagnostic(),
-                        known.timedOut()))
-        .orElseGet(
-            () ->
-                status(
-                    endpoint,
-                    TextRecognitionRoleState.UNREACHABLE,
-                    "endpoint not probed yet",
-                    false));
-  }
-
   @Scheduled(
       fixedDelay = PROBE_INTERVAL_MILLIS,
       initialDelay = PROBE_INTERVAL_MILLIS,
@@ -228,41 +179,27 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
     refresh();
   }
 
-  /**
-   * Probes the service and records the result; contacts nothing while either switch is off.
-   * Blocking; never on a request path.
-   */
-  public TextRecognitionRoleStatus refresh() {
-    TextRecognitionEndpoint endpoint = endpoints.get();
-    if (!callable(endpoint)) {
-      return statusFor(endpoint);
-    }
+  @Override
+  protected ProbeFailure probe(TextRecognitionEndpoint endpoint) {
     TextRecognitionClient.ProbeFailure failure = client.probe(endpoint, PROBE_TIMEOUT);
-    TextRecognitionRoleStatus probed =
-        failure == null
-            ? status(endpoint, TextRecognitionRoleState.READY, null, false)
-            : status(
-                endpoint,
-                TextRecognitionRoleState.UNREACHABLE,
-                failure.keyRejected()
-                    ? "the service refused the key (" + failure.message() + ")"
-                    : failure.message(),
-                failure.timedOut());
-    record(endpoint, probed, true);
-    return probed;
+    if (failure == null) {
+      return null;
+    }
+    return new ProbeFailure(
+        failure.keyRejected()
+            ? "the service refused the key (" + failure.message() + ")"
+            : failure.message(),
+        failure.timedOut());
   }
 
   private <T> T observed(TextRecognitionEndpoint endpoint, Supplier<T> call) {
     try {
       T result = call.get();
-      record(endpoint, status(endpoint, TextRecognitionRoleState.READY, null, false), false);
+      record(endpoint, ready(endpoint), false);
       return result;
     } catch (TextRecognitionClient.TextRecognitionUnavailableException e) {
       if (e.roleUnusable()) {
-        record(
-            endpoint,
-            status(endpoint, TextRecognitionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()),
-            false);
+        record(endpoint, unreachable(endpoint, e.getMessage(), e.timedOut()), false);
       }
       log.warn(
           "Text recognition call against {} failed: {}",
@@ -281,50 +218,5 @@ public class TextRecognitionModelRole implements TextRecognitionRoleStatusProvid
       throw new IllegalStateException(
           "the text recognition role is connected as " + active.connectionType());
     }
-  }
-
-  private boolean callable(TextRecognitionEndpoint endpoint) {
-    return properties.enabled()
-        && endpoint.enabled()
-        && endpoint.bound()
-        && !ModelEndpointUri.containsCredentials(endpoint.baseUrl());
-  }
-
-  /** Records an outcome; a store that cannot take it costs the record, never the document. */
-  private void record(
-      TextRecognitionEndpoint endpoint, TextRecognitionRoleStatus status, boolean probe) {
-    try {
-      observations.record(
-          ModelRoleObservations.TEXT_RECOGNITION,
-          new ModelRoleObservations.ModelRoleObservation(
-              endpoint.baseUrl(),
-              endpoint.observedModel(),
-              status.state() == TextRecognitionRoleState.READY,
-              status.timedOut(),
-              status.diagnostic(),
-              null),
-          probe);
-    } catch (DataAccessException e) {
-      log.warn("Text recognition role state could not be recorded: {}", e.getMessage());
-    }
-  }
-
-  private static TextRecognitionRoleStatus status(
-      TextRecognitionEndpoint endpoint,
-      TextRecognitionRoleState state,
-      String diagnostic,
-      boolean timedOut) {
-    return new TextRecognitionRoleStatus(
-        state,
-        endpoint.connectionType(),
-        endpoint.baseUrl(),
-        emptyToNull(endpoint.model()),
-        diagnostic,
-        timedOut,
-        false);
-  }
-
-  private static String emptyToNull(String value) {
-    return value.isEmpty() ? null : value;
   }
 }

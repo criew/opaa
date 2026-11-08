@@ -1,10 +1,11 @@
 package io.opaa.llm;
 
+import java.time.Clock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * The transcription role's own probe thread: an endpoint that accepts a connection but never
@@ -14,14 +15,23 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @EnableConfigurationProperties(TranscriptionProperties.class)
 public class TranscriptionRoleConfiguration {
 
+  /** The role's own probe thread ({@link OptionalModelRole#probeScheduler}). */
   @Bean(destroyMethod = "shutdown")
   TaskScheduler transcriptionProbeScheduler() {
-    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-    scheduler.setPoolSize(1);
-    scheduler.setThreadNamePrefix("transcription-probe-");
-    scheduler.setDaemon(true);
-    scheduler.setWaitForTasksToCompleteOnShutdown(false);
-    scheduler.initialize();
-    return scheduler;
+    return OptionalModelRole.probeScheduler("transcription-probe-");
+  }
+
+  @Bean
+  OptionalRoleStartupCheck transcriptionRoleStartupCheck(
+      TranscriptionModelRole role,
+      @Qualifier("transcriptionProbeScheduler") TaskScheduler probeScheduler,
+      Clock clock) {
+    return new OptionalRoleStartupCheck(
+        role,
+        ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION,
+        "Transcription",
+        "Dictation stays hidden until the endpoint answers.",
+        probeScheduler,
+        clock);
   }
 }

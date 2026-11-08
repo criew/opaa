@@ -42,9 +42,9 @@ class RerankModelRoleTest {
     RerankClient client = mock(RerankClient.class);
     RerankModelRole role = role(client, false, ENDPOINT, "m");
 
-    RerankRoleStatus status = role.currentStatus();
+    OptionalRoleStatus status = role.currentStatus();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.DISABLED);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.DISABLED);
     assertThat(status.diagnostic()).isNull();
     assertThat(role.usable()).isFalse();
     verify(client, never()).probe(any(), any());
@@ -55,9 +55,9 @@ class RerankModelRoleTest {
     RerankClient client = mock(RerankClient.class);
     RerankModelRole role = role(client, true, "", "");
 
-    RerankRoleStatus status = role.currentStatus();
+    OptionalRoleStatus status = role.currentStatus();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.UNCONFIGURED);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNCONFIGURED);
     assertThat(status.baseUrl()).isNull();
     assertThat(status.modelIdentifier()).isNull();
     assertThat(status.diagnostic()).contains("no base URL");
@@ -76,9 +76,9 @@ class RerankModelRoleTest {
     RerankModelRole role =
         role(client, true, "https://" + SECRET_IN_BASE_URL + "@reranker.example.internal/v1", "m");
 
-    RerankRoleStatus status = role.currentStatus();
+    OptionalRoleStatus status = role.currentStatus();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.UNCONFIGURED);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNCONFIGURED);
     assertThat(status.baseUrl()).isNull();
     assertThat(status.baseUrlRejected()).isTrue();
     assertThat(status.diagnostic()).doesNotContain(SECRET_IN_BASE_URL);
@@ -93,7 +93,7 @@ class RerankModelRoleTest {
   @Test
   void aRoleWithAnEndpointButNoModelIsUnconfigured() {
     assertThat(role(mock(RerankClient.class), true, ENDPOINT, "").currentStatus().state())
-        .isEqualTo(RerankRoleState.UNCONFIGURED);
+        .isEqualTo(OptionalRoleState.UNCONFIGURED);
   }
 
   /**
@@ -105,7 +105,7 @@ class RerankModelRoleTest {
   void aBoundRoleIsNotUsableUntilItHasBeenProbed() {
     RerankModelRole role = role(mock(RerankClient.class), true, ENDPOINT, "m");
 
-    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(role.currentStatus().diagnostic()).contains("not probed yet");
     assertThat(role.usable()).isFalse();
   }
@@ -116,7 +116,7 @@ class RerankModelRoleTest {
     when(client.probe(any(), any())).thenReturn(null);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
-    assertThat(role.refresh().state()).isEqualTo(RerankRoleState.READY);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.READY);
     assertThat(role.currentStatus().baseUrl()).isEqualTo(ENDPOINT);
     assertThat(role.currentStatus().diagnostic()).isNull();
     assertThat(role.usable()).isTrue();
@@ -129,9 +129,9 @@ class RerankModelRoleTest {
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
-    RerankRoleStatus status = role.refresh();
+    OptionalRoleStatus status = role.refresh();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(status.diagnostic()).isEqualTo("connection refused");
     assertThat(role.usable()).isFalse();
   }
@@ -163,14 +163,14 @@ class RerankModelRoleTest {
     role.refresh();
 
     assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
-    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(role.currentStatus().diagnostic()).isEqualTo("endpoint not reachable");
     assertThat(role.currentStatus().timedOut()).isFalse();
   }
 
   /**
    * The finding #1154 exists for: a call that ran into the configured timeout still moves the role
-   * to {@link RerankRoleState#UNREACHABLE} - a run must fall back to the fused order either way -
+   * to {@link OptionalRoleState#UNREACHABLE} - a run must fall back to the fused order either way -
    * but the status keeps that the endpoint was merely slow, not unreachable.
    */
   @Test
@@ -183,7 +183,7 @@ class RerankModelRoleTest {
     role.refresh();
 
     assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
-    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(role.currentStatus().diagnostic()).isEqualTo("request timed out");
     assertThat(role.currentStatus().timedOut()).isTrue();
   }
@@ -196,9 +196,9 @@ class RerankModelRoleTest {
         .thenReturn(new RerankClient.ProbeFailure("request timed out", true));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
-    RerankRoleStatus status = role.refresh();
+    OptionalRoleStatus status = role.refresh();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(status.timedOut()).isTrue();
   }
 
@@ -210,7 +210,7 @@ class RerankModelRoleTest {
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     assertThat(role.rerank("Frage", List.of("a"))).containsExactly(new ScoredCandidate(0, 1.0));
-    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.READY);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.READY);
   }
 
   /** A switched-off role never reaches the client, whatever a caller asks it to do. */
@@ -338,7 +338,7 @@ class RerankModelRoleTest {
     clock.advance(RerankModelRole.RETRY_INTERVAL);
     role.probePeriodically();
     verify(client, times(3)).probe(any(), any());
-    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.READY);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.READY);
 
     clock.advance(RerankModelRole.RETRY_INTERVAL);
     role.probePeriodically();
@@ -449,7 +449,7 @@ class RerankModelRoleTest {
     RerankModelRole unreachable = role(client, true, ENDPOINT, "m");
     unreachable.refresh();
 
-    for (RerankRoleStatus status :
+    for (OptionalRoleStatus status :
         List.of(
             unreachable.currentStatus(),
             role(client, true, "", "").currentStatus(),

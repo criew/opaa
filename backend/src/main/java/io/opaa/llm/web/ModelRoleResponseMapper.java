@@ -9,10 +9,8 @@ import io.opaa.llm.ModelRoleAdministration.RerankModelView;
 import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
 import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
 import io.opaa.llm.ModelRoleAdministration.TranscriptionModelView;
-import io.opaa.llm.RerankRoleState;
+import io.opaa.llm.OptionalRoleState;
 import io.opaa.llm.TextRecognitionClient;
-import io.opaa.llm.TextRecognitionRoleState;
-import io.opaa.llm.TranscriptionRoleState;
 
 /** Maps the views of the rerank, transcription and text recognition roles; never a key. */
 final class ModelRoleResponseMapper {
@@ -42,24 +40,6 @@ final class ModelRoleResponseMapper {
         .baseUrl(view.baseUrl())
         .model(view.model())
         .updatedAt(view.updatedAt());
-  }
-
-  static ModelRoleCondition condition(RerankRoleState state) {
-    return switch (state) {
-      case DISABLED -> ModelRoleCondition.DISABLED;
-      case READY -> ModelRoleCondition.ACTIVE;
-      case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
-      case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
-    };
-  }
-
-  static ModelRoleCondition condition(TranscriptionRoleState state) {
-    return switch (state) {
-      case DISABLED -> ModelRoleCondition.DISABLED;
-      case READY -> ModelRoleCondition.ACTIVE;
-      case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
-      case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
-    };
   }
 
   static TextRecognitionModelSettingsResponse toResponse(TextRecognitionModelView view) {
@@ -100,7 +80,7 @@ final class ModelRoleResponseMapper {
     };
   }
 
-  static ModelRoleCondition condition(TextRecognitionRoleState state) {
+  static ModelRoleCondition condition(OptionalRoleState state) {
     return switch (state) {
       case DISABLED -> ModelRoleCondition.DISABLED;
       case READY -> ModelRoleCondition.ACTIVE;

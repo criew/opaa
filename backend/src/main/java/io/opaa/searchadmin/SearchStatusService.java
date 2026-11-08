@@ -19,12 +19,10 @@ import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.RerankRoleStatus;
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
-import io.opaa.llm.TextRecognitionRoleStatus;
 import io.opaa.llm.TextRecognitionRoleStatusProvider;
-import io.opaa.llm.TranscriptionRoleStatus;
 import io.opaa.llm.TranscriptionRoleStatusProvider;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.LibraryMetadataSchemaChangeService;
@@ -178,8 +176,8 @@ public class SearchStatusService {
         threshold,
         null,
         new EmbeddingIndexState(),
-        TranscriptionRoleStatus::disabled,
-        TextRecognitionRoleStatus::disabled,
+        OptionalRoleStatus::disabled,
+        OptionalRoleStatus::disabled,
         new ProcessLocalSearchStatusProbeResults(clock));
   }
 
@@ -432,7 +430,7 @@ public class SearchStatusService {
    * role, it does not know how the role is built.
    */
   private ModelRoleStatus rerankRole() {
-    RerankRoleStatus status = rerankRoleStatusProvider.currentStatus();
+    OptionalRoleStatus status = rerankRoleStatusProvider.currentStatus();
     if (status.diagnostic() != null) {
       log.debug("Rerank role reports {}: {}", status.state(), status.diagnostic());
     }
@@ -444,7 +442,7 @@ public class SearchStatusService {
         rerankDetail(status));
   }
 
-  private static ModelRoleCondition conditionOf(RerankRoleState state) {
+  private static ModelRoleCondition conditionOf(OptionalRoleState state) {
     return switch (state) {
       case DISABLED -> ModelRoleCondition.DISABLED;
       case READY -> ModelRoleCondition.ACTIVE;
@@ -454,12 +452,12 @@ public class SearchStatusService {
   }
 
   /**
-   * A timed-out {@link RerankRoleState#UNREACHABLE} gets its own wording: "antwortet nicht" reads
+   * A timed-out {@link OptionalRoleState#UNREACHABLE} gets its own wording: "antwortet nicht" reads
    * as a dead endpoint, which a CPU reranker still working within {@code opaa.rerank.timeout} is
    * not - it is slow, and the remedy (raise the timeout for its hardware) differs from the remedy
    * for an actually unreachable one.
    */
-  private static String rerankDetail(RerankRoleStatus status) {
+  private static String rerankDetail(OptionalRoleStatus status) {
     return switch (status.state()) {
       case DISABLED ->
           "Reranking ist ausdrücklich abgeschaltet. Die Suche läuft ohne diese Stufe - das ist"
@@ -488,7 +486,7 @@ public class SearchStatusService {
 
   /** Read through {@link TranscriptionRoleStatusProvider} only, like the rerank role. */
   private ModelRoleStatus transcriptionRole() {
-    TranscriptionRoleStatus status = transcriptionRoleStatusProvider.currentStatus();
+    OptionalRoleStatus status = transcriptionRoleStatusProvider.currentStatus();
     if (status.diagnostic() != null) {
       log.debug("Transcription role reports {}: {}", status.state(), status.diagnostic());
     }
@@ -496,7 +494,7 @@ public class SearchStatusService {
   }
 
   /** The role's state, endpoint and model as the status page shows them; no usage figures. */
-  static ModelRoleStatus transcriptionRole(TranscriptionRoleStatus status) {
+  static ModelRoleStatus transcriptionRole(OptionalRoleStatus status) {
     return new ModelRoleStatus(
         ModelRole.TRANSCRIPTION,
         switch (status.state()) {
@@ -510,7 +508,7 @@ public class SearchStatusService {
         transcriptionDetail(status));
   }
 
-  private static String transcriptionDetail(TranscriptionRoleStatus status) {
+  private static String transcriptionDetail(OptionalRoleStatus status) {
     return switch (status.state()) {
       case DISABLED ->
           "Die Spracheingabe ist abgeschaltet (Modelle → Spracheingabe oder die Funktion"
@@ -538,7 +536,7 @@ public class SearchStatusService {
   }
 
   /** The role's state, service and model as the status page shows them; no usage figures. */
-  static ModelRoleStatus textRecognitionRole(TextRecognitionRoleStatus status) {
+  static ModelRoleStatus textRecognitionRole(OptionalRoleStatus status) {
     if (status.diagnostic() != null) {
       log.debug("Text recognition role reports {}: {}", status.state(), status.diagnostic());
     }
@@ -555,7 +553,7 @@ public class SearchStatusService {
         textRecognitionDetail(status));
   }
 
-  private static String textRecognitionDetail(TextRecognitionRoleStatus status) {
+  private static String textRecognitionDetail(OptionalRoleStatus status) {
     return switch (status.state()) {
       case DISABLED ->
           "Die Texterkennung ist abgeschaltet (Schalter der Rolle in der Modellverwaltung oder"

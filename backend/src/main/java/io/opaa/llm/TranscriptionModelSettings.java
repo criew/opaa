@@ -2,7 +2,6 @@ package io.opaa.llm;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -13,23 +12,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "transcription_model")
-public class TranscriptionModelSettings {
-
-  static final short SINGLETON_ID = 1;
-
-  @Id private short id;
-
-  @Column(name = "enabled", nullable = false)
-  private boolean enabled;
-
-  @Column(name = "base_url", length = 500)
-  private String baseUrl;
-
-  @Column(name = "model_identifier", length = 200)
-  private String modelIdentifier;
-
-  @Column(name = "api_key_ciphertext")
-  private String apiKeyCiphertext;
+public class TranscriptionModelSettings extends OptionalRoleSettings {
 
   @Column(name = "language", length = 8)
   private String language;
@@ -37,47 +20,16 @@ public class TranscriptionModelSettings {
   @Column(name = "vocabulary", length = TranscriptionVocabulary.MAX_LENGTH)
   private String vocabulary;
 
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
-
   protected TranscriptionModelSettings() {}
 
   TranscriptionModelSettings(Instant now) {
-    this.id = SINGLETON_ID;
-    this.updatedAt = now;
+    super(now);
   }
 
-  void replace(
-      boolean enabled,
-      String baseUrl,
-      String modelIdentifier,
-      String apiKeyCiphertext,
-      String language,
-      String vocabulary,
-      Instant now) {
-    this.enabled = enabled;
-    this.baseUrl = baseUrl;
-    this.modelIdentifier = modelIdentifier;
-    this.apiKeyCiphertext = apiKeyCiphertext;
+  /** Replaces the columns of the transcription role; the endpoint goes through the superclass. */
+  void replaceOwn(String language, String vocabulary) {
     this.language = language;
     this.vocabulary = vocabulary;
-    this.updatedAt = now;
-  }
-
-  public boolean isEnabled() {
-    return enabled;
-  }
-
-  public String getBaseUrl() {
-    return baseUrl;
-  }
-
-  public String getModelIdentifier() {
-    return modelIdentifier;
-  }
-
-  String getApiKeyCiphertext() {
-    return apiKeyCiphertext;
   }
 
   public String getLanguage() {
@@ -87,9 +39,5 @@ public class TranscriptionModelSettings {
   /** The installation's vocabulary list; {@code null} when none is stored. */
   public String getVocabulary() {
     return vocabulary;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
   }
 }

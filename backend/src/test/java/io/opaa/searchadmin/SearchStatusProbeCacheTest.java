@@ -22,8 +22,8 @@ import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.RerankRoleStatus;
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
 import io.opaa.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.metadata.ModelExtractionCounters;
@@ -98,7 +98,7 @@ class SearchStatusProbeCacheTest {
             new EmbeddingInfo(
                 "openai", "text-embedding-3-small", 1536, "https://embedding.example.invalid/v1"));
     when(embeddingModel.embed(anyString())).thenReturn(new float[] {0.1f});
-    when(rerankRoleStatusProvider.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    when(rerankRoleStatusProvider.currentStatus()).thenReturn(OptionalRoleStatus.disabled());
     when(libraryRepository.findSharedByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
     when(documentStatsReader.statsForOrganization(ORGANIZATION_ID)).thenReturn(Map.of());
     when(fullTextIndexFillStateService.fillStateForLibraries(any())).thenReturn(List.of());
@@ -194,8 +194,8 @@ class SearchStatusProbeCacheTest {
   void aTimedOutRerankEndpointIsReportedDifferentlyFromAGenuinelyUnreachableOne() {
     when(rerankRoleStatusProvider.currentStatus())
         .thenReturn(
-            new RerankRoleStatus(
-                RerankRoleState.UNREACHABLE,
+            new OptionalRoleStatus(
+                OptionalRoleState.UNREACHABLE,
                 "http://reranker.example.invalid",
                 "bge-reranker",
                 "request timed out",
@@ -211,8 +211,8 @@ class SearchStatusProbeCacheTest {
   void aRefusedConnectionKeepsTheOriginalUnreachableWording() {
     when(rerankRoleStatusProvider.currentStatus())
         .thenReturn(
-            new RerankRoleStatus(
-                RerankRoleState.UNREACHABLE,
+            new OptionalRoleStatus(
+                OptionalRoleState.UNREACHABLE,
                 "http://reranker.example.invalid",
                 "bge-reranker",
                 "connection refused"));
@@ -231,8 +231,8 @@ class SearchStatusProbeCacheTest {
   void aRejectedRerankBaseUrlIsNamedAsSuchWithoutShowingTheAddress() {
     when(rerankRoleStatusProvider.currentStatus())
         .thenReturn(
-            new RerankRoleStatus(
-                RerankRoleState.UNCONFIGURED,
+            new OptionalRoleStatus(
+                OptionalRoleState.UNCONFIGURED,
                 null,
                 "bge-reranker",
                 "base URL carries credentials",

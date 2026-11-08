@@ -47,8 +47,8 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.AnswerCompleteness;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleStatus;
 import io.opaa.metadata.CitationMetadataReader;
 import io.opaa.metadata.CoreMetadata;
 import io.opaa.metadata.DocumentMetadataService;
@@ -241,7 +241,7 @@ class QueryServiceTest {
    */
   private static RerankModelRole disabledRerankRole() {
     RerankModelRole role = mock(RerankModelRole.class);
-    lenient().when(role.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    lenient().when(role.currentStatus()).thenReturn(OptionalRoleStatus.disabled());
     return role;
   }
 

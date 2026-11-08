@@ -439,20 +439,15 @@ class StepRules {
         && (temperature.signum() < 0 || temperature.compareTo(MAX_TEMPERATURE) > 0)) {
       errors.add(error("chatModel.temperature", INVALID, "Die Temperatur liegt zwischen 0 und 2."));
     }
-    blockedAddressError("chatModel", baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.CHAT_MODEL,
-            "chatModel",
-            input.apiKey(),
-            previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new ChatModelPayload(baseUrl, model, temperature, input.maxTokens())),
-        secret);
+    return modelStep(
+        InstallationStep.CHAT_MODEL,
+        "chatModel",
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new ChatModelPayload(baseUrl, model, temperature, input.maxTokens()));
   }
 
   private Stored embeddingModel(
@@ -469,20 +464,15 @@ class StepRules {
               INVALID,
               "Die Eingabegrenze liegt zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens."));
     }
-    blockedAddressError("embeddingModel", baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.EMBEDDING_MODEL,
-            "embeddingModel",
-            input.apiKey(),
-            previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
-        secret);
+    return modelStep(
+        InstallationStep.EMBEDDING_MODEL,
+        "embeddingModel",
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null));
   }
 
   /**
@@ -495,17 +485,15 @@ class StepRules {
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
     endpointErrors(RERANK_PREFIX, baseUrl, model, input.apiKey(), errors);
-    blockedAddressError(RERANK_PREFIX, baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.RERANK_MODEL,
-            RERANK_PREFIX,
-            input.apiKey(),
-            previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(json.writeValueAsString(new RerankModelPayload(baseUrl, model)), secret);
+    return modelStep(
+        InstallationStep.RERANK_MODEL,
+        RERANK_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new RerankModelPayload(baseUrl, model));
   }
 
   /**
@@ -524,23 +512,16 @@ class StepRules {
       errors.add(
           error(TRANSCRIPTION_PREFIX + ".language", INVALID, TranscriptionEndpoint.LANGUAGE_RULE));
     }
-    blockedAddressError(TRANSCRIPTION_PREFIX, baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.TRANSCRIPTION_MODEL,
-            TRANSCRIPTION_PREFIX,
-            input.apiKey(),
-            previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new TranscriptionModelPayload(
-                baseUrl,
-                model,
-                language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language)),
-        secret);
+    return modelStep(
+        InstallationStep.TRANSCRIPTION_MODEL,
+        TRANSCRIPTION_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new TranscriptionModelPayload(
+            baseUrl, model, language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language));
   }
 
   /**
@@ -559,20 +540,15 @@ class StepRules {
         new ArrayList<>(
             ModelRoleAdministration.textRecognitionErrors(
                 TEXT_RECOGNITION_PREFIX, true, type, baseUrl, model, input.apiKey()));
-    blockedAddressError(TEXT_RECOGNITION_PREFIX, baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.TEXT_RECOGNITION_MODEL,
-            TEXT_RECOGNITION_PREFIX,
-            input.apiKey(),
-            previousSecret == null ? null : textRecognitionModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new TextRecognitionModelPayload(type, baseUrl, model.isEmpty() ? null : model)),
-        secret);
+    return modelStep(
+        InstallationStep.TEXT_RECOGNITION_MODEL,
+        TEXT_RECOGNITION_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : textRecognitionModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new TextRecognitionModelPayload(type, baseUrl, model.isEmpty() ? null : model));
   }
 
   /**
@@ -722,6 +698,26 @@ class StepRules {
         errors.add(error(prefix + ".baseUrl", "BLOCKED", blocked));
       }
     }
+  }
+
+  /**
+   * Completes a model step whose own rules left their violations in {@code errors}: the address
+   * check of the installation for every address, the key carried as {@link #secretOf} decides, and
+   * {@code payload} stored.
+   */
+  private Stored modelStep(
+      InstallationStep step,
+      String prefix,
+      String baseUrl,
+      String apiKey,
+      List<FieldError> errors,
+      String previousBaseUrl,
+      String previousSecret,
+      Object payload) {
+    blockedAddressError(prefix, baseUrl, errors);
+    requireNoErrors(errors);
+    String secret = secretOf(step, prefix, apiKey, previousBaseUrl, baseUrl, previousSecret);
+    return new Stored(json.writeValueAsString(payload), secret);
   }
 
   /**

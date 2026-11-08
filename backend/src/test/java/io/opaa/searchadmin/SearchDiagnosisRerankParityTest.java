@@ -15,10 +15,10 @@ import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.RerankRoleStatus;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -59,7 +59,7 @@ class SearchDiagnosisRerankParityTest {
   private final RerankModelRole rerankModelRole = mock(RerankModelRole.class);
   private final LibraryAccessService libraryAccessService = mock(LibraryAccessService.class);
 
-  private SearchDiagnosis diagnose(RerankRoleStatus roleStatus) {
+  private SearchDiagnosis diagnose(OptionalRoleStatus roleStatus) {
     CurrentUser caller =
         CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
     when(libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()))
@@ -125,7 +125,8 @@ class SearchDiagnosisRerankParityTest {
   @Test
   void aUsableRerankRoleIsUsedByTheDiagnosisJustAsAChatQueryUsesIt() {
     SearchDiagnosis diagnosis =
-        diagnose(new RerankRoleStatus(RerankRoleState.READY, "http://reranker/v1", "bge", null));
+        diagnose(
+            new OptionalRoleStatus(OptionalRoleState.READY, "http://reranker/v1", "bge", null));
 
     assertThat(rerankStage(diagnosis).status()).isEqualTo(StageStatus.EXECUTED);
     assertThat(rerankStage(diagnosis).incomingCount()).isEqualTo(CANDIDATE_WINDOW);
@@ -137,7 +138,7 @@ class SearchDiagnosisRerankParityTest {
   /** A switched-off role is reported as switched off, and the run keeps the narrow budget. */
   @Test
   void aSwitchedOffRerankRoleLeavesTheDiagnosisWithTheUnrerankedSelection() {
-    SearchDiagnosis diagnosis = diagnose(RerankRoleStatus.disabled());
+    SearchDiagnosis diagnosis = diagnose(OptionalRoleStatus.disabled());
 
     assertThat(rerankStage(diagnosis).status()).isEqualTo(StageStatus.DISABLED);
     assertThat(diagnosis.selection()).hasSize(TOP_K);
@@ -169,8 +170,8 @@ class SearchDiagnosisRerankParityTest {
   void anUnreachableRerankRoleIsReportedAsUnavailable() {
     SearchDiagnosis diagnosis =
         diagnose(
-            new RerankRoleStatus(
-                RerankRoleState.UNREACHABLE, "http://reranker/v1", "bge", "connection refused"));
+            new OptionalRoleStatus(
+                OptionalRoleState.UNREACHABLE, "http://reranker/v1", "bge", "connection refused"));
 
     assertThat(rerankStage(diagnosis).status()).isEqualTo(StageStatus.UNAVAILABLE);
     assertThat(diagnosis.selection()).hasSize(TOP_K);

@@ -17,11 +17,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.TaskScheduler;
 
 /**
- * The startup line of the rerank role. It is the one place the role's endpoint is written to a log
- * file, which makes it the place where a base address carrying userinfo would end up in the
- * operator's log - so it is asserted against the recorded log event, not against a return value.
+ * The startup line of an optional model role, here the rerank role. It is the one place the role's
+ * endpoint is written to a log file, which makes it the place where a base address carrying
+ * userinfo would end up in the operator's log - so it is asserted against the recorded log event,
+ * not against a return value.
  */
-class RerankRoleStartupCheckTest {
+class OptionalRoleStartupCheckTest {
 
   private static final String SECRET_IN_BASE_URL = "benutzer:geheim";
 
@@ -38,13 +39,16 @@ class RerankRoleStartupCheckTest {
     // that writes the endpoint into the log line at ERROR level.
     when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
-    RerankRoleStartupCheck check =
-        new RerankRoleStartupCheck(
+    OptionalRoleStartupCheck check =
+        new OptionalRoleStartupCheck(
             new RerankModelRole(
                 new RerankProperties(Duration.ofSeconds(5), null),
                 () -> endpoint,
                 client,
                 Clock.systemUTC()),
+            ModelRoleSettingsChangedEvent.Role.RERANK,
+            "Rerank",
+            "Retrieval continues without reranking.",
             mock(TaskScheduler.class),
             Clock.systemUTC());
 
@@ -58,7 +62,7 @@ class RerankRoleStartupCheckTest {
 
   private static List<ILoggingEvent> captureWhile(Runnable action) {
     ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RerankRoleStartupCheck.class);
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(OptionalRoleStartupCheck.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);
