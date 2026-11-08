@@ -22,8 +22,6 @@ import javax.imageio.ImageReader;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
-import org.apache.pdfbox.contentstream.operator.Operator;
-import org.apache.pdfbox.contentstream.operator.OperatorName;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -32,7 +30,6 @@ import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.filter.DecodeOptions;
 import org.apache.pdfbox.filter.FilterFactory;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 
 /**
@@ -45,8 +42,8 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
  * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
  * while it loads the file count against their own limit. An image the renderer draws is checked by
- * {@link #requireImage} and a font every pass selects by {@link #requireFont} before PDFBox decodes
- * it. Not thread-safe: one budget belongs to one read of one document or one rendered page.
+ * {@link #requireImage} before PDFBox decodes it. Not thread-safe: one budget belongs to one read
+ * of one document or one rendered page.
  */
 final class PdfReadBudget {
 
@@ -86,9 +83,6 @@ final class PdfReadBudget {
    */
   static final long MAX_PAGE_GLYPHS = 200_000;
 
-  /** The most descendant-font levels and chained CMaps of one font. */
-  private static final int MAX_FONT_NESTING = 4;
-
   private final long maxCharacters;
   private final long maxOperators;
   private final long maxContentBytes;
@@ -100,10 +94,6 @@ final class PdfReadBudget {
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
   private final Map<COSStream, Long> imageBytes = new IdentityHashMap<>();
   private final Set<COSStream> checkedResources =
-      Collections.newSetFromMap(new IdentityHashMap<>());
-  private final Set<COSDictionary> checkedFonts =
-      Collections.newSetFromMap(new IdentityHashMap<>());
-  private final Set<COSStream> checkedFontStreams =
       Collections.newSetFromMap(new IdentityHashMap<>());
   private long usedCharacters;
   private long operators;
@@ -321,71 +311,12 @@ final class PdfReadBudget {
   }
 
   /**
-   * Checks the font {@code operator} selects when it is {@code Tf}, by {@link #requireFont}, before
-   * PDFBox loads it from {@code resources}.
+   * Checks that {@code stream}, which PDFBox reads into memory as a whole, decodes within the
+   * stream limit.
    */
-  void requireFontOperator(Operator operator, List<COSBase> operands, PDResources resources)
-      throws IOException {
-    if (!OperatorName.SET_FONT_AND_SIZE.equals(operator.getName())
-        || resources == null
-        || operands.isEmpty()
-        || !(operands.getFirst() instanceof COSName name)) {
-      return;
-    }
-    COSDictionary fonts = resources.getCOSObject().getCOSDictionary(COSName.FONT);
-    if (fonts != null) {
-      requireFont(fonts.getDictionaryObject(name));
-    }
-  }
-
-  /**
-   * Checks the streams PDFBox reads into memory as a whole when it loads {@code font}: the embedded
-   * font programs of its descriptor and of its descendant fonts, an embedded CMap with its {@code
-   * /UseCMap} chain, {@code /CIDToGIDMap} and {@code /ToUnicode}. Each may decode to no more than
-   * the stream limit. A Type 3 font's glyphs are content, charged when drawn. A font is checked
-   * once per budget.
-   */
-  void requireFont(COSBase font) throws IOException {
-    requireFont(font, 0);
-  }
-
-  private void requireFont(COSBase font, int depth) throws IOException {
-    if (!(font instanceof COSDictionary dictionary) || !checkedFonts.add(dictionary)) {
-      return;
-    }
+  void requireFontStream(COSStream stream) throws IOException {
     requireTime();
-    requireFontStream(dictionary.getDictionaryObject(COSName.TO_UNICODE));
-    requireFontStream(dictionary.getDictionaryObject(COSName.CID_TO_GID_MAP));
-    COSBase encoding = dictionary.getDictionaryObject(COSName.ENCODING);
-    for (int cmaps = 0; encoding instanceof COSStream cmap; cmaps++) {
-      if (cmaps >= MAX_FONT_NESTING) {
-        throw new ParserLimitExceededException(
-            "PDF font chains more than " + MAX_FONT_NESTING + " CMaps");
-      }
-      requireFontStream(cmap);
-      encoding = cmap.getDictionaryObject(COSName.USE_CMAP);
-    }
-    if (dictionary.getDictionaryObject(COSName.FONT_DESC) instanceof COSDictionary descriptor) {
-      requireFontStream(descriptor.getDictionaryObject(COSName.FONT_FILE));
-      requireFontStream(descriptor.getDictionaryObject(COSName.FONT_FILE2));
-      requireFontStream(descriptor.getDictionaryObject(COSName.FONT_FILE3));
-    }
-    if (dictionary.getDictionaryObject(COSName.DESCENDANT_FONTS) instanceof COSArray descendants) {
-      if (depth >= MAX_FONT_NESTING) {
-        throw new ParserLimitExceededException(
-            "PDF font nests descendant fonts deeper than " + MAX_FONT_NESTING);
-      }
-      for (int i = 0; i < Math.min(descendants.size(), MAX_FONT_NESTING); i++) {
-        requireFont(descendants.getObject(i), depth + 1);
-      }
-    }
-  }
-
-  private void requireFontStream(COSBase base) throws IOException {
-    if (base instanceof COSStream stream && !checkedFontStreams.contains(stream)) {
-      decodedLength(stream, maxStreamBytes, "font stream");
-      checkedFontStreams.add(stream);
-    }
+    decodedLength(stream, maxStreamBytes, "font stream");
   }
 
   /** The bytes of the raster a JPEG's frame header claims, read without decoding its scan. */

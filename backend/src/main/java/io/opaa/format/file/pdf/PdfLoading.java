@@ -4,8 +4,10 @@ import io.opaa.format.shared.ParserLimitExceededException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSObjectKey;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.io.IOUtils;
@@ -36,7 +39,8 @@ import org.slf4j.LoggerFactory;
  * Loads a PDF like {@code Loader.loadPDF}, but every cross-reference and object stream PDFBox
  * decodes is measured against the stream limit of a {@link PdfReadBudget} first, and the objects it
  * registers - cross-reference entries, object-stream objects, brute-force finds - count against the
- * object limit. The brute-force search skips an encrypted file's object streams.
+ * object limit. The brute-force search skips an encrypted file's object streams. Once loaded, every
+ * object is resolved and each embedded font stream measured, see {@link #requireFontStreams}.
  */
 final class PdfLoading {
 
@@ -63,6 +67,17 @@ final class PdfLoading {
 
   private static final byte[] OBJ = {'o', 'b', 'j'};
 
+  /** The keys under which a font holds a stream that PDFBox reads into memory as a whole. */
+  private static final Set<COSName> FONT_STREAM_KEYS =
+      Set.of(
+          COSName.FONT_FILE,
+          COSName.FONT_FILE2,
+          COSName.FONT_FILE3,
+          COSName.ENCODING,
+          COSName.USE_CMAP,
+          COSName.CID_TO_GID_MAP,
+          COSName.TO_UNICODE);
+
   private PdfLoading() {}
 
   /** The document in {@code file}, its loading charged to {@code budget}. */
@@ -72,10 +87,56 @@ final class PdfLoading {
       MeasuringParser parser = new MeasuringParser(source, budget);
       PDDocument document = parser.parse();
       parser.loaded = true;
+      try {
+        requireFontStreams(document.getDocument(), budget);
+      } catch (IOException | RuntimeException | Error e) {
+        IOUtils.closeQuietly(document);
+        throw e;
+      }
       return document;
     } catch (IOException | RuntimeException | Error e) {
       IOUtils.closeQuietly(source);
       throw e;
+    }
+  }
+
+  /**
+   * Measures every stream PDFBox reads into memory as a whole when it loads a font - the programs
+   * under {@code /FontFile}, {@code /FontFile2} and {@code /FontFile3}, a stream {@code /Encoding}
+   * or {@code /UseCMap}, {@code /CIDToGIDMap} and {@code /ToUnicode} - in every object of {@code
+   * document}, direct or nested, wherever the font is used: content, graphics states, form
+   * resources or annotations. Matched by key, not by {@code /Type}, which PDFBox does not require.
+   */
+  static void requireFontStreams(COSDocument document, PdfReadBudget budget) throws IOException {
+    Set<COSStream> measured = Collections.newSetFromMap(new IdentityHashMap<>());
+    Deque<COSBase> pending = new ArrayDeque<>();
+    for (COSObjectKey key : new ArrayList<>(document.getXrefTable().keySet())) {
+      budget.requireTime();
+      COSObject object = document.getObjectFromPool(key);
+      pending.push(object.getObject());
+      while (!pending.isEmpty()) {
+        COSBase base = pending.pop();
+        if (base instanceof COSArray array) {
+          for (COSBase element : array) {
+            if (!(element instanceof COSObject)) {
+              pending.push(element);
+            }
+          }
+        } else if (base instanceof COSDictionary dictionary) {
+          for (Map.Entry<COSName, COSBase> entry : dictionary.entrySet()) {
+            COSBase value = entry.getValue();
+            if (value instanceof COSObject reference) {
+              if (FONT_STREAM_KEYS.contains(entry.getKey())
+                  && reference.getObject() instanceof COSStream stream
+                  && measured.add(stream)) {
+                budget.requireFontStream(stream);
+              }
+            } else {
+              pending.push(value);
+            }
+          }
+        }
+      }
     }
   }
 

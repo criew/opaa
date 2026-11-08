@@ -37,6 +37,7 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDInlineImage;
 import org.apache.pdfbox.pdmodel.graphics.pattern.PDAbstractPattern;
 import org.apache.pdfbox.pdmodel.graphics.pattern.PDTilingPattern;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -215,7 +216,6 @@ final class PdfPageRenderer {
       if (current != null && checkedResources.add(current.getCOSObject())) {
         requireResourceDictionary(current.getCOSObject());
       }
-      budget.requireFontOperator(operator, operands, current);
       String name = operator.getName();
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
@@ -278,6 +278,19 @@ final class PdfPageRenderer {
         super.processType3Stream(charProc, textRenderingMatrix);
       } finally {
         type3Depth--;
+      }
+    }
+
+    /**
+     * Draws an annotation only from its own normal appearance; PDFBox would otherwise construct
+     * one, loading fonts and resources outside the page's. A scan's text lies in its images, not
+     * there.
+     */
+    @Override
+    public void showAnnotation(PDAnnotation annotation) throws IOException {
+      PDAppearanceDictionary appearance = annotation.getAppearance();
+      if (appearance != null && appearance.getNormalAppearance() != null) {
+        super.showAnnotation(annotation);
       }
     }
 
@@ -427,15 +440,10 @@ final class PdfPageRenderer {
     /**
      * Checks up front everything of {@code resources} PDFBox may later look up by name or swap in
      * on its own (the {@code /Default...} colour spaces for device colours and images): every
-     * colour space, shading, shading pattern, graphics state and font. Tiling patterns and forms
-     * are checked when drawn, under their own resources; a font again when {@code Tf} selects it.
+     * colour space, shading, shading pattern and graphics state. Tiling patterns, forms and fonts
+     * are checked when drawn, under their own resources.
      */
     private void requireResourceDictionary(COSDictionary resources) throws IOException {
-      if (resources.getDictionaryObject(COSName.FONT) instanceof COSDictionary fonts) {
-        for (COSBase font : fonts.getValues()) {
-          budget.requireFont(font instanceof COSObject reference ? reference.getObject() : font);
-        }
-      }
       requireResources(resources.getDictionaryObject(COSName.COLORSPACE));
       requireResources(resources.getDictionaryObject(COSName.SHADING));
       if (resources.getDictionaryObject(COSName.PATTERN) instanceof COSDictionary patterns) {

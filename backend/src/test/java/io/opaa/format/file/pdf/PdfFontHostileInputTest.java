@@ -33,10 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Embedded font programs and CMaps, which PDFBox reads into memory as a whole when a font is
- * selected, against the text extraction of {@link PdfDocumentFormat} and the page rendering of
- * {@link PdfPages}: a font stream past the stream limit fails before PDFBox decodes it. The {@code
- * hostileInputTest} task runs this class in a JVM of 512 MB heap.
+ * Embedded font programs and CMaps, which PDFBox reads into memory as a whole when it loads a font,
+ * against the text extraction of {@link PdfDocumentFormat} and the page rendering of {@link
+ * PdfPages}: a font stream past the stream limit fails the loading of the file, wherever the font
+ * is used. The {@code hostileInputTest} task runs this class in a JVM of 512 MB heap.
  */
 class PdfFontHostileInputTest {
 
@@ -92,19 +92,71 @@ class PdfFontHostileInputTest {
                 .hasMessage(FONT_LIMIT));
   }
 
-  // regression guard for #3637: a font used only in an annotation passes as a scan, then renders
+  // regression guard for #3637: a font used only in an annotation must not pass as a scan
   @Test
-  void aFontProgramBombOnlyInAnAnnotationIsRefusedWhenThePageIsRendered() throws IOException {
+  void aFontProgramBombOnlyInAnAnnotationIsRefusedOnBothPaths() throws IOException {
     Path file = pageWithFont(this::trueTypeBomb, true);
 
-    assertRefused(file);
+    assertRefusedOnBothPaths(file);
   }
 
   @Test
-  void aDescendantFontProgramBombIsRefusedWhenThePageIsRendered() throws IOException {
+  void aDescendantFontProgramBombIsRefusedOnBothPaths() throws IOException {
     Path file = pageWithFont(this::descendantBomb, false);
 
-    assertRefused(file);
+    assertRefusedOnBothPaths(file);
+  }
+
+  // regression guard for #3637: gs loads the font of /Font in a graphics state without Tf
+  @Test
+  void aFontProgramBombSelectedByAGraphicsStateIsRefusedOnBothPaths() throws IOException {
+    Path file = tempDir.resolve("gs.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      COSArray font = new COSArray();
+      font.add(trueTypeBomb(doc));
+      font.add(COSInteger.get(12));
+      COSDictionary state = new COSDictionary();
+      state.setItem(COSName.TYPE, COSName.EXT_G_STATE);
+      state.setItem(COSName.FONT, font);
+      COSDictionary states = new COSDictionary();
+      states.setItem(COSName.getPDFName("G0"), state);
+      COSDictionary resources = new COSDictionary();
+      resources.setItem(COSName.EXT_G_STATE, states);
+      page.setResources(new PDResources(resources));
+      page.getCOSObject().setItem(COSName.CONTENTS, stream(doc, "/G0 gs BT 100 100 Td (ab) Tj ET"));
+      doc.save(file.toFile());
+    }
+
+    assertRefusedOnBothPaths(file);
+  }
+
+  // regression guard for #3637: PDFBox builds a missing appearance from the form's /DR fonts
+  @Test
+  void aFreeTextAnnotationWithoutAppearanceIsRefusedOnBothPaths() throws IOException {
+    Path file = tempDir.resolve("freetext.pdf");
+    try (PDDocument doc = freeTextWithoutAppearance()) {
+      doc.save(file.toFile());
+    }
+
+    assertRefusedOnBothPaths(file);
+  }
+
+  @Test
+  void anAnnotationWithoutAppearanceIsNotConstructedWhenThePageIsRendered() throws IOException {
+    try (PDDocument doc = freeTextWithoutAppearance()) {
+      PdfPageRenderer renderer = new PdfPageRenderer(doc);
+
+      assertTimeoutPreemptively(
+          BOUND,
+          () ->
+              assertThat(
+                      renderer
+                          .render(0, 72, PdfReadBudget.of(ParserLimitProperties.DEFAULTS))
+                          .getWidth())
+                  .isPositive());
+    }
   }
 
   @Test
@@ -131,13 +183,48 @@ class PdfFontHostileInputTest {
     assertThat(rendered[0]).isEqualTo(1);
   }
 
-  private void assertRefused(Path file) {
+  private void assertRefusedOnBothPaths(Path file) {
     assertTimeoutPreemptively(
         BOUND,
-        () ->
-            assertThatThrownBy(() -> pages.render(file, (number, png) -> {}))
-                .isInstanceOf(PdfPages.PageOverLimitException.class)
-                .hasRootCauseMessage(FONT_LIMIT));
+        () -> {
+          assertThatThrownBy(() -> pipeline.run(DocumentFormatSource.ofFile(file, "font.pdf")))
+              .isInstanceOf(ParserLimitExceededException.class)
+              .hasMessage(FONT_LIMIT);
+          assertThatThrownBy(() -> pages.render(file, (number, png) -> {}))
+              .isInstanceOf(ParserLimitExceededException.class)
+              .hasMessage(FONT_LIMIT);
+        });
+  }
+
+  /**
+   * One page with a FreeText annotation that has no appearance and names {@code /F1} in its {@code
+   * /DA}, the font a bomb in the AcroForm's {@code /DR}.
+   */
+  private PDDocument freeTextWithoutAppearance() throws IOException {
+    PDDocument doc = new PDDocument();
+    PDPage page = new PDPage(PDRectangle.A4);
+    doc.addPage(page);
+    COSDictionary fonts = new COSDictionary();
+    fonts.setItem(COSName.getPDFName("F1"), trueTypeBomb(doc));
+    COSDictionary defaults = new COSDictionary();
+    defaults.setItem(COSName.FONT, fonts);
+    COSDictionary form = new COSDictionary();
+    form.setItem(COSName.DR, defaults);
+    form.setItem(COSName.FIELDS, new COSArray());
+    form.setString(COSName.DA, "/F1 12 Tf 0 g");
+    doc.getDocumentCatalog().getCOSObject().setItem(COSName.ACRO_FORM, form);
+    COSDictionary annotation = new COSDictionary();
+    annotation.setItem(COSName.TYPE, COSName.ANNOT);
+    annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("FreeText"));
+    annotation.setItem(COSName.RECT, new PDRectangle(100, 100, 200, 50).getCOSArray());
+    annotation.setString(COSName.DA, "/F1 12 Tf 0 g");
+    annotation.setString(COSName.CONTENTS, "Hallo");
+    COSArray annotations = new COSArray();
+    annotations.add(annotation);
+    page.getCOSObject().setItem(COSName.ANNOTS, annotations);
+    page.setResources(new PDResources());
+    page.getCOSObject().setItem(COSName.CONTENTS, stream(doc, "0 0 1 1 re f"));
+    return doc;
   }
 
   @FunctionalInterface
