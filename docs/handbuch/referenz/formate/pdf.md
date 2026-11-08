@@ -128,7 +128,7 @@ Listen und Tabellen; Kopf- und Fußzeilen der Seiten fallen weg. Geschnitten wir
 Überschriften, Tabellen zeilenweise mit ihrer Kopfzeile, wie bei einem PDF mit Textebene. Die
 Ortsangabe nennt Seiten und Abschnitt, „S. 2–3 · Abschn. § 4 Gebühren“; jeder Abschnitt trägt
 zusätzlich die Rahmen seiner Zeilen auf der Seite und den Vermerk, dass sein Text erkannt wurde.
-Ein Vision-Modell liefert je Seite Text ohne Rahmen. Der erkannte Text wird mit dem Dokument
+Ein Vision-Modell liefert je Seite Text ohne Rahmen; dafür stellt OPAA jede Seite als Bild dar, unter den Grenzen beim Lesen für jede Seite neu und in festen Grenzen für Seitenmaß und Bilder ([Feste Grenzen](../wie-indexierung-arbeitet.md#feste-grenzen)). Eine Seite darüber sperrt die Texterkennung des Scans mit ihrer Seitennummer. Der erkannte Text wird mit dem Dokument
 gespeichert, ohne Seitenbilder; ein erneutes Indizieren der unveränderten Datei braucht den Dienst
 nicht. Erkennungsfehler sind möglich, maßgeblich bleibt das Original.
 

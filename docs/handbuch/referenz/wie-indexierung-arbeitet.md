@@ -66,6 +66,7 @@ fertig war, bleibt indiziert.
 | Eingabe des Embedding-Modells | 8191 Tokens abzüglich 10 % | ein Chunk darüber lässt das ganze Dokument scheitern |
 | Kennungen je Chunk | 64 | weitere werden nicht gespeichert |
 | Laufprotokoll | 500 Einträge je Lauf, zehn Läufe je Bibliothek | darüber nur gezählt bzw. gelöscht |
+| Seitenbild für das Vision-Modell | 200 dpi in Graustufen, große Seiten gröber bis 72 dpi, höchstens 16 Mio. Pixel; Bilder auf der Seite bis 100 Mio. Pixel, höchstens vier verschachtelte Transparenzgruppen | eine Seite darüber sperrt die Texterkennung des Scans mit Seitennummer |
 
 ## Speicherkontingent
 
@@ -88,7 +89,7 @@ Einträge, je Bibliothek die letzten zehn Läufe.
 | Ratenbegrenzung, Budget erschöpft | Quelle bremst oder Anfrage- bzw. Seitenbudget der Texterkennung verbraucht; der nächste Lauf setzt fort |
 | Per Texterkennung gelesen | Scan erkannt oder aus dem gespeicherten Erkennungsstand indiziert, auch „ohne erkannten Text“ |
 | Texterkennung gescheitert / ausstehend | Dienst nicht verfügbar, nur teilweise umgewandelt oder unerwarteter Fehler bzw. Seitenbudget verbraucht oder kein freier Platz; der Scan wartet auf den nächsten Lauf |
-| Texterkennung gesperrt | docling-serve lehnt die Datei ab, das Vision-Modell lehnt eine Seite als zu groß ab (HTTP 413), sie ist unlesbar oder liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek |
+| Texterkennung gesperrt | docling-serve lehnt die Datei ab, das Vision-Modell lehnt eine Seite als zu groß ab (HTTP 413), eine Seite lässt sich nicht in den Grenzen der Bilddarstellung rendern, die Datei ist unlesbar oder liegt über der Seitengrenze; bis zur Freigabe in der Bibliothek |
 | in der Quelle entfernt | gelöscht, weil die Quelle es nicht mehr hat |
 | Auffällige Muster | aufgenommen, mit Zählung verdächtiger Muster |
 | Fehler | unerwartet gescheitert |

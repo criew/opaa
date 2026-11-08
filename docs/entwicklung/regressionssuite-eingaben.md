@@ -18,6 +18,7 @@ Review.
 | Klasse | Weg | Lauf |
 |---|---|---|
 | `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: alle registrierten Formate (`ProductionDocumentFormats.registry(...)`, gegen den Spring-Kontext gehalten von `DocumentFormatRegistryRoutingIntegrationTest`), Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **5 s** (unter einer Sekunde im behobenen Stand) oder **20 s** |
+| `io.opaa.format.file.pdf.PdfPagesHostileInputTest` | Seitendarstellung der Texterkennung (`PdfPages#render`, Weg „Vision-Modell“) mit Produktionsgrenzen: übergroße Seiten, Bilder, Inline-Bilder, Transparenzgruppen, Lesebudget je Seite; PDFs erzeugt der Test selbst mit PDFBox | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **20 s** |
 | `io.opaa.library.HostileUploadIntegrationTest` | Upload-Verarbeitung im gemeinsamen Spring-Kontext: Upload-Pool, Anhänge, Zeilenstatus, Folge-Upload | `./gradlew test` (Shard `api`), je Datei **90 s** bis zum Endstatus |
 
 Die Wächter der Parser-Fixes stehen in `FormatHostileInputTest`. Der Upload-Test prüft den Weg bis
