@@ -653,7 +653,8 @@ opaa:
     orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
     # Upper limit (bytes) of the total size, summed across every document a library holds, that one
-    # library may occupy - enforced at every path that stores document content. The house-wide quota
+    # library may occupy - enforced at every path that stores library content; chat attachments have
+    # their own quotas under opaa.chat.attachments.*-quota-bytes. The house-wide quota
     # of shared libraries is set below it in the administration. Default 10 GiB; 0 or negative
     # lifts the upper limit - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}

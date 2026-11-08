@@ -13,17 +13,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +58,8 @@ class ChatAttachmentIntegrationTest {
   @Autowired private ChatRepository chatRepository;
   @Autowired private ChatService chatService;
   @Autowired private ChatAttachmentProperties properties;
+  @Autowired private ChatAttachmentQuota quota;
+  @Autowired private ChatAttachmentRepository attachmentRepository;
 
   private final List<UUID> spaces = new ArrayList<>();
   private UUID devUser;
@@ -334,11 +342,73 @@ class ChatAttachmentIntegrationTest {
       for (Future<Integer> result : pool.invokeAll(calls)) {
         statuses.add(result.get());
       }
-      assertThat(statuses).containsOnlyOnce(201);
+      assertThat(statuses).containsExactlyInAnyOrder(201, 413, 413);
     } finally {
       pool.shutdownNow();
     }
     assertThat(usageOfDevUser()).isLessThanOrEqualTo(properties.accountQuotaBytes());
+  }
+
+  /**
+   * A second intake of the same account waits for the first to commit and then sees its row: the
+   * check and the insert of one intake are never interleaved with another's.
+   */
+  @Test
+  void aSecondIntakeOfTheAccountWaitsForTheFirstAndThenSeesItsRow() throws Exception {
+    long bytes = 100;
+    occupy(aChat(), properties.accountQuotaBytes() - usageOfDevUser() - bytes);
+    CountDownLatch stored = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<ChatAttachment> first =
+          pool.submit(
+              () ->
+                  quota.admit(
+                      organization,
+                      devUser,
+                      bytes,
+                      () -> {
+                        ChatAttachment row = attachmentRepository.save(anAttachment(bytes));
+                        stored.countDown();
+                        awaitQuietly(release);
+                        return row;
+                      }));
+      assertThat(stored.await(10, TimeUnit.SECONDS)).isTrue();
+      Future<ChatAttachment> second =
+          pool.submit(
+              () ->
+                  quota.admit(
+                      organization,
+                      devUser,
+                      bytes,
+                      () -> attachmentRepository.save(anAttachment(bytes))));
+
+      assertThatThrownBy(() -> second.get(1, TimeUnit.SECONDS))
+          .isInstanceOf(TimeoutException.class);
+      release.countDown();
+      assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
+      assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS))
+          .isInstanceOf(ExecutionException.class)
+          .hasCauseInstanceOf(PayloadTooLargeException.class);
+    } finally {
+      release.countDown();
+      pool.shutdownNow();
+    }
+    assertThat(usageOfDevUser()).isEqualTo(properties.accountQuotaBytes());
+  }
+
+  private ChatAttachment anAttachment(long bytes) {
+    return new ChatAttachment(
+        organization, space, devUser, "Zeile.txt", "text/plain", bytes, Instant.now());
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   private UUID upload(String fileName, String text) throws Exception {
