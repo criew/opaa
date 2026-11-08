@@ -698,12 +698,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
+      # from hashed wheels only and no sdist build fetches unhashed build requirements.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: Install pytest
-        run: pip install --require-hashes -r .github/requirements-ci.txt
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
 
       - name: Install the packages of the update package
         run: |
@@ -724,15 +727,17 @@ jobs:
         with:
           persist-credentials: false
 
+      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
+      # from hashed wheels only and no sdist build fetches unhashed build requirements.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: Install dependencies
         # demo/seed/requirements.txt is the range the seed itself declares, so it stays outside
         # hash-checking mode; the CI tools come with hashes.
         run: |
-          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
           pip install -r demo/seed/requirements.txt
 
       # Der Seed-Lauf selbst wird nur vom nächtlichen Demo-Smoke ausgeübt; was ohne
