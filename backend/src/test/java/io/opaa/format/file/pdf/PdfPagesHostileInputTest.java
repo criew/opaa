@@ -588,6 +588,75 @@ class PdfPagesHostileInputTest {
         file, "PDF resource stream exceeds the configured limit of 8388608 decoded bytes");
   }
 
+  // regression guard for #3637: PDFBox sizes a sampled function's table by its declared /Size
+  @Test
+  void aTintTransformDeclaringAGiantSampleTableIsRefused() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              COSArray separation = new COSArray();
+              separation.add(COSName.SEPARATION);
+              separation.add(COSName.getPDFName("Spot"));
+              separation.add(COSName.DEVICEGRAY);
+              separation.add(sampledFunction(doc, 60_000_000));
+              COSDictionary colorSpaces = new COSDictionary();
+              colorSpaces.setItem(COSName.getPDFName("CS0"), separation);
+              COSDictionary resources = new COSDictionary();
+              resources.setItem(COSName.COLORSPACE, colorSpaces);
+              page.setResources(new PDResources(resources));
+              raw(content, "/CS0 cs 0.5 scn 0 0 100 100 re f");
+            });
+
+    assertRefused(file, "PDF function declares 60000000 samples, more than 1048576");
+  }
+
+  @Test
+  void aTransferFunctionDeclaringAGiantSampleTableIsRefused() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              COSDictionary state = new COSDictionary();
+              state.setItem(COSName.TYPE, COSName.EXT_G_STATE);
+              state.setItem(COSName.TR, sampledFunction(doc, 60_000_000));
+              COSDictionary states = new COSDictionary();
+              states.setItem(COSName.getPDFName("GS0"), state);
+              PDResources resources = new PDResources();
+              resources.getCOSObject().setItem(COSName.EXT_G_STATE, states);
+              PDImageXObject image =
+                  LosslessFactory.createFromImage(
+                      doc, new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY));
+              COSName name = resources.add(image);
+              page.setResources(resources);
+              raw(content, "/GS0 gs q 100 0 0 100 50 50 cm /" + name.getName() + " Do Q");
+            });
+
+    assertRefused(file, "PDF function declares 60000000 samples, more than 1048576");
+  }
+
+  @Test
+  void aSmallSampledTintTransformIsRendered() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              COSArray separation = new COSArray();
+              separation.add(COSName.SEPARATION);
+              separation.add(COSName.getPDFName("Spot"));
+              separation.add(COSName.DEVICEGRAY);
+              separation.add(sampledFunction(doc, 256));
+              COSDictionary colorSpaces = new COSDictionary();
+              colorSpaces.setItem(COSName.getPDFName("CS0"), separation);
+              COSDictionary resources = new COSDictionary();
+              resources.setItem(COSName.COLORSPACE, colorSpaces);
+              page.setResources(new PDResources(resources));
+              raw(content, "/CS0 cs 0.5 scn 0 0 100 100 re f");
+            });
+
+    assertThat(renderOnly(file).getWidth()).isEqualTo(1653);
+  }
+
   private void assertRefused(Path file, String reason) {
     List<Integer> rendered = new ArrayList<>();
     assertTimeoutPreemptively(
@@ -706,6 +775,28 @@ class PdfPagesHostileInputTest {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  /** A one-input, one-output sampled function declaring {@code size} samples over 1 MiB. */
+  private static COSStream sampledFunction(PDDocument doc, int size) throws IOException {
+    COSStream function = doc.getDocument().createCOSStream();
+    try (OutputStream out = function.createOutputStream(COSName.FLATE_DECODE)) {
+      out.write(new byte[1024 * 1024]);
+    }
+    function.setInt(COSName.FUNCTION_TYPE, 0);
+    COSArray domain = new COSArray();
+    domain.add(COSInteger.get(0));
+    domain.add(COSInteger.get(1));
+    function.setItem(COSName.DOMAIN, domain);
+    COSArray range = new COSArray();
+    range.add(COSInteger.get(0));
+    range.add(COSInteger.get(1));
+    function.setItem(COSName.RANGE, range);
+    COSArray sizes = new COSArray();
+    sizes.add(COSInteger.get(size));
+    function.setItem(COSName.SIZE, sizes);
+    function.setInt(COSName.BITS_PER_SAMPLE, 8);
+    return function;
   }
 
   private static byte[] deflate(byte[] data) throws IOException {

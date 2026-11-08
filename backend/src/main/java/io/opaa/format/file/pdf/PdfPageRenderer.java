@@ -19,6 +19,7 @@ import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSNumber;
 import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -87,6 +88,12 @@ final class PdfPageRenderer {
 
   /** The most Type 3 glyphs drawn inside one another. */
   static final int MAX_TYPE3_DEPTH = 4;
+
+  /**
+   * The most samples a sampled function may declare: PDFBox allocates its table from the declared
+   * {@code /Size} and outputs, whatever the stream holds.
+   */
+  static final long MAX_FUNCTION_SAMPLES = 1L << 20;
 
   /** The most objects one shading, function or colour space may reach. */
   private static final int MAX_RESOURCE_OBJECTS = 10_000;
@@ -205,6 +212,11 @@ final class PdfPageRenderer {
       String name = operator.getName();
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
+      } else if (OperatorName.SET_GRAPHICS_STATE_PARAMS.equals(name)
+          && !operands.isEmpty()
+          && operands.getFirst() instanceof COSName stateName
+          && namedResource(COSName.EXT_G_STATE, stateName) instanceof COSDictionary state) {
+        requireTransferFunctions(state);
       } else if ((OperatorName.NON_STROKING_COLORSPACE.equals(name)
               || OperatorName.STROKING_COLORSPACE.equals(name))
           && !operands.isEmpty()
@@ -403,6 +415,48 @@ final class PdfPageRenderer {
               : colorSpace);
     }
 
+    /**
+     * Checks the transfer functions an ExtGState sets, directly and for its soft mask; the soft
+     * mask's group is charged when it is drawn.
+     */
+    private void requireTransferFunctions(COSDictionary state) throws IOException {
+      requireResources(state.getDictionaryObject(COSName.TR));
+      requireResources(state.getDictionaryObject(COSName.TR2));
+      if (state.getDictionaryObject(COSName.SMASK) instanceof COSDictionary softMask) {
+        requireResources(softMask.getDictionaryObject(COSName.TR));
+      }
+    }
+
+    /** Throws when {@code function} is a sampled function declaring too many samples. */
+    private static void requireSamples(COSDictionary function) {
+      if (function.getInt(COSName.FUNCTION_TYPE, -1) != 0) {
+        return;
+      }
+      long samples = 1;
+      COSArray sizes = function.getCOSArray(COSName.SIZE);
+      if (sizes != null) {
+        for (int i = 0; i < sizes.size(); i++) {
+          long size = sizes.getObject(i) instanceof COSNumber number ? number.longValue() : 0;
+          samples = saturatedProduct(samples, size);
+        }
+      }
+      COSArray range = function.getCOSArray(COSName.RANGE);
+      long outputs = range == null ? 1 : Math.max(1, range.size() / 2);
+      samples = saturatedProduct(samples, outputs);
+      if (samples > MAX_FUNCTION_SAMPLES) {
+        throw new ParserLimitExceededException(
+            "PDF function declares " + samples + " samples, more than " + MAX_FUNCTION_SAMPLES);
+      }
+    }
+
+    /**
+     * {@code a} times {@code b}, at least 1, held at {@link Long#MAX_VALUE} instead of wrapping.
+     */
+    private static long saturatedProduct(long a, long b) {
+      long factor = Math.max(1, b);
+      return a > Long.MAX_VALUE / factor ? Long.MAX_VALUE : a * factor;
+    }
+
     /** The raw entry {@code name} of the current resources' {@code category}, or null. */
     private COSBase namedResource(COSName category, COSName name) {
       PDResources resources = getResources();
@@ -416,7 +470,8 @@ final class PdfPageRenderer {
     /**
      * Checks every stream {@code root} reaches - shading data, functions, colour profiles and
      * lookup tables, which PDFBox reads into memory as a whole - against {@link
-     * #MAX_RESOURCE_STREAM_BYTES}; a structure past {@link #MAX_RESOURCE_OBJECTS} is refused.
+     * #MAX_RESOURCE_STREAM_BYTES}, and every sampled function against {@link
+     * #MAX_FUNCTION_SAMPLES}; a structure past {@link #MAX_RESOURCE_OBJECTS} is refused.
      */
     private void requireResources(COSBase root) throws IOException {
       Set<COSBase> seen = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -440,6 +495,7 @@ final class PdfPageRenderer {
           budget.requireResourceStream(stream, MAX_RESOURCE_STREAM_BYTES);
         }
         if (next instanceof COSDictionary dictionary) {
+          requireSamples(dictionary);
           for (COSBase value : dictionary.getValues()) {
             pending.push(value);
           }
