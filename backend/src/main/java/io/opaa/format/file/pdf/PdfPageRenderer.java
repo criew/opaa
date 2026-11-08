@@ -200,6 +200,8 @@ final class PdfPageRenderer {
     private int groupDepth;
     private int patternDepth;
     private int type3Depth;
+    private final Set<COSDictionary> checkedResources =
+        Collections.newSetFromMap(new IdentityHashMap<>());
 
     LimitedPageDrawer(PageDrawerParameters parameters, PdfReadBudget budget) throws IOException {
       super(parameters);
@@ -209,6 +211,10 @@ final class PdfPageRenderer {
     @Override
     protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
       budget.countOperator(operands);
+      PDResources current = getResources();
+      if (current != null && checkedResources.add(current.getCOSObject())) {
+        requireResourceDictionary(current.getCOSObject());
+      }
       String name = operator.getName();
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
@@ -216,7 +222,7 @@ final class PdfPageRenderer {
           && !operands.isEmpty()
           && operands.getFirst() instanceof COSName stateName
           && namedResource(COSName.EXT_G_STATE, stateName) instanceof COSDictionary state) {
-        requireTransferFunctions(state);
+        requireGraphicsState(state);
       } else if ((OperatorName.NON_STROKING_COLORSPACE.equals(name)
               || OperatorName.STROKING_COLORSPACE.equals(name))
           && !operands.isEmpty()
@@ -241,6 +247,7 @@ final class PdfPageRenderer {
     @Override
     public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
       budget.chargeContent(form.getCOSObject());
+      requireGroupColorSpace(form.getCOSObject());
       groupDepth = enter(groupDepth, MAX_GROUP_DEPTH, "transparency groups");
       try {
         super.showTransparencyGroup(form);
@@ -252,6 +259,7 @@ final class PdfPageRenderer {
     @Override
     protected void processSoftMask(PDTransparencyGroup group) throws IOException {
       budget.chargeContent(group.getCOSObject());
+      requireGroupColorSpace(group.getCOSObject());
       groupDepth = enter(groupDepth, MAX_GROUP_DEPTH, "transparency groups");
       try {
         super.processSoftMask(group);
@@ -416,14 +424,53 @@ final class PdfPageRenderer {
     }
 
     /**
-     * Checks the transfer functions an ExtGState sets, directly and for its soft mask; the soft
-     * mask's group is charged when it is drawn.
+     * Checks up front everything of {@code resources} PDFBox may later look up by name or swap in
+     * on its own (the {@code /Default...} colour spaces for device colours and images): every
+     * colour space, shading, shading pattern and graphics state. Tiling patterns, forms and fonts
+     * are checked when drawn, under their own resources.
      */
-    private void requireTransferFunctions(COSDictionary state) throws IOException {
+    private void requireResourceDictionary(COSDictionary resources) throws IOException {
+      requireResources(resources.getDictionaryObject(COSName.COLORSPACE));
+      requireResources(resources.getDictionaryObject(COSName.SHADING));
+      if (resources.getDictionaryObject(COSName.PATTERN) instanceof COSDictionary patterns) {
+        for (COSBase value : patterns.getValues()) {
+          COSBase pattern = value instanceof COSObject reference ? reference.getObject() : value;
+          if (pattern instanceof COSDictionary dictionary
+              && !(pattern instanceof COSStream)
+              && dictionary.getInt(COSName.PATTERN_TYPE, 0) == 2) {
+            requireResources(dictionary);
+          }
+        }
+      }
+      if (resources.getDictionaryObject(COSName.EXT_G_STATE) instanceof COSDictionary states) {
+        for (COSBase value : states.getValues()) {
+          COSBase state = value instanceof COSObject reference ? reference.getObject() : value;
+          if (state instanceof COSDictionary dictionary) {
+            requireGraphicsState(dictionary);
+          }
+        }
+      }
+    }
+
+    /**
+     * Checks the transfer functions an ExtGState sets, directly and for its soft mask, and the
+     * colour space of the soft mask's group; the group's content is charged when it is drawn.
+     */
+    private void requireGraphicsState(COSDictionary state) throws IOException {
       requireResources(state.getDictionaryObject(COSName.TR));
       requireResources(state.getDictionaryObject(COSName.TR2));
       if (state.getDictionaryObject(COSName.SMASK) instanceof COSDictionary softMask) {
         requireResources(softMask.getDictionaryObject(COSName.TR));
+        if (softMask.getDictionaryObject(COSName.G) instanceof COSDictionary group) {
+          requireGroupColorSpace(group);
+        }
+      }
+    }
+
+    /** Checks the colour space of a transparency group's {@code /Group} entry. */
+    private void requireGroupColorSpace(COSDictionary form) throws IOException {
+      if (form.getDictionaryObject(COSName.GROUP) instanceof COSDictionary group) {
+        requireResources(group.getDictionaryObject(COSName.CS));
       }
     }
 

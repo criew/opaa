@@ -657,6 +657,68 @@ class PdfPagesHostileInputTest {
     assertThat(renderOnly(file).getWidth()).isEqualTo(1653);
   }
 
+  // regression guard for #3637: PDFBox swaps in /DefaultGray for g and for DeviceGray images
+  @Test
+  void aGreyFillWithAHostileDefaultGrayIsRefused() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              page.setResources(new PDResources(withHostileDefaultGray(doc)));
+              raw(content, "0.5 g 0 0 100 100 re f");
+            });
+
+    assertRefused(file, "PDF function declares 60000000 samples, more than 1048576");
+  }
+
+  @Test
+  void aGreyImageWithAHostileDefaultGrayIsRefused() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              PDResources resources = new PDResources(withHostileDefaultGray(doc));
+              COSName name =
+                  resources.add(
+                      LosslessFactory.createFromImage(
+                          doc, new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY)));
+              page.setResources(resources);
+              raw(content, "q 100 0 0 100 50 50 cm /" + name.getName() + " Do Q");
+            });
+
+    assertRefused(file, "PDF function declares 60000000 samples, more than 1048576");
+  }
+
+  @Test
+  void aSoftMaskGroupWithAHostileColourSpaceIsRefused() throws IOException {
+    Path file =
+        onePage(
+            PDRectangle.A4,
+            (doc, page, content) -> {
+              PDFormXObject group = transparencyGroup(doc, "0 0 10 10 re f".getBytes());
+              group
+                  .getCOSObject()
+                  .getCOSDictionary(COSName.GROUP)
+                  .setItem(COSName.CS, hostileSeparation(doc));
+              COSDictionary softMask = new COSDictionary();
+              softMask.setItem(COSName.S, COSName.LUMINOSITY);
+              softMask.setItem(COSName.G, group);
+              COSArray backdrop = new COSArray();
+              backdrop.add(COSInteger.get(0));
+              softMask.setItem(COSName.BC, backdrop);
+              COSDictionary state = new COSDictionary();
+              state.setItem(COSName.SMASK, softMask);
+              COSDictionary states = new COSDictionary();
+              states.setItem(COSName.getPDFName("GS0"), state);
+              COSDictionary resources = new COSDictionary();
+              resources.setItem(COSName.EXT_G_STATE, states);
+              page.setResources(new PDResources(resources));
+              raw(content, "/GS0 gs 0 0 100 100 re f");
+            });
+
+    assertRefused(file, "PDF function declares 60000000 samples, more than 1048576");
+  }
+
   private void assertRefused(Path file, String reason) {
     List<Integer> rendered = new ArrayList<>();
     assertTimeoutPreemptively(
@@ -797,6 +859,36 @@ class PdfPagesHostileInputTest {
     function.setItem(COSName.SIZE, sizes);
     function.setInt(COSName.BITS_PER_SAMPLE, 8);
     return function;
+  }
+
+  /**
+   * A Separation colour space whose tint transform declares 60 million samples, 20 million of three
+   * outputs; its alternate is RGB, so that it can stand in for {@code /DefaultGray} without
+   * referring to itself.
+   */
+  private static COSArray hostileSeparation(PDDocument doc) throws IOException {
+    COSArray separation = new COSArray();
+    separation.add(COSName.SEPARATION);
+    separation.add(COSName.getPDFName("Spot"));
+    separation.add(COSName.DEVICERGB);
+    COSStream function = sampledFunction(doc, 20_000_000);
+    COSArray range = new COSArray();
+    for (int i = 0; i < 3; i++) {
+      range.add(COSInteger.get(0));
+      range.add(COSInteger.get(1));
+    }
+    function.setItem(COSName.RANGE, range);
+    separation.add(function);
+    return separation;
+  }
+
+  /** Resources whose {@code /DefaultGray} is {@link #hostileSeparation}. */
+  private static COSDictionary withHostileDefaultGray(PDDocument doc) throws IOException {
+    COSDictionary colorSpaces = new COSDictionary();
+    colorSpaces.setItem(COSName.DEFAULT_GRAY, hostileSeparation(doc));
+    COSDictionary resources = new COSDictionary();
+    resources.setItem(COSName.COLORSPACE, colorSpaces);
+    return resources;
   }
 
   private static byte[] deflate(byte[] data) throws IOException {
