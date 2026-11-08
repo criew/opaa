@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
+import io.opaa.format.hostile.HostileFiles;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
@@ -81,6 +84,23 @@ class BrandingImageValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(BrandingImageKind.LOGO, tooLarge))
         .isInstanceOf(PayloadTooLargeException.class);
+  }
+
+  // regression guard for #3619: an archive entry needing the absent zstd codec is no server error
+  @Test
+  void rejectsAnArchiveWhoseEntryNeedsAnAbsentCodecAsAWrongFormat() throws IOException {
+    ByteArrayOutputStream zip = new ByteArrayOutputStream();
+    try (ZipOutputStream out = new ZipOutputStream(zip)) {
+      out.putNextEntry(new ZipEntry("mimetype"));
+      out.write("application/vnd.oasis.opendocument.text".getBytes(StandardCharsets.US_ASCII));
+      out.closeEntry();
+    }
+    byte[] content =
+        HostileFiles.withZstdEntries("logo.png", zip.toByteArray(), "mimetype").bytes();
+
+    assertThatThrownBy(() -> validator.validate(BrandingImageKind.LOGO, content))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("PNG- oder JPEG-Datei");
   }
 
   @Test

@@ -15,7 +15,9 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Random;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
@@ -415,6 +417,78 @@ public final class HostileFiles {
     byte[] bytes = new byte[characters];
     Arrays.fill(bytes, (byte) 'a');
     return new HostileFile("ohne-leerraum.txt", bytes);
+  }
+
+  /** Compression method 93: Zstandard, readable only with the optional zstd-jni library. */
+  public static final int ZIP_METHOD_ZSTD = 93;
+
+  /**
+   * {@code container} repacked as {@code fileName} with every entry stored and the entries named in
+   * {@code zstdEntries} declaring {@link #ZIP_METHOD_ZSTD} in their local and central headers.
+   * commons-compress opens such an entry only through zstd-jni, which the application does not
+   * ship, so reading it raises a {@link NoClassDefFoundError} rather than an {@link IOException}.
+   */
+  public static HostileFile withZstdEntries(
+      String fileName, byte[] container, String... zstdEntries) {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(container));
+        ZipOutputStream zip = new ZipOutputStream(bytes)) {
+      for (ZipEntry source; (source = in.getNextEntry()) != null; ) {
+        byte[] content = in.readAllBytes();
+        CRC32 crc = new CRC32();
+        crc.update(content);
+        ZipEntry stored = new ZipEntry(source.getName());
+        stored.setMethod(ZipEntry.STORED);
+        stored.setSize(content.length);
+        stored.setCompressedSize(content.length);
+        stored.setCrc(crc.getValue());
+        zip.putNextEntry(stored);
+        zip.write(content);
+        zip.closeEntry();
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    byte[] zip = bytes.toByteArray();
+    for (String entry : zstdEntries) {
+      int patched = setCompressionMethod(zip, entry, ZIP_METHOD_ZSTD);
+      if (patched != 2) {
+        throw new IllegalArgumentException(entry + " has " + patched + " headers in the container");
+      }
+    }
+    return new HostileFile(fileName, zip);
+  }
+
+  /** Sets the method field of every local and central header naming {@code entry}. */
+  private static int setCompressionMethod(byte[] zip, String entry, int method) {
+    byte[] name = entry.getBytes(StandardCharsets.UTF_8);
+    ByteBuffer buffer = ByteBuffer.wrap(zip).order(ByteOrder.LITTLE_ENDIAN);
+    int patched = 0;
+    for (int at = 0; at + 46 <= zip.length; at++) {
+      int signature = buffer.getInt(at);
+      // local file header: method at 8, name length at 26, name at 30; central: 10, 28, 46
+      int methodAt;
+      int nameLength;
+      int nameAt;
+      if (signature == 0x04034b50) {
+        methodAt = at + 8;
+        nameLength = Short.toUnsignedInt(buffer.getShort(at + 26));
+        nameAt = at + 30;
+      } else if (signature == 0x02014b50) {
+        methodAt = at + 10;
+        nameLength = Short.toUnsignedInt(buffer.getShort(at + 28));
+        nameAt = at + 46;
+      } else {
+        continue;
+      }
+      if (nameLength == name.length
+          && nameAt + nameLength <= zip.length
+          && Arrays.equals(zip, nameAt, nameAt + nameLength, name, 0, name.length)) {
+        buffer.putShort(methodAt, (short) method);
+        patched++;
+      }
+    }
+    return patched;
   }
 
   private static final String DOCX_CONTENT_TYPES =

@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.FatalErrors;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -238,7 +239,21 @@ public final class SupportedDocumentFormats {
    */
   public static String detectMediaType(Path file) throws IOException {
     try (InputStream in = Files.newInputStream(file)) {
+      return detect(in);
+    }
+  }
+
+  /**
+   * A container whose entries need a codec the deployment does not ship ({@link
+   * FatalErrors#isMissingOptionalCodec}) cannot be looked into, so its content is reported as
+   * unidentified - the type Tika gives bytes it knows nothing about - rather than as an error.
+   */
+  private static String detect(InputStream in) throws IOException {
+    try {
       return TIKA.detect(in);
+    } catch (NoClassDefFoundError e) {
+      FatalErrors.rethrowIfFatal(e);
+      return MediaType.OCTET_STREAM.toString();
     }
   }
 
@@ -260,7 +275,7 @@ public final class SupportedDocumentFormats {
    */
   public static String detectMediaType(byte[] contentPrefix) {
     try {
-      return TIKA.detect(new ByteArrayInputStream(contentPrefix));
+      return detect(new ByteArrayInputStream(contentPrefix));
     } catch (IOException e) {
       // ByteArrayInputStream never actually throws - Tika#detect(InputStream) only declares the
       // checked exception because it accepts any InputStream.

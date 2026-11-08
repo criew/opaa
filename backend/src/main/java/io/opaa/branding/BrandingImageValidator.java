@@ -1,5 +1,6 @@
 package io.opaa.branding;
 
+import io.opaa.common.FatalErrors;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import java.io.ByteArrayInputStream;
@@ -102,6 +103,10 @@ public class BrandingImageValidator {
       // Unreachable for a ByteArrayInputStream, but IOException is checked and swallowing it
       // silently would turn a genuine detection failure into "accepted".
       throw new ValidationException(kind.label() + " konnte nicht auf sein Format geprüft werden");
+    } catch (NoClassDefFoundError e) {
+      // an archive entry needing a codec the deployment does not ship: unidentified content
+      FatalErrors.rethrowIfFatal(e);
+      return "application/octet-stream";
     }
   }
 

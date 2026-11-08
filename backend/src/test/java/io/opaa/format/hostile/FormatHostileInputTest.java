@@ -17,14 +17,21 @@ import io.opaa.format.hostile.HostileFiles.HostileFile;
 import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.test.ProductionDocumentFormats;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import org.apache.poi.ooxml.POIXMLDocument;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.ai.document.Document;
 
 /**
@@ -186,6 +193,69 @@ class FormatHostileInputTest {
   void aPdfDrawingOneFormOverAndOverFailsAtThePageGlyphLimit() {
     assertThat(run(HostileFiles.pdfDrawingOneFormOverAndOver(11_000), BOUND).outcome())
         .isEqualTo(Outcome.PARSE_FAILED);
+  }
+
+  // regression guard for #3619: an entry needing the absent zstd codec fails one document only
+  @ParameterizedTest
+  @CsvSource({
+    "test-document.odt, mimetype",
+    "test-document.odt, content.xml",
+    "test-document.ods, content.xml",
+    "test-document.odp, content.xml",
+    "test-document.docx, [Content_Types].xml",
+    "test-document.docx, word/document.xml",
+    "generated.pptx, [Content_Types].xml",
+    "generated.pptx, ppt/slides/slide1.xml",
+    "generated.xlsx, [Content_Types].xml",
+    "generated.xlsx, xl/worksheets/sheet1.xml",
+  })
+  void aContainerWithAZstdEntryFailsAsOneDocument(String fixture, String zstdEntry) {
+    HostileFile hostile =
+        HostileFiles.withZstdEntries("zstd-" + fixture, testDocument(fixture), zstdEntry);
+
+    assertThat(run(hostile, SHORT_BOUND).outcome()).isEqualTo(Outcome.PARSE_FAILED);
+    Path file = hostile.writeTo(tempDir);
+    DocumentFormatRegistry.Routed routed = registry.routedPipelineFor(file, hostile.fileName());
+    assertThat(
+            routed
+                .pipeline()
+                .readProperties(
+                    DocumentFormatSource.ofFile(
+                        file, hostile.fileName(), routed.detectedExtension())))
+        .isNotNull();
+  }
+
+  /** A fixture from {@code test-documents}, or for {@code generated.*} one POI writes. */
+  private static byte[] testDocument(String name) {
+    if (name.startsWith("generated.")) {
+      try (POIXMLDocument document =
+              name.endsWith(".pptx") ? slideShowWithOneSlide() : workbookWithOneCell();
+          ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+        document.write(bytes);
+        return bytes.toByteArray();
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+    try (InputStream in =
+        FormatHostileInputTest.class.getResourceAsStream("/test-documents/" + name)) {
+      assertThat(in).as(name).isNotNull();
+      return in.readAllBytes();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private static XMLSlideShow slideShowWithOneSlide() {
+    XMLSlideShow slides = new XMLSlideShow();
+    slides.createSlide().createTextBox().setText("Folie mit Text");
+    return slides;
+  }
+
+  private static XSSFWorkbook workbookWithOneCell() {
+    XSSFWorkbook workbook = new XSSFWorkbook();
+    workbook.createSheet("Tabelle").createRow(0).createCell(0).setCellValue("Zelle");
+    return workbook;
   }
 
   private Read run(HostileFile hostile, Duration bound) {
