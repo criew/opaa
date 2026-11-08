@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -12,13 +13,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +39,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
 /**
  * A chat attachment from upload to deletion: read on its own pool into text, offered to the
@@ -45,6 +57,9 @@ class ChatAttachmentIntegrationTest {
   @Autowired private ChatAttachmentCleanup cleanup;
   @Autowired private ChatRepository chatRepository;
   @Autowired private ChatService chatService;
+  @Autowired private ChatAttachmentProperties properties;
+  @Autowired private ChatAttachmentQuota quota;
+  @Autowired private ChatAttachmentRepository attachmentRepository;
 
   private final List<UUID> spaces = new ArrayList<>();
   private UUID devUser;
@@ -265,6 +280,137 @@ class ChatAttachmentIntegrationTest {
     assertThat(chunkCount(stale)).isZero();
   }
 
+  /**
+   * The account's quota counts bound and unbound attachments alike; an upload beyond it is a 413
+   * and leaves no row behind.
+   */
+  @Test
+  void anUploadBeyondTheAccountsQuotaIsRefusedAndNothingStays() throws Exception {
+    byte[] file = TEXT.getBytes(StandardCharsets.UTF_8);
+    occupy(aChat(), properties.accountQuotaBytes() - usageOfDevUser() - file.length + 1);
+
+    mockMvc
+        .perform(as("dev-user", uploadRequest("Vertrag.txt", file)))
+        .andExpect(status().isPayloadTooLarge())
+        .andExpect(
+            jsonPath("$.error").value(containsString("Speicherkontingent Ihrer Chat-Anhänge")));
+
+    assertThat(rowsOfSpace()).isEqualTo(1);
+  }
+
+  /** Attachments no question has named have a lower cap of their own. */
+  @Test
+  void anUploadBeyondTheUnboundCapIsRefusedAndNothingStays() throws Exception {
+    byte[] file = TEXT.getBytes(StandardCharsets.UTF_8);
+    long unbound =
+        jdbc.queryForObject(
+            "SELECT coalesce(sum(size_bytes), 0) FROM chat_attachments"
+                + " WHERE author_id = ? AND chat_id IS NULL",
+            Long.class,
+            devUser);
+    occupy(null, properties.unboundQuotaBytes() - unbound - file.length + 1);
+
+    mockMvc
+        .perform(as("dev-user", uploadRequest("Vertrag.txt", file)))
+        .andExpect(status().isPayloadTooLarge())
+        .andExpect(jsonPath("$.error").value(containsString("noch nicht gesendeten Anhänge")));
+
+    assertThat(rowsOfSpace()).isEqualTo(1);
+  }
+
+  /** Concurrent uploads that each fit alone, but not together, are admitted only while room is. */
+  @Test
+  void concurrentUploadsNeverOvershootTheAccountsQuota() throws Exception {
+    byte[] file = TEXT.getBytes(StandardCharsets.UTF_8);
+    occupy(aChat(), properties.accountQuotaBytes() - usageOfDevUser() - file.length);
+
+    int uploads = 3;
+    ExecutorService pool = Executors.newFixedThreadPool(uploads);
+    try {
+      List<Callable<Integer>> calls = new ArrayList<>();
+      for (int i = 0; i < uploads; i++) {
+        String name = "Vertrag-" + i + ".txt";
+        calls.add(
+            () ->
+                mockMvc
+                    .perform(as("dev-user", uploadRequest(name, file)))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus());
+      }
+      List<Integer> statuses = new ArrayList<>();
+      for (Future<Integer> result : pool.invokeAll(calls)) {
+        statuses.add(result.get());
+      }
+      assertThat(statuses).containsExactlyInAnyOrder(201, 413, 413);
+    } finally {
+      pool.shutdownNow();
+    }
+    assertThat(usageOfDevUser()).isLessThanOrEqualTo(properties.accountQuotaBytes());
+  }
+
+  /**
+   * A second intake of the same account waits for the first to commit and then sees its row: the
+   * check and the insert of one intake are never interleaved with another's.
+   */
+  @Test
+  void aSecondIntakeOfTheAccountWaitsForTheFirstAndThenSeesItsRow() throws Exception {
+    long bytes = 100;
+    occupy(aChat(), properties.accountQuotaBytes() - usageOfDevUser() - bytes);
+    CountDownLatch stored = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<ChatAttachment> first =
+          pool.submit(
+              () ->
+                  quota.admit(
+                      organization,
+                      devUser,
+                      bytes,
+                      () -> {
+                        ChatAttachment row = attachmentRepository.save(anAttachment(bytes));
+                        stored.countDown();
+                        awaitQuietly(release);
+                        return row;
+                      }));
+      assertThat(stored.await(10, TimeUnit.SECONDS)).isTrue();
+      Future<ChatAttachment> second =
+          pool.submit(
+              () ->
+                  quota.admit(
+                      organization,
+                      devUser,
+                      bytes,
+                      () -> attachmentRepository.save(anAttachment(bytes))));
+
+      assertThatThrownBy(() -> second.get(1, TimeUnit.SECONDS))
+          .isInstanceOf(TimeoutException.class);
+      release.countDown();
+      assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
+      assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS))
+          .isInstanceOf(ExecutionException.class)
+          .hasCauseInstanceOf(PayloadTooLargeException.class);
+    } finally {
+      release.countDown();
+      pool.shutdownNow();
+    }
+    assertThat(usageOfDevUser()).isEqualTo(properties.accountQuotaBytes());
+  }
+
+  private ChatAttachment anAttachment(long bytes) {
+    return new ChatAttachment(
+        organization, space, devUser, "Zeile.txt", "text/plain", bytes, Instant.now());
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private UUID upload(String fileName, String text) throws Exception {
     String body =
         mockMvc
@@ -284,6 +430,37 @@ class ChatAttachmentIntegrationTest {
             .getResponse()
             .getContentAsString();
     return UUID.fromString(JsonPath.read(body, "$.id"));
+  }
+
+  private MockMultipartHttpServletRequestBuilder uploadRequest(String fileName, byte[] content) {
+    return multipart("/api/v1/spaces/" + space + "/chat-attachments")
+        .file(new MockMultipartFile("file", fileName, "text/plain", content));
+  }
+
+  /** A row of {@code bytes} of the dev user in this space, without an original. */
+  private void occupy(UUID chat, long bytes) {
+    jdbc.update(
+        "INSERT INTO chat_attachments (id, organization_id, space_id, author_id, chat_id,"
+            + " file_name, size_bytes, status, created_at) VALUES (?, ?, ?, ?, ?, 'Gross.txt', ?,"
+            + " 'READY', now())",
+        UUID.randomUUID(),
+        organization,
+        space,
+        devUser,
+        chat,
+        bytes);
+  }
+
+  private long usageOfDevUser() {
+    return jdbc.queryForObject(
+        "SELECT coalesce(sum(size_bytes), 0) FROM chat_attachments WHERE author_id = ?",
+        Long.class,
+        devUser);
+  }
+
+  private int rowsOfSpace() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM chat_attachments WHERE space_id = ?", Integer.class, space);
   }
 
   private UUID aChat() {

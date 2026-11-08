@@ -494,6 +494,23 @@
       matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
+    // Die Jobs mit requirements-docs.txt oder requirements-ci.txt installieren nur aus Wheels;
+    // PyYAML hat für Python 3.15 keines, ihr python-version bleibt deshalb unter 3.15. Nur die
+    // Schritte auf '3.14' sind gemeint; die übrigen (etwa das Update-Paket in ci.yml) gehen mit
+    // publish-images.yml weiter. Aufheben, sobald die gepinnte PyYAML-Version cp315-Wheels liefert.
+    {
+      matchManagers: ['github-actions'],
+      matchDepNames: ['python'],
+      matchCurrentValue: '3.14',
+      matchFileNames: [
+        '.github/workflows/ci.yml',
+        '.github/workflows/data-impact.yml',
+        '.github/workflows/dependency-graph.yml',
+        '.github/workflows/landing-page.yml',
+        '.github/workflows/zap-baseline.yml',
+      ],
+      allowedVersions: '<3.15',
+    },
     // Alle Workflows pinnen ihre Actions auf den Commit-SHA mit exaktem Versionskommentar
     // (docs/renovate.md); Renovate pflegt beides gemeinsam. Ein neues Release wird erst nach
     // drei Tagen vorgeschlagen; vorher entsteht kein Branch, also auch kein PR-Lauf. Beide Regeln

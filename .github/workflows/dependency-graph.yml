@@ -55,9 +55,12 @@ jobs:
           build-root-directory: backend
           dependency-graph: generate-and-submit
 
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: pnpm-Lockfiles einreichen
         env:
@@ -67,7 +70,7 @@ jobs:
           REF: ${{ github.ref }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
           python3 .github/scripts/pnpm_dependency_snapshot.py \
             --sha "$SHA" --ref "$REF" --correlator pnpm-lockfiles --job-id "$RUN_ID" \
             --output "$RUNNER_TEMP/pnpm.json" $(git ls-files '*pnpm-lock.yaml')
@@ -99,9 +102,12 @@ jobs:
           dependency-graph: generate-and-upload
           artifact-retention-days: 3
 
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: pnpm-Lockfiles auswerten
         env:
@@ -110,7 +116,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
           mkdir -p "$RUNNER_TEMP/pnpm-graph"
           python3 .github/scripts/pnpm_dependency_snapshot.py \
             --sha "$HEAD_SHA" --ref "$REF" --correlator pnpm-lockfiles --job-id "$RUN_ID" \

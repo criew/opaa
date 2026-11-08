@@ -12,6 +12,11 @@ belegt. Anhänge sieht nur, wer sie hochgeladen hat; sie werden mit dem Chat gel
 Alle eigenen Anhänge stehen unter „Ihre Einstellungen“, Bereich „Meine Uploads“. Dort lassen sie
 sich auch in eine Bibliothek übernehmen.
 
+Anhänge belegen Speicherplatz, bis sie gelöscht sind. Je Konto gilt dafür ein Kontingent, für
+noch nicht gesendete Anhänge ein kleineres. Ist es erschöpft, nimmt OPAA keine weiteren Anhänge
+an; Platz schafft, wer nicht mehr benötigte Anhänge oder Chats löscht oder wartende Anhänge mit
+einer Frage sendet.
+
 ## Spracheingabe
 
 1. Das **Mikrofon** neben „Senden“ wählen und die Frage sprechen.

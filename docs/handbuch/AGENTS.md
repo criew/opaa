@@ -143,8 +143,10 @@ Format-Seiten unter `referenz/formate/` folgen ihrem bisherigen gemeinsamen Aufb
   Formate, Abschnitt „Zugelassene Formate“) und die Zuordnung Ansicht → Seite hinter dem „?“ der
   App (`frontend/src/app/shell/handbookLink.ts`, ihr Test prüft jede genannte Seite).
 - **Website:** `mkdocs.yml` legt Theme und Erweiterungen fest; ohne Navigationsliste folgt die
-  Navigation den Ordnern. Lokal bauen: `pip install --require-hashes -r .github/requirements-docs.txt`,
-  dann `mkdocs serve` im Repository-Wurzelverzeichnis. Veröffentlicht wird über
+  Navigation den Ordnern. Lokal bauen mit Python 3.14, wie die Workflows: `pip install --require-hashes
+  --no-deps --only-binary=:all: -r .github/requirements-docs.txt`, dann `mkdocs serve` im
+  Repository-Wurzelverzeichnis. Nur aus Wheels, damit kein Paketbau ungeprüfte Build-Abhängigkeiten
+  nachlädt; für neuere Python-Versionen hat PyYAML noch keine Wheels. Veröffentlicht wird über
   `.github/workflows/landing-page.yml` unter `https://opaa.io/handbuch/` (Stand von `main`) und
   `https://opaa.io/handbuch/v<Version>/` (je Release-Tag); das „?“ der App verlinkt die Fassung
   ihrer Version.

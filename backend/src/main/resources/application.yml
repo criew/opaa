@@ -237,6 +237,12 @@ opaa:
       excerpt-max-chars: ${OPAA_CHAT_ATTACHMENTS_EXCERPT_MAX_CHARS:40000}
       unbound-retention: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_RETENTION:24h}
       read-wait: ${OPAA_CHAT_ATTACHMENTS_READ_WAIT:8s}
+      # Storage quotas (bytes, 0 = unlimited) over the size of every attachment until it is deleted:
+      # per account, bound and unbound (default 2 GiB); per account for those no question has named
+      # yet (default 512 MiB, at most the account quota); per organization (default unlimited).
+      account-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ACCOUNT_QUOTA_BYTES:2147483648}
+      unbound-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_QUOTA_BYTES:536870912}
+      organization-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ORGANIZATION_QUOTA_BYTES:0}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
@@ -647,7 +653,8 @@ opaa:
     orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
     # Upper limit (bytes) of the total size, summed across every document a library holds, that one
-    # library may occupy - enforced at every path that stores document content. The house-wide quota
+    # library may occupy - enforced at every path that stores library content; chat attachments have
+    # their own quotas under opaa.chat.attachments.*-quota-bytes. The house-wide quota
     # of shared libraries is set below it in the administration. Default 10 GiB; 0 or negative
     # lifts the upper limit - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
