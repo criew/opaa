@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.FatalErrors;
 import io.opaa.common.LogText;
 import io.opaa.format.chunk.PageMarkingContentHandler;
 import io.opaa.format.shared.ParserLimitExceededException;
@@ -204,6 +205,10 @@ public class DocumentService {
             "Extracted text exceeds the configured text character limit of "
                 + limits.maxTextCharacters());
       }
+      throw new IllegalStateException("Could not parse " + file.getFileName(), e);
+    } catch (NoClassDefFoundError e) {
+      // an entry needing a codec the deployment does not ship fails this one document
+      FatalErrors.rethrowIfFatal(e);
       throw new IllegalStateException("Could not parse " + file.getFileName(), e);
     }
     var document =

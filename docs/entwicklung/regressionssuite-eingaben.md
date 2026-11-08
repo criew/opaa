@@ -58,6 +58,9 @@ Ausgangsdateien nutzen kann:
   (`demo/corpus/formate/13_rahmenvertrag-scandienstleister.doc`), weil keine Bibliothek im
   Klassenpfad das alte Word-Format schreibt — erzeugt wird nur der Objektpool
 - PPTX, das auf jeder Folie ein Word-Dokument als OLE-Objekt einbettet
+- ODF- und OOXML-Container mit einem Eintrag in Zstandard-Kompression (Methode 93), deren Codec
+  (zstd-jni) nicht ausgeliefert wird: Erkennung meldet unbekannten Inhalt, das Lesen endet als
+  `PARSE_FAILED` (#3619)
 
 Neue Fälle kommen als Fabrikmethode in `HostileFiles` und als Testfall in beide Klassen, sofern der
 Weg über den Upload etwas zusätzlich prüft (Status, Anhänge, Folge-Upload).

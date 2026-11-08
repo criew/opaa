@@ -5,14 +5,30 @@ package io.opaa.common;
  * document, one request) and pass on instead: a {@link VirtualMachineError} other than {@link
  * StackOverflowError} ({@link OutOfMemoryError} above all), after which the process itself is no
  * longer trustworthy, and a {@link LinkageError}, which means a broken deployment and would fail
- * every unit alike. A {@link StackOverflowError} unwinds cleanly and is caused by the one input.
+ * every unit alike. A {@link StackOverflowError} unwinds cleanly and is caused by the one input, as
+ * does the {@link #isMissingOptionalCodec missing class of an optional codec}.
  */
 public final class FatalErrors {
+
+  /** zstd-jni, which commons-compress loads only for an entry that declares zstd compression. */
+  private static final String ZSTD_CODEC_PACKAGE = "com/github/luben/zstd/";
 
   private FatalErrors() {}
 
   public static boolean isFatal(Throwable thrown) {
-    return isProcessFatal(thrown) || thrown instanceof LinkageError;
+    return isProcessFatal(thrown)
+        || (thrown instanceof LinkageError && !isMissingOptionalCodec(thrown));
+  }
+
+  /**
+   * Whether {@code thrown} reports the class of a codec the deployment deliberately does not ship
+   * (zstd-jni, a native library): a library loads it only when one input asks for that codec, such
+   * as a ZIP entry with compression method 93, so the error is caused by that input alone.
+   */
+  public static boolean isMissingOptionalCodec(Throwable thrown) {
+    return thrown instanceof NoClassDefFoundError
+        && thrown.getMessage() != null
+        && thrown.getMessage().replace('.', '/').startsWith(ZSTD_CODEC_PACKAGE);
   }
 
   /**

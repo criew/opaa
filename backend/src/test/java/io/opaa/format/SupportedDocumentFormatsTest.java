@@ -2,6 +2,8 @@ package io.opaa.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.format.hostile.HostileFiles;
+import io.opaa.format.hostile.HostileFiles.HostileFile;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -153,6 +155,20 @@ class SupportedDocumentFormatsTest {
         .isEqualTo("application/vnd.oasis.opendocument.spreadsheet");
     assertThat(SupportedDocumentFormats.detectMediaType(testResource("test-document.odp")))
         .isEqualTo("application/vnd.oasis.opendocument.presentation");
+  }
+
+  // regression guard for #3619: an entry needing the absent zstd codec is unreadable content
+  @Test
+  void detectMediaTypeReportsAContainerWithAZstdEntryAsUnknownBytes() throws IOException {
+    HostileFile odt =
+        HostileFiles.withZstdEntries(
+            "zstd.odt", Files.readAllBytes(testResource("test-document.odt")), "mimetype");
+    Path file = odt.writeTo(tempDir);
+
+    assertThat(SupportedDocumentFormats.detectMediaType(file))
+        .isEqualTo("application/octet-stream");
+    assertThat(SupportedDocumentFormats.detectMediaType(odt.bytes()))
+        .isEqualTo("application/octet-stream");
   }
 
   private Path testResource(String name) throws IOException {
