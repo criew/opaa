@@ -68,8 +68,9 @@ jobs:
           persist-credentials: false
 
       # The site packages install from wheels only, so pip runs no build step whose build
-      # requirements would escape --require-hashes; their Python is the newest one PyYAML ships
-      # wheels for (.github/requirements-docs.txt). Same setup as the site build in ci.yml.
+      # requirements would escape --require-hashes; Python 3.14, because the pinned PyYAML has no
+      # cp315 wheel (a Renovate rule in renovate.json5 keeps this below 3.15). Same setup as the
+      # site build in ci.yml.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         id: docs-python
         with:

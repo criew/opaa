@@ -325,9 +325,10 @@ jobs:
         run: .github/scripts/check_handbuch.sh
 
       # The site packages install from wheels only, so pip runs no build step whose build
-      # requirements would escape --require-hashes; their Python is the newest one PyYAML ships
-      # wheels for (.github/requirements-docs.txt). Same setup as the site build in landing-page.yml;
-      # update-environment: false leaves the job's Python 3.15 on PATH for all other steps.
+      # requirements would escape --require-hashes; Python 3.14, because the pinned PyYAML has no
+      # cp315 wheel (a Renovate rule in renovate.json5 keeps this below 3.15). Same setup as the
+      # site build in landing-page.yml; update-environment: false leaves the job's Python 3.15 on
+      # PATH for all other steps.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: github.event_name != 'pull_request' || steps.filter.outputs.handbook == 'true'
         id: docs-python
@@ -698,8 +699,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
-      # from hashed wheels only and no sdist build fetches unhashed build requirements.
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
@@ -727,8 +729,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
-      # from hashed wheels only and no sdist build fetches unhashed build requirements.
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'

@@ -1,9 +1,9 @@
 # Python tools of the CI jobs that test .github/scripts and demo/seed: every package with all its
 # dependencies, each pinned with the hashes of all its files, installed with --require-hashes.
 # Installed from wheels only (--only-binary=:all:), so no sdist build fetches unhashed build
-# requirements; the jobs therefore run the newest Python every package, PyYAML included, ships a
-# wheel for. Renovate maintains versions and hashes. Jobs that also need the packages of the
-# release job install .github/requirements-release.txt.
+# requirements; the jobs therefore run Python 3.14, because the pinned PyYAML has no cp315 wheel
+# (renovate.json5 keeps them below 3.15). Renovate maintains versions and hashes. Jobs that also
+# need the packages of the release job install .github/requirements-release.txt.
 colorama==0.4.6 ; sys_platform == 'win32' \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6

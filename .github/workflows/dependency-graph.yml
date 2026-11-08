@@ -55,8 +55,9 @@ jobs:
           build-root-directory: backend
           dependency-graph: generate-and-submit
 
-      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
-      # from hashed wheels only and no sdist build fetches unhashed build requirements.
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
@@ -101,8 +102,9 @@ jobs:
           dependency-graph: generate-and-upload
           artifact-retention-days: 3
 
-      # Python 3.14: the newest one PyYAML ships wheels for, so .github/requirements-ci.txt installs
-      # from hashed wheels only and no sdist build fetches unhashed build requirements.
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
