@@ -6191,6 +6191,24 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>So lange wartet das Hochladen auf den Text, bevor es „wird gelesen“ meldet</td>
 </tr>
 <tr>
+<td><code>OPAA_CHAT_ATTACHMENTS_ACCOUNT_QUOTA_BYTES</code></td>
+<td><code>2147483648</code> (2 GiB)</td>
+<td>nicht gesetzt</td>
+<td>Speicherkontingent je Konto über alle eigenen Anhänge, gesendete und noch nicht gesendete; darüber lehnt das Hochladen mit 413 ab. <code>0</code> hebt es auf</td>
+</tr>
+<tr>
+<td><code>OPAA_CHAT_ATTACHMENTS_UNBOUND_QUOTA_BYTES</code></td>
+<td><code>536870912</code> (512 MiB)</td>
+<td>nicht gesetzt</td>
+<td>Kleineres Kontingent je Konto für Anhänge, die noch mit keiner Frage gesendet wurden; höchstens so groß wie das Kontingent je Konto. <code>0</code> nur zusammen mit einem aufgehobenen Kontingent je Konto</td>
+</tr>
+<tr>
+<td><code>OPAA_CHAT_ATTACHMENTS_ORGANIZATION_QUOTA_BYTES</code></td>
+<td><code>0</code> (unbegrenzt)</td>
+<td>nicht gesetzt</td>
+<td>Speicherkontingent aller Anhänge einer Organisation. Empfohlen, wenn viele Konten den Upload-Speicher teilen: deutlich unter dessen Größe setzen</td>
+</tr>
+<tr>
 <td><strong>Docker-Compose-Ports</strong></td>
 <td></td>
 <td></td>
@@ -6418,6 +6436,11 @@ feste Grenzen stehen hier mit ihrem Wert.</p>
 <td>Suche und Antwort</td>
 <td>Treffer, Abrufbreite, Teilfragen, Chunks je Dokument, Nachbarabschnitte, Kandidaten und Timeout des Rerankings, Gesprächsverlauf</td>
 <td><code>OPAA_QUERY_*</code>, <code>OPAA_RERANK_TIMEOUT</code>, <code>OPAA_CHAT_NOTE_MAX_ITEMS</code> (<a href="wie-die-suche-arbeitet.html">Wie die Suche arbeitet</a>)</td>
+</tr>
+<tr>
+<td>Chat-Anhänge</td>
+<td>Anhänge je Frage und je Chat, gleichzeitig gelesene Anhänge je Konto, Speicherkontingent je Konto, für noch nicht gesendete Anhänge und je Organisation, Frist ungesendeter Anhänge</td>
+<td><code>OPAA_CHAT_ATTACHMENTS_*</code>; die Größe einer Datei wie beim Upload; über den Anzahlgrenzen <code>400</code>, über den Kontingenten <code>413</code>, bei zu vielen gleichzeitigen Lesevorgängen <code>429</code> (<a href="../benutzer/anhaengen-und-diktieren.html">Dateien anhängen</a>)</td>
 </tr>
 <tr>
 <td>Spracheingabe</td>
