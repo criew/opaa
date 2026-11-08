@@ -3965,8 +3965,10 @@ gemeinsame Obergrenzen:</p>
 <li><strong>Gelesene Inhaltsdaten eines PDF</strong> (<code>max-pdf-content-bytes</code>): die entpackten Zeichenanweisungen
   aller Seiten und Zeichnungen, eine Zeichnung so oft gezählt, wie sie gezeichnet wird.</li>
 <li><strong>Größe eines einzelnen Inhaltsteils eines PDF</strong> (<code>max-pdf-stream-bytes</code>): Ein Seiteninhalt, eine
-  Zeichnung und jedes Verzeichnis, das schon beim Öffnen der Datei entpackt wird (Querverweis- und
-  Objektströme), darf entpackt nicht größer werden. Gemessen wird, bevor der Teil im Speicher
+  Zeichnung, jedes Verzeichnis, das schon beim Öffnen der Datei entpackt wird (Querverweis- und
+  Objektströme), und jedes eingebettete Schriftprogramm samt Zeichenzuordnung (CMap, ToUnicode)
+  darf entpackt nicht größer werden. Schriften werden beim Öffnen für die ganze Datei gemessen,
+  gleich wo sie verwendet werden, auch in Anmerkungen und Formularen. Gemessen wird, bevor der Teil im Speicher
   ausgepackt wird; so kann eine wenige hundert Kilobyte große Datei nicht Hunderte Megabyte
   Speicher belegen. Bei einer verschlüsselten Datei mit beschädigtem Querverweis werden
   Objektströme nicht durchsucht; was nur dort steht, fehlt dann.</li>
@@ -4058,7 +4060,7 @@ statt in einem ungewissen Zustand weiterzuarbeiten
 <tr>
 <td><code>max-pdf-stream-bytes</code></td>
 <td>32 MiB</td>
-<td>entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung oder eines Querverweis- oder Objektstroms eines PDF</td>
+<td>entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung, eines eingebetteten Schriftprogramms oder eines Querverweis- oder Objektstroms eines PDF</td>
 </tr>
 <tr>
 <td><code>max-pdf-parse-seconds</code></td>
