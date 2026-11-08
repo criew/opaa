@@ -92,6 +92,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   @Override
   protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
     budget.countOperator(operands);
+    budget.requireFontOperator(operator, operands, getResources());
     if (OperatorName.BEGIN_INLINE_IMAGE.equals(operator.getName())) {
       return;
     }

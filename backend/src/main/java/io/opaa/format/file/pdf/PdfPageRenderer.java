@@ -215,6 +215,7 @@ final class PdfPageRenderer {
       if (current != null && checkedResources.add(current.getCOSObject())) {
         requireResourceDictionary(current.getCOSObject());
       }
+      budget.requireFontOperator(operator, operands, current);
       String name = operator.getName();
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
@@ -426,10 +427,15 @@ final class PdfPageRenderer {
     /**
      * Checks up front everything of {@code resources} PDFBox may later look up by name or swap in
      * on its own (the {@code /Default...} colour spaces for device colours and images): every
-     * colour space, shading, shading pattern and graphics state. Tiling patterns, forms and fonts
-     * are checked when drawn, under their own resources.
+     * colour space, shading, shading pattern, graphics state and font. Tiling patterns and forms
+     * are checked when drawn, under their own resources; a font again when {@code Tf} selects it.
      */
     private void requireResourceDictionary(COSDictionary resources) throws IOException {
+      if (resources.getDictionaryObject(COSName.FONT) instanceof COSDictionary fonts) {
+        for (COSBase font : fonts.getValues()) {
+          budget.requireFont(font instanceof COSObject reference ? reference.getObject() : font);
+        }
+      }
       requireResources(resources.getDictionaryObject(COSName.COLORSPACE));
       requireResources(resources.getDictionaryObject(COSName.SHADING));
       if (resources.getDictionaryObject(COSName.PATTERN) instanceof COSDictionary patterns) {
