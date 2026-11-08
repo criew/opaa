@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -16,8 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.filter.DecodeOptions;
@@ -34,8 +40,9 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
  * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
- * while it loads the file count against their own limit. Not thread-safe: one budget belongs to one
- * read of one document.
+ * while it loads the file count against their own limit. An image the renderer draws is checked by
+ * {@link #requireImage} before PDFBox decodes it. Not thread-safe: one budget belongs to one read
+ * of one document or one rendered page.
  */
 final class PdfReadBudget {
 
@@ -58,6 +65,16 @@ final class PdfReadBudget {
           COSName.RUN_LENGTH_DECODE_ABBREVIATION,
           COSName.CRYPT);
 
+  /** The image codecs PDFBox decodes itself; an image may carry one, as its last filter. */
+  private static final Set<COSName> IMAGE_CODECS =
+      Set.of(
+          COSName.DCT_DECODE,
+          COSName.DCT_DECODE_ABBREVIATION,
+          COSName.CCITTFAX_DECODE,
+          COSName.CCITTFAX_DECODE_ABBREVIATION,
+          COSName.JPX_DECODE,
+          COSName.JBIG2_DECODE);
+
   /**
    * The most glyphs one page may yield in one pass. PDFBox holds every glyph of a page as a {@code
    * TextPosition} of roughly 200 bytes until the page is written, so this bounds the heap of a page
@@ -73,6 +90,7 @@ final class PdfReadBudget {
   private final long maxObjects;
   private final long deadline;
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
+  private final Set<COSStream> checkedImages = Collections.newSetFromMap(new IdentityHashMap<>());
   private long usedCharacters;
   private long operators;
   private long contentBytes;
@@ -226,12 +244,78 @@ final class PdfReadBudget {
   }
 
   /**
+   * Checks an image stream before PDFBox decodes it, which it does into memory as a whole: the
+   * content filters ahead of an image codec, or all of them without one, may decode to no more than
+   * {@code maxBytes}, measured by streaming; a JPEG's frame header and a CCITT stream's columns and
+   * rows may claim no more than {@code maxPixels}. A filter ahead of the codec outside the content
+   * filters is refused. A stream that passed is not decoded again.
+   */
+  void requireImage(COSStream stream, long maxPixels, long maxBytes) throws IOException {
+    requireTime();
+    if (checkedImages.contains(stream)) {
+      return;
+    }
+    List<COSName> filters = filterNames(stream.getFilters());
+    COSName codec =
+        !filters.isEmpty() && IMAGE_CODECS.contains(filters.getLast()) ? filters.getLast() : null;
+    List<COSName> leading = codec == null ? filters : filters.subList(0, filters.size() - 1);
+    for (COSName filter : leading) {
+      if (!CONTENT_FILTERS.contains(filter)) {
+        throw new ParserLimitExceededException(
+            "PDF image uses the filter " + filter.getName() + " ahead of its codec");
+      }
+    }
+    boolean jpeg =
+        COSName.DCT_DECODE.equals(codec) || COSName.DCT_DECODE_ABBREVIATION.equals(codec);
+    Decoded decoded = decode(stream, leading, maxBytes, jpeg, "image stream");
+    long pixels = 0;
+    if (jpeg) {
+      pixels = jpegPixels(decoded.output());
+    } else if (COSName.CCITTFAX_DECODE.equals(codec)
+        || COSName.CCITTFAX_DECODE_ABBREVIATION.equals(codec)) {
+      pixels = ccittPixels(stream, filters.size() - 1);
+    }
+    if (pixels > maxPixels) {
+      throw new ParserLimitExceededException(
+          "PDF image codec claims " + pixels + " pixels, more than the limit of " + maxPixels);
+    }
+    checkedImages.add(stream);
+  }
+
+  /** Width times height of a JPEG's frame header, read without decoding its scan. */
+  private static long jpegPixels(byte[] jpeg) throws IOException {
+    Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("jpeg");
+    if (!readers.hasNext()) {
+      throw new IOException("No JPEG reader available");
+    }
+    ImageReader reader = readers.next();
+    try (ImageInputStream input = new MemoryCacheImageInputStream(new ByteArrayInputStream(jpeg))) {
+      reader.setInput(input, true, true);
+      return (long) reader.getWidth(0) * reader.getHeight(0);
+    } finally {
+      reader.dispose();
+    }
+  }
+
+  /** The columns and rows PDFBox's CCITT decoder sizes its buffer by, multiplied. */
+  private static long ccittPixels(COSStream stream, int index) {
+    COSBase parameters = stream.getDictionaryObject(COSName.DECODE_PARMS, COSName.DP);
+    if (parameters instanceof COSArray array) {
+      parameters = index < array.size() ? array.getObject(index) : null;
+    }
+    COSDictionary decodeParms =
+        parameters instanceof COSDictionary dictionary ? dictionary : new COSDictionary();
+    long columns = Math.max(0, decodeParms.getInt(COSName.COLUMNS, 1728));
+    long rows = decodeParms.getInt(COSName.ROWS, 0);
+    long height = stream.getInt(COSName.HEIGHT, COSName.H, 0);
+    rows = rows > 0 && height > 0 ? height : Math.max(Math.max(rows, height), 0);
+    return columns * rows;
+  }
+
+  /**
    * Decoded bytes of {@code stream}, run through its filters here rather than through {@link
-   * COSStream#createInputStream()}, which would decode the whole stream into memory first. The last
-   * filter's output is counted and dropped; an earlier filter's, which the next one reads, is kept
-   * up to {@code limit}. Throws as soon as either passes {@code limit}. Data a filter cannot decode
-   * ends the measurement with what was counted, as PDFBox's own decoding ends at the same byte. A
-   * filter outside {@link #CONTENT_FILTERS} is refused before anything is decoded.
+   * COSStream#createInputStream()}, which would decode the whole stream into memory first. A filter
+   * outside {@link #CONTENT_FILTERS} is refused before anything is decoded.
    */
   private static long decodedLength(COSStream stream, long limit) throws IOException {
     List<COSName> filters = filterNames(stream.getFilters());
@@ -243,30 +327,46 @@ final class PdfReadBudget {
                 + ", which content may not carry");
       }
     }
+    return decode(stream, filters, limit, false, "content stream").count();
+  }
+
+  /** What {@link #decode} counted, and the last filter's output if it was kept. */
+  private record Decoded(long count, byte[] output) {}
+
+  /**
+   * Runs the raw bytes of {@code stream} through {@code filters}, the first filters of the stream.
+   * The last filter's output is counted, and kept only with {@code keepLast}; an earlier filter's,
+   * which the next one reads, is kept. Throws as soon as any output passes {@code limit}. Data a
+   * filter cannot decode ends the decoding with what was counted, as PDFBox's own decoding ends at
+   * the same byte.
+   */
+  private static Decoded decode(
+      COSStream stream, List<COSName> filters, long limit, boolean keepLast, String subject)
+      throws IOException {
     try (InputStream raw = stream.createRawInputStream()) {
       if (filters.isEmpty()) {
-        CountingSink sink = new CountingSink(limit, false);
+        CountingSink sink = new CountingSink(limit, keepLast, subject);
         raw.transferTo(sink);
-        return sink.count;
+        return sink.result();
       }
       InputStream input = raw;
-      for (int i = 0; i < filters.size(); i++) {
-        CountingSink sink = new CountingSink(limit, i < filters.size() - 1);
+      for (int i = 0; ; i++) {
+        boolean last = i == filters.size() - 1;
+        CountingSink sink = new CountingSink(limit, !last || keepLast, subject);
         try {
           FilterFactory.INSTANCE
               .getFilter(filters.get(i))
               .decode(input, sink, stream, i, DecodeOptions.DEFAULT);
         } catch (IOException e) {
           sink.requireWithinLimit();
-          return sink.count;
+          return sink.result();
         }
         sink.requireWithinLimit();
-        if (i == filters.size() - 1) {
-          return sink.count;
+        if (last) {
+          return sink.result();
         }
         input = new ByteArrayInputStream(sink.kept.toByteArray());
       }
-      return 0;
     }
   }
 
@@ -293,12 +393,18 @@ final class PdfReadBudget {
 
     private final long limit;
     private final ByteArrayOutputStream kept;
+    private final String subject;
     private long count;
     private boolean exceeded;
 
-    CountingSink(long limit, boolean keep) {
+    CountingSink(long limit, boolean keep, String subject) {
       this.limit = limit;
       this.kept = keep ? new ByteArrayOutputStream() : null;
+      this.subject = subject;
+    }
+
+    Decoded result() {
+      return new Decoded(count, kept == null ? null : kept.toByteArray());
     }
 
     @Override
@@ -319,7 +425,7 @@ final class PdfReadBudget {
       if (exceeded || count > limit) {
         exceeded = true;
         throw new ParserLimitExceededException(
-            "PDF content stream exceeds the configured limit of " + limit + " decoded bytes");
+            "PDF " + subject + " exceeds the configured limit of " + limit + " decoded bytes");
       }
     }
   }
