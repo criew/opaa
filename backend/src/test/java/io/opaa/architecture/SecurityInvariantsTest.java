@@ -137,14 +137,11 @@ class SecurityInvariantsTest {
                   + " leaves the method only as that comparison"),
           Map.entry(
               "io.opaa.installation.InstallationModelDiscovery#effectiveKey", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#chatModel", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#rerankModel", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#transcriptionModel", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#textRecognitionModel", WIZARD_STEP_KEY),
           Map.entry(
               "io.opaa.installation.StepRules#apiKey",
               "turns a saved wizard step, address and key stored together, into the settings the"
-                  + " installation writes"),
+                  + " installation writes, and hands the check probe of a model step"
+                  + " (StepChecks#withKey, WIZARD_STEP_KEY) its key"),
           Map.entry(
               "io.opaa.installation.StepRules#mailSettings",
               "turns the saved mail step, server and password stored together, into the mail"

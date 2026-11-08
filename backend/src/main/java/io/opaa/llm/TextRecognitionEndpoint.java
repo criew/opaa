@@ -17,7 +17,8 @@ public record TextRecognitionEndpoint(
     TextRecognitionConnectionType connectionType,
     String baseUrl,
     String model,
-    String apiKey) {
+    String apiKey)
+    implements OptionalRoleEndpoint {
 
   /** The connection type of the factory default: the shipped OCR container speaks docling-serve. */
   public static final TextRecognitionConnectionType DEFAULT_CONNECTION_TYPE =
@@ -65,7 +66,8 @@ public record TextRecognitionEndpoint(
   }
 
   /** The model as the shared role observation keys it: connection type and model together. */
-  String observedModel() {
+  @Override
+  public String observedModel() {
     return connectionType.name() + ":" + model;
   }
 

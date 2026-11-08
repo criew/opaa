@@ -46,8 +46,8 @@ class TextRecognitionModelRoleTest {
     TextRecognitionModelRole role = role(false);
 
     assertThat(role.active()).isEmpty();
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.DISABLED);
-    assertThat(role.refresh().state()).isEqualTo(TextRecognitionRoleState.DISABLED);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.DISABLED);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.DISABLED);
     role.probePeriodically();
     assertThatThrownBy(
             () ->
@@ -67,7 +67,7 @@ class TextRecognitionModelRoleTest {
     TextRecognitionModelRole role = role(true);
 
     assertThat(role.active()).isEmpty();
-    assertThat(role.refresh().state()).isEqualTo(TextRecognitionRoleState.DISABLED);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.DISABLED);
     verifyNoInteractions(client);
   }
 
@@ -79,7 +79,7 @@ class TextRecognitionModelRoleTest {
     TextRecognitionModelRole role = role(true);
 
     assertThat(role.active()).isEmpty();
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.UNCONFIGURED);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNCONFIGURED);
   }
 
   @Test
@@ -91,7 +91,7 @@ class TextRecognitionModelRoleTest {
     assertThat(active.connectionType()).isEqualTo(TextRecognitionConnectionType.DOCLING_SERVE);
     assertThat(active.configurationId()).isEqualTo(DOCLING.configurationId()).hasSize(16);
     assertThat(active.toString()).doesNotContain("apiKey=key").contains("apiKey=***");
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
   }
 
   @Test
@@ -128,8 +128,8 @@ class TextRecognitionModelRoleTest {
     when(client.probe(eq(DOCLING), any(Duration.class))).thenReturn(null);
     TextRecognitionModelRole role = role(true);
 
-    assertThat(role.refresh().state()).isEqualTo(TextRecognitionRoleState.READY);
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.READY);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.READY);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.READY);
   }
 
   @Test
@@ -143,7 +143,7 @@ class TextRecognitionModelRoleTest {
         .thenThrow(new TextRecognitionClient.TextRecognitionRejectedException("HTTP 422", 422));
     assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
         .isInstanceOf(TextRecognitionClient.TextRecognitionRejectedException.class);
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.READY);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.READY);
 
     when(client.convertWithDocling(eq(DOCLING), any(), any()))
         .thenThrow(
@@ -151,7 +151,7 @@ class TextRecognitionModelRoleTest {
                 "connection refused", false, 0));
     assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
         .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
   }
 
   @Test
@@ -170,9 +170,9 @@ class TextRecognitionModelRoleTest {
         .thenReturn(new TextRecognitionClient.ProbeFailure("HTTP 401", false, true));
     TextRecognitionModelRole role = role(true);
 
-    TextRecognitionRoleStatus probed = role.refresh();
+    OptionalRoleStatus probed = role.refresh();
 
-    assertThat(probed.state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+    assertThat(probed.state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(probed.diagnostic()).contains("refused the key");
 
     when(client.probe(eq(DOCLING), any(Duration.class))).thenReturn(null);
@@ -186,7 +186,7 @@ class TextRecognitionModelRoleTest {
                   "HTTP " + status, false, status));
       assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
           .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
-      assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.UNREACHABLE);
+      assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
       assertThat(role.currentStatus().diagnostic()).isEqualTo("HTTP " + status);
     }
 
@@ -196,6 +196,6 @@ class TextRecognitionModelRoleTest {
             new TextRecognitionClient.TextRecognitionUnavailableException("HTTP 429", false, 429));
     assertThatThrownBy(() -> role.convertWithDocling(active, new byte[] {1}))
         .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
-    assertThat(role.currentStatus().state()).isEqualTo(TextRecognitionRoleState.READY);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.READY);
   }
 }

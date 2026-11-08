@@ -8,7 +8,5 @@ package io.opaa.llm;
  * on the path of an administrative page load and must not block on a fresh network round trip of
  * its own. The one implementation is {@link RerankModelRole}.
  */
-public interface RerankRoleStatusProvider {
-
-  RerankRoleStatus currentStatus();
-}
+@FunctionalInterface
+public interface RerankRoleStatusProvider extends OptionalRoleStatusProvider {}

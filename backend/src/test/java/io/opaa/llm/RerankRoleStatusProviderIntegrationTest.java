@@ -25,9 +25,9 @@ class RerankRoleStatusProviderIntegrationTest {
   /** The shipped configuration: the switch is off, and the state says so rather than "broken". */
   @Test
   void theShippedConfigurationReportsTheRoleAsSwitchedOff() {
-    RerankRoleStatus status = provider.currentStatus();
+    OptionalRoleStatus status = provider.currentStatus();
 
-    assertThat(status.state()).isEqualTo(RerankRoleState.DISABLED);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.DISABLED);
     assertThat(status.baseUrl()).isNull();
     assertThat(status.modelIdentifier()).isNull();
     assertThat(status.diagnostic()).isNull();

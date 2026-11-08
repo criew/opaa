@@ -59,7 +59,7 @@ import tools.jackson.databind.ObjectMapper;
  * <p><b>The access key never appears anywhere but the {@code Authorization} header</b> - not in an
  * exception message, not in a log line, not truncated. Redirects are never followed, so the header
  * cannot be replayed to an address this class never validated. Every failure message is technical
- * English: it travels into {@link RerankRoleStatus#diagnostic()}, not onto a screen.
+ * English: it travels into {@link OptionalRoleStatus#diagnostic()}, not onto a screen.
  */
 @DataFlow("rerank-model")
 @Component
@@ -141,7 +141,7 @@ public class RerankClient {
 
   /**
    * Signals that the endpoint could not be used for this call. The message is technical and English
-   * - it ends up in {@link RerankRoleStatus#diagnostic()}, whose German wording is the presenting
+   * - it ends up in {@link OptionalRoleStatus#diagnostic()}, whose German wording is the presenting
    * layer's business - and it never contains the access key.
    */
   public static class RerankUnavailableException extends RuntimeException {

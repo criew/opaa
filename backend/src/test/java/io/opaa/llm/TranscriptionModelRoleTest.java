@@ -46,7 +46,7 @@ class TranscriptionModelRoleTest {
   void switchedOffTheRoleIsDisabledAndContactsNobody() {
     TranscriptionModelRole role = role(endpoint(false, "http://stt:8000/v1", "whisper"), true);
 
-    assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.DISABLED);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.DISABLED);
     assertThat(role.usable()).isFalse();
     verifyNoInteractions(client);
   }
@@ -55,7 +55,7 @@ class TranscriptionModelRoleTest {
   void theFeatureFlagSwitchesTheRoleOffAsWell() {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), false);
 
-    assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.DISABLED);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.DISABLED);
     verifyNoInteractions(client);
   }
 
@@ -63,7 +63,7 @@ class TranscriptionModelRoleTest {
   void switchedOnWithoutEndpointIsUnconfigured() {
     TranscriptionModelRole role = role(endpoint(true, "", ""), true);
 
-    assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.UNCONFIGURED);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.UNCONFIGURED);
     verifyNoInteractions(client);
   }
 
@@ -72,9 +72,9 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role =
         role(endpoint(true, "https://user:pw@stt.example/v1", "whisper"), true);
 
-    TranscriptionRoleStatus status = role.refresh();
+    OptionalRoleStatus status = role.refresh();
 
-    assertThat(status.state()).isEqualTo(TranscriptionRoleState.UNCONFIGURED);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNCONFIGURED);
     assertThat(status.baseUrlRejected()).isTrue();
     assertThat(status.baseUrl()).isNull();
     verifyNoInteractions(client);
@@ -86,7 +86,7 @@ class TranscriptionModelRoleTest {
     when(client.probe(any(), any())).thenReturn(null);
 
     assertThat(role.usable()).isFalse();
-    assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.READY);
+    assertThat(role.refresh().state()).isEqualTo(OptionalRoleState.READY);
     assertThat(role.usable()).isTrue();
   }
 
@@ -95,9 +95,9 @@ class TranscriptionModelRoleTest {
     TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
     when(client.probe(any(), any())).thenReturn(new ProbeFailure("request timed out", true));
 
-    TranscriptionRoleStatus status = role.refresh();
+    OptionalRoleStatus status = role.refresh();
 
-    assertThat(status.state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
+    assertThat(status.state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(status.timedOut()).isTrue();
     assertThat(role.usable()).isFalse();
   }
@@ -121,7 +121,7 @@ class TranscriptionModelRoleTest {
 
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
         .isInstanceOf(TranscriptionUnavailableException.class);
-    assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
   }
 
   /** A recording comes from a person: its refusal must not hide dictation from everybody else. */
@@ -152,7 +152,7 @@ class TranscriptionModelRoleTest {
 
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM, null))
         .isInstanceOf(TranscriptionUnavailableException.class);
-    assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().state()).isEqualTo(OptionalRoleState.UNREACHABLE);
     assertThat(role.currentStatus().timedOut()).isTrue();
   }
 

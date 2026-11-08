@@ -15,7 +15,8 @@ public record TranscriptionEndpoint(
     String model,
     String apiKey,
     String language,
-    String vocabulary) {
+    String vocabulary)
+    implements OptionalRoleEndpoint {
 
   /** The language of the factory default. */
   public static final String DEFAULT_LANGUAGE = "de";

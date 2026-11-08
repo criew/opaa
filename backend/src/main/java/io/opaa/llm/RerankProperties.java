@@ -15,8 +15,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param timeout per-request budget for one rerank call. Default {@value #DEFAULT_TIMEOUT_SECONDS}
  *     seconds: a measured three minutes per query for the default candidate window (50) on a
  *     20-core CPU with {@code BAAI/bge-reranker-v2-m3}. A shorter default degrades every such query
- *     to {@link RerankRoleState#UNREACHABLE} on a schedule, not on a fault; an installation with a
- *     faster (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}.
+ *     to {@link OptionalRoleState#UNREACHABLE} on a schedule, not on a fault; an installation with
+ *     a faster (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}.
  * @param probeInterval the longest the role goes without a result from its endpoint before it
  *     probes, {@code OPAA_RERANK_PROBE_INTERVAL}. Every probe is a real rerank request and is
  *     billed by a paid endpoint; a real call resets the interval. At least {@value

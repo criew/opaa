@@ -12,9 +12,9 @@ import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNoteProperties;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
@@ -54,7 +54,7 @@ class ConversationHarnessSupportTest {
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
-        .thenReturn(new RerankRoleStatus(RerankRoleState.DISABLED, null, null, null, false));
+        .thenReturn(new OptionalRoleStatus(OptionalRoleState.DISABLED, null, null, null, false));
     RetrievalContextFactory contextFactory =
         new RetrievalContextFactory(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2), rerankModelRole);
@@ -104,7 +104,7 @@ class ConversationHarnessSupportTest {
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
-        .thenReturn(new RerankRoleStatus(RerankRoleState.DISABLED, null, null, null, false));
+        .thenReturn(new OptionalRoleStatus(OptionalRoleState.DISABLED, null, null, null, false));
     RetrievalContextFactory contextFactory =
         new RetrievalContextFactory(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2), rerankModelRole);
@@ -147,7 +147,7 @@ class ConversationHarnessSupportTest {
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
-        .thenReturn(new RerankRoleStatus(RerankRoleState.DISABLED, null, null, null, false));
+        .thenReturn(new OptionalRoleStatus(OptionalRoleState.DISABLED, null, null, null, false));
     RetrievalContextFactory contextFactory =
         new RetrievalContextFactory(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2), rerankModelRole);

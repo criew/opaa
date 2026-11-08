@@ -9,7 +9,8 @@ package io.opaa.llm;
  * must be a statement, never the indistinguishable consequence of a missing address (ADR-0065,
  * Entscheidung 6).
  */
-public record RerankEndpoint(boolean enabled, String baseUrl, String model, String apiKey) {
+public record RerankEndpoint(boolean enabled, String baseUrl, String model, String apiKey)
+    implements OptionalRoleEndpoint {
 
   /** The factory default: off and unbound. */
   public static final RerankEndpoint FACTORY_DEFAULT = new RerankEndpoint(false, "", "", "");

@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.RerankRoleStatus;
 import io.opaa.metadata.MetadataFilter;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +24,7 @@ class RetrievalContextFactoryTest {
   private final RetrievalContextFactory factory =
       new RetrievalContextFactory(PROPERTIES, rerankModelRole);
 
-  private RetrievalContext contextWith(RerankRoleStatus status) {
+  private RetrievalContext contextWith(OptionalRoleStatus status) {
     when(rerankModelRole.currentStatus()).thenReturn(status);
     return factory.contextFor("Frage", List.of(), Set.of(UUID.randomUUID()), MetadataFilter.NONE);
   }
@@ -32,7 +32,7 @@ class RetrievalContextFactoryTest {
   /** Everything a stage reads travels in the context, taken as given. */
   @Test
   void carriesQuestionHistoryScopeFilterAndPropertiesAsGiven() {
-    when(rerankModelRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    when(rerankModelRole.currentStatus()).thenReturn(OptionalRoleStatus.disabled());
     UUID libraryId = UUID.randomUUID();
     List<Message> history = List.of(new UserMessage("Vorherige Frage"));
     MetadataFilter filter = MetadataFilter.parse(List.of("SATZUNG"), null, null);
@@ -49,14 +49,15 @@ class RetrievalContextFactoryTest {
   @Test
   void aReadyRoleMakesRerankingUsable() {
     RetrievalContext context =
-        contextWith(new RerankRoleStatus(RerankRoleState.READY, "http://reranker/v1", "bge", null));
+        contextWith(
+            new OptionalRoleStatus(OptionalRoleState.READY, "http://reranker/v1", "bge", null));
 
     assertThat(context.rerankAvailability()).isEqualTo(RerankAvailability.USABLE);
   }
 
   @Test
   void aDisabledRoleIsSwitchedOff() {
-    assertThat(contextWith(RerankRoleStatus.disabled()).rerankAvailability())
+    assertThat(contextWith(OptionalRoleStatus.disabled()).rerankAvailability())
         .isEqualTo(RerankAvailability.SWITCHED_OFF);
   }
 
@@ -64,13 +65,13 @@ class RetrievalContextFactoryTest {
   @Test
   void anUnconfiguredOrUnreachableRoleIsNotUsable() {
     assertThat(
-            contextWith(new RerankRoleStatus(RerankRoleState.UNCONFIGURED, null, null, null))
+            contextWith(new OptionalRoleStatus(OptionalRoleState.UNCONFIGURED, null, null, null))
                 .rerankAvailability())
         .isEqualTo(RerankAvailability.NOT_USABLE);
     assertThat(
             contextWith(
-                    new RerankRoleStatus(
-                        RerankRoleState.UNREACHABLE, "http://reranker/v1", "bge", "refused"))
+                    new OptionalRoleStatus(
+                        OptionalRoleState.UNREACHABLE, "http://reranker/v1", "bge", "refused"))
                 .rerankAvailability())
         .isEqualTo(RerankAvailability.NOT_USABLE);
   }

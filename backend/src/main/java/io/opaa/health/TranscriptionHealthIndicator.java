@@ -1,6 +1,6 @@
 package io.opaa.health;
 
-import io.opaa.llm.TranscriptionRoleStatus;
+import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.TranscriptionRoleStatusProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
@@ -24,7 +24,7 @@ public class TranscriptionHealthIndicator implements HealthIndicator {
 
   @Override
   public Health health() {
-    TranscriptionRoleStatus status = role.currentStatus();
+    OptionalRoleStatus status = role.currentStatus();
     Health.Builder builder =
         switch (status.state()) {
           case DISABLED, READY -> Health.up();

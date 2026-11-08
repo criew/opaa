@@ -92,7 +92,7 @@ class ModelRoleAdministrationTest {
 
     assertThat(view.speechInputAvailable()).isFalse();
     assertThat(view.language()).isEmpty();
-    assertThat(view.status().state()).isEqualTo(TranscriptionRoleState.DISABLED);
+    assertThat(view.status().state()).isEqualTo(OptionalRoleState.DISABLED);
     verify(transcriptionRows).save(any());
   }
 
@@ -399,7 +399,7 @@ class ModelRoleAdministrationTest {
     assertThat(view.textRecognitionAvailable()).isFalse();
     assertThat(view.model()).isNull();
     assertThat(view.apiKeySet()).isTrue();
-    assertThat(view.status().state()).isEqualTo(TextRecognitionRoleState.DISABLED);
+    assertThat(view.status().state()).isEqualTo(OptionalRoleState.DISABLED);
     verify(audit).recordUserAction(event.capture());
     assertThat(event.getValue().eventType())
         .isEqualTo(AuditEventType.TEXT_RECOGNITION_MODEL_CHANGED);

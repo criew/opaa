@@ -12,8 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.llm.ModelRoleEndpoints;
+import io.opaa.llm.OptionalRoleState;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleState;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -154,7 +154,8 @@ class ModelRoleAdministrationIntegrationTest {
     await()
         .atMost(Duration.ofSeconds(10))
         .untilAsserted(
-            () -> assertThat(rerankRole.currentStatus().state()).isEqualTo(RerankRoleState.READY));
+            () ->
+                assertThat(rerankRole.currentStatus().state()).isEqualTo(OptionalRoleState.READY));
     assertThat(receivedAuthorization.get()).isEqualTo("Bearer " + KEY);
   }
 

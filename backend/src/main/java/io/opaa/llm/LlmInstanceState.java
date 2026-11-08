@@ -147,9 +147,9 @@ class LlmInstanceState implements InstanceStateSource {
     return Map.of(
         "chat-model", !models.findAllByActiveTrue().isEmpty(),
         "embedding-model", embedding.getEmbeddingInfo().installed(),
-        "rerank-model", sends(rerank.currentStatus().state()),
-        "transcription-model", sends(transcription.currentStatus().state()),
-        "text-recognition-model", sends(textRecognition.currentStatus().state()));
+        "rerank-model", rerank.currentStatus().state().sends(),
+        "transcription-model", transcription.currentStatus().state().sends(),
+        "text-recognition-model", textRecognition.currentStatus().state().sends());
   }
 
   @Override
@@ -168,42 +168,30 @@ class LlmInstanceState implements InstanceStateSource {
     if (info.installed()) {
       providers.add(new ModelProvider("EMBEDDING", null, info.baseUrl(), info.model(), true));
     }
-    RerankRoleStatus rerankStatus = rerank.currentStatus();
+    OptionalRoleStatus rerankStatus = rerank.currentStatus();
     providers.add(
         new ModelProvider(
             "RERANK",
             null,
             rerankStatus.baseUrl(),
             rerankStatus.modelIdentifier(),
-            sends(rerankStatus.state())));
-    TranscriptionRoleStatus transcriptionStatus = transcription.currentStatus();
+            rerankStatus.state().sends()));
+    OptionalRoleStatus transcriptionStatus = transcription.currentStatus();
     providers.add(
         new ModelProvider(
             "TRANSCRIPTION",
             null,
             transcriptionStatus.baseUrl(),
             transcriptionStatus.modelIdentifier(),
-            sends(transcriptionStatus.state())));
-    TextRecognitionRoleStatus textRecognitionStatus = textRecognition.currentStatus();
+            transcriptionStatus.state().sends()));
+    OptionalRoleStatus textRecognitionStatus = textRecognition.currentStatus();
     providers.add(
         new ModelProvider(
             "TEXT_RECOGNITION",
             null,
             textRecognitionStatus.baseUrl(),
             textRecognitionStatus.modelIdentifier(),
-            sends(textRecognitionStatus.state())));
+            textRecognitionStatus.state().sends()));
     return providers;
-  }
-
-  private static boolean sends(RerankRoleState state) {
-    return state == RerankRoleState.READY || state == RerankRoleState.UNREACHABLE;
-  }
-
-  private static boolean sends(TranscriptionRoleState state) {
-    return state == TranscriptionRoleState.READY || state == TranscriptionRoleState.UNREACHABLE;
-  }
-
-  private static boolean sends(TextRecognitionRoleState state) {
-    return state == TextRecognitionRoleState.READY || state == TextRecognitionRoleState.UNREACHABLE;
   }
 }

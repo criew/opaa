@@ -1,6 +1,6 @@
 package io.opaa.retrieval;
 
-import io.opaa.llm.RerankRoleState;
+import io.opaa.llm.OptionalRoleState;
 
 /**
  * What the rerank model role can contribute to one retrieval run, decided once when the {@link
@@ -25,7 +25,7 @@ public enum RerankAvailability {
   USABLE;
 
   /** The role's own state, expressed as what a retrieval run can do with it. */
-  public static RerankAvailability of(RerankRoleState state) {
+  public static RerankAvailability of(OptionalRoleState state) {
     return switch (state) {
       case DISABLED -> SWITCHED_OFF;
       case READY -> USABLE;

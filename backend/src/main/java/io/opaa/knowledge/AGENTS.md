@@ -27,11 +27,11 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   darüber Wurzel, `web`, Konnektoren. Rückwege sind Ports: `VanishedDocumentReconciler`, `EmbeddingBatching`.
 - **`FormatConfiguration`** registriert die Dateiformate (Modul format) als Beans; `DocumentIngestService`
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
-- **Modelle:** Schreibwege nur `LlmModelService` (Chat) und `ModelRoleAdministration` (Rerank, Transkription,
-  Texterkennung); Schlüssel über `SettingsEncryptor`, protokolliert; neue Adressen prüft `ModelAddressPolicy`.
-- **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
-  Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
-  `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.
+- **Modelle:** Schreibwege nur `LlmModelService` (Chat) und `ModelRoleAdministration` (übrige Rollen); Schlüssel über
+  `SettingsEncryptor`, protokolliert; neue Adressen prüft `ModelAddressPolicy`. Optionale Rollen erben
+  `OptionalModelRole`, `OptionalRoleSettings`, `OptionalRoleStartupCheck`; eigen sind nur Client, Grenze, Spalten.
+- **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestandslauf), `metadata.web`
+  (Filter aller Such- und Chat-Anfragen, `MetadataFilterDeserializer`), `installation.web`; Bibliothek: `library.web`.
 
 ## Maßgebliche ADRs
 

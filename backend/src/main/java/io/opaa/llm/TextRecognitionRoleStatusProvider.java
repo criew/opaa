@@ -6,7 +6,4 @@ package io.opaa.llm;
  * network round trip.
  */
 @FunctionalInterface
-public interface TextRecognitionRoleStatusProvider {
-
-  TextRecognitionRoleStatus currentStatus();
-}
+public interface TextRecognitionRoleStatusProvider extends OptionalRoleStatusProvider {}

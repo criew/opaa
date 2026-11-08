@@ -1,10 +1,11 @@
 package io.opaa.llm;
 
+import java.time.Clock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * The operation's switch and limits of text recognition ({@link TextRecognitionProperties}) and the
@@ -15,14 +16,23 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @EnableConfigurationProperties(TextRecognitionProperties.class)
 public class TextRecognitionRoleConfiguration {
 
+  /** The role's own probe thread ({@link OptionalModelRole#probeScheduler}). */
   @Bean(destroyMethod = "shutdown")
   TaskScheduler textRecognitionProbeScheduler() {
-    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-    scheduler.setPoolSize(1);
-    scheduler.setThreadNamePrefix("text-recognition-probe-");
-    scheduler.setDaemon(true);
-    scheduler.setWaitForTasksToCompleteOnShutdown(false);
-    scheduler.initialize();
-    return scheduler;
+    return OptionalModelRole.probeScheduler("text-recognition-probe-");
+  }
+
+  @Bean
+  OptionalRoleStartupCheck textRecognitionRoleStartupCheck(
+      TextRecognitionModelRole role,
+      @Qualifier("textRecognitionProbeScheduler") TaskScheduler probeScheduler,
+      Clock clock) {
+    return new OptionalRoleStartupCheck(
+        role,
+        ModelRoleSettingsChangedEvent.Role.TEXT_RECOGNITION,
+        "Text recognition",
+        "Scanned PDFs stay rejected until the service answers.",
+        probeScheduler,
+        clock);
   }
 }
