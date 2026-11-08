@@ -440,8 +440,9 @@ final class PdfPageRenderer {
     /**
      * Checks up front everything of {@code resources} PDFBox may later look up by name or swap in
      * on its own (the {@code /Default...} colour spaces for device colours and images): every
-     * colour space, shading, shading pattern and graphics state. Tiling patterns, forms and fonts
-     * are checked when drawn, under their own resources.
+     * colour space, shading, shading pattern and graphics state. Tiling patterns and forms are
+     * checked when drawn, under their own resources; font streams are measured when the document is
+     * loaded.
      */
     private void requireResourceDictionary(COSDictionary resources) throws IOException {
       requireResources(resources.getDictionaryObject(COSName.COLORSPACE));
