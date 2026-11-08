@@ -495,11 +495,13 @@
       enabled: false,
     },
     // Die Jobs mit requirements-docs.txt oder requirements-ci.txt installieren nur aus Wheels;
-    // PyYAML hat für Python 3.15 keines, ihr python-version bleibt deshalb unter 3.15. Aufheben,
-    // sobald die gepinnte PyYAML-Version cp315-Wheels liefert.
+    // PyYAML hat für Python 3.15 keines, ihr python-version bleibt deshalb unter 3.15. Nur die
+    // Schritte auf '3.14' sind gemeint; die übrigen (etwa das Update-Paket in ci.yml) gehen mit
+    // publish-images.yml weiter. Aufheben, sobald die gepinnte PyYAML-Version cp315-Wheels liefert.
     {
       matchManagers: ['github-actions'],
       matchDepNames: ['python'],
+      matchCurrentValue: '3.14',
       matchFileNames: [
         '.github/workflows/ci.yml',
         '.github/workflows/data-impact.yml',
