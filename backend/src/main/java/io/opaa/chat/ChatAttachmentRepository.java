@@ -18,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public interface ChatAttachmentRepository extends JpaRepository<ChatAttachment, UUID> {
 
+  /** The first key of {@link #lockIntake}. */
+  int INTAKE_LOCK_NAMESPACE = 214;
+
   Optional<ChatAttachment> findByIdAndAuthorId(UUID id, UUID authorId);
 
   List<ChatAttachment> findByAuthorIdOrderByCreatedAtDesc(UUID authorId);
@@ -28,6 +31,35 @@ public interface ChatAttachmentRepository extends JpaRepository<ChatAttachment, 
   List<ChatAttachment> findByChatIdOrderByCreatedAtAsc(UUID chatId);
 
   long countByChatId(UUID chatId);
+
+  /** The bytes all attachments of {@code authorId} occupy, bound and unbound. */
+  @Query("select coalesce(sum(a.sizeBytes), 0) from ChatAttachment a where a.authorId = :authorId")
+  long sumSizeByAuthorId(@Param("authorId") UUID authorId);
+
+  /** The bytes the attachments of {@code authorId} no question has named yet occupy. */
+  @Query(
+      "select coalesce(sum(a.sizeBytes), 0) from ChatAttachment a"
+          + " where a.authorId = :authorId and a.chatId is null")
+  long sumUnboundSizeByAuthorId(@Param("authorId") UUID authorId);
+
+  /** The bytes all attachments of {@code organizationId} occupy. */
+  @Query(
+      "select coalesce(sum(a.sizeBytes), 0) from ChatAttachment a"
+          + " where a.organizationId = :organizationId")
+  long sumSizeByOrganizationId(@Param("organizationId") UUID organizationId);
+
+  /**
+   * Serializes the intake of attachments under {@code key} (an account or an organization) until
+   * the end of the transaction, across every instance: the quotas are sums over the rows the intake
+   * itself writes, so a check holds only when no second intake of the same key checks in between.
+   */
+  @Query(
+      value =
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + INTAKE_LOCK_NAMESPACE
+              + ", hashtext(CAST(:key AS text)))) acquired",
+      nativeQuery = true)
+  int lockIntake(@Param("key") UUID key);
 
   /** The locators of an organization's attachments that still name an original. */
   @Query(

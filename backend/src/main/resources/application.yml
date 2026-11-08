@@ -237,6 +237,12 @@ opaa:
       excerpt-max-chars: ${OPAA_CHAT_ATTACHMENTS_EXCERPT_MAX_CHARS:40000}
       unbound-retention: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_RETENTION:24h}
       read-wait: ${OPAA_CHAT_ATTACHMENTS_READ_WAIT:8s}
+      # Storage quotas (bytes, 0 = unlimited) over the size of every attachment until it is deleted:
+      # per account, bound and unbound (default 2 GiB); per account for those no question has named
+      # yet (default 512 MiB, at most the account quota); per organization (default unlimited).
+      account-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ACCOUNT_QUOTA_BYTES:2147483648}
+      unbound-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_QUOTA_BYTES:536870912}
+      organization-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ORGANIZATION_QUOTA_BYTES:0}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
