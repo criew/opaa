@@ -47,15 +47,18 @@ jobs:
       # The path list must cover every backend file with an outgoing client, a model call, a system
       # prompt or a retention period. Checked here on every pull request, because the ci-scripts
       # job of ci.yml runs only when .github/scripts changes.
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: github.event_name == 'pull_request'
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: Pfadliste gegen den Code prüfen
         if: github.event_name == 'pull_request'
         run: |
-          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
           pytest .github/scripts/test_check_data_impact.py
 
       - name: Datenwirkung prüfen
