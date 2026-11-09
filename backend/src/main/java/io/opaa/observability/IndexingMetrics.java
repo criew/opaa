@@ -76,17 +76,13 @@ public class IndexingMetrics {
     embeddingInputCutCounter.increment(count);
   }
 
-  /** The {@code library} label every private library shares in {@link #recordSuspiciousPattern}. */
-  public static final String PRIVATE_LIBRARY_LABEL = "private";
-
   /**
    * One indexed document whose text showed {@code patternClass}, a pattern typical of prompt
-   * injection. {@code libraryLabel} is a shared library's id or {@link #PRIVATE_LIBRARY_LABEL},
-   * never a name or content.
+   * injection. Counted installation-wide: neither library nor document is a label (ADR-0071); the
+   * run protocol of the library names the document.
    */
-  public void recordSuspiciousPattern(String libraryLabel, String patternClass) {
+  public void recordSuspiciousPattern(String patternClass) {
     Counter.builder("opaa.indexing.suspicious.patterns")
-        .tag("library", libraryLabel)
         .tag("class", patternClass)
         .description("Indexed documents with a pattern typical of prompt injection")
         .register(meterRegistry)

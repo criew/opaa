@@ -181,6 +181,12 @@ Die Werkzeugfähigkeit am Modelleintrag führt eine **Grundlage**: *gemessen*, m
 auf den Messlauf, oder *manuell gesetzt*. Eine prüfende Person oder Gruppe führt sie nicht. Wer die
 Angabe geändert hat, steht im Protokoll der Verwaltungsaktion.
 
+Für die Grundlage *gemessen* gilt eine **Untergrenze** als notwendige, nicht hinreichende
+Bedingung: Jeder Lauf der Klassen `calls_when_needed`, `valid_arguments` und `respects_limit` hat
+bestanden; ein nicht erreichter, abgeschnittener oder fehlerhafter Lauf zählt als nicht bestanden.
+Der Messbericht stellt nur fest, ob die Untergrenze erfüllt ist. Die Angabe am Modelleintrag setzt
+er nie selbst, sie setzt immer eine Person.
+
 Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
 
 - **Platzlimit:** eine Reservierung je laufendem Lauf in der Datenbank, mit Ablauf nach Datenbankuhr

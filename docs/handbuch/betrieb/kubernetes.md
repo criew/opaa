@@ -1749,11 +1749,15 @@ sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nac
 Fehlen dort die passenden Labels, sieht man das am Alarm `OpaaBackendMetricsMissing`.
 
 Welche Metriken das Backend liefert, steht unter
-[Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken).
+[Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken). Jede Reihe trägt neben
+den Labels, die Prometheus selbst setzt (`pod`, `namespace`, `instance`), das Label `host` mit dem
+Namen des Pods; die Latenzen haben Buckets für p95 und SLO-Auswertungen. Eigene Schwellen der
+Buckets kommen als `OPAA_METRICS_SLO_*` über `backend.extraEnv`
+([Konfiguration](../referenz/konfiguration.md)).
 
 ### Alarme
 
-`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit sechs Alarmen an. Mit mehreren
+`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit neun Alarmen an. Mit mehreren
 Backend-Pods melden fehlende Metriken, voller Heap und hängende Indexierung schon einen einzelnen Pod;
 die beiden letzten nennen ihn im Label `pod`. Sie setzt den
 ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen.

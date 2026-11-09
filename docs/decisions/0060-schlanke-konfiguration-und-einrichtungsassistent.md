@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0071](0071-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -73,7 +73,7 @@ lesen (ADR-0053). Solange die Installation nicht abgeschlossen ist, läuft jede 
 **Installationsmodus**: Erreichbar sind nur die Installations-API, die öffentliche Konfiguration der
 Oberfläche und die Health-Endpunkte; jeder andere Endpunkt antwortet `503`. Die Readiness bleibt
 `UP`, damit der Assistent erreichbar ist; der Modus erscheint als eigene Health-Komponente und
-Metrik. Es gibt keinen Rückweg aus der Oberfläche in den Installationsmodus.
+Metrik (Health- und Probe-Modell: ADR-0071, Entscheidung 5). Es gibt keinen Rückweg aus der Oberfläche in den Installationsmodus.
 
 ### 5. Installations-Token
 

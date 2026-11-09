@@ -262,6 +262,15 @@ fun registerEvalHarnessTask(
             "opaa.rerank.timeout",
             "opaa.query.rerank-candidate-count",
             "opaa.query.search-window-turns",
+            "opaa.eval.toolCalling.repetitions",
+            "opaa.eval.toolCalling.streaming",
+            "opaa.eval.toolCalling.maxTokens",
+            "opaa.eval.toolCalling.timeoutSeconds",
+            "opaa.eval.toolCalling.quantization",
+            "opaa.eval.toolCalling.runtime",
+            "opaa.eval.toolCalling.runtimeVersion",
+            "opaa.eval.toolCalling.hardware",
+            "opaa.eval.toolCalling.contextLength",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         forcedProperties.forEach { (key, value) -> systemProperty(key, value) }
         testLogging {
@@ -418,6 +427,23 @@ tasks.named<Test>("evaluatePromptInjection") {
     doFirst { staleReports.forEach { it.get().asFile.delete() } }
 }
 
+// Tool-calling case base (eval/corpus/tool-calling): measures one model endpoint against a mock
+// tool and reports per case category. Measures only, no baseline and no gate. Needs the model
+// address (-Dopaa.eval.chatBaseUrl/-Dopaa.eval.chatModel) but no Docker; not part of build/check.
+registerEvalHarnessTask(
+    "evaluateToolCalling",
+    "Runs the tool-calling case base against the model at -Dopaa.eval.chatBaseUrl and writes " +
+        "build/eval-reports/tool-calling.{json,md}. Not part of build/check.",
+    "io.opaa.eval.ToolCallingEvaluationHarnessTest",
+    emptyMap(),
+)
+tasks.named<Test>("evaluateToolCalling") {
+    val staleReports =
+        listOf("tool-calling.json", "tool-calling.md")
+            .map { layout.buildDirectory.file("eval-reports/$it") }
+    doFirst { staleReports.forEach { it.get().asFile.delete() } }
+}
+
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
 // `main`/`test`) so the classes under test never ship in the production jar, but still runs as part
@@ -440,6 +466,7 @@ tasks.register<Test>("evalUnitTest") {
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
         excludeTestsMatching("*PromptInjectionEvaluationHarnessTest")
+        excludeTestsMatching("*ToolCallingEvaluationHarnessTest")
         excludeTestsMatching("*BaselineRegressionTest")
     }
 }
