@@ -674,6 +674,9 @@ describe('SearchIndexingAdminPage', () => {
     })
     expect(screen.getByRole('heading', { name: /Vektorsuche/ })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^Fusion/ })).toBeInTheDocument()
+    // Each stage shows how long it took; seconds above one second, milliseconds below.
+    expect(screen.getByRole('heading', { name: /Vektorsuche/ })).toHaveTextContent('184 ms')
+    expect(screen.getByRole('heading', { name: /^Fusion/ })).toHaveTextContent('1,3 s')
 
     await user.click(screen.getByRole('button', { name: /^Fusion/ }))
     const verdicts = await screen.findByRole('table', {

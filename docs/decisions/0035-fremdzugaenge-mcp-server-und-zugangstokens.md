@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -91,9 +91,7 @@ erloschene Freigabe entzieht die Bibliothek allen Tokens sofort und lebt in best
 wieder auf. Eine Bibliothek im Zustand „Nachfolge offen" ist vom Weiten der Freigabe gesperrt
 (`LibraryExternalAccessService` prüft `requireAssetReachNotFrozen`, ADR-0036, Entscheidung 6);
 Zurücknehmen und Verkürzen bleiben möglich.
-Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken deckelt dieses Merkmal **nicht**
-(Maintainer-Festlegung in #797 vom 21.09.2026: sie gilt allein der Freigabe an „Alle Konten");
-der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
+Der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
 MANAGER-Schranke.
 
 ### 5. Genau ein Zugriffsweg auf die Daten — und die Prüfung geschieht je Werkzeugaufruf

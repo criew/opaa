@@ -48,6 +48,8 @@ import { resetMockExternalAccessTokens } from '@/features/external-access/mocks/
 import { resetServiceAccountMockState } from '@/features/external-access/mocks/serviceAccountHandlers'
 // compliance
 import { resetSelfDisclosureMockState } from '@/features/compliance/mocks/selfDisclosureHandlers'
+// malware-scan
+import { resetMalwareScanMockState } from '@/features/malware-scan/mocks/malwareScanHandlers'
 import { resetRetentionMockState } from '@/features/compliance/mocks/retentionHandlers'
 // auth
 import { resetMockAuthConfig } from '@/shared/mocks/authFixtures'
@@ -90,6 +92,7 @@ afterEach(() => {
   resetConnectedAccountMockState()
   resetConnectionLogMockState()
   resetSelfDisclosureMockState()
+  resetMalwareScanMockState()
   resetRetentionMockState()
   // The branding fixture is mutable so a PUT is visible on the next GET - without this,
   // a test that configures a brand colour would silently set the stage for the next one.

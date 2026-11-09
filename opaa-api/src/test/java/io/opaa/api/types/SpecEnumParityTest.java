@@ -116,6 +116,7 @@ class SpecEnumParityTest {
         Arguments.of("ProviderType", ProviderType.values()),
         Arguments.of("PasswordChangeReason", PasswordChangeReason.values()),
         Arguments.of("MailEncryption", MailEncryption.values()),
+        Arguments.of("MalwareScanUnavailablePolicy", MalwareScanUnavailablePolicy.values()),
         Arguments.of("LocalAccountState", LocalAccountState.values()),
         Arguments.of("LockReason", LockReason.values()),
         Arguments.of("ChatCleanupAfterLockStatus", ChatCleanupAfterLockStatus.values()),

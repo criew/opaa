@@ -17,13 +17,15 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Streams one file to a clamd daemon with its {@code INSTREAM} command and returns the reply line,
- * e.g. {@code stream: OK} or {@code stream: Eicar-Signature FOUND}. A plain TCP socket: the
- * connection never goes through the outbound proxy.
+ * e.g. {@code stream: OK} or {@code stream: Eicar-Signature FOUND}; {@link #version} asks for the
+ * daemon's version instead. A plain TCP socket: the connection never goes through the outbound
+ * proxy.
  */
 @DataFlow("malware-scanner")
 class ClamdClient {
 
   private static final byte[] COMMAND = "zINSTREAM\0".getBytes(StandardCharsets.US_ASCII);
+  private static final byte[] VERSION = "zVERSION\0".getBytes(StandardCharsets.US_ASCII);
   private static final int CHUNK_BYTES = 64 * 1024;
   private static final int MAX_REPLY_BYTES = 4096;
 
@@ -61,6 +63,25 @@ class ClamdClient {
           throw writeFailure;
         }
       }
+      return readReply(socket.getInputStream());
+    }
+  }
+
+  /**
+   * The daemon's reply to {@code VERSION}, e.g. {@code ClamAV 1.4.2/27450/Sun Nov 8 09:26:44 2026};
+   * nothing but the command is sent. Bounded by the same timeout as a scan.
+   *
+   * @throws IOException when the daemon cannot be reached or does not answer in time
+   */
+  String version() throws IOException {
+    try (Socket socket = new Socket()) {
+      CompletableFuture.delayedExecutor(timeoutMillis, TimeUnit.MILLISECONDS)
+          .execute(() -> closeQuietly(socket));
+      socket.connect(new InetSocketAddress(host, port), timeoutMillis);
+      socket.setSoTimeout(timeoutMillis);
+      OutputStream out = socket.getOutputStream();
+      out.write(VERSION);
+      out.flush();
       return readReply(socket.getInputStream());
     }
   }

@@ -44,6 +44,9 @@ class SettingsSectionRegistryTest {
           "text_recognition_model",
               "the text recognition model: the address receives whole pages of documents, the key"
                   + " never follows a new address",
+          "malware_scan_settings",
+              "the malware scanner: its address receives every file taken in (ADR-0060,"
+                  + " Entscheidung 12)",
           "oidc_providers",
               "identity providers: the sign-in procedure and the mapping of claims to system"
                   + " roles; an import could lock the administration out or widen who is admin",

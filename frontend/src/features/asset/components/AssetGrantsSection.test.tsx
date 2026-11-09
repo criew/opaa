@@ -178,22 +178,6 @@ describe('AssetGrantsSection', () => {
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
   })
 
-  it('shows the ceiling the caller passes in its slot, below the empty list', async () => {
-    setSystemAdmin()
-    setGrants(library.id, [])
-    renderWithProviders(
-      <AssetGrantsSection
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        capControl={<p>Obergrenze der Systemverwaltung</p>}
-      />,
-    )
-
-    expect(await screen.findByText('Obergrenze der Systemverwaltung')).toBeInTheDocument()
-    expect(screen.getByText('Noch keine Freigaben.')).toBeInTheDocument()
-    expect(mockGetAssetGrants).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id)
-  })
-
   it('marks an expired grant as expired instead of hiding it', async () => {
     setSystemAdmin()
     setGrants(library.id, [

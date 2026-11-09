@@ -9,10 +9,7 @@ import io.opaa.permission.AssetType;
  * appears as, and the words messages use for it. The business package owning the type contributes
  * one bean; the shell never names a type.
  *
- * <p>{@link #requireAllAccountsGrantAllowed} is the port for a type-specific <b>restriction</b>:
- * the grant service asks it before it writes a grant to "Alle Konten". A type that restricts
- * nothing keeps the default. Everything else - grants, derivation, history, succession - is the
- * shell's.
+ * <p>Everything else - grants, derivation, history, succession - is the shell's.
  *
  * <p>{@link #enabled} switches a type off for its readers (ADR-0044): an inactive type stays
  * registered, so ownership, history, succession and audit keep serving its existing assets, but no
@@ -33,14 +30,6 @@ public interface AssetTypeDefinition {
 
   /** The plural noun ("Bibliotheken"). */
   String plural();
-
-  /**
-   * Refuses a grant to "Alle Konten" the type does not allow for this asset, with a {@code 409}
-   * naming the limit (ADR-0037 Entscheidung 5). Called before the grant is written - this is where
-   * a connector library's share cap takes effect now that organization-wide reach is a grant and no
-   * longer a field of the shell.
-   */
-  default void requireAllAccountsGrantAllowed(Asset asset) {}
 
   /**
    * Whether the type is offered to readers right now; asked on every read, never cached. A type

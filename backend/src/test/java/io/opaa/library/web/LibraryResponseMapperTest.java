@@ -202,8 +202,7 @@ class LibraryResponseMapperTest {
                 releaseSetAt,
                 "Erika Mustermann",
                 0L,
-                365),
-            false);
+                365));
     LibraryDetail detail =
         new LibraryDetail(
             library, AssetRole.MANAGER, 3L, managementDetail, true, AssetReach.NONE, null, null);
@@ -234,8 +233,6 @@ class LibraryResponseMapperTest {
     assertThat(response.getExternalAccess().getSetByDisplayName()).isEqualTo("Erika Mustermann");
     assertThat(response.getExternalAccess().getTokenCount()).isZero();
     assertThat(response.getExternalAccess().getMaxReleaseDays()).isEqualTo(365);
-    // #797
-    assertThat(response.getAllAccountsGrantAllowed()).isFalse();
   }
 
   @Test
@@ -245,8 +242,7 @@ class LibraryResponseMapperTest {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID());
     LibraryManagementDetail managementDetail =
-        new LibraryManagementDetail(
-            null, null, false, null, null, null, null, null, 0L, 0L, null, null);
+        new LibraryManagementDetail(null, null, false, null, null, null, null, null, 0L, 0L, null);
     LibraryDetail detail =
         new LibraryDetail(
             library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE, null, null);
@@ -255,8 +251,6 @@ class LibraryResponseMapperTest {
 
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
-    // UPLOAD never carries a cap
-    assertThat(response.getAllAccountsGrantAllowed()).isNull();
   }
 
   @Test
@@ -526,8 +520,7 @@ class LibraryResponseMapperTest {
             null,
             0L,
             0L,
-            null,
-            true);
+            null);
     LibraryResponse manager =
         LibraryResponseMapper.toResponse(
             new LibraryDetail(

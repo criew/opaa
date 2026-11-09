@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
 
@@ -131,6 +132,19 @@ public sealed interface StepInput {
           + ", apiKey="
           + (apiKey == null ? "null" : "***")
           + "]";
+    }
+  }
+
+  /**
+   * The clamd daemon of the malware scan; {@code port} and {@code timeoutSeconds} {@code null} mean
+   * the defaults, {@code onUnavailable} {@code null} means {@code REJECT}.
+   */
+  record MalwareScan(
+      String host, Integer port, Integer timeoutSeconds, MalwareScanUnavailablePolicy onUnavailable)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.MALWARE_SCAN;
     }
   }
 

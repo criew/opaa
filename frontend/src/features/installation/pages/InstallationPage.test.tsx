@@ -17,6 +17,7 @@ import {
   updateMockStep,
   withMockBrandingStep,
   withMockEmbeddingStep,
+  withMockMalwareScanStep,
   withMockRerankStep,
   withMockTextRecognitionStep,
   withMockTranscriptionStep,
@@ -339,6 +340,9 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Texterkennung')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Virenprüfung')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Virenprüfung')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Branding')).toBeInTheDocument()
@@ -347,11 +351,12 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(7)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(8)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
     expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Die Spracheingabe bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Die Texterkennung bleibt aus/)).toBeInTheDocument()
+    expect(screen.getByText(/Die Virenprüfung bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
     expect(mockSkippedSteps()).toEqual([
@@ -360,6 +365,7 @@ describe('InstallationPage', () => {
       'RERANK_MODEL',
       'TRANSCRIPTION_MODEL',
       'TEXT_RECOGNITION_MODEL',
+      'MALWARE_SCAN',
       'MAIL',
       'BRANDING',
     ])
@@ -1173,6 +1179,71 @@ describe('InstallationPage', () => {
           apiKeySet: false,
         },
       })
+    })
+  })
+
+  describe('with the malware scan step', () => {
+    beforeEach(() => {
+      withMockMalwareScanStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openMalwareScanStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Virenprüfung')
+    }
+
+    it('says OPAA ships no scanner and asks for the host', async () => {
+      const user = userEvent.setup()
+      await openMalwareScanStep(user)
+
+      expect(screen.getByText(/OPAA liefert keinen Virenscanner mit/)).toBeInTheDocument()
+      await submitStep(user)
+      expect(field('Host des Virenscanners')).toHaveAccessibleDescription(
+        'Bitte den Host des Virenscanners angeben.',
+      )
+      await user.type(field('Host des Virenscanners'), 'tcp://clamav:3310')
+      await submitStep(user)
+      expect(field('Host des Virenscanners')).toHaveAccessibleDescription(
+        /ohne Schema, Port und Leerzeichen/,
+      )
+      expect(mockInstallationState().steps.find((s) => s.step === 'MALWARE_SCAN')?.saved).toBe(
+        false,
+      )
+    })
+
+    it('checks the daemon and switches the scan on at the completion', async () => {
+      const user = userEvent.setup()
+      await openMalwareScanStep(user)
+
+      await user.type(field('Host des Virenscanners'), 'kaputt.amt.example')
+      await submitStep(user)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/nicht erreichbar/)
+
+      await user.clear(field('Host des Virenscanners'))
+      await user.type(field('Host des Virenscanners'), 'clamav.amt.example')
+      await user.click(screen.getByRole('radio', { name: /Ungeprüft aufnehmen/ }))
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(mockInstallationState().steps.find((s) => s.step === 'MALWARE_SCAN')).toMatchObject({
+        checked: true,
+        malwareScan: {
+          host: 'clamav.amt.example',
+          port: 3310,
+          timeoutSeconds: 30,
+          onUnavailable: 'ACCEPT',
+        },
+      })
+      await openFromStepList(user, 'Abschluss')
+      expect(
+        screen.getByText(/Die Virenprüfung wird mit dem geprüften Virenscanner eingeschaltet/),
+      ).toBeInTheDocument()
     })
   })
 

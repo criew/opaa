@@ -2,6 +2,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '../fixtures/auth'
 import { createLibraryWithDocument, indexedDocumentStates } from '../fixtures/chat'
+import { apiAs } from '../fixtures/externalAccess'
 import { cleanupLibraries, libraryIdFromCurrentUrl } from '../fixtures/libraries'
 
 const FIXTURE_DIR = join(
@@ -39,6 +40,23 @@ function textFile(name: string, bytes: number) {
  */
 test.describe('Grenzen der Aufnahme', () => {
   const createdLibraryIds = cleanupLibraries()
+
+  // The malware scan is a setting of the administration: switched on here against clamd-stub, after
+  // the test of the administration has confirmed the daemon answers. It stays on, the stub passes
+  // every other file.
+  test.beforeAll(async () => {
+    const api = await apiAs('dev-admin')
+    const probe = await api.post('/api/v1/system/malware-scan/test', {
+      data: { host: 'clamd-stub', port: 3310 },
+    })
+    expect(probe.status(), await probe.text()).toBe(200)
+    expect(await probe.json()).toMatchObject({ success: true })
+    const saved = await api.put('/api/v1/system/malware-scan', {
+      data: { enabled: true, host: 'clamd-stub', port: 3310 },
+    })
+    expect(saved.status(), await saved.text()).toBe(200)
+    await api.dispose()
+  })
 
   test('Dateigröße, Speicherkontingent und Virenprüfung weisen den Upload mit Grund ab', async ({
     formatPipelinesPage: page,

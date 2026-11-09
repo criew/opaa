@@ -44,7 +44,8 @@ class ExplanationDumpTest {
                 0,
                 0,
                 List.of(),
-                List.of("search scope: 1 library")),
+                List.of("search scope: 1 library"),
+                4L),
             new StageExplanation(
                 RetrievalStageName.VECTOR_SEARCH,
                 StageStatus.EXECUTED,
@@ -59,7 +60,8 @@ class ExplanationDumpTest {
                         "vector:q1",
                         1,
                         0.81234567891)),
-                List.of())));
+                List.of(),
+                null)));
   }
 
   @Test
@@ -74,6 +76,7 @@ class ExplanationDumpTest {
         .extracting(stage -> stage.get("stage"))
         .containsExactly("SEARCH_SCOPE", "VECTOR_SEARCH");
     assertThat(stages.get(0))
+        .doesNotContainKey("durationMs")
         .containsEntry("status", "EXECUTED")
         .containsEntry("notes", List.of("search scope: 1 library"));
     @SuppressWarnings("unchecked")
@@ -98,6 +101,11 @@ class ExplanationDumpTest {
     Path file = dir.resolve("dump").resolve("case-1.json");
     assertThat(file).exists();
     assertThat(Files.readString(file)).contains("\"chunkId\" : \"a.md#0\"").contains("0.812346");
+    Path durations = dir.resolve("dump").resolve("case-1.durations.json");
+    assertThat(Files.readString(durations))
+        .contains("\"stage\" : \"SEARCH_SCOPE\"")
+        .contains("\"durationMs\" : 4")
+        .contains("\"durationMs\" : null");
   }
 
   @Test
