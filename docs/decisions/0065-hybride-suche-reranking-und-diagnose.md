@@ -124,7 +124,9 @@ Erklärprotokoll je Stufe.
 - **(j)** Das Ergebnis einer Diagnose im fremden Personenkontext wird nur angezeigt und nie
   gespeichert.
 
-Den Gruppenkontext der Diagnose regelt ADR-0036, Entscheidung 7.
+Den Gruppenkontext der Diagnose regelt ADR-0036, Entscheidung 7. Das Schrittprotokoll der
+Werkzeugschleife nutzt die Ablage-Infrastruktur dieses Protokolls mit, übernimmt aber weder seine
+Frist noch seine Lesewege ([ADR-0070](0070-werkzeugaufrufe-im-chat.md), Entscheidung 4).
 
 ## Konsequenzen
 
