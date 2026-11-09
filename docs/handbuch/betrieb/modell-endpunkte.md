@@ -899,15 +899,19 @@ nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.
   das zutrifft. Die übrigen Klassen wägt das Haus selbst.
 - **Ein Ergebnis gilt nur seiner Kombination.** Nach einem Wechsel von Laufzeit, Version,
   Quantisierung oder Kontextlänge wird neu gemessen.
-- **Fällt ein sonst fähiges Modell durch,** ist oft die Laufzeit schuld, siehe Fehlerbilder unten.
+- **Fällt ein sonst fähiges Modell durch,** kann die Laufzeit die Ursache sein, siehe Fehlerbilder
+  unten.
 
-**Fehlerbilder:**
+**Fehlerbilder:** Die Ursachen in den ersten drei Zeilen sind noch an keiner Kombination
+nachgestellt und als Vermutung zu lesen; belegt ist nur die letzte Zeile, weil der Bericht den
+Abschlussgrund jedes Modellaufrufs festhält.
 
-| Bild im Bericht | Ursache | Abhilfe |
+| Bild im Bericht | Mögliche Ursache | Abhilfe |
 |---|---|---|
-| Das Modell sucht fast nie, antwortet aber flüssig | Kontextlänge der Laufzeit zu klein; die Werkzeugbeschreibung wird still abgeschnitten | Kontextlänge am Server erhöhen (Ollama: `OLLAMA_CONTEXT_LENGTH`), neu messen |
-| Ohne Fluss gut, mit `streaming=true` sucht es kaum | Laufzeit verliert Werkzeugaufrufe bei der Ausgabe im Fluss | Laufzeit aktualisieren oder anderen Auswerter für Werkzeugaufrufe wählen |
-| Alle Läufe als Fehler | vLLM ohne `--enable-auto-tool-choice` und passenden `--tool-call-parser` | Server mit beiden Schaltern starten |
+| Das Modell sucht fast nie, antwortet aber flüssig | Kontextlänge der Laufzeit zu klein; die Laufzeit kürzt die Anfrage womöglich still um die Werkzeugbeschreibung | Kontextlänge am Server erhöhen (Ollama: `OLLAMA_CONTEXT_LENGTH`), neu messen |
+| Ohne Fluss gut, mit `streaming=true` sucht es kaum | Laufzeit verliert womöglich Werkzeugaufrufe bei der Ausgabe im Fluss | Laufzeit aktualisieren oder anderen Auswerter für Werkzeugaufrufe wählen |
+| Alle Läufe als Fehler | etwa vLLM ohne `--enable-auto-tool-choice` und passenden `--tool-call-parser` | Server mit beiden Schaltern starten |
+| Läufe als abgeschnitten | Die Antwort endete an der Längenbegrenzung (Abschlussgrund `length`), meist bei Modellen mit langem Denktext | `-Dopaa.eval.toolCalling.maxTokens` erhöhen, neu messen; dieselbe Grenze am Modelleintrag prüfen |
 
 **Datenfluss:** Fälle und Suchergebnisse sind frei erfunden und gehen nur an den angegebenen
 Endpunkt.

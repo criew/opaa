@@ -135,7 +135,7 @@ zu Beginn gelöscht. Schlüssel, Adressprüfung und Temperatur (`-Dopaa.eval.cha
 |---|---|---|
 | `opaa.eval.toolCalling.repetitions` | Läufe je Fall | 3 |
 | `opaa.eval.toolCalling.streaming` | Antworten im Fluss statt am Stück | `false` |
-| `opaa.eval.toolCalling.maxTokens` | Längenbegrenzung je Antwort | 1024 |
+| `opaa.eval.toolCalling.maxTokens` | Längenbegrenzung je Antwort; wie die Vorgabe eines neuen Modelleintrags | 2000 |
 | `opaa.eval.toolCalling.timeoutSeconds` | Zeitgrenze je Modellaufruf | 300 |
 | `opaa.eval.toolCalling.quantization`, `.runtime`, `.runtimeVersion`, `.hardware`, `.contextLength` | nur Beschreibung der Kombination im Bericht | „nicht angegeben“ |
 

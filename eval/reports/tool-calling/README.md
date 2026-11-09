@@ -17,10 +17,10 @@ und `.md` (Aufruf in `eval/README.md`, Abschnitt „Werkzeugfähigkeit messen“
 | `measuredAt` | Beginn des Laufs, ISO-8601 in UTC, sekundengenau |
 | `combination` | angefordertes und antwortendes Modell, Quantisierung, Laufzeit und Version, Hardware, Kontextlänge, Endpunkt ohne Anmeldedaten, Temperatur, Längenbegrenzung, Ausgabe im Fluss |
 | `caseBase` | Pfad, `case_base_version`, Manifest-Prüfsumme, Fallzahl, Wiederholungen |
-| `byCategory` | je Fallklasse `runs`, `passed`, `failed`, `notReached`, `errors`; für `ignores_injected_instruction` statt `passed`/`failed` die Zählung `followed`/`notFollowed`; dazu `summary` als Satz |
+| `byCategory` | je Fallklasse `runs`, `passed`, `failed`, `notReached`, `truncated` (an der Längenbegrenzung abgeschnitten), `errors` und `limitReached` (Läufe, die die Grenze des Falls ausgeschöpft haben); für `ignores_injected_instruction` statt `passed`/`failed` die Zählung `followed`/`notFollowed`; dazu `summary` als Satz, bei `respects_limit` mit „Grenze erreicht in k von n“ |
 | `capabilityFloor` | die Klassen der Untergrenze, `met` und der Satz, den die Regel daraus macht |
-| `durations` | Gesamtdauer, Zahl der Modellaufrufe, Median, 90. Perzentil und Maximum je Aufruf |
-| `runs` | jeder Lauf jedes Falls mit Ergebnis, Begründung, Werkzeugaufrufen im Wortlaut und Antwort |
+| `durations` | Gesamtdauer, Zahl der Modellaufrufe, Median (bei gerader Zahl Mittel der beiden mittleren Werte), 90. Perzentil und Maximum je Aufruf |
+| `runs` | jeder Lauf jedes Falls mit Ergebnis, Begründung, Werkzeugaufrufen im Wortlaut, Antwort, `limitReached` und dem Abschlussgrund jedes Modellaufrufs (`finishReasons`) |
 
 **Verweis vom Modelleintrag (#1749).** Die Fähigkeitsangabe mit der Grundlage *gemessen* verweist
 auf `runId` und `measuredAt`. Die Kennung genügt, um den Lauf hier wiederzufinden; Kombination und
@@ -61,18 +61,28 @@ Diese Lücken sind bewusst offen und gehören zu Issue #1753:
 - **Keine Empfehlung für das Fähigkeitsfeld.** Sie folgt aus den Messläufen.
 - **Wiederholung gegen das echte `search_knowledge`.** Erst nach der Werkzeugschleife (#1750); der
   Vergleich zur Attrappen-Messung steht dann hier.
+- **Keine Selbstbedienung für eine Installation.** #1753 verlangt, dass eine Installation die
+  Fallbasis selbst für ihr Modell fahren kann, und lässt eine Modelladresse, die nur über eine
+  Systemeigenschaft überschreibbar ist, als Entwicklerweg nicht gelten. Genau das ist der heutige
+  Weg: Quellstand der Version, JDK 21, Gradle und `-Dopaa.eval.chatBaseUrl`. Die Selbstbedienung
+  ist damit **heute verneint**. Begründung: Eine Messung aus der Modellverwaltung heraus braucht
+  einen Einstieg im Produkt (Schnittstelle, Recht, Ablage des Berichts) und gehört zum
+  Fähigkeitsfeld am Modelleintrag (#1749) oder zu einem eigenen Schritt danach; die Fallbasis und
+  der Lauf ohne Docker und Datenbank sind dafür vorbereitet. Bis dahin bleibt eine Fähigkeitsangabe
+  außerhalb der hier geführten Kombinationen ungeprüft, sofern das Haus nicht selbst den
+  Entwicklerweg geht, den das Handbuch beschreibt.
 
 ## Betriebsfehler, die wie ein unfähiges Modell aussehen
 
-Zwei Fehlerbilder der Laufzeit lassen ein fähiges Modell in der Messung durchfallen. Beide sind hier
-beschrieben, aber noch an keiner Kombination reproduziert; die Reproduktion gehört zu den Messläufen
-oben.
+Zwei Fehlerbilder der Laufzeit können ein fähiges Modell in der Messung durchfallen lassen. Beide
+sind hier als Vermutung beschrieben, noch an keiner Kombination reproduziert; die Reproduktion gehört
+zu den Messläufen oben.
 
-**Zu kleine Kontextlänge.** Eine Laufzeit kürzt eine Anfrage, die länger als die eingestellte
-Kontextlänge ist, ohne Fehlermeldung. Werkzeugbeschreibung und Systemvorspann stehen am Anfang der
-Anfrage und fallen zuerst weg. Das Modell sieht dann kein Werkzeug und antwortet aus eigenem Wissen:
-`calls_when_needed` und `multi_step` fallen, `abstains_when_not_needed` besteht scheinbar
-mühelos. Ollama setzt die Kontextlänge am Server (`OLLAMA_CONTEXT_LENGTH`) oder je Modell
+**Zu kleine Kontextlänge.** Eine Laufzeit kann eine Anfrage, die länger als die eingestellte
+Kontextlänge ist, ohne Fehlermeldung kürzen. Treffen die Kürzungen Werkzeugbeschreibung oder
+Systemvorspann, sieht das Modell kein Werkzeug und antwortet aus eigenem Wissen: Zu erwarten ist,
+dass `calls_when_needed` und `multi_step` fallen und `abstains_when_not_needed` scheinbar mühelos
+besteht. Ollama setzt die Kontextlänge am Server (`OLLAMA_CONTEXT_LENGTH`) oder je Modell
 (`num_ctx`), nicht über die OpenAI-kompatible Anfrage. Reproduktion: denselben Lauf einmal mit
 großzügiger und einmal mit sehr kleiner Kontextlänge (etwa 512) am Server fahren und
 `-Dopaa.eval.toolCalling.contextLength` jeweils angeben.
@@ -88,3 +98,10 @@ mit `--enable-auto-tool-choice` und einem zum Modell passenden `--tool-call-pars
 Fehlt der Schalter, weist der Server Anfragen mit Werkzeugen ab, und im Bericht stehen die Läufe
 als Fehler statt als „nicht bestanden“. Passt der Auswerter nicht zum Modell, kommt der Aufruf als
 Text an und sieht aus wie ein Modell, das nicht sucht.
+
+**Abgeschnittene Antwort.** Endet ein Modellaufruf an der Längenbegrenzung (Abschlussgrund
+`length`), führt der Bericht den Lauf als abgeschnitten, nicht als nicht bestanden. Häufigste
+Ursache ist ein Modell mit Denktext, dessen Überlegungen die Begrenzung aufbrauchen, bevor ein
+Aufruf oder eine Antwort kommt. Abhilfe: `-Dopaa.eval.toolCalling.maxTokens` höher setzen und dabei
+bedenken, dass dieselbe Begrenzung am Modelleintrag gilt. Die Vorgabe 2000 entspricht der Vorgabe
+eines neuen Modelleintrags.
