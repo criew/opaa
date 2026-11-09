@@ -899,6 +899,9 @@ nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.
   das zutrifft. Die übrigen Klassen wägt das Haus selbst.
 - **Ein Ergebnis gilt nur seiner Kombination.** Nach einem Wechsel von Laufzeit, Version,
   Quantisierung oder Kontextlänge wird neu gemessen.
+- **Ergebnis eintragen:** Wert und Kennung des Messlaufs trägt die Systemverwaltung am Modelleintrag
+  mit der Grundlage „Gemessen“ ein, siehe
+  [Werkzeugfähigkeit festhalten](../administration/modelle.md#werkzeugfähigkeit-festhalten).
 - **Fällt ein sonst fähiges Modell durch,** kann die Laufzeit die Ursache sein, siehe Fehlerbilder
   unten.
 

@@ -98,6 +98,7 @@ class LlmModelServiceTest {
     LlmModel model =
         new LlmModel("Anbieter", baseUrl, "gpt-4o", new BigDecimal("0.70"), 2000, ciphertext);
     when(repository.findById(model.getId())).thenReturn(Optional.of(model));
+    when(repository.findLockedById(model.getId())).thenReturn(Optional.of(model));
     return model;
   }
 

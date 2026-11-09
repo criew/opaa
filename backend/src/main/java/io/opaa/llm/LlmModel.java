@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * A managed chat model (ADR-0067): a row in {@code llm_models}, not environment variables.
@@ -35,8 +36,12 @@ import java.util.UUID;
  * #replaceDetails} resets it to {@link ToolCapability#UNVERIFIED} whenever either changes, and an
  * {@code UNVERIFIED} statement carries no basis, date or measurement run ({@code
  * chk_llm_models_tool_capability_statement}).
+ *
+ * <p>{@link DynamicUpdate} writes only the changed columns, so a save from one path (activation, a
+ * recorded capability) never overwrites a column another transaction changed meanwhile.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "llm_models")
 public class LlmModel {
 

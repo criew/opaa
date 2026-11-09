@@ -103,7 +103,10 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
    * The same client as {@link #resolveChatClient()}, for a call that hands the model tools - only
    * while the active model is recorded as {@link ToolCapability#CAPABLE}. The capability is read
    * from {@code llm_models} on every call, so a changed statement applies to the next turn. The
-   * ordinary chat never calls this method and works with any capability.
+   * ordinary chat never calls this method and works with any capability. Capability and client are
+   * read separately: until the cache is invalidated after a committed edit, the cached client may
+   * still serve the previous combination while the capability already belongs to the new one - a
+   * short window that this check accepts rather than locking the row on every turn.
    *
    * @throws NoActiveChatModelException when {@code llm_models} has no active row
    * @throws ToolCallingNotCapableException when the active model is {@link

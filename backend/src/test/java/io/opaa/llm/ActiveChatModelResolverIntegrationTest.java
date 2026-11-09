@@ -349,6 +349,8 @@ class ActiveChatModelResolverIntegrationTest {
         organizationId,
         userId,
         modelA.getId(),
+        baseUrlA,
+        "model-a",
         ToolCapability.NOT_CAPABLE,
         ToolCapabilityBasis.MANUAL,
         null);
@@ -362,6 +364,8 @@ class ActiveChatModelResolverIntegrationTest {
         organizationId,
         userId,
         modelA.getId(),
+        baseUrlA,
+        "model-a",
         ToolCapability.CAPABLE,
         ToolCapabilityBasis.MANUAL,
         null);

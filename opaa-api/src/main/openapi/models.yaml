@@ -154,8 +154,10 @@ paths:
         (its identifier or date and the measured combination). Neither a person nor a group is
         recorded with the statement; who changed it is recorded in the audit log as
         LLM_MODEL_CHANGED. A change of baseUrl or modelIdentifier via updateLlmModel resets the
-        statement to UNVERIFIED. A turn that needs tool calls is refused while the active model is
-        not CAPABLE; the ordinary chat works with any value.
+        statement to UNVERIFIED; a request naming another baseUrl or modelIdentifier than the
+        stored ones is answered with 409, so a statement never lands on a combination it was not
+        made for. A turn that needs tool calls is refused while the active model is not CAPABLE;
+        the ordinary chat works with any value.
       parameters:
         - name: modelId
           in: path
@@ -182,6 +184,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/models/test:
     post:
@@ -781,9 +785,23 @@ components:
       type: object
       description: >
         UNVERIFIED takes neither basis nor measurementRun. CAPABLE and NOT_CAPABLE take a basis;
-        measurementRun is required for MEASURED and refused for MANUAL.
-      required: [value]
+        measurementRun is required for MEASURED and refused for MANUAL. baseUrl and
+        modelIdentifier name the combination the statement was made for; they must equal the
+        model's stored ones, otherwise 409.
+      required: [value, baseUrl, modelIdentifier]
       properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: The model's base URL as the caller saw it, compared verbatim.
+          example: http://ollama:11434/v1
+        modelIdentifier:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The model identifier as the caller saw it, compared verbatim.
+          example: qwen2.5:14b
         value:
           $ref: "#/components/schemas/ToolCapability"
         basis:

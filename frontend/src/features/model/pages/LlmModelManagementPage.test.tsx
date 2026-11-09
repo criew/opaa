@@ -41,6 +41,15 @@ function renderPage(route = '/admin/models/chat') {
 }
 
 const renderChat = () => renderPage('/admin/models/chat')
+
+/** The combination of the mock model „Ollama lokal“ that a tool capability statement names. */
+const OLLAMA_COMBINATION = { baseUrl: 'http://ollama:11434/v1', modelIdentifier: 'phi3:mini' }
+
+async function openToolCapabilityDialog(user: UserEvent, name: string) {
+  const menu = await openRowMenu(user, name)
+  await user.click(within(menu).getByRole('menuitem', { name: 'Werkzeugfähigkeit festlegen' }))
+  return screen.findByRole('dialog', { name: `Werkzeugfähigkeit von „${name}“` })
+}
 const renderEmbedding = () => renderPage('/admin/models/embedding')
 
 /** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
@@ -759,15 +768,17 @@ describe('LlmModelManagementPage', () => {
     expect(within(rowOf('Ollama lokal')).getByText(/^manuell gesetzt · /)).toBeInTheDocument()
     const gesendet = aufrufe.find((aufruf) => aufruf.path.endsWith('/tool-capability'))!
     expect(gesendet.method).toBe('PUT')
-    expect(gesendet.body).toEqual({ value: 'CAPABLE', basis: 'MANUAL' })
+    expect(gesendet.body).toEqual({ ...OLLAMA_COMBINATION, value: 'CAPABLE', basis: 'MANUAL' })
   })
 
   it('resets the tool capability to unverified without a basis', async () => {
     signInAs('SYSTEM_ADMIN')
     await useLlmModelStore.getState().loadModels()
-    await useLlmModelStore
-      .getState()
-      .setToolCapability('llm-model-ollama-lokal', { value: 'NOT_CAPABLE', basis: 'MANUAL' })
+    await useLlmModelStore.getState().setToolCapability('llm-model-ollama-lokal', {
+      ...OLLAMA_COMBINATION,
+      value: 'NOT_CAPABLE',
+      basis: 'MANUAL',
+    })
     const aufrufe = recordModelRequests()
     const user = userEvent.setup()
 
@@ -784,15 +795,120 @@ describe('LlmModelManagementPage', () => {
       expect(within(rowOf('Ollama lokal')).getByText('Ungeprüft')).toBeInTheDocument(),
     )
     const gesendet = aufrufe.find((aufruf) => aufruf.path.endsWith('/tool-capability'))!
-    expect(gesendet.body).toEqual({ value: 'UNVERIFIED' })
+    expect(gesendet.body).toEqual({ ...OLLAMA_COMBINATION, value: 'UNVERIFIED' })
+  })
+
+  it('keeps saving disabled while the statement is unchanged', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
+
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
+    await user.click(within(dialog).getByRole('radio', { name: /^Ungeprüft/ }))
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+  })
+
+  it('records a measured statement only with its measurement run', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
+    await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
+    await user.click(within(dialog).getByRole('radio', { name: 'Gemessen' }))
+
+    const speichern = within(dialog).getByRole('button', { name: 'Speichern' })
+    expect(speichern).toBeDisabled()
+    await user.type(within(dialog).getByRole('textbox', { name: /Messlauf/ }), 'tc-2026-11-09-1')
+    expect(speichern).toBeEnabled()
+    await user.click(speichern)
+
+    await waitFor(() =>
+      expect(
+        within(rowOf('Ollama lokal')).getByText(/^gemessen · .* · tc-2026-11-09-1$/),
+      ).toBeInTheDocument(),
+    )
+    const gesendet = aufrufe.find((aufruf) => aufruf.path.endsWith('/tool-capability'))!
+    expect(gesendet.body).toEqual({
+      ...OLLAMA_COMBINATION,
+      value: 'CAPABLE',
+      basis: 'MEASURED',
+      measurementRun: 'tc-2026-11-09-1',
+    })
+  })
+
+  it('warns before a manual statement replaces a measured one', async () => {
+    signInAs('SYSTEM_ADMIN')
+    await useLlmModelStore.getState().loadModels()
+    await useLlmModelStore.getState().setToolCapability('llm-model-ollama-lokal', {
+      ...OLLAMA_COMBINATION,
+      value: 'CAPABLE',
+      basis: 'MEASURED',
+      measurementRun: 'tc-2026-11-09-1',
+    })
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
+    expect(within(dialog).getByRole('radio', { name: 'Gemessen' })).toBeChecked()
+    expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('tc-2026-11-09-1')
+    expect(within(dialog).queryByText(/Speichern ersetzt sie/)).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Manuell gesetzt' }))
+
+    expect(within(dialog).getByText(/Speichern ersetzt sie/)).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    expect(aufrufe.some((aufruf) => aufruf.path.endsWith('/tool-capability'))).toBe(false)
+    await user.click(within(dialog).getByRole('button', { name: 'Gemessene Angabe ersetzen' }))
+
+    await waitFor(() =>
+      expect(within(rowOf('Ollama lokal')).getByText(/^manuell gesetzt · /)).toBeInTheDocument(),
+    )
+  })
+
+  it('shows the conflict when the model changed after the list was loaded', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
+    server.use(
+      http.put('/api/v1/admin/models/:modelId/tool-capability', () =>
+        HttpResponse.json(
+          { error: 'Das Modell wurde inzwischen geändert. Bitte die Liste neu laden.' },
+          { status: 409 },
+        ),
+      ),
+    )
+    await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(await within(dialog).findByText(/inzwischen geändert/)).toBeInTheDocument()
+    expect(dialog).toBeInTheDocument()
+    const ollama = useLlmModelStore
+      .getState()
+      .models.find((model) => model.id === 'llm-model-ollama-lokal')!
+    expect(ollama.toolCapability.value).toBe('UNVERIFIED')
   })
 
   it('warns in the form that a changed model identifier makes the capability unverified', async () => {
     signInAs('SYSTEM_ADMIN')
     await useLlmModelStore.getState().loadModels()
-    await useLlmModelStore
-      .getState()
-      .setToolCapability('llm-model-ollama-lokal', { value: 'CAPABLE', basis: 'MANUAL' })
+    await useLlmModelStore.getState().setToolCapability('llm-model-ollama-lokal', {
+      ...OLLAMA_COMBINATION,
+      value: 'CAPABLE',
+      basis: 'MANUAL',
+    })
     const user = userEvent.setup()
 
     renderChat()
