@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 class LlmModelsToolCapabilityMigrationTest extends AbstractBaselineTest {
 
   private static final String SCRIPT =
-      "db/migration/knowledge/V2026.11.09.3__llm_models_tool_capability.sql";
+      "db/migration/knowledge/V2026.11.09.4__llm_models_tool_capability.sql";
 
   @Override
   protected List<String> baseFixtureMigrations() {
