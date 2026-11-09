@@ -3129,6 +3129,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#modell-auf-werkzeugaufrufe-messen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modell auf Werkzeugaufrufe messen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ausfall-eines-modells" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4463,6 +4474,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#modell-auf-werkzeugaufrufe-messen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modell auf Werkzeugaufrufe messen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ausfall-eines-modells" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5361,6 +5383,82 @@ Zeichen), zuletzt jede Antwort im Wortlaut.</p>
 Sie gehen an den angegebenen Endpunkt und an sonst niemanden. Beim ersten Lauf kommen die
 Downloads aus den Voraussetzungen dazu: Gradle und Maven Central, Docker Hub und die
 Ollama-Registry; danach liegt alles im lokalen Zwischenspeicher.</p>
+<h2 id="modell-auf-werkzeugaufrufe-messen">Modell auf Werkzeugaufrufe messen<a class="headerlink" href="#modell-auf-werkzeugaufrufe-messen" title="Permanent link">&para;</a></h2>
+<p>Ob ein Modell ein Werkzeug verlässlich aufruft, hängt nicht am Modell allein, sondern an der
+Kombination aus Modell, Quantisierung, Laufzeit und deren Einstellungen. Dasselbe Modell kann unter
+Ollama Werkzeuge sauber aufrufen und unter einer anderen Laufzeit nicht. Eine feste Fallbasis misst
+das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die eine Suche verlangt, ein
+Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
+eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.</p>
+<p><strong>Voraussetzungen:</strong> ein Rechner mit JDK 21 und dem Quellstand der installierten Version, Netzzugang
+zum Endpunkt des Modells, beim ersten Lauf Internetzugang für Gradle und Maven Central. Docker ist
+nicht nötig.</p>
+<p><strong>Aufruf</strong> aus dem Verzeichnis <code>backend/</code> des Quellstands:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPAA_EVAL_CHAT_API_KEY</span><span class="o">=</span>...<span class="w">    </span><span class="c1"># nur, wenn der Endpunkt einen Schlüssel verlangt</span>
+./gradlew<span class="w"> </span>evaluateToolCalling<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.chatBaseUrl<span class="o">=</span>http://ollama.stadt.example:11434/v1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.chatModel<span class="o">=</span>modellname<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.toolCalling.quantization<span class="o">=</span>Q4_K_M<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.toolCalling.runtime<span class="o">=</span>ollama<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.toolCalling.runtimeVersion<span class="o">=</span><span class="m">0</span>.40.3<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.toolCalling.hardware<span class="o">=</span><span class="s2">"1 GPU, 24 GB"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dopaa.eval.toolCalling.contextLength<span class="o">=</span><span class="m">8192</span>
+</code></pre></div>
+<p>Adresse und Schlüssel folgen denselben Regeln wie unter
+<a href="#modell-gegen-prompt-injection-messen">Modell gegen Prompt-Injection messen</a>. Die Angaben zu
+Quantisierung, Laufzeit, Version, Hardware und Kontextlänge ändern nichts an der Messung; sie
+benennen die Kombination im Bericht und gehören vollständig dazu, sonst bleibt unklar, wofür das
+Ergebnis gilt. Mit <code>-Dopaa.eval.toolCalling.streaming=true</code> misst der Lauf die Ausgabe im Fluss,
+mit <code>-Dopaa.eval.toolCalling.repetitions</code> eine andere Zahl von Läufen je Fall als drei.</p>
+<p><strong>Bericht:</strong> <code>backend/build/eval-reports/tool-calling.md</code> (dazu <code>.json</code>). Er beginnt mit der
+Kennung des Messlaufs und dem Datum und nennt je Fallklasse eine Zahl, etwa „12 von 12 Läufen
+bestanden“; für die eingeschmuggelte Anweisung „Anweisung wirksam in 1 von 12 erreichten Läufen“,
+nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.</p>
+<ul>
+<li><strong>Untergrenze:</strong> Als werkzeugfähig darf eine Kombination nur gelten, wenn jeder Lauf von
+  „ruft, wenn nötig“, „gültige Argumente“ und „hält die Grenze“ bestanden hat. Der Bericht sagt, ob
+  das zutrifft. Die übrigen Klassen wägt das Haus selbst.</li>
+<li><strong>Ein Ergebnis gilt nur seiner Kombination.</strong> Nach einem Wechsel von Laufzeit, Version,
+  Quantisierung oder Kontextlänge wird neu gemessen.</li>
+<li><strong>Fällt ein sonst fähiges Modell durch,</strong> kann die Laufzeit die Ursache sein, siehe Fehlerbilder
+  unten.</li>
+</ul>
+<p><strong>Fehlerbilder:</strong> Die Ursachen in den ersten drei Zeilen sind noch an keiner Kombination
+nachgestellt und als Vermutung zu lesen; belegt ist nur die letzte Zeile, weil der Bericht den
+Abschlussgrund jedes Modellaufrufs festhält.</p>
+<table>
+<thead>
+<tr>
+<th>Bild im Bericht</th>
+<th>Mögliche Ursache</th>
+<th>Abhilfe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Das Modell sucht fast nie, antwortet aber flüssig</td>
+<td>Kontextlänge der Laufzeit zu klein; die Laufzeit kürzt die Anfrage womöglich still um die Werkzeugbeschreibung</td>
+<td>Kontextlänge am Server erhöhen (Ollama: <code>OLLAMA_CONTEXT_LENGTH</code>), neu messen</td>
+</tr>
+<tr>
+<td>Ohne Fluss gut, mit <code>streaming=true</code> sucht es kaum</td>
+<td>Laufzeit verliert womöglich Werkzeugaufrufe bei der Ausgabe im Fluss</td>
+<td>Laufzeit aktualisieren oder anderen Auswerter für Werkzeugaufrufe wählen</td>
+</tr>
+<tr>
+<td>Alle Läufe als Fehler</td>
+<td>etwa vLLM ohne <code>--enable-auto-tool-choice</code> und passenden <code>--tool-call-parser</code></td>
+<td>Server mit beiden Schaltern starten</td>
+</tr>
+<tr>
+<td>Läufe als abgeschnitten</td>
+<td>Die Antwort endete an der Längenbegrenzung (Abschlussgrund <code>length</code>), meist bei Modellen mit langem Denktext</td>
+<td><code>-Dopaa.eval.toolCalling.maxTokens</code> erhöhen, neu messen; dieselbe Grenze am Modelleintrag prüfen</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Datenfluss:</strong> Fälle und Suchergebnisse sind frei erfunden und gehen nur an den angegebenen
+Endpunkt.</p>
 <h2 id="ausfall-eines-modells">Ausfall eines Modells<a class="headerlink" href="#ausfall-eines-modells" title="Permanent link">&para;</a></h2>
 <p>Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
 Modell die Readiness des Backends bestimmt (<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness und Liveness</a>).
