@@ -1,5 +1,6 @@
 package io.opaa.llm.web;
 
+import io.opaa.auth.CorsProperties;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.CurrentUserArgumentResolver;
 import io.opaa.common.ConditionalOnFeature;
@@ -8,13 +9,10 @@ import io.opaa.llm.PersonalTranscriptionVocabularyService;
 import io.opaa.llm.RealtimeTranscriptionRole;
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,14 +54,14 @@ class TranscriptionStreamConfiguration implements WebSocketConfigurer {
       PersonalTranscriptionVocabularyService vocabularies,
       ObjectMapper json,
       Clock clock,
-      @Value("${opaa.cors.allowed-origins}") String origins) {
+      CorsProperties cors) {
     this.timers =
         Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("transcription-stream-timer").factory());
     this.connector = Executors.newVirtualThreadPerTaskExecutor();
     this.handler =
         new TranscriptionStreamHandler(realtime, vocabularies, json, clock, timers, connector);
-    this.allowedOrigins = allowedOriginsOf(origins).toArray(String[]::new);
+    this.allowedOrigins = cors.allowedOrigins().toArray(String[]::new);
   }
 
   @PreDestroy
@@ -131,9 +129,5 @@ class TranscriptionStreamConfiguration implements WebSocketConfigurer {
         ServerHttpResponse response,
         WebSocketHandler wsHandler,
         Exception exception) {}
-  }
-
-  static List<String> allowedOriginsOf(String origins) {
-    return Arrays.stream(origins.split(",")).map(String::strip).filter(o -> !o.isEmpty()).toList();
   }
 }
