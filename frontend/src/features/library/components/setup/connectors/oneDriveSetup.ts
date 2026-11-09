@@ -8,9 +8,9 @@ import {
   oneDriveSettingsOf,
   type OneDriveSourceValues,
 } from '../../../utils/oneDriveSource'
-import type { SourceSetupSpec } from '../setupTypes'
-import { displayPath } from '../paths'
-import { issueList, listSummary } from './common'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { displayPath } from '../../sourceCore/paths'
+import { issueList, listSummary } from '../../sourceCore/common'
 import { OneDriveConnectionFields, OneDriveScopeFields } from './OneDriveSetupFields'
 
 export const oneDriveSetup: SourceSetupSpec<OneDriveSourceValues> = {

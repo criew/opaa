@@ -9,17 +9,17 @@ import {
   oneDriveLabel,
   type OneDriveSourceValues,
 } from '../../../utils/oneDriveSource'
-import type { ConnectionFields } from '../../sources/sourceConnection'
-import { plainMessage } from '../../sourceKit/plainMessage'
+import type { ConnectionFields } from '../../sourceCore/sourceConnection'
+import { plainMessage } from '../../sourceCore/plainMessage'
 import {
   oneDriveFoldersOfItems,
   oneDriveItemsOf,
   oneDriveSelectionSource,
 } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
-import { displayPath } from '../paths'
+import { displayPath } from '../../sourceCore/paths'
 import { TEXT_LINK } from '../rowStyles'
-import type { SetupFieldsProps } from '../setupTypes'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 
 type Found = { driveId: string; driveName: string | null } | { refusal: string }
 

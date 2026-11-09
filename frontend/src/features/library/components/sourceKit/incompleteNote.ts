@@ -1,4 +1,4 @@
-import { plainMessage } from './plainMessage'
+import { plainMessage } from '../sourceCore/plainMessage'
 import type { BrowseResult } from './selection'
 
 /**

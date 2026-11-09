@@ -1,7 +1,7 @@
-import { sameLibrarySourceOrigin } from '../../../utils/librarySourceConfig'
-import type { SourceFormContext } from '../../sources/types'
-import type { SourceIssue } from '../../../utils/sourceIssue'
-import type { RowSummary } from '../setupTypes'
+import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
+import type { SourceFormContext } from './types'
+import type { SourceIssue } from '../../utils/sourceIssue'
+import type { RowSummary } from './setupTypes'
 
 /** Host (and port) of an address, the address itself when it is none. */
 export function hostOf(address: string): string {

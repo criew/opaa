@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SourceConnectionTestRequest, SourceConnectionTestResponse } from '@/shared/api/types'
 import { testLibrarySource } from '../../api/libraryApi'
-import type { CheckState } from './setupTypes'
-import { unreadableScopeNames } from '../scopeMarks'
+import type { CheckState } from '../sourceCore/setupTypes'
+import { unreadableScopeNames } from '../sourceCore/scopeMarks'
 
 export type StageState = 'ok' | 'failed' | 'skipped' | 'open'
 

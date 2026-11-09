@@ -2,8 +2,8 @@ import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../../../../../test/test-utils'
 import { EMPTY_GENERIC_SOURCE_VALUES } from '../../../utils/librarySourceConfig'
-import { connectionFields, type SourceConnection } from '../../sources/sourceConnection'
-import type { SourceFormContext } from '../../sources/types'
+import { connectionFields, type SourceConnection } from '../../sourceCore/sourceConnection'
+import type { SourceFormContext } from '../../sourceCore/types'
 import { UrlConnectionFields } from './GenericSetupFields'
 
 const RSS_PROFILE: SourceConnection = {

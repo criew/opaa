@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { RssAttachmentProfile, RssFeedSourceValues } from '../../../utils/rssFeedSource'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { UrlConnectionFields } from './GenericSetupFields'
 
 /** „Verbindung“ as every web source. */

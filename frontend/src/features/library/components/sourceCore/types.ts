@@ -2,7 +2,7 @@ import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
 import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceConnection } from './sourceConnection'
-import type { SourceSetupSpec } from '../setup/setupTypes'
+import type { SourceSetupSpec } from './setupTypes'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {

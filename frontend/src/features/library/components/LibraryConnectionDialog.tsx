@@ -30,7 +30,7 @@ import {
   addressUnder,
   framedBy,
   sourceConnectionOf,
-} from './sources/sourceConnection'
+} from './sourceCore/sourceConnection'
 import { fontFamily } from '@/shared/theme/tokens'
 
 /** What the dialog reads of the stored library. */
