@@ -8,7 +8,7 @@ import {
 } from '../../utils/s3Source'
 import { s3Setup } from '../setup/connectors/s3Setup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const s3Source: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.S3,

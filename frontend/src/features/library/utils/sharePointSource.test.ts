@@ -11,7 +11,7 @@ import {
   type SharePointLibraryChoice,
 } from './sharePointSource'
 import { sharePointSetup } from '../components/setup/connectors/sharePointSetup'
-import type { SourceFormContext } from '../components/sources/types'
+import type { SourceFormContext } from '../components/sourceCore/types'
 
 const context: SourceFormContext = {
   mode: 'edit',

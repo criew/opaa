@@ -10,7 +10,7 @@ import {
 } from '../../utils/oneDriveSource'
 import { oneDriveSetup } from '../setup/connectors/oneDriveSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 /** The last segment of a folder's shown path. */
 function lastSegment(path: string) {

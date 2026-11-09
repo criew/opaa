@@ -10,9 +10,9 @@ import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
-import type { SourceFormContext } from '../components/sources/types'
+import type { SourceFormContext } from '../components/sourceCore/types'
 import type { SourceSetupHandle } from '../components/setup/SourceSetupRows'
-import type { SetupRowId } from '../components/setup/setupTypes'
+import type { SetupRowId } from '../components/sourceCore/setupTypes'
 import { scheduleSummary } from '../components/setup/scheduleSummary'
 import LibraryReviewStep, { type ReviewEntry } from '../components/LibraryReviewStep'
 import {
@@ -37,7 +37,7 @@ import {
   switchConnection,
   withConnection,
   withoutFixed,
-} from '../components/sources/sourceConnection'
+} from '../components/sourceCore/sourceConnection'
 import { useConnectionProfileOptions } from '@/features/connection'
 import {
   scheduleUpdateFrom,

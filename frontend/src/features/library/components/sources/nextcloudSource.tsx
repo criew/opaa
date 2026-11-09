@@ -7,7 +7,7 @@ import {
 } from '../../utils/nextcloudSource'
 import { nextcloudSetup } from '../setup/connectors/nextcloudSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const nextcloudSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.NEXTCLOUD,

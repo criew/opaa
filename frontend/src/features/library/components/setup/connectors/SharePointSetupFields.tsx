@@ -10,9 +10,9 @@ import {
   sharePointSitesOfItems,
 } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
-import { displayPath } from '../paths'
-import type { SetupFieldsProps } from '../setupTypes'
-import { ALL_SCOPE_HINT } from './common'
+import { displayPath } from '../../sourceCore/paths'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { ALL_SCOPE_HINT } from '../../sourceCore/common'
 
 /** The Zugang signs in; the row „Verbindung“ has nothing to enter. */
 export function SharePointConnectionFields() {
