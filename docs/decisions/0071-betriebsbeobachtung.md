@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -96,6 +96,25 @@ lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboard
 Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
 gebraucht worden wäre.
 
+### 9. Indizierung und Verzeichnisabgleich: Konnektortyp als Label, Zustand aus der Datenbank
+
+Die Metriken der Indizierung tragen als `connector` den Schlüssel des Quellentyps klein geschrieben
+(`confluence`, `sharepoint`, `upload`), denselben Wert, den `opaa.outbound.requests` als `kind`
+nennt; die Bibliothek ist nie ein Label. Ein Lauf zählt an seinem Ende in `opaa.indexing.runs` mit
+Betriebsart, Ergebnis und `failure_category` aus der festen Liste der Laufgründe; einen Lauf, den
+die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, zählt sie als
+`abandoned`. `opaa.indexing.run.duration` veröffentlicht SLO-Buckets wie die Timer aus
+Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`). Was nur die Datenbank weiß, liest jede Instanz
+jede Minute aus den vorhandenen Tabellen: den jüngsten Erfolg je Konnektortyp, die Zahl überfälliger
+Bibliotheken je Typ, den Rückstand eines Modellwechsels, den letzten angewendeten
+Verzeichnisabgleich und das Alter eines Plans, der auf Bestätigung wartet. Jeder Pod meldet dann
+denselben Wert; Dashboards und Alarme fassen solche Gauges mit `max` über die Pods zusammen, nicht
+mit `sum`. Der jüngste Erfolg je Typ verdeckt eine tote Bibliothek, solange eine andere desselben
+Typs läuft. Deshalb zählt `opaa.indexing.libraries.overdue` die Bibliotheken mit Zeitplan, deren
+letzter Erfolg länger als zwei ihrer Intervalle zurückliegt, als Anzahl ohne Kennung. Der
+Verzeichnisabgleich nennt als `provider` den Typ des Verzeichniszugangs (`keycloak`); sein letzter
+Erfolg ist der letzte angewendete Lauf und steht still, solange ein Plan auf Bestätigung wartet.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
@@ -115,3 +134,4 @@ gebraucht worden wäre.
 - Perzentile im Prozess (Summaries) — nicht über Pods aggregierbar.
 - Gemeinsames Tag `instance` — kollidiert mit dem Label, das Prometheus jedem Ziel gibt.
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
+- Letzter Erfolg je Bibliothek als eigene Reihe — Bibliothekskennung im Label, Entscheidung 9.
