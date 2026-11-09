@@ -63,8 +63,7 @@ backend/src/main/java/io/opaa/auth/OidcProviderConnectionTester.java
 backend/src/main/java/io/opaa/connection/profile/McpServerProfileService.java
 backend/src/main/java/io/opaa/account/LocalAccountMailer.java
 backend/src/main/java/io/opaa/account/MailingBootstrapLoginNotifier.java
-backend/src/main/java/io/opaa/externalaccess/token/ExternalAccessTokenMailer.java
-backend/src/main/java/io/opaa/externalaccess/token/ServiceAccountMailer.java
+backend/src/main/java/io/opaa/externalaccess/token/**/*.java
 backend/src/main/java/io/opaa/library/LibraryExternalAccessReminderService.java
 backend/src/main/java/io/opaa/auth/NimbusOidcJwtDecoderFactory.java
 backend/src/main/java/io/opaa/api/HttpClientConfig.java
@@ -94,6 +93,11 @@ backend/src/main/java/io/opaa/retrieval/ranking/RerankStage.java
 backend/src/main/java/io/opaa/searchadmin/SearchStatusService.java
 backend/src/main/java/io/opaa/metadata/ChunkContextPrefix.java
 backend/src/main/java/io/opaa/metadata/CoreContextPrefixSettings.java
+backend/src/main/java/io/opaa/chat/ChatAttachment*.java
+
+# Text recognition: whole documents go to the OCR service, its result is stored
+backend/src/main/java/io/opaa/indexing/document/*TextRecognition*.java
+backend/src/main/java/io/opaa/indexing/document/ScannedDocumentRecognition.java
 
 # Prompts and answer generation: system prompts and their inputs
 backend/src/main/java/io/opaa/prompt/**/*.java
@@ -114,7 +118,15 @@ backend/src/main/java/io/opaa/diagnosticaccess/**/*.java
 backend/src/main/java/io/opaa/instance/InstanceRegistry.java
 backend/src/main/java/io/opaa/connection/token/ConnectionLifecycleSettings.java
 backend/src/main/java/io/opaa/library/PrivateLibraryDeletion*.java
-backend/src/main/java/io/opaa/library/PrivateLibraryErasure.java
 
 # Exports of personal data
 backend/src/main/java/io/opaa/chat/ChatExportService.java
+
+# Erasure of personal reference
+backend/src/main/java/**/*Erasure*.java
+
+# Evaluations of usage and request logging
+backend/src/main/java/io/opaa/externalaccess/ExternalAccessMassRetrievalAlarm.java
+backend/src/main/java/io/opaa/api/RequestLoggingFilter.java
+backend/src/main/java/io/opaa/observability/UnobservedRoutes.java
+backend/src/main/java/io/opaa/auth/QuickTourHint.java
