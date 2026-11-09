@@ -13,9 +13,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * is its own: the operation's limit ({@link #operationAllows()}), the probe of its protocol and the
  * calls it offers.
  *
- * <p>Switch, address, model and key are the administration's ({@link ModelRoleEndpoints}, ADR-0060,
- * Entscheidung 10), read on every call, so a change takes effect without a restart. {@link
- * #currentStatus()} and {@link #statusFor} never probe; the state is kept current by {@link
+ * <p>Switch, address, model and key are the administration's ({@link OptionalRoleEndpoints},
+ * ADR-0060, Entscheidung 10), read on every call, so a change takes effect without a restart.
+ * {@link #currentStatus()} and {@link #statusFor} never probe; the state is kept current by {@link
  * #refresh()} and by every real call. A role is never fatal: a broken endpoint degrades the
  * feature, it does not stop the application.
  *
@@ -32,7 +32,7 @@ public abstract class OptionalModelRole<E extends OptionalRoleEndpoint>
   /**
    * A failed probe: a technical English message, and whether the endpoint did not answer in time.
    */
-  protected record ProbeFailure(String message, boolean timedOut) {}
+  public record ProbeFailure(String message, boolean timedOut) {}
 
   private final String observationKey;
   private final String name;
@@ -192,7 +192,7 @@ public abstract class OptionalModelRole<E extends OptionalRoleEndpoint>
    * would block it on every probe. One thread is enough: the probe schedule is the only recurring
    * task on it and runs with {@code fixedDelay}, so a hanging probe delays the next probe only.
    */
-  static TaskScheduler probeScheduler(String threadNamePrefix) {
+  public static TaskScheduler probeScheduler(String threadNamePrefix) {
     ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
     scheduler.setPoolSize(1);
     scheduler.setThreadNamePrefix(threadNamePrefix);

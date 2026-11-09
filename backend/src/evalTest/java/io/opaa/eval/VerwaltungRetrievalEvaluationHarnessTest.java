@@ -27,8 +27,8 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.llm.ModelRoleEndpoints;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankEndpoints;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.organization.Organization;
@@ -389,7 +389,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // Whether this run could rerank at all - a fact about the context, and the one
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
   @Autowired private RerankModelRole rerankModelRole;
-  @Autowired private ModelRoleEndpoints modelRoleEndpoints;
+  @Autowired private RerankEndpoints modelRoleEndpoints;
   // The production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;

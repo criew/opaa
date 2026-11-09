@@ -15,11 +15,11 @@ import javax.net.ssl.SSLException;
 
 /**
  * Failure classification shared by the model roles that call their endpoint over the JDK client
- * ({@link RerankClient}, {@link TranscriptionClient}). Every text is technical English for a role's
+ * ({@code RerankClient}, {@code TranscriptionClient}). Every text is technical English for a role's
  * diagnostic and never contains the address, the access key or response content; what differs
  * between the roles is passed in by the caller.
  */
-final class ModelRoleHttp {
+public final class ModelRoleHttp {
 
   private ModelRoleHttp() {}
 
@@ -29,7 +29,7 @@ final class ModelRoleHttp {
    * @param failure builds the role's exception from a message and the cause, which is {@code null}
    *     for the scheme check; the caller decides whether to attach it.
    */
-  static URI endpointUri(
+  public static URI endpointUri(
       String baseUrl, String path, BiFunction<String, Throwable, RuntimeException> failure) {
     URI uri;
     try {
@@ -54,7 +54,8 @@ final class ModelRoleHttp {
    *     endpoint").
    * @param roleSpecific complete texts for statuses only this role describes.
    */
-  static String describeStatus(int status, String endpointName, Map<Integer, String> roleSpecific) {
+  public static String describeStatus(
+      int status, String endpointName, Map<Integer, String> roleSpecific) {
     return switch (status) {
       case 401 -> "HTTP 401: authentication failed, check the access key";
       case 403 -> "HTTP 403: the endpoint refused access";
@@ -70,7 +71,7 @@ final class ModelRoleHttp {
    *
    * @param connectTimeoutMessage the role's text for {@link HttpConnectTimeoutException}.
    */
-  static String describeConnectionError(IOException e, String connectTimeoutMessage) {
+  public static String describeConnectionError(IOException e, String connectTimeoutMessage) {
     if (e instanceof UnknownHostException) {
       return "host not found (DNS resolution failed)";
     }
@@ -98,7 +99,7 @@ final class ModelRoleHttp {
    * HttpConnectTimeoutException} is not: nothing accepted the connection, so the endpoint was not
    * reached at all - the same class of fault as a refused connection, not a slow endpoint.
    */
-  static boolean isRequestTimeout(IOException e) {
+  public static boolean isRequestTimeout(IOException e) {
     return (e instanceof HttpTimeoutException && !(e instanceof HttpConnectTimeoutException))
         || e instanceof SocketTimeoutException;
   }

@@ -2,8 +2,8 @@ name: Docling-Integration
 
 # Bewusst NICHT bei jedem Pull Request: der Lauf startet ein echtes docling-serve (CPU-Image,
 # mehrere Gigabyte) in Docker, und die erste Umwandlung lädt Layout-, Tabellen- und OCR-Modelle.
-# Der Stub des Texterkennungs-Clients (io.opaa.llm.TextRecognitionClientTest) läuft dagegen mit
-# jedem PR im regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte API.
+# Der Stub des Texterkennungs-Clients (io.opaa.llm.textrecognition.TextRecognitionClientTest) läuft
+# dagegen mit jedem PR im regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte API.
 on:
   schedule:
     # Nach Confluence, Keycloak und Nextcloud, damit nicht mehrere speicherhungrige Container um

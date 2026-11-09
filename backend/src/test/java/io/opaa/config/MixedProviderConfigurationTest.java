@@ -2,7 +2,7 @@ package io.opaa.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingInfoService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import org.junit.jupiter.api.Test;

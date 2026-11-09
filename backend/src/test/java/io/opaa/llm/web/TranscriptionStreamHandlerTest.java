@@ -14,11 +14,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
-import io.opaa.llm.RealtimeTranscriptionClient;
-import io.opaa.llm.RealtimeTranscriptionRole;
-import io.opaa.llm.RealtimeTranscriptionRole.LiveSession;
-import io.opaa.llm.RealtimeTranscriptionRole.RealtimeUnusableException;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.RealtimeTranscriptionClient;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole.LiveSession;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole.RealtimeUnusableException;
 import io.opaa.test.MutableClock;
 import java.io.IOException;
 import java.time.Duration;

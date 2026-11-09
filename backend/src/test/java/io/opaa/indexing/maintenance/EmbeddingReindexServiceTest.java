@@ -21,7 +21,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingModelAdministration;
+import io.opaa.llm.embedding.EmbeddingModelAdministration;
 import io.opaa.permission.PersonThreshold;
 import java.time.Clock;
 import java.util.HashSet;

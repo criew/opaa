@@ -9,6 +9,10 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.opaa.llm.rerank.RerankClient;
+import io.opaa.llm.rerank.RerankEndpoint;
+import io.opaa.llm.rerank.RerankModelRole;
+import io.opaa.llm.rerank.RerankProperties;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;

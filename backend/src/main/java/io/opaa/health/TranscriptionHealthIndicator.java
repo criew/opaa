@@ -1,7 +1,7 @@
 package io.opaa.health;
 
 import io.opaa.llm.OptionalRoleStatus;
-import io.opaa.llm.TranscriptionRoleStatusProvider;
+import io.opaa.llm.transcription.TranscriptionRoleStatusProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;

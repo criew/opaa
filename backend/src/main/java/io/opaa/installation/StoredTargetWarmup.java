@@ -1,7 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.llm.ModelAddressPolicy;
-import io.opaa.llm.RealtimeTranscriptionEndpoint;
+import io.opaa.llm.transcription.RealtimeTranscriptionEndpoint;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
 import java.util.ArrayList;

@@ -95,7 +95,8 @@ spring:
     # driven by an environment variable: with the native Ollama starter gone, "openai" is the only
     # autoconfiguration Spring AI can wire here.
     # The embedding model is no autoconfiguration either: it is the row of embedding_model, chosen
-    # in the installation (ADR-0060, Entscheidung 10) and served by io.opaa.llm.InstalledEmbeddingModel.
+    # in the installation (ADR-0060, Entscheidung 10) and served by
+    # io.opaa.llm.embedding.InstalledEmbeddingModel.
     model:
       chat: openai
       embedding: none

@@ -10,9 +10,9 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.chunk.EmbeddingIdentity;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
-import io.opaa.llm.EmbeddingInfo;
-import io.opaa.llm.EmbeddingInfoService;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingInfo;
+import io.opaa.llm.embedding.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.test.MutableClock;
 import java.time.Duration;
 import java.time.Instant;

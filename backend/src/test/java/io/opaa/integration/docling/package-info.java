@@ -1,7 +1,8 @@
 /**
  * Integration tests of the text recognition client against a <em>real</em> docling-serve started in
- * Docker - the acceptance level above the stub in {@code io.opaa.llm.TextRecognitionClientTest},
- * which stays the contract level for both connection types.
+ * Docker - the acceptance level above the stub in {@code
+ * io.opaa.llm.textrecognition.TextRecognitionClientTest}, which stays the contract level for both
+ * connection types.
  *
  * <p><b>Runs only via {@code ./gradlew doclingIntegrationTest}</b>, never as part of {@code
  * build}/{@code test}: the CPU image of docling-serve is several gigabytes and reading the test
