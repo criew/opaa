@@ -12,10 +12,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 /**
- * The optional trace export (ADR-0071): off by default ({@code OPAA_TRACING_ENABLED}); switched on,
- * spans go over OTLP/HTTP to {@code OPAA_TRACING_OTLP_ENDPOINT}, every exporter wrapped in {@link
- * AllowlistedSpanExporter}. Switched on without an endpoint, the start fails instead of exporting
- * nowhere. Which routes leave no span: {@link UnobservedRoutes}.
+ * The optional trace export (ADR-0071, Entscheidung 7): off by default ({@code
+ * OPAA_TRACING_ENABLED}); switched on, spans go over OTLP/HTTP to {@code
+ * OPAA_TRACING_OTLP_ENDPOINT}, every exporter wrapped in {@link AllowlistedSpanExporter}. Switched
+ * on without an endpoint, the start fails instead of exporting nowhere. Which routes leave no span:
+ * {@link UnobservedRoutes}.
  */
 @DataFlow("trace-export")
 @Configuration(proxyBeanMethods = false)

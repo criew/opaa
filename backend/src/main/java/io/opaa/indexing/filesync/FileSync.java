@@ -21,7 +21,6 @@ import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
-import io.opaa.observability.MdcTaskDecorator;
 import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
@@ -52,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * The file sync of one library over one open {@link FileStore} (ADR-0045): every listed entry is
@@ -936,15 +936,24 @@ public final class FileSync implements AutoCloseable {
     while (pending.size() >= concurrency) {
       drainOne();
     }
+    // the download logs with the run's MDC (request and indexing run id); the pool thread is
+    // left without it, so the next download of another run cannot carry it
+    Map<String, String> runContext = MDC.getCopyOfContextMap();
     Future<FetchedFile> future =
         downloadPool()
             .submit(
-                MdcTaskDecorator.withCallersMdc(
-                    () -> {
-                      FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
-                      landed.add(fetched.file());
-                      return fetched;
-                    }));
+                () -> {
+                  if (runContext != null) {
+                    MDC.setContextMap(runContext);
+                  }
+                  try {
+                    FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
+                    landed.add(fetched.file());
+                    return fetched;
+                  } finally {
+                    MDC.clear();
+                  }
+                });
     pending.add(new PendingDownload(entry, folderId, page, future));
   }
 
