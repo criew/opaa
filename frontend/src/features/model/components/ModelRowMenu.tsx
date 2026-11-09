@@ -5,6 +5,7 @@ import { testLlmModel } from '../api/modelApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
+import ToolCapabilityDialog from './ToolCapabilityDialog'
 
 export const ACTIVE_DELETE_HINT =
   'Das aktive Modell kann nicht gelöscht werden – zuerst ein anderes Modell aktivieren.'
@@ -25,6 +26,7 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   const activateExistingModel = useLlmModelStore((s) => s.activateExistingModel)
   const deleteExistingModel = useLlmModelStore((s) => s.deleteExistingModel)
   const [busy, setBusy] = useState(false)
+  const [toolCapabilityOpen, setToolCapabilityOpen] = useState(false)
 
   async function run(action: () => Promise<string>, fallback: string) {
     setBusy(true)
@@ -73,28 +75,39 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   }
 
   return (
-    <RowMenu
-      name={model.displayName}
-      disabled={busy}
-      items={[
-        { label: 'Bearbeiten', onClick: () => onEdit(model) },
-        { label: 'Verbindung testen', onClick: () => void test() },
-        !model.active && {
-          label: 'Aktiv setzen',
-          onClick: () =>
-            void run(async () => {
-              await activateExistingModel(model.id)
-              return `„${model.displayName}“ ist jetzt das aktive Modell.`
-            }, 'Aktivierung fehlgeschlagen'),
-        },
-        {
-          label: 'Löschen',
-          onClick: () => void remove(),
-          danger: true,
-          disabled: model.active,
-          disabledReason: ACTIVE_DELETE_HINT,
-        },
-      ]}
-    />
+    <>
+      <RowMenu
+        name={model.displayName}
+        disabled={busy}
+        items={[
+          { label: 'Bearbeiten', onClick: () => onEdit(model) },
+          { label: 'Verbindung testen', onClick: () => void test() },
+          { label: 'Werkzeugfähigkeit festlegen', onClick: () => setToolCapabilityOpen(true) },
+          !model.active && {
+            label: 'Aktiv setzen',
+            onClick: () =>
+              void run(async () => {
+                await activateExistingModel(model.id)
+                return `„${model.displayName}“ ist jetzt das aktive Modell.`
+              }, 'Aktivierung fehlgeschlagen'),
+          },
+          {
+            label: 'Löschen',
+            onClick: () => void remove(),
+            danger: true,
+            disabled: model.active,
+            disabledReason: ACTIVE_DELETE_HINT,
+          },
+        ]}
+      />
+      {toolCapabilityOpen && (
+        <ToolCapabilityDialog
+          model={model}
+          open
+          onClose={() => setToolCapabilityOpen(false)}
+          onSaved={(message) => notify(message, 'success')}
+        />
+      )}
+    </>
   )
 }
