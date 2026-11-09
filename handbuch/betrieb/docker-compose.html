@@ -4899,6 +4899,11 @@ erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange <code>
 nicht <code>false</code> ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 <code>docker compose logs backend | grep "answer file"</code> nennt Schritt und Grund.</p>
+<p><code>installation/installation.live-transcription.example.json</code> zeigt dieselbe Datei mit
+Spracheingabe: das Diktat über speaches, das Live-Transkript über einen eigenen vLLM-Server mit
+Voxtral Realtime (<a href="modell-endpunkte.html#live-transkript">Live-Transkript</a>). Beide Dienste bringt der
+Stapel nicht mit; Hosts und Modelle sind anzupassen, und beide Hosts gehören in
+<code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>, sonst scheitert die Prüfung des Schritts.</p>
 <p><strong>Mit dem gebündelten Keycloak</strong> (Profil <code>oidc</code>) bekommt die Antwortdatei das Anmeldeverfahren
 <code>LOCAL_AND_OIDC</code>. Der Browser erreicht den Issuer unter <code>localhost</code>, das Backend die Schlüssel unter
 dem Dienstnamen:</p>

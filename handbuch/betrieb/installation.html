@@ -4178,8 +4178,8 @@ Antwortdatei übergeht ihren Teil. Auch diesen Wert tragen alle Instanzen gleich
 <tr>
 <td>Transkriptionsmodell (<code>TRANSCRIPTION_MODEL</code>)</td>
 <td>nein</td>
-<td>Adresse, Modellname, Zugangsschlüssel, Sprache</td>
-<td>Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme</td>
+<td>Adresse, Modellname, Zugangsschlüssel, Sprache; wahlweise Live-Transkript mit Live-Dienst, Live-Adresse, Live-Modell und Live-Schlüssel</td>
+<td>Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme; mit Live zusätzlich eine Live-Sitzung ohne Audio</td>
 <td>Modelle, Reiter „Spracheingabe“ (<a href="modell-endpunkte.html#spracheingabe-einschalten">Spracheingabe einschalten</a>)</td>
 </tr>
 <tr>
@@ -4344,8 +4344,19 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.</p>
   Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen
   (<a href="modell-endpunkte.html#externer-anbieter">Externer Anbieter</a>). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht (<a href="modell-endpunkte.html#spracheingabe-und-mitbestimmung">Spracheingabe und
-  Mitbestimmung</a>). Der Abschluss nennt, ob er die
-  Spracheingabe einschaltet.</li>
+  Mitbestimmung</a>). Der Abschnitt
+  „Live-Transkript (optional)“ ist ausgeschaltet; das Diktat bleibt immer verfügbar. „Live-Transkript
+  einschalten“ zeigt den Text zusätzlich schon beim Sprechen
+  (<a href="modell-endpunkte.html#live-transkript">Live-Transkript</a>). Dann wählt man den „Live-Dienst“ aus
+  einer festen Liste, „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“; die Wahl belegt
+  „Live-Adresse“ und „Live-Modell“ vor, beim eigenen Server ist der Host anzupassen. Sind
+  Basis-Adresse und Modell-Kennung des Diktats noch leer, belegt sie die Wahl ebenfalls vor
+  (<a href="modell-endpunkte.html#nur-ein-live-dienst-vorhanden">Nur ein Live-Dienst vorhanden?</a>). Der
+  „Live-Schlüssel (optional)“ wird verschlüsselt gespeichert; ohne ihn geht der Schlüssel des
+  Transkriptionsmodells mit, aber nur an die gleiche Adresse bis zum Port (Schema, Host, Port).
+  OpenAI und Mistral verlangen einen Schlüssel: Liegt das Transkriptionsmodell anderswo, etwa auf
+  einem eigenen speaches, lehnt der Schritt sie ohne Live-Schlüssel ab. „Prüfen und weiter“ prüft danach auch den Live-Dienst mit einer
+  Sitzung ohne Audio. Der Abschluss nennt, ob er die Spracheingabe einschaltet.</li>
 <li><strong>Texterkennung.</strong> Der Schritt steht nur in der Liste, wenn der Betrieb <code>OPAA_OCR_ENABLED=true</code>
   gesetzt hat, und hat die Anbindungen, Texte und Regeln von „Modelle → Texterkennung“. Zuerst
   wählt man den Dienst: „Mitgelieferter Dienst“ ist vorgewählt und trägt <code>http://opaa-ocr:5001</code>
@@ -4506,21 +4517,38 @@ Prüfungen, alles oder nichts.</p>
   <code>language</code> gilt <code>de</code>, eine leere Sprache lässt das Modell sie erkennen. Ist die Spracheingabe mit
   <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED=false</code> abgeschaltet, übergeht OPAA den Abschnitt und meldet das
   im Log, die Datei gilt trotzdem.</li>
-<li><strong>Texterkennung:</strong> Ohne den Abschnitt <code>textRecognitionModel</code> bleibt die Texterkennung aus. Mit ihm
+<li><strong>Live-Transkript:</strong> Der Unterabschnitt <code>transcriptionModel.realtime</code> schaltet es zusätzlich ein,
+  sonst bleibt es beim Diktat mit ganzer Aufnahme. <code>protocol</code> ist <code>OPENAI</code>, <code>VLLM</code> oder <code>MISTRAL</code>,
+  dazu <code>url</code> (<code>ws://</code> oder <code>wss://</code>) und <code>model</code>; der eigene Schlüssel steht als <code>apiKeyFile</code>. Ohne
+  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an die gleiche Adresse bis zum Port
+  (Schema, Host, Port); OpenAI und Mistral ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:</li>
+</ul>
+<p><div class="highlight"><pre><span></span><code><span class="nt">"transcriptionModel"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"baseUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://speaches:8000/v1"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Systran/faster-whisper-large-v3"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"language"</span><span class="p">:</span><span class="w"> </span><span class="s2">"de"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"realtime"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"protocol"</span><span class="p">:</span><span class="w"> </span><span class="s2">"OPENAI"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"url"</span><span class="p">:</span><span class="w"> </span><span class="s2">"wss://api.openai.com/v1/realtime?intent=transcription"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"gpt-live-transcribe"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"apiKeyFile"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/run/secrets/opaa-live-api-key"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+- <strong>Texterkennung:</strong> Ohne den Abschnitt <code>textRecognitionModel</code> bleibt die Texterkennung aus. Mit ihm
   prüft OPAA Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
   Abschluss trägt den Dienst ein und schaltet die Rolle ein. <code>connectionType</code> ist <code>DOCLING_SERVE</code>
   (Vorgabe) oder <code>OPENAI_VISION</code>, dann mit <code>model</code>; der Schlüssel steht als <code>apiKeyFile</code>, derselbe
   Wert wie beim Dienst. Ohne <code>OPAA_OCR_ENABLED=true</code> übergeht OPAA den Abschnitt, ohne seine
   Schlüsseldatei zu lesen, und meldet das im Log; die Datei gilt trotzdem. Ebenso liest OPAA die
-  Schlüsseldatei eines übergangenen Abschnitts <code>transcriptionModel</code> nicht.</li>
-<li><strong>Branding:</strong> Ohne den Abschnitt <code>branding</code> gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
+  Schlüsseldatei eines übergangenen Abschnitts <code>transcriptionModel</code> nicht.
+- <strong>Branding:</strong> Ohne den Abschnitt <code>branding</code> gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (<code>productName</code>, <code>claim</code>, <code>aiNotice</code>,
   <code>primaryColor</code>), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
-  an; ein <code>defaultColorScheme</code> älterer Dateien wird übergangen.</li>
-<li>Angaben späterer Schritte (<code>outboundProxy</code>) wertet diese Version nicht aus.</li>
-<li>Ohne <code>maxInputTokens</code> gilt eine Eingabegrenze von 2.048 Tokens
-  (<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze des Embedding-Modells</a>).</li>
-</ul>
+  an; ein <code>defaultColorScheme</code> älterer Dateien wird übergangen.
+- Angaben späterer Schritte (<code>outboundProxy</code>) wertet diese Version nicht aus.
+- Ohne <code>maxInputTokens</code> gilt eine Eingabegrenze von 2.048 Tokens
+  (<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze des Embedding-Modells</a>).</p>
 <h2 id="fehlerbilder">Fehlerbilder<a class="headerlink" href="#fehlerbilder" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

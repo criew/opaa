@@ -3058,6 +3058,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#live-transkript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live-Transkript
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Live-Transkript">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nur-ein-live-dienst-vorhanden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nur ein Live-Dienst vorhanden?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#spracheingabe-und-mitbestimmung" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4403,6 +4431,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#live-transkript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live-Transkript
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Live-Transkript">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nur-ein-live-dienst-vorhanden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nur ein Live-Dienst vorhanden?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#spracheingabe-und-mitbestimmung" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4565,7 +4621,7 @@ schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.</p>
 </tr>
 <tr>
 <td><strong>Transkription</strong></td>
-<td>wandelt eine im Chat diktierte Frage in Text um, optional</td>
+<td>wandelt eine im Chat diktierte Frage in Text um, wahlweise schon beim Sprechen (<a href="#live-transkript">Live-Transkript</a>), optional</td>
 <td>Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch <code>OPAA_FEATURES_SPEECH_INPUT_ENABLED</code></td>
 <td>jederzeit, ohne Neustart; aus ist die Werkseinstellung (<a href="#spracheingabe-einschalten">Spracheingabe einschalten</a>)</td>
 </tr>
@@ -5144,6 +5200,110 @@ die Angaben unter Modelle → Spracheingabe. <strong>Die Stimme verlässt dann d
 Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung braucht eine eigene
 datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Modellverwaltung weist nicht
 darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der Kachel OpenAI.</p>
+<h3 id="live-transkript">Live-Transkript<a class="headerlink" href="#live-transkript" title="Permanent link">&para;</a></h3>
+<p>Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Dafür hält der Browser während
+der Aufnahme eine WebSocket-Verbindung zu OPAA (<code>/api/v1/transcriptions/stream</code>), und OPAA eine zu
+einem Live-Dienst. Eingerichtet wird es unter <strong>Modelle → Spracheingabe</strong>, Abschnitt
+„Live-Transkript (optional)“ (<a href="../administration/modelle.html#live-transkript-einrichten">Live-Transkript einrichten</a>),
+oder im Installationsschritt Transkriptionsmodell. Es setzt die eingeschaltete Spracheingabe voraus;
+die Aufnahme läuft daneben weiter und geht an das Transkriptionsmodell, sobald Live ausfällt, kein
+Platz frei ist oder nach dem Ende kein endgültiger Text kommt.</p>
+<table>
+<thead>
+<tr>
+<th>Live-Dienst</th>
+<th>Adresse (Vorbelegung)</th>
+<th>Modell (Vorbelegung)</th>
+<th>Audio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td><code>wss://api.openai.com/v1/realtime?intent=transcription</code></td>
+<td><code>gpt-live-transcribe</code></td>
+<td>24 kHz</td>
+</tr>
+<tr>
+<td>vLLM (eigener Server)</td>
+<td><code>ws://vllm:8000/v1/realtime</code></td>
+<td><code>mistralai/Voxtral-Mini-4B-Realtime-2602</code></td>
+<td>16 kHz</td>
+</tr>
+<tr>
+<td>Mistral</td>
+<td><code>wss://api.mistral.ai/v1/audio/transcriptions/realtime</code></td>
+<td><code>voxtral-mini-transcribe-realtime-3</code></td>
+<td>16 kHz</td>
+</tr>
+</tbody>
+</table>
+<p>Das Protokoll ist eine Auswahl, kein Freitext; OPAA spricht genau diese drei. Die Live-Adresse
+beginnt mit <code>ws://</code> oder <code>wss://</code> und durchläuft dieselbe
+<a href="#adressprüfung-der-modelle">Adressprüfung der Modelle</a> wie die übrigen Rollen, mit <code>http</code>/<code>https</code>
+an Stelle von <code>ws</code>/<code>wss</code>; ein Host im Haus kommt also in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>.
+Die Verbindung geht über den <a href="netz-und-sicherheit.html#ausgangsproxy">Ausgangsproxy</a> und folgt keinem
+Redirect. Ohne eigenen Live-Schlüssel sendet OPAA den Schlüssel des Transkriptionsmodells mit, aber
+nur bei gleicher Adresse bis zum Port (Schema, Host, Port), wobei <code>ws</code>/<code>wss</code> wie <code>http</code>/<code>https</code>
+zählen; sonst geht keiner mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen
+Live-Schlüssel und ohne Schlüssel des Transkriptionsmodells unter der gleichen Adresse bis zum Port
+lehnen Verwaltung, Assistent und Antwortdatei sie ab.</p>
+<p><strong>Hardware im Haus.</strong> Voxtral Realtime auf vLLM braucht eine GPU mit mindestens 16 GB Speicher und
+trägt darauf erfahrungsgemäß etwa eine gleichzeitige Sitzung. „Gleichzeitige Live-Sitzungen“ ist
+deshalb ab Werk 1 und gilt für die ganze Installation, auch über mehrere Instanzen. Wer darüber
+diktiert, bekommt den Text nach dem Ende der Aufnahme. Eine Sitzung endet spätestens nach zwei
+Minuten, nach 30 Sekunden ohne Audio oder, wenn der Dienst nach dem Ende nicht antwortet, nach
+15 Sekunden.</p>
+<p><strong>Was an den Dienst geht:</strong> die Aufnahme fortlaufend während des Sprechens, als PCM-Audio, dazu
+Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. <strong>Was OPAA behält:</strong> nichts; Audio und
+Text laufen nur durch. <strong>Ein externer Live-Dienst erhält die Stimme laufend</strong>, nicht erst nach dem
+Ende; das braucht wie beim <a href="#externer-anbieter">externen Anbieter</a> eine eigene
+datenschutzrechtliche Prüfung. Verwaltung und Assistent weisen bei OpenAI und Mistral darauf hin.</p>
+<p>Zwischen Browser und OPAA muss jeder Proxy das WebSocket-Upgrade weiterreichen
+(<a href="netz-und-sicherheit.html#websocket-der-spracheingabe">Netz und Sicherheit</a>). Fehlt es, bleibt es ohne
+Fehlermeldung beim Diktat mit ganzer Aufnahme. Zustand und Fehler zeigt der Abschnitt
+„Live-Transkript (optional)“ unter Modelle → Spracheingabe; im Log steht nur Code oder Typ eines Fehlers des
+Dienstes, nie Audio oder Text.</p>
+<h4 id="nur-ein-live-dienst-vorhanden">Nur ein Live-Dienst vorhanden?<a class="headerlink" href="#nur-ein-live-dienst-vorhanden" title="Permanent link">&para;</a></h4>
+<p>Das Diktat mit ganzer Aufnahme bleibt Pflicht der Rolle; es ist der Rückfall, wenn Live ausfällt.
+Wer nur einen Live-Dienst hat, trägt ihn deshalb auch als Diktat-Endpunkt ein. Sind Basis-Adresse
+und Modell-Kennung des Diktats noch leer, belegen Assistent und Verwaltung sie bei der Wahl des
+Live-Dienstes vor:</p>
+<table>
+<thead>
+<tr>
+<th>Live-Dienst</th>
+<th>Basis-Adresse des Diktats</th>
+<th>Modell-Kennung des Diktats</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td><code>https://api.openai.com/v1</code></td>
+<td><code>gpt-4o-mini-transcribe</code></td>
+</tr>
+<tr>
+<td>vLLM</td>
+<td>Schema, Host und Port der Live-Adresse mit <code>/v1</code>, etwa <code>http://vllm:8000/v1</code></td>
+<td>das Live-Modell</td>
+</tr>
+<tr>
+<td>Mistral</td>
+<td>keine Vorbelegung</td>
+<td>–</td>
+</tr>
+</tbody>
+</table>
+<p>Bei OpenAI haben Diktat und Live die gleiche Adresse bis zum Port; ein Schlüssel im Feld des
+Diktats gilt dann für beide. Für Mistral belegt OPAA nichts vor: Dass dessen
+<code>/v1/audio/transcriptions</code> die Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
+Dienste, ist nicht geprüft; ein Diktat-Endpunkt wird dort selbst eingetragen und mit „Verbindung
+testen“ geprüft.</p>
+<p>Bei vLLM mit Voxtral Realtime kann der Endpunkt der ganzen Aufnahme hängen bleiben (vLLM-Fehler
+<a href="https://github.com/vllm-project/vllm/issues/52926">#52926</a>, offen). Dann kommt auch der Rückfall
+nicht an. Wo das auftritt, gehört das Diktat auf einen eigenen Dienst, etwa speaches mit einem
+Whisper-Modell.</p>
 <h3 id="spracheingabe-und-mitbestimmung">Spracheingabe und Mitbestimmung<a class="headerlink" href="#spracheingabe-und-mitbestimmung" title="Permanent link">&para;</a></h3>
 <ul>
 <li><em>Worum es geht:</em> Die Spracheingabe verarbeitet die Stimme der Beschäftigten. Auch beim Betrieb im

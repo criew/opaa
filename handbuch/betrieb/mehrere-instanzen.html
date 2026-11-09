@@ -4659,6 +4659,16 @@ gleichzeitig ausführen, erhält bei zwei Instanzen jede die Hälfte.</p>
 <td>nichts: Die Datenbank entscheidet; zwei gleichzeitige Anfragen derselben Person auf zwei Instanzen ergeben genau eine Auskunft</td>
 </tr>
 <tr>
+<td>gleichzeitige Live-Sitzungen der Spracheingabe („Gleichzeitige Live-Sitzungen“ unter Modelle → Spracheingabe)</td>
+<td>für die Installation</td>
+<td>nichts: Die Datenbank vergibt die Plätze; ein Platz einer ausgefallenen Instanz wird nach 180 Sekunden wieder frei (<a href="modell-endpunkte.html#live-transkript">Live-Transkript</a>)</td>
+</tr>
+<tr>
+<td>eine Live-Sitzung je Person</td>
+<td>je Instanz</td>
+<td>nichts: Mit mehreren Instanzen kann eine Person bis zu einer Sitzung je Instanz halten, alle innerhalb der Höchstzahl der Installation</td>
+</tr>
+<tr>
 <td>gleichzeitige Selbstauskünfte (<code>OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS</code>)</td>
 <td>je Instanz</td>
 <td>nicht teilen: Die Grenze schützt Threads und Speicher der Instanz; darüber antwortet sie mit <code>503</code>, ohne etwas zu verbrauchen</td>

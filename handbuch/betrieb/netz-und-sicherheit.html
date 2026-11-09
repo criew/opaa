@@ -2893,6 +2893,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#websocket-der-spracheingabe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebSocket der Spracheingabe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sicherheits-header-und-strict-transport-security" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4006,6 +4017,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#websocket-der-spracheingabe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebSocket der Spracheingabe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sicherheits-header-und-strict-transport-security" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4202,6 +4224,8 @@ erreichbaren Betrieb ein <strong>TLS-terminierender Reverse-Proxy</strong> oder 
   eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
   OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
   und Mail aus, bis die Starts des Tages erschöpft sind.</li>
+<li><strong>Das WebSocket-Upgrade der Spracheingabe weiterreichen</strong> (<code>/api/v1/transcriptions/stream</code>),
+  siehe <a href="#websocket-der-spracheingabe">WebSocket der Spracheingabe</a>.</li>
 <li><strong>Timeout</strong> für <code>/api/</code> und <code>/mcp</code> mindestens <code>OPAA_BACKEND_READ_TIMEOUT</code>, sonst <code>504</code> bei langen
   Antworten.</li>
 <li><strong>Callback-Seiten</strong> <code>/auth/callback</code> und <code>/connections/callback</code> tragen einmal gültige Codes:
@@ -4210,6 +4234,23 @@ erreichbaren Betrieb ein <strong>TLS-terminierender Reverse-Proxy</strong> oder 
   <code>OPAA_CORS_ALLOWED_ORIGINS</code>.</li>
 <li><strong><code>Strict-Transport-Security</code> setzt der äußere Proxy</strong>, wo TLS endet.</li>
 </ul>
+<h3 id="websocket-der-spracheingabe">WebSocket der Spracheingabe<a class="headerlink" href="#websocket-der-spracheingabe" title="Permanent link">&para;</a></h3>
+<p>Das <a href="modell-endpunkte.html#live-transkript">Live-Transkript</a> läuft über einen WebSocket unter
+<code>/api/v1/transcriptions/stream</code>. Der Frontend-Container reicht das Upgrade weiter; ein Proxy oder
+Ingress davor muss es ebenso tun:</p>
+<ul>
+<li><strong><code>Upgrade</code> und <code>Connection</code> weiterreichen</strong> und HTTP/1.1 zum Frontend sprechen.</li>
+<li><strong>Nicht puffern</strong>; das Timeout für Lesen und Senden deckt Sprechpausen ab. Eine Aufnahme dauert
+  höchstens gut zwei Minuten und endet nach 30 Sekunden ohne Audio. Im Frontend-Container gilt dafür
+  <code>OPAA_BACKEND_READ_TIMEOUT</code> wie für <code>/api/</code> (Vorgabe <code>600s</code>); ein Wert unter einer Minute bricht
+  Live-Sitzungen in Sprechpausen ab, das Diktat fällt dann auf die ganze Aufnahme zurück.</li>
+<li><strong><code>Sec-WebSocket-Protocol</code> nicht protokollieren:</strong> Der Browser kann an einen WebSocket keine
+  Header hängen und schickt das Anmeldetoken deshalb in diesem Header mit.</li>
+<li><strong>Origin unverändert lassen:</strong> Das Backend nimmt das Upgrade nur von der eigenen Adresse oder einer
+  aus <code>OPAA_CORS_ALLOWED_ORIGINS</code> an.</li>
+</ul>
+<p>Reicht der Proxy das Upgrade nicht weiter, bleibt es still beim Diktat mit der ganzen Aufnahme;
+die Person sieht keine Fehlermeldung, nur keinen Text beim Sprechen.</p>
 <h3 id="sicherheits-header-und-strict-transport-security">Sicherheits-Header und <code>Strict-Transport-Security</code><a class="headerlink" href="#sicherheits-header-und-strict-transport-security" title="Permanent link">&para;</a></h3>
 <p>Der Frontend-Container setzt auf jede Antwort <code>Content-Security-Policy</code>, <code>X-Content-Type-Options</code>,
 <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code> (Mikrofon nur für die eigene Herkunft,

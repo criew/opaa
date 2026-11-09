@@ -2259,6 +2259,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#live-transkript-einrichten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live-Transkript einrichten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#texterkennung-einrichten" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3912,6 +3923,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#live-transkript-einrichten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live-Transkript einrichten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#texterkennung-einrichten" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4014,6 +4036,31 @@ Grenzen und welche Dienste die Liste auswerten, stehen unter
 speichern. Fehlt der Betriebsschalter für die Spracheingabe, lässt sie sich nur vorbereiten. Die
 Spracheingabe verarbeitet Stimmen; sie gehört vor dem Einschalten mit der Personalvertretung
 geklärt (<a href="einfuehrung.html">Einführung vorbereiten</a>).</p>
+<h2 id="live-transkript-einrichten">Live-Transkript einrichten<a class="headerlink" href="#live-transkript-einrichten" title="Permanent link">&para;</a></h2>
+<p>Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Es kommt zum Diktat hinzu und
+ersetzt es nicht: Das Diktat bleibt immer verfügbar, und fällt der Live-Dienst aus, wird die ganze
+Aufnahme wie beim Diktat verarbeitet. Im Chat gibt es keinen Umschalter; das Mikrofon nutzt Live von
+selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Transkript (optional)“:</p>
+<ol>
+<li>„Live-Transkript einschalten“ anschalten.</li>
+<li>Den „Live-Dienst“ wählen: „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“. „Live-Adresse“ und
+   „Live-Modell“ werden dabei vorbelegt; beim eigenen Server den Host anpassen. Sind Basis-Adresse
+   und Modell-Kennung des Diktats noch leer, belegt die Wahl auch sie vor, siehe
+   <a href="../betrieb/modell-endpunkte.html#nur-ein-live-dienst-vorhanden">Nur ein Live-Dienst vorhanden?</a>.</li>
+<li>Den „Live-Schlüssel“ eintragen, wenn der Dienst einen anderen Schlüssel als das
+   Transkriptionsmodell braucht. Ohne ihn geht der Schlüssel des Transkriptionsmodells mit, aber
+   nur an die gleiche Adresse bis zum Port (Schema, Host, Port). OpenAI und Mistral verlangen
+   einen Schlüssel: Liegt das Transkriptionsmodell unter einer anderen Adresse, etwa auf einem
+   eigenen speaches, lehnt „Speichern“ ohne Live-Schlüssel ab. Das Auge neben dem Feld zeigt den eingetippten Schlüssel zur Kontrolle.</li>
+<li>„Gleichzeitige Live-Sitzungen“ für die ganze Installation festlegen. Wer darüber diktiert,
+   bekommt den Text wie ohne Live nach dem Ende der Aufnahme.</li>
+<li>„Live-Dienst testen“ öffnet eine Sitzung ohne Audio; dann „Speichern“.</li>
+</ol>
+<p>Den Schalter ausschalten und „Speichern“ entfernt den Live-Dienst samt Schlüssel. Fällt der Live-Dienst aus,
+diktieren alle weiter, nur ohne Live-Text. Ein externer Dienst erhält die Aufnahme laufend während
+des Sprechens; das gehört wie die Spracheingabe selbst vorher mit Datenschutz und
+Personalvertretung geklärt. Was ein eigener Server leisten muss, steht unter
+<a href="../betrieb/modell-endpunkte.html#live-transkript">Live-Transkript im Betrieb</a>.</p>
 <h2 id="texterkennung-einrichten">Texterkennung einrichten<a class="headerlink" href="#texterkennung-einrichten" title="Permanent link">&para;</a></h2>
 <p>Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie findet. Reiter
 „Texterkennung“:</p>
