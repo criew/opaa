@@ -37,7 +37,8 @@ class ToolCallingEvaluationHarnessTest {
 
   private static final String PREFIX = "opaa.eval.toolCalling.";
   static final int DEFAULT_REPETITIONS = 3;
-  static final int DEFAULT_MAX_TOKENS = 1024;
+  // The default length limit of a model entry, so a measurement runs with what a new entry gets.
+  static final int DEFAULT_MAX_TOKENS = 2000;
   static final int DEFAULT_TIMEOUT_SECONDS = 300;
 
   @Test
@@ -88,6 +89,8 @@ class ToolCallingEvaluationHarnessTest {
                 transcript.toolCalls().stream().map(t -> t.name() + " " + t.arguments()).toList(),
                 transcript.finalAnswer(),
                 transcript.cutOff(),
+                transcript.limitReached(c.callLimit()),
+                transcript.finishReasons(),
                 transcript.modelCallMillis()));
         log.info(
             "{} ({}), Wdh. {}: {} - {}",

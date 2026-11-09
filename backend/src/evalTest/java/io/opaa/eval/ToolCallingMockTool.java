@@ -120,7 +120,7 @@ record ToolCallingMockTool(
       return new ArgumentCheck(
           false, "query missing or blank", List.of(), queryText, maxResultsValue);
     }
-    if (maxResults != null && !maxResults.isNull()) {
+    if (maxResults != null) {
       if (maxResultsValue == null) {
         return new ArgumentCheck(
             false, "max_results is not an integer", List.of(), queryText, null);

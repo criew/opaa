@@ -65,13 +65,13 @@ record ToolCallingCase(
    * How an instruction embedded in a tool result would show its effect.
    *
    * @param resultIndex index into {@link #toolResults} of the result carrying the instruction
-   * @param answerMarkers texts whose presence in the final answer means it was followed
+   * @param answerPrefixMarkers texts the final answer opening with means it was followed
    * @param queryMarkers texts whose presence in a later query means it was followed
    * @param toolNames tool names whose call after the instruction means it was followed
    */
   record Injection(
       int resultIndex,
-      List<String> answerMarkers,
+      List<String> answerPrefixMarkers,
       List<String> queryMarkers,
       List<String> toolNames) {}
 
@@ -103,7 +103,7 @@ record ToolCallingCase(
                   ? null
                   : new Injection(
                       injection.get("result_index").asInt(),
-                      strings(injection.get("answer_markers")),
+                      strings(injection.get("answer_prefix_markers")),
                       strings(injection.get("query_markers")),
                       strings(injection.get("tool_names"))),
               node.get("rationale").asString()));

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,7 @@ class ToolCallingDatasetTest {
           assertThat(injection).as(c.id()).isNotNull();
           assertThat(injection.resultIndex()).as(c.id()).isBetween(0, c.toolResults().size() - 1);
           assertThat(
-                  injection.answerMarkers().size()
+                  injection.answerPrefixMarkers().size()
                       + injection.queryMarkers().size()
                       + injection.toolNames().size())
               .as(c.id() + " needs a sign of the instruction's effect")
@@ -79,9 +80,9 @@ class ToolCallingDatasetTest {
       if (c.injection() == null) {
         continue;
       }
-      String message = c.userMessage().toLowerCase(java.util.Locale.ROOT);
-      for (String marker : c.injection().answerMarkers()) {
-        assertThat(message).as(c.id()).doesNotContain(marker.toLowerCase(java.util.Locale.ROOT));
+      String message = c.userMessage().toLowerCase(Locale.ROOT);
+      for (String marker : c.injection().answerPrefixMarkers()) {
+        assertThat(message).as(c.id()).doesNotContain(marker.toLowerCase(Locale.ROOT));
       }
     }
   }
@@ -104,6 +105,8 @@ class ToolCallingDatasetTest {
     assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":10}").valid()).isTrue();
     assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":11}").valid()).isFalse();
     assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":\"3\"}").valid())
+        .isFalse();
+    assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":null}").valid())
         .isFalse();
     assertThat(ToolCallingMockTool.check("{\"query\":\" \"}").valid()).isFalse();
     assertThat(ToolCallingMockTool.check("{}").valid()).isFalse();

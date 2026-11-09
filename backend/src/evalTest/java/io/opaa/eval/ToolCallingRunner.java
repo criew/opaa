@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,9 @@ final class ToolCallingRunner {
   /** Model calls allowed beyond the case's call limit before the run is cut off. */
   static final int EXTRA_ROUNDS = 3;
 
+  /** The OpenAI-compatible finish reason of an answer cut off at the length limit. */
+  static final String LENGTH_FINISH_REASON = "length";
+
   private static final int MAX_ERROR_LENGTH = 300;
 
   private final ToolCallingMockTool tool;
@@ -51,17 +55,26 @@ final class ToolCallingRunner {
     ToolCallingChatOptions options = optionsWithTool(model);
     List<ToolCall> calls = new ArrayList<>();
     List<Long> modelCallMillis = new ArrayList<>();
+    List<String> finishReasons = new ArrayList<>();
     int validCalls = 0;
     int injectionDeliveredAt = -1;
     try {
       for (int round = 0; round < c.callLimit() + EXTRA_ROUNDS; round++) {
         long start = System.nanoTime();
-        AssistantMessage output = call(model, new Prompt(List.copyOf(messages), options));
+        Reply reply = call(model, new Prompt(List.copyOf(messages), options));
         modelCallMillis.add(Duration.ofNanos(System.nanoTime() - start).toMillis());
+        finishReasons.add(reply.finishReason());
+        AssistantMessage output = reply.message();
         if (output == null || !output.hasToolCalls()) {
           String text = output == null ? null : output.getText();
           return new Transcript(
-              calls, modelCallMillis, text == null ? "" : text, false, null, injectionDeliveredAt);
+              calls,
+              modelCallMillis,
+              finishReasons,
+              text == null ? "" : text,
+              false,
+              null,
+              injectionDeliveredAt);
         }
         messages.add(output);
         List<ToolResponseMessage.ToolResponse> responses = new ArrayList<>();
@@ -102,9 +115,11 @@ final class ToolCallingRunner {
         }
         messages.add(ToolResponseMessage.builder().responses(responses).build());
       }
-      return new Transcript(calls, modelCallMillis, null, true, null, injectionDeliveredAt);
+      return new Transcript(
+          calls, modelCallMillis, finishReasons, null, true, null, injectionDeliveredAt);
     } catch (RuntimeException e) {
-      return new Transcript(calls, modelCallMillis, null, false, describe(e), injectionDeliveredAt);
+      return new Transcript(
+          calls, modelCallMillis, finishReasons, null, false, describe(e), injectionDeliveredAt);
     }
   }
 
@@ -120,20 +135,40 @@ final class ToolCallingRunner {
     return ToolCallingChatOptions.builder().toolCallbacks(callbacks).build();
   }
 
-  private AssistantMessage call(ChatModel model, Prompt prompt) {
+  private Reply call(ChatModel model, Prompt prompt) {
     if (!streaming) {
       ChatResponse response = model.call(prompt);
       return response == null || response.getResult() == null
-          ? null
-          : response.getResult().getOutput();
+          ? new Reply(null, null)
+          : new Reply(response.getResult().getOutput(), finishReason(response));
     }
     List<ChatResponse> chunks = model.stream(prompt).collectList().block(streamTimeout);
-    return aggregate(chunks == null ? List.of() : chunks);
+    List<ChatResponse> received = chunks == null ? List.of() : chunks;
+    String finishReason = null;
+    for (ChatResponse chunk : received) {
+      String reason = finishReason(chunk);
+      if (reason != null && !reason.isBlank()) {
+        finishReason = reason;
+      }
+    }
+    return new Reply(aggregate(received), finishReason);
   }
+
+  private static String finishReason(ChatResponse response) {
+    return response == null
+            || response.getResult() == null
+            || response.getResult().getMetadata() == null
+        ? null
+        : response.getResult().getMetadata().getFinishReason();
+  }
+
+  /** A model's reply and the finish reason it gave, {@code null} when it gave none. */
+  private record Reply(AssistantMessage message, String finishReason) {}
 
   /**
    * One message from the chunks of a streamed answer: the texts concatenated, the tool calls of all
-   * chunks by id, a later chunk's name and arguments replacing an earlier one's for the same id.
+   * chunks by id, a later chunk's name and arguments replacing an earlier one's for the same id. A
+   * tool call without id counts as a call of its own in every chunk that carries it.
    */
   static AssistantMessage aggregate(List<ChatResponse> chunks) {
     StringBuilder text = new StringBuilder();
@@ -182,6 +217,8 @@ final class ToolCallingRunner {
   /**
    * What the model did in one run of one case.
    *
+   * @param finishReasons the finish reason of each model call as the provider gave it, {@code null}
+   *     where it gave none
    * @param finalAnswer the text of the first response without a tool call; {@code null} when the
    *     run was cut off or failed
    * @param cutOff whether the run ended at the round cap while the model still called tools
@@ -192,6 +229,7 @@ final class ToolCallingRunner {
   record Transcript(
       List<ToolCall> toolCalls,
       List<Long> modelCallMillis,
+      List<String> finishReasons,
       String finalAnswer,
       boolean cutOff,
       String error,
@@ -200,6 +238,17 @@ final class ToolCallingRunner {
     Transcript {
       toolCalls = List.copyOf(toolCalls);
       modelCallMillis = List.copyOf(modelCallMillis);
+      finishReasons = Collections.unmodifiableList(new ArrayList<>(finishReasons));
+    }
+
+    /** Whether a model call stopped at the length limit rather than on its own. */
+    boolean truncated() {
+      return finishReasons.stream().anyMatch(LENGTH_FINISH_REASON::equalsIgnoreCase);
+    }
+
+    /** Whether the model used up the case's call limit. */
+    boolean limitReached(int callLimit) {
+      return toolCalls.size() >= callLimit;
     }
 
     /** The calls that named the mock tool, in order. */

@@ -77,6 +77,8 @@ record ToolCallingReport(
   /**
    * Counts of one category over all its runs. {@code passed}/{@code failed} stay 0 for {@code
    * ignores_injected_instruction}, {@code followed}/{@code notFollowed} for every other category.
+   * {@code limitReached} counts the runs that used up their case's call limit, whatever their
+   * outcome.
    */
   record CategoryResult(
       int runs,
@@ -85,7 +87,9 @@ record ToolCallingReport(
       int notReached,
       int followed,
       int notFollowed,
+      int truncated,
       int errors,
+      int limitReached,
       String summary) {}
 
   record CapabilityFloor(List<String> categories, boolean met, String statement) {}
@@ -99,6 +103,8 @@ record ToolCallingReport(
       List<String> toolCalls,
       String finalAnswer,
       boolean cutOff,
+      boolean limitReached,
+      List<String> finishReasons,
       List<Long> modelCallMillis) {}
 
   static ToolCallingReport of(
@@ -139,7 +145,9 @@ record ToolCallingReport(
     int notReached = count(runs, Outcome.NOT_REACHED);
     int followed = count(runs, Outcome.FOLLOWED);
     int notFollowed = count(runs, Outcome.NOT_FOLLOWED);
+    int truncated = count(runs, Outcome.TRUNCATED);
     int errors = count(runs, Outcome.ERROR);
+    int limitReached = (int) runs.stream().filter(CaseRun::limitReached).count();
     String summary =
         ToolCallingCase.IGNORES_INJECTED_INSTRUCTION.equals(category)
             ? String.format(
@@ -148,8 +156,21 @@ record ToolCallingReport(
                 followed,
                 followed + notFollowed)
             : String.format(Locale.ROOT, "%d von %d Läufen bestanden", passed, runs.size());
+    if (ToolCallingCase.RESPECTS_LIMIT.equals(category)) {
+      summary +=
+          String.format(Locale.ROOT, "; Grenze erreicht in %d von %d", limitReached, runs.size());
+    }
     return new CategoryResult(
-        runs.size(), passed, failed, notReached, followed, notFollowed, errors, summary);
+        runs.size(),
+        passed,
+        failed,
+        notReached,
+        followed,
+        notFollowed,
+        truncated,
+        errors,
+        limitReached,
+        summary);
   }
 
   private static int count(List<CaseRun> runs, Outcome outcome) {
@@ -182,9 +203,17 @@ record ToolCallingReport(
     return new Durations(
         totalSeconds,
         millis.size(),
-        millis.get((millis.size() - 1) / 2),
+        median(millis),
         millis.get((int) Math.ceil(millis.size() * 0.9) - 1),
         millis.getLast());
+  }
+
+  /** The median of sorted {@code values}; for an even count the mean of the two middle values. */
+  static long median(List<Long> values) {
+    int middle = values.size() / 2;
+    return values.size() % 2 == 1
+        ? values.get(middle)
+        : Math.round((values.get(middle - 1) + values.get(middle)) / 2.0);
   }
 
   void writeJson(Path target) throws IOException {
@@ -230,18 +259,19 @@ record ToolCallingReport(
     sb.append(row("Läufe je Fall", Integer.toString(caseBase.repetitions())));
     sb.append(row("Manifest (SHA-256)", caseBase.manifestSha256()));
     sb.append("\n## Ergebnis je Fallklasse\n\n");
-    sb.append("| Fallklasse | Ergebnis | Läufe | nicht erreicht | Fehler |\n");
-    sb.append("|---|---|---|---|---|\n");
+    sb.append("| Fallklasse | Ergebnis | Läufe | nicht erreicht | abgeschnitten | Fehler |\n");
+    sb.append("|---|---|---|---|---|---|\n");
     byCategory.forEach(
         (category, r) ->
             sb.append(
                 String.format(
                     Locale.ROOT,
-                    "| `%s` | %s | %d | %d | %d |\n",
+                    "| `%s` | %s | %d | %d | %d | %d |\n",
                     category,
                     r.summary(),
                     r.runs(),
                     r.notReached(),
+                    r.truncated(),
                     r.errors())));
     sb.append("\n**").append(capabilityFloor.statement()).append("**\n\n");
     sb.append("## Laufdauer\n\n");

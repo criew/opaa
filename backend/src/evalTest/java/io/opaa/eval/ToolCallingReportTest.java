@@ -103,36 +103,67 @@ class ToolCallingReportTest {
   }
 
   @Test
-  void theDurationsAreTakenOverEveryModelCall() {
+  void theDurationsAreTakenOverEveryModelCallWithTheMeanOfTheMiddlePairForAnEvenCount() {
     List<ToolCallingReport.CaseRun> runs = new ArrayList<>();
-    runs.add(
-        new ToolCallingReport.CaseRun(
-            "x",
-            ToolCallingCase.MULTI_STEP,
-            1,
-            Outcome.PASSED,
-            "",
-            List.of(),
-            "",
-            false,
-            List.of(100L, 300L)));
-    runs.add(
-        new ToolCallingReport.CaseRun(
-            "y",
-            ToolCallingCase.MULTI_STEP,
-            1,
-            Outcome.PASSED,
-            "",
-            List.of(),
-            "",
-            false,
-            List.of(200L)));
+    runs.add(timed("x", List.of(100L, 300L)));
+    runs.add(timed("y", List.of(200L)));
 
     ToolCallingReport.Durations durations = report(runs).durations();
 
     assertThat(durations.modelCalls()).isEqualTo(3);
     assertThat(durations.medianModelCallMillis()).isEqualTo(200);
     assertThat(durations.maxModelCallMillis()).isEqualTo(300);
+    assertThat(ToolCallingReport.median(List.of(100L, 200L, 300L, 400L))).isEqualTo(250);
+  }
+
+  @Test
+  void respectsLimitReportsHowOftenTheLimitWasReached() {
+    List<ToolCallingReport.CaseRun> runs = allPassed();
+    runs.add(
+        new ToolCallingReport.CaseRun(
+            "rl-02",
+            ToolCallingCase.RESPECTS_LIMIT,
+            1,
+            Outcome.PASSED,
+            "",
+            List.of(),
+            "Antwort",
+            false,
+            true,
+            List.of("stop"),
+            List.of(10L)));
+
+    ToolCallingReport.CategoryResult result =
+        report(runs).byCategory().get(ToolCallingCase.RESPECTS_LIMIT);
+
+    assertThat(result.limitReached()).isEqualTo(1);
+    assertThat(result.summary()).isEqualTo("2 von 2 Läufen bestanden; Grenze erreicht in 1 von 2");
+  }
+
+  @Test
+  void aTruncatedRunIsCountedApartAndBreaksTheFloor() {
+    List<ToolCallingReport.CaseRun> runs = allPassed();
+    runs.add(run(ToolCallingCase.CALLS_WHEN_NEEDED, Outcome.TRUNCATED, 2));
+
+    ToolCallingReport report = report(runs);
+
+    assertThat(report.byCategory().get(ToolCallingCase.CALLS_WHEN_NEEDED).truncated()).isEqualTo(1);
+    assertThat(report.capabilityFloor().met()).isFalse();
+  }
+
+  private static ToolCallingReport.CaseRun timed(String id, List<Long> millis) {
+    return new ToolCallingReport.CaseRun(
+        id,
+        ToolCallingCase.MULTI_STEP,
+        1,
+        Outcome.PASSED,
+        "",
+        List.of(),
+        "",
+        false,
+        false,
+        List.of(),
+        millis);
   }
 
   private static List<ToolCallingReport.CaseRun> allPassed() {
@@ -159,6 +190,8 @@ class ToolCallingReportTest {
         List.of(),
         "Antwort",
         false,
+        false,
+        List.of("stop"),
         List.of(10L));
   }
 
