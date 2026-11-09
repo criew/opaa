@@ -146,8 +146,9 @@ Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
    `ContentFence`). Ein Ergebnis steht nie in der Nachricht der Person und nie im Systemvorspann.
 8. **Erinnerung an die verbindlichen Regeln** am Ende jedes Werkzeugergebnisses, hinter dessen
    Datenblock und außerhalb davon. Damit ist vor jedem Modellaufruf mit Fremdinhalt die Erinnerung
-   das Letzte, was das Modell liest. Mit einer Space-Anweisung gilt deren Sprachfassung
-   (`AnswerGenerationService.SPACE_LANGUAGE_REMINDER`), sonst `LANGUAGE_REMINDER`.
+   das Letzte, was das Modell liest. Sie besteht wie im Chat aus Zitier- und Sprachzeile
+   (`AnswerGenerationService.CITATION_REMINDER`, dazu `LANGUAGE_REMINDER` oder mit einer
+   Space-Anweisung `SPACE_LANGUAGE_REMINDER`).
 
 Die Teile 1 bis 4 sind über alle Schritte eines Laufs zeichengleich. Ein Schritt hängt nur ein
 weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an. Darauf beruht die Zusage, dass der
@@ -183,9 +184,13 @@ Angabe geändert hat, steht im Protokoll der Verwaltungsaktion.
 Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
 
 - **Platzlimit:** eine Reservierung je laufendem Lauf in der Datenbank, mit Ablauf nach Datenbankuhr
-  in Höhe der Laufzeitgrenze. Die Prüfung gegen das Limit und die Reservierung geschehen in einer
-  Anweisung unter Zeilensperre. Ist das Limit erreicht, wird die Anfrage vor dem Lauf abgewiesen. Ist
-  die Datenbank nicht erreichbar, beginnt kein Lauf.
+  in Höhe der Laufzeitgrenze plus der Zeit für den abschließenden Antwortaufruf. In einer
+  Transaktion sperrt die Anwendung die feste Zählerzeile des Platzlimits (`SELECT … FOR UPDATE`),
+  zählt die nicht abgelaufenen Reservierungen und fügt die neue ein. Ohne diese Sperre überbuchten
+  zwei gleichzeitige Anfragen unter `READ COMMITTED`. Ist das Limit erreicht, wird die Anfrage vor
+  dem Lauf abgewiesen. Anders als die Deckel aus ADR-0053, Entscheidung 12, schließt das Platzlimit
+  bei nicht erreichbarer Datenbank: Ohne Datenbank gibt es weder Suche noch Schrittprotokoll, ein
+  Lauf könnte also ohnehin nicht korrekt laufen.
 - **Schalter:** stehen in der Datenbank; jede Instanz hält sie am Invalidierungsbus (ADR-0053,
   Entscheidung 5).
 - **Nutzergesteuerte Ausführung** für spätere schreibende Werkzeuge: Die Anwendung nimmt die

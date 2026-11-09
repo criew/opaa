@@ -307,7 +307,7 @@ her; „mindestens einmal“ ist die ehrliche Zusage.
 | Rate-Limit-Behandlung der Quellsysteme | je Lauf, unverändert |
 | Tagesgrenze, Starts je Tag und laufender Export der Selbstauskunft | Zeile je Person (`self_disclosure_usage`), bedingte Anweisung nach Datenbankuhr, Reservierung mit Ablauf |
 | Gleichzeitige Exporte der Selbstauskunft (`opaa.self-disclosure.max-concurrent-exports`) | je Instanz, ohne Teilung |
-| Platzlimit gleichzeitiger Werkzeugläufe | Reservierung je Lauf mit Ablauf nach Datenbankuhr, ohne Personenbezug ([ADR-0070](0070-werkzeugaufrufe-im-chat.md), Entscheidung 6) |
+| Platzlimit gleichzeitiger Werkzeugläufe | Reservierung je Lauf mit Ablauf nach Datenbankuhr unter Sperre einer festen Zählerzeile, ohne Personenbezug; schließt bei nicht erreichbarer Datenbank ([ADR-0070](0070-werkzeugaufrufe-im-chat.md), Entscheidung 6) |
 
 Eine Zählerzeile (`installation_counters`) hält das laufende und das vorige feste Fenster; das
 gleitende Fenster schätzt jede Instanz gleich, indem sie das vorige Fenster mit seinem Anteil am
