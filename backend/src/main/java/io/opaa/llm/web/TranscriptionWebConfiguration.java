@@ -26,7 +26,7 @@ class TranscriptionWebConfiguration {
     FilterRegistrationBean<TranscriptionMultipartGuard> registration =
         new FilterRegistrationBean<>(new TranscriptionMultipartGuard(objectMapper, clock));
     registration.addUrlPatterns(PATH);
-    registration.setOrder(RequestIdFilter.ORDER + 3);
+    registration.setOrder(RequestIdFilter.ORDER + 4);
     return registration;
   }
 }

@@ -75,8 +75,9 @@ class MdcTaskDecoratorTest {
     ExecutorService pool = Executors.newSingleThreadExecutor();
     try {
       MDC.put(RequestIds.MDC_KEY, "4bf92f3577b34da6a3ce929d0e0e4736");
-      Future<String> called =
-          pool.submit(MdcTaskDecorator.withCallersMdc(() -> MDC.get(RequestIds.MDC_KEY)));
+      CompletableFuture<String> called = new CompletableFuture<>();
+      pool.execute(
+          MdcTaskDecorator.withCallersMdc(() -> called.complete(MDC.get(RequestIds.MDC_KEY))));
       assertThat(called.get(5, TimeUnit.SECONDS)).isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
 
       MDC.clear();

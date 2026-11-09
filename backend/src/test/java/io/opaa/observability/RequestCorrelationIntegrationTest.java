@@ -7,9 +7,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.ratelimit.RateLimitConfiguration;
+import io.opaa.ratelimit.RateLimitProperties;
+import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
+import io.opaa.ratelimit.SelfServiceEndpointAvailability;
+import io.opaa.security.TrustedProxyClientIpResolver;
+import io.opaa.test.InMemoryInstallationCounters;
 import io.opaa.test.OpaaIntegrationTest;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -17,6 +24,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,6 +46,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The request id through the running application: the same id in the response header, in the error
@@ -53,7 +62,7 @@ class RequestCorrelationIntegrationTest {
 
   // regression guard: a filter that answers before the request id is bound answers without it
   @Test
-  void theRequestIdComesBeforeEveryOtherFilterAndTheGateBeforeTheTranscriptionGuard() {
+  void theRequestIdComesFirstAndTheEarlyFiltersFollowInAFixedOrder() {
     Map<String, Integer> orders = new java.util.HashMap<>();
     context
         .getBeansOfType(FilterRegistrationBean.class)
@@ -65,19 +74,45 @@ class RequestCorrelationIntegrationTest {
     // Spring's own first filter only rewrites the request from forwarded headers and answers
     // nothing
     orders.remove("ForwardedHeaderFilter");
+    // the test context switches the rate limit off; its registration is built as in production
+    orders.putIfAbsent("RateLimitFilter", rateLimitRegistration().getOrder());
 
     assertThat(orders)
         .allSatisfy(
             (name, order) -> assertThat(order).as(name).isGreaterThan(RequestIdFilter.ORDER));
+    // Spring's server observation holds ORDER + 1; no early filter shares an order with another
     assertThat(
             List.of(
+                orders.get("ServerHttpObservationFilter"),
                 orders.get("InstallationGateFilter"),
                 orders.get("InstallationAccessFilter"),
-                orders.get("TranscriptionMultipartGuard")))
+                orders.get("TranscriptionMultipartGuard"),
+                orders.get("RateLimitFilter")))
         .containsExactly(
-            RequestIdFilter.ORDER + 1, RequestIdFilter.ORDER + 2, RequestIdFilter.ORDER + 3);
+            RequestIdFilter.ORDER + 1,
+            RequestIdFilter.ORDER + 2,
+            RequestIdFilter.ORDER + 3,
+            RequestIdFilter.ORDER + 4,
+            RequestIdFilter.ORDER + 5);
+    assertThat(orders.values())
+        .filteredOn(order -> order <= RequestIdFilter.ORDER + 5)
+        .doesNotHaveDuplicates();
     assertThat(context.getBean(RequestIdFilter.class).getClass())
         .hasAnnotation(org.springframework.core.annotation.Order.class);
+  }
+
+  private FilterRegistrationBean<?> rateLimitRegistration() {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    return new RateLimitConfiguration()
+        .rateLimitFilterRegistration(
+            new RateLimitProperties(
+                true, List.of(), wide, wide, wide, wide, wide, wide, wide, null),
+            new TrustedProxyClientIpResolver(List.of()),
+            new RateLimitMetrics(new SimpleMeterRegistry()),
+            JsonMapper.builder().build(),
+            context.getBeanProvider(SelfServiceEndpointAvailability.class),
+            new InMemoryInstallationCounters(),
+            Clock.systemUTC());
   }
 
   @Test

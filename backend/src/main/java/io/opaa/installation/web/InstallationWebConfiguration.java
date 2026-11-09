@@ -18,10 +18,11 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The web side of the installation in every profile: the gate right behind the request id, so its
- * refusals carry it, and ahead of every other filter; the access filter right behind the gate; and
- * a security chain of its own for {@code /api/v1/installation}, ordered before the {@code oidc} and
- * {@code dev} chains. That chain carries no resource server, no session and no CSRF - the
+ * The web side of the installation in every profile: the gate right behind the request id and
+ * Spring's server observation ({@code HIGHEST_PRECEDENCE + 1}, not configurable), so its refusals
+ * carry the id and are counted, and ahead of every other filter; the access filter right behind the
+ * gate; and a security chain of its own for {@code /api/v1/installation}, ordered before the {@code
+ * oidc} and {@code dev} chains. That chain carries no resource server, no session and no CSRF - the
  * installation token is no JWT, and checking it is {@link InstallationAccessGuard}'s job; no
  * account exists to sign in with.
  */
@@ -34,7 +35,7 @@ class InstallationWebConfiguration {
     var registration =
         new FilterRegistrationBean<>(new InstallationGateFilter(status, jsonMapper, clock));
     registration.addUrlPatterns("/*");
-    registration.setOrder(RequestIdFilter.ORDER + 1);
+    registration.setOrder(RequestIdFilter.ORDER + 2);
     return registration;
   }
 
@@ -44,7 +45,7 @@ class InstallationWebConfiguration {
     var registration =
         new FilterRegistrationBean<>(new InstallationAccessFilter(guard, jsonMapper, clock));
     registration.addUrlPatterns("/api/*");
-    registration.setOrder(RequestIdFilter.ORDER + 2);
+    registration.setOrder(RequestIdFilter.ORDER + 3);
     return registration;
   }
 

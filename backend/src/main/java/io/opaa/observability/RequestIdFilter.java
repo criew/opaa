@@ -29,7 +29,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(RequestIdFilter.ORDER)
 public class RequestIdFilter extends OncePerRequestFilter {
 
-  /** First of all filters; a filter that must come early takes {@code ORDER + 1} or later. */
+  /**
+   * First of all filters. {@code ORDER + 1} is Spring's server observation; a filter that must come
+   * early takes {@code ORDER + 2} or later, so no two filters share an order.
+   */
   public static final int ORDER = Ordered.HIGHEST_PRECEDENCE;
 
   /** Trace context headers of W3C and B3, lower case; any {@code x-b3-*} header as well. */

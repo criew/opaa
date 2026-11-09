@@ -100,7 +100,8 @@ gebraucht worden wäre.
 
 Jede Anfrage trägt eine Request-ID: nginx und `RequestIdFilter` übernehmen eine mitgeschickte
 `X-Request-Id` nur bei 8 bis 64 Zeichen aus `[A-Za-z0-9_-]` und erzeugen sonst eine. Sie steht im
-Zugriffslog, im MDC jeder Logzeile der Anfrage und ihrer Hintergrundaufgaben (`MdcTaskDecorator`), im
+Zugriffslog, im MDC jeder Logzeile der Anfrage und ihrer Hintergrundaufgaben in Spring-Executoren
+(`MdcTaskDecorator`), im
 Antwort-Header, in `ErrorResponse.requestId` und, wo ein Eintrag keine eigene Vorgangskennung hat,
 als `request:<id>` in `correlation_ref` des Revisionsprotokolls; die Ausleitung an das
 Sicherheitsmonitoring (ADR-0055) sendet `correlation_ref` nicht. Tracing über OpenTelemetry ist ab
