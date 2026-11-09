@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.errors.OpenAIIoException;
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.api.types.ToolCapability;
+import io.opaa.api.types.ToolCapabilityBasis;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ServiceUnavailableException;
@@ -317,6 +319,56 @@ class ActiveChatModelResolverIntegrationTest {
         .hasMessageContaining("noch kein Chat-Modell eingerichtet")
         .extracting(e -> ((ServiceUnavailableException) e).getCode())
         .isEqualTo(NoActiveChatModelException.CODE);
+  }
+
+  @Test
+  void anUnverifiedActiveModelAnswersTheOrdinaryChatButRefusesToolCalls() {
+    LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
+    llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
+
+    ChatResponse response =
+        resolver.resolveChatClient().prompt().user("Hallo").call().chatResponse();
+    assertThat(response.getResult().getOutput().getText()).isEqualTo("Antwort von Modell A");
+
+    serverATouched.set(false);
+    assertThatThrownBy(() -> resolver.resolveToolCallingChatClient())
+        .isInstanceOf(ToolCallingNotCapableException.class)
+        .hasMessageContaining("braucht Werkzeugaufrufe")
+        .hasMessageContaining("Systemverwaltung")
+        .extracting(e -> ((ServiceUnavailableException) e).getCode())
+        .isEqualTo(ToolCallingNotCapableException.CODE);
+    assertThat(serverATouched.get()).as("a refused tool call never reaches the model").isFalse();
+  }
+
+  @Test
+  void onlyAModelRecordedAsCapableHandsOutTheToolCallingClient() {
+    LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
+    llmModelService.activateModel(organizationId, userId, modelA.getId());
+    llmModelService.setToolCapability(
+        organizationId,
+        userId,
+        modelA.getId(),
+        ToolCapability.NOT_CAPABLE,
+        ToolCapabilityBasis.MANUAL,
+        null);
+    settle();
+
+    assertThatThrownBy(() -> resolver.resolveToolCallingChatClient())
+        .isInstanceOf(ToolCallingNotCapableException.class)
+        .hasMessageContaining("nicht fähig");
+
+    llmModelService.setToolCapability(
+        organizationId,
+        userId,
+        modelA.getId(),
+        ToolCapability.CAPABLE,
+        ToolCapabilityBasis.MANUAL,
+        null);
+
+    ChatResponse response =
+        resolver.resolveToolCallingChatClient().prompt().user("Hallo").call().chatResponse();
+    assertThat(response.getResult().getOutput().getText()).isEqualTo("Antwort von Modell A");
   }
 
   @Test

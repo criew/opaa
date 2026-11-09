@@ -13,6 +13,9 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,7 @@ class LlmModelServiceTest {
 
   private static final UUID ORGANIZATION = UUID.randomUUID();
   private static final UUID ACTOR = UUID.randomUUID();
+  private static final Instant NOW = Instant.parse("2026-11-09T10:00:00Z");
 
   private final LlmModelRepository repository = mock(LlmModelRepository.class);
   private final SettingsEncryptor encryptor = mock(SettingsEncryptor.class);
@@ -34,7 +38,8 @@ class LlmModelServiceTest {
           mock(AuditEventRecorder.class),
           mock(ApplicationEventPublisher.class),
           ModelAddressPolicy.disabled(),
-          mock(PlatformTransactionManager.class));
+          mock(PlatformTransactionManager.class),
+          Clock.fixed(NOW, ZoneOffset.UTC));
 
   // regression guard for #3338: a new address without a new key must not inherit the stored one
   @Test

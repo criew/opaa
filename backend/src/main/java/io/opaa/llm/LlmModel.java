@@ -1,7 +1,11 @@
 package io.opaa.llm;
 
+import io.opaa.api.types.ToolCapability;
+import io.opaa.api.types.ToolCapabilityBasis;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -26,6 +30,11 @@ import java.util.UUID;
  * optional, because locally operated endpoints regularly run without authentication. It never
  * appears decrypted outside {@link LlmModelService}, and no read path built on top of this entity
  * is expected to return it at all.
+ *
+ * <p><b>The tool capability belongs to the combination of endpoint and model identifier</b>: {@link
+ * #replaceDetails} resets it to {@link ToolCapability#UNVERIFIED} whenever either changes, and an
+ * {@code UNVERIFIED} statement carries no basis, date or measurement run ({@code
+ * chk_llm_models_tool_capability_statement}).
  */
 @Entity
 @Table(name = "llm_models")
@@ -54,6 +63,22 @@ public class LlmModel {
 
   @Column(name = "active", nullable = false)
   private boolean active;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "tool_capability", nullable = false, length = 20)
+  private ToolCapability toolCapability = ToolCapability.UNVERIFIED;
+
+  /** {@code null} while {@link #toolCapability} is {@link ToolCapability#UNVERIFIED}. */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "tool_capability_basis", length = 20)
+  private ToolCapabilityBasis toolCapabilityBasis;
+
+  @Column(name = "tool_capability_assessed_at")
+  private Instant toolCapabilityAssessedAt;
+
+  /** Set only for {@link ToolCapabilityBasis#MEASURED}. */
+  @Column(name = "tool_capability_measurement_run", length = 300)
+  private String toolCapabilityMeasurementRun;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -138,6 +163,22 @@ public class LlmModel {
     return active;
   }
 
+  public ToolCapability getToolCapability() {
+    return toolCapability;
+  }
+
+  public ToolCapabilityBasis getToolCapabilityBasis() {
+    return toolCapabilityBasis;
+  }
+
+  public Instant getToolCapabilityAssessedAt() {
+    return toolCapabilityAssessedAt;
+  }
+
+  public String getToolCapabilityMeasurementRun() {
+    return toolCapabilityMeasurementRun;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -158,12 +199,40 @@ public class LlmModel {
       BigDecimal temperature,
       int maxTokens,
       String apiKeyCiphertext) {
+    if (!this.baseUrl.equals(baseUrl) || !this.modelIdentifier.equals(modelIdentifier)) {
+      resetToolCapability();
+    }
     this.displayName = displayName;
     this.baseUrl = baseUrl;
     this.modelIdentifier = modelIdentifier;
     this.temperature = temperature;
     this.maxTokens = maxTokens;
     this.apiKeyCiphertext = apiKeyCiphertext;
+    this.updatedAt = Instant.now();
+  }
+
+  /**
+   * Records a checked statement; the caller has validated that {@code measurementRun} is set
+   * exactly for {@link ToolCapabilityBasis#MEASURED}.
+   */
+  void assessToolCapability(
+      ToolCapability capability,
+      ToolCapabilityBasis basis,
+      String measurementRun,
+      Instant assessedAt) {
+    this.toolCapability = capability;
+    this.toolCapabilityBasis = basis;
+    this.toolCapabilityMeasurementRun = measurementRun;
+    this.toolCapabilityAssessedAt = assessedAt;
+    this.updatedAt = Instant.now();
+  }
+
+  /** Back to {@link ToolCapability#UNVERIFIED}, clearing basis, date and measurement run. */
+  void resetToolCapability() {
+    this.toolCapability = ToolCapability.UNVERIFIED;
+    this.toolCapabilityBasis = null;
+    this.toolCapabilityMeasurementRun = null;
+    this.toolCapabilityAssessedAt = null;
     this.updatedAt = Instant.now();
   }
 

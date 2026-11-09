@@ -3,6 +3,8 @@ package io.opaa.llm;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.ToolCapability;
+import io.opaa.api.types.ToolCapabilityBasis;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditSecretChange;
@@ -11,6 +13,8 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +44,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>A new or changed address passes {@link ModelAddressPolicy} before the transaction opens, since
  * the check resolves names; an edit keeping the stored endpoint is not checked again.
+ *
+ * <p>The tool capability is part of the audited state: {@link #setToolCapability} and the reset an
+ * edit of base URL or model identifier causes both appear in {@link
+ * AuditEventType#LLM_MODEL_CHANGED}, which names who changed it - the row itself never does.
  */
 @Service
 public class LlmModelService {
@@ -56,6 +64,7 @@ public class LlmModelService {
   private final ApplicationEventPublisher eventPublisher;
   private final ModelAddressPolicy modelAddresses;
   private final TransactionTemplate transactions;
+  private final Clock clock;
 
   public LlmModelService(
       LlmModelRepository repository,
@@ -63,13 +72,15 @@ public class LlmModelService {
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       ModelAddressPolicy modelAddresses,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      Clock clock) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.modelAddresses = modelAddresses;
     this.transactions = new TransactionTemplate(transactionManager);
+    this.clock = clock;
   }
 
   /** Whether any chat model exists, active or not: a sign of a database already in use. */
@@ -143,6 +154,9 @@ public class LlmModelService {
    * so an edit to the active model must take effect on the next request just as an activation does.
    * An edit to an inactive model needs no invalidation; the resolver never looked at that row
    * anyway.
+   *
+   * <p>A changed base URL or model identifier resets the tool capability to {@link
+   * ToolCapability#UNVERIFIED}: the statement was made for the previous combination.
    */
   public LlmModel updateModel(
       UUID organizationId,
@@ -201,6 +215,66 @@ public class LlmModelService {
       eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
     }
     return model;
+  }
+
+  /**
+   * Records the tool capability of {@code id} for its current endpoint and model identifier, dated
+   * now. {@link ToolCapability#UNVERIFIED} takes neither basis nor measurement run and clears both;
+   * any other value takes a basis, and {@code measurementRun} is required for {@link
+   * ToolCapabilityBasis#MEASURED} and refused for {@link ToolCapabilityBasis#MANUAL}.
+   */
+  @Transactional
+  public LlmModel setToolCapability(
+      UUID organizationId,
+      UUID actorUserId,
+      UUID id,
+      ToolCapability capability,
+      ToolCapabilityBasis basis,
+      String measurementRun) {
+    LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
+    String run = measurementRun == null || measurementRun.isBlank() ? null : measurementRun.strip();
+    requireConsistentStatement(capability, basis, run);
+    Map<String, Object> before = auditState(model);
+    if (capability == ToolCapability.UNVERIFIED) {
+      model.resetToolCapability();
+    } else {
+      model.assessToolCapability(capability, basis, run, Instant.now(clock));
+    }
+    repository.save(model);
+    recordChange(
+        organizationId,
+        actorUserId,
+        AuditEventType.LLM_MODEL_CHANGED,
+        model,
+        before,
+        auditState(model));
+    return model;
+  }
+
+  private static void requireConsistentStatement(
+      ToolCapability capability, ToolCapabilityBasis basis, String measurementRun) {
+    if (capability == null) {
+      throw new ValidationException("Bitte die Werkzeugfähigkeit angeben.");
+    }
+    if (capability == ToolCapability.UNVERIFIED) {
+      if (basis != null || measurementRun != null) {
+        throw new ValidationException(
+            "Eine ungeprüfte Werkzeugfähigkeit hat keine Grundlage und keinen Messlauf.");
+      }
+      return;
+    }
+    if (basis == null) {
+      throw new ValidationException(
+          "Bitte die Grundlage der Angabe nennen: gemessen oder manuell gesetzt.");
+    }
+    if (basis == ToolCapabilityBasis.MEASURED && measurementRun == null) {
+      throw new ValidationException("Eine gemessene Angabe braucht den Verweis auf den Messlauf.");
+    }
+    if (basis == ToolCapabilityBasis.MANUAL && measurementRun != null) {
+      throw new ValidationException(
+          "Eine manuell gesetzte Angabe hat keinen Messlauf; als gemessen eintragen oder den"
+              + " Verweis weglassen.");
+    }
   }
 
   /**
@@ -360,6 +434,14 @@ public class LlmModelService {
     state.put("maxTokens", model.getMaxTokens());
     state.put("apiKeySet", model.getApiKeyCiphertext() != null);
     state.put("active", model.isActive());
+    state.put("toolCapability", model.getToolCapability().name());
+    if (model.getToolCapabilityBasis() != null) {
+      state.put("toolCapabilityBasis", model.getToolCapabilityBasis().name());
+      state.put("toolCapabilityAssessedAt", model.getToolCapabilityAssessedAt().toString());
+    }
+    if (model.getToolCapabilityMeasurementRun() != null) {
+      state.put("toolCapabilityMeasurementRun", model.getToolCapabilityMeasurementRun());
+    }
     return state;
   }
 

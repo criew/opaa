@@ -141,6 +141,48 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/admin/models/{modelId}/tool-capability:
+    put:
+      operationId: setLlmModelToolCapability
+      tags: [model]
+      summary: Record whether a chat model calls tools reliably (system admin only)
+      description: >
+        Records the tool capability of this model for its current endpoint and runtime, with the
+        basis of the statement and its date (set by the server). UNVERIFIED resets the statement
+        and clears basis, measurement run and date. CAPABLE and NOT_CAPABLE require a basis:
+        MANUAL without measurementRun, or MEASURED with measurementRun naming the measurement run
+        (its identifier or date and the measured combination). Neither a person nor a group is
+        recorded with the statement; who changed it is recorded in the audit log as
+        LLM_MODEL_CHANGED. A change of baseUrl or modelIdentifier via updateLlmModel resets the
+        statement to UNVERIFIED. A turn that needs tool calls is refused while the active model is
+        not CAPABLE; the ordinary chat works with any value.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelToolCapabilityRequest"
+      responses:
+        "200":
+          description: Tool capability recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/models/test:
     post:
       operationId: testLlmModel
@@ -602,6 +644,7 @@ components:
           maxTokens,
           apiKeySet,
           active,
+          toolCapability,
           createdAt,
           updatedAt,
         ]
@@ -633,6 +676,8 @@ components:
         active:
           type: boolean
           description: Whether this is the one systemwide active chat model.
+        toolCapability:
+          $ref: "#/components/schemas/LlmModelToolCapability"
         createdAt:
           type: string
           format: date-time
@@ -690,6 +735,67 @@ components:
           description: >
             Write-only. Omitted (null) on update leaves the stored key unchanged; an empty string
             clears it; any other value replaces it. On create, omitted or empty means no key.
+
+    ToolCapability:
+      type: string
+      description: >
+        Whether a chat model calls tools reliably, for its endpoint and runtime. UNVERIFIED is the
+        default and behaves like NOT_CAPABLE: a turn that needs tool calls is refused.
+      enum: [UNVERIFIED, CAPABLE, NOT_CAPABLE]
+
+    ToolCapabilityBasis:
+      type: string
+      description: >
+        How the tool capability was established: MEASURED by a measurement run, or MANUAL - set by
+        hand without a measurement.
+      enum: [MEASURED, MANUAL]
+
+    LlmModelToolCapability:
+      type: object
+      description: >
+        The tool capability of a chat model, valid for this endpoint and this runtime. Carries no
+        person or group: who changed it is recorded in the audit log.
+      required: [value, basis, assessedAt, measurementRun]
+      properties:
+        value:
+          $ref: "#/components/schemas/ToolCapability"
+        basis:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ToolCapabilityBasis"
+          description: Null while value is UNVERIFIED.
+        assessedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the statement was recorded; null while value is UNVERIFIED.
+        measurementRun:
+          type: string
+          nullable: true
+          description: >
+            The measurement run the statement rests on (its identifier or date and the measured
+            combination); set only for basis MEASURED.
+          example: "Lauf 2026-11-09, qwen2.5:14b auf Ollama 0.6, num_ctx 16384"
+
+    LlmModelToolCapabilityRequest:
+      type: object
+      description: >
+        UNVERIFIED takes neither basis nor measurementRun. CAPABLE and NOT_CAPABLE take a basis;
+        measurementRun is required for MEASURED and refused for MANUAL.
+      required: [value]
+      properties:
+        value:
+          $ref: "#/components/schemas/ToolCapability"
+        basis:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ToolCapabilityBasis"
+        measurementRun:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 300
+          example: "Lauf 2026-11-09, qwen2.5:14b auf Ollama 0.6, num_ctx 16384"
 
     LlmModelTestRequest:
       type: object

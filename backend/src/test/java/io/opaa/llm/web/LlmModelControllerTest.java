@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.ToolCapability;
+import io.opaa.api.types.ToolCapabilityBasis;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -192,6 +194,76 @@ class LlmModelControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"baseUrl\":\"http://ollama:11434/v1\"}"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void setToolCapabilityAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/" + UUID.randomUUID() + "/tool-capability")
+                .with(asRegularUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"CAPABLE\",\"basis\":\"MANUAL\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  // --- Tool capability ---
+
+  @Test
+  void aNewModelIsListedWithAnUnverifiedToolCapability() throws Exception {
+    when(llmModelService.listModels()).thenReturn(List.of(newModel("Ollama lokal", true)));
+
+    mockMvc
+        .perform(get("/api/v1/admin/models").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].toolCapability.value").value("UNVERIFIED"))
+        .andExpect(jsonPath("$[0].toolCapability.basis").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(
+            jsonPath("$[0].toolCapability.assessedAt").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(
+            jsonPath("$[0].toolCapability.measurementRun")
+                .value(org.hamcrest.Matchers.nullValue()));
+  }
+
+  @Test
+  void setToolCapabilityPassesValueBasisAndRunAndAnswersWithTheModel() throws Exception {
+    LlmModel model = newModel("Ollama lokal", false);
+    when(llmModelService.setToolCapability(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(model.getId()),
+            eq(ToolCapability.CAPABLE),
+            eq(ToolCapabilityBasis.MEASURED),
+            eq("Lauf 2026-11-09")))
+        .thenReturn(model);
+
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/" + model.getId() + "/tool-capability")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"value\":\"CAPABLE\",\"basis\":\"MEASURED\","
+                        + "\"measurementRun\":\"Lauf 2026-11-09\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(model.getId().toString()))
+        .andExpect(jsonPath("$.toolCapability").exists());
+  }
+
+  @Test
+  void anInconsistentToolCapabilityIsA400() throws Exception {
+    UUID modelId = UUID.randomUUID();
+    when(llmModelService.setToolCapability(
+            any(), any(), eq(modelId), eq(ToolCapability.CAPABLE), isNull(), isNull()))
+        .thenThrow(new ValidationException("Bitte die Grundlage der Angabe nennen."));
+
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/" + modelId + "/tool-capability")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"CAPABLE\"}"))
+        .andExpect(status().isBadRequest());
   }
 
   // --- Key never returned ---

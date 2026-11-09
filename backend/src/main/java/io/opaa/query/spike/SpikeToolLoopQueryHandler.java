@@ -54,6 +54,10 @@ import org.springframework.stereotype.Service;
  * ordinary turn; every other question reaches this class only to be handed straight back via an
  * empty {@link Optional}, leaving the ordinary path to run unmodified.
  *
+ * <p>The client comes from {@code ActiveChatModelResolver#resolveToolCallingChatClient()}: while
+ * the active model is not recorded as tool-capable, the turn is refused before the model is called
+ * and before anything is persisted, never answered without its tools.
+ *
  * <p>{@code ActiveChatModelResolver#resolveChatClient()} already auto-registers a default {@code
  * ToolCallingAdvisor} for any call carrying tools ({@code DefaultChatClient}, "Auto-registers a
  * ToolCallingAdvisor unless ... a ToolAdvisor is already present"), so nothing about the resolver
@@ -224,7 +228,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
     ChatResponse response =
         activeChatModelResolver
-            .resolveChatClient()
+            .resolveToolCallingChatClient()
             .prompt()
             .system(
                 SYSTEM_PROMPT.formatted(runState.blockId())
