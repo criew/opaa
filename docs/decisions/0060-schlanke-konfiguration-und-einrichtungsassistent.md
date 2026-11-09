@@ -480,7 +480,6 @@ verhindert, dass das Token allein interne Dienste abtastet.
   gehören der Behörde, die ihn ohnehin für andere Fachverfahren betreibt (Entscheidung 19).
 - Virenscanner weiter über Variablen konfigurieren — zwei Orte, und die Installation könnte ihn
   nicht einrichten (Entscheidung 19).
-
 - Vorgaben aus der Konfiguration, die die Datenbank überschreibt — zwei Orte für einen Wert, genau
   das Problem dieses ADR.
 - Eine entfallene Fristvariable beim ersten Start in die Datenbank übernehmen — wäre ein Startwert

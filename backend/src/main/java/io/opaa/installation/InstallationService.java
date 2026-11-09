@@ -308,7 +308,8 @@ public class InstallationService {
    * refused as invalid or stop at a failed check.
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
-   * @throws TooManyRequestsException past the budget of model or mail checks; nothing is counted
+   * @throws TooManyRequestsException past the budget of model, mail or malware scan checks; the
+   *     model checks are not counted then
    */
   public InstallationOverview applyAnswers(List<StepInput> answers, CompletionSource source) {
     List<StepInput> inputs = offeredAnswers(answers);

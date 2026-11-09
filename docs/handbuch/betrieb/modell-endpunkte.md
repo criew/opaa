@@ -653,7 +653,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 
 1. **Betriebsschalter** `OPAA_OCR_ENABLED=true`, gelesen beim Start. Ohne ihn wird die Rolle weder
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
-   Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
+   Er steht beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.
 2. **Schalter der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
    ([Texterkennung einrichten](../administration/modelle.md#texterkennung-einrichten)). Dazu
