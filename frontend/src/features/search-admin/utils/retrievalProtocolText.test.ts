@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatStageDuration,
   listLabelRules,
   noteRules,
   translateListLabel,
@@ -229,4 +230,21 @@ describe('retrieval-note-templates.json coverage', () => {
       ).toBe(true)
     },
   )
+})
+
+describe('formatStageDuration', () => {
+  it('shows nothing for a stage that was not called', () => {
+    expect(formatStageDuration(null)).toBeNull()
+    expect(formatStageDuration(undefined)).toBeNull()
+  })
+
+  it('shows milliseconds below one second', () => {
+    expect(formatStageDuration(0)).toBe('< 1 ms')
+    expect(formatStageDuration(184)).toBe('184 ms')
+  })
+
+  it('shows seconds with one German decimal from one second on', () => {
+    expect(formatStageDuration(1250)).toBe('1,3 s')
+    expect(formatStageDuration(17500)).toBe('17,5 s')
+  })
 })

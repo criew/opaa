@@ -460,6 +460,11 @@ Ist `opaa.eval.explanationDumpDir` gesetzt, entsteht je Fall eine Datei `<fall-i
 Liste, wie die Stufe sie erzeugt hat. Ohne die Property schreibt der Lauf nichts und verhält sich
 byte-identisch zum bisherigen Stand.
 
+Die gemessene Dauer jeder Stufe steht getrennt daneben in `<fall-id>.durations.json` (je Stufe Name
+und `durationMs`, `null` für abgeschaltete und nicht erreichte Stufen). Dauern schwanken zwischen
+zwei Läufen desselben Codes; der Neutralitätsvergleich lässt diese Dateien deshalb aus:
+`diff -r -x '*.durations.json' before after`.
+
 **Indexstabile Schlüssel statt IDs.** Jeder Harness-Lauf indiziert in einen frischen
 Testcontainer-Index; Chunk- und Dokument-IDs sind dort neue UUIDs und wären zwischen zwei Läufen nie
 gleich. Der Dump übersetzt sie deshalb über den `vector_store` des Laufs (`VectorStoreChunkKeys`):
@@ -467,8 +472,8 @@ ein Chunk erscheint als `<dateiname>#<chunk_index>`, ein Dokument als sein Datei
 durch das Manifest des Korpus festgelegt, also über Läufe hinweg stabil.
 
 Verwendung: Vorher-Stand auf `main` dumpen, Umbau durchführen, Nachher-Stand in ein zweites
-Verzeichnis dumpen, `diff -r before after` — ein leerer Diff über alle Fälle ist der Nachweis. Dass
-zwei Läufe **desselben** Codes einen leeren Diff liefern, ist vorher einmal zu prüfen (zwei Dumps auf
+Verzeichnis dumpen, `diff -r -x '*.durations.json' before after` — ein leerer Diff über alle Fälle
+ist der Nachweis. Dass zwei Läufe **desselben** Codes einen leeren Diff liefern, ist vorher einmal zu prüfen (zwei Dumps auf
 `main` gegeneinander); erst das macht einen leeren Diff vor/nach aussagekräftig. Für diesen
 Vergleich darf das Host-Ollama genutzt werden (`-Dopaa.eval.ollamaBaseUrl`): Verglichen wird nur
 Gleichheit vor/nach demselben Index-Verfahren, keine Baseline. Der Dump schreibt ausschließlich der
