@@ -31,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * The live dictation of one person over {@code WS /api/v1/transcriptions/stream} (ADR-0070). The
+ * The live dictation of one person over {@code WS /api/v1/transcriptions/stream} (ADR-0072). The
  * browser speaks OPAA's own protocol whatever dialect the upstream has: the server sends {@code
  * ready} with the sample rate, the browser sends binary PCM16 frames and {@code commit}, the server
  * answers {@code delta} (the text so far), {@code done} and {@code error}. Any {@code error} ends

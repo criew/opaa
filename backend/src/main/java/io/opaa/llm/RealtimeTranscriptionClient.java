@@ -30,7 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Opens the WebSocket of a live transcription upstream and runs one recording through the adapter
- * of its dialect (ADR-0070). Uses the JDK client like {@link TranscriptionClient}: the
+ * of its dialect (ADR-0072). Uses the JDK client like {@link TranscriptionClient}: the
  * installation-wide outbound proxy and the JVM truststore apply, and a redirect of the handshake is
  * never followed, so the key cannot be replayed elsewhere. The key goes as {@code Authorization:
  * Bearer} in the handshake only.

@@ -3,7 +3,7 @@
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
 Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modell-endpunkte.md#spracheingabe-einschalten), die
-[Texterkennung](texterkennung.md) gescannter PDFs, der Mailserver für den [E-Mail-Versand](../administration/e-mail.md) und das [Branding](../administration/branding.md). Bis dahin steht sie im
+[Texterkennung](texterkennung.md) gescannter PDFs, der Virenscanner der [Virenprüfung](../administration/virenpruefung.md), der Mailserver für den [E-Mail-Versand](../administration/e-mail.md) und das [Branding](../administration/branding.md). Bis dahin steht sie im
 **Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
@@ -79,7 +79,7 @@ Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
 verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
 Anmeldeverfahren; Chat-Modell, Embedding-Modell, Rerank-Modell, Transkriptionsmodell, Texterkennung,
-E-Mail-Versand und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
+Virenprüfung, E-Mail-Versand und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
 nicht `false` ist: Sonst fehlt der Schritt in Assistent und API, und die Antwortdatei übergeht seinen
 Teil. Den Wert der Variable tragen alle Instanzen gleich: Schließt eine Instanz mit
 abgeschalteter Spracheingabe die Installation ab, verwirft sie einen gespeicherten Schritt
@@ -97,6 +97,7 @@ Antwortdatei übergeht ihren Teil. Auch diesen Wert tragen alle Instanzen gleich
 | Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
 | Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache; wahlweise Live-Transkript mit Live-Dienst, Live-Adresse, Live-Modell und Live-Schlüssel | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme; mit Live zusätzlich eine Live-Sitzung ohne Audio | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
 | Texterkennung (`TEXT_RECOGNITION_MODEL`) | nein | Anbindung docling-serve oder Vision-Modell, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung, Zugangsschlüssel | Adressprüfung der Modelle; der gestufte Verbindungstest wie unter Modelle → Texterkennung: Adresse, Anmeldung, Erkennung einer mitgelieferten Testseite | Modelle, Reiter „Texterkennung“ ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
+| Virenprüfung (`MALWARE_SCAN`) | nein | Host des clamd-Dienstes, Zeitlimit, Verhalten bei Ausfall; Port fest `3310` | Frage nach der Version des Dienstes, ohne Datei | Virenprüfung ([Virenprüfung einrichten](../administration/virenpruefung.md)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../administration/e-mail.md)) |
 | Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../administration/branding.md)) |
 
@@ -168,11 +169,12 @@ Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der
 übernimmt ein geprüftes Rerank-Modell in die Modellverwaltung und schaltet das Reranking ein,
 schaltet mit einem geprüften Transkriptionsmodell die Spracheingabe ein wie die Modellverwaltung,
 trägt einen geprüften Dienst der Texterkennung ein und schaltet die Rolle ein,
+schaltet mit einem geprüften Virenscanner die Virenprüfung ein,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
 Versand ein, übernimmt ein geprüftes Branding wie die Branding-Verwaltung und verwirft Token und
 Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Rerank-Modell bleibt das
 Reranking aus, ohne Transkriptionsmodell die Spracheingabe, ohne Texterkennung bleiben Scans
-ohne Textebene unauffindbar; ist der E-Mail-Versand übersprungen,
+ohne Textebene unauffindbar, ohne Virenprüfung werden Dateien ungeprüft gelesen; ist der E-Mail-Versand übersprungen,
 bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
 OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
@@ -266,6 +268,13 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Minuten dauern. OPAA wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
   bricht er trotzdem ab, liest er den Stand neu und geht weiter, wenn die Prüfung inzwischen
   gelungen ist, sonst sagt er, dass sie im Hintergrund weiterläuft. Der Abschluss nennt, ob er die Texterkennung einschaltet.
+- **Virenprüfung.** OPAA bringt keinen Virenscanner mit; der Schritt bindet den clamd-Dienst an,
+  den der Betrieb bereitstellt. Er hat die Texte und Regeln von „Administration → Virenprüfung“,
+  aber nur den Port `3310`: Weil das Token allein schützt, soll der Schritt keine anderen Ports im
+  internen Netz abtasten können. Ein Dienst auf einem anderen Port wird nach der Installation dort
+  eingetragen. Die Prüfung fragt den Dienst nach seiner Version, ohne eine Datei zu senden; je
+  Instanz sind 30 Prüfungen in 10 Minuten möglich. Der Abschluss nennt, ob er die Virenprüfung
+  einschaltet.
 - **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
   E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
   senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Ein Satz
@@ -350,6 +359,11 @@ Prüfungen, alles oder nichts.
     "baseUrl": "http://opaa-ocr:5001",
     "apiKeyFile": "/run/secrets/opaa-ocr-api-key"
   },
+  "malwareScan": {
+    "host": "clamav.stadt.example",
+    "timeoutSeconds": 30,
+    "onUnavailable": "REJECT"
+  },
   "mail": {
     "host": "smtp.stadt.example",
     "port": 587,
@@ -385,12 +399,16 @@ Prüfungen, alles oder nichts.
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
 - **Optionale Teile:** `chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`,
-  `textRecognitionModel`, `mail` und `branding` sind optional. Fehlt ein Teil,
+  `textRecognitionModel`, `malwareScan`, `mail` und `branding` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.
 - **Rerank-Modell:** Ohne den Abschnitt `rerankModel` bleibt das Reranking aus. Mit ihm prüft OPAA
   Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet das Reranking ein. Der
   Schlüssel steht als `apiKeyFile`; ohne ihn sendet OPAA keinen.
+- **Virenprüfung:** Ohne den Abschnitt `malwareScan` bleibt die Virenprüfung aus. Mit ihm fragt OPAA
+  den Dienst wie im Assistenten nach seiner Version, und der Abschluss schaltet die Prüfung ein.
+  `port` ist auch hier nur `3310`; ohne `timeoutSeconds` gelten 30 Sekunden, ohne `onUnavailable`
+  `REJECT`.
 - **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
   Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
@@ -453,7 +471,7 @@ Prüfungen, alles oder nichts.
 | Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MODEL_CHECK_LIMIT` „Zu viele Prüfungen der Modelle“: das Budget der Prüfungen der Modellschritte ist erschöpft, auch über die Antwortdatei der API; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MODEL_CHECK_LIMIT` „Zu viele Prüfungen der Modelle“: das Budget der Prüfungen der Modellschritte ist erschöpft, auch über die Antwortdatei der API; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft; mit dem Code `MALWARE_SCAN_CHECK_LIMIT` „Zu viele Prüfungen des Virenscanners“ ebenso für den Schritt Virenprüfung (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
 | `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
 | Prüfung des Rerank-Modells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ | die Basis-Adresse enthält den Pfad `/rerank` schon, oder der Dienst kennt die Modell-Kennung nicht | Basis-Adresse ohne `/rerank` eintragen, Kennung prüfen, oder den Schritt überspringen und das Modell später unter „Modelle → Reranking“ eintragen |
@@ -506,6 +524,7 @@ Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusamme
 Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank-,
 Transkriptionsmodell und Texterkennung zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
 die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei danach ablehnt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
-10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
+10 Testnachrichten in 10 Minuten, für alle Clients zusammen; im Schritt Virenprüfung je Instanz 30
+Prüfungen in 10 Minuten; die Antwortdatei beim Start zählt bei
 keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25,
 465, 587 und 2525.

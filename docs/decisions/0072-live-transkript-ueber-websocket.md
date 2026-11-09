@@ -1,4 +1,4 @@
-# ADR-0070: Live-Transkript über WebSocket mit Adaptergrenze
+# ADR-0072: Live-Transkript über WebSocket mit Adaptergrenze
 
 ## Status
 

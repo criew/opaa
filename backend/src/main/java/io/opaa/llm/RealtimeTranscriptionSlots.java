@@ -12,7 +12,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The live sessions of the installation (ADR-0070, ADR-0053). The cap counts across all instances:
+ * The live sessions of the installation (ADR-0072, ADR-0053). The cap counts across all instances:
  * every open session is a row of {@code transcription_realtime_slots}, opened under a table lock
  * and timed by the database clock. A row of a stopped instance stops counting once it is older than
  * {@link #STALE_AFTER}, longer than any session may last. The one open session per person is kept

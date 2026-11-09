@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0070](0070-live-transkript-ueber-websocket.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0072](0072-live-transkript-ueber-websocket.md)
 
 ## Kontext
 
@@ -272,6 +272,8 @@ festlegen, wer sich mit welcher Rolle anmeldet:
   verwerfen alle Geheimnisse und beenden die verbundenen Konten aller Personen.
 - **Konnektor-Freigabe** (die Anlegerechte je Quellart und Zugang): Sie verweist auf Gruppen und
   Zugänge dieser Installation, die es in einer anderen so nicht gibt.
+- **Virenscanner**: Seine Adresse empfängt jede aufgenommene Datei; ein Import lenkte sie an ein
+  neues Ziel (Entscheidung 19).
 - **Bilder des Brandings**: Sie dürfen größer sein als eine Einstellungsdatei und werden in der
   Verwaltung hochgeladen.
 
@@ -344,7 +346,7 @@ gilt nur für dieselbe Basis-Adresse. Der Abschluss schaltet die Rolle über den
 Modellverwaltung ein (`ModelRoleAdministration#installTranscription`), protokolliert unter dem
 Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus. Wahlweise nimmt der
 Schritt zusätzlich ein Live-Transkript mit Protokoll aus fester Liste, WebSocket-Adresse und Modell
-([ADR-0070](0070-live-transkript-ueber-websocket.md), Entscheidungen 3 und 4); geprüft wird es nach
+([ADR-0072](0072-live-transkript-ueber-websocket.md), Entscheidungen 3 und 4); geprüft wird es nach
 der Probe des Transkriptionsmodells mit einer Sitzung ohne Audio. Ein eigener Live-Schlüssel liegt
 verschlüsselt im Zwischenstand und gilt nur für dieselbe Live-Adresse; ohne ihn sendet Live den
 Schlüssel des Transkriptionsmodells, nur an dessen Origin. OpenAI und Mistral lehnt der Schritt ohne
@@ -437,11 +439,30 @@ und übergeht `textRecognitionModel` in Antwortdatei und Antworten, ohne sie abz
 Antwortdatei liest dann auch die Schlüsseldatei des Abschnitts nicht, ebenso die eines übergangenen
 `transcriptionModel`. Ein vorher gespeicherter Schritt hält den Abschluss nicht auf und wird mit dem
 Zwischenstand verworfen. Begründung: Ganze Seiten von Dokumenten an einen weiteren Dienst zu geben,
-entscheidet der Betrieb, wie beim Virenscanner; das Token darf diese Freigabe nicht ersetzen. Eine
+entscheidet der Betrieb; das Token darf diese Freigabe nicht ersetzen. Eine
 Antwortdatei soll dennoch in allen Umgebungen gelten, auch dort, wo der Dienst fehlt, und ein
 Secret, das dort nicht eingehängt ist, darf sie nicht scheitern lassen. Den Schlüssel trägt die
 Person ein, statt ihn aus der Umgebung zu lesen, weil sonst ein Geheimnis des Dienstes in den
 Prozess des Backends käme, das es zur Laufzeit ohnehin aus der Modellverwaltung liest.
+
+### 19. Virenscanner: externer Dienst, eingerichtet in Assistent und Verwaltung
+
+OPAA liefert keinen Virenscanner aus, weder als Image noch als Zusatzdatei für Compose oder Helm;
+es bindet den clamd-Dienst des Betriebs an wie ein Modell. Host, Port, Zeitlimit und Verhalten bei
+Ausfall (`REJECT`, `ACCEPT`) liegen in der Einzeilentabelle `malware_scan_settings`; ohne Zeile ist
+die Prüfung aus. Gesetzt werden sie im optionalen Schritt `MALWARE_SCAN` des Assistenten, über
+`malwareScan` der Antwortdatei oder unter „Administration → Virenprüfung“
+(`MalwareScanSettingsService`), jede Änderung als `MALWARE_SCAN_SETTINGS_CHANGED` im
+Revisionsprotokoll. `MalwareScanService` liest die Zeile für jede Datei, ohne Cache; eine Änderung
+wirkt so ohne Benachrichtigung auf allen Instanzen. Die Variablen `OPAA_MALWARE_SCAN_*` entfallen,
+ein Start, der eine davon noch setzt, nennt sie im Log als wirkungslos. Die Prüfung fragt den Dienst
+mit `VERSION` und sendet keine Datei. Im Assistenten gilt nur Port 3310, mit eigenem Budget von 30
+Prüfungen in 10 Minuten je Instanz; eine Adressprüfung gibt es weder dort noch in der Verwaltung.
+
+Begründung: Wie OCR oder ein Modell ist der Scanner ein Dienst des Hauses, den die Behörde stellt;
+ob und wo er läuft, ist eine fachliche Einstellung, keine Grenze des Betriebs. Ein Scanner im
+internen Netz ist der Regelfall, eine Adressprüfung schlösse ihn aus; den Port fest zu halten
+verhindert, dass das Token allein interne Dienste abtastet.
 
 ## Konsequenzen
 
@@ -461,6 +482,10 @@ Prozess des Backends käme, das es zur Laufzeit ohnehin aus der Modellverwaltung
 
 ## Verworfene Alternativen
 
+- ClamAV als Zusatzdatei für Compose oder Helm mitliefern — Signaturpflege und Betrieb des Scanners
+  gehören der Behörde, die ihn ohnehin für andere Fachverfahren betreibt (Entscheidung 19).
+- Virenscanner weiter über Variablen konfigurieren — zwei Orte, und die Installation könnte ihn
+  nicht einrichten (Entscheidung 19).
 - Vorgaben aus der Konfiguration, die die Datenbank überschreibt — zwei Orte für einen Wert, genau
   das Problem dieses ADR.
 - Eine entfallene Fristvariable beim ersten Start in die Datenbank übernehmen — wäre ein Startwert

@@ -95,8 +95,9 @@ paths:
         TRANSCRIPTION_MODEL the probe of the transcription model administration (GET
         {baseUrl}/models, no audio), for TEXT_RECOGNITION_MODEL the staged test of the text
         recognition administration with its test page (address, sign-in, recognition; the message
-        names the stage that failed, and the first conversion may take up to three minutes), or for
-        MAIL a connection to the
+        names the stage that failed, and the first conversion may take up to three minutes), for
+        MALWARE_SCAN the version request of the scanner administration (connect, VERSION, no file),
+        or for MAIL a connection to the
         mail server with sign-in when a user name is set, without sending anything. A failed MAIL
         check names one of four fixed reasons (not reachable, TLS failed, sign-in refused, no mail
         server), the cause goes to the log only. BRANDING is checked against the rules of the
@@ -105,7 +106,8 @@ paths:
         checks of CHAT_MODEL, EMBEDDING_MODEL, RERANK_MODEL, TRANSCRIPTION_MODEL and
         TEXT_RECOGNITION_MODEL together in
         10 minutes (429 with code MODEL_CHECK_LIMIT), at most 30 MAIL checks in 10 minutes (429
-        with code MAIL_CHECK_LIMIT) and at most 10 test messages in 10 minutes (429 with code
+        with code MAIL_CHECK_LIMIT), at most 30 MALWARE_SCAN checks in 10 minutes (429 with code
+        MALWARE_SCAN_CHECK_LIMIT) and at most 10 test messages in 10 minutes (429 with code
         MAIL_TEST_LIMIT); the per-address budget of the installation API answers 429 without code. Every wait on the mail server is bounded by
         OPAA_MAIL_CONNECT_TIMEOUT, OPAA_MAIL_READ_TIMEOUT and OPAA_MAIL_WRITE_TIMEOUT. The outcome
         is stored with the step and returned; a failed check is no error of the call. Same token
@@ -156,7 +158,7 @@ paths:
         check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
         EMBEDDING_MODEL, no model is set up, for RERANK_MODEL, reranking stays off, for
         TRANSCRIPTION_MODEL, speech input stays off, for TEXT_RECOGNITION_MODEL, text recognition
-        stays off, for MAIL,
+        stays off, for MALWARE_SCAN, the malware scan stays off, for MAIL,
         sending stays off, for BRANDING, the OPAA
         default stays. A skipped step does not
         hold up the completion; a saved optional step does until its check succeeded or it is
@@ -245,13 +247,15 @@ paths:
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
-        embeddingModel, rerankModel, transcriptionModel, textRecognitionModel, mail and branding are
-        optional; an optional part left out counts as skipped and discards what the assistant saved
+        embeddingModel, rerankModel, transcriptionModel, textRecognitionModel, malwareScan, mail and
+        branding are optional; an optional part left out counts as skipped and discards what the assistant saved
         for it. transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off,
         textRecognitionModel while OPAA_OCR_ENABLED is off. Every model
         part counts as one check against the budget of model checks (429 with code
         MODEL_CHECK_LIMIT); the check of mail sends no test message and counts against the budget
-        of MAIL checks (429 with code MAIL_CHECK_LIMIT). A refused call counts against neither. Same token and
+        of MAIL checks (429 with code MAIL_CHECK_LIMIT), the check of malwareScan against the budget
+        of MALWARE_SCAN checks (429 with code MALWARE_SCAN_CHECK_LIMIT). A call refused by a budget
+        gives the model checks back. Same token and
         network rules as getInstallation.
       requestBody:
         required: true
@@ -300,7 +304,8 @@ paths:
         switches reranking on, switches the transcription model role on with a checked
         TRANSCRIPTION_MODEL step and the text recognition role with a checked
         TEXT_RECOGNITION_MODEL step through the write path of the model administration, takes a
-        checked MAIL step over into the mail settings and switches sending on,
+        checked MALWARE_SCAN step over into the settings of the malware scan and switches it on,
+        takes a checked MAIL step over into the mail settings and switches sending on,
         takes a checked BRANDING step over into the branding settings with the rules of the
         branding administration, discards the token and the saved steps and switches every instance to normal operation. A
         skipped optional step leaves what it would set out: without the embedding model there is
@@ -361,7 +366,9 @@ components:
         CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model, RERANK_MODEL the rerank
         model (ADR-0060, Entscheidung 10), TRANSCRIPTION_MODEL the transcription model of speech
         input (Entscheidung 16), TEXT_RECOGNITION_MODEL the text recognition (OCR) model of scanned
-        PDFs (Entscheidung 18), MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and
+        PDFs (Entscheidung 18), MALWARE_SCAN, the clamd daemon of the operator every incoming file
+        is scanned with (Entscheidung 19), MAIL, the mail server for sending (ADR-0033,
+        Entscheidung 10), and
         BRANDING, the texts and accent colour of the branding without its images, are
         optional. TRANSCRIPTION_MODEL is listed only while OPAA_FEATURES_SPEECH_INPUT_ENABLED is on,
         TEXT_RECOGNITION_MODEL only while OPAA_OCR_ENABLED is on.
@@ -374,6 +381,7 @@ components:
           RERANK_MODEL,
           TRANSCRIPTION_MODEL,
           TEXT_RECOGNITION_MODEL,
+          MALWARE_SCAN,
           MAIL,
           BRANDING,
         ]
@@ -441,6 +449,8 @@ components:
           $ref: "#/components/schemas/InstallationTranscriptionModelView"
         textRecognitionModel:
           $ref: "#/components/schemas/InstallationTextRecognitionModelView"
+        malwareScan:
+          $ref: "#/components/schemas/InstallationMalwareScan"
         mail:
           $ref: "#/components/schemas/InstallationMailView"
         branding:
@@ -464,6 +474,8 @@ components:
           $ref: "#/components/schemas/InstallationTranscriptionModel"
         textRecognitionModel:
           $ref: "#/components/schemas/InstallationTextRecognitionModel"
+        malwareScan:
+          $ref: "#/components/schemas/InstallationMalwareScan"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:
@@ -832,8 +844,8 @@ components:
         one its step is skipped, without rerankModel reranking stays off, without
         transcriptionModel speech input stays off (transcriptionModel is accepted but ignored while
         OPAA_FEATURES_SPEECH_INPUT_ENABLED is off), without textRecognitionModel text recognition
-        stays off (accepted but ignored while OPAA_OCR_ENABLED is off), without mail sending stays
-        off,
+        stays off (accepted but ignored while OPAA_OCR_ENABLED is off), without malwareScan the
+        malware scan stays off, without mail sending stays off,
         without branding the OPAA default stays. Parts of later steps (outboundProxy) are not
         evaluated by this version.
       required: [firstAdmin, signIn]
@@ -852,10 +864,45 @@ components:
           $ref: "#/components/schemas/InstallationTranscriptionModel"
         textRecognitionModel:
           $ref: "#/components/schemas/InstallationTextRecognitionModel"
+        malwareScan:
+          $ref: "#/components/schemas/InstallationMalwareScan"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:
           $ref: "#/components/schemas/InstallationBranding"
+
+    InstallationMalwareScan:
+      type: object
+      description: >
+        The clamd daemon of the operator every file a library or a chat takes in is scanned with
+        (Entscheidung 19). OPAA ships no scanner. The check connects and asks for the daemon's
+        version, without sending a file; the completion stores the values in the administration's
+        settings of the malware scan and switches the scan on. Unlike there, the assistant takes
+        only port 3310, the clamd default: another port is set in the administration after the
+        installation. The host may be internal, the scanner usually is. The same object is returned
+        as the saved values.
+      required: [host]
+      properties:
+        host:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Host name or address, without scheme, port or whitespace.
+          example: clamav.amt.example
+        port:
+          type: integer
+          nullable: true
+          description: Omitted means 3310; any other value is refused in the assistant.
+          example: 3310
+        timeoutSeconds:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 600
+          description: Budget of one whole scan; omitted means 30.
+          example: 30
+        onUnavailable:
+          $ref: "#/components/schemas/MalwareScanUnavailablePolicy"
 
     InstallationMail:
       type: object

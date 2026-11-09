@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- The live transcription sessions open right now across all instances (ADR-0070), one row per
+-- The live transcription sessions open right now across all instances (ADR-0072), one row per
 -- session without any reference to the person: the cap of the installation counts them. A row is
 -- deleted when its session ends; one left behind by a stopped instance no longer counts once it is
 -- older than the hard limit of a session plus a margin, and is removed by the next opening.

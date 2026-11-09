@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
@@ -12,6 +13,8 @@ import io.opaa.branding.BrandingSettingsRules;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
+import io.opaa.knowledge.MalwareScanSettingsRules;
+import io.opaa.knowledge.MalwareScanSettingsUpdate;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
@@ -54,6 +57,10 @@ class StepRules {
   private static final String RERANK_PREFIX = "rerankModel";
   private static final String TRANSCRIPTION_PREFIX = "transcriptionModel";
   private static final String TEXT_RECOGNITION_PREFIX = "textRecognitionModel";
+  private static final String MALWARE_SCAN_PREFIX = "malwareScan.";
+
+  /** The only port of a scanner the assistant takes, the clamd default. */
+  static final int MALWARE_SCAN_PORT = MalwareScanSettingsRules.DEFAULT_PORT;
 
   /**
    * A host name or address: no whitespace and no control character in the Unicode sense (U+0085,
@@ -123,6 +130,10 @@ class StepRules {
   record TextRecognitionModelPayload(
       TextRecognitionConnectionType connectionType, String baseUrl, String model) {}
 
+  /** The clamd daemon of the malware scan, its defaults filled in; no secret. */
+  record MalwareScanPayload(
+      String host, int port, int timeoutSeconds, MalwareScanUnavailablePolicy onUnavailable) {}
+
   /** The mail server without its password; {@code encryption} is never {@code null}. */
   record MailPayload(
       String host,
@@ -183,6 +194,7 @@ class StepRules {
           transcriptionModel(model, previousPayload, previousSecret);
       case StepInput.TextRecognitionModel model ->
           textRecognitionModel(model, previousPayload, previousSecret);
+      case StepInput.MalwareScan scan -> malwareScan(scan);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
       case StepInput.Branding branding -> branding(branding);
     };
@@ -237,6 +249,11 @@ class StepRules {
         yield new InstallationOverview.TextRecognitionModel(
             model.connectionType(), model.baseUrl(), model.model(), secret != null);
       }
+      case MALWARE_SCAN -> {
+        MalwareScanPayload scan = malwareScanPayload(payload);
+        yield new InstallationOverview.MalwareScan(
+            scan.host(), scan.port(), scan.timeoutSeconds(), scan.onUnavailable());
+      }
       case MAIL -> {
         MailPayload mail = mailPayload(payload);
         yield new InstallationOverview.Mail(
@@ -272,6 +289,16 @@ class StepRules {
             branding.aiNotice(),
             branding.primaryColor())
         .errors();
+  }
+
+  MalwareScanPayload malwareScanPayload(String payload) {
+    return json.readValue(payload, MalwareScanPayload.class);
+  }
+
+  /** The saved scanner as the completion stores it, the scan switched on. */
+  static MalwareScanSettingsUpdate malwareScanUpdate(MalwareScanPayload scan) {
+    return new MalwareScanSettingsUpdate(
+        true, scan.host(), scan.port(), scan.timeoutSeconds(), scan.onUnavailable());
   }
 
   MailPayload mailPayload(String payload) {
@@ -716,6 +743,36 @@ class StepRules {
     return new Stored(
         json.writeValueAsString(payload),
         mailSecret(input.password(), previousPayload, previousSecret, payload));
+  }
+
+  /**
+   * The rules of the scanner administration ({@link MalwareScanSettingsRules}), each problem named
+   * under {@code malwareScan.}, and the one rule of the assistant: only the clamd port {@value
+   * #MALWARE_SCAN_PORT}, so a token cannot probe other ports of the internal network.
+   */
+  private Stored malwareScan(StepInput.MalwareScan input) {
+    MalwareScanSettingsRules.Result checked =
+        MalwareScanSettingsRules.check(
+            MALWARE_SCAN_PREFIX, input.host(), input.port(), input.timeoutSeconds(), true);
+    List<FieldError> errors = new ArrayList<>(checked.errors());
+    if (input.port() != null && input.port() != MALWARE_SCAN_PORT && errors.isEmpty()) {
+      errors.add(
+          error(
+              MALWARE_SCAN_PREFIX + "port",
+              "BLOCKED",
+              "Im Assistenten ist nur der clamd-Port "
+                  + MALWARE_SCAN_PORT
+                  + " zugelassen. Einen anderen Port nach der Installation unter „Administration →"
+                  + " Virenprüfung“ eintragen."));
+    }
+    requireNoErrors(errors);
+    MalwareScanSettingsRules.Checked values = checked.values();
+    MalwareScanUnavailablePolicy policy =
+        input.onUnavailable() == null ? MalwareScanUnavailablePolicy.REJECT : input.onUnavailable();
+    return new Stored(
+        json.writeValueAsString(
+            new MalwareScanPayload(values.host(), values.port(), values.timeoutSeconds(), policy)),
+        null);
   }
 
   /**

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
@@ -1048,5 +1049,45 @@ class StepRulesTest {
                 .toString())
         .doesNotContain("ocr-key")
         .contains("apiKey=***");
+  }
+
+  // regression guard for ADR-0060, Entscheidung 19: the token alone reaches no other clamd port
+  @Test
+  void theAssistantRefusesEveryPortButTheClamdPort() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.MalwareScan("clamav.stadt.example", 22, null, null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::code)
+                    .containsExactly(tuple("malwareScan.port", "BLOCKED")));
+  }
+
+  @Test
+  void theScannerIsStoredWithItsDefaultsAndItsProblemsNamedUnderTheStep() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.MalwareScan(" clamav.stadt.example ", null, null, null), null, null);
+
+    assertThat(rules.malwareScanPayload(stored.payload()))
+        .isEqualTo(
+            new StepRules.MalwareScanPayload(
+                "clamav.stadt.example", 3310, 30, MalwareScanUnavailablePolicy.REJECT));
+    assertThat(stored.secret()).isNull();
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.MalwareScan("tcp://clamav", 3310, 0, null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactlyInAnyOrder("malwareScan.host", "malwareScan.timeoutSeconds"));
   }
 }

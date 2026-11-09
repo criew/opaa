@@ -428,6 +428,7 @@ class SearchAdminResponseMapperTest {
     assertThat(vectorSearch.getIncomingCount()).isZero();
     assertThat(vectorSearch.getOutgoingCount()).isEqualTo(2);
     assertThat(vectorSearch.getNotes()).containsExactly("25 Kandidaten je Teilfrage");
+    assertThat(vectorSearch.getDurationMs()).isEqualTo(37L);
     var verdict = vectorSearch.getVerdicts().get(0);
     assertThat(verdict.getChunkId()).isEqualTo("chunk-1");
     assertThat(verdict.getDocumentKey()).isEqualTo(DOCUMENT_ID.toString());
@@ -440,6 +441,7 @@ class SearchAdminResponseMapperTest {
     assertThat(verdict.getValue()).isEqualTo(0.82);
 
     assertThat(response.getStages().get(1).getStatus()).isEqualTo(RetrievalStageStatus.DISABLED);
+    assertThat(response.getStages().get(1).getDurationMs()).isNull();
 
     assertThat(response.getFinalSelection())
         .singleElement()
@@ -560,7 +562,8 @@ class SearchAdminResponseMapperTest {
         Arrays.stream(RetrievalStageName.values())
             .map(
                 stage ->
-                    new StageExplanation(stage, StageStatus.EXECUTED, 1, 1, List.of(), List.of()))
+                    new StageExplanation(
+                        stage, StageStatus.EXECUTED, 1, 1, List.of(), List.of(), 1L))
             .toList();
     SearchDiagnosis fullRun = withStages(everyStage);
 
@@ -613,10 +616,17 @@ class SearchAdminResponseMapperTest {
                     "vector#1",
                     2,
                     0.71)),
-            List.of("25 Kandidaten je Teilfrage"));
+            List.of("25 Kandidaten je Teilfrage"),
+            37L);
     StageExplanation rerankPlaceholder =
         new StageExplanation(
-            RetrievalStageName.MMR_SELECTION, StageStatus.DISABLED, 2, 2, List.of(), List.of());
+            RetrievalStageName.MMR_SELECTION,
+            StageStatus.DISABLED,
+            2,
+            2,
+            List.of(),
+            List.of(),
+            null);
 
     return new SearchDiagnosis(
         "Gebührenbefreiung?",

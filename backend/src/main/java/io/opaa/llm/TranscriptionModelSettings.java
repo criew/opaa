@@ -12,7 +12,7 @@ import java.time.Instant;
  * The single row of {@code transcription_model} (ADR-0060, Entscheidung 10), built like {@link
  * RerankModelSettings}; {@link #language} {@code null} lets the model detect the language, {@link
  * #vocabulary} {@code null} sends no installation-wide prompt. The {@code realtime_*} columns hold
- * the optional live upstream (ADR-0070): all {@code null} for none; its key is encrypted like the
+ * the optional live upstream (ADR-0072): all {@code null} for none; its key is encrypted like the
  * batch key, {@code null} sends the batch key.
  */
 @Entity

@@ -152,6 +152,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "installation_steps",
                   "embedding_model",
                   "embedding_model_previous",
+                  "malware_scan_settings",
                   "rerank_model",
                   "text_recognition_model",
                   "transcription_model",

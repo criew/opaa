@@ -5,6 +5,7 @@ import io.opaa.api.dto.InstallationChatModelView;
 import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
 import io.opaa.api.dto.InstallationMailView;
+import io.opaa.api.dto.InstallationMalwareScan;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModelView;
 import io.opaa.api.dto.InstallationSignIn;
@@ -88,6 +89,13 @@ final class InstallationResponseMapper {
                 model.connectionType(), model.baseUrl(), model.apiKeySet());
         view.setModel(model.model());
         response.setTextRecognitionModel(view);
+      }
+      case InstallationOverview.MalwareScan scan -> {
+        InstallationMalwareScan view = new InstallationMalwareScan(scan.host());
+        view.setPort(scan.port());
+        view.setTimeoutSeconds(scan.timeoutSeconds());
+        view.setOnUnavailable(scan.onUnavailable());
+        response.setMalwareScan(view);
       }
       case InstallationOverview.Mail mail -> {
         InstallationMailView view =

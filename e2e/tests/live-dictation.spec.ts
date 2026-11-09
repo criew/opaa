@@ -3,7 +3,7 @@ import { startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 
 /**
- * Live dictation (ADR-0070) through the whole stack: browser, nginx's WebSocket upgrade, the
+ * Live dictation (ADR-0072) through the whole stack: browser, nginx's WebSocket upgrade, the
  * backend's /api/v1/transcriptions/stream and ai-stub as a vLLM live service. Chromium's fake
  * microphone plays a tone; ai-stub answers audio frames with one word each and the final text on the
  * commit. In the second scenario ai-stub drops the connection at the first audio frame, and the

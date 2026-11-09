@@ -29,7 +29,7 @@ import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The live dictation endpoint {@code WS /api/v1/transcriptions/stream} (ADR-0070), present only
+ * The live dictation endpoint {@code WS /api/v1/transcriptions/stream} (ADR-0072), present only
  * with the feature speech-input. The upgrade is an ordinary request under {@code /api/**}: the
  * security chain authenticates it like every REST call, with the token the browser hands over as
  * subprotocol ({@link TranscriptionStreamCredentialsFilter}). The handshake answers only the

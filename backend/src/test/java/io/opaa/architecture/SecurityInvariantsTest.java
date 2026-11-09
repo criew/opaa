@@ -22,6 +22,11 @@ class SecurityInvariantsTest {
       "ModelEndpointAccess or the administration checks the address with ModelAddressPolicy before"
           + " it is stored or used; follows no redirect";
 
+  private static final String CLAMD_DAEMON =
+      "the clamd daemon is system administrator configuration (MalwareScanSettingsService), set by"
+          + " a system administrator or by the installation step, which takes only port 3310; a"
+          + " scanner in the internal network is the rule, so no address policy refuses one";
+
   private static final String SMTP_SERVER =
       "the SMTP server is system administrator configuration (MailSettingsService), checked as"
           + " STORED_TARGET by StoredTargetWarmup and InstallationMailTargets (ADR-0063); an internal"
@@ -77,10 +82,8 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.audit.SyslogSender#secured",
               "wraps the socket deliver connected to the configured SIEM receiver in TLS"),
-          Map.entry(
-              "io.opaa.knowledge.ClamdClient#scan",
-              "the virus scanner comes from the operator's configuration (opaa.malware-scan.*),"
-                  + " never from a request"),
+          Map.entry("io.opaa.knowledge.ClamdClient#scan", CLAMD_DAEMON),
+          Map.entry("io.opaa.knowledge.ClamdClient#version", CLAMD_DAEMON),
           Map.entry("io.opaa.mail.MailConnectionTester#test", SMTP_SERVER),
           Map.entry("io.opaa.mail.MailService#attemptSend", SMTP_SERVER),
           Map.entry("io.opaa.mail.MailService#deliver", SMTP_SERVER),

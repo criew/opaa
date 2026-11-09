@@ -21,6 +21,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   RERANK_MODEL: { label: 'Rerank-Modell', laterUnder: 'Modelle' },
   TRANSCRIPTION_MODEL: { label: 'Transkriptionsmodell', laterUnder: 'Modelle' },
   TEXT_RECOGNITION_MODEL: { label: 'Texterkennung', laterUnder: 'Modelle' },
+  MALWARE_SCAN: { label: 'Virenprüfung', laterUnder: 'Virenprüfung' },
   MAIL: { label: 'E-Mail-Versand', laterUnder: 'E-Mail' },
   BRANDING: { label: 'Branding', laterUnder: 'Branding' },
 }

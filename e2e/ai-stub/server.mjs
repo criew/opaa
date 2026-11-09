@@ -31,7 +31,7 @@
 // model, which is all the transcription role's probe and the set-up assistant's discovery ask for.
 // Only below /transcription - the chat and embedding steps rely on this stub listing no models.
 //
-// Live transcription (ADR-0070): a WebSocket upgrade on <base>/realtime speaks the vLLM dialect -
+// Live transcription (ADR-0072): a WebSocket upgrade on <base>/realtime speaks the vLLM dialect -
 // session.update, input_audio_buffer.append/commit, transcription.delta/done - and answers every
 // fifth audio frame with one more word. POST /control/realtime {"drop": true} makes it close the
 // TCP connection at the first audio frame, as a crashed upstream would, so the browser falls back

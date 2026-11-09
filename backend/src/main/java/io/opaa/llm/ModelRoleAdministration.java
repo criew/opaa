@@ -103,7 +103,7 @@ public class ModelRoleAdministration {
       List<String> retiredVariables) {}
 
   /**
-   * The live upstream of the transcription role as the page shows it (ADR-0070); {@code apiKeySet}
+   * The live upstream of the transcription role as the page shows it (ADR-0072); {@code apiKeySet}
    * names a key of its own only.
    */
   public record RealtimeView(

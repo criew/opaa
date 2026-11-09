@@ -297,15 +297,22 @@ Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber�
 geschnitten und, beim Upload, in der Originalablage abgelegt.
 
 > **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
-> Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+> Die Systemverwaltung trägt dessen Adresse unter „Administration → Virenprüfung“ ein und schaltet
+> die Prüfung ein. Lädt eine Sachbearbeiterin eine
 > befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
 > der Originalablage noch im Index.
 
 - **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
-  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
-  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
-  Datei, weder Namen noch Bibliothek noch Person.
-- **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
+  bringt keinen Scanner mit, weder als Image noch als Zusatzdatei für Compose oder Helm; der Dienst
+  der Behörde wird angebunden wie ein Modell oder die Texterkennung. Die Verbindung geht direkt, nie
+  über den Ausgangsproxy, und trägt nur den Inhalt der Datei, weder Namen noch Bibliothek noch
+  Person.
+- **Einrichten:** ab Werk aus. Eingerichtet wird der Scanner im optionalen Schritt „Virenprüfung“
+  der [Installation](installation.md#schritte) oder danach unter „Administration → Virenprüfung“
+  ([Virenprüfung einrichten](../administration/virenpruefung.md)), mit Host, Port, Zeitlimit und
+  dem Verhalten bei Ausfall. OPAA liest die Einstellung für jede Datei neu; eine Änderung wirkt ohne
+  Neustart auf allen Instanzen. Umgebungsvariablen gibt es dafür nicht mehr; setzt ein Start noch
+  eine der früheren `OPAA_MALWARE_SCAN_*`, nennt das Log sie als wirkungslos.
 - **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
   Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
   abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
@@ -318,13 +325,12 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
   nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
   Bibliothek auf ihre Eigentümerin schließen ließe.
 - **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
-  seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
-  `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
-  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
-  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
-  Einstellung.
-- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
-  Antwort; danach gilt die Datei als nicht geprüft.
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit „Ablehnen“ (ab Werk) wird sie nicht
+  aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim nächsten Lauf erneut
+  versucht. Mit „Ungeprüft aufnehmen“ wird sie ungeprüft aufgenommen; das Laufprotokoll nennt sie
+  unter „Ohne Virenprüfung aufgenommen“.
+- **Frist:** Das Zeitlimit begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur Antwort;
+  danach gilt die Datei als nicht geprüft.
 - **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
   annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
   Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
@@ -344,16 +350,8 @@ Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands m
 und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
 eines Feeds).
 
-| Variable | Standard | Bedeutung |
-|---|---|---|
-| `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
-| `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
-| `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
-| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
-| `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
-
-Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss
-dem Backend den Weg zum Scanner öffnen.
+Unter Kubernetes muss eine NetworkPolicy dem Backend den Weg zu Host und Port des Scanners öffnen;
+der Helm-Chart kennt dafür keine eigenen Werte mehr.
 
 ## Schlüssel und Geheimnisse
 

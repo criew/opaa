@@ -341,6 +341,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
     {
       stage: 'SEARCH_SCOPE',
       status: 'EXECUTED',
+      durationMs: 2,
       incomingCount: 0,
       outgoingCount: 0,
       notes: [
@@ -352,6 +353,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
     {
       stage: 'METADATA_FILTER',
       status: 'EXECUTED',
+      durationMs: 0,
       incomingCount: 0,
       outgoingCount: 0,
       notes: ['no metadata filter set: every candidate of the search scope qualifies'],
@@ -360,6 +362,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
     {
       stage: 'VECTOR_SEARCH',
       status: 'EXECUTED',
+      durationMs: 184,
       incomingCount: 0,
       outgoingCount: 2,
       notes: ['vector search, 1 list(s)', 'fetch-k 25 per list'],
@@ -391,6 +394,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
     {
       stage: 'RANK_FUSION',
       status: 'EXECUTED',
+      durationMs: 1250,
       incomingCount: 2,
       outgoingCount: 1,
       notes: [

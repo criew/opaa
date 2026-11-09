@@ -15,9 +15,9 @@ import java.util.Objects;
  *     read again, rather than a file this machine reads
  * @param deepLink whether a document's {@code filePath} is an address a reader can open
  * @param uploads whether the library is curated document by document through uploads - created
- *     under the upload capability, without share cap, blocked from deletion while it holds
- *     documents; every other library is a connector library. Only {@link SourceType#UPLOAD} may
- *     accept uploads: the upload store, its folders and originals are keyed to that type
+ *     under the upload capability, blocked from deletion while it holds documents; every other
+ *     library is a connector library. Only {@link SourceType#UPLOAD} may accept uploads: the upload
+ *     store, its folders and originals are keyed to that type
  * @param pushIntake the push intake the connector offers, {@code null} for none
  * @param fullSyncInterval the factory default of the installation-wide rhythm of the connector's
  *     full reconciliation, which a library may lengthen where its connector offers that; {@code

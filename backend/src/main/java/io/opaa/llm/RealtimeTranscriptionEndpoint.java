@@ -6,7 +6,7 @@ import java.net.URI;
 import java.util.Locale;
 
 /**
- * The live upstream of the transcription role as the administration stored it (ADR-0070): dialect,
+ * The live upstream of the transcription role as the administration stored it (ADR-0072): dialect,
  * WebSocket address, model, the key to send and how many live sessions the installation holds at
  * once. Unconfigured while protocol, address or model is missing; then dictation works by recording
  * only. {@code apiKey} is the key sent - the live upstream's own key, or the batch endpoint's when

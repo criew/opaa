@@ -199,6 +199,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "source_sync_state",
             "embedding_model",
             "embedding_model_previous",
+            "malware_scan_settings",
             "rerank_model",
             "text_recognition_model",
             "transcription_model",

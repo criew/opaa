@@ -29,9 +29,8 @@ public enum AuditEventType {
   ASSET_EXTERNAL_ACCESS_CHANGED,
   /**
    * A library's Fremdzugangsfreigabe stopped taking effect without anyone acting - carrying the
-   * Anlass, today always the expiry of its mandatory Befristung. The connector share cap ({@link
-   * #CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}) does not bound this field - a lowered cap therefore
-   * never writes this event. Written under a system actor, like every other expiry event.
+   * Anlass, today always the expiry of its mandatory Befristung. Written under a system actor, like
+   * every other expiry event.
    */
   ASSET_EXTERNAL_ACCESS_EXPIRED,
 
@@ -261,9 +260,8 @@ public enum AuditEventType {
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
   /**
-   * A system administrator set or changed a connector library's share cap - whether the library may
-   * be granted to "Alle Konten". Distinct from {@link #ASSET_GRANT_REVOKED}, which the same call
-   * also writes whenever lowering the cap revokes such a grant.
+   * No longer written: a system administrator set or changed the former share cap of a connector
+   * library. Kept so existing entries stay readable until their retention ends.
    */
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
@@ -379,6 +377,12 @@ public enum AuditEventType {
    * remains. Neither file name nor uploading person is recorded.
    */
   MALWARE_DETECTED,
+  /**
+   * The settings of the malware scan changed: switched on or off, scanner address, timeout or the
+   * policy for a file the scanner could not judge. Written by a system administrator, or by the
+   * installation as a system process; a save that changes nothing writes no entry.
+   */
+  MALWARE_SCAN_SETTINGS_CHANGED,
   /**
    * A person set, changed or removed a core metadata value of a document by hand (ADR-0024). One
    * entry per document and field, carrying the old and the new value - also for every document of a

@@ -54,7 +54,6 @@ public class Asset implements OwnedAsset {
   /** The payload keys that name no content: ids, kinds, states, flags and counts. */
   static final Set<String> NEUTRAL_AUDIT_KEYS =
       Set.of(
-          "allAccountsGrantAllowed",
           "cause",
           "changedFields",
           "chunksRemoved",

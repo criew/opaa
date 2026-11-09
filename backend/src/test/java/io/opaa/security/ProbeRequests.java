@@ -35,7 +35,8 @@ final class ProbeRequests {
 
   /**
    * Bodies the schema alone cannot make valid, because a rule of the domain refuses them before the
-   * authorization is asked; {@code {name}} stands for the id of that name.
+   * authorization is asked, or whose example values would change what other tests of the shared
+   * database see (a malware scan switched on); {@code {name}} stands for the id of that name.
    */
   private static final Map<String, String> BODIES =
       Map.of(
@@ -60,7 +61,10 @@ final class ProbeRequests {
            "libraryId": "{libraryId}", "serviceAccountConfirmed": true}""",
           "upsertAssetGrant",
           """
-          {"subjectType": "USER", "subjectId": "{targetId}", "role": "VIEWER"}""");
+          {"subjectType": "USER", "subjectId": "{targetId}", "role": "VIEWER"}""",
+          "updateMalwareScanSettings",
+          """
+          {"enabled": false}""");
 
   /**
    * Path parameters whose example would let a rule of the domain refuse the request before the

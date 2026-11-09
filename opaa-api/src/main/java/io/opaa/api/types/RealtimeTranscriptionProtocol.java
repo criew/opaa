@@ -2,7 +2,7 @@ package io.opaa.api.types;
 
 /**
  * The dialect a live transcription upstream speaks over its WebSocket. The browser always speaks
- * OPAA's own protocol; one adapter per value translates it (ADR-0070).
+ * OPAA's own protocol; one adapter per value translates it (ADR-0072).
  */
 public enum RealtimeTranscriptionProtocol {
 

@@ -22,7 +22,7 @@ export interface RealtimeProtocolPreset {
 }
 
 /**
- * The three dialects the backend speaks (ADR-0070), in the order the forms list them. The
+ * The three dialects the backend speaks (ADR-0072), in the order the forms list them. The
  * addresses are the providers' documented ones; the vLLM host is a placeholder to adjust.
  */
 export const REALTIME_PROTOCOL_PRESETS: readonly RealtimeProtocolPreset[] = [

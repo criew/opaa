@@ -20,11 +20,11 @@ import org.springframework.asm.MethodVisitor;
 import org.springframework.asm.Opcodes;
 
 /**
- * The share cap and the external-access release of a {@link KnowledgeLibrary} are written only by
- * the one service per method that writes the matching history and audit entries beside it. The
- * methods are public because their writers live in {@code io.opaa.library}, so this check - not the
- * compiler - holds the boundary. Checked on the compiled main classes, because a method of the same
- * name on another type ({@code KnowledgeLibraryService#updateShareCap}) is no call of the entity.
+ * The external-access release of a {@link KnowledgeLibrary} is written only by the one service per
+ * method that writes the matching history and audit entries beside it. The methods are public
+ * because their writers live in {@code io.opaa.library}, so this check - not the compiler - holds
+ * the boundary. Checked on the compiled main classes, because a method of the same name on another
+ * type is no call of the entity.
  */
 class KnowledgeLibraryReachWriterTest {
 
@@ -33,7 +33,6 @@ class KnowledgeLibraryReachWriterTest {
   /** Guarded entity method -> the only class allowed to call it, in internal class-name form. */
   private static final Map<String, String> ALLOWED_WRITERS =
       Map.of(
-          "updateShareCap", "io/opaa/library/KnowledgeLibraryService",
           "updateExternalAccess", "io/opaa/library/LibraryExternalAccessService",
           "expireExternalAccess", "io/opaa/library/LibraryExternalAccessExpiryService",
           "markExternalAccessReminderSent", "io/opaa/library/LibraryExternalAccessReminderService");
@@ -47,8 +46,8 @@ class KnowledgeLibraryReachWriterTest {
         .containsExactlyInAnyOrderElementsOf(ALLOWED_WRITERS.keySet());
     assertThat(calls)
         .as(
-            "only the designated service may change a library's share cap or external-access"
-                + " release - it writes the history and audit entries that belong to the change")
+            "only the designated service may change a library's external-access release"
+                + " - it writes the history and audit entries that belong to the change")
         .allMatch(call -> ALLOWED_WRITERS.get(call.method()).equals(call.callerTopLevel()));
   }
 

@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * The live upstream of the transcription role (ADR-0070): whether text may appear while a person
+ * The live upstream of the transcription role (ADR-0072): whether text may appear while a person
  * speaks, and the opening of one live session. Live is offered only on top of a usable batch
  * endpoint, which stays the fallback: {@link #available()} needs the role {@link
  * OptionalRoleState#READY}, a stored live upstream whose last probe succeeded and a free session of

@@ -6,7 +6,7 @@ import java.util.List;
 import tools.jackson.databind.JsonNode;
 
 /**
- * One dialect of a live transcription upstream (ADR-0070). The browser always speaks OPAA's own
+ * One dialect of a live transcription upstream (ADR-0072). The browser always speaks OPAA's own
  * protocol; an adapter only translates between PCM16 frames, the end of the recording and the
  * events of its upstream, so a further dialect is one more implementation and no change to the
  * WebSocket endpoint or {@link RealtimeTranscriptionClient}.

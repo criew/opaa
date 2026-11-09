@@ -58,7 +58,6 @@ export default function LibraryDetailPage() {
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
-  const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
   const [localError, setLocalError] = useState<string | null>(null)
@@ -122,14 +121,6 @@ export default function LibraryDetailPage() {
   const showMetadataTab = useFeatureEnabled('metadata')
   const externalAccessEnabled = useFeatureEnabled('externalAccess')
 
-  // Only the system administration sets the ceiling - the owner only ever sees its
-  // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
-  // carries none.
-  const shareCapVisible =
-    isSystemAdmin &&
-    details != null &&
-    details.sourceType !== 'UPLOAD' &&
-    details.allAccountsGrantAllowed != null
   const activeTab: LibraryDetailTab = resolveTab(
     searchParams.get('tab'),
     showSourceTab,
@@ -282,12 +273,6 @@ export default function LibraryDetailPage() {
     } finally {
       setDiagnosticsLockSaving(false)
     }
-  }
-
-  /** A rejection is passed on - it belongs in the switch that triggered it. */
-  async function handleSaveShareCap(allAccountsGrantAllowed: boolean) {
-    if (!libraryId) return
-    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
   }
 
   // the source counts as connected only once a run has read it and the newest did not fail at
@@ -652,9 +637,7 @@ export default function LibraryDetailPage() {
             privateLibrary={privateLibrary}
             canEdit={canEdit}
             externalAccessEnabled={externalAccessEnabled}
-            shareCapVisible={shareCapVisible}
             onTransferred={() => reloadLibrary()}
-            onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
             diagnosticsLockSaving={diagnosticsLockSaving}
             diagnosticsLockError={diagnosticsLockError}
             onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}

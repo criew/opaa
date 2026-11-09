@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
@@ -117,7 +118,7 @@ public sealed interface StepInput {
   }
 
   /**
-   * The live transcription on top of dictation (ADR-0070), {@code null} for none. {@code apiKey} is
+   * The live transcription on top of dictation (ADR-0072), {@code null} for none. {@code apiKey} is
    * its own key: {@code null} keeps one saved before for the same live address, empty removes it;
    * without one it sends the key of the transcription step on that step's origin only.
    */
@@ -169,6 +170,19 @@ public sealed interface StepInput {
           + ", apiKey="
           + (apiKey == null ? "null" : "***")
           + "]";
+    }
+  }
+
+  /**
+   * The clamd daemon of the malware scan; {@code port} and {@code timeoutSeconds} {@code null} mean
+   * the defaults, {@code onUnavailable} {@code null} means {@code REJECT}.
+   */
+  record MalwareScan(
+      String host, Integer port, Integer timeoutSeconds, MalwareScanUnavailablePolicy onUnavailable)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.MALWARE_SCAN;
     }
   }
 

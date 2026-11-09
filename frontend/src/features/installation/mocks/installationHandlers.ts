@@ -13,6 +13,7 @@ import {
   type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
   type InstallationMail,
+  type InstallationMalwareScan,
   type InstallationModelDiscoveryRequest,
   type InstallationRerankModel,
   type InstallationStepCheckRequest,
@@ -166,6 +167,17 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
       },
     }
   }
+  if (step.step === 'MALWARE_SCAN') {
+    const values = part as InstallationMalwareScan
+    return {
+      malwareScan: {
+        host: values.host.trim(),
+        port: values.port ?? 3310,
+        timeoutSeconds: values.timeoutSeconds ?? 30,
+        onUnavailable: values.onUnavailable ?? 'REJECT',
+      },
+    }
+  }
   if (step.step === 'MAIL') {
     const { password, ...rest } = part as InstallationMail
     const passwordSet =
@@ -209,6 +221,7 @@ function checkMessageOf(step: InstallationStepState): string | null {
       step.rerankModel ??
       step.transcriptionModel ??
       step.textRecognitionModel ??
+      step.malwareScan ??
       step.signIn ??
       step.mail ??
       {},
@@ -216,6 +229,9 @@ function checkMessageOf(step: InstallationStepState): string | null {
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
   if (step.step === 'MAIL') {
     return 'Die Verbindung zum Mailserver ist fehlgeschlagen: ConnectException: Connection refused'
+  }
+  if (step.step === 'MALWARE_SCAN') {
+    return `Der Virenscanner ist unter ${step.malwareScan?.host}:${step.malwareScan?.port} nicht erreichbar oder antwortet nicht rechtzeitig.`
   }
   if (step.step === 'TEXT_RECOGNITION_MODEL') {
     return 'Gescheitert an der Stufe „Adresse“: Die Verbindung wurde vom Server abgelehnt.'
@@ -343,7 +359,9 @@ export const installationHandlers = [
               ? 'Verbindung erfolgreich, der Endpunkt hat geantwortet.'
               : step.step === 'TEXT_RECOGNITION_MODEL'
                 ? 'Adresse, Anmeldung und Erkennung in Ordnung. Verbindung erfolgreich, der Dienst hat die Testseite gelesen.'
-                : 'Prüfung erfolgreich.'
+                : step.step === 'MALWARE_SCAN'
+                  ? 'Virenscanner erreichbar: ClamAV 1.4.2/27450/mock'
+                  : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -375,6 +393,7 @@ export const installationHandlers = [
       rerankModel: undefined,
       transcriptionModel: undefined,
       textRecognitionModel: undefined,
+      malwareScan: undefined,
       mail: undefined,
       branding: undefined,
     })

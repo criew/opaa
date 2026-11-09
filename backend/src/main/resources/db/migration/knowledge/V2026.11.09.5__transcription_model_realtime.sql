@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- The optional live upstream of the transcription role (ADR-0070): dialect, WebSocket address,
+-- The optional live upstream of the transcription role (ADR-0072): dialect, WebSocket address,
 -- model, an own key encrypted with the settings key (null sends the key of the batch endpoint) and
 -- how many live sessions the installation holds at once (null for the factory default 1). All
 -- null means dictation by recording only.

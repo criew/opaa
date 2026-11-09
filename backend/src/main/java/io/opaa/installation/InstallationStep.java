@@ -36,6 +36,11 @@ public enum InstallationStep {
    */
   TEXT_RECOGNITION_MODEL(false, Limit.TEXT_RECOGNITION),
   /**
+   * The clamd daemon of the operator, optional: the completion stores it in the settings of the
+   * malware scan and switches the scan on; skipped, the scan stays off (ADR-0060, Entscheidung 19).
+   */
+  MALWARE_SCAN(false),
+  /**
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).
    */
