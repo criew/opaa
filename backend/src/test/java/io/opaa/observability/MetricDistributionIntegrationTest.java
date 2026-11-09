@@ -37,7 +37,8 @@ class MetricDistributionIntegrationTest {
         "http.server.requests",
         "opaa.query.duration",
         "opaa.ocr.duration",
-        "tasks.scheduled.execution"
+        "tasks.scheduled.execution",
+        "opaa.indexing.run.duration"
       })
   void theLatencyTimersPublishHistogramBuckets(String timer) throws Exception {
     record(timer);
@@ -65,6 +66,9 @@ class MetricDistributionIntegrationTest {
       case "opaa.ocr.duration" ->
           indexingMetrics.recordTextRecognition(
               "recognized", "distribution-test", 0, Duration.ofSeconds(2));
+      case "opaa.indexing.run.duration" ->
+          indexingMetrics.recordRunEnded(
+              "FILESYSTEM", "full", "completed", "none", Duration.ofMinutes(3), 0);
       case "tasks.scheduled.execution" -> {
         Method method = MetricDistributionIntegrationTest.class.getDeclaredMethod("scheduledTick");
         ScheduledTaskObservationContext context = new ScheduledTaskObservationContext(this, method);

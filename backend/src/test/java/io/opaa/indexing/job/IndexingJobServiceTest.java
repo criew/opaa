@@ -17,14 +17,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.knowledge.SourceType;
 import io.opaa.llm.EmbeddingModelNotInstalledException;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.observability.IndexingMetrics;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -55,6 +58,7 @@ class IndexingJobServiceTest {
   @Mock private CurrentInstance currentInstance;
   @Mock private InstanceRegistry instanceRegistry;
   @Mock private EmbeddingModelService embeddingModels;
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
   private IndexingJobService service;
 
   @BeforeEach
@@ -72,7 +76,8 @@ class IndexingJobServiceTest {
         databaseClock,
         currentInstance,
         instanceRegistry,
-        embeddingModels);
+        embeddingModels,
+        new IndexingMetrics(meterRegistry));
   }
 
   @Test
@@ -279,6 +284,182 @@ class IndexingJobServiceTest {
     verify(indexingJobRepository)
         .failIfRunning(eq(jobId), eq("Something went wrong"), isNull(), any(Instant.class));
     verify(indexingJobRepository, never()).existsById(any());
+  }
+
+  // --- opaa.indexing.runs, opaa.indexing.run.duration and opaa.indexing.bytes ---
+
+  private static final Instant RUN_START = Instant.parse("2026-11-10T07:00:00Z");
+
+  private static EndedRun endedRun(
+      String sourceType,
+      IndexingRunMode mode,
+      JobStatus status,
+      String failureCategory,
+      boolean incomplete,
+      Long bytes) {
+    return new EndedRun(
+        SourceType.of(sourceType),
+        mode,
+        status,
+        failureCategory,
+        incomplete,
+        RUN_START,
+        RUN_START.plus(Duration.ofMinutes(7)),
+        bytes);
+  }
+
+  private double runs(String connector, String mode, String result, String category) {
+    var counter =
+        meterRegistry
+            .find("opaa.indexing.runs")
+            .tags(
+                "connector",
+                connector,
+                "mode",
+                mode,
+                "result",
+                result,
+                "failure_category",
+                category)
+            .counter();
+    return counter == null ? 0 : counter.count();
+  }
+
+  @Test
+  void aCompletedRunCountsWithItsConnectorModeDurationAndBytes() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(jobId))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "SHAREPOINT", IndexingRunMode.FULL, JobStatus.COMPLETED, null, false, 4096L)));
+
+    service.completeJob(jobId, 3, 0, 0, 3);
+
+    assertThat(runs("sharepoint", "full", "completed", "none")).isEqualTo(1.0);
+    var duration =
+        meterRegistry
+            .get("opaa.indexing.run.duration")
+            .tags("connector", "sharepoint", "result", "completed")
+            .timer();
+    assertThat(duration.count()).isEqualTo(1);
+    assertThat(duration.totalTime(java.util.concurrent.TimeUnit.MINUTES)).isEqualTo(7.0);
+    assertThat(
+            meterRegistry
+                .get("opaa.indexing.bytes")
+                .tag("connector", "sharepoint")
+                .counter()
+                .count())
+        .isEqualTo(4096.0);
+  }
+
+  @Test
+  void aFailedRunCountsWithItsFailureCategory() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.failIfRunning(
+            eq(jobId), anyString(), eq("CREDENTIALS_REJECTED"), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(jobId))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "CONFLUENCE",
+                    IndexingRunMode.FULL,
+                    JobStatus.FAILED,
+                    "CREDENTIALS_REJECTED",
+                    false,
+                    null)));
+
+    service.failJob(jobId, "Anmeldung abgelehnt", "CREDENTIALS_REJECTED");
+
+    assertThat(runs("confluence", "full", "failed", "credentials_rejected")).isEqualTo(1.0);
+    assertThat(
+            meterRegistry
+                .get("opaa.indexing.run.duration")
+                .tags("connector", "confluence", "result", "failed")
+                .timer()
+                .count())
+        .isEqualTo(1);
+    assertThat(meterRegistry.find("opaa.indexing.bytes").counter()).isNull();
+  }
+
+  @Test
+  void anIncrementalRunCountsAsDeltaAndAnIncompleteOneAsIncomplete() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(jobId))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "CONFLUENCE",
+                    IndexingRunMode.INCREMENTAL,
+                    JobStatus.COMPLETED,
+                    "QUOTA_EXHAUSTED",
+                    true,
+                    0L)));
+
+    service.completeJob(jobId, 1, 0, 4, 1);
+
+    assertThat(runs("confluence", "delta", "incomplete", "quota_exhausted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aRunAlreadyRecoveredIsNotCountedAgainWhenItsExecutorEndsIt() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(true);
+
+    service.completeJob(jobId, 1, 0, 0, 1);
+
+    verify(indexingJobRepository, never()).findEndedRun(any());
+    assertThat(meterRegistry.find("opaa.indexing.runs").counter()).isNull();
+  }
+
+  @Test
+  void runsTheRecoveryFailsCountAsAbandonedByTheTimeAndMessageItWrote() {
+    when(indexingJobRepository.failStaleRunningJobs(
+            anyString(), any(Instant.class), eq(DATABASE_NOW)))
+        .thenReturn(1);
+    when(indexingJobRepository.findRunsFailedAt(
+            DATABASE_NOW, "Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"))
+        .thenReturn(
+            List.of(endedRun("SMB", IndexingRunMode.FULL, JobStatus.FAILED, null, false, null)));
+
+    serviceOn(Clock.systemUTC(), () -> DATABASE_NOW).recoverStaleJobs(Duration.ofHours(4));
+
+    assertThat(runs("smb", "full", "failed", "abandoned")).isEqualTo(1.0);
+  }
+
+  @Test
+  void runsOfADeadInstanceCountAsAbandoned() {
+    UUID dead = UUID.randomUUID();
+    when(indexingJobRepository.findOwnersOfRunningJobs()).thenReturn(List.of(dead));
+    when(instanceRegistry.isAlive(dead)).thenReturn(false);
+    List<Instant> stamped = new ArrayList<>();
+    when(indexingJobRepository.failRunningJobsOwnedBy(eq(dead), anyString(), any(Instant.class)))
+        .thenAnswer(
+            invocation -> {
+              stamped.add(invocation.getArgument(2));
+              return 1;
+            });
+    when(indexingJobRepository.findRunsFailedAt(any(Instant.class), anyString()))
+        .thenReturn(
+            List.of(endedRun("S3", IndexingRunMode.EVENT, JobStatus.FAILED, null, false, null)));
+
+    service.recoverJobsOfDeadInstances();
+
+    verify(indexingJobRepository)
+        .findRunsFailedAt(
+            stamped.getFirst(), "Durch Neustart oder Ausfall der ausführenden Instanz abgebrochen");
+    assertThat(stamped.getFirst().getNano() % 1000).isZero();
+    assertThat(runs("s3", "event", "failed", "abandoned")).isEqualTo(1.0);
   }
 
   @Test

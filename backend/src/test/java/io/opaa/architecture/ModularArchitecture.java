@@ -577,7 +577,7 @@ public final class ModularArchitecture {
    * only, so a provider access package - present or future - is refused without being named.
    */
   static final List<String> FILE_SYNC_ALLOWED =
-      List.of("common", "sourceaccess", "format", "knowledge", "api.types");
+      List.of("common", "sourceaccess", "format", "knowledge", "observability", "api.types");
 
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
