@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
  * not fit the old column, and a planned re-embedding is no outage. Without an installed embedding
  * model there is no vector table: {@code UNKNOWN} with {@code embeddingModel: NOT_CONFIGURED}, a
  * regular state of an installation that has not set its model yet; {@code DOWN} when the table
- * holds chunks without a model row.
+ * holds chunks without a model row. The result of the search is handed out again for a short time
+ * ({@link CachedProbe}), so repeated calls of the group cost one search.
  */
 @DataFlow("embedding-model")
 @Component
@@ -29,6 +30,7 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
   private final EmbeddingIndexState indexState;
   private final EmbeddingInfoService embeddingInfo;
   private final EmbeddingModelService embeddingModels;
+  private final CachedProbe search;
 
   public VectorStoreHealthIndicator(
       VectorStore vectorStore,
@@ -40,6 +42,7 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
     this.indexState = indexState;
     this.embeddingInfo = embeddingInfo;
     this.embeddingModels = embeddingModels;
+    this.search = new CachedProbe(this::search, clock);
   }
 
   @Override
@@ -55,9 +58,13 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
           .withDetail("vectorSearch", "SUSPENDED")
           .build();
     }
+    return search.health();
+  }
+
+  private Health search() {
     try {
       vectorStore.similaritySearch(SearchRequest.builder().query("health").topK(1).build());
-      return Health.up().withDetail("provider", provider).build();
+      return Health.up().withDetail("provider", vectorStore.getClass().getSimpleName()).build();
     } catch (Exception e) {
       return Health.down(e).build();
     }

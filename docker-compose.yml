@@ -44,8 +44,12 @@ services:
     # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend
     # port from outside the host would carry a spoofable X-Forwarded-For past the frontend's nginx.
     # The frontend container reaches the backend over the Compose network, never through this port.
+    # The second port is the management port (probes, health, metrics; ADR-0070): metrics answer
+    # there without a token, so a Prometheus on this host reads them; on the API port the actuator
+    # is gone.
     ports:
       - "127.0.0.1:${OPAA_BACKEND_PORT:-8081}:8080"
+      - "127.0.0.1:${OPAA_BACKEND_MANAGEMENT_PORT:-8082}:8081"
     # The image runs as uid/gid 65532 (backend/Dockerfile). A bind mount keeps the owner of
     # the *host* directory, so ./uploads must belong to that uid - a directory Docker creates for a
     # missing mount path belongs to root, and the first upload then fails with an
@@ -63,6 +67,7 @@ services:
       - opaa-backend-tmp:/tmp
     environment:
       OPAA_UPLOAD_STORAGE_PATH: /app/uploads
+      MANAGEMENT_SERVER_PORT: "8081"
       # The "dev" profile refuses to start when the frontend is published beyond loopback, unless
       # OPAA_AUTH_DEV_ALLOW_REMOTE=true confirms it (io.opaa.auth.DevExposureGuard).
       OPAA_AUTH_DEV_PUBLISHED_ADDRESS: ${OPAA_FRONTEND_BIND_ADDRESS:-127.0.0.1}
@@ -70,11 +75,11 @@ services:
       postgres:
         condition: service_healthy
     # Readiness without a shell (backend/docker/HealthProbe.java, beside the jar): healthy once
-    # /actuator/health/readiness answers 200. The start period covers the schema migration of a
+    # /actuator/health/readiness on the management port answers 200. The start period covers the schema migration of a
     # first start; the frontend waits for "healthy".
     healthcheck:
       test: ["CMD", "/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC",
-        "-Xmx32m", "-cp", "/app/probe", "HealthProbe"]
+        "-Xmx32m", "-cp", "/app/probe", "HealthProbe", "http://127.0.0.1:8081/actuator/health/readiness"]
       interval: 10s
       timeout: 5s
       retries: 3

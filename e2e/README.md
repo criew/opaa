@@ -143,8 +143,8 @@ weiter anheben.
 ### Isolation von einem laufenden Dev-Stack
 
 Der E2E-Stack läuft als **eigenes Compose-Projekt** (`COMPOSE_PROJECT_NAME=opaa-e2e`) auf **eigenen
-Host-Ports** (Postgres `15432`, Backend `18081`, Frontend `13000`, überschreibbar via
-`OPAA_DB_PORT`/`OPAA_BACKEND_PORT`/`OPAA_FRONTEND_PORT`) und mit einem **eigenen Environment**
+Host-Ports** (Postgres `15432`, Backend `18081`, Management-Port `18181`, Frontend `13000`, überschreibbar via
+`OPAA_DB_PORT`/`OPAA_BACKEND_PORT`/`OPAA_BACKEND_MANAGEMENT_PORT`/`OPAA_FRONTEND_PORT`) und mit einem **eigenen Environment**
 (`e2e/e2e.env`, nie `.env.docker`). `docker-compose.yml` selbst hat keine festen `container_name`-
 Werte mehr — Compose präfixiert Container-, Netzwerk- und Volume-Namen automatisch mit dem
 Projektnamen. Ein parallel laufender Dev-Stack (`docker compose up`, Standardprojekt) wird von

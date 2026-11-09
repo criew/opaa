@@ -124,7 +124,26 @@ spring:
           resource: false
           prompt: false
           completion: false
+    # Observations carry no content (ADR-0070): no prompt, answer, retrieved chunk or tool argument
+    # goes into a log, span or metric. Set explicitly so a changed library default cannot switch
+    # one on; SpringAiContentPropertiesTest requires every such property Spring AI declares here.
+    chat:
+      observations:
+        log-prompt: false
+        log-completion: false
+      client:
+        observations:
+          log-prompt: false
+          log-completion: false
+    image:
+      observations:
+        log-prompt: false
+    tools:
+      observations:
+        include-content: false
     vectorstore:
+      observations:
+        log-query-response: false
       pgvector:
         # vector_store and its indexes are created once, with the dimension of the probe embedding,
         # when the embedding model is installed (io.opaa.knowledge.VectorTableCreator), so no
@@ -897,7 +916,10 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
+      # Details (provider, endpoint, error) only for the system administration; every other
+      # signed-in account sees the status (ADR-0070).
       show-details: when-authorized
+      roles: SYSTEM_ADMIN
       # Spring Boot enables the two probes in a web application anyway; set here so the paths a
       # load balancer and a container health check rely on stay a deliberate choice.
       probes:
@@ -909,6 +931,21 @@ management:
         # rotation while sign-in, library management and document access keep working.
         readiness:
           include: readinessState,db
+  metrics:
+    # On every series: which application and which instance (the host name, a pod's name under
+    # Kubernetes). Not "instance": Prometheus sets that label itself and would rename ours.
+    tags:
+      application: ${spring.application.name}
+      host: ${HOSTNAME:unknown}
+    # Histogram buckets at the SLO thresholds of the latency timers (ADR-0070); comma-separated
+    # durations, each list replaceable through its variable.
+    distribution:
+      slo:
+        "[http.server.requests]": ${OPAA_METRICS_SLO_HTTP:100ms,250ms,500ms,1s,2500ms,5s,10s,30s}
+        "[opaa.query.duration]": ${OPAA_METRICS_SLO_QUERY:1s,2500ms,5s,10s,20s,30s,60s,120s}
+        "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
+        "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
+        "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
 
 logging:
   # The stack trace of the plain-text log with every exception message unable to forge an entry;
