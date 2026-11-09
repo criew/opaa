@@ -348,11 +348,12 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   }
 
   /**
-   * The whole answer, minus the three things that differ between two runs for reasons that have
-   * nothing to do with the lock: the timestamp, the sub-queries (a model call decides them) and the
-   * stage notes (they quote those sub-queries and their number). What remains covers the searched
-   * scope, the locked-library count, every stage with its status, counts and verdicts, the
-   * Endauswahl, the resolved document titles and the tracked-document verdict.
+   * The whole answer, minus the four things that differ between two runs for reasons that have
+   * nothing to do with the lock: the timestamp, the sub-queries (a model call decides them), the
+   * stage notes (they quote those sub-queries and their number) and the measured stage durations.
+   * What remains covers the searched scope, the locked-library count, every stage with its status,
+   * counts and verdicts, the Endauswahl, the resolved document titles and the tracked-document
+   * verdict.
    */
   private String lockRelevantAnswer(UUID target, UUID trackedDocumentId) throws Exception {
     String body =
@@ -368,6 +369,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     ArrayNode stages = (ArrayNode) answer.get("stages");
     for (int i = 0; i < stages.size(); i++) {
       ((ObjectNode) stages.get(i)).remove("notes");
+      ((ObjectNode) stages.get(i)).remove("durationMs");
     }
     return answer.toString();
   }
