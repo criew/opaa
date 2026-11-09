@@ -54,7 +54,7 @@ public final class OneDriveTestSeam {
             FakeGraphServer.shared().origin(),
             provider.issuer() + "/" + Endpoint.WithTenant.PLACEHOLDER + "/authorize",
             provider.issuer() + TOKEN_PATH + Endpoint.WithTenant.PLACEHOLDER,
-            beans.getBean(GraphConnections.class),
+            beans.getBean("oneDriveGraphConnections", GraphConnections.class),
             beans.getBean(SourceSyncStateRepository.class));
       }
       return bean;

@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -291,6 +292,19 @@ class TranscriptionClientTest {
         .isInstanceOf(TranscriptionUnavailableException.class)
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).timedOut()).isTrue())
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isFalse());
+    // the deadline interrupts the call on its own thread, which records the timeout
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        meterRegistry
+                            .get("opaa.outbound.requests")
+                            .tag("target", "transcription")
+                            .tag("outcome", "timeout")
+                            .timer()
+                            .count())
+                    .isEqualTo(1));
   }
 
   @Test

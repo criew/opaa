@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -434,5 +435,18 @@ class TextRecognitionClientTest {
     assertThat(result.outcome()).isEqualTo(TestOutcome.UNREACHABLE);
     assertThat(result.timedOut()).isTrue();
     assertThat(result.failedStage()).isEqualTo(TextRecognitionClient.FailedStage.RECOGNITION);
+    // the deadline interrupts the call on its own thread, which records the timeout
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        meterRegistry
+                            .get("opaa.outbound.requests")
+                            .tag("target", "ocr")
+                            .tag("outcome", "timeout")
+                            .timer()
+                            .count())
+                    .isEqualTo(1));
   }
 }

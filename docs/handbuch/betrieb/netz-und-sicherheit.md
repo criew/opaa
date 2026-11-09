@@ -317,7 +317,8 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
   mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
 - **Metriken:** `opaa_malware_scans_seconds_*` mit Dauer nach Ergebnis (`clean`, `infected`,
   `failed`) und `opaa_malware_signatures_age_seconds`, das Alter der Signaturen
-  ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+  ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)). Die frühere Anzahl
+  `opaa_malware_scans_total` heißt jetzt `opaa_malware_scans_seconds_count`.
 - **Grenzen der Prüfung:**
   - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
     seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim

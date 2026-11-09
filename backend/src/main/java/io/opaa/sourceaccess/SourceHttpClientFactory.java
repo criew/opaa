@@ -34,7 +34,9 @@ public final class SourceHttpClientFactory {
    * JVM's truststore; there is no way to skip it (see {@link UntrustedCertificate}).
    *
    * <p>Every request counts in {@code opaa.outbound.requests} with target {@code connector} and
-   * {@code kind}, the connector type in lower case ({@code confluence}, {@code msgraph}).
+   * {@code kind}, the connector type's key in lower case ({@code confluence}, {@code sharepoint}),
+   * or for a helper call that belongs to no single connector {@code oauth}, {@code service_account}
+   * or {@code mcp} (ADR-0071, Entscheidung 8).
    */
   public static HttpClient buildHttpClient(String kind) {
     return MeteredHttpClient.of(

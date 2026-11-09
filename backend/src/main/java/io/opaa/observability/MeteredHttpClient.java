@@ -112,28 +112,31 @@ public final class MeteredHttpClient extends HttpClient {
     return measured(() -> delegate.sendAsync(request, handler, pushPromiseHandler));
   }
 
+  /**
+   * Hands out the delegate's own future, so a caller's {@code cancel} still aborts the exchange; a
+   * call its caller cancels (Spring's JDK request factory at its read timeout) counts when the
+   * cancel lands.
+   */
   private <T> CompletableFuture<HttpResponse<T>> measured(
       Supplier<CompletableFuture<HttpResponse<T>>> sending) {
     OutboundPathClass path = pathClass.get();
     long start = System.nanoTime();
-    return sending
-        .get()
-        .whenComplete(
-            (response, failure) -> {
-              long nanos = System.nanoTime() - start;
-              if (failure != null) {
-                Throwable cause =
-                    failure instanceof CompletionException && failure.getCause() != null
-                        ? failure.getCause()
-                        : failure;
-                metrics.record(path, OutboundOutcome.ofFailure(cause), nanos);
-              } else {
-                metrics.record(
-                    path,
-                    OutboundOutcome.ofStatus(response.statusCode(), response.headers()),
-                    nanos);
-              }
-            });
+    CompletableFuture<HttpResponse<T>> sent = sending.get();
+    sent.whenComplete(
+        (response, failure) -> {
+          long nanos = System.nanoTime() - start;
+          if (failure != null) {
+            Throwable cause =
+                failure instanceof CompletionException && failure.getCause() != null
+                    ? failure.getCause()
+                    : failure;
+            metrics.record(path, OutboundOutcome.ofFailure(cause), nanos);
+          } else {
+            metrics.record(
+                path, OutboundOutcome.ofStatus(response.statusCode(), response.headers()), nanos);
+          }
+        });
+    return sent;
   }
 
   @Override

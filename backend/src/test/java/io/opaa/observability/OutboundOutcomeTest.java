@@ -41,6 +41,8 @@ class OutboundOutcomeTest {
         .isEqualTo(OutboundOutcome.TIMEOUT);
     assertThat(OutboundOutcome.ofFailure(new InterruptedException()))
         .isEqualTo(OutboundOutcome.TIMEOUT);
+    assertThat(OutboundOutcome.ofFailure(new java.util.concurrent.CancellationException()))
+        .isEqualTo(OutboundOutcome.TIMEOUT);
     assertThat(OutboundOutcome.ofFailure(new SSLHandshakeException("PKIX path building failed")))
         .isEqualTo(OutboundOutcome.TLS_ERROR);
     assertThat(

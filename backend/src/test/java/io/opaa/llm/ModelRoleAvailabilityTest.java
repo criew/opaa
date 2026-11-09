@@ -6,17 +6,31 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.common.FeatureFlags;
+import io.opaa.health.EmbeddingsHealthIndicator;
 import io.opaa.health.TranscriptionHealthIndicator;
+import java.net.InetSocketAddress;
+import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.observation.ChatModelObservationContext;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.observation.EmbeddingModelObservationContext;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -41,10 +55,10 @@ class ModelRoleAvailabilityTest {
       Supplier<OptionalRoleStatus> textRecognition,
       TextRecognitionConnectionType textRecognitionType) {
     return new ModelRoleAvailability(
-        () -> chatConfigured,
-        () -> chatAvailable,
-        () -> embeddingConfigured,
-        () -> true,
+        () -> chatConfigured ? "chat-model" : null,
+        model -> chatAvailable,
+        () -> embeddingConfigured ? "embedding-model" : null,
+        model -> true,
         rerank,
         transcription,
         textRecognition,
@@ -162,24 +176,115 @@ class ModelRoleAvailabilityTest {
   }
 
   @Test
-  void theLastRealCallOfChatAndEmbeddingDecidesTheirAvailability() {
+  void theLastRealCallOfTheRolesOwnModelDecidesItsAvailability() {
     ModelCallOutcomes outcomes = new ModelCallOutcomes();
-    var failedChat =
-        mock(org.springframework.ai.chat.observation.ChatModelObservationContext.class);
-    when(failedChat.getError()).thenReturn(new java.net.ConnectException("refused"));
-    var embedding =
-        mock(org.springframework.ai.embedding.observation.EmbeddingModelObservationContext.class);
+    ChatModelObservationContext failedChat = chatCall("gpt-role");
+    failedChat.setError(new java.net.ConnectException("refused"));
 
     assertThat(outcomes.supportsContext(failedChat)).isTrue();
     outcomes.onStop(failedChat);
-    outcomes.onStop(embedding);
+    outcomes.onStop(embeddingCall("bge-m3"));
 
-    assertThat(outcomes.chatAvailable()).isFalse();
-    assertThat(outcomes.embeddingAvailable()).isTrue();
-    var succeededChat =
-        mock(org.springframework.ai.chat.observation.ChatModelObservationContext.class);
-    outcomes.onStop(succeededChat);
-    assertThat(outcomes.chatAvailable()).isTrue();
+    assertThat(outcomes.chatAvailable("gpt-role")).isFalse();
+    assertThat(outcomes.embeddingAvailable("bge-m3")).isTrue();
+    outcomes.onStop(chatCall("gpt-role"));
+    assertThat(outcomes.chatAvailable("gpt-role")).isTrue();
+  }
+
+  @Test
+  void aCallOfAnotherModelNeverSpeaksForTheRolesModel() {
+    ModelCallOutcomes outcomes = new ModelCallOutcomes();
+    ChatModelObservationContext failedTitle = chatCall("small-title-model");
+    failedTitle.setError(new java.net.ConnectException("refused"));
+
+    outcomes.onStop(failedTitle);
+
+    assertThat(outcomes.chatAvailable("gpt-role")).isTrue();
+    assertThat(outcomes.chatAvailable("small-title-model")).isFalse();
+  }
+
+  @Test
+  void aChangeOfTheModelDropsWhatWasHeld() {
+    ModelCallOutcomes outcomes = new ModelCallOutcomes();
+    ChatModelObservationContext failedChat = chatCall("gpt-role");
+    failedChat.setError(new java.net.ConnectException("refused"));
+    outcomes.onStop(failedChat);
+    assertThat(outcomes.chatAvailable("gpt-role")).isFalse();
+
+    assertThat(outcomes.invalidationTopics())
+        .containsExactlyInAnyOrder(
+            ActiveChatModelResolver.INVALIDATION_TOPIC, InstalledEmbeddingModel.INVALIDATION_TOPIC);
+    outcomes.invalidateAll();
+
+    assertThat(outcomes.chatAvailable("gpt-role")).isTrue();
+  }
+
+  /**
+   * The embedding health probe embeds through the observed model, so a refused probe makes the role
+   * unavailable exactly as the health group reports it, with no call of the gauge's own.
+   */
+  @Test
+  void theEmbeddingRoleMirrorsItsHealthProbe() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/",
+        exchange -> {
+          exchange.sendResponseHeaders(401, -1);
+          exchange.close();
+        });
+    server.start();
+    try {
+      ModelCallOutcomes outcomes = new ModelCallOutcomes();
+      ObservationRegistry observations = ObservationRegistry.create();
+      observations.observationConfig().observationHandler(outcomes);
+      @SuppressWarnings("unchecked")
+      ObjectProvider<ObservationRegistry> provider = mock(ObjectProvider.class);
+      when(provider.getIfUnique(any())).thenReturn(observations);
+      EmbeddingModel model =
+          new OpenAiEmbeddingClientFactory(Duration.ofSeconds(5), provider)
+              .create(
+                  new EmbeddingEndpoint(
+                      "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                      "bge-m3",
+                      "key",
+                      EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS));
+      EmbeddingsHealthIndicator health =
+          new EmbeddingsHealthIndicator(
+              model, mock(EmbeddingModelService.class), Clock.systemUTC());
+      ModelRoleAvailability availability =
+          new ModelRoleAvailability(
+              () -> null,
+              outcomes::chatAvailable,
+              () -> "bge-m3",
+              outcomes::embeddingAvailable,
+              OptionalRoleStatus::disabled,
+              OptionalRoleStatus::disabled,
+              OptionalRoleStatus::disabled,
+              () -> TextRecognitionConnectionType.DOCLING_SERVE,
+              meterRegistry);
+
+      assertThat(health.health().getStatus()).isEqualTo(Status.DOWN);
+      availability.refresh();
+
+      assertThat(series()).containsExactlyEntriesOf(Map.of("embedding", 0.0));
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private static ChatModelObservationContext chatCall(String model) {
+    return ChatModelObservationContext.builder()
+        .prompt(new Prompt("Hallo", ChatOptions.builder().model(model).build()))
+        .provider("openai")
+        .build();
+  }
+
+  private static EmbeddingModelObservationContext embeddingCall(String model) {
+    return EmbeddingModelObservationContext.builder()
+        .embeddingRequest(
+            new EmbeddingRequest(List.of("Text"), EmbeddingOptions.builder().model(model).build()))
+        .provider("openai")
+        .build();
   }
 
   @Test

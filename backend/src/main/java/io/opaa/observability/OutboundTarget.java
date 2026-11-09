@@ -4,8 +4,10 @@ import java.util.Locale;
 
 /**
  * The fixed set of services an outbound call of {@code opaa.outbound.requests} goes to (ADR-0071,
- * Entscheidung 8). Chat and embedding are not among them: Spring AI measures those as {@code
- * gen_ai.client.operation}. {@link #SANDBOX} is the code sandbox of the agent loop.
+ * Entscheidung 8). Chat and embedding calls are not among them: Spring AI measures those as {@code
+ * gen_ai.client.operation}; {@link #MODEL_CHECK} is only the administration's connection test and
+ * model discovery of a chat or embedding endpoint. {@link #SANDBOX} is the code sandbox of the
+ * agent loop, {@link #ORIGINAL_STORE} the S3 store of uploaded originals.
  */
 public enum OutboundTarget {
   RERANK,
@@ -16,7 +18,9 @@ public enum OutboundTarget {
   CONNECTOR,
   OIDC,
   DIRECTORY,
-  CLAMAV;
+  CLAMAV,
+  MODEL_CHECK,
+  ORIGINAL_STORE;
 
   /** The value of the {@code target} tag. */
   public String tagValue() {

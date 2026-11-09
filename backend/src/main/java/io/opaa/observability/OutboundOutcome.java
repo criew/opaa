@@ -6,6 +6,7 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.Locale;
+import java.util.concurrent.CancellationException;
 import javax.net.ssl.SSLException;
 
 /**
@@ -54,11 +55,14 @@ public enum OutboundOutcome {
   }
 
   /**
-   * The class of a call that ended with {@code failure} instead of an answer. An interrupt counts
-   * as {@link #TIMEOUT}: the clients here interrupt a call only when its deadline has passed.
+   * The class of a call that ended with {@code failure} instead of an answer. An interrupt or a
+   * cancel counts as {@link #TIMEOUT}: the clients here interrupt or cancel a call when its
+   * deadline has passed, and a stop or shutdown that interrupts one counts the same.
    */
   public static OutboundOutcome ofFailure(Throwable failure) {
-    if (failure instanceof InterruptedException || failure instanceof ClosedByInterruptException) {
+    if (failure instanceof InterruptedException
+        || failure instanceof ClosedByInterruptException
+        || failure instanceof CancellationException) {
       return TIMEOUT;
     }
     for (Throwable cause = failure; cause != null; cause = cause.getCause()) {

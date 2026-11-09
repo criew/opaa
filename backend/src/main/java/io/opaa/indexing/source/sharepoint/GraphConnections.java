@@ -34,15 +34,20 @@ final class GraphConnections {
   private final Sleeper sleeper;
   private final HttpClients httpClients;
 
+  /**
+   * @param kind the connector type the calls count under in {@code opaa.outbound.requests}, {@code
+   *     sharepoint} or {@code onedrive}
+   */
   GraphConnections(
       SharePointProperties properties,
       TargetAddressValidator targetAddressValidator,
-      Sleeper sleeper) {
+      Sleeper sleeper,
+      String kind) {
     this(
         properties,
         targetAddressValidator,
         sleeper,
-        () -> SourceHttpClientFactory.buildHttpClient("msgraph"));
+        () -> SourceHttpClientFactory.buildHttpClient(kind));
   }
 
   GraphConnections(

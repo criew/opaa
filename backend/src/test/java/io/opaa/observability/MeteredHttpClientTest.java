@@ -2,6 +2,7 @@ package io.opaa.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
@@ -31,7 +32,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -180,6 +184,29 @@ class MeteredHttpClientTest {
     assertCounted(registry, target, OutboundOutcome.IO_ERROR);
   }
 
+  // regression guard: Spring's JDK request factory enforces its read timeout by cancelling the
+  // future of sendAsync; that cancel must reach the measured future and count as a timeout
+  @Test
+  void aReadTimeoutOfSpringsJdkRequestFactoryIsATimeout() {
+    SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    try (HttpClient client = client(registry, OutboundTarget.OIDC)) {
+      JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(client);
+      factory.setReadTimeout(Duration.ofMillis(200));
+      RestTemplate rest = new RestTemplate(factory);
+
+      assertThat(
+              catchThrowable(
+                  () ->
+                      rest.getForObject(
+                          "http://127.0.0.1:" + port(server) + "/hang", String.class)))
+          .isInstanceOf(ResourceAccessException.class);
+    }
+
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertCounted(registry, OutboundTarget.OIDC, OutboundOutcome.TIMEOUT));
+  }
+
   @Test
   void anAsynchronousRequestIsMeasuredToo() throws Exception {
     SimpleMeterRegistry registry = new SimpleMeterRegistry();
@@ -189,7 +216,11 @@ class MeteredHttpClientTest {
           .get(10, TimeUnit.SECONDS);
     }
 
-    assertCounted(registry, OutboundTarget.OIDC, OutboundOutcome.SERVER_ERROR);
+    // the count lands with the future's completion, which the caller may see first
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> assertCounted(registry, OutboundTarget.OIDC, OutboundOutcome.SERVER_ERROR));
   }
 
   @Test

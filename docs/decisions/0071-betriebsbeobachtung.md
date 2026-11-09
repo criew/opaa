@@ -99,21 +99,34 @@ gebraucht worden wäre.
 ### 8. Ausgehende Aufrufe: ein Messpunkt am Client, Ergebnisklassen statt Adressen
 
 Jeder Aufruf über den JDK-`HttpClient` an Rerank, Transkription, Texterkennung (`ocr`, `vision`),
-Code-Sandbox, Konnektoren, OIDC und Verzeichnisdienste geht durch `MeteredHttpClient`, den die
-Clients und Client-Fabriken um ihren Client legen; die Virenprüfung misst ihren Socket-Aufruf mit
-denselben `OutboundMetrics`. `opaa.outbound.requests` trägt `target`, `kind` (Konnektortyp oder
-Verzeichnisanbieter aus dem Code, sonst `none`), `outcome` aus Status oder Ausnahmeklasse
-(`auth_error`, `tls_error`, `throttled` u. a.) und `path_class` (`interactive`, wenn eine Person
-wartet, sonst `background`); `opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host
-und Adresse sind nie ein Label, Chat und Embedding misst Spring AI. `opaa.model.role.available`
-liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für Chat und Embedding den
-letzten echten Aufruf je Instanz; es ruft kein Modell auf, und eine Rolle ohne Einrichtung hat
-keine Reihe.
+Code-Sandbox, Konnektoren, OIDC, Verzeichnisdienste und die Verbindungstests der Verwaltung für
+Chat- und Embedding-Modelle (`model_check`) geht durch `MeteredHttpClient`, den die Clients und
+Client-Fabriken um ihren Client legen. Was nicht über diesen Client geht, misst mit denselben
+`OutboundMetrics`: die Virenprüfung (`clamav`) und SMB je Austausch, das S3-SDK je Versuch über
+seine eigenen Metriken (Quellen als `connector`, die Originalablage als `original_store`).
+`opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
+(`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
+ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
+`opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein
+Label, Chat und Embedding misst Spring AI. `kind` nimmt nur feste Werte aus dem Code an: bei
+`connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`, `dropbox`,
+`google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`),
+für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`, `service_account` und `mcp`, bei
+`directory` den Anbieter (`keycloak`), sonst `none`. Damit bleibt die Zahl der Reihen begrenzt:
+höchstens rund 370 Kombinationen aus Ziel, Art, Ergebnis und Pfad, je mit den SLO-Buckets aus
+Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
+
+`opaa.model.role.available` liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für
+Chat und Embedding den letzten echten Aufruf des Modells der Rolle je Instanz; die Probe der
+Embedding-Health-Gruppe läuft über dasselbe beobachtete Modell und zählt mit. Aufrufe anderer
+Modelle zählen nicht, ein Modellwechsel setzt den Stand zurück. Es ruft kein Modell auf, und eine
+Rolle ohne Einrichtung hat keine Reihe.
 
 Ein Decorator am Client misst jeden Versuch, auch Wiederholungen nach 429, ohne Code je Client und
-ohne die Zielprüfung zu berühren. Die statisch gebauten Clients des Quellzugriffs messen über die
-globale Registry, an die Spring Boot die Registry der Anwendung bindet. Ob ein 429 stört, hängt am
-Pfad: Im Hintergrund drosselt die Indexierung adaptiv, interaktiv wartet eine Person.
+ohne die Zielprüfung zu berühren: Er reicht die fertig geprüfte Anfrage nur weiter. Die statisch
+gebauten Clients des Quellzugriffs messen über die globale Registry, an die Spring Boot die
+Registry der Anwendung bindet. Ob ein 429 stört, hängt am Pfad: Im Hintergrund drosselt die
+Indexierung adaptiv, interaktiv wartet eine Person.
 
 ## Konsequenzen
 

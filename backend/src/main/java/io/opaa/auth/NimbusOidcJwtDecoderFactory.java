@@ -6,6 +6,7 @@ import io.opaa.observability.MeteredHttpClient;
 import io.opaa.observability.OutboundMetrics;
 import io.opaa.observability.OutboundTarget;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -38,6 +39,11 @@ public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
   /** Every JWK set request counts in {@code opaa.outbound.requests} with target {@code oidc}. */
   public NimbusOidcJwtDecoderFactory(
       OidcDiscoveryClient discoveryClient, MeterRegistry meterRegistry) {
+    this(discoveryClient, meterRegistry, OidcDiscoveryClient.REQUEST_TIMEOUT);
+  }
+
+  NimbusOidcJwtDecoderFactory(
+      OidcDiscoveryClient discoveryClient, MeterRegistry meterRegistry, Duration readTimeout) {
     this.discoveryClient = discoveryClient;
     JdkClientHttpRequestFactory requestFactory =
         new JdkClientHttpRequestFactory(
@@ -47,7 +53,7 @@ public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
                     .followRedirects(HttpClient.Redirect.NEVER)
                     .build(),
                 new OutboundMetrics(meterRegistry, OutboundTarget.OIDC, null)));
-    requestFactory.setReadTimeout(OidcDiscoveryClient.REQUEST_TIMEOUT);
+    requestFactory.setReadTimeout(readTimeout);
     this.jwkSetClient = new RestTemplate(requestFactory);
   }
 

@@ -26,7 +26,8 @@ class OneDriveTargetValidationContractTest extends TargetValidationContract {
             target,
             "https://login.example.org/{tenant}/oauth2/v2.0/authorize",
             "https://login.example.org/{tenant}/oauth2/v2.0/token",
-            new GraphConnections(SharePointProperties.defaults(), validator, wait -> {}),
+            new GraphConnections(
+                SharePointProperties.defaults(), validator, wait -> {}, "onedrive"),
             mock(SourceSyncStateRepository.class));
     return connector.testConnection(
         new SourceSettings(null, target.toString(), "graph-token", OneDriveTestDrives.drive("b!x")),
