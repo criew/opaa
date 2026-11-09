@@ -61,6 +61,7 @@ import {
   LlmModelManagementPage,
   LoginPage,
   MailSettingsPage,
+  MalwareScanSettingsPage,
   OidcProviderManagementPage,
   PrivacySettingsPage,
   PromptLibraryCreatePage,
@@ -96,6 +97,7 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
+  { label: 'Virenprüfung', to: '/admin/malware-scan' },
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
@@ -344,6 +346,7 @@ export default function App() {
                      template management lands there. */}
                   <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                   <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
+                  <Route path="admin/malware-scan" element={<MalwareScanSettingsPage />} />
                   <Route
                     path="admin/search"
                     element={<Navigate to="/admin/search/overview" replace />}

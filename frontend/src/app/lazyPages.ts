@@ -85,6 +85,9 @@ export const LlmModelManagementPage = themePages(() => import('@/features/model/
 export const MailSettingsPage = themePages(() => import('@/features/mail/routes'))(
   'MailSettingsPage',
 )
+export const MalwareScanSettingsPage = themePages(() => import('@/features/malware-scan/routes'))(
+  'MalwareScanSettingsPage',
+)
 export const BrandingSettingsPage = themePages(() => import('@/features/branding/routes'))(
   'BrandingSettingsPage',
 )

@@ -25,6 +25,9 @@ export type InstallationTranscriptionModelView = Schemas['InstallationTranscript
 export type InstallationTextRecognitionModel = Schemas['InstallationTextRecognitionModel']
 export type InstallationTextRecognitionModelView = Schemas['InstallationTextRecognitionModelView']
 
+/** The clamd daemon of the operator; OPAA ships no scanner, the step only connects one. */
+export type InstallationMalwareScan = Schemas['InstallationMalwareScan']
+
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
@@ -66,6 +69,7 @@ export interface StepInput {
   RERANK_MODEL: InstallationRerankModel
   TRANSCRIPTION_MODEL: InstallationTranscriptionModel
   TEXT_RECOGNITION_MODEL: InstallationTextRecognitionModel
+  MALWARE_SCAN: InstallationMalwareScan
   MAIL: InstallationMail
   BRANDING: InstallationBranding
 }
@@ -79,6 +83,7 @@ export const STEP_REQUEST_KEY = {
   RERANK_MODEL: 'rerankModel',
   TRANSCRIPTION_MODEL: 'transcriptionModel',
   TEXT_RECOGNITION_MODEL: 'textRecognitionModel',
+  MALWARE_SCAN: 'malwareScan',
   MAIL: 'mail',
   BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>

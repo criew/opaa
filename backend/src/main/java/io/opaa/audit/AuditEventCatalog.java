@@ -326,6 +326,10 @@ public final class AuditEventCatalog {
     put(keys, Set.of("signature", "sourceType"), MALWARE_DETECTED);
     put(
         keys,
+        Set.of("enabled", "host", "onUnavailable", "port", "timeoutSeconds"),
+        MALWARE_SCAN_SETTINGS_CHANGED);
+    put(
+        keys,
         Set.of(
             "confidence",
             "datePrecision",
@@ -484,19 +488,21 @@ public final class AuditEventCatalog {
             "issuerUri",
             "language",
             "model",
+            "onUnavailable",
             "passwordSet",
             "port",
             "primaryColor",
             "productName",
             "signInMode",
             "step",
+            "timeoutSeconds",
             "username"),
         INSTALLATION_STEP_SAVED);
     put(keys, Set.of("step", "succeeded", "testMail"), INSTALLATION_STEP_CHECKED);
     put(keys, Set.of("discarded", "step"), INSTALLATION_STEP_SKIPPED);
     put(
         keys,
-        Set.of("mailEnabled", "signInMode", "skippedSteps", "source"),
+        Set.of("mailEnabled", "malwareScanEnabled", "signInMode", "skippedSteps", "source"),
         INSTALLATION_COMPLETED);
     put(keys, Set.of("passwordSource", "state"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("passwordSource", "recreated"), LOCAL_ADMIN_RESET);

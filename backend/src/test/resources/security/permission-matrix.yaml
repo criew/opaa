@@ -354,6 +354,9 @@ operations:
   getMailSettings:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateMailSettings:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   sendMailSettingsTest:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getMalwareScanSettings:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateMalwareScanSettings:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testMalwareScanSettings:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listMailTemplates:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getMailTemplate:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateMailTemplate:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}

@@ -65,6 +65,7 @@ const DISCOVERY_LIMIT_CODE = 'MODEL_DISCOVERY_LIMIT'
 const MODEL_CHECK_LIMIT_CODE = 'MODEL_CHECK_LIMIT'
 const MAIL_TEST_LIMIT_CODE = 'MAIL_TEST_LIMIT'
 const MAIL_CHECK_LIMIT_CODE = 'MAIL_CHECK_LIMIT'
+const MALWARE_SCAN_CHECK_LIMIT_CODE = 'MALWARE_SCAN_CHECK_LIMIT'
 
 /** The code of a refusal by a budget of its own, or `null`. */
 function limitCode(err: unknown): string | null {
@@ -84,8 +85,8 @@ function waitOf(err: unknown): string {
 
 /**
  * The sentence for a check past a budget of its own: the checks of the model steps, the test
- * messages of the mail step, after which the check without one still works, or the checks of the
- * mail step. `null` for any other failure.
+ * messages of the mail step, after which the check without one still works, the checks of the
+ * mail step or of the malware scan step. `null` for any other failure.
  */
 function checkLimitMessage(err: unknown): string | null {
   const code = limitCode(err)
@@ -97,6 +98,9 @@ function checkLimitMessage(err: unknown): string | null {
   }
   if (code === MAIL_CHECK_LIMIT_CODE) {
     return `Zu viele Prüfungen des Mailservers. Bitte ${waitOf(err)} erneut versuchen.`
+  }
+  if (code === MALWARE_SCAN_CHECK_LIMIT_CODE) {
+    return `Zu viele Prüfungen des Virenscanners. Bitte ${waitOf(err)} erneut versuchen.`
   }
   return null
 }

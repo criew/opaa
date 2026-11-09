@@ -600,8 +600,8 @@ paths:
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
 
-        **Malware scan (opaa.malware-scan, off by default):** switched on, the file is sent to the
-        configured clamd scanner after the content check and before the original is stored. A
+        **Malware scan (getMalwareScanSettings, off by default):** switched on, the file is sent to
+        the configured clamd scanner after the content check and before the original is stored. A
         finding is answered with 400 and a German message naming the signature; under the policy
         REJECT, a file the scanner could not judge (not reachable, an error, a file above its stream
         limit) is answered with 503. In both cases nothing of the attempt survives: neither the

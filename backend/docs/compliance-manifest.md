@@ -132,9 +132,9 @@ der lesenden Klasse als `sourceType`. Der Standardwert ist der aus dem Basisdoku
 Jeder Schlüssel ist eingeordnet, an der Komponente oder pauschal am Typ:
 
 ```java
-@NoDataImpact("connection details and failure policy of the scanner")
-@ConfigurationProperties(prefix = "opaa.malware-scan")
-public record MalwareScanProperties(@DataImpact boolean enabled, @DataImpact String host, ...)
+@NoDataImpact("connection details and pacing of the export")
+@ConfigurationProperties(prefix = "opaa.siem-export")
+public record SiemExportProperties(@DataImpact boolean enabled, @DataImpact String host, ...)
 ```
 
 **`@DataImpact`**, wenn der Standardwert bestimmt, was über Personen anfällt, wie lange es bleibt, wer es sieht, was
@@ -155,13 +155,13 @@ Ein datenwirksamer Schlüssel steht unter `settings`, in der Datei des Bereichs,
 
 ```yaml
 settings:
-  - key: opaa.malware-scan.enabled
+  - key: opaa.siem-export.enabled
     source: PROPERTY
     defaultValue: "false"
-    effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht
+    effect: Ob das Revisionsprotokoll an das zentrale Sicherheitsmonitoring gesendet wird
     bearings: [DATA_FLOW]
     helm:
-      values: malwareScan.enabled
+      values: siemExport.enabled
       defaultValue: "false"
 ```
 

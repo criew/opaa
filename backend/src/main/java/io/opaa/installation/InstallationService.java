@@ -20,6 +20,7 @@ import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationState.TokenSource;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
@@ -102,6 +103,16 @@ public class InstallationService {
   private static final String MAIL_CHECK_BUDGET_KEY = "installation-mail-check";
   private static final String TEST_RECIPIENT = "testRecipient";
 
+  static final int MAX_MALWARE_SCAN_CHECKS = 30;
+  static final int MALWARE_SCAN_CHECK_WINDOW_SECONDS = 600;
+
+  /** The code of a refusal by the budget of checks of the malware scanner. */
+  static final String MALWARE_SCAN_CHECK_LIMIT_CODE = "MALWARE_SCAN_CHECK_LIMIT";
+
+  private static final String MALWARE_SCAN_CHECK_LIMIT_MESSAGE =
+      "Zu viele Prüfungen des Virenscanners. Bitte später erneut versuchen.";
+  private static final String MALWARE_SCAN_CHECK_BUDGET_KEY = "installation-malware-scan-check";
+
   private static final Logger log = LoggerFactory.getLogger(InstallationService.class);
 
   private final InstallationStateRepository states;
@@ -114,6 +125,7 @@ public class InstallationService {
   private final EmbeddingModelService embeddingModels;
   private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
+  private final MalwareScanSettingsService malwareScans;
   private final BrandingSettingsService brandingSettings;
   private final OfferedSteps offered;
   private final AuditEventRecorder audit;
@@ -126,6 +138,8 @@ public class InstallationService {
       new RateLimitService(MAX_TEST_MAILS, TEST_MAIL_WINDOW_SECONDS);
   private final RateLimitService mailCheckBudget =
       new RateLimitService(MAX_MAIL_CHECKS, MAIL_CHECK_WINDOW_SECONDS);
+  private final RateLimitService malwareScanCheckBudget =
+      new RateLimitService(MAX_MALWARE_SCAN_CHECKS, MALWARE_SCAN_CHECK_WINDOW_SECONDS);
   private final ModelCheckBudget modelCheckBudget = new ModelCheckBudget();
 
   InstallationService(
@@ -139,6 +153,7 @@ public class InstallationService {
       EmbeddingModelService embeddingModels,
       ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
+      MalwareScanSettingsService malwareScans,
       BrandingSettingsService brandingSettings,
       OfferedSteps offered,
       AuditEventRecorder audit,
@@ -157,6 +172,7 @@ public class InstallationService {
     this.embeddingModels = embeddingModels;
     this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
+    this.malwareScans = malwareScans;
     this.brandingSettings = brandingSettings;
     this.offered = offered;
     this.audit = audit;
@@ -226,6 +242,9 @@ public class InstallationService {
     modelCheckBudget.acquire(List.of(step));
     if (step == InstallationStep.MAIL) {
       acquireMailCheck();
+    }
+    if (step == InstallationStep.MALWARE_SCAN) {
+      acquireMalwareScanCheck();
     }
     if (recipient != null) {
       RateLimitService.Decision decision = testMailBudget.tryAcquire(TEST_MAIL_BUDGET_KEY);
@@ -298,6 +317,14 @@ public class InstallationService {
     if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
       try {
         acquireMailCheck();
+      } catch (TooManyRequestsException e) {
+        modelChecks.release();
+        throw e;
+      }
+    }
+    if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MALWARE_SCAN)) {
+      try {
+        acquireMalwareScanCheck();
       } catch (TooManyRequestsException e) {
         modelChecks.release();
         throw e;
@@ -447,6 +474,22 @@ public class InstallationService {
     if (!decision.allowed()) {
       throw new TooManyRequestsException(
           MAIL_CHECK_LIMIT_MESSAGE, decision.retryAfterSeconds(), MAIL_CHECK_LIMIT_CODE);
+    }
+  }
+
+  /**
+   * Takes one connection to a malware scanner from the budget of this instance, for all clients.
+   *
+   * @throws TooManyRequestsException past the budget
+   */
+  private void acquireMalwareScanCheck() {
+    RateLimitService.Decision decision =
+        malwareScanCheckBudget.tryAcquire(MALWARE_SCAN_CHECK_BUDGET_KEY);
+    if (!decision.allowed()) {
+      throw new TooManyRequestsException(
+          MALWARE_SCAN_CHECK_LIMIT_MESSAGE,
+          decision.retryAfterSeconds(),
+          MALWARE_SCAN_CHECK_LIMIT_CODE);
     }
   }
 
@@ -654,6 +697,13 @@ public class InstallationService {
     if (textRecognitionStep != null && offered.isOffered(InstallationStep.TEXT_RECOGNITION_MODEL)) {
       installTextRecognitionModel(textRecognitionStep);
     }
+    InstallationStepRecord malwareScanStep = saved.get(InstallationStep.MALWARE_SCAN);
+    if (malwareScanStep != null) {
+      malwareScans.install(
+          Organization.DEFAULT_ID,
+          SYSTEM_ACTOR,
+          StepRules.malwareScanUpdate(rules.malwareScanPayload(malwareScanStep.getPayload())));
+    }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
       mailSettings.installSettings(
@@ -682,7 +732,9 @@ public class InstallationService {
             "skippedSteps",
             skipped,
             "mailEnabled",
-            mailStep != null));
+            mailStep != null,
+            "malwareScanEnabled",
+            malwareScanStep != null));
     return new InstallationOverview(false, true, List.of());
   }
 
@@ -899,6 +951,12 @@ public class InstallationService {
           summary.put("model", orDash(model.model()));
         }
         summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.MalwareScan scan -> {
+        summary.put("host", scan.host());
+        summary.put("port", scan.port());
+        summary.put("timeoutSeconds", scan.timeoutSeconds());
+        summary.put("onUnavailable", scan.onUnavailable().name());
       }
       case InstallationOverview.Mail mail -> {
         summary.put("host", mail.host());

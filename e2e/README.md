@@ -334,8 +334,9 @@ Aufgabe ist das deterministische Modell, und die Dropbox-Routen haben damit nich
 
 `clamd-stub` (`e2e/clamd-stub/server.mjs`, ebenfalls ein Skript im Standard-`node`-Image) spricht
 das `INSTREAM`-Protokoll von clamd und meldet `FOUND` für die EICAR-Testzeichenfolge, `OK` für alles
-andere. `e2e.env` schaltet die Virenprüfung damit für den ganzen Stack ein (`OPAA_MALWARE_SCAN_*`),
-jeder Upload und jede Konnektoraufnahme der Suite läuft also durch sie. Ein echtes ClamAV lädt beim
+andere; auf `VERSION` antwortet er wie ClamAV. `upload-limits.spec.ts` prüft ihn über den
+Verbindungstest der Administration und schaltet die Virenprüfung damit ein; sie bleibt für den Rest
+des Laufs an, jeder spätere Upload und jede Konnektoraufnahme läuft also durch sie. Ein echtes ClamAV lädt beim
 Start erst seine Signaturdatenbank aus dem Netz, das kostete jeden Lauf Minuten und Speicher.
 
 Dieselbe Datei setzt kleine Grenzen, damit die Ablehnungen ohne große Dateien prüfbar sind: 4 MiB je
