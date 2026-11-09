@@ -7,9 +7,9 @@ import {
   storedKeyServes,
   type GoogleDriveSourceValues,
 } from '../../../utils/googleDriveSource'
-import { connectionFields } from '../../sources/sourceConnection'
-import type { SourceSetupSpec } from '../setupTypes'
-import { issueList, joinSummary, listSummary } from './common'
+import { connectionFields } from '../../sourceCore/sourceConnection'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { issueList, joinSummary, listSummary } from '../../sourceCore/common'
 import { GoogleDriveConnectionFields, GoogleDriveScopeFields } from './GoogleDriveSetupFields'
 
 export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {

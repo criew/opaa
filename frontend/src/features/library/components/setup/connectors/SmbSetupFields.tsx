@@ -2,8 +2,8 @@ import Stack from '@mui/material/Stack'
 import { sameSmbShare, smbCredentialsOf, type SmbSourceValues } from '../../../utils/smbSource'
 import CredentialFields from '../CredentialFields'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { credentialsKept } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { credentialsKept } from '../../sourceCore/common'
 import FolderScope from './FolderScope'
 
 export function SmbConnectionFields({

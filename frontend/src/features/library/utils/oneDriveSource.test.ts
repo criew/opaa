@@ -8,7 +8,7 @@ import {
 } from './oneDriveSource'
 import { oneDriveSetup } from '../components/setup/connectors/oneDriveSetup'
 import { oneDriveFoldersOfItems } from '../components/sourceKit/selectionSources'
-import type { SourceFormContext } from '../components/sources/types'
+import type { SourceFormContext } from '../components/sourceCore/types'
 
 const context: SourceFormContext = {
   mode: 'create',

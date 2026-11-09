@@ -10,9 +10,9 @@ import {
   sharePointSiteLabel,
   type SharePointSourceValues,
 } from '../../../utils/sharePointSource'
-import type { SourceSetupSpec } from '../setupTypes'
-import { counted, issueList } from './common'
-import { displayPath } from '../paths'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { counted, issueList } from '../../sourceCore/common'
+import { displayPath } from '../../sourceCore/paths'
 import { SharePointConnectionFields, SharePointScopeFields } from './SharePointSetupFields'
 
 export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {

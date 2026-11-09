@@ -1,8 +1,5 @@
 import type { ChatSummary } from '@/shared/api/types'
 
-/** How many recent chats the list shows at once, and how many each "… weitere" adds. */
-export const RECENT_PAGE_SIZE = 15
-
 export interface ChatSections {
   /** Every pinned chat, most recently pinned first. */
   pinned: ChatSummary[]

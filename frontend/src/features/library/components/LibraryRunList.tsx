@@ -18,8 +18,8 @@ import {
   indexingTriggerSourceLabel,
 } from './indexingLabels'
 import { formatDay, isErrorEvent, runTone, runWord, stateTargetHref } from './libraryState'
-import { plainMessage } from './sourceKit/plainMessage'
-import { PATH_SEPARATOR } from './setup/paths'
+import { plainMessage } from './sourceCore/plainMessage'
+import { PATH_SEPARATOR } from './sourceCore/paths'
 
 /** The run list offers „Nur mit Fehlern“ from this many runs on. */
 const FILTER_FROM = 5

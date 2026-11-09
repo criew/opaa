@@ -1,5 +1,5 @@
 import type { ConfluenceFullSyncRhythm, LibraryScheduleValues } from '../../utils/librarySchedule'
-import { scheduleWeekdayLabel } from '../scheduleLabels'
+import { scheduleWeekdayLabel } from '../schedule/scheduleLabels'
 
 /** The schedule in one line: „täglich 02:00“, „montags 06:30“, „aus“. */
 export function scheduleSummary(

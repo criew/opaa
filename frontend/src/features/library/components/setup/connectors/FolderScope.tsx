@@ -1,7 +1,7 @@
-import type { ConnectionFields } from '../../sources/sourceConnection'
+import type { ConnectionFields } from '../../sourceCore/sourceConnection'
 import { folderItemsOf, folderSelectionSource } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
-import { displayPath } from '../paths'
+import { displayPath } from '../../sourceCore/paths'
 
 const ROOT_LABELS: Record<'NEXTCLOUD' | 'SMB' | 'DROPBOX', string> = {
   NEXTCLOUD: 'Nextcloud',

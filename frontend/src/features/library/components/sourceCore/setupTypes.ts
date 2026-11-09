@@ -2,8 +2,8 @@ import type { ComponentType } from 'react'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import type { SourceConnectionTestRequest } from '@/shared/api/types'
 import type { SourceIssue } from '../../utils/sourceIssue'
-import type { ConnectionFields } from '../sources/sourceConnection'
-import type { SourceFormContext } from '../sources/types'
+import type { ConnectionFields } from './sourceConnection'
+import type { SourceFormContext } from './types'
 
 /** The rows of the source setup: how the source is reached, what is read from it, when. */
 export type SetupRowId = 'connection' | 'scope' | 'schedule'

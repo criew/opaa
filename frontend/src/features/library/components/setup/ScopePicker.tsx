@@ -8,7 +8,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import Typography from '@mui/material/Typography'
 import SelectionDialog from '../sourceKit/SelectionDialog'
 import { incompleteNote } from '../sourceKit/incompleteNote'
-import { plainMessage } from '../sourceKit/plainMessage'
+import { plainMessage } from '../sourceCore/plainMessage'
 import {
   toggle,
   type BrowseResult,
@@ -16,8 +16,8 @@ import {
   type SelectionItem,
   type SelectionSource,
 } from '../sourceKit/selection'
-import { counted } from './connectors/common'
-import PathLabel from './PathLabel'
+import { counted } from '../sourceCore/common'
+import PathLabel from '../sourceCore/PathLabel'
 import { SummaryValue } from './SummaryRow'
 import { TEXT_LINK } from './rowStyles'
 

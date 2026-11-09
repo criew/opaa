@@ -9,7 +9,7 @@ import {
 } from '../../utils/sharePointSource'
 import { sharePointSetup } from '../setup/connectors/sharePointSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const sharePointSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SHAREPOINT,
