@@ -96,6 +96,7 @@ class AnswerStreamingUsageTest {
     JsonNode request = JsonMapper.builder().build().readTree(requestBody.get());
     assertThat(request.path("stream").asBoolean()).isTrue();
     assertThat(request.path("stream_options").path("include_usage").asBoolean()).isTrue();
+    assertThat(request.path("stream_options").has("include_obfuscation")).isFalse();
     assertThat(tokens("input")).isEqualTo(42);
     assertThat(tokens("output")).isEqualTo(7);
   }

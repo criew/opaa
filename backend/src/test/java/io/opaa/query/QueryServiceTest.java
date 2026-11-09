@@ -3019,6 +3019,41 @@ class QueryServiceTest {
     }
 
     @Test
+    void aHistoryLongerThanTheWindowCountsAsTruncatedInTheToolLoopToo() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      List<Message> history = new ArrayList<>();
+      for (int i = 0; i < 21; i++) {
+        history.add(new UserMessage("Nachricht " + i));
+      }
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(history);
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+      QueryResult spikeResult =
+          new QueryResult(
+              "Spike-Antwort",
+              List.of(),
+              new QueryOutcome(
+                  "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
+              chat.getId(),
+              null,
+              null);
+      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
+          .thenReturn(Optional.of(spikeResult));
+      QueryService service =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.of(spikeHandler));
+
+      service.query("@test Frage", chat.getId(), caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isEqualTo(1);
+    }
+
+    @Test
     void aFailureInTheToolLoopCountsAsAnAgentError() {
       ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
       when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))

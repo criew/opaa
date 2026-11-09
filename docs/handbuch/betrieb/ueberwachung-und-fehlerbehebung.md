@@ -46,8 +46,9 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   Kubernetes den Namen des Pods. `opaa_build_info` nennt je Instanz `version` und `commit`; zwei
   Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.
 - **Latenzen als Histogramm:** Die Dauer von HTTP-Anfragen, Chat-Fragen bis zum ersten Wort und
-  bis zum Ende, Modellaufrufen, Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (`_bucket` mit `le`), aus denen
-  Prometheus Perzentile über alle Pods rechnet, etwa das p95 der Chat-Fragen:
+  bis zum Ende, Modellaufrufen, Texterkennung und geplanten Läufen hat Buckets an festen Schwellen
+  (`_bucket` mit `le`), aus denen Prometheus Perzentile über alle Pods rechnet, etwa das p95 der
+  Chat-Fragen:
   `histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))`. Die
   Schwellen lassen sich je Timer über `OPAA_METRICS_SLO_*` an die eigenen Zielwerte anpassen; ein
   Zielwert sollte genau auf einer Schwelle liegen.

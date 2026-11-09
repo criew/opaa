@@ -265,10 +265,6 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     if (requestTimeout != null) {
       optionsBuilder.timeout(requestTimeout);
     }
-    // A streamed answer reports its usage only when asked for it (stream_options.include_usage);
-    // a server that rejects the option fails before the first chunk, and the answer is asked
-    // again without streaming (StreamedAnswerFailures).
-    optionsBuilder.streamUsage(true);
     OpenAiChatOptions options = optionsBuilder.build();
     return OpenAiChatModel.builder()
         .options(options)

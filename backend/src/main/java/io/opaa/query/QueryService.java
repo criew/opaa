@@ -357,6 +357,9 @@ public class QueryService {
                         return taken;
                       });
           if (toolLoopResult.isPresent()) {
+            if (historyCut) {
+              metrics.recordContextTruncated();
+            }
             return toolLoopResult.get();
           }
 

@@ -66,9 +66,9 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 `opaa.ocr.duration`, `gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen
 Histogramm-Buckets an festen SLO-Schwellen (`management.metrics.distribution.slo`), je Timer über
 eine `OPAA_METRICS_SLO_*`-Variable einstellbar; die Long-Task-Timer daneben (`….active`) bleiben
-ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
-vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
-Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
+ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg
+aggregieren lassen, und statt des vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die
+Zahl der Reihen klein halten. Jede Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
 (immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
 während eines Rolling Updates.
