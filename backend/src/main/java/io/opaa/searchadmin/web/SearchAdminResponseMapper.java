@@ -250,12 +250,13 @@ final class SearchAdminResponseMapper {
   private static RetrievalStageResponse toStageResponse(
       StageExplanation stage, Map<String, DocumentDescriptor> documents) {
     return new RetrievalStageResponse(
-        stage.stage(),
-        toStageStatus(stage.status()),
-        stage.incomingCount(),
-        stage.outgoingCount(),
-        stage.notes(),
-        stage.verdicts().stream().map(verdict -> toVerdict(verdict, documents)).toList());
+            stage.stage(),
+            toStageStatus(stage.status()),
+            stage.incomingCount(),
+            stage.outgoingCount(),
+            stage.notes(),
+            stage.verdicts().stream().map(verdict -> toVerdict(verdict, documents)).toList())
+        .durationMs(stage.durationMs());
   }
 
   private static RetrievalVerdictResponse toVerdict(

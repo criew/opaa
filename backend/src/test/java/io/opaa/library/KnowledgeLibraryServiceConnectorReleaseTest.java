@@ -39,7 +39,6 @@ import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
-import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -127,8 +126,7 @@ class KnowledgeLibraryServiceConnectorReleaseTest {
             documentRepository,
             grantService,
             new AssetShellService(
-                new AssetTypes(
-                    List.of(new KnowledgeLibraryAssetType(SourceConnectorStubs.registry()))),
+                new AssetTypes(List.of(new KnowledgeLibraryAssetType())),
                 grantService,
                 grantRepository,
                 mock(AssetOwnershipHistoryService.class),

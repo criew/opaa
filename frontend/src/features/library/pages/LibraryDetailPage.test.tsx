@@ -834,7 +834,6 @@ describe('LibraryDetailPage', () => {
           sourceUrl: 'https://cloud.intern.example',
           diagnosticsLocked: true,
           diagnosticsLockToggleable: false,
-          allAccountsGrantAllowed: true,
         }),
       )
       const user = userEvent.setup()
@@ -849,89 +848,6 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Herleitung' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Übergeben/ })).not.toBeInTheDocument()
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-    })
-  })
-
-  // The share cap control - visible only to a system administrator on a connector
-  // library, never to the library's own owner/manager, who only sees its consequence (the 409
-  // below).
-  describe('Freigabe-Obergrenze (#797)', () => {
-    it('is hidden for UPLOAD, even for a system-admin OWNER bypass', async () => {
-      setSystemAdmin()
-      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        adminBypassLibrary,
-        detailsOf(adminBypassLibrary, { allAccountsGrantAllowed: true }),
-      )
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
-
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
-    })
-
-    it('is hidden from a MANAGER of a connector library, not being a system administrator', async () => {
-      const managerOfFilesystem = { ...managerLibrary, myRole: 'MANAGER' as const }
-      setLibraryState(
-        managerOfFilesystem,
-        detailsOf(managerOfFilesystem, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          allAccountsGrantAllowed: true,
-        }),
-      )
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
-
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
-    })
-
-    it('lets a system administrator lower the cap on a connector library', async () => {
-      setSystemAdmin()
-      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        adminBypassLibrary,
-        detailsOf(adminBypassLibrary, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          reach: { allAccounts: true, groupCount: 0, userCount: 1 },
-          allAccountsGrantAllowed: true,
-        }),
-      )
-      // The button is disabled whether or not a PUT ever went out, so the request itself is
-      // captured and asserted on, not just the button state afterwards.
-      let putRequestBody: { allAccountsGrantAllowed: boolean } | null = null
-      server.use(
-        http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
-          putRequestBody = (await request.json()) as { allAccountsGrantAllowed: boolean }
-          return HttpResponse.json({
-            ...detailsOf(adminBypassLibrary, {
-              sourceType: 'FILESYSTEM',
-              sourcePath: '/data/dokumente',
-            }),
-            id: String(params.libraryId),
-            allAccountsGrantAllowed: putRequestBody.allAccountsGrantAllowed,
-          })
-        }),
-      )
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
-      await user.click(
-        await screen.findByRole('button', {
-          name: 'Obergrenze speichern: Freigabe an Alle erlaubt',
-        }),
-      )
-
-      await waitFor(() => {
-        expect(putRequestBody).toEqual({ allAccountsGrantAllowed: false })
-      })
     })
   })
 

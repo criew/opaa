@@ -307,49 +307,6 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/libraries/{libraryId}/share-cap:
-    parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    put:
-      operationId: updateLibraryShareCap
-      tags: [library]
-      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS
-      description: >
-        SYSTEM_ADMIN only (403 otherwise). Rejected with 400 for an UPLOAD library, which is never
-        capped - the same person who uploads already curates every document individually, so there
-        is nothing the cap would protect. Narrowing the cap below what the library currently
-        carries takes it back immediately, in the same request - never a state left "verletzt, aber
-        geduldet": forbidding ALL_ACCOUNTS revokes an existing such grant through the ordinary
-        grant path (ASSET_GRANT_REVOKED, one grant-history interval), and the cap change itself is
-        recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED). A private library has no share
-        cap the administration could set: 404 like an unknown library, or 403 with the code
-        OWNER_ONLY_ASSET where the administrator is its owner.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LibraryShareCapRequest"
-      responses:
-        "200":
-          description: Library after the cap change (and, if applicable, the immediate clamp)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LibraryResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   /api/v1/libraries/{libraryId}/source-connection:
     parameters:
       - name: libraryId
@@ -600,8 +557,8 @@ paths:
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
 
-        **Malware scan (opaa.malware-scan, off by default):** switched on, the file is sent to the
-        configured clamd scanner after the content check and before the original is stored. A
+        **Malware scan (getMalwareScanSettings, off by default):** switched on, the file is sent to
+        the configured clamd scanner after the content check and before the original is stored. A
         finding is answered with 400 and a German message naming the signature; under the policy
         REJECT, a file the scanner could not judge (not reachable, an error, a file above its stream
         limit) is answered with 503. In both cases nothing of the attempt survives: neither the
@@ -2006,18 +1963,6 @@ components:
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
-    LibraryShareCapRequest:
-      type: object
-      required: [allAccountsGrantAllowed]
-      description: Body for PUT /api/v1/libraries/{libraryId}/share-cap.
-      properties:
-        allAccountsGrantAllowed:
-          type: boolean
-          description: >
-            Whether this library may be granted to ALL_ACCOUNTS ("Alle Konten"). Lowering
-            it to false revokes an existing such grant in the same transaction (ADR-0037
-            Entscheidung 5) - there is no state "over the ceiling but tolerated".
-
     LibraryListResponse:
       type: object
       required:
@@ -2371,15 +2316,6 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/LibraryExternalAccessResponse"
-        allAccountsGrantAllowed:
-          type: boolean
-          nullable: true
-          description: >
-            Whether this library may be granted to ALL_ACCOUNTS, set by the system
-            administration per connector library - null for UPLOAD (which is never capped) and,
-            like sourcePath above, absent (not merely null) below MANAGER. POST
-            /api/v1/assets/{assetType}/{assetId}/grants answers 409 for such a grant while it is
-            false.
         lastTransfer:
           description: >
             The transfer that last touched this library (ADR-0036 Entscheidung 10), or

@@ -715,48 +715,6 @@ public class KnowledgeLibraryService {
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin), currentUserId);
   }
 
-  /**
-   * Sets a connector library's share cap - {@code SYSTEM_ADMIN} only, rejected for {@code UPLOAD}.
-   * A cap that now forbids what the library currently carries takes it back in the same transaction
-   * (ADR-0037 Entscheidung 5): the grant to "Alle Konten" is revoked through the ordinary grant
-   * path and recorded separately from the cap change itself ({@code
-   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}), so nothing is ever left "verletzt, aber geduldet".
-   */
-  @Transactional
-  public LibraryDetail updateShareCap(
-      UUID libraryId, boolean allAccountsGrantAllowed, CurrentUser caller) {
-    caller.requireSystemAdmin(
-        "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
-    KnowledgeLibrary library =
-        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
-    // An owner-only library has no administrative floor: unknown to the administration (404),
-    // refused by the rule for its owner.
-    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    ownerOnlyRule.requireShareable(library);
-    if (acceptsUploads(library)) {
-      throw new ValidationException(
-          "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
-              + " einzeln von der Eigentümerin kuratiert");
-    }
-    boolean previousCap = library.isAllAccountsGrantAllowed();
-    library.updateShareCap(allAccountsGrantAllowed);
-    KnowledgeLibrary saved = libraryRepository.save(library);
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(saved.getOrganizationId())
-            .actor(caller.id())
-            .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.auditName())
-            .before(saved.auditPayload(Map.of("allAccountsGrantAllowed", previousCap)))
-            .after(saved.auditPayload(Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed)))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
-    if (!allAccountsGrantAllowed) {
-      grantService.revokeAllAccountsGrantForLoweredCap(saved, caller.id());
-    }
-    return toLibraryDetail(saved, AssetRole.OWNER, caller.id());
-  }
-
   @Transactional
   public void deleteLibrary(UUID libraryId, CurrentUser caller) {
     UUID currentUserId = caller.id();
@@ -1459,12 +1417,7 @@ public class KnowledgeLibraryService {
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(library),
         storageQuotaService.usedBytes(library.getId()),
-        externalAccessService.describe(library),
-        // An upload library never carries a cap narrower than the unrestricted default
-        // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
-        // always-true value keeps a MANAGER from reading a ceiling into a library that in fact has
-        // none.
-        descriptor.uploads() ? null : library.isAllAccountsGrantAllowed());
+        externalAccessService.describe(library));
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

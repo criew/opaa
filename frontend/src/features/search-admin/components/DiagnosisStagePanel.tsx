@@ -20,7 +20,11 @@ import type {
   RetrievalStageResponse,
 } from '@/shared/api/types'
 import { isUuid } from '@/shared/utils/format'
-import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
+import {
+  formatStageDuration,
+  translateListLabel,
+  translateStageNote,
+} from '../utils/retrievalProtocolText'
 import {
   OUTCOME_LABELS,
   REASON_LABELS,
@@ -103,6 +107,7 @@ export default function StagePanel({
   stage: RetrievalStageResponse
   navigation: ChunkNavigation
 }) {
+  const duration = formatStageDuration(stage.durationMs)
   const showContributions = stage.verdicts.some(
     (verdict) => (verdict.contributions?.length ?? 0) > 0,
   )
@@ -119,6 +124,7 @@ export default function StagePanel({
           />
           <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {stage.incomingCount} → {stage.outgoingCount} Kandidaten
+            {duration && ` · ${duration}`}
           </Typography>
         </Stack>
       </AccordionSummary>

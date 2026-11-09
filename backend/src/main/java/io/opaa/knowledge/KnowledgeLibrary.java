@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * The first asset type: a document container on the asset shell. Name, owner and release level are
  * the shell's ({@link Asset}, table {@code assets}); this entity and its table {@code
  * knowledge_libraries} carry only what a library alone has - its single quellentyp and
- * quellkonfiguration (ADR-0018), the share cap, the release for Fremdzugaenge, the schedule and the
- * index and metadata switches. A document belongs to exactly one library; a library can be
- * associated with any number of spaces without that association granting any access.
+ * quellkonfiguration (ADR-0018), the release for Fremdzugaenge, the schedule and the index and
+ * metadata switches. A document belongs to exactly one library; a library can be associated with
+ * any number of spaces without that association granting any access.
  *
  * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b>: {@link
  * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing
@@ -71,15 +71,6 @@ public class KnowledgeLibrary extends Asset {
    */
   @Column(name = "organization_id", nullable = false, updatable = false)
   private UUID libraryOrganizationId;
-
-  /**
-   * Whether this library may be granted to "Alle Konten" - {@code SYSTEM_ADMIN}-set, per library,
-   * meaningless for {@code UPLOAD} ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}
-   * keeps it at its unrestricted default there). Delivered {@code true}: the migration day changes
-   * nothing until a system administrator actually lowers it.
-   */
-  @Column(name = "all_accounts_grant_allowed", nullable = false)
-  private boolean allAccountsGrantAllowed = true;
 
   /**
    * The reach field beside the grants: whether this library may be used through a Fremdzugang, and
@@ -445,21 +436,6 @@ public class KnowledgeLibrary extends Asset {
 
   public String getSourceSettings() {
     return sourceSettings;
-  }
-
-  public boolean isAllAccountsGrantAllowed() {
-    return allAccountsGrantAllowed;
-  }
-
-  /**
-   * Sets the share cap alone - never the clamp its narrowing may require. {@code
-   * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
-   * exclusion before calling this, then revokes the grant to "Alle Konten" in the same transaction
-   * where the newly set cap forbids it.
-   */
-  public void updateShareCap(boolean allAccountsGrantAllowed) {
-    this.allAccountsGrantAllowed = allAccountsGrantAllowed;
-    touch();
   }
 
   public ExternalAccessState getExternalAccessState() {

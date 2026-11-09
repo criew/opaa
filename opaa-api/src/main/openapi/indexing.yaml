@@ -874,7 +874,7 @@ components:
             was indexed anyway - a note about an accepted item, not a reason it was not
             counted among documentsSkipped/documentsFailed.
           * UNSCANNED - the item was indexed without a malware scan, because the scanner could not
-            judge it and opaa.malware-scan.on-unavailable is ACCEPT - a note about an accepted
+            judge it and the malware scan's onUnavailable is ACCEPT - a note about an accepted
             item, like FORMAT_MISMATCH.
           * SCHEDULE_SKIPPED - a scheduled run found the library still indexing from a
             previous run and did not start a second one; recorded against the still-running job's

@@ -9,7 +9,6 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
-  LibraryShareCapRequest,
   LibraryUpdateRequest,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
@@ -98,26 +97,6 @@ export async function updateLibrary(
 ): Promise<LibraryResponse> {
   try {
     const { data } = await client.put<LibraryResponse>(`/v1/libraries/${libraryId}`, request)
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/**
- * Sets the release upper bound of a connector library - system administration, replaced
- * as a whole (no partial update). If it lowers an existing, broader release, the backend clamps
- * it back to the new upper bound immediately in the same call.
- */
-export async function updateLibraryShareCap(
-  libraryId: string,
-  request: LibraryShareCapRequest,
-): Promise<LibraryResponse> {
-  try {
-    const { data } = await client.put<LibraryResponse>(
-      `/v1/libraries/${libraryId}/share-cap`,
-      request,
-    )
     return data
   } catch (err) {
     normalizeError(err)

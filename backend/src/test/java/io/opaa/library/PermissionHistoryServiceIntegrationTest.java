@@ -59,7 +59,6 @@ import io.opaa.permission.PermissionTransferOrder;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
-import io.opaa.test.SourceTypes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -256,19 +255,6 @@ class PermissionHistoryServiceIntegrationTest {
     return response.library().getId();
   }
 
-  /** #797: a connector library, the only kind a share cap applies to. */
-  private UUID createFilesystemLibrary(UUID ownerId) {
-    LibraryDetail response =
-        libraryService.createLibrary(
-            libraryCreation("Bibliothek", SourceTypes.FILESYSTEM)
-                .ownerType(AssetOwnerType.USER)
-                .ownerId(ownerId)
-                .sourcePath("/data/dokumente")
-                .build(),
-            currentUserOf(ownerId));
-    return response.library().getId();
-  }
-
   /**
    * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
    */
@@ -280,17 +266,6 @@ class PermissionHistoryServiceIntegrationTest {
         user.getSystemRole(),
         user.getDisplayName(),
         user.getEmail());
-  }
-
-  /**
-   * A real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs a
-   * genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
-   */
-  private CurrentUser systemAdminCaller() {
-    User admin = createUserEntity();
-    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    userRepository.save(admin);
-    return currentUserOf(admin.getId());
   }
 
   @Test
@@ -890,9 +865,6 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put("KnowledgeLibraryService#createLibrary", this::libraryCreated);
     paths.put("AssetShellService#registerCreated", this::libraryCreated);
     paths.put("AssetGrantService#upsertGrant (granted to all accounts)", this::visibilityWidened);
-    paths.put(
-        "AssetGrantService#revokeAllAccountsGrantForLoweredCap",
-        this::shareCapLoweredClampsVisibility);
     paths.put("AssetShellService#registerDeleted", this::libraryDeleted);
     paths.put(
         "AssetGrantService#revokeGrant (all-accounts grant revoked)", this::visibilityNarrowed);
@@ -900,9 +872,6 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
-    paths.put(
-        "KnowledgeLibraryService#updateShareCap (all-accounts grant revoked)",
-        this::shareCapLoweredClampsVisibility);
     paths.put(
         "PermissionTransferService#transfer (group grant moved)", this::groupGrantTransferred);
     return paths;
@@ -1684,22 +1653,6 @@ class PermissionHistoryServiceIntegrationTest {
     UUID grantId = grantToAllAccounts(libraryId, owner);
 
     grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, currentUserOf(owner));
-
-    return new ReadabilityChange(otherUser, libraryId, false);
-  }
-
-  /**
-   * The counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not the
-   * owner, forbids the grant to "Alle Konten", which revokes the existing one in the very same
-   * call.
-   */
-  private ReadabilityChange shareCapLoweredClampsVisibility() {
-    UUID owner = createUser();
-    UUID libraryId = createFilesystemLibrary(owner);
-    UUID otherUser = createUser();
-    grantToAllAccounts(libraryId, owner);
-
-    libraryService.updateShareCap(libraryId, false, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }

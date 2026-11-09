@@ -40,6 +40,8 @@ import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 import { modelRoleHandlers } from '@/features/model/mocks/modelRoleHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
+// malware-scan
+import { malwareScanHandlers } from '@/features/malware-scan/mocks/malwareScanHandlers'
 // branding
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // link-targets
@@ -125,6 +127,8 @@ export const handlers = [
   ...modelHandlers,
   // mail
   ...mailHandlers,
+  // malware-scan
+  ...malwareScanHandlers,
   // branding
   ...brandingHandlers,
   // link-targets

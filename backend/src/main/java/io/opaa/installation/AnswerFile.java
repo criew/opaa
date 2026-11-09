@@ -2,6 +2,7 @@ package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
@@ -20,13 +21,13 @@ import tools.jackson.databind.json.JsonMapper;
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
  * embeddingModel}, {@code rerankModel}, {@code transcriptionModel}, {@code textRecognitionModel},
- * {@code mail} and {@code branding} are optional: a file without one skips its step, without {@code
- * rerankModel} reranking stays off, without {@code transcriptionModel} speech input stays off,
- * without {@code textRecognitionModel} text recognition stays off, without {@code mail} sending
- * stays off, without {@code branding} the OPAA default stays. Parts of later steps are ignored, and
- * so are {@code transcriptionModel} while speech input is switched off and {@code
- * textRecognitionModel} while the operation has not released text recognition ({@link
- * OfferedSteps}).
+ * {@code malwareScan}, {@code mail} and {@code branding} are optional: a file without one skips its
+ * step, without {@code malwareScan} the malware scan stays off, without {@code rerankModel}
+ * reranking stays off, without {@code transcriptionModel} speech input stays off, without {@code
+ * textRecognitionModel} text recognition stays off, without {@code mail} sending stays off, without
+ * {@code branding} the OPAA default stays. Parts of later steps are ignored, and so are {@code
+ * transcriptionModel} while speech input is switched off and {@code textRecognitionModel} while the
+ * operation has not released text recognition ({@link OfferedSteps}).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -37,6 +38,7 @@ record AnswerFile(
     RerankModel rerankModel,
     TranscriptionModel transcriptionModel,
     TextRecognitionModel textRecognitionModel,
+    MalwareScan malwareScan,
     Mail mail,
     Branding branding) {
 
@@ -94,6 +96,14 @@ record AnswerFile(
       String model,
       String apiKeyFile,
       String apiKey) {}
+
+  /** The clamd daemon of the malware scan; no secret, so it stands in the file as it is. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record MalwareScan(
+      String host,
+      Integer port,
+      Integer timeoutSeconds,
+      MalwareScanUnavailablePolicy onUnavailable) {}
 
   /** The mail server; without {@code passwordFile} it connects without a password. */
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -205,6 +215,14 @@ record AnswerFile(
               textRecognitionModel.baseUrl(),
               textRecognitionModel.model(),
               keyOf(textRecognitionModel.apiKeyFile(), "textRecognitionModel.apiKeyFile")));
+    }
+    if (malwareScan != null) {
+      steps.add(
+          new StepInput.MalwareScan(
+              malwareScan.host(),
+              malwareScan.port(),
+              malwareScan.timeoutSeconds(),
+              malwareScan.onUnavailable()));
     }
     if (mail != null) {
       steps.add(

@@ -6,6 +6,7 @@ import io.opaa.api.dto.InstallationChatModel;
 import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
 import io.opaa.api.dto.InstallationMail;
+import io.opaa.api.dto.InstallationMalwareScan;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModel;
 import io.opaa.api.dto.InstallationSignIn;
@@ -38,6 +39,7 @@ final class InstallationRequestMapper {
       case RERANK_MODEL -> rerankModel(request.getRerankModel());
       case TRANSCRIPTION_MODEL -> transcriptionModel(request.getTranscriptionModel());
       case TEXT_RECOGNITION_MODEL -> textRecognitionModel(request.getTextRecognitionModel());
+      case MALWARE_SCAN -> malwareScan(request.getMalwareScan());
       case MAIL -> mail(request.getMail());
       case BRANDING -> branding(request.getBranding());
     };
@@ -64,6 +66,9 @@ final class InstallationRequestMapper {
     }
     if (body.getTextRecognitionModel() != null) {
       inputs.add(textRecognitionModel(body.getTextRecognitionModel()));
+    }
+    if (body.getMalwareScan() != null) {
+      inputs.add(malwareScan(body.getMalwareScan()));
     }
     if (body.getMail() != null) {
       InstallationMail mail = body.getMail();
@@ -142,6 +147,14 @@ final class InstallationRequestMapper {
     }
     return new StepInput.TextRecognitionModel(
         model.getConnectionType(), model.getBaseUrl(), model.getModel(), model.getApiKey());
+  }
+
+  private static StepInput malwareScan(InstallationMalwareScan scan) {
+    if (scan == null) {
+      throw missing("malwareScan");
+    }
+    return new StepInput.MalwareScan(
+        scan.getHost(), scan.getPort(), scan.getTimeoutSeconds(), scan.getOnUnavailable());
   }
 
   private static StepInput mail(InstallationMail mail) {

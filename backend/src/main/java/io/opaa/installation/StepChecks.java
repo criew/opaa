@@ -2,6 +2,7 @@ package io.opaa.installation;
 
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.common.FieldValidationException;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
@@ -18,10 +19,11 @@ import org.springframework.stereotype.Component;
  * administration runs for an identity provider and a chat model, a probe embedding for the
  * embedding model, which also yields its vector size (Entscheidung 10), the probes of the model
  * administration for the rerank and the transcription model (Entscheidung 16 for transcription),
- * the staged test of the model administration for text recognition (Entscheidung 18), a connection
- * to the mail server that sends nothing unless a test recipient is named, and the rules of the
- * branding administration once more for the branding, without any connection. A model address and a
- * mail server are checked against the address check of the installation again right before the
+ * the staged test of the model administration for text recognition (Entscheidung 18), the version
+ * request of the scanner administration for the malware scan (Entscheidung 19), a connection to the
+ * mail server that sends nothing unless a test recipient is named, and the rules of the branding
+ * administration once more for the branding, without any connection. A model address and a mail
+ * server are checked against the address check of the installation again right before the
  * connection. The outcome is German and user-facing; a failed check is a result, never an
  * exception.
  */
@@ -51,6 +53,7 @@ class StepChecks {
   private final EmbeddingModelService embeddingModels;
   private final MailConnectionTester mailTester;
   private final ModelRoleAdministration modelRoles;
+  private final MalwareScanSettingsService malwareScans;
 
   StepChecks(
       StepRules rules,
@@ -59,7 +62,8 @@ class StepChecks {
       ModelAddressPolicy modelAddresses,
       EmbeddingModelService embeddingModels,
       MailConnectionTester mailTester,
-      ModelRoleAdministration modelRoles) {
+      ModelRoleAdministration modelRoles,
+      MalwareScanSettingsService malwareScans) {
     this.rules = rules;
     this.oidcTester = oidcTester;
     this.chatTester = chatTester;
@@ -67,6 +71,7 @@ class StepChecks {
     this.embeddingModels = embeddingModels;
     this.mailTester = mailTester;
     this.modelRoles = modelRoles;
+    this.malwareScans = malwareScans;
   }
 
   /**
@@ -87,6 +92,7 @@ class StepChecks {
           transcriptionModel(rules.transcriptionModelPayload(payload), secret);
       case TEXT_RECOGNITION_MODEL ->
           textRecognitionModel(rules.textRecognitionModelPayload(payload), secret);
+      case MALWARE_SCAN -> malwareScan(rules.malwareScanPayload(payload));
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
       case BRANDING -> branding(rules.brandingPayload(payload));
     };
@@ -211,6 +217,13 @@ class StepChecks {
           case RECOGNITION -> "Erkennung";
         };
     return "Gescheitert an der Stufe „" + name + "“: " + message;
+  }
+
+  /** The version request of the scanner administration: connect, ask, no file. */
+  private Outcome malwareScan(StepRules.MalwareScanPayload scan) {
+    MalwareScanSettingsService.TestOutcome outcome =
+        malwareScans.test("malwareScan.", scan.host(), scan.port(), scan.timeoutSeconds());
+    return new Outcome(outcome.success(), outcome.message());
   }
 
   private Outcome mail(StepRules.MailPayload mail, String secret, String testRecipient) {

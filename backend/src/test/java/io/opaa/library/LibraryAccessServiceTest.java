@@ -16,7 +16,6 @@ import io.opaa.asset.AssetRepository;
 import io.opaa.asset.AssetTypes;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.AssetAccessService;
@@ -59,8 +58,7 @@ class LibraryAccessServiceTest {
             new AssetAuthorization(
                 mock(AssetRepository.class),
                 assetAccessService,
-                new AssetTypes(
-                    List.of(new KnowledgeLibraryAssetType(SourceConnectorStubs.registry())))),
+                new AssetTypes(List.of(new KnowledgeLibraryAssetType()))),
             mock(io.opaa.asset.OwnerOnlyRule.class));
     when(membershipResolver.groupIdsForUser(userId)).thenReturn(Set.of());
   }

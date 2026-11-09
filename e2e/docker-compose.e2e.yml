@@ -249,7 +249,7 @@ services:
       timeout: 2s
       retries: 10
 
-  # Stands in for a clamd daemon (e2e.env's OPAA_MALWARE_SCAN_*), see e2e/clamd-stub/server.mjs:
+  # Stands in for a clamd daemon (switched on by upload-limits.spec.ts), see e2e/clamd-stub/server.mjs:
   # answers FOUND for the EICAR test string and OK for anything else. A real ClamAV would first load
   # its signature database over the network, which costs minutes and memory on every run.
   clamd-stub:

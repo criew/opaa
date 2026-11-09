@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md),
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und
 [ADR-0065](0065-hybride-suche-reranking-und-diagnose.md) · ersetzt Entscheidung 6 von
@@ -157,7 +157,8 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 | `CREATE_INTERNAL_GROUP` | niemand |
 
 Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsweit freigeben",
-„Fremdzugang freigeben") — dafür sind `MANAGER`/`OWNER` und die Freigabe-Obergrenze (#797) zuständig.
+„Fremdzugang freigeben") — dafür sind `MANAGER`/`OWNER` zuständig; wer sie bei Konnektorbibliotheken
+überhaupt erhält, entscheidet das Anlegerecht.
 
 - **Datenmodell:** `capability_grants` mit Subjekt `USER` | `GROUP` | `ALL_ACCOUNTS`
   (`CapabilitySubjectType`), Eindeutigkeit je (Organisation, Fähigkeit, Subjekt, Geltungsbereich),
@@ -189,7 +190,7 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
 - **Nur-Besitzerin-Regel**: `assets.owner_only`, beim Anlegen gesetzt, unveränderlich,
   verlangt `owner_type = USER`; rights erzwingt sie an jedem Grant, an der Freigabestufe, bei der
   Eigentumsübertragung und in der Nachfolge (eine private Bibliothek wird nie „Nachfolge offen", sie
-  folgt ADR-0041). Keine Stufe der Freigabe-Obergrenze, auch die Systemverwaltung kann sie nicht lockern;
+  folgt ADR-0041). Auch die Systemverwaltung kann sie nicht lockern;
   Space-Zuordnungen privater Bibliotheken sieht nur die Besitzerin. „Sicht als" liefert eine private
   Bibliothek nie. Einen Vorfallszugriff auf private Bibliotheken gibt es nicht (#2171): OPAA hält nur eine
   Kopie, ein Vorfall wird in der Originalquelle untersucht.

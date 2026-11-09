@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 
 /**
  * The retrieval pipeline: a fixed, ordered sequence of named {@link RetrievalStage}s, run over one
@@ -22,6 +24,7 @@ public class RetrievalPipeline {
 
   private final List<RetrievalStage> stages;
   private final Set<RetrievalStageName> disabledStages;
+  private final LongSupplier nanoTicker;
 
   /**
    * @param stages the registered stages, in execution order. Rejects duplicates: two stages of the
@@ -29,6 +32,17 @@ public class RetrievalPipeline {
    * @param properties which of them are switched off for this pipeline.
    */
   public RetrievalPipeline(List<RetrievalStage> stages, RetrievalPipelineProperties properties) {
+    this(stages, properties, System::nanoTime);
+  }
+
+  /**
+   * @param nanoTicker monotonic time source in nanoseconds for the per-stage durations; replaced in
+   *     tests to make the measured durations deterministic.
+   */
+  RetrievalPipeline(
+      List<RetrievalStage> stages,
+      RetrievalPipelineProperties properties,
+      LongSupplier nanoTicker) {
     Set<RetrievalStageName> registered = EnumSet.noneOf(RetrievalStageName.class);
     for (RetrievalStage stage : stages) {
       if (!registered.add(stage.name())) {
@@ -52,6 +66,7 @@ public class RetrievalPipeline {
     }
     this.stages = List.copyOf(stages);
     this.disabledStages = Set.copyOf(properties.disabledStages());
+    this.nanoTicker = nanoTicker;
   }
 
   /** The stages this pipeline runs, in order - the number the protocol must always match. */
@@ -64,7 +79,9 @@ public class RetrievalPipeline {
    * explanation protocol. {@code context.searchScope()} is taken as given: this method applies it
    * as the {@code library_id} filter of every search but resolves no permissions of its own. Once a
    * stage halts the run, the remaining stages are recorded as not reached instead of being
-   * executed.
+   * executed. Every stage that is called and does not report itself switched off gets its
+   * wall-clock duration stamped into its explanation; a stage running once per sub-query measures
+   * all sub-queries together, as they run in sequence.
    */
   public RetrievalPipelineResult run(RetrievalContext rawContext) {
     // Without the rerank stage nothing would restore the top-k cap, so the fusion must
@@ -83,9 +100,16 @@ public class RetrievalPipeline {
         explanations.add(StageExplanation.notRun(stage.name(), status, candidateCount));
         continue;
       }
+      long startedAt = nanoTicker.getAsLong();
       StageOutcome outcome = stage.apply(context, state);
+      long durationMs = TimeUnit.NANOSECONDS.toMillis(nanoTicker.getAsLong() - startedAt);
       state = outcome.state();
-      explanations.add(outcome.explanation());
+      StageExplanation explanation = outcome.explanation();
+      // A stage that switched itself off reads like one the pipeline skipped: no duration.
+      explanations.add(
+          explanation.status() == StageStatus.DISABLED
+              ? explanation
+              : explanation.withDurationMs(durationMs));
     }
 
     return new RetrievalPipelineResult(

@@ -3,7 +3,7 @@
 ## Status
 
 Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
-ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061, ADR-0064 und [ADR-0070](0070-betriebsbeobachtung.md)
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061, ADR-0064, ADR-0070 und [ADR-0071](0071-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -307,6 +307,7 @@ her; „mindestens einmal“ ist die ehrliche Zusage.
 | Rate-Limit-Behandlung der Quellsysteme | je Lauf, unverändert |
 | Tagesgrenze, Starts je Tag und laufender Export der Selbstauskunft | Zeile je Person (`self_disclosure_usage`), bedingte Anweisung nach Datenbankuhr, Reservierung mit Ablauf |
 | Gleichzeitige Exporte der Selbstauskunft (`opaa.self-disclosure.max-concurrent-exports`) | je Instanz, ohne Teilung |
+| Platzlimit gleichzeitiger Werkzeugläufe | Reservierung je Lauf mit Ablauf nach Datenbankuhr unter Sperre einer festen Zählerzeile, ohne Personenbezug; schließt bei nicht erreichbarer Datenbank ([ADR-0070](0070-werkzeugaufrufe-im-chat.md), Entscheidung 6) |
 
 Eine Zählerzeile (`installation_counters`) hält das laufende und das vorige feste Fenster; das
 gleitende Fenster schätzt jede Instanz gleich, indem sie das vorige Fenster mit seinem Anteil am
@@ -328,7 +329,7 @@ die übersprungenen Dokumente der Wartungsläufe (`library_maintenance_skips`), 
 Mail und der Durchsatz der Kostenvorschau (`embedding_rate_measurements`, je Embedding-Modell
 summiert über alle Instanzen). Je Instanz und in der Oberfläche so gekennzeichnet bleibt der Status
 eines Anmeldeanbieters, weil jede Instanz ihren Token-Decoder selbst baut; Micrometer-Metriken wie
-`opaa.conversations.active` gelten je Pod und tragen den Host als Label (ADR-0070, Entscheidung 4). Umsetzung: #2950.
+`opaa.conversations.active` gelten je Pod und tragen den Host als Label (ADR-0071, Entscheidung 4). Umsetzung: #2950.
 
 Zählerzeilen nur, wo die absolute Zahl die Zusage ist (Kostendeckel, Frühwarnung gegen
 Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Die Zeile je Person der

@@ -2,32 +2,17 @@ package io.opaa.library;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
-import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
-import io.opaa.common.ConflictException;
-import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
-import org.hibernate.Hibernate;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
- * The knowledge library's declaration on the asset shell, and its one restriction: the share cap of
- * a connector library (Maintainer-Festlegung vom 21.09.2026). A request above the cap is a {@code
- * 409}, not a {@code 403} - the caller's role is not in question, the requested state conflicts
- * with a ceiling the system administration set on this library. An upload library never carries a
- * narrower cap ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}).
+ * The knowledge library's declaration on the asset shell. It restricts no grant: who may reach
+ * "Alle Konten" with a connector library is decided by the right to create it.
  */
 @Component
 class KnowledgeLibraryAssetType implements AssetTypeDefinition {
-
-  private final SourceConnectorRegistry connectors;
-
-  /** The registry arrives lazily - the connectors themselves sit on top of the asset shell. */
-  KnowledgeLibraryAssetType(@Lazy SourceConnectorRegistry connectors) {
-    this.connectors = connectors;
-  }
 
   @Override
   public AssetType assetType() {
@@ -52,32 +37,5 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
   @Override
   public String plural() {
     return "Bibliotheken";
-  }
-
-  /**
-   * Organization-wide reach is a grant to "Alle Konten", so the ceiling is asked where that grant
-   * is written.
-   */
-  @Override
-  public void requireAllAccountsGrantAllowed(Asset asset) {
-    KnowledgeLibrary library = cappedLibrary(asset);
-    if (library != null && !library.isAllAccountsGrantAllowed()) {
-      throw new ConflictException(
-          "Diese Bibliothek darf laut Systemverwaltung nicht an alle Konten freigegeben"
-              + " werden.");
-    }
-  }
-
-  /**
-   * Resolves a proxy of the shell to the library behind it; an asset of this type that is no
-   * library is refused rather than let past the cap. {@code null} for an upload library, which
-   * carries no cap at all.
-   */
-  private KnowledgeLibrary cappedLibrary(Asset asset) {
-    if (!(Hibernate.unproxy(asset) instanceof KnowledgeLibrary library)) {
-      throw new IllegalStateException(
-          "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
-    }
-    return connectors.descriptor(library.getSourceType()).uploads() ? null : library;
   }
 }

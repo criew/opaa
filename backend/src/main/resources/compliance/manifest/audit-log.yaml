@@ -324,7 +324,7 @@ auditEvents:
     details: before und after tragen Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_REVOKED
-    trigger: Ein Recht an einem Asset wird entzogen, auch durch eine gesenkte Freigabe-Obergrenze
+    trigger: Ein Recht an einem Asset wird entzogen
     details: before trägt Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_EXPIRED
@@ -652,7 +652,9 @@ auditEvents:
   - id: MODEL_POLICY_CHANGED
     trigger: Modellvorgaben oder die Freigabe externer Modelle ändern sich (noch nicht verdrahtet)
   - id: CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED
-    trigger: Die Freigabe-Obergrenze einer konnektor-gespeisten Bibliothek wird gesetzt oder geändert
+    trigger: >-
+      Nicht mehr geschrieben; frühere Freigabe-Obergrenze einer Konnektorbibliothek, lesbar bis zum
+      Fristablauf
     payloadKeys: [allAccountsGrantAllowed]
   - id: PRIVATE_STORAGE_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
@@ -791,6 +793,14 @@ auditEvents:
       Dateiname noch die Person, die die Datei hochgeladen hat. Dieselbe unveränderte Datei erzeugt
       keinen weiteren Eintrag
     payloadKeys: [signature, sourceType]
+  - id: MALWARE_SCAN_SETTINGS_CHANGED
+    trigger: >-
+      Die Einstellungen der Virenprüfung ändern sich in der Administration oder beim Abschluss der
+      Installation (Systemvorgang)
+    details: >-
+      Ein- oder ausgeschaltet, Adresse und Port des Virenscanners, Frist eines Scans und Verhalten
+      bei nicht geprüften Dateien, vorher und nachher
+    payloadKeys: [enabled, host, onUnavailable, port, timeoutSeconds]
   - id: DOCUMENT_METADATA_CHANGED
     trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
     details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref
@@ -1040,10 +1050,11 @@ auditEvents:
       Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
       ob ein eigener gesetzt ist;
       beim Transkriptionsmodell Adresse, Modell und Sprache; bei der Texterkennung Verbindungstyp,
-      Adresse und, bei einem Vision-Modell, das Modell
+      Adresse und, bei einem Vision-Modell, das Modell; beim Virenscanner Adresse, Port, Frist und
+      Verhalten bei nicht geprüften Dateien
     payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, connectionType, defaultColorScheme,
-      encryption, fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor,
-      productName, signInMode, step, username]
+      encryption, fromAddress, host, issuerUri, language, model, onUnavailable, passwordSet, port,
+      primaryColor, productName, signInMode, step, timeoutSeconds, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     details: >-
@@ -1058,8 +1069,8 @@ auditEvents:
     trigger: Die Erstinstallation wird abgeschlossen, genau einmal je Installation
     details: >-
       Herkunft, Anmeldeverfahren, die übersprungenen optionalen Schritte und ob der Abschluss den
-      E-Mail-Versand einschaltete
-    payloadKeys: [mailEnabled, signInMode, skippedSteps, source]
+      E-Mail-Versand und die Virenprüfung einschaltete
+    payloadKeys: [mailEnabled, malwareScanEnabled, signInMode, skippedSteps, source]
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet, durch die Systemverwaltung oder beim Abschluss der Installation
     payloadKeys: [enabled]

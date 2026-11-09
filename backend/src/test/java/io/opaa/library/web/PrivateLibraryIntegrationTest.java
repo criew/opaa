@@ -199,16 +199,6 @@ class PrivateLibraryIntegrationTest {
 
     unknown(grant(library, "dev-admin", "USER", admin));
     unknown(release(library, "dev-admin"));
-    unknown(
-        mockMvc.perform(
-            as("dev-admin", put(LIBRARIES + "/" + library + "/share-cap"))
-                .content("{\"allAccountsGrantAllowed\": true}")));
-    unknown(
-        mockMvc.perform(
-            as("dev-admin", put(LIBRARIES + "/" + library + "/share-cap"))
-                .content("{\"allAccountsGrantAllowed\": false}")));
-    // a lowered cap changes nothing for the rule either
-    refusedByTheRule(grant(library, "dev-user", "ALL_ACCOUNTS", null));
 
     assertThat(
             jdbc.queryForObject(
