@@ -1,7 +1,7 @@
 // Minimal stand-in for a clamd daemon for the E2E stack: speaks the INSTREAM command the backend's
 // ClamdClient sends (zINSTREAM, length-prefixed chunks, a zero-length chunk ends the stream) and
 // answers like clamd - FOUND for a stream containing the EICAR test string, OK for anything else.
-// PING is answered for manual checks. The EICAR string is assembled at runtime so this file itself
+// PING and VERSION are answered, VERSION for the test of the administration. The EICAR string is assembled at runtime so this file itself
 // is never flagged by a virus scanner.
 import { createServer } from 'node:net'
 import { createServer as createHttpServer } from 'node:http'
@@ -26,6 +26,10 @@ function handle(socket) {
       buffer = buffer.subarray(end + 1)
       if (command === 'PING') {
         socket.end('PONG\0')
+        return
+      }
+      if (command === 'VERSION') {
+        socket.end('ClamAV 1.4.2/27450/clamd-stub\0')
         return
       }
       if (command !== 'INSTREAM') {

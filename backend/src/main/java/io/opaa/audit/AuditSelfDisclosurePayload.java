@@ -251,6 +251,10 @@ final class AuditSelfDisclosurePayload {
         INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
         UPLOAD_ORPHAN_ORIGINALS_DELETED,
         MALWARE_DETECTED);
+    put(
+        keys,
+        Set.of("enabled", "port", "timeoutSeconds", "onUnavailable"),
+        MALWARE_SCAN_SETTINGS_CHANGED);
     put(keys, Set.of(), EMBEDDING_REINDEX_STARTED, EMBEDDING_REINDEX_CANCELLED);
     put(keys, Set.of("status"), EMBEDDING_REINDEX_COMPLETED);
     put(

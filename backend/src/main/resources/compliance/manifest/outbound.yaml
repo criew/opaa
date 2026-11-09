@@ -355,13 +355,16 @@ dataFlows:
   - id: malware-scanner
     group: SECURITY
     viaOutboundProxy: false
-    target: Der Virenscanner (clamd), den der Betrieb konfiguriert, meist im eigenen Netz
+    target: >-
+      Der Virenscanner (clamd), den der Betrieb stellt und die Systemverwaltung oder der
+      Installationsassistent einträgt, meist im eigenen Netz
     data: >-
-      Der vollständige Inhalt jeder Datei, die eine Bibliothek aufnehmen soll (Upload, Datei einer
-      Quelle, Anhang), ohne Dateiname, Bibliothek oder Person
+      Der vollständige Inhalt jeder Datei, die eine Bibliothek oder ein Chat aufnehmen soll
+      (Upload, Datei einer Quelle, Anhang), ohne Dateiname, Bibliothek oder Person; bei der Prüfung
+      der Verbindung nur die Frage nach der Version
     trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
     switchOff: Abschaltbar, Voreinstellung aus
-    settings: [opaa.malware-scan.enabled, opaa.malware-scan.host]
+    settings: [malware_scan_settings.enabled, malware_scan_settings.host]
   - id: siem-export
     group: SECURITY
     viaOutboundProxy: false

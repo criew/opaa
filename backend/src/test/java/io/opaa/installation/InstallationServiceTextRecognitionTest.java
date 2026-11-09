@@ -20,6 +20,7 @@ import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelRoleAdministration;
@@ -258,6 +259,7 @@ class InstallationServiceTextRecognitionTest {
         mock(EmbeddingModelService.class),
         modelRoles,
         mock(MailSettingsService.class),
+        mock(MalwareScanSettingsService.class),
         mock(BrandingSettingsService.class),
         new OfferedSteps(new FeatureFlags(new MockEnvironment()), textRecognition),
         audit,

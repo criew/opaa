@@ -24,6 +24,7 @@ import ChatModelStep from '../components/steps/ChatModelStep'
 import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import MailStep from '../components/steps/MailStep'
+import MalwareScanStep from '../components/steps/MalwareScanStep'
 import RerankModelStep from '../components/steps/RerankModelStep'
 import SignInStep from '../components/steps/SignInStep'
 import TextRecognitionModelStep from '../components/steps/TextRecognitionModelStep'
@@ -154,6 +155,8 @@ function StepView({
           {...nav}
         />
       )
+    case 'MALWARE_SCAN':
+      return <MalwareScanStep step={step} submit={(v) => submit('MALWARE_SCAN', v)} {...nav} />
     case 'MAIL':
       return (
         <MailStep

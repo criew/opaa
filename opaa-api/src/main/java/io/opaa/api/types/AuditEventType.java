@@ -378,6 +378,12 @@ public enum AuditEventType {
    */
   MALWARE_DETECTED,
   /**
+   * The settings of the malware scan changed: switched on or off, scanner address, timeout or the
+   * policy for a file the scanner could not judge. Written by a system administrator, or by the
+   * installation as a system process; a save that changes nothing writes no entry.
+   */
+  MALWARE_SCAN_SETTINGS_CHANGED,
+  /**
    * A person set, changed or removed a core metadata value of a document by hand (ADR-0024). One
    * entry per document and field, carrying the old and the new value - also for every document of a
    * Sammelzuweisung, whose entries share a {@code correlationRef}. The object is the library the

@@ -32,6 +32,7 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/admin\/search(\/|$)/, 'administration/suche-und-indexierung.html'],
   [/^\/admin\/succession(\/|$)/, 'administration/ausscheiden.html'],
   [/^\/admin\/mail(\/|$)/, 'administration/e-mail.html'],
+  [/^\/admin\/malware-scan(\/|$)/, 'administration/virenpruefung.html'],
   [/^\/admin\/branding(\/|$)/, 'administration/branding.html'],
   [/^\/admin\/privacy(\/|$)/, 'administration/datenschutz.html'],
   [/^\/admin\/settings-transfer(\/|$)/, 'administration/einstellungen-uebertragen.html'],
