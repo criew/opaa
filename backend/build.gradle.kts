@@ -486,7 +486,7 @@ val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
         "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
-        "io.opaa.account.*", "io.opaa.directory.*",
+        "io.opaa.directory.*",
         "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
         "io.opaa.asset.web.*", "io.opaa.mail.web.*", "io.opaa.revision.web.*", "io.opaa.succession.web.*",
@@ -497,7 +497,8 @@ val testShards = mapOf(
         "io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.metadata.*", "io.opaa.llm.*",
         "io.opaa.installation.*",
     ),
-    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*"),
+    // account sits here rather than in api only to even out the shard durations
+    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*", "io.opaa.account.*"),
     // each migration test class boots its own container with a template database
     "migration" to listOf("io.opaa.migration.*"),
 )
