@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-05
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0070](0070-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -51,7 +51,7 @@ nicht über Zugangstokens und nicht über den MCP-Server (ADR-0035).
 ### 5. Datenschutz der Ordnung und der Suche
 
 Suchbegriffe werden nirgends protokolliert: nicht im Nachweisprotokoll, nicht im Anwendungslog,
-nicht in Metriken. Sie stehen in keiner URL, der Endpunkt nimmt sie im Body entgegen, und die
+nicht in Metriken (Label-Regeln: ADR-0070, Entscheidung 2). Sie stehen in keiner URL, der Endpunkt nimmt sie im Body entgegen, und die
 Seite legt sie nicht im Browser ab. Die Ordnungsmerkmale sieht niemand sonst. Sie werden nicht
 protokolliert und nicht ausgewertet, auch nicht als Zahl je Person. Exportiert werden sie nur in der
 Selbstauskunft.
