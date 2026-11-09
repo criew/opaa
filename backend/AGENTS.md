@@ -83,7 +83,8 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 | app | api, config, `OpaaApplication` | foundation, knowledge |
 
 `ModularArchitectureTest` erzwingt Module, Kanten, Schichtung und Zyklenfreiheit, `SourceReferenceTest` dasselbe für
-Importe und Javadoc-Verweise (ein Verweis nach oben steht als `{@code …}`). **Eine neue Kante ist eine Entscheidung**
+Importe und Javadoc-Verweise (ein Verweis nach oben steht als `{@code …}`); Zyklen zwischen Unterpaketen prüft es über
+Bytecode und Importe, ein vollqualifizierter Javadoc-Link zählt dort nicht. **Eine neue Kante ist eine Entscheidung**
 und wird im PR begründet; vorher prüfen, ob eine Schnittstelle im unteren Modul reicht. Ein neues Top-Level-Paket
 gehört in `LAYERS` (über alles, was es nutzt) und `MODULES`, ein Unterpaket von `indexing` in `INDEXING_CORE`, von
 `connection` in `CONNECTION_PACKAGES`; Entfallenes wird ausgetragen. Feinere Regeln: `PermissionPackageBoundaryTest`,
