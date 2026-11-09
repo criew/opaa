@@ -57,7 +57,7 @@ Vorschau nicht, wohl aber der Dialog „Nur über Zugänge“ der Quellart.
 **Nicht in der Datei** stehen Passwörter und Schlüssel, auch nicht, ob einer hinterlegt ist, und
 nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
 
-- **Modelle** für Chat, Embedding, Rerank, Transkription und Texterkennung. Ihre Adresse bestimmt,
+- **Modelle** für Chat, Embedding, Rerank, Transkription samt Live-Transkript und Texterkennung. Ihre Adresse bestimmt,
   wohin Chats, Spracheingaben und Seiten von Dokumenten gehen, und ein Schlüssel folgt keiner neuen
   Adresse. Das Embedding-Modell gehört
   zum Suchindex dieser Installation.

@@ -95,7 +95,7 @@ Antwortdatei übergeht ihren Teil. Auch diesen Wert tragen alle Instanzen gleich
 | Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modell-endpunkte.md#modell-wechseln)) |
 | Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
-| Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
+| Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache; wahlweise Live-Transkript mit Live-Dienst, Live-Adresse, Live-Modell und Live-Schlüssel | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme; mit Live zusätzlich eine Live-Sitzung ohne Audio | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
 | Texterkennung (`TEXT_RECOGNITION_MODEL`) | nein | Anbindung docling-serve oder Vision-Modell, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung, Zugangsschlüssel | Adressprüfung der Modelle; der gestufte Verbindungstest wie unter Modelle → Texterkennung: Adresse, Anmeldung, Erkennung einer mitgelieferten Testseite | Modelle, Reiter „Texterkennung“ ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../administration/e-mail.md)) |
 | Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../administration/branding.md)) |
@@ -239,8 +239,19 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen
   ([Externer Anbieter](modell-endpunkte.md#externer-anbieter)). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht ([Spracheingabe und
-  Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschluss nennt, ob er die
-  Spracheingabe einschaltet.
+  Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschnitt
+  „Live-Transkript (optional)“ ist ausgeschaltet; das Diktat bleibt immer verfügbar. „Live-Transkript
+  einschalten“ zeigt den Text zusätzlich schon beim Sprechen
+  ([Live-Transkript](modell-endpunkte.md#live-transkript)). Dann wählt man den „Live-Dienst“ aus
+  einer festen Liste, „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“; die Wahl belegt
+  „Live-Adresse“ und „Live-Modell“ vor, beim eigenen Server ist der Host anzupassen. Sind
+  Basis-Adresse und Modell-Kennung des Diktats noch leer, belegt sie die Wahl ebenfalls vor
+  ([Nur ein Live-Dienst vorhanden?](modell-endpunkte.md#nur-ein-live-dienst-vorhanden)). Der
+  „Live-Schlüssel (optional)“ wird verschlüsselt gespeichert; ohne ihn geht der Schlüssel des
+  Transkriptionsmodells mit, aber nur an denselben Host. OpenAI und Mistral verlangen einen
+  Schlüssel: Liegt das Transkriptionsmodell anderswo, etwa auf einem eigenen speaches, lehnt der
+  Schritt sie ohne Live-Schlüssel ab. „Prüfen und weiter“ prüft danach auch den Live-Dienst mit einer
+  Sitzung ohne Audio. Der Abschluss nennt, ob er die Spracheingabe einschaltet.
 - **Texterkennung.** Der Schritt steht nur in der Liste, wenn der Betrieb `OPAA_OCR_ENABLED=true`
   gesetzt hat, und hat die Anbindungen, Texte und Regeln von „Modelle → Texterkennung“. Zuerst
   wählt man den Dienst: „Mitgelieferter Dienst“ ist vorgewählt und trägt `http://opaa-ocr:5001`
@@ -388,6 +399,25 @@ Prüfungen, alles oder nichts.
   `language` gilt `de`, eine leere Sprache lässt das Modell sie erkennen. Ist die Spracheingabe mit
   `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, übergeht OPAA den Abschnitt und meldet das
   im Log, die Datei gilt trotzdem.
+- **Live-Transkript:** Der Unterabschnitt `transcriptionModel.realtime` schaltet es zusätzlich ein,
+  sonst bleibt es beim Diktat mit ganzer Aufnahme. `protocol` ist `OPENAI`, `VLLM` oder `MISTRAL`,
+  dazu `url` (`ws://` oder `wss://`) und `model`; der eigene Schlüssel steht als `apiKeyFile`. Ohne
+  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an denselben Host; OpenAI und Mistral
+  ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:
+
+  ```json
+  "transcriptionModel": {
+    "baseUrl": "http://speaches:8000/v1",
+    "model": "Systran/faster-whisper-large-v3",
+    "language": "de",
+    "realtime": {
+      "protocol": "OPENAI",
+      "url": "wss://api.openai.com/v1/realtime?intent=transcription",
+      "model": "gpt-live-transcribe",
+      "apiKeyFile": "/run/secrets/opaa-live-api-key"
+    }
+  }
+  ```
 - **Texterkennung:** Ohne den Abschnitt `textRecognitionModel` bleibt die Texterkennung aus. Mit ihm
   prüft OPAA Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
   Abschluss trägt den Dienst ein und schaltet die Rolle ein. `connectionType` ist `DOCLING_SERVE`

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-07 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0070](0070-live-transkript-ueber-websocket.md)
 
 ## Kontext
 
@@ -342,7 +342,13 @@ die Adresse wie bei Chat- und Embedding-Modell bei jedem Speichern und vor jeder
 Adressprüfung der Modelle (Entscheidung 10). Der Schlüssel liegt verschlüsselt im Zwischenstand und
 gilt nur für dieselbe Basis-Adresse. Der Abschluss schaltet die Rolle über den Schreibweg der
 Modellverwaltung ein (`ModelRoleAdministration#installTranscription`), protokolliert unter dem
-Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus.
+Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus. Wahlweise nimmt der
+Schritt zusätzlich ein Live-Transkript mit Protokoll aus fester Liste, WebSocket-Adresse und Modell
+([ADR-0070](0070-live-transkript-ueber-websocket.md), Entscheidungen 3 und 4); geprüft wird es nach
+der Probe des Transkriptionsmodells mit einer Sitzung ohne Audio. Ein eigener Live-Schlüssel liegt
+verschlüsselt im Zwischenstand und gilt nur für dieselbe Live-Adresse; ohne ihn sendet Live den
+Schlüssel des Transkriptionsmodells, nur an dessen Origin. OpenAI und Mistral lehnt der Schritt ohne
+einen dieser Schlüssel ab.
 
 Der Schritt hängt an der Grenze des Betriebs `OPAA_FEATURES_SPEECH_INPUT_ENABLED` (Entscheidung 2).
 Ist sie aus, listet die API den Schritt nicht, lehnt Speichern, Prüfen, Überspringen und Modellabruf
