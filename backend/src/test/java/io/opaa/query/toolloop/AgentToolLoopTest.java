@@ -67,7 +67,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * One agent run end to end against a scripted model (#1750): several search steps, citations over
+ * One agent run end to end against a scripted model: several search steps, citations over
  * all of them, the limits, the workspace and the refusals before a run. A raw {@link ChatModel}
  * mock sits behind a real {@link ChatClient}, so the tool definitions and the loop are Spring AI's.
  */
