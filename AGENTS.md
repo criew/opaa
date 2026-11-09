@@ -41,7 +41,7 @@ Am Ende einer Arbeit stehen genau drei Ergebnisse, jedes beantwortet eine Frage:
 # Backend (aus backend/)
 ./gradlew build
 ./gradlew test
-./gradlew test -PtestShard=api    # nur ein CI-Shard (api | indexing | core), Paketlisten in build.gradle.kts
+./gradlew test -PtestShard=api    # nur ein CI-Shard (api | indexing | connection | migration | core), Paketlisten in build.gradle.kts
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun   # ohne Auth-Profil bricht der Start ab (AuthProfileGuard, ADR-0005)

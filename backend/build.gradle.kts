@@ -480,7 +480,8 @@ tasks.named("check") {
 // jobs by package (`./gradlew test -PtestShard=<name>`, see .github/workflows/ci.yml). The named
 // shards list their packages explicitly; "core" is the complement, so a test in a new package
 // always lands in a shard instead of silently running nowhere. Rebalance the lists when one job
-// runs noticeably longer than the others.
+// runs noticeably longer than the others: every shard job lists its slowest test classes in the
+// job summary.
 val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
@@ -496,6 +497,9 @@ val testShards = mapOf(
         "io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.metadata.*", "io.opaa.llm.*",
         "io.opaa.installation.*",
     ),
+    // each migration test class boots its own container with a template database
+    "migration" to listOf("io.opaa.migration.*"),
+    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*"),
 )
 
 // The DNS rebinding tests (*RebindingTest, ADR-0063) run in a JVM of their own that caches no
