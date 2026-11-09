@@ -262,8 +262,9 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 | `GET /actuator/health/liveness` | Prozess | Liveness-Probe (Neustart) |
 | `GET /actuator/health` | Überblick | Diagnose |
 
-- Ohne Anmeldung antworten sie nur mit `UP`/`DOWN`; Details und alle weiteren Health Groups
-  verlangen ein Zugangstoken.
+- Ohne Anmeldung antworten sie nur mit `UP`/`DOWN`; alle weiteren Health Groups verlangen ein
+  Zugangstoken. Details wie Anbieter, Adresse oder Fehler sieht nur die Systemverwaltung, jedes
+  andere Konto nur den Status.
 - Die Readiness braucht eine Datenbankverbindung: Auch ein erschöpfter Connection Pool meldet `DOWN`.
   Bei knappen Pools die Probe nachsichtig konfigurieren.
 - Modelldienste stehen bewusst nicht in der Readiness; ein hängender Modellserver nimmt die Instanz
@@ -272,9 +273,9 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 | Health Group | Prüft |
 | --- | --- |
 | `chat-model` | welches Chat-Modell aktiv ist, ohne Aufruf |
-| `embedding-model` | einen echten Embedding-Aufruf |
+| `embedding-model` | einen echten Embedding-Aufruf, Ergebnis kurz zwischengespeichert |
 | `transcription-model` | letzten bekannten Zustand der Spracherkennung |
-| `vector-store` | eine echte Ähnlichkeitssuche |
+| `vector-store` | eine echte Ähnlichkeitssuche, Ergebnis kurz zwischengespeichert |
 | `upload-store` | den S3-Objektspeicher der Originalablage |
 | `mail` | den letzten SMTP-Versand |
 

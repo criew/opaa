@@ -79,7 +79,7 @@ leere Datenbank im Installationsmodus ([Installation im Compose-Stapel](#install
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
 | frontend    | 3000      | 8080            | React-App über nginx bereitgestellt                    |
-| backend     | 8081      | 8080            | Spring Boot API                                         |
+| backend     | 8081, 8082 (Management-Port) | 8080, 8081 | Spring Boot API; Probes, Health und Metriken auf dem Management-Port, beide an `127.0.0.1` gebunden |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
 | ollama      | —         | 11434           | Ollama-Server (nur `ollama`-Profil; kein Host-Port) |

@@ -35,23 +35,39 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   (`org.springframework.web`) mit Pfad und Controller, der Datenbankzugriff
   (`org.springframework.jdbc`) mit der SQL-Anweisung.
 - **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
-  Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
+  Sie nennen Pfade, Modelle und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),
   den eine Netzregel nur dem Prometheus öffnet. Mit eigenem Management-Port gibt es die
   Actuator-Pfade auf dem API-Port nicht. Ohne ihn liegen sie auf dem API-Port, und die Metriken
-  antworten dort nur mit Anmeldung. Der Helm-Chart richtet den Management-Port ein; unter Docker
-  Compose läuft der Actuator auf dem API-Port, wer dort Metriken einsammeln will, setzt
-  `MANAGEMENT_SERVER_PORT` ([Konfiguration](../referenz/konfiguration.md)):
+  antworten dort nur mit Anmeldung. Helm-Chart und Compose-Stapel richten den Management-Port ein;
+  unter Docker Compose ist er auf dem Host unter `127.0.0.1` erreichbar
+  (`OPAA_BACKEND_MANAGEMENT_PORT`, [Konfiguration](../referenz/konfiguration.md)).
+- **Jede Reihe** trägt `application` (`opaa`) und `host`, den Rechnernamen der Instanz, unter
+  Kubernetes den Namen des Pods. `opaa_build_info` nennt je Instanz `version` und `commit`; zwei
+  Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.
+- **Latenzen als Histogramm:** Die Dauer von HTTP-Anfragen, Chat-Fragen, Modellaufrufen,
+  Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (`_bucket` mit `le`), aus denen
+  Prometheus Perzentile über alle Pods rechnet, etwa das p95 der Chat-Fragen:
+  `histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))`. Die
+  Schwellen lassen sich je Timer über `OPAA_METRICS_SLO_*` an die eigenen Zielwerte anpassen; ein
+  Zielwert sollte genau auf einer Schwelle liegen.
+- **Ohne Personenbezug:** Keine Metrik nennt Person, Space, Bibliothek, Dokument, Datei, Adresse
+  oder Suchbegriff; Werte stammen aus festen kleinen Mengen wie Ergebnis, Modell oder Konnektortyp.
+  Zählungen gelten für die ganze Installation.
 
 | Metrik | Bedeutung |
 |---|---|
-| `http_server_requests_seconds_*` | Anfragen nach Pfad, Methode, Status |
-| `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Zahl der Chat-Fragen |
-| `opaa_query_tokens_total` | Token der Antwortaufrufe |
+| `http_server_requests_seconds_*` | Anfragen nach Pfad, Methode, Status, mit Buckets |
+| `opaa_build_info` | Version und Commit der Instanz, immer `1` |
+| `opaa_query_duration_seconds_*`, `opaa_query_count_total`, `opaa_query_tokens_total` | Dauer je Frage mit Buckets, Fragen nach Erfolg und Fehler, Tokens der Antwortaufrufe des Chat-Modells |
+| `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
+| `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
+| `opaa_conversations_active` | Gespräche, die diese Instanz im Speicher hält |
+| `opaa_installation_pending` | `1`, solange die Installation nicht abgeschlossen ist ([Installation](installation.md)) |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modell-endpunkte.md)) |
-| `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)) |
-| `opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds_*` | Texterkennung gescannter Dokumente nach Ergebnis (`recognized`, `reused`, `failed`, `blocked`, `pending`) und Verbindungstyp, gesendete Seiten und Dauer; steigt `failed`, ist der Dienst nicht verfügbar ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
+| `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)) |
+| `opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds_*` | Texterkennung gescannter Dokumente nach Ergebnis (`recognized`, `empty`, `reused`, `failed`, `blocked`, `pending`) und Verbindungstyp, gesendete Seiten und Dauer mit Buckets; `empty` heißt, der Dienst hat geantwortet, aber keinen Text erkannt; steigt `failed`, ist der Dienst nicht verfügbar ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
 | `opaa_malware_scans_total` | Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)) |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
 | `opaa_siem_export_lag_seconds` | Alter des ältesten Eintrags, der noch nicht ausgeleitet ist, `0` ohne offene Einträge; wächst der Wert stetig, hält eine offene Transaktion oder der Empfänger die Ausleitung an |
@@ -66,14 +82,16 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_target_validation_guarded_names`, `opaa_target_validation_refused_checks_total` | gespeicherte Ziele (Modell-Endpunkte, Identitätsanbieter, Mailserver), deren Namen diese Instanz bis zum Neustart bewacht, und Prüfungen neuer gespeicherter Ziele, die die volle Tabelle abgelehnt hat. **Alarm bei jedem Anstieg des Zählers:** Ihre Zahl begrenzt die Konfiguration, eine volle Tabelle deutet auf Missbrauch; neue Ziele lassen sich bis zum Neustart nicht speichern, das Log nennt den Grund ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
+| `opaa_auth_personal_space_provisioning_total` | gescheiterte Anlagen des persönlichen Bereichs bei der ersten Anmeldung (`result="failed"`); jeder Anstieg verdient einen Blick ins Log |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
 | `opaa_self_disclosure_refused_total` | abgewiesene Selbstauskünfte nach Grund (`reason`) |
 | `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person |
-| `opaa_query_duration_seconds_*`, `opaa_query_count_total`, `opaa_query_tokens_total` | Dauer je Frage, Fragen nach Erfolg und Fehler, verbrauchte Tokens des Chat-Modells |
 | `opaa_query_decomposition_fallback_total`, `opaa_query_decomposition_no_search_total` | Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war |
 | `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
 | `opaa_chat_search_duration_seconds_*` | Dauer und Anzahl der Chatsuchen, ohne Suchbegriff und Person |
 | `opaa_chat_note_extraction_total` | Verdichtungen der Gesprächsnotiz nach Ausgang (`applied`, `empty`, `failed`, `discarded`, `rejected`) |
+| `tasks_scheduled_execution_seconds_*` | Dauer und Ausgang der geplanten Läufe nach Methode, mit Buckets |
+| `executor_*` | Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (`name`), etwa Indexierung und Uploads |
 | `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 
@@ -159,20 +177,24 @@ einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Ve
 
 ## Diagnose ohne Shell
 
-Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend.
-Unter Docker Compose ist `localhost:8081` der API-Port des Backends auf dem Host
-(`OPAA_BACKEND_PORT`), unter Kubernetes die Portweiterleitung auf den Management-Port
-(`kubectl port-forward deploy/opaa-backend 8081:8081`):
+Actuator-Pfade sind nur über den Management-Port erreichbar, nicht über das Frontend. Unter Docker
+Compose ist das `localhost:8082` auf dem Host (`OPAA_BACKEND_MANAGEMENT_PORT`), unter Kubernetes
+die Portweiterleitung `kubectl port-forward deploy/opaa-backend 8081:8081`; die Beispiele nennen
+den Port von Kubernetes:
 
 ```bash
 curl -s http://localhost:8081/actuator/info              # Version
 curl -s http://localhost:8081/actuator/health/readiness  # Readiness
-curl -s http://localhost:8081/actuator/prometheus        # Metriken, Kubernetes (Management-Port)
-curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/prometheus  # Compose
+curl -s http://localhost:8081/actuator/prometheus        # Metriken
+curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health/embedding-model
 curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address
 ```
 
-`<token>` ist das Token einer angemeldeten Sitzung, etwa aus dem Browser.
+`<token>` ist das Token einer angemeldeten Sitzung, etwa aus dem Browser. Die Health Groups außer
+Readiness und Liveness verlangen ein Token; Einzelheiten wie Anbieter, Adresse oder Fehler zeigen
+sie nur der Systemverwaltung, jedem anderen Konto nur den Status. `embedding-model` und
+`vector-store` rufen das Modell bzw. die Vektorablage wirklich auf und geben ihr Ergebnis danach
+kurz zwischengespeichert aus, sodass häufige Abfragen keine Kosten beim Modellanbieter erzeugen.
 
 Der letzte Aufruf (Systemverwaltung, über den Proxy) zeigt, welche Client-Adresse das Backend für
 diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fehlt er in
