@@ -22,8 +22,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class RealtimeTranscriptionSlots {
 
-  /** The hard limit of a session plus a margin; an older row no longer counts. */
-  static final Duration STALE_AFTER = Duration.ofSeconds(150);
+  /**
+   * The longest session (recording limit plus the wait for the final text, 145 s) with a margin for
+   * the clocks of database and instance; an older row no longer counts.
+   */
+  static final Duration STALE_AFTER = Duration.ofSeconds(180);
 
   private static final String FRESH =
       "opened_at >= clock_timestamp() - make_interval(secs => " + STALE_AFTER.toSeconds() + ")";

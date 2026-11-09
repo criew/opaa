@@ -3,6 +3,7 @@ package io.opaa.installation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -42,6 +43,8 @@ class StoredTargetWarmupTest {
   void everyStoredModelEndpointAndTheMailServerAreChecked() {
     when(jdbc.queryForList(anyString(), eq(String.class)))
         .thenReturn(Arrays.asList("https://chat.example/v1", null, "http://ollama:11434/v1"));
+    when(jdbc.queryForList(contains("realtime_url"), eq(String.class)))
+        .thenReturn(List.of("wss://live.example/v1/realtime"));
     when(models.blockedReason("http://ollama:11434/v1")).thenReturn("abgelehnt");
     when(mail.snapshot()).thenReturn(mailServer("smtp.example", 587));
 
@@ -49,6 +52,8 @@ class StoredTargetWarmupTest {
 
     verify(models).blockedReason("https://chat.example/v1");
     verify(models).blockedReason("http://ollama:11434/v1");
+    // The live address of speech input is checked as the https address the check reads.
+    verify(models).blockedReason("https://live.example/v1/realtime");
     verify(mailTargets).guardStoredServer("smtp.example", 587);
   }
 

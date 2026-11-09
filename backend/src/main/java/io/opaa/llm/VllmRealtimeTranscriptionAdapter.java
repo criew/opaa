@@ -74,7 +74,11 @@ class VllmRealtimeTranscriptionAdapter implements RealtimeTranscriptionAdapter {
       public Event receive(JsonNode message) {
         return switch (RealtimeUris.text(message, "type")) {
           case "transcription.delta" -> {
-            text.append(RealtimeUris.text(message, "delta"));
+            String delta = RealtimeUris.text(message, "delta");
+            if (text.length() + delta.length() > MAX_TEXT_CHARS) {
+              yield RealtimeTranscriptionAdapter.tooMuchText();
+            }
+            text.append(delta);
             yield new Event.Text(text.toString().strip());
           }
           case "transcription.done" -> new Event.Done(RealtimeUris.text(message, "text").strip());

@@ -35,7 +35,9 @@ final class FakeRealtimeUpstream implements AutoCloseable {
 
   private final ServerSocket server;
   private final List<Connection> connections = new CopyOnWriteArrayList<>();
+  private final List<String> authorizations = new CopyOnWriteArrayList<>();
   private volatile int refuseWithStatus;
+  private volatile String redirectTo;
   private volatile Consumer<Connection> onOpen = connection -> {};
   private volatile BiConsumer<Connection, String> onMessage = (connection, message) -> {};
 
@@ -52,6 +54,16 @@ final class FakeRealtimeUpstream implements AutoCloseable {
   /** Answers every further handshake with this HTTP status instead of switching protocols. */
   void refuseWith(int status) {
     refuseWithStatus = status;
+  }
+
+  /** Answers every further handshake with {@code 307} to {@code location}. */
+  void redirectTo(String location) {
+    redirectTo = location;
+  }
+
+  /** The {@code Authorization} header of every handshake that reached this upstream. */
+  List<String> handshakeAuthorizations() {
+    return new ArrayList<>(authorizations);
   }
 
   void onOpen(Consumer<Connection> script) {
@@ -108,6 +120,18 @@ final class FakeRealtimeUpstream implements AutoCloseable {
         headers.put(
             header.substring(0, colon).strip().toLowerCase(Locale.ROOT),
             header.substring(colon + 1).strip());
+      }
+      authorizations.add(String.valueOf(headers.get("authorization")));
+      String location = redirectTo;
+      if (location != null) {
+        out.write(
+            ("HTTP/1.1 307 Temporary Redirect\r\nLocation: "
+                    + location
+                    + "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .getBytes(StandardCharsets.US_ASCII));
+        out.flush();
+        socket.close();
+        return;
       }
       int status = refuseWithStatus;
       if (status != 0) {

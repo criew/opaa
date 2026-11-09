@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -103,6 +104,124 @@ class RealtimeTranscriptionClientTest {
     assertThat(recorder.next()).isEqualTo("text:Guten Tag");
     assertThat(recorder.next()).isEqualTo("done:Guten Tag.");
     assertThat(client.sampleRate(RealtimeTranscriptionProtocol.OPENAI)).isEqualTo(24_000);
+  }
+
+  @Test
+  void openAiPassesTheLanguageAsASingleValueToModelsOtherThanGptLiveTranscribe() throws Exception {
+    client.open(
+        endpoint(RealtimeTranscriptionProtocol.OPENAI, "/v1/realtime", "gpt-4o-transcribe"),
+        "de",
+        "",
+        recorder);
+
+    JsonNode transcription =
+        json.readTree(upstream.connection(0).next()).at("/session/audio/input/transcription");
+    assertThat(transcription.at("/language").asString()).isEqualTo("de");
+    assertThat(transcription.has("languages")).isFalse();
+  }
+
+  @Test
+  void openAiEndsWithTheCompletedTextEvenIfDeltasBeforeTheCommitCarriedAnotherItemId()
+      throws Exception {
+    upstream.onMessage(
+        (connection, message) -> {
+          if (message.contains("input_audio_buffer.append")) {
+            connection.send(
+                "{\"type\":\"conversation.item.input_audio_transcription.delta\","
+                    + "\"item_id\":\"draft\",\"delta\":\"Guten Ta\"}");
+          }
+          if (message.contains("input_audio_buffer.commit")) {
+            connection.send("{\"type\":\"input_audio_buffer.committed\",\"item_id\":\"a\"}");
+            connection.send(
+                "{\"type\":\"conversation.item.input_audio_transcription.completed\","
+                    + "\"item_id\":\"a\",\"transcript\":\"Guten Tag.\"}");
+          }
+        });
+    RealtimeTranscriptionClient.Session session =
+        client.open(
+            endpoint(RealtimeTranscriptionProtocol.OPENAI, "/v1/realtime", "gpt-live-transcribe"),
+            "",
+            "",
+            recorder);
+
+    session.audio(PCM);
+    assertThat(recorder.next()).isEqualTo("text:Guten Ta");
+    session.commit();
+
+    assertThat(recorder.next()).isEqualTo("done:Guten Tag.");
+  }
+
+  @Test
+  void anUpstreamMessageAboveTheLimitEndsTheSession() throws Exception {
+    String huge = "x".repeat(RealtimeTranscriptionClient.MAX_MESSAGE_CHARS);
+    upstream.onOpen(
+        connection ->
+            connection.send("{\"type\":\"transcription.delta\",\"delta\":\"" + huge + "\"}"));
+
+    client.open(
+        endpoint(RealtimeTranscriptionProtocol.VLLM, "/v1/realtime", "v"), "", "", recorder);
+
+    assertThat(recorder.next()).startsWith("failed:").contains("larger than");
+  }
+
+  @Test
+  void textGatheredAboveTheLimitEndsTheSession() throws Exception {
+    String chunk = "x".repeat(RealtimeTranscriptionAdapter.MAX_TEXT_CHARS / 2 + 1);
+    upstream.onOpen(
+        connection -> {
+          connection.send("{\"type\":\"transcription.delta\",\"delta\":\"" + chunk + "\"}");
+          connection.send("{\"type\":\"transcription.delta\",\"delta\":\"" + chunk + "\"}");
+        });
+
+    client.open(
+        endpoint(RealtimeTranscriptionProtocol.VLLM, "/v1/realtime", "v"), "", "", recorder);
+
+    assertThat(recorder.next()).startsWith("text:");
+    assertThat(recorder.next()).startsWith("failed:").contains("more text than");
+  }
+
+  @Test
+  void audioIsRefusedOnceTooManyFramesWaitForAnUpstreamThatDoesNotRead() throws Exception {
+    CountDownLatch release = new CountDownLatch(1);
+    upstream.onMessage(
+        (connection, message) -> {
+          try {
+            release.await(10, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+    RealtimeTranscriptionClient.Session session =
+        client.open(
+            endpoint(RealtimeTranscriptionProtocol.VLLM, "/v1/realtime", "v"), "", "", recorder);
+    byte[] frame = new byte[64 * 1024];
+
+    boolean refused = false;
+    for (int sent = 0; sent < 2_000 && !refused; sent++) {
+      refused = !session.audio(frame);
+    }
+    release.countDown();
+
+    assertThat(refused).isTrue();
+  }
+
+  @Test
+  void aRedirectedHandshakeIsNotFollowedSoTheKeyGoesNowhereElse() throws Exception {
+    try (FakeRealtimeUpstream elsewhere = new FakeRealtimeUpstream()) {
+      upstream.redirectTo(elsewhere.url("/v1/realtime"));
+
+      assertThatThrownBy(
+              () ->
+                  client.open(
+                      endpoint(RealtimeTranscriptionProtocol.OPENAI, "/v1/realtime", "m"),
+                      "",
+                      "",
+                      recorder))
+          .isInstanceOfSatisfying(
+              RealtimeUnavailableException.class, e -> assertThat(e.getMessage()).contains("307"));
+      assertThat(upstream.handshakeAuthorizations()).containsExactly("Bearer sk-live");
+      assertThat(elsewhere.handshakeAuthorizations()).isEmpty();
+    }
   }
 
   @Test

@@ -25,7 +25,6 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 import tools.jackson.databind.ObjectMapper;
 
@@ -81,17 +80,6 @@ class TranscriptionStreamConfiguration implements WebSocketConfigurer {
         .setAllowedOrigins(allowedOrigins);
   }
 
-  /** Bounds every frame the browser may send; no other WebSocket endpoint exists. */
-  @Bean
-  ServletServerContainerFactoryBean transcriptionStreamContainer() {
-    ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
-    container.setMaxBinaryMessageBufferSize(TranscriptionStreamHandler.MAX_FRAME_BYTES);
-    container.setMaxTextMessageBufferSize(1024);
-    container.setMaxSessionIdleTimeout(
-        TranscriptionStreamHandler.IDLE_LIMIT.plusSeconds(15).toMillis());
-    return container;
-  }
-
   /** Runs before the security chain, so the token reaches it as an ordinary header. */
   @Bean
   FilterRegistrationBean<TranscriptionStreamCredentialsFilter> transcriptionStreamCredentials() {
@@ -103,7 +91,7 @@ class TranscriptionStreamConfiguration implements WebSocketConfigurer {
   }
 
   /** Takes the caller the security chain resolved; refuses a call through an access token. */
-  private static final class CallerInterceptor implements HandshakeInterceptor {
+  static final class CallerInterceptor implements HandshakeInterceptor {
 
     @Override
     public boolean beforeHandshake(

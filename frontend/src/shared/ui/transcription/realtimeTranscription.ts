@@ -183,7 +183,7 @@ export const REALTIME_TEXTS = {
     'Basis-Adresse und Modell-Kennung des Diktats sind passend zum Live-Dienst vorbelegt; das Diktat braucht immer einen eigenen Endpunkt.',
   keyLabel: 'Live-Schlüssel',
   keyHint:
-    'Leer lassen, wenn der Dienst keinen Schlüssel verlangt oder unter derselben Adresse wie das Transkriptionsmodell läuft; dann gilt dessen Schlüssel.',
+    'Leer lassen, wenn der Dienst keinen Schlüssel verlangt oder die gleiche Adresse bis zum Port (Schema, Host, Port) wie das Transkriptionsmodell hat; dann gilt dessen Schlüssel.',
   keyMissing:
-    'OpenAI und Mistral verlangen einen Zugangsschlüssel: Bitte einen Live-Schlüssel eintragen; der Schlüssel des Transkriptionsmodells gilt nur, wenn die Live-Adresse denselben Host hat.',
+    'OpenAI und Mistral verlangen einen Zugangsschlüssel: Bitte einen Live-Schlüssel eintragen; der Schlüssel des Transkriptionsmodells gilt nur bei gleicher Adresse bis zum Port (Schema, Host, Port).',
 } as const

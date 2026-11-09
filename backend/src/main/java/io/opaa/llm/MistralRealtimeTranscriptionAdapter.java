@@ -94,7 +94,11 @@ class MistralRealtimeTranscriptionAdapter implements RealtimeTranscriptionAdapte
       public Event receive(JsonNode message) {
         return switch (RealtimeUris.text(message, "type")) {
           case "transcription.text.delta" -> {
-            text.append(RealtimeUris.text(message, "text"));
+            String delta = RealtimeUris.text(message, "text");
+            if (text.length() + delta.length() > MAX_TEXT_CHARS) {
+              yield RealtimeTranscriptionAdapter.tooMuchText();
+            }
+            text.append(delta);
             yield new Event.Text(text.toString().strip());
           }
           case "transcription.done" -> new Event.Done(RealtimeUris.text(message, "text").strip());

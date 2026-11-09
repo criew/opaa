@@ -248,9 +248,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Basis-Adresse und Modell-Kennung des Diktats noch leer, belegt sie die Wahl ebenfalls vor
   ([Nur ein Live-Dienst vorhanden?](modell-endpunkte.md#nur-ein-live-dienst-vorhanden)). Der
   „Live-Schlüssel (optional)“ wird verschlüsselt gespeichert; ohne ihn geht der Schlüssel des
-  Transkriptionsmodells mit, aber nur an denselben Host. OpenAI und Mistral verlangen einen
-  Schlüssel: Liegt das Transkriptionsmodell anderswo, etwa auf einem eigenen speaches, lehnt der
-  Schritt sie ohne Live-Schlüssel ab. „Prüfen und weiter“ prüft danach auch den Live-Dienst mit einer
+  Transkriptionsmodells mit, aber nur an die gleiche Adresse bis zum Port (Schema, Host, Port).
+  OpenAI und Mistral verlangen einen Schlüssel: Liegt das Transkriptionsmodell anderswo, etwa auf
+  einem eigenen speaches, lehnt der Schritt sie ohne Live-Schlüssel ab. „Prüfen und weiter“ prüft danach auch den Live-Dienst mit einer
   Sitzung ohne Audio. Der Abschluss nennt, ob er die Spracheingabe einschaltet.
 - **Texterkennung.** Der Schritt steht nur in der Liste, wenn der Betrieb `OPAA_OCR_ENABLED=true`
   gesetzt hat, und hat die Anbindungen, Texte und Regeln von „Modelle → Texterkennung“. Zuerst
@@ -402,8 +402,8 @@ Prüfungen, alles oder nichts.
 - **Live-Transkript:** Der Unterabschnitt `transcriptionModel.realtime` schaltet es zusätzlich ein,
   sonst bleibt es beim Diktat mit ganzer Aufnahme. `protocol` ist `OPENAI`, `VLLM` oder `MISTRAL`,
   dazu `url` (`ws://` oder `wss://`) und `model`; der eigene Schlüssel steht als `apiKeyFile`. Ohne
-  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an denselben Host; OpenAI und Mistral
-  ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:
+  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an die gleiche Adresse bis zum Port
+  (Schema, Host, Port); OpenAI und Mistral ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:
 
   ```json
   "transcriptionModel": {

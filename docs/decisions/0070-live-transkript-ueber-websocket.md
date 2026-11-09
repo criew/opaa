@@ -71,8 +71,12 @@ gehört unter dieselbe Kontrolle wie das Transkriptionsmodell.
 
 ### 5. Grenzen einer Sitzung
 
-Höchstens zwei Minuten je Sitzung, 30 Sekunden ohne Audio, 15 Sekunden nach `commit` ohne
-endgültigen Text, Frames bis 64 KB. Eine Sitzung je Person und eine installationsweite Höchstzahl
+Die Aufnahme endet spätestens nach 130 Sekunden (zwei Minuten des Browsers und Spielraum für den
+Verbindungsaufbau), nach mehr Audio, als in diese Zeit passt, und nach 30 Sekunden ohne Audio;
+nach `commit` gilt nur noch die Frist von 15 Sekunden für den endgültigen Text, sodass ein Diktat
+an der Grenze seinen Text noch bekommt. Frames bis 64 KB, Nachrichten des Dienstes bis 1 MB und
+höchstens 1 MB erkannter Text je Sitzung; holt der Dienst die Frames nicht ab, endet die Sitzung,
+statt sie im Speicher zu sammeln. Eine Sitzung je Person und eine installationsweite Höchstzahl
 (`realtime_max_sessions`, Vorgabe 1). `realtimeAvailable` meldet Live nur, wenn das
 Transkriptionsmodell bereit ist, der Live-Dienst bereit ist und ein Platz frei ist.
 
@@ -80,7 +84,7 @@ Transkriptionsmodell bereit ist, der Live-Dienst bereit ist und ein Platz frei i
 
 Die Plätze liegen in `transcription_realtime_slots` (nur Kennung und Zeitpunkt, kein
 Personenbezug), vergeben unter Tabellensperre mit der Uhr der Datenbank; eine Zeile, die nach
-150 Sekunden noch steht (die Instanz ist ausgefallen), zählt nicht mehr. Die Grenze von einer
+180 Sekunden noch steht (die Instanz ist ausgefallen), zählt nicht mehr. Die Grenze von einer
 Sitzung je Person hält jede Instanz im Speicher. Begründung: Die Höchstzahl schützt einen teuren
 Dienst und muss über alle Instanzen gelten (ADR-0053, Entscheidung 12); eine zweite Sitzung derselben
 Person auf einer anderen Instanz bleibt innerhalb der Höchstzahl und kostet nicht mehr als eine

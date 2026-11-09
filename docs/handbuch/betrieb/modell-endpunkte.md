@@ -645,9 +645,10 @@ beginnt mit `ws://` oder `wss://` und durchläuft dieselbe
 an Stelle von `ws`/`wss`; ein Host im Haus kommt also in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`.
 Die Verbindung geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und folgt keinem
 Redirect. Ohne eigenen Live-Schlüssel sendet OPAA den Schlüssel des Transkriptionsmodells mit, aber
-nur, wenn die Live-Adresse denselben Host, dasselbe Schema und denselben Port hat; sonst geht keiner
-mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen Live-Schlüssel und ohne Schlüssel
-des Transkriptionsmodells auf demselben Host lehnen Verwaltung, Assistent und Antwortdatei sie ab.
+nur bei gleicher Adresse bis zum Port (Schema, Host, Port), wobei `ws`/`wss` wie `http`/`https`
+zählen; sonst geht keiner mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen
+Live-Schlüssel und ohne Schlüssel des Transkriptionsmodells unter der gleichen Adresse bis zum Port
+lehnen Verwaltung, Assistent und Antwortdatei sie ab.
 
 **Hardware im Haus.** Voxtral Realtime auf vLLM braucht eine GPU mit mindestens 16 GB Speicher und
 trägt darauf erfahrungsgemäß etwa eine gleichzeitige Sitzung. „Gleichzeitige Live-Sitzungen“ ist
@@ -681,9 +682,9 @@ Live-Dienstes vor:
 | vLLM | Schema, Host und Port der Live-Adresse mit `/v1`, etwa `http://vllm:8000/v1` | das Live-Modell |
 | Mistral | keine Vorbelegung | – |
 
-Bei OpenAI liegen Diktat und Live auf demselben Host; ein Schlüssel im Feld des Diktats gilt dann
-für beide. Für Mistral belegt OPAA nichts vor: Dass dessen `/v1/audio/transcriptions` die
-Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
+Bei OpenAI haben Diktat und Live die gleiche Adresse bis zum Port; ein Schlüssel im Feld des
+Diktats gilt dann für beide. Für Mistral belegt OPAA nichts vor: Dass dessen
+`/v1/audio/transcriptions` die Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
 Dienste, ist nicht geprüft; ein Diktat-Endpunkt wird dort selbst eingetragen und mit „Verbindung
 testen“ geprüft.
 

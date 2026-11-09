@@ -91,8 +91,8 @@ public record RealtimeTranscriptionEndpoint(
   /** Why a live upstream without a usable key is refused, as the field message says it. */
   public static final String KEY_RULE =
       "OpenAI und Mistral verlangen einen Zugangsschlüssel: Bitte einen Live-Schlüssel eintragen;"
-          + " der Schlüssel des Transkriptionsmodells gilt nur, wenn die Live-Adresse denselben Host"
-          + " hat.";
+          + " der Schlüssel des Transkriptionsmodells gilt nur bei gleicher Adresse bis zum Port"
+          + " (Schema, Host, Port).";
 
   /**
    * Whether a live upstream would go without a key it needs: OPENAI and MISTRAL always ask for one,

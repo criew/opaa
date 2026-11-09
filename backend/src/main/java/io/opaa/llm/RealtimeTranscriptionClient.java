@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -47,6 +48,12 @@ public class RealtimeTranscriptionClient {
 
   /** How long a probe waits for the upstream to object to the session it was offered. */
   static final Duration PROBE_GRACE = Duration.ofMillis(1500);
+
+  /** The largest message accepted from the upstream, like {@link TranscriptionClient}'s answer. */
+  static final int MAX_MESSAGE_CHARS = TranscriptionClient.MAX_RESPONSE_BYTES;
+
+  /** How many audio frames may wait for the upstream before the session is refused more. */
+  static final int MAX_PENDING_FRAMES = 32;
 
   private final Map<RealtimeTranscriptionProtocol, RealtimeTranscriptionAdapter> adapters =
       new EnumMap<>(RealtimeTranscriptionProtocol.class);
@@ -110,8 +117,12 @@ public class RealtimeTranscriptionClient {
   /** One recording on its way to the upstream. */
   public interface Session {
 
-    /** Passes one frame of PCM16 audio in {@link #sampleRate(RealtimeTranscriptionProtocol)}. */
-    void audio(byte[] pcm16);
+    /**
+     * Passes one frame of PCM16 audio in {@link #sampleRate(RealtimeTranscriptionProtocol)}; {@code
+     * false} when {@link #MAX_PENDING_FRAMES} frames still wait for the upstream and this one was
+     * dropped, so the caller ends the session instead of buffering without bound.
+     */
+    boolean audio(byte[] pcm16);
 
     /** Ends the recording; the upstream then answers with its final text. */
     void commit();
@@ -214,6 +225,7 @@ public class RealtimeTranscriptionClient {
     private final StringBuilder partial = new StringBuilder();
     private final AtomicBoolean finished = new AtomicBoolean();
     private final AtomicBoolean answered = new AtomicBoolean();
+    private final AtomicInteger pendingFrames = new AtomicInteger();
     private volatile boolean probing;
     private WebSocket socket;
     private CompletableFuture<?> sending = CompletableFuture.completedFuture(null);
@@ -278,10 +290,24 @@ public class RealtimeTranscriptionClient {
     }
 
     @Override
-    public void audio(byte[] pcm16) {
-      if (!finished.get()) {
-        send(dialog.audio(pcm16));
+    public boolean audio(byte[] pcm16) {
+      if (finished.get()) {
+        return true;
       }
+      if (pendingFrames.incrementAndGet() > MAX_PENDING_FRAMES) {
+        pendingFrames.decrementAndGet();
+        return false;
+      }
+      String message = dialog.audio(pcm16);
+      synchronized (this) {
+        WebSocket target = socket;
+        chain(
+            () ->
+                target
+                    .sendText(message, true)
+                    .whenComplete((sent, failure) -> pendingFrames.decrementAndGet()));
+      }
+      return true;
     }
 
     @Override
@@ -307,6 +333,11 @@ public class RealtimeTranscriptionClient {
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+      if (partial.length() + data.length() > MAX_MESSAGE_CHARS) {
+        partial.setLength(0);
+        failWith(webSocket, "the upstream sent a message larger than " + MAX_MESSAGE_CHARS);
+        return null;
+      }
       partial.append(data);
       if (last) {
         String message = partial.toString();

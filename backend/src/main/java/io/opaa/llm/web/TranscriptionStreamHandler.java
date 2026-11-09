@@ -24,6 +24,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
+import org.springframework.web.socket.handler.SessionLimitExceededException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -37,18 +38,25 @@ import tools.jackson.databind.node.ObjectNode;
  * the session; the browser then sends its parallel recording to the batch endpoint.
  *
  * <p><b>Audio passes through and is never stored or logged</b>, and neither is recognised text. A
- * session ends at the latest after {@link #HARD_LIMIT}, after {@link #IDLE_LIMIT} without audio, or
- * {@link #DONE_LIMIT} after the commit without a final text. The timers are this process's and end
- * with its sessions (ADR-0053).
+ * recording ends at the latest after {@link #HARD_LIMIT}, after {@link #IDLE_LIMIT} without audio,
+ * or after more audio than {@link #HARD_LIMIT} holds; once committed, only {@link #DONE_LIMIT}
+ * applies. A session therefore lasts at most {@code HARD_LIMIT + DONE_LIMIT}, below the slot's
+ * {@code RealtimeTranscriptionSlots.STALE_AFTER}. The timers are this process's and end with its
+ * sessions (ADR-0053).
  */
 class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
-  static final Duration HARD_LIMIT = Duration.ofMinutes(2);
+  /** The browser's two minutes of dictation plus room for the handshake and the last frames. */
+  static final Duration HARD_LIMIT = Duration.ofSeconds(130);
+
   static final Duration IDLE_LIMIT = Duration.ofSeconds(30);
   static final Duration DONE_LIMIT = Duration.ofSeconds(15);
 
   /** The largest audio frame accepted: one second of 24 kHz PCM16 with room to spare. */
   static final int MAX_FRAME_BYTES = 64 * 1024;
+
+  /** The largest text message accepted; the browser sends only {@code commit}. */
+  static final int MAX_TEXT_BYTES = 1024;
 
   static final String CALLER_ATTRIBUTE = TranscriptionStreamHandler.class.getName() + ".caller";
 
@@ -99,6 +107,8 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     private final Instant openedAt;
     private volatile Instant lastAudio;
     private volatile Instant committedAt;
+    private long audioBytes;
+    private volatile long maxAudioBytes;
     private volatile LiveSession upstream;
     private volatile boolean ended;
     private ScheduledFuture<?> tick;
@@ -137,12 +147,13 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
         open.upstream().ping();
       }
       Instant now = clock.instant();
-      if (Duration.between(openedAt, now).compareTo(HARD_LIMIT) >= 0) {
-        error(Reason.LIMIT);
-      } else if (committedAt != null) {
-        if (Duration.between(committedAt, now).compareTo(DONE_LIMIT) >= 0) {
+      Instant committed = committedAt;
+      if (committed != null) {
+        if (Duration.between(committed, now).compareTo(DONE_LIMIT) >= 0) {
           error(Reason.UPSTREAM);
         }
+      } else if (Duration.between(openedAt, now).compareTo(HARD_LIMIT) >= 0) {
+        error(Reason.LIMIT);
       } else if (Duration.between(lastAudio, now).compareTo(IDLE_LIMIT) >= 0) {
         error(Reason.IDLE);
       }
@@ -154,7 +165,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
       }
       try {
         socket.sendMessage(new TextMessage(json.writeValueAsString(message)));
-      } catch (IOException | IllegalStateException e) {
+      } catch (IOException | IllegalStateException | SessionLimitExceededException e) {
         end(CloseStatus.SERVER_ERROR);
       }
     }
@@ -186,6 +197,8 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
   @Override
   public void afterConnectionEstablished(WebSocketSession socket) {
+    socket.setBinaryMessageSizeLimit(MAX_FRAME_BYTES);
+    socket.setTextMessageSizeLimit(MAX_TEXT_BYTES);
     WebSocketSession guarded = new ConcurrentWebSocketSessionDecorator(socket, 10_000, 512 * 1024);
     Live live = new Live(guarded);
     sessions.put(socket.getId(), live);
@@ -206,6 +219,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
           session.close();
           return;
         }
+        live.maxAudioBytes = HARD_LIMIT.toSeconds() * session.sampleRate() * 2L;
         live.upstream = session;
       }
       live.lastAudio = clock.instant();
@@ -233,8 +247,12 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     }
     byte[] frame = new byte[message.getPayloadLength()];
     message.getPayload().get(frame);
+    live.audioBytes += frame.length;
+    if (live.audioBytes > live.maxAudioBytes || !open.upstream().audio(frame)) {
+      live.error(Reason.LIMIT);
+      return;
+    }
     live.lastAudio = clock.instant();
-    open.upstream().audio(frame);
   }
 
   @Override

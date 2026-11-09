@@ -49,8 +49,10 @@ Das [Live-Transkript](modell-endpunkte.md#live-transkript) läuft über einen We
 Ingress davor muss es ebenso tun:
 
 - **`Upgrade` und `Connection` weiterreichen** und HTTP/1.1 zum Frontend sprechen.
-- **Nicht puffern**; das Timeout für Lesen und Senden deckt Sprechpausen ab. Eine Sitzung dauert
-  höchstens zwei Minuten und endet nach 30 Sekunden ohne Audio.
+- **Nicht puffern**; das Timeout für Lesen und Senden deckt Sprechpausen ab. Eine Aufnahme dauert
+  höchstens gut zwei Minuten und endet nach 30 Sekunden ohne Audio. Im Frontend-Container gilt dafür
+  `OPAA_BACKEND_READ_TIMEOUT` wie für `/api/` (Vorgabe `600s`); ein Wert unter einer Minute bricht
+  Live-Sitzungen in Sprechpausen ab, das Diktat fällt dann auf die ganze Aufnahme zurück.
 - **`Sec-WebSocket-Protocol` nicht protokollieren:** Der Browser kann an einen WebSocket keine
   Header hängen und schickt das Anmeldetoken deshalb in diesem Header mit.
 - **Origin unverändert lassen:** Das Backend nimmt das Upgrade nur von der eigenen Adresse oder einer

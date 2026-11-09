@@ -16,6 +16,14 @@ import tools.jackson.databind.JsonNode;
  */
 public interface RealtimeTranscriptionAdapter {
 
+  /** The most text one recording may gather; a dictation of two minutes has a few thousand. */
+  int MAX_TEXT_CHARS = 1024 * 1024;
+
+  /** The failure of a recording whose upstream sent more than {@link #MAX_TEXT_CHARS}. */
+  static Event tooMuchText() {
+    return new Event.Failed("the upstream sent more text than " + MAX_TEXT_CHARS + " characters");
+  }
+
   RealtimeTranscriptionProtocol protocol();
 
   /** The sample rate of the PCM16 mono audio the upstream expects, in Hz. */

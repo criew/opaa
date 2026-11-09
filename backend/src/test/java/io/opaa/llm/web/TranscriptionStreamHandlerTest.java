@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,6 +41,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.SessionLimitExceededException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -105,6 +107,7 @@ class TranscriptionStreamHandlerTest {
   }
 
   private void liveIsReady() {
+    when(upstream.audio(any())).thenReturn(true);
     when(role.open(eq(CALLER.id()), eq("Referat Z 4"), any()))
         .thenAnswer(
             call -> {
@@ -118,6 +121,8 @@ class TranscriptionStreamHandlerTest {
     liveIsReady();
     handler.afterConnectionEstablished(socket);
     assertThat(sent).containsExactly("{\"type\":\"ready\",\"sampleRate\":24000}");
+    verify(socket).setBinaryMessageSizeLimit(TranscriptionStreamHandler.MAX_FRAME_BYTES);
+    verify(socket).setTextMessageSizeLimit(TranscriptionStreamHandler.MAX_TEXT_BYTES);
 
     handler.handleBinaryMessage(socket, new BinaryMessage(new byte[] {1, 2, 3, 4}));
     verify(upstream).audio(new byte[] {1, 2, 3, 4});
@@ -213,6 +218,67 @@ class TranscriptionStreamHandlerTest {
     tick.run();
 
     assertThat(sent).last().isEqualTo("{\"type\":\"error\",\"reason\":\"upstream\"}");
+  }
+
+  @Test
+  void aCommitJustBeforeTheHardLimitStillGetsItsFinalText() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    for (int second = 0; second < 119; second += 10) {
+      handler.handleBinaryMessage(socket, new BinaryMessage(new byte[] {1, 2}));
+      clock.advance(Duration.ofSeconds(10));
+      tick.run();
+    }
+    handler.handleTextMessage(socket, new TextMessage("{\"type\":\"commit\"}"));
+
+    clock.advance(TranscriptionStreamHandler.DONE_LIMIT.minusSeconds(1));
+    tick.run();
+    assertThat(closed.get()).isNull();
+    listener.get().done("Guten Tag.");
+
+    assertThat(sent).last().isEqualTo("{\"type\":\"done\",\"text\":\"Guten Tag.\"}");
+  }
+
+  @Test
+  void moreAudioThanTheHardLimitHoldsEndsTheSessionWithLimit() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    byte[] second = new byte[24_000 * 2];
+
+    for (long seconds = 0; seconds < TranscriptionStreamHandler.HARD_LIMIT.toSeconds(); seconds++) {
+      handler.handleBinaryMessage(socket, new BinaryMessage(second));
+    }
+    assertThat(closed.get()).isNull();
+    handler.handleBinaryMessage(socket, new BinaryMessage(new byte[] {1, 2}));
+
+    assertThat(sent).last().isEqualTo("{\"type\":\"error\",\"reason\":\"limit\"}");
+    assertThat(slotFreed).isTrue();
+  }
+
+  @Test
+  void anUpstreamThatFallsBehindEndsTheSessionWithLimit() throws Exception {
+    liveIsReady();
+    when(upstream.audio(any())).thenReturn(false);
+    handler.afterConnectionEstablished(socket);
+
+    handler.handleBinaryMessage(socket, new BinaryMessage(new byte[] {1, 2}));
+
+    assertThat(sent).last().isEqualTo("{\"type\":\"error\",\"reason\":\"limit\"}");
+    assertThat(slotFreed).isTrue();
+  }
+
+  @Test
+  void aBrowserThatReadsTooSlowlyLosesTheSessionAndItsSlot() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    doThrow(new SessionLimitExceededException("buffer full", CloseStatus.SESSION_NOT_RELIABLE))
+        .when(socket)
+        .sendMessage(any());
+
+    listener.get().text("Guten");
+
+    assertThat(closed.get()).isEqualTo(CloseStatus.SERVER_ERROR);
+    assertThat(slotFreed).isTrue();
   }
 
   @Test

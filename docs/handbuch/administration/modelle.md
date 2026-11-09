@@ -69,9 +69,9 @@ selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Tr
    [Nur ein Live-Dienst vorhanden?](../betrieb/modell-endpunkte.md#nur-ein-live-dienst-vorhanden).
 3. Den „Live-Schlüssel“ eintragen, wenn der Dienst einen anderen Schlüssel als das
    Transkriptionsmodell braucht. Ohne ihn geht der Schlüssel des Transkriptionsmodells mit, aber
-   nur an denselben Host. OpenAI und Mistral verlangen einen Schlüssel: Liegt das
-   Transkriptionsmodell auf einem anderen Host, etwa einem eigenen speaches, lehnt „Speichern“
-   ohne Live-Schlüssel ab. Das Auge neben dem Feld zeigt den eingetippten Schlüssel zur Kontrolle.
+   nur an die gleiche Adresse bis zum Port (Schema, Host, Port). OpenAI und Mistral verlangen
+   einen Schlüssel: Liegt das Transkriptionsmodell unter einer anderen Adresse, etwa auf einem
+   eigenen speaches, lehnt „Speichern“ ohne Live-Schlüssel ab. Das Auge neben dem Feld zeigt den eingetippten Schlüssel zur Kontrolle.
 4. „Gleichzeitige Live-Sitzungen“ für die ganze Installation festlegen. Wer darüber diktiert,
    bekommt den Text wie ohne Live nach dem Ende der Aufnahme.
 5. „Live-Dienst testen“ öffnet eine Sitzung ohne Audio; dann „Speichern“.
