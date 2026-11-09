@@ -37,8 +37,9 @@ class ToolCallingEvaluationHarnessTest {
 
   private static final String PREFIX = "opaa.eval.toolCalling.";
   static final int DEFAULT_REPETITIONS = 3;
-  // The default length limit of a model entry, so a measurement runs with what a new entry gets.
-  static final int DEFAULT_MAX_TOKENS = 2000;
+  // Mirrors StepRules.DEFAULT_MAX_TOKENS (package-private in io.opaa.installation): the length
+  // limit a new model entry gets, so a measurement runs with what an installation actually uses.
+  static final int DEFAULT_MAX_TOKENS = 8000;
   static final int DEFAULT_TIMEOUT_SECONDS = 300;
 
   @Test

@@ -100,8 +100,10 @@ als Fehler statt als „nicht bestanden“. Passt der Auswerter nicht zum Modell
 Text an und sieht aus wie ein Modell, das nicht sucht.
 
 **Abgeschnittene Antwort.** Endet ein Modellaufruf an der Längenbegrenzung (Abschlussgrund
-`length`), führt der Bericht den Lauf als abgeschnitten, nicht als nicht bestanden. Häufigste
-Ursache ist ein Modell mit Denktext, dessen Überlegungen die Begrenzung aufbrauchen, bevor ein
-Aufruf oder eine Antwort kommt. Abhilfe: `-Dopaa.eval.toolCalling.maxTokens` höher setzen und dabei
-bedenken, dass dieselbe Begrenzung am Modelleintrag gilt. Die Vorgabe 2000 entspricht der Vorgabe
-eines neuen Modelleintrags.
+`length`), führt der Bericht den Lauf als abgeschnitten und beurteilt ihn nicht nach seiner
+Fallklasse; für die Untergrenze zählt er als nicht bestanden. Naheliegende Ursache ist ein Modell
+mit Denktext, dessen Überlegungen die Begrenzung aufbrauchen, bevor ein Aufruf oder eine Antwort
+kommt. Abhilfe: `-Dopaa.eval.toolCalling.maxTokens` höher setzen und dabei bedenken, dass dieselbe
+Begrenzung am Modelleintrag gilt. Die Vorgabe 8000 entspricht der Vorgabe, mit der die Einrichtung
+und die Modellsuche einen neuen Modelleintrag anlegen; die Spaltenvorgabe 2000 der Datenbank greift
+dort nicht.
