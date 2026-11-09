@@ -63,7 +63,6 @@ backend/src/main/java/io/opaa/auth/OidcProviderConnectionTester.java
 backend/src/main/java/io/opaa/connection/profile/McpServerProfileService.java
 backend/src/main/java/io/opaa/account/LocalAccountMailer.java
 backend/src/main/java/io/opaa/account/MailingBootstrapLoginNotifier.java
-backend/src/main/java/io/opaa/externalaccess/token/**/*.java
 backend/src/main/java/io/opaa/library/LibraryExternalAccessReminderService.java
 backend/src/main/java/io/opaa/auth/NimbusOidcJwtDecoderFactory.java
 backend/src/main/java/io/opaa/api/HttpClientConfig.java
@@ -93,13 +92,14 @@ backend/src/main/java/io/opaa/retrieval/ranking/RerankStage.java
 backend/src/main/java/io/opaa/searchadmin/SearchStatusService.java
 backend/src/main/java/io/opaa/metadata/ChunkContextPrefix.java
 backend/src/main/java/io/opaa/metadata/CoreContextPrefixSettings.java
-backend/src/main/java/io/opaa/chat/ChatAttachment*.java
 
 # Text recognition: whole documents go to the OCR service, its result is stored
-backend/src/main/java/io/opaa/indexing/document/*TextRecognition*.java
+backend/src/main/java/**/*TextRecognition*.java
 backend/src/main/java/io/opaa/indexing/document/ScannedDocumentRecognition.java
+backend/src/main/java/io/opaa/format/file/pdf/PdfOcrDocumentFormat.java
 
 # Prompts and answer generation: system prompts and their inputs
+backend/src/main/java/io/opaa/chat/ChatAttachment*.java
 backend/src/main/java/io/opaa/prompt/**/*.java
 backend/src/main/java/io/opaa/query/answer/**/*.java
 backend/src/main/java/io/opaa/retrieval/search/QueryDecompositionService.java
@@ -118,6 +118,9 @@ backend/src/main/java/io/opaa/diagnosticaccess/**/*.java
 backend/src/main/java/io/opaa/instance/InstanceRegistry.java
 backend/src/main/java/io/opaa/connection/token/ConnectionLifecycleSettings.java
 backend/src/main/java/io/opaa/library/PrivateLibraryDeletion*.java
+
+# Service accounts and access tokens: lifecycle, consents, reminders
+backend/src/main/java/io/opaa/externalaccess/token/**/*.java
 
 # Exports of personal data
 backend/src/main/java/io/opaa/chat/ChatExportService.java
