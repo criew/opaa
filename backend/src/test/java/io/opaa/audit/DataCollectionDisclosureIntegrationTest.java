@@ -347,6 +347,10 @@ class DataCollectionDisclosureIntegrationTest {
         "INSERT INTO text_recognition_model (id, enabled, connection_type, base_url,"
             + " model_identifier, updated_at) VALUES (1, true, 'OPENAI_VISION',"
             + " 'http://vlm.example/v1', 'paddle-vl', now())");
+    jdbcTemplate.update(
+        "INSERT INTO malware_scan_settings (id, enabled, host, port, timeout_seconds,"
+            + " on_unavailable, updated_at) VALUES (1, true, 'clamav.example', 3310, 30, 'ACCEPT',"
+            + " now())");
 
     JsonNode export = exportAsAdmin();
 
@@ -367,7 +371,10 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("text_recognition_model.enabled", "true"),
             Map.entry("text_recognition_model.connection_type", "OPENAI_VISION"),
             Map.entry("text_recognition_model.base_url", "http://vlm.example/v1"),
-            Map.entry("text_recognition_model.model_identifier", "paddle-vl"));
+            Map.entry("text_recognition_model.model_identifier", "paddle-vl"),
+            Map.entry("malware_scan_settings.enabled", "true"),
+            Map.entry("malware_scan_settings.host", "clamav.example"),
+            Map.entry("malware_scan_settings.on_unavailable", "ACCEPT"));
     assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {
