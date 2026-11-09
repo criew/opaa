@@ -346,7 +346,9 @@ class DataCollectionDisclosureIntegrationTest {
             + " VALUES (1, true, 'http://reranker.example/v1', 'bge-reranker', now())");
     jdbcTemplate.update(
         "INSERT INTO transcription_model (id, enabled, base_url, model_identifier, language,"
-            + " updated_at) VALUES (1, true, 'http://stt.example/v1', 'whisper', 'de', now())");
+            + " realtime_protocol, realtime_url, realtime_model, realtime_max_sessions,"
+            + " updated_at) VALUES (1, true, 'http://stt.example/v1', 'whisper', 'de', 'VLLM',"
+            + " 'ws://stt.example/v1/realtime', 'voxtral', 3, now())");
     jdbcTemplate.update(
         "INSERT INTO text_recognition_model (id, enabled, connection_type, base_url,"
             + " model_identifier, updated_at) VALUES (1, true, 'OPENAI_VISION',"
@@ -372,6 +374,10 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("transcription_model.enabled", "true"),
             Map.entry("transcription_model.base_url", "http://stt.example/v1"),
             Map.entry("transcription_model.model_identifier", "whisper"),
+            Map.entry("transcription_model.realtime_protocol", "VLLM"),
+            Map.entry("transcription_model.realtime_url", "ws://stt.example/v1/realtime"),
+            Map.entry("transcription_model.realtime_model", "voxtral"),
+            Map.entry("transcription_model.realtime_max_sessions", "3"),
             Map.entry("text_recognition_model.enabled", "true"),
             Map.entry("text_recognition_model.connection_type", "OPENAI_VISION"),
             Map.entry("text_recognition_model.base_url", "http://vlm.example/v1"),
