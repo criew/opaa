@@ -138,12 +138,9 @@ export default function MessageList({
   return (
     // data-testid: the chat header repeats the first question as the fallback title, so
     // the E2E suite anchors history assertions here instead of on <main> as a whole.
-    // position: 'relative': the live region below (visuallyHidden -> position: absolute)
-    // otherwise has no positioned ancestor, so its containing block is the viewport rather than
-    // this scroll container - its "static position" grows with the message count and, without
-    // this positioning context, escapes this box's overflow clipping. That inflates
-    // document.documentElement.scrollHeight, producing an outer page scrollbar in addition to
-    // this list's own, and pushes the app shell (footer, sidebar) taller than the viewport.
+    // position: 'relative': the live region below (visuallyHidden -> position: absolute) takes
+    // this scroll container as its containing block, so its static position, which grows with
+    // the message count, stays inside this box's own overflow clipping.
     <Box
       data-testid="message-list"
       sx={{ flexGrow: 1, overflowY: 'auto', py: 2, position: 'relative' }}

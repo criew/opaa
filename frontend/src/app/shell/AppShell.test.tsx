@@ -103,6 +103,15 @@ describe('AppShell', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
   })
 
+  // regression guard: visually hidden live regions deep in a page scroll container are positioned
+  // absolutely; main must be their containing block, or they stretch the document below the shell.
+  it('makes main a clipping containing block for the page content', () => {
+    renderShell()
+    const main = screen.getByRole('main')
+    expect(getComputedStyle(main).position).toBe('relative')
+    expect(getComputedStyle(main).overflow).toBe('clip')
+  })
+
   it('offers the skip link as the first focusable element', async () => {
     const user = userEvent.setup()
     renderShell()
