@@ -3,7 +3,6 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
-  LibraryShareCapRequest,
   LibraryUpdateRequest,
 } from '@/shared/api/types'
 import {
@@ -14,7 +13,6 @@ import {
   getLibrary,
   getLibraries,
   updateLibrary,
-  updateLibraryShareCap,
 } from '../api/libraryApi'
 import type { LibraryDeletionOutcome } from '../api/libraryApi'
 import { updateLibraryDiagnosticsLock } from '../api/diagnosticAccessApi'
@@ -33,7 +31,6 @@ interface LibraryState {
   updateExistingLibrary: (libraryId: string, request: LibraryUpdateRequest) => Promise<void>
   deleteExistingLibrary: (libraryId: string) => Promise<LibraryDeletionOutcome>
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
-  setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
   /** Answers the connected library, `null` after a logout in between. */
   connectLibraryToProfile: (
     libraryId: string,
@@ -137,14 +134,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         [libraryId]: { ...current, diagnosticsLocked: response.locked },
       },
     })
-  },
-
-  // Unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
-  // library (the grant to "Alle Konten" revoked already, if the new cap narrowed) - cached wholesale, no
-  // extra round trip, mirroring createNewLibrary's own full-response caching above.
-  setLibraryShareCap: async (libraryId, request) => {
-    const library = await updateLibraryShareCap(libraryId, request)
-    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
   },
 
   // Both answer the whole library; the list is reloaded because a lock it shows may have ended.

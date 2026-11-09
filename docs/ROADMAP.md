@@ -137,8 +137,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   organisationsweit, Abbruch laufender Antworten bei Sitzungsende.
 - **Erzwungene Neuanmeldung durch die Systemverwaltung** — für Person, Gruppe oder alle; automatisch bei
   Verzeichnissperre und zugangsrelevanter Rechteänderung (für lokale Konten gebaut).
-- **Vorgabewert der Freigabe-Obergrenze für Konnektorbibliotheken** — installationsweiter Standard bei
-  Neuanlage. ⚑
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063, ADR-0064
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063, ADR-0064
 
 ## Kontext
 
@@ -67,8 +67,8 @@ ist: Der nächste Lauf nähme das Dokument wieder auf.
 
 Wer eine Bibliothek anlegen darf, bestimmt eine vergebbare Fähigkeit (`CREATE_LIBRARY`,
 `CREATE_CONNECTOR_LIBRARY`; ADR-0036 Entscheidung 5, umgesetzt in `CapabilityService`), ausgeliefert
-an „Alle Konten“, sodass sich für Bestandsinstallationen nichts ändert. Die Obergrenze der Freigabe
-konnektorgespeister Bibliotheken regelt ADR-0037. Unabhängig davon, wer anlegt, sichern zwei
+an „Alle Konten“, sodass sich für Bestandsinstallationen nichts ändert. Wer anlegen darf, darf auch an
+„Alle Konten“ freigeben (ADR-0037, Entscheidung 5). Unabhängig davon, wer anlegt, sichern zwei
 Mechanismen jeden Serverpfad und jede Zieladresse: die Pfad-Allowlist
 (`opaa.indexing.filesystem.allowlist`; ohne Eintrag ist der Typ Dateisystem abgeschaltet, die
 Prüfung läuft bei Anlage und erneut bei jedem Lauf) und die Zieladressprüfung

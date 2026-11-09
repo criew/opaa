@@ -95,7 +95,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
         "chk_knowledge_libraries_share_cap_upload_unrestricted");
   }
 
-  /** The share cap of a connector library is unrestrictive until an administrator lowers it. */
+  /** The former share-cap column stays unread and unrestrictive until its contract migration. */
   @Test
   void aConnectorLibraryStartsUnrestrictedAndMayBeCapped() throws SQLException {
     UUID library = insertLibrary("RSS_FEED", "https://example.org/feed.xml");

@@ -1072,25 +1072,6 @@ class AssetGrantServiceTest {
     assertThat(view.subjectDisplayName()).isEqualTo("Alle Konten");
   }
 
-  /** The share cap is asked on the grant path: it is the only one that reaches everybody. */
-  @Test
-  void upsertGrantAsksTheTypesCeilingBeforeGrantingToAllAccounts() {
-    asManagerOfTheLibrary();
-    org.mockito.Mockito.doThrow(new ConflictException("nicht an alle freigegeben"))
-        .when(libraryType)
-        .requireAllAccountsGrantAllowed(library);
-
-    assertThatThrownBy(
-            () ->
-                grantService.upsertGrant(
-                    KnowledgeLibrary.ASSET_TYPE,
-                    libraryId,
-                    AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
-                    managerCaller))
-        .isInstanceOf(ConflictException.class);
-    verify(grantRepository, never()).save(any());
-  }
-
   @Test
   void upsertGrantRejectsASubjectIdAlongsideAllAccounts() {
     asManagerOfTheLibrary();
@@ -1104,38 +1085,6 @@ class AssetGrantServiceTest {
                         AssetGrantSubjectType.ALL_ACCOUNTS, UUID.randomUUID(), AssetRole.VIEWER),
                     managerCaller))
         .isInstanceOf(ValidationException.class);
-  }
-
-  /** The clamp of a lowered ceiling is an ordinary revocation - and is never refused. */
-  @Test
-  void revokeAllAccountsGrantForALoweredCapTakesTheGrantBackWithoutAManagerCheck() {
-    AssetGrant grant =
-        AssetGrant.forAllAccounts(
-            KnowledgeLibrary.ASSET_TYPE,
-            libraryId,
-            organizationId,
-            AssetRole.VIEWER,
-            null,
-            managerId);
-    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.ALL_ACCOUNTS))
-        .thenReturn(Optional.of(grant));
-
-    boolean revoked = grantService.revokeAllAccountsGrantForLoweredCap(library, managerId);
-
-    assertThat(revoked).isTrue();
-    verify(grantRepository).delete(grant);
-    verify(accessService, never()).requireRole(any(), any(), anyBoolean(), any());
-  }
-
-  @Test
-  void revokeAllAccountsGrantForALoweredCapDoesNothingWithoutSuchAGrant() {
-    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.ALL_ACCOUNTS))
-        .thenReturn(Optional.empty());
-
-    assertThat(grantService.revokeAllAccountsGrantForLoweredCap(library, managerId)).isFalse();
-    verify(grantRepository, never()).delete(any());
   }
 
   // --- own grants of a time-limited manager ------------------------------------
