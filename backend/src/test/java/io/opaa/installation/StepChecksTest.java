@@ -10,9 +10,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderConnectionTester;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
@@ -57,6 +59,7 @@ class StepChecksTest {
   private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final MailConnectionTester mailTester = mock(MailConnectionTester.class);
   private final ModelRoleAdministration modelRoles = mock(ModelRoleAdministration.class);
+  private final MalwareScanSettingsService malwareScans = mock(MalwareScanSettingsService.class);
   private final StepChecks checks =
       new StepChecks(
           rules,
@@ -65,7 +68,8 @@ class StepChecksTest {
           strict,
           embeddingModels,
           mailTester,
-          modelRoles);
+          modelRoles,
+          malwareScans);
 
   // regression guard: no probe of the installation reaches a blocked address
   @Test
@@ -147,7 +151,8 @@ class StepChecksTest {
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(embeddingModels.probe(any(EmbeddingEndpoint.class)))
         .thenReturn(
             new EmbeddingModelService.ProbeOutcome(true, "Probeeinbettung erfolgreich", 768));
@@ -186,7 +191,8 @@ class StepChecksTest {
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(modelRoles.probeRerank("http://reranker:80", "bge-reranker", "geheim"))
         .thenReturn(new ModelRoleAdministration.TestOutcome(false, "HTTP 401"));
     String payload =
@@ -216,7 +222,8 @@ class StepChecksTest {
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     String payload =
         json.writeValueAsString(
             new StepRules.RerankModelPayload("http://reranker:80", "bge-reranker"));
@@ -266,7 +273,8 @@ class StepChecksTest {
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(modelRoles.probeTranscription("http://speaches:8000/v1", "whisper", "sk-stt"))
         .thenReturn(
             new ModelRoleAdministration.TestOutcome(
@@ -314,7 +322,8 @@ class StepChecksTest {
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(modelRoles.probeTextRecognition(
             TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null, "ocr-key"))
         .thenReturn(
@@ -353,5 +362,22 @@ class StepChecksTest {
     assertThat(refused.message())
         .isEqualTo(
             "Gescheitert an der Stufe „Anmeldung“: Der Dienst hat den Zugangsschlüssel abgelehnt.");
+  }
+
+  @Test
+  void theMalwareScannerIsCheckedWithTheVersionRequestOfTheAdministration() {
+    when(malwareScans.test("malwareScan.", "clamav.amt.example", 3310, 30))
+        .thenReturn(
+            new MalwareScanSettingsService.TestOutcome(
+                true, "Virenscanner erreichbar: ClamAV 1.4.2/27450"));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.MalwareScanPayload(
+                "clamav.amt.example", 3310, 30, MalwareScanUnavailablePolicy.REJECT));
+
+    StepChecks.Outcome outcome = checks.check(InstallationStep.MALWARE_SCAN, payload, null, null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message()).isEqualTo("Virenscanner erreichbar: ClamAV 1.4.2/27450");
   }
 }

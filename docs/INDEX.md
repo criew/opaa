@@ -75,7 +75,7 @@ Personalvertretung. Entscheidung zu Katalog und Zuordnung:
 
 ### D · Agenten, Prompts & Werkzeuge
 
-**[Roadmap](./ROADMAP.md)**
+**[ADR-0070](./decisions/0070-werkzeugaufrufe-im-chat.md)** · **[Roadmap](./ROADMAP.md)**
 
 Agenten als teilbare Pakete mit Aufgabenbeschreibung · geführtes Onboarding · Agenten-Prüfstand vor der
 Freigabe · Prüfagenten · isolierte Ausführungsumgebung · Werkzeuge und MCP · schreibende Aktionen mit

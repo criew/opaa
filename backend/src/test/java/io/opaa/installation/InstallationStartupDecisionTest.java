@@ -18,6 +18,7 @@ import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.FeatureFlags;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelRoleAdministration;
@@ -62,6 +63,7 @@ class InstallationStartupDecisionTest {
             mock(EmbeddingModelService.class),
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
+            mock(MalwareScanSettingsService.class),
             mock(BrandingSettingsService.class),
             new OfferedSteps(new FeatureFlags(new MockEnvironment()), false),
             mock(AuditEventRecorder.class),

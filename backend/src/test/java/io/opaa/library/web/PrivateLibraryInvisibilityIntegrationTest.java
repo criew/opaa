@@ -333,6 +333,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listSpaceGroupMembers",
             "getExternalAccessSettings",
             "getMailSettings",
+            "getMalwareScanSettings",
             "listMailTemplates",
             "getMailTemplate",
             "listUsersForSelection",

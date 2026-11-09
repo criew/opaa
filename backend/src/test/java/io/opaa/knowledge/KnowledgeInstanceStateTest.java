@@ -49,6 +49,7 @@ class KnowledgeInstanceStateTest {
         libraries,
         mock(UploadedOriginalStore.class),
         malwareScan,
+        mock(MalwareScanSettingsService.class),
         beans.getBeanProvider(ConnectorDataFlows.class));
   }
 }
