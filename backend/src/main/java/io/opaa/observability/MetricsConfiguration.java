@@ -36,6 +36,7 @@ public class MetricsConfiguration {
       List.of(
           List.of("gen_ai.client", "gen_ai.request.model"),
           List.of("gen_ai.client", "gen_ai.response.model"),
+          List.of(ModelTokenMetrics.NAME, "model"),
           List.of("spring.ai.tool", "spring.ai.tool.definition.name"));
 
   /** The value of {@code version} or {@code commit} the build does not name. */

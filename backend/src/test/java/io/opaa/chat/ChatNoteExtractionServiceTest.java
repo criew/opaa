@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,7 @@ import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.common.ConflictException;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.ChatMetrics;
+import io.opaa.observability.ModelCallPurpose;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,5 +188,15 @@ class ChatNoteExtractionServiceTest {
     assertThat(service.condense(null)).isEmpty();
 
     verify(chatModel, never()).call(any(Prompt.class));
+  }
+
+  /** The condensation's tokens count under {@code purpose=note} in {@code opaa.model.tokens}. */
+  @Test
+  void theCondensationCountsItsTokensAsNote() {
+    stubModelAnswer("RAHMEN: Arbeitet in der Nebenstelle 3");
+
+    service.condense("Ich arbeite in der Nebenstelle 3.");
+
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.NOTE), notNull());
   }
 }

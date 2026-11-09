@@ -5,6 +5,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.llm.ReasoningTextStrippingChatModel;
 import io.opaa.llm.StreamedAnswerFailures;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.retrieval.ConversationNoteBlock;
 import java.io.IOException;
 import java.time.Duration;
@@ -286,6 +287,7 @@ public class AnswerGenerationService {
         listener == null
             ? call(chatClient, systemText, messages)
             : stream(chatClient, systemText, messages, listener);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.ANSWER, response);
 
     chatMemory.add(conversationId, new UserMessage(question));
     // The window gets the answer without its citation markers, and nothing at all when only

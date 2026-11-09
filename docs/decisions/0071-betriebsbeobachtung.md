@@ -50,7 +50,10 @@ keiner Metrik.
 Eigene Metriken heißen `opaa.<bereich>.<größe>` in Micrometer-Schreibweise mit Basiseinheiten.
 Die `gen_ai.*`-Metriken (`gen_ai.client.operation`, `gen_ai.client.token.usage`) liefert Spring AI
 aus den Observations der Chat- und Embedding-Clients; OPAA baut sie nicht nach und benennt sie
-nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Jede
+nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Was sie nicht
+unterscheiden, zählt OPAA selbst: `opaa.model.tokens` trägt den Zweck eines Aufrufs des
+Chat-Modells (Antwort, Zerlegung, Titel, Notiz, Metadaten, Agent) und als `model` den Namen aus der
+Modellverwaltung, nicht den Namen, den die Antwort des Anbieters nennt. Jede
 Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-query-response`,
 `include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
 Standardwert der Bibliothek keine Inhalte in Observations, Logs oder Spans bringt; eine Prüfung
@@ -58,11 +61,11 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
-`http.server.requests`, `opaa.query.duration`, `opaa.ocr.duration`, `gen_ai.client.operation` und
-`tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
-(`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
-einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
-Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
+`http.server.requests`, `opaa.query.duration`, `opaa.query.time_to_first_token`,
+`opaa.ocr.duration`, `gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen
+Histogramm-Buckets an festen SLO-Schwellen (`management.metrics.distribution.slo`), je Timer über
+eine `OPAA_METRICS_SLO_*`-Variable einstellbar; die Long-Task-Timer daneben (`….active`) bleiben
+ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
 vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
 Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
@@ -111,7 +114,7 @@ gebraucht worden wäre.
 ## Verworfene Alternativen
 
 - Nutzungs- und Kostentabellen mit Cockpit in der Oberfläche — zweites Auswertungssystem mit Personenbezug, Entscheidung 1.
-- Eigene `opaa.model.*`-Nachbauten der `gen_ai.*`-Metriken — doppelte Pflege, Namen sollen der Konvention folgen.
+- Eigene `opaa.model.*`-Nachbauten der `gen_ai.*`-Metriken — doppelte Pflege, Namen sollen der Konvention folgen; `opaa.model.tokens` baut nichts nach, sondern ergänzt den Zweck.
 - Perzentile im Prozess (Summaries) — nicht über Pods aggregierbar.
 - Gemeinsames Tag `instance` — kollidiert mit dem Label, das Prometheus jedem Ziel gibt.
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.

@@ -2,12 +2,15 @@ package io.opaa.query.answer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.observability.ModelCallPurpose;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -980,5 +983,17 @@ class AnswerGenerationServiceTest {
         .contains("Enthält die Nachricht doch eine Frage, gilt diese Anweisung nicht")
         .contains("nur anhand der Kontextdokumente")
         .contains("sage, wenn diese keine Antwort enthalten");
+  }
+
+  /** The answer call's tokens count under {@code purpose=answer}. */
+  @Test
+  void theAnswerCountsItsTokensAsAnswer() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Was kostet der Ausweis?", List.of(), "conv-usage", List.of(), false, true, null);
+
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.ANSWER), notNull());
   }
 }

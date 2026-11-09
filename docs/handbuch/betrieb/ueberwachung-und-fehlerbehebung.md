@@ -45,8 +45,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 - **Jede Reihe** trägt `application` (`opaa`) und `host`, den Rechnernamen der Instanz, unter
   Kubernetes den Namen des Pods. `opaa_build_info` nennt je Instanz `version` und `commit`; zwei
   Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.
-- **Latenzen als Histogramm:** Die Dauer von HTTP-Anfragen, Chat-Fragen, Modellaufrufen,
-  Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (`_bucket` mit `le`), aus denen
+- **Latenzen als Histogramm:** Die Dauer von HTTP-Anfragen, Chat-Fragen bis zum ersten Wort und
+  bis zum Ende, Modellaufrufen, Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (`_bucket` mit `le`), aus denen
   Prometheus Perzentile über alle Pods rechnet, etwa das p95 der Chat-Fragen:
   `histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))`. Die
   Schwellen lassen sich je Timer über `OPAA_METRICS_SLO_*` an die eigenen Zielwerte anpassen; ein
@@ -59,7 +59,14 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 |---|---|
 | `http_server_requests_seconds_*` | Anfragen nach Pfad, Methode, Status, mit Buckets |
 | `opaa_build_info` | Version und Commit der Instanz, immer `1` |
-| `opaa_query_duration_seconds_*`, `opaa_query_count_total`, `opaa_query_tokens_total` | Dauer je Frage mit Buckets, Fragen nach Erfolg und Fehler, Tokens der Antwortaufrufe des Chat-Modells |
+| `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer je Chat-Frage mit Buckets und Fragen nach Ausgang (`status`: `success`, `error`), beide nach Art der Antwort (`mode`: `rag` mit Suche oder Anhängen, `no_search` ohne Suche, `agent` mit Werkzeugschleife). `error` zählt auch Fragen, deren Leser vorher gegangen ist |
+| `opaa_query_time_to_first_token_seconds_*` | Zeit von der Frage bis zum ersten gestreamten Stück der Antwort nach `mode`, mit Buckets; die Wartezeit, die man im Chat spürt. Nur gestreamte Antworten |
+| `opaa_query_stage_duration_seconds_*` | Zeit einer Frage je Stufe (`stage`): `decompose` Teilfragen-Zerlegung, `embed_query` Einbetten der Suchanfragen, `retrieve` Suche und Auswahl, `rerank` Neubewertung, `generate` Antwort des Chat-Modells, `persist` Speichern im Chat. Die Stufen überschneiden sich nicht; ihre Summe bleibt unter der Dauer der Frage |
+| `opaa_retrieval_hits_*`, `opaa_retrieval_empty_total` | Ausgewählte Fundstellen je Chat-Frage mit Suche und Fragen ganz ohne Fundstelle; ein steigender Anteil leerer Suchen deutet auf fehlende Indizierung oder einen gestörten Suchweg |
+| `opaa_query_context_tokens_*`, `opaa_query_context_truncated_total` | Eingabe-Tokens je Antwortaufruf, soweit der Anbieter sie meldet, und Antworten mit voll ausgeschöpftem Gesprächsfenster, bei denen ältere Nachrichten des Chats nicht mehr ins Modell gehen |
+| `opaa_query_finish_reason_total` | Antworten nach dem Ende, das das Modell meldet (`reason`: `stop`, `length` an der Ausgabegrenze abgeschnitten, `content_filter`, `tool`, `other`) |
+| `opaa_query_aborted_total` | Chat-Fragen ohne Antwort nach Ursache (`cause`: `client_cancel` Leser gegangen, `timeout` ein Aufruf hat nicht rechtzeitig geantwortet, `error` jeder andere Fehler) |
+| `opaa_model_tokens_total` | Tokens jedes Aufrufs des Chat-Modells nach Zweck (`purpose`: `answer`, `decompose`, `title`, `note`, `metadata`, `agent`), Art (`token_type`: `input`, `output`) und `model`, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft OPAA mit einer Warnung im Log |
 | `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
 | `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
 | `opaa_conversations_active` | Gespräche, die diese Instanz im Speicher hält |

@@ -5,6 +5,8 @@ import io.micrometer.observation.ObservationRegistry;
 import io.opaa.compliance.DataFlow;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.ModelCallPurpose;
+import io.opaa.observability.ModelTokenMetrics;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
 import java.util.List;
@@ -16,6 +18,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
@@ -59,6 +63,12 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
    * it; keyed by the timeout, of which there is one in practice.
    */
   private final AtomicReference<TimedResolved> timedCache = new AtomicReference<>();
+
+  /**
+   * The configured identifier of the model the last client was built for - the {@code model} tag of
+   * {@link #recordUsage}, so the tag stays within the identifiers the administration chose.
+   */
+  private volatile String builtModelIdentifier;
 
   private final AtomicLong generation = new AtomicLong();
   private final AtomicInteger buildCount = new AtomicInteger();
@@ -188,8 +198,30 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     return resolved;
   }
 
+  /**
+   * Counts the tokens {@code response} reports under {@code purpose} and the configured identifier
+   * of the active model ({@code opaa.model.tokens}); a response without usage counts nothing.
+   */
+  public void recordUsage(ModelCallPurpose purpose, ChatResponse response) {
+    MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+    if (registry == null
+        || response == null
+        || response.getMetadata() == null
+        || response.getMetadata().getUsage() == null) {
+      return;
+    }
+    Usage usage = response.getMetadata().getUsage();
+    ModelTokenMetrics.record(
+        registry,
+        purpose,
+        builtModelIdentifier,
+        usage.getPromptTokens(),
+        usage.getCompletionTokens());
+  }
+
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */
   private ChatClient newChatClient(LlmModel model, Duration requestTimeout) {
+    builtModelIdentifier = model.getModelIdentifier();
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     OpenAiChatModel chatModel =

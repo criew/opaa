@@ -12,6 +12,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
@@ -235,6 +236,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
             .advisors(toolCallingAdvisor)
             .call()
             .chatResponse();
+    activeChatModelResolver.recordUsage(ModelCallPurpose.AGENT, response);
 
     // The breach text (either the library's own English sentence or the last raw tool response,
     // see ToolCallLimitExceededException#buildGeneration) is never fit for a persisted or
@@ -293,7 +295,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
     long durationMs = System.currentTimeMillis() - startTime;
     int tokenCount = ChatResponses.totalTokens(response);
-    metrics.recordSuccess(tokenCount);
+    metrics.recordFinishReason(ChatResponses.finishReason(response));
 
     QueryOutcome metadata =
         new QueryOutcome(

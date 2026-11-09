@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.observability.ModelCallPurpose;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -130,5 +132,15 @@ class ChatTitleGenerationServiceTest {
     service.generateTitleAsync(CHAT_ID, "Frage", "Antwort");
 
     verifyNoInteractions(chatRepository);
+  }
+
+  /** The title call's tokens count under {@code purpose=title} in {@code opaa.model.tokens}. */
+  @Test
+  void generateTitleAsyncCountsItsTokensAsTitle() {
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponseWith("Rückstellung"));
+
+    service.generateTitleAsync(CHAT_ID, "Wie hoch ist die Rückstellung?", "42.000 EUR.");
+
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.TITLE), notNull());
   }
 }
