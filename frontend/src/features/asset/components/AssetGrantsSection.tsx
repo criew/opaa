@@ -118,8 +118,7 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
 
 /**
  * The permissions of an asset as a section of the page — list, role change, revocation
- * and the form for sharing, without a dialog in front. The section knows only the type's word;
- * whatever a type has beyond that comes in as a slot.
+ * and the form for sharing, without a dialog in front. The section knows only the type's word.
  */
 export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSectionProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
