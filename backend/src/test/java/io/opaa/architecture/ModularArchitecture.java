@@ -250,6 +250,25 @@ public final class ModularArchitecture {
           "connection.oauth");
 
   /**
+   * The root package of the models: the chat model, the endpoint rules and the scaffold every
+   * optional model role builds on. It names none of its subpackages.
+   */
+  static final String LLM = "llm";
+
+  /**
+   * The model roles below {@link #LLM}, one package each. A role depends only on itself and on the
+   * scaffold in {@link #LLM}, never on another role.
+   */
+  static final List<String> LLM_ROLES =
+      List.of("llm.embedding", "llm.rerank", "llm.transcription", "llm.textrecognition");
+
+  /**
+   * The packages below {@link #LLM} that span several roles (administration of the stored roles,
+   * disclosure of all models); they may use the scaffold and every role, no role uses them.
+   */
+  static final List<String> LLM_ACROSS_ROLES = List.of("llm.administration");
+
+  /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036,
    * Entscheidung 5): only rights, which stores the scope, and connections, which decides it, name
    * it.
@@ -990,6 +1009,78 @@ public final class ModularArchitecture {
               }
             })
         .allowEmptyShould(true);
+  }
+
+  /**
+   * Inside {@link #LLM} the scaffold names no subpackage, a role of {@link #LLM_ROLES} names only
+   * the scaffold, and a package of {@link #LLM_ACROSS_ROLES} names no package that spans roles but
+   * itself. A subpackage in neither list, other than the web package, is reported.
+   */
+  ArchRule llmRolesDependOnlyOnTheScaffold() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>("depend inside llm only on the scaffold or the own role") {
+              private final Set<String> unlisted = new TreeSet<>();
+
+              @Override
+              public void check(JavaClass origin, ConditionEvents events) {
+                String from = relative(origin.getBaseComponentType().getPackageName());
+                if (from == null || !isLlmPackage(from) || isWebPackage(from)) {
+                  return;
+                }
+                boolean role = LLM_ROLES.contains(from);
+                if (!from.equals(LLM) && !role && !LLM_ACROSS_ROLES.contains(from)) {
+                  unlisted.add(from);
+                  return;
+                }
+                for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
+                  String to =
+                      relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
+                  if (to == null
+                      || !isLlmPackage(to)
+                      || isWebPackage(to)
+                      || to.equals(from)
+                      || (!from.equals(LLM) && to.equals(LLM))
+                      || (LLM_ACROSS_ROLES.contains(from) && LLM_ROLES.contains(to))) {
+                    continue;
+                  }
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          dependency,
+                          from
+                              + " -> "
+                              + to
+                              + (from.equals(LLM)
+                                  ? " lets the llm scaffold name a package below it"
+                                  : role
+                                      ? " lets a model role name a package other than the llm"
+                                          + " scaffold"
+                                      : " lets a package spanning the roles name another one")
+                              + ": "
+                              + dependency.getDescription()));
+                }
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                unlisted.forEach(
+                    name ->
+                        events.add(
+                            SimpleConditionEvent.violated(
+                                name,
+                                root
+                                    + "."
+                                    + name
+                                    + " is not assigned: add it to ModularArchitecture.LLM_ROLES or"
+                                    + " ModularArchitecture.LLM_ACROSS_ROLES")));
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  private static boolean isLlmPackage(String relative) {
+    return relative.equals(LLM) || relative.startsWith(LLM + ".");
   }
 
   /**
@@ -2033,6 +2124,7 @@ public final class ModularArchitecture {
         theIndexingCoreDependsOnlyDownward(),
         everyIndexingPackageIsInTheCore(),
         theConnectionPackagesDependOnlyDownward(),
+        llmRolesDependOnlyOnTheScaffold(),
         theFileSyncKnowsNoProvider(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),

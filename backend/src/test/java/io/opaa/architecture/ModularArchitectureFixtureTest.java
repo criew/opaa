@@ -170,6 +170,36 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * The scaffold names a role, a role names another role, and {@code llm.stray} is in no list; a
+   * role on the scaffold, the administration on every role and the web package pass.
+   */
+  @Test
+  void anLlmEdgeBesideTheScaffoldIsReported() {
+    Scenario scenario = new Scenario("llmroles");
+
+    assertThat(scenario.violations(ModularArchitecture::llmRolesDependOnlyOnTheScaffold))
+        .hasSize(3)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "llm -> llm.rerank lets the llm scaffold name a package below it",
+                        "llm.Scaffold"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains(
+                        "llm.rerank -> llm.transcription lets a model role name a package",
+                        "rerank.RerankRole"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("llmroles.llm.stray is not assigned", "LLM_ROLES"))
+        .noneSatisfy(violation -> assertThat(violation).contains("RoleAdministration"))
+        .noneSatisfy(violation -> assertThat(violation).contains("RoleApi"))
+        .noneSatisfy(violation -> assertThat(violation).contains("TranscriptionRole."));
+  }
+
+  /**
    * The web layer and library read a profile's registration, and a profile class holds the value;
    * the sign-in and the two classes that build the value pass.
    */
