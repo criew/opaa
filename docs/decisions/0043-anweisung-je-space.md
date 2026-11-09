@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0031](0031-gespraechsgedaechtnis.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt [ADR-0031](0031-gespraechsgedaechtnis.md)
 
 ## Kontext
 
@@ -65,6 +65,8 @@ Sprachzeile nach dem letzten Kontextabschnitt überlässt die Sprache dann der A
 (`AnswerGenerationService.SPACE_LANGUAGE_REMINDER`); Zitierpflicht,
 Zitatformat und das Verbot erfundener Quellen gelten unabhängig von seinem Wortlaut. Ein abweichender
 Wunsch der fragenden Person aus diesem Gespräch geht ihm vor, deshalb steht die Notiz hinter ihm.
+In der Werkzeugschleife steht die Anweisung eines Agenten zwischen den festen Regeln und dem
+Space-Block; der Space-Block geht ihr vor ([ADR-0070](0070-werkzeugaufrufe-im-chat.md), Entscheidung 5).
 
 ### 7. Ohne Anweisung bleibt alles, wie es war
 
