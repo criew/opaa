@@ -12,6 +12,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Katalog nutzen](../benutzer/katalog.md) | — | Leserecht; zuordnen als *Kurator* | — | ja |
 | [Wissensbibliothek anlegen](../benutzer/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
 | [Prompt-Bibliothek anlegen](../benutzer/prompt-bibliothek-anlegen.md) | — | Prompts schreiben ab *Bearbeiter* | „Prompt-Bibliotheken anlegen“ | jedes Konto |
+| [Agent anlegen](../benutzer/agent-anlegen.md) | — | einrichten ab *Verwalter* | „Agenten anlegen“, Agenten eingeschaltet | niemand, Agenten aus |
 | [Space anlegen](../benutzer/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
 | [Konto verbinden](../benutzer/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
 | [Private Bibliothek anlegen](../benutzer/private-bibliothek.md) | — | verbundenes Konto | Anlegerecht für den Zugang | kein Zugang |
@@ -44,6 +45,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Ausscheiden und Nachfolge](../administration/ausscheiden.md) | Systemverwaltung; eigenes Eigentum jede Person | „Administration → Ohne Zuständigkeit“ | — |
 | [Zugänge einrichten](../administration/zugaenge.md) | Systemverwaltung | „Administration → Anbindungen“ | kein Zugang |
 | [Externe KI-Werkzeuge zulassen](../administration/externe-ki-werkzeuge.md) | Systemverwaltung | „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“ | aus |
+| [Agenten einschalten](../administration/agenten.md) | Systemverwaltung | „Administration → Agenten“ | aus, „Rechnen“ aus |
 | [Modelle verwalten](../administration/modelle.md) | Systemverwaltung | „Administration → Modelle“ | Reranking, Spracheingabe aus |
 | [Suche und Indexierung](../administration/suche-und-indexierung.md) | Systemverwaltung; „Sicht als“ nur mit Befugnis | „Administration → Suche & Indexierung“ | keine Befugnis |
 | [Datenschutz einstellen](../administration/datenschutz.md) | Systemverwaltung | „Administration → Datenschutz“ | siehe Seite |
