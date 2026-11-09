@@ -36,8 +36,8 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Deep Research** — kein eigener Betriebsmodus, sondern ein mitgelieferter Agent „Recherche“ auf der
   Werkzeugschleife (siehe D): sichtbarer Plan mit Teilfragen, mehrstufige Suche, gegliederter Bericht mit
-  Fundstellen und benannten Widersprüchen, Ergebnis als Datei nach Vorlage, Verbrauch vorab angezeigt.
-  _(Epic #1747)_
+  Fundstellen und benannten Widersprüchen, Ergebnis als Datei nach der Vorlage des Agenten, Verbrauch
+  vorab angezeigt. _(Epic #1747)_
 - **Bildverständnis** — Fotos, Diagramme und Handschrift erschließen; gescannte PDF-Dokumente liest
   die Texterkennung bereits, ihr Text ist als erkannt gekennzeichnet. Offen: Fotos und
   Bilddateien, einzelne Scanseiten in PDF mit Textebene, Rahmen im Viewer. _(Epic #2640)_
@@ -103,8 +103,8 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 - **Textwerkzeuge** — Zusammenfassung, Übersetzung, Leichte Sprache/Amtssprache, Export nach Text,
   Tabelle, Textdokument, Foliensatz (siehe K).
 - **Isolierte Ausführungsumgebung je Sitzung** — Dateiverarbeitung, Tabellenauswertung, OCR, Transkription
-  mit Sprechererkennung, Diagramme und Foliensätze; Sandbox lebt je Sitzung, Korrekturen arbeiten im
-  selben Ordner; Umgang mit Abbrüchen offen. Spike mit `run_code` gebaut. _(Epic #3583)_
+  mit Sprechererkennung, Diagramme und Foliensätze; Sandbox lebt je Sitzung und Person, Korrekturen
+  arbeiten im selben Ordner; Umgang mit Abbrüchen offen. Spike mit `run_code` gebaut. _(Epic #3583)_
 - **Ausgangstor (Egress-Kontrollpunkt)** — Genehmigungsfähigkeit klären (TLS-Aufbruch, Protokollumfang,
   Verhältnis zu Proxy und Zielprüfung) vor dem Bau fremder Werkzeuge. ⚑
 - **MCP-Client mit Zulassungsliste** — fremde MCP-Server als Werkzeuge, Liste der Systemverwaltung mit
@@ -114,12 +114,10 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Vorgang.
 - **Auslösung ohne Person** — Zeitpläne und Ereignis-Auslöser für Agenten; mit wessen Rechten, ist
   offen. ⚑
-- **Offene Grundsatzfragen der Werkzeugschleife** — Höhe der Grenzen und des Platzlimits, mehrschrittige
-  Suche statt fester Zerlegung, Begründungspflicht je Aufruf, Unterrichtung der Beschäftigten, Agent
-  ruft Agent, Belegvalidierung für Agenten. ⚑
-- **Oberflächenfragen zu Skills und Agenten** — Wirkdauer,
-  Ungelesen-Markierung langer Läufe, Agentenstart ohne Gespräch, Teilen von Läufen. _(#1297 (Postfach) ·
-  ⚑)_
+- **Offene Grundsatzfragen der Werkzeugschleife** — Höhe der Grenzen und des Platzlimits,
+  Begründungspflicht je Aufruf, Unterrichtung der Beschäftigten, Agent ruft Agent. ⚑
+- **Oberflächenfragen zu Skills und Agenten** — Wirkdauer, Ungelesen-Markierung langer Läufe,
+  Agentenstart ohne Gespräch, Teilen von Läufen. _(#1297 (Postfach) · ⚑)_
 
 ### E · Modelle & zentrale Steuerung
 
