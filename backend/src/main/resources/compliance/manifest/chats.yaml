@@ -73,7 +73,9 @@ data:
     title: Anhänge an Chatfragen
     purpose: >-
       Dokumente, die die Person einer Chatfrage anhängt, damit die Antwort ihren Inhalt nutzt; Text
-      und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek
+      und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek. Das Werkzeug run_code des
+      Entwicklungs-Spikes (Voreinstellung aus) legt die von ihm erzeugten Dateien ebenfalls als
+      Anhänge der fragenden Person an
     personalReference: EMPLOYEE
     tables:
       - name: chat_attachments

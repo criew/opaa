@@ -89,8 +89,9 @@ dataFlows:
     group: MODEL
     viaOutboundProxy: true
     target: >-
-      Der Texterkennungsdienst, den die Systemverwaltung in der Modellverwaltung hinterlegt: ein
-      docling-serve, etwa der mitgelieferte Container, oder ein OpenAI-kompatibles Vision-Modell
+      Der Texterkennungsdienst, den die Systemverwaltung in der Modellverwaltung hinterlegt, und im
+      Installationsassistenten der Dienst, den die einrichtende Person angibt: ein docling-serve,
+      etwa der mitgelieferte Container, oder ein OpenAI-kompatibles Vision-Modell
     data: >-
       Ganze Seiten gescannter PDF-Dokumente der Bibliotheken, als PDF (docling-serve) oder als
       Seitenbild (Vision-Modell), mit allem, was darauf steht; Verbindungstest nur die mitgelieferte
@@ -98,17 +99,22 @@ dataFlows:
       oder der Modellliste
     trigger: >-
       Indizierung eines gescannten PDF-Dokuments ohne Textebene, auch das Nachholen wartender Scans
-      hochgeladener Dokumente alle fünf Minuten, solange die Texterkennung eingeschaltet ist, höchstens
+      hochgeladener Dokumente im Takt opaa.ocr.catch-up-interval (Voreinstellung fünf Minuten,
+      mindestens 20 Sekunden), solange die Texterkennung eingeschaltet ist, höchstens
       opaa.ocr.max-pages-per-run Seiten je Lauf oder Durchgang; nie bei einer Neuindizierung
       unveränderter Dokumente, die den gespeicherten Erkennungsstand nutzt; Statusprüfung und
-      Verbindungstest in der Modellverwaltung ohne Dokumentseiten
+      Verbindungstest in der Modellverwaltung ohne Dokumentseiten; im Installationsassistenten die
+      Prüfung des Schritts Texterkennung mit der Testseite, nur mit dem Installations-Token oder
+      beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
       die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der
-      Modellverwaltung
+      Modellverwaltung. Der Abschluss der Installation schaltet die Rolle nur ein, wenn der Schritt
+      Texterkennung geprüft und nicht übersprungen ist
     settings:
-      [opaa.ocr.enabled, text_recognition_model.enabled, text_recognition_model.connection_type,
-      text_recognition_model.base_url]
+      [opaa.ocr.enabled, opaa.ocr.catch-up-interval, opaa.ocr.max-pages-per-run,
+      text_recognition_model.enabled, text_recognition_model.connection_type,
+      text_recognition_model.base_url, installation_steps.payload]
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true
@@ -316,8 +322,10 @@ dataFlows:
       Zugangslinks, Sperre mit Sperrgrund und bei einer Sperre durch die Systemverwaltung Hinweis auf
       die Löschung der Chats, Freischaltung, Ablaufdatum des Kontos, Kontoübergabe, Zeitpunkt einer
       gestarteten Selbstauskunft, Zeitpunkt der Anmeldung des Bootstrap-Kontos, Name des erzeugten
-      oder ablaufenden Zugangstokens, Name der Bibliothek bei einer ablaufenden Freigabe, bei der
-      Erinnerung an die Prüfung der Zugänge nur deren Anzahl, Testmail); bei der Prüfung im
+      oder ablaufenden Zugangstokens, Name der Bibliothek bei einer ablaufenden Freigabe, bei den
+      Erinnerungen zu einem Dienstkonto dessen Name, Name des ablaufenden Tokens oder der
+      Bibliothek, deren Zustimmung endet, und das Ablaufdatum, bei der Erinnerung an die Prüfung
+      der Zugänge nur deren Anzahl, Testmail); bei der Prüfung im
       Assistenten nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort angegebene
       Adresse
     trigger: >-
@@ -325,8 +333,10 @@ dataFlows:
       durch die Systemverwaltung oder wegen Inaktivität und Freischaltung, bevorstehender Ablauf
       eines Kontos, angefragte und erfolgte Kontoübergabe, Erinnerung der Systemverwaltung an die
       Prüfung der Zugänge, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende Freigaben
-      für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, Start einer Selbstauskunft,
-      Testmail; im Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
+      für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, bevorstehender Ablauf eines
+      Tokens eines Dienstkontos oder der Zustimmung einer Bibliothek zu ihm (an die verantwortliche
+      Person und die Systemverwaltung), Start einer Selbstauskunft, Testmail; im
+      Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
       Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,
