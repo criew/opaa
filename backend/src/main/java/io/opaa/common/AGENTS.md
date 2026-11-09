@@ -6,7 +6,7 @@ ratelimit, sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze, Verschlüsselung,
-Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client, Compliance-Manifest, Instanzregister.
+Ratenbegrenzung, Metriken (Labels nur aus festen kleinen Mengen, [ADR-0070](../../../../../../../docs/decisions/0070-betriebsbeobachtung.md)), Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client, Compliance-Manifest, Instanzregister.
 
 ## Invarianten und Stolpersteine
 
@@ -29,8 +29,6 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
   selbst auf. **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und bedingten Teilgraphen.
 - **Zwei Uhren:** Was eine andere Instanz vergleicht, aus `DatabaseClock` oder `clock_timestamp()`, sonst `Clock`. Ein
   `opaa.*`-Schlüssel ohne `@DataImpact` trägt `@InstallationWide` oder `@PerInstance` (`FingerprintKeysTest`).
-- **Metriken (`io.opaa.observability`):** eigene heißen `opaa.*`, Labels nur aus festen kleinen Mengen, nie Person,
-  Space, Bibliothek, Dokument, Datei oder Suchtext (`MetricTagSourceTest`, `MeterTagCardinalityIntegrationTest`).
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy, `socket://` (SMB, SMTP,
   JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
 
@@ -46,7 +44,6 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
 - [ADR-0050](../../../../../../../docs/decisions/0050-ausgangsproxy-und-zertifikatspruefung.md): Ausgangsproxy, Zertifikatsprüfung
 - [ADR-0052](../../../../../../../docs/decisions/0052-compliance-manifest.md): Compliance-Manifest; Fundstellen nur als Namen, kein Import nach oben
 - [ADR-0053](../../../../../../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) (Entscheidungen 3, 4, 5, 9): Instanzregister, Abdruck, Invalidierungsbus (`InvalidationSubscriber`), Datenbankuhr
-- [ADR-0070](../../../../../../../docs/decisions/0070-betriebsbeobachtung.md): Metriken, Label-Regeln, Health- und Probe-Modell
 
 ## Verweise
 
