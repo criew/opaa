@@ -64,6 +64,8 @@ class SpecEnumParityTest {
         Arguments.of("DirectoryConnectorType", DirectoryConnectorType.values()),
         Arguments.of("AssetOwnerType", AssetOwnerType.values()),
         Arguments.of("AssetOrigin", AssetOrigin.values()),
+        Arguments.of("ToolCapability", ToolCapability.values()),
+        Arguments.of("ToolCapabilityBasis", ToolCapabilityBasis.values()),
         Arguments.of("ExternalAccessState", ExternalAccessState.values()),
         Arguments.of("DocumentStatus", DocumentStatus.values()),
         Arguments.of("CatalogVisibility", CatalogVisibility.values()),

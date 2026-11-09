@@ -338,6 +338,10 @@ nonPersonalTables:
     - active
     - created_at
     - updated_at
+    - tool_capability
+    - tool_capability_basis
+    - tool_capability_assessed_at
+    - tool_capability_measurement_run
   llm_model_seed_marker: [id, seeded_at]
   embedding_model:
     - id

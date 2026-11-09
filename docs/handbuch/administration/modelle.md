@@ -31,6 +31,45 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 in Sekunden um. Ein Modell bei einem anderen Anbieter schickt Fragen und Textausschnitte an einen
 anderen Empfänger; das klärt das Haus vorher mit Datenschutz und Personalvertretung.
 
+## Werkzeugfähigkeit festhalten
+
+Manche Anfragen lassen das Modell Werkzeuge aufrufen, etwa die eigene Suche mehrmals hintereinander.
+Ob ein Modell das zuverlässig kann, hängt nicht nur am Modell, sondern auch an Quantisierung,
+Laufzeit und deren Einstellungen: Eine Laufzeit braucht einen eigenen Schalter dafür, eine andere
+verliert Werkzeugaufrufe bei der Ausgabe im Fluss, und eine zu kleine Kontextlänge schneidet die
+Werkzeugbeschreibungen stillschweigend ab. Die Angabe gilt deshalb für diesen Endpunkt und diese
+Laufzeit.
+
+1. Im Zeilenmenü „Werkzeugfähigkeit festlegen“.
+2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen und speichern.
+
+| Wert | Anfrage mit Werkzeugen |
+|---|---|
+| „Ungeprüft“ (Vorgabe jedes Modells) | wird abgelehnt |
+| „Fähig“ | läuft |
+| „Nicht fähig“ | wird abgelehnt |
+
+Abgelehnt heißt: Die Person bekommt eine Meldung, dass das aktive Modell dafür nicht geprüft oder
+nicht fähig ist und die Systemverwaltung das ändern kann. OPAA beantwortet eine solche Anfrage nie
+stillschweigend ohne Werkzeuge. Der gewöhnliche Chat funktioniert mit jedem Wert.
+
+Die Spalte „Werkzeuge“ zeigt neben dem Wert die **Grundlage** der Angabe und ihr Datum: „manuell
+gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennbar, ob „Fähig“ ein
+Messergebnis oder eine Behauptung ist. In der Oberfläche wird die Angabe manuell gesetzt; eine
+gemessene Angabe samt Messlauf trägt die Verwaltungsschnittstelle ein. Eine Person oder Gruppe
+steht nicht am Modell. Wer die Angabe geändert hat, steht im
+[Nachweisprotokoll](nachweisprotokoll-lesen.md) als Änderung des Chat-Modells, mit dem Wert vorher
+und nachher.
+
+**Ändern sich Basis-Adresse oder Modell-Kennung, ist die Angabe wieder „Ungeprüft“**, samt
+Grundlage und Datum. Das Formular weist vor dem Speichern darauf hin. Nach einem Umzug des
+Modellservers oder einem Update der Laufzeit mit neuer Adresse muss also erneut geprüft werden. Ein
+Update an derselben Adresse setzt nichts zurück; dann die Angabe selbst auf „Ungeprüft“ stellen und
+neu prüfen.
+
+Ist das aktive Modell beim Start „Ungeprüft“, schreibt jede Instanz eine Warnung ins Log; der Start
+läuft weiter.
+
 ## Embedding-Modell wechseln
 
 Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:

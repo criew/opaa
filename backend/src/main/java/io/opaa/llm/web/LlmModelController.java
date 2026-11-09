@@ -6,6 +6,8 @@ import io.opaa.api.dto.LlmModelRequest;
 import io.opaa.api.dto.LlmModelResponse;
 import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
+import io.opaa.api.dto.LlmModelToolCapability;
+import io.opaa.api.dto.LlmModelToolCapabilityRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
@@ -97,6 +99,23 @@ public class LlmModelController {
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/{modelId}/tool-capability")
+  public LlmModelResponse setToolCapability(
+      @PathVariable UUID modelId,
+      @Valid @RequestBody LlmModelToolCapabilityRequest request,
+      @Caller CurrentUser caller) {
+    LlmModel model =
+        llmModelService.setToolCapability(
+            caller.organizationId(),
+            caller.id(),
+            modelId,
+            request.getValue(),
+            request.getBasis(),
+            request.getMeasurementRun());
+    return toResponse(model);
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{modelId}")
   public ResponseEntity<Void> deleteModel(@PathVariable UUID modelId, @Caller CurrentUser caller) {
     llmModelService.deleteModel(caller.organizationId(), caller.id(), modelId);
@@ -157,6 +176,11 @@ public class LlmModelController {
         model.getMaxTokens(),
         model.getApiKeyCiphertext() != null,
         model.isActive(),
+        new LlmModelToolCapability(
+            model.getToolCapability(),
+            model.getToolCapabilityBasis(),
+            model.getToolCapabilityAssessedAt(),
+            model.getToolCapabilityMeasurementRun()),
         model.getCreatedAt(),
         model.getUpdatedAt());
   }
