@@ -21,6 +21,8 @@ export const mockLocalAccountsConfig: LocalAccountsConfig = {
 /** Every installation-wide feature flag switched on, as an installation without configuration. */
 export const mockFeaturesConfig: FeaturesConfig = {
   promptLibraries: true,
+  agents: true,
+  templates: true,
   metadata: true,
   speechInput: true,
   externalAccess: true,

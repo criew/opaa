@@ -11,5 +11,6 @@ export const mockMyCapabilities: MyCapabilitiesResponse = {
     'CREATE_CONNECTOR_LIBRARY',
     'CREATE_INTERNAL_GROUP',
     'CREATE_PROMPT_LIBRARY',
+    'CREATE_AGENT',
   ],
 }

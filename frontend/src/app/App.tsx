@@ -64,6 +64,9 @@ import {
   OidcProviderManagementPage,
   PrivacySettingsPage,
   PromptLibraryCreatePage,
+  AgentCreatePage,
+  AgentDetailPage,
+  AgentEditPage,
   PromptLibraryDetailPage,
   ProviderGroupWorklistPage,
   RegisterPage,
@@ -147,6 +150,7 @@ const Router = import.meta.env.MODE === 'prototype' ? HashRouter : BrowserRouter
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const promptLibraries = useFeatureEnabled('promptLibraries')
+  const agents = useFeatureEnabled('agents')
   const externalAccess = useFeatureEnabled('externalAccess')
   const themeMode = useUiStore((s) => s.themeMode)
   const branding = useBrandingStore((s) => s.branding)
@@ -259,6 +263,20 @@ export default function App() {
                     </>
                   ) : (
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
+                  )}
+                  {agents ? (
+                    <>
+                      <Route
+                        path="agents"
+                        element={<Navigate to={catalogRoute('AGENT')} replace />}
+                      />
+                      <Route path="agents/new" element={<AgentCreatePage />} />
+                      <Route path="agents/:agentId" element={<AgentDetailPage />} />
+                      <Route path="agents/:agentId/edit" element={<AgentEditPage />} />
+                      <Route path="agents/:agentId/:tab" element={<AgentDetailPage />} />
+                    </>
+                  ) : (
+                    <Route path="agents/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
                 </Route>
                 {/* Global areas render inside the global frame: no space

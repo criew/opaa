@@ -1,0 +1,34 @@
+{
+  "args": {
+    "base": "http://localhost:5197",
+    "out": "/home/user/opaa/.claude/worktrees/agent-ad2bff6836bc3e621/e2e/ui-lab/results/formular",
+    "flow": "agents",
+    "variant": "formular",
+    "schemes": [
+      "light"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "concurrency": 3,
+    "scenarios": [
+      "default",
+      "scale",
+      "empty",
+      "norights"
+    ],
+    "areas": [
+      "setup",
+      "validation",
+      "filled",
+      "detail",
+      "pick",
+      "chosen",
+      "newentry"
+    ]
+  },
+  "shots": 52,
+  "seconds": 134,
+  "finishedAt": "2026-11-09T21:40:35.616Z"
+}

@@ -47,6 +47,7 @@ const STATUS_DOT: Record<AssetTileStatus, string> = {
   UPDATE_FAILED: 'error.main',
   NOT_YET_AVAILABLE: 'text.disabled',
   SUCCESSION_OPEN: 'warning.main',
+  LOCKED: 'error.main',
 }
 
 /** A state that needs attention, in words behind a coloured dot - the colour never in the text. */

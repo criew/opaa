@@ -21,11 +21,15 @@ export function featureEnabledIn(features: FeatureFlags, name: FeatureName): boo
 /** The asset types that belong to a feature; switched off, the type is offered nowhere. */
 export const ASSET_TYPE_FEATURES: Partial<Record<AssetType, FeatureName>> = {
   PROMPT_LIBRARY: 'promptLibraries',
+  AGENT: 'agents',
+  DOCUMENT_TEMPLATE: 'templates',
 }
 
 /** The capabilities that belong to a feature; switched off, the right is neither held nor named. */
 export const CAPABILITY_FEATURES: Partial<Record<Capability, FeatureName>> = {
   CREATE_PROMPT_LIBRARY: 'promptLibraries',
+  CREATE_AGENT: 'agents',
+  CREATE_TEMPLATE: 'templates',
 }
 
 /** Whether the installation offers the asset type, by the given flags or the current ones. */

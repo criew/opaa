@@ -51,6 +51,18 @@ const assetRoleDescriptions: Record<AssetType, Record<AssetRole, string>> = {
     MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Prompt-Bibliothek ändern.',
     OWNER: 'Darf zusätzlich die Prompt-Bibliothek samt ihrer Prompts löschen.',
   },
+  AGENT: {
+    VIEWER: 'Darf den Agenten im Chat aufrufen und seine Einrichtung einsehen.',
+    EDITOR: 'Darf zusätzlich Anweisung, Wissen, Werkzeuge und Grenzen ändern.',
+    MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit des Agenten ändern.',
+    OWNER: 'Darf zusätzlich den Agenten löschen und das Eigentum übertragen.',
+  },
+  DOCUMENT_TEMPLATE: {
+    VIEWER: 'Darf die Vorlage in Agenten verwenden und herunterladen.',
+    EDITOR: 'Darf zusätzlich eine neue Fassung der Vorlage hochladen.',
+    MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Vorlage ändern.',
+    OWNER: 'Darf zusätzlich die Vorlage löschen und das Eigentum übertragen.',
+  },
 }
 
 export function assetRoleDescription(
@@ -66,6 +78,9 @@ const assetGrantScopeHints: Record<AssetType, string> = {
     'Eine Freigabe gewährt Zugriff auf alle Dokumente dieser Bibliothek, nicht auf eine Auswahl.',
   PROMPT_LIBRARY:
     'Eine Freigabe gewährt Zugriff auf alle Prompts dieser Prompt-Bibliothek, nicht auf eine Auswahl.',
+  AGENT:
+    'Eine Freigabe öffnet den Agenten, nicht sein Wissen: Er liest mit den Rechten der aufrufenden Person.',
+  DOCUMENT_TEMPLATE: 'Eine Freigabe erlaubt, die Vorlage in eigenen Agenten zu verwenden.',
 }
 
 /** What one grant opens on an asset of this type - the first sentence of the rights dialog. */
@@ -119,6 +134,7 @@ const catalogStatusLabels: Record<Exclude<CatalogEntryStatus, 'READY'>, string> 
   UPDATE_FAILED: 'Aktualisierung fehlgeschlagen',
   NOT_YET_AVAILABLE: 'Noch kein Inhalt',
   SUCCESSION_OPEN: 'Nachfolge offen',
+  LOCKED: 'Gesperrt',
 }
 
 /** The word for a state that is not READY; READY needs no word. */

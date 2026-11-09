@@ -35,6 +35,7 @@ export const THEMES = [
   'link-targets',
   'settings',
   'installation',
+  'agent',
 ]
 
 /** Cross-cutting building blocks; may depend on nothing but itself. */
@@ -51,7 +52,8 @@ export const TEST_INFRA = 'src/test'
  * `app` and `test-infra` reach every theme. Edges point from the depending theme to its targets.
  */
 export const ALLOWED = {
-  chat: ['space', 'prompt', 'library'],
+  chat: ['space', 'prompt', 'library', 'agent'],
+  agent: ['asset'],
   space: ['asset', 'principal', 'succession'],
   asset: ['principal', 'succession'],
   library: ['asset', 'principal', 'succession', 'connection', 'external-access'],

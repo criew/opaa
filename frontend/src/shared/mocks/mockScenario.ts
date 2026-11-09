@@ -12,6 +12,8 @@ import { delay } from 'msw'
  * - `slow`: listings and connection tests answer after three seconds
  * - `failed`: listings fail (HTTP 403/502), connection tests report a refused sign-in
  * - `partial`: listings are incomplete, connection tests fail for some scopes
+ * - `norights`: like `default`, but the person lacks the creation right for agents
+ * - `agentsoff`: like `default`, with the installation-wide agents feature switched off
  */
 export const MOCK_SCENARIOS = [
   'default',
@@ -21,6 +23,8 @@ export const MOCK_SCENARIOS = [
   'slow',
   'failed',
   'partial',
+  'norights',
+  'agentsoff',
 ] as const
 
 export type MockScenario = (typeof MOCK_SCENARIOS)[number]

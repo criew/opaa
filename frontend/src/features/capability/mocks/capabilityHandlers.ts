@@ -1,3 +1,4 @@
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 import { http, HttpResponse } from 'msw'
 import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 import { mockMyCapabilities } from './capabilityFixtures'
@@ -11,6 +12,16 @@ export const capabilityHandlers = [
         ...mockMyCapabilities,
         capabilities: mockMyCapabilities.capabilities.filter(
           (capability) => capability !== 'CREATE_PROMPT_LIBRARY',
+        ),
+      })
+    }
+    // UI lab: `norights` lacks the agent right, `agentsoff` hides it with its feature.
+    const scenario = currentMockScenario()
+    if (scenario === 'norights' || scenario === 'agentsoff') {
+      return HttpResponse.json({
+        ...mockMyCapabilities,
+        capabilities: mockMyCapabilities.capabilities.filter(
+          (capability) => capability !== 'CREATE_AGENT',
         ),
       })
     }

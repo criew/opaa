@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { mockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtures'
 import { mockUser } from '@/shared/mocks/authFixtures'
+import { mockAgent } from '@/features/agent/mocks/agentFixtures'
 import { mockSpaceDetails } from '@/features/space/mocks/spaceFixtures'
 import { mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
 import {
@@ -41,6 +42,7 @@ function mockAssetOf(
 ): { name: string; myRole: AssetRole } | undefined {
   if (assetType === 'PROMPT_LIBRARY') return mockPromptLibraries[assetId]
   if (assetType === 'KNOWLEDGE_LIBRARY') return mockLibraryDetails[assetId]
+  if (assetType === 'AGENT') return mockAgent(assetId)
   return undefined
 }
 

@@ -482,7 +482,7 @@ components:
         The type of an asset on the asset shell.
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
-      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
+      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY, AGENT, DOCUMENT_TEMPLATE]
 
     AssetOrigin:
       type: string
@@ -629,7 +629,7 @@ components:
         UPDATING while a document is still being processed (PENDING), UPDATE_FAILED when a
         document failed, READY when a document is indexed, NOT_YET_AVAILABLE when it holds no
         document at all. A type without a measure of its own, such as a prompt library, is READY.
-      enum: [READY, UPDATING, UPDATE_FAILED, NOT_YET_AVAILABLE, SUCCESSION_OPEN]
+      enum: [READY, UPDATING, UPDATE_FAILED, NOT_YET_AVAILABLE, SUCCESSION_OPEN, LOCKED]
 
     CatalogKnowledgeLibraryFacts:
       type: object

@@ -6,7 +6,7 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
-import { creatableAssetTypes } from '../../../shared/assetTypes'
+import { activeAssetTypes, creatableAssetTypes } from '../../../shared/assetTypes'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import type { AssetType } from '@/shared/api/types'
@@ -21,6 +21,11 @@ export default function CatalogNewPage() {
   const navigate = useNavigate()
   const { isMissing } = useMyCapabilities()
   const offered = creatableAssetTypes(isMissing)
+  // UI lab #3670: the new agent type stays visible when its right is missing, with the reason.
+  const lockedAgent = activeAssetTypes().filter(
+    (definition) =>
+      definition.type === 'AGENT' && !offered.some((entry) => entry.type === definition.type),
+  )
   const [chosen, setChosen] = useState<AssetType | null>(null)
   // Derived, not stored: a type that turns out not to be offered once the rights are in must not
   // stay chosen, or "Weiter" would lead into a wizard that can never create.
@@ -44,13 +49,16 @@ export default function CatalogNewPage() {
             aria-label={QUESTION}
             value={selected?.type ?? null}
             onChange={setChosen}
-            tiles={offered.map((definition) => {
+            tiles={[...offered, ...lockedAgent].map((definition) => {
               const Icon = definition.Icon
               return {
                 value: definition.type,
                 label: definition.label,
                 description: definition.description,
                 icon: <Icon sx={{ fontSize: 22 }} />,
+                disabledReason: lockedAgent.includes(definition)
+                  ? 'Fehlt Ihnen das Anlegerecht. Es vergibt die Systemverwaltung.'
+                  : null,
               }
             })}
           />

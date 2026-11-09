@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { SearchScope } from '../stores/chatSettingsPersistence'
 import { SPACE_KNOWLEDGE_LABEL, findActiveMention } from './chatInputText'
-import type { ActiveMention, MentionSuggestion, SpaceLibrary } from './chatInputText'
+import type { ActiveMention, MentionAgent, MentionSuggestion, SpaceLibrary } from './chatInputText'
 
 interface MentionSuggestionsOptions {
   value: string
@@ -13,6 +13,9 @@ interface MentionSuggestionsOptions {
   referencedLibraryIds: string[]
   setScopeAll: () => void
   addReferencedLibrary: (libraryId: string) => void
+  /** Agents offered above the search scope; empty when the '@' list carries none. */
+  agents?: MentionAgent[]
+  onSelectAgent?: (agentId: string) => void
 }
 
 /**
@@ -28,6 +31,8 @@ export function useMentionSuggestions({
   referencedLibraryIds,
   setScopeAll,
   addReferencedLibrary,
+  agents = [],
+  onSelectAgent,
 }: MentionSuggestionsOptions) {
   const [mention, setMention] = useState<ActiveMention | null>(null)
   // -1 means "nothing explicitly highlighted yet" - Enter only selects once ArrowDown/ArrowUp/
@@ -42,7 +47,11 @@ export function useMentionSuggestions({
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
     const query = mention.query.toLowerCase()
-    const suggestions: MentionSuggestion[] = []
+    const suggestions: MentionSuggestion[] = agents
+      .filter((agent) => agent.name.toLowerCase().includes(query))
+      .slice(0, 4)
+      .map((agent) => ({ kind: 'agent', agent }))
+    const agentCount = suggestions.length
     // @Space-Wissen is always offered first, regardless of the current scope - re-selecting
     // it while already active is a harmless no-op, and it is the only way back once removed.
     if (SPACE_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
@@ -52,10 +61,10 @@ export function useMentionSuggestions({
     spaceLibraries
       .filter((library) => !alreadyReferenced.includes(library.id))
       .filter((library) => library.name.toLowerCase().includes(query))
-      .slice(0, 8 - suggestions.length)
+      .slice(0, 8 - (suggestions.length - agentCount))
       .forEach((library) => suggestions.push({ kind: 'library', library }))
     return suggestions
-  }, [spaceLibraries, mention, referencedLibraryIds, scope])
+  }, [spaceLibraries, mention, referencedLibraryIds, scope, agents])
 
   /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
   const closeMention = () => {
@@ -72,6 +81,8 @@ export function useMentionSuggestions({
     setValue(nextValue)
     if (suggestion.kind === 'all') {
       setScopeAll()
+    } else if (suggestion.kind === 'agent') {
+      onSelectAgent?.(suggestion.agent.id)
     } else {
       addReferencedLibrary(suggestion.library.id)
     }

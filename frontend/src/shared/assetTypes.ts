@@ -1,6 +1,8 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { useMemo } from 'react'
 import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -72,6 +74,34 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     createRoute: '/prompts/new',
     createCapabilities: ['CREATE_PROMPT_LIBRARY'],
     extentLabel: (count) => (count === 1 ? '1 Prompt' : `${count} Prompts`),
+  },
+  {
+    type: 'AGENT',
+    slug: 'agents',
+    label: 'Agenten',
+    title: 'Agent',
+    noun: 'Agent',
+    description: 'Arbeitet eine Aufgabe in mehreren Schritten ab, im Chat per „@“ aufrufbar.',
+    Icon: SmartToyOutlinedIcon,
+    routePrefix: '/agents',
+    detailRoute: (assetId) => `/agents/${assetId}`,
+    createRoute: '/agents/new',
+    createCapabilities: ['CREATE_AGENT'],
+    extentLabel: (count) => (count === 1 ? '1 Bibliothek' : `${count} Bibliotheken`),
+  },
+  {
+    type: 'DOCUMENT_TEMPLATE',
+    slug: 'templates',
+    label: 'Vorlagen',
+    title: 'Vorlage',
+    noun: 'Vorlage',
+    description: 'Word-Vorlage mit Platzhaltern, nach der ein Agent eine Datei erstellt.',
+    Icon: DescriptionOutlinedIcon,
+    routePrefix: '/templates',
+    detailRoute: (assetId) => `/templates/${assetId}`,
+    createRoute: '/templates/new',
+    createCapabilities: ['CREATE_TEMPLATE'],
+    extentLabel: (count) => (count === 1 ? '1 Platzhalter' : `${count} Platzhalter`),
   },
 ]
 

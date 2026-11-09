@@ -1,5 +1,5 @@
 import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react'
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -38,6 +38,35 @@ import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
+import { AgentChatChip, useCallableAgents, type AgentResponse } from '@/features/agent'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import Tooltip from '@mui/material/Tooltip'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
+
+/**
+ * UI lab #3670: how the agent choice meets the '@' scope. `section`: agents head the '@' list;
+ * `button`: an own button beside the input. `replace`: a chosen agent replaces the scope chips
+ * with its own knowledge; `keep`: the scope chips stay and narrow the agent.
+ */
+/** UI lab: the delivered templates' names, enough for the result stamp. */
+function templateLabel(id: string | undefined): string | null {
+  const names: Record<string, string> = {
+    'template-bericht': 'Bericht',
+    'template-vermerk': 'Vermerk',
+    'template-stellungnahme': 'Stellungnahme an den Rat',
+  }
+  return id ? (names[id] ?? 'Vorlage') : null
+}
+
+function agentChatMode(): { pick: 'section' | 'button'; chips: 'replace' | 'keep' } {
+  const variant = currentUiLabVariant() ?? 'formular'
+  return {
+    pick: variant === 'assistent' || variant === 'baukasten' ? 'button' : 'section',
+    chips: variant === 'formular' || variant === 'assistent' ? 'replace' : 'keep',
+  }
+}
 import { useNarrowField } from './useNarrowField'
 import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
@@ -214,6 +243,10 @@ export default function ChatInput({
     onReturnedQuestionHandled?.()
   }, [returnedQuestion, seenReturned, returnedTaken, onReturnedQuestionHandled])
 
+  const callableAgents = useCallableAgents()
+  const agentMode = agentChatMode()
+  const [chosenAgent, setChosenAgent] = useState<AgentResponse | null>(null)
+  const [agentMenuAnchor, setAgentMenuAnchor] = useState<HTMLElement | null>(null)
   const { chatSpaceId, spaceRole, spaceLibraries, knowledgeGap, libraryChips, scopeNotice } =
     useSpaceLibraryScope(scope, referencedLibraryIds)
   const {
@@ -235,6 +268,9 @@ export default function ChatInput({
     referencedLibraryIds,
     setScopeAll,
     addReferencedLibrary,
+    agents: agentMode.pick === 'section' && !chosenAgent ? callableAgents : [],
+    onSelectAgent: (agentId) =>
+      setChosenAgent(callableAgents.find((agent) => agent.id === agentId) ?? null),
   })
 
   useEffect(() => {
@@ -270,7 +306,11 @@ export default function ChatInput({
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
     actions.track(nextValue, cursor)
-    trackMention(nextValue, cursor, scopeLocked)
+    trackMention(
+      nextValue,
+      cursor,
+      scopeLocked || (chosenAgent !== null && agentMode.chips === 'replace'),
+    )
   }
 
   const handleSend = () => {
@@ -420,26 +460,41 @@ export default function ChatInput({
           <SpaceKnowledgeNotice spaceId={chatSpaceId} gap={knowledgeGap} role={spaceRole} />
         </Box>
       )}
-      <ChatScopeChipBar
-        selected={actions.selected}
-        onClearSelected={actions.clearSelected}
-        disabled={disabled}
-        scope={scope}
-        scopeLocked={scopeLocked}
-        libraryChips={libraryChips}
-        onClearScope={clearScope}
-        onSetScopeAll={setScopeAll}
-        onRemoveLibrary={removeReferencedLibrary}
-        metadataEnabled={metadataEnabled}
-        metadataFilter={metadataFilter}
-        filterOptions={filterOptions}
-        filterScope={filterScope}
-        onMetadataFilterChange={setMetadataFilter}
-        documentTypeChipLabel={documentTypeChipLabel}
-        dateChip={dateChip}
-        onRemoveDocumentTypeFilter={removeDocumentTypeFilter}
-        onRemoveDateFilter={removeDateFilter}
-      />
+      {chosenAgent && (
+        <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mb: 1 }}>
+          <AgentChatChip
+            agent={chosenAgent}
+            replacesScope={agentMode.chips === 'replace'}
+            templateName={
+              chosenAgent.output === 'FILE' ? templateLabel(chosenAgent.templateIds[0]) : null
+            }
+            onRemove={() => setChosenAgent(null)}
+            disabled={disabled}
+          />
+        </Box>
+      )}
+      {!(chosenAgent && agentMode.chips === 'replace') && (
+        <ChatScopeChipBar
+          selected={actions.selected}
+          onClearSelected={actions.clearSelected}
+          disabled={disabled}
+          scope={scope}
+          scopeLocked={scopeLocked}
+          libraryChips={libraryChips}
+          onClearScope={clearScope}
+          onSetScopeAll={setScopeAll}
+          onRemoveLibrary={removeReferencedLibrary}
+          metadataEnabled={metadataEnabled}
+          metadataFilter={metadataFilter}
+          filterOptions={filterOptions}
+          filterScope={filterScope}
+          onMetadataFilterChange={setMetadataFilter}
+          documentTypeChipLabel={documentTypeChipLabel}
+          dateChip={dateChip}
+          onRemoveDocumentTypeFilter={removeDocumentTypeFilter}
+          onRemoveDateFilter={removeDateFilter}
+        />
+      )}
       <ChatAttachmentDraftChips
         items={draft.items}
         notice={draft.notice}
@@ -521,6 +576,52 @@ export default function ChatInput({
             '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
           }}
         />
+        {agentMode.pick === 'button' && callableAgents.length > 0 && (
+          <>
+            <Tooltip title="Agent wählen">
+              <IconButton
+                onClick={(e) => setAgentMenuAnchor(e.currentTarget)}
+                disabled={disabled}
+                aria-label="Agent wählen"
+                aria-haspopup="menu"
+                aria-expanded={agentMenuAnchor !== null}
+                sx={{
+                  alignSelf: 'flex-end',
+                  p: 1,
+                  color: chosenAgent ? 'primary.main' : 'text.secondary',
+                }}
+              >
+                <SmartToyOutlinedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={agentMenuAnchor}
+              open={agentMenuAnchor !== null}
+              onClose={() => setAgentMenuAnchor(null)}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              slotProps={{ paper: { sx: { maxHeight: 360, maxWidth: 360 } } }}
+            >
+              {callableAgents.map((agent) => (
+                <MenuItem
+                  key={agent.id}
+                  selected={chosenAgent?.id === agent.id}
+                  onClick={() => {
+                    setChosenAgent(agent)
+                    setAgentMenuAnchor(null)
+                    inputRef.current?.focus()
+                  }}
+                  sx={{ display: 'block', whiteSpace: 'normal' }}
+                >
+                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{agent.name}</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    {agent.description}
+                  </Typography>
+                </MenuItem>
+              ))}
+            </Menu>
+          </>
+        )}
         {uploadsEnabled && (
           <>
             <input
@@ -614,21 +715,37 @@ export default function ChatInput({
                 borderColor: 'divider',
               }}
             >
-              Suchbereich eingrenzen
+              {suggestions.some((suggestion) => suggestion.kind === 'agent')
+                ? 'Agenten'
+                : 'Suchbereich eingrenzen'}
             </Typography>
             {suggestions.length > 0 ? (
-              <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
+              <List id={mentionListboxId} role="listbox" aria-label="Agent oder Suchbereich" dense>
                 {suggestions.map((suggestion, index) => {
-                  const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
-                  const name = suggestion.kind === 'all' ? '@Space-Wissen' : suggestion.library.name
+                  const key =
+                    suggestion.kind === 'all'
+                      ? '@all-knowledge'
+                      : suggestion.kind === 'agent'
+                        ? `agent:${suggestion.agent.id}`
+                        : suggestion.library.id
+                  const name =
+                    suggestion.kind === 'all'
+                      ? '@Space-Wissen'
+                      : suggestion.kind === 'agent'
+                        ? suggestion.agent.name
+                        : suggestion.library.name
                   const badge =
                     suggestion.kind === 'all'
                       ? 'Wissen des Space · hebt Eingrenzung auf'
                       : 'Bibliothek · verengt die Suche'
+                  const firstScope =
+                    suggestion.kind !== 'agent' &&
+                    index > 0 &&
+                    suggestions[index - 1].kind === 'agent'
                   const query = mention?.query ?? ''
                   const matchIndex =
                     query.length > 0 ? name.toLowerCase().indexOf(query.toLowerCase()) : -1
-                  return (
+                  const option = (
                     <ListItemButton
                       key={key}
                       id={`${mentionListboxId}-option-${index}`}
@@ -646,7 +763,26 @@ export default function ChatInput({
                         },
                       }}
                     >
-                      {suggestion.kind === 'all' ? (
+                      {suggestion.kind === 'agent' ? (
+                        <Box
+                          component="span"
+                          aria-hidden
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            borderRadius: '6px',
+                            border: 1,
+                            borderColor: 'divider',
+                            bgcolor: 'background.default',
+                            flex: 'none',
+                          }}
+                        >
+                          <SmartToyOutlinedIcon sx={{ fontSize: 16, color: 'text.primary' }} />
+                        </Box>
+                      ) : suggestion.kind === 'all' ? (
                         <AllInclusiveIcon sx={{ fontSize: 15, color: 'text.primary' }} />
                       ) : (
                         <MenuBookOutlinedIcon sx={{ fontSize: 15, color: 'text.primary' }} />
@@ -654,7 +790,12 @@ export default function ChatInput({
                       <Typography
                         component="span"
                         noWrap
-                        sx={{ flex: 1, fontSize: 13.5, color: 'text.primary' }}
+                        sx={{
+                          flex: 1,
+                          fontSize: 13.5,
+                          color: 'text.primary',
+                          fontWeight: suggestion.kind === 'agent' ? 600 : 400,
+                        }}
                       >
                         {matchIndex >= 0 ? (
                           <>
@@ -668,10 +809,44 @@ export default function ChatInput({
                           name
                         )}
                       </Typography>
-                      <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
-                        <MetaBadge>{badge}</MetaBadge>
-                      </Box>
+                      {suggestion.kind === 'agent' ? (
+                        <Typography
+                          component="span"
+                          noWrap
+                          sx={{ flex: 2, minWidth: 0, fontSize: 12.5, color: 'text.secondary' }}
+                        >
+                          {suggestion.agent.description}
+                        </Typography>
+                      ) : (
+                        <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
+                          <MetaBadge>{badge}</MetaBadge>
+                        </Box>
+                      )}
                     </ListItemButton>
+                  )
+                  return firstScope ? (
+                    <Fragment key={key}>
+                      <Typography
+                        component="li"
+                        role="presentation"
+                        sx={{
+                          px: 1.5,
+                          py: 1,
+                          fontFamily: fontFamily.mono,
+                          fontSize: 9.5,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          color: 'text.secondary',
+                          borderTop: 1,
+                          borderColor: 'divider',
+                        }}
+                      >
+                        Suchbereich eingrenzen
+                      </Typography>
+                      {option}
+                    </Fragment>
+                  ) : (
+                    option
                   )
                 })}
               </List>

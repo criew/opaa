@@ -18,6 +18,8 @@ import { indexingHandlers } from '@/features/library/mocks/indexingHandlers'
 import { privateStorageHandlers } from '@/features/library/mocks/privateStorageHandlers'
 import { sharedLibraryQuotaHandlers } from '@/features/library/mocks/sharedLibraryQuotaHandlers'
 import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmHandlers'
+// agent (UI lab #3670)
+import { agentHandlers } from '@/features/agent/mocks/agentHandlers'
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
 // group
@@ -103,6 +105,8 @@ export const handlers = [
   ...privateStorageHandlers,
   ...sharedLibraryQuotaHandlers,
   ...fullSyncRhythmHandlers,
+  // agent (UI lab #3670)
+  ...agentHandlers,
   // prompt
   ...promptLibraryHandlers,
   // group

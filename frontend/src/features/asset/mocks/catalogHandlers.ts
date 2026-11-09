@@ -8,6 +8,8 @@ import type {
 } from '@/shared/api/types'
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockAuthConfig } from '@/shared/mocks/authFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
+import { mockAgents, mockTemplates } from '@/features/agent/mocks/agentFixtures'
 import { mockLibraries, mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
 import { applyLibraryScenario } from '@/features/library/mocks/libraryScenarioFixtures'
 import {
@@ -87,8 +89,49 @@ function readableEntries(): CatalogEntryResponse[] {
       favorite: mockFavoriteAssets.has(favoriteKey('PROMPT_LIBRARY', library.id)),
       succession: library.succession ?? null,
     }))
+  const agents: CatalogEntryResponse[] = mockAgents().map((agent) => ({
+    assetType: 'AGENT',
+    assetId: agent.id,
+    name: agent.name,
+    description: agent.description,
+    ownerType: agent.ownerType,
+    ownerId: 'mock-owner',
+    ownerLabel: agent.ownerName,
+    origin: agent.builtIn ? 'BUILT_IN' : 'LOCAL',
+    visibility: visibilityOf(agent.allAccounts),
+    myRole: agent.myRole,
+    status: agent.locked ? 'LOCKED' : 'READY',
+    updatedAt: agent.updatedAt,
+    itemCount: agent.libraryIds.length,
+    spaceCount: 0,
+    favorite: mockFavoriteAssets.has(favoriteKey('AGENT', agent.id)),
+    succession: null,
+  }))
+  const templates: CatalogEntryResponse[] = mockTemplates().map((template) => ({
+    assetType: 'DOCUMENT_TEMPLATE',
+    assetId: template.id,
+    name: template.name,
+    description: template.description,
+    ownerType: 'GROUP',
+    ownerId: 'mock-owner',
+    ownerLabel: template.ownerName,
+    origin: 'LOCAL',
+    visibility: 'PUBLIC',
+    myRole: template.myRole,
+    status: 'READY',
+    updatedAt: template.updatedAt,
+    itemCount: template.placeholders.length,
+    spaceCount: 0,
+    favorite: mockFavoriteAssets.has(favoriteKey('DOCUMENT_TEMPLATE', template.id)),
+    succession: null,
+  }))
   // Like the backend (ADR-0044): a switched-off feature's type is not in the catalog at all.
-  return mockAuthConfig.features?.promptLibraries === false ? knowledge : [...knowledge, ...prompts]
+  return [
+    ...knowledge,
+    ...(mockAuthConfig.features?.promptLibraries === false ? [] : prompts),
+    ...(currentMockScenario() === 'agentsoff' ? [] : agents),
+    ...templates,
+  ]
 }
 
 /**

@@ -534,6 +534,12 @@ components:
         promptLibraries:
           type: boolean
           description: Prompt libraries (opaa.features.prompt-libraries.enabled).
+        agents:
+          type: boolean
+          description: Agents (opaa.features.agents.enabled).
+        templates:
+          type: boolean
+          description: Document templates (opaa.features.templates.enabled).
         metadata:
           type: boolean
           description: Metadata of documents and libraries (opaa.features.metadata.enabled).

@@ -8,6 +8,8 @@ export const SCENARIO_LABELS: Record<MockScenario, string> = {
   slow: 'Langsam',
   failed: 'Fehler',
   partial: 'Teilfehler',
+  norights: 'Ohne Anlegerecht',
+  agentsoff: 'Agenten aus',
 }
 
 export const SCENARIOS = MOCK_SCENARIOS.map((id) => ({ id, label: SCENARIO_LABELS[id] }))
@@ -45,6 +47,10 @@ export const ENTRY_GROUPS: { label: string; entries: PrototypeEntry[] }[] = [
     label: 'Seiten',
     entries: [
       { label: 'Katalog', path: '/catalog' },
+      { label: 'Agenten im Katalog', path: '/catalog?type=agents' },
+      { label: 'Neuer Agent', path: '/agents/new' },
+      { label: 'Agent Recherche', path: '/agents/agent-recherche' },
+      { label: 'Recherche bearbeiten', path: '/agents/agent-recherche/edit' },
       { label: 'Neue Bibliothek', path: '/libraries/new' },
       { label: 'Spaces', path: '/spaces' },
       { label: 'Space Engineering', path: '/spaces/space-engineering' },

@@ -1,3 +1,4 @@
+import { currentMockScenario } from './mockScenario'
 import { http, HttpResponse } from 'msw'
 import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
 import { isMockInstallationPending } from '@/features/installation/mocks/installationFixtures'
@@ -6,6 +7,9 @@ export const authHandlers = [
   http.get('/api/v1/auth/config', () => {
     return HttpResponse.json({
       ...mockAuthConfig,
+      ...(currentMockScenario() === 'agentsoff'
+        ? { features: { ...mockAuthConfig.features, agents: false } }
+        : {}),
       installationPending: isMockInstallationPending(),
     })
   }),
