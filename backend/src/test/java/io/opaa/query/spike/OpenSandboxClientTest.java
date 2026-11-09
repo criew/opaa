@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -158,6 +159,7 @@ class OpenSandboxClientTest {
           exchange.close();
         });
     server.start();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     try {
       OpenSandboxClient client =
           new OpenSandboxClient(
@@ -169,12 +171,22 @@ class OpenSandboxClientTest {
                   Duration.ofSeconds(10),
                   "1",
                   "1Gi"),
-              objectMapper);
+              objectMapper,
+              meterRegistry);
 
       assertThatThrownBy(() -> client.run("print(1)"))
           .isInstanceOf(OpenSandboxClient.SandboxException.class)
           .hasMessageContaining("502");
       assertThat(calls).last().isEqualTo("DELETE /v1/sandboxes/sbx-1");
+      assertThat(
+              meterRegistry
+                  .get("opaa.outbound.requests")
+                  .tag("target", "sandbox")
+                  .tag("outcome", "server_error")
+                  .tag("path_class", "interactive")
+                  .timer()
+                  .count())
+          .isEqualTo(1);
       client.close();
     } finally {
       server.stop(0);

@@ -58,7 +58,7 @@ class RedirectFollowingFetcherRebindingTest {
             IOException.class,
             () ->
                 RedirectFollowingFetcher.sendFollowingRedirects(
-                    SourceHttpClientFactory.buildHttpClient(),
+                    SourceHttpClientFactory.buildHttpClient("test"),
                     url,
                     Duration.ofSeconds(5),
                     Map.of(),

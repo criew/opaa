@@ -42,7 +42,7 @@ final class GraphConnections {
         properties,
         targetAddressValidator,
         sleeper,
-        () -> SourceHttpClientFactory.buildHttpClient());
+        () -> SourceHttpClientFactory.buildHttpClient("msgraph"));
   }
 
   GraphConnections(

@@ -48,7 +48,11 @@ class ScheduledRunLockStructureTest {
           "io.opaa.audit.AuditStorageMetrics#refresh",
           "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)",
           "io.opaa.audit.AuditChainService#refreshMetrics",
-          "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)");
+          "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)",
+          "io.opaa.llm.ModelRoleAvailability#refresh",
+          "each instance reports the role availability it sees; it only reads (ADR-0053, E12)",
+          "io.opaa.knowledge.MalwareSignatureAge#refresh",
+          "each instance asks its clamd for the signature age it reports; it only reads (E12)");
 
   /** Above the clock skew of hosts synchronised by NTP; the database clock compares the locks. */
   static final Duration MINIMUM_AT_LEAST_FOR = Duration.ofSeconds(2);

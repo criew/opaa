@@ -58,8 +58,8 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
-`http.server.requests`, `opaa.query.duration`, `opaa.ocr.duration`, `gen_ai.client.operation` und
-`tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
+`http.server.requests`, `opaa.query.duration`, `opaa.ocr.duration`, `opaa.outbound.requests`,
+`gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
 (`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
 einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
 Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
@@ -96,6 +96,25 @@ lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboard
 Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
 gebraucht worden wäre.
 
+### 8. Ausgehende Aufrufe: ein Messpunkt am Client, Ergebnisklassen statt Adressen
+
+Jeder Aufruf über den JDK-`HttpClient` an Rerank, Transkription, Texterkennung (`ocr`, `vision`),
+Code-Sandbox, Konnektoren, OIDC und Verzeichnisdienste geht durch `MeteredHttpClient`, den die
+Clients und Client-Fabriken um ihren Client legen; die Virenprüfung misst ihren Socket-Aufruf mit
+denselben `OutboundMetrics`. `opaa.outbound.requests` trägt `target`, `kind` (Konnektortyp oder
+Verzeichnisanbieter aus dem Code, sonst `none`), `outcome` aus Status oder Ausnahmeklasse
+(`auth_error`, `tls_error`, `throttled` u. a.) und `path_class` (`interactive`, wenn eine Person
+wartet, sonst `background`); `opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host
+und Adresse sind nie ein Label, Chat und Embedding misst Spring AI. `opaa.model.role.available`
+liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für Chat und Embedding den
+letzten echten Aufruf je Instanz; es ruft kein Modell auf, und eine Rolle ohne Einrichtung hat
+keine Reihe.
+
+Ein Decorator am Client misst jeden Versuch, auch Wiederholungen nach 429, ohne Code je Client und
+ohne die Zielprüfung zu berühren. Die statisch gebauten Clients des Quellzugriffs messen über die
+globale Registry, an die Spring Boot die Registry der Anwendung bindet. Ob ein 429 stört, hängt am
+Pfad: Im Hintergrund drosselt die Indexierung adaptiv, interaktiv wartet eine Person.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
@@ -115,3 +134,5 @@ gebraucht worden wäre.
 - Perzentile im Prozess (Summaries) — nicht über Pods aggregierbar.
 - Gemeinsames Tag `instance` — kollidiert mit dem Label, das Prometheus jedem Ziel gibt.
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
+- Micrometer-Observation je ausgehendem Aufruf — legt je Reihe einen Long-Task-Timer und ein `error`-Tag dazu, Entscheidung 8.
+- Eigene Probe für `opaa.model.role.available` — kostete Modellaufrufe je Abruf, Entscheidung 8.

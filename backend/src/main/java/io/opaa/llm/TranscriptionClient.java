@@ -1,6 +1,11 @@
 package io.opaa.llm;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -64,8 +69,17 @@ public class TranscriptionClient {
   /** Runs each call so it can be abandoned at its deadline, body read included. */
   private final ExecutorService callExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-  public TranscriptionClient(ObjectMapper objectMapper) {
+  /** {@link #httpClient} measured in {@code opaa.outbound.requests}, one view per path class. */
+  private final MeteredHttpClient.ByPathClass measured;
+
+  private final MeterRegistry meterRegistry;
+
+  public TranscriptionClient(ObjectMapper objectMapper, MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
+    this.meterRegistry = meterRegistry;
+    this.measured =
+        MeteredHttpClient.ByPathClass.of(
+            httpClient, new OutboundMetrics(meterRegistry, OutboundTarget.TRANSCRIPTION, null));
   }
 
   @PreDestroy
@@ -127,8 +141,36 @@ public class TranscriptionClient {
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
             .POST(multipartBody(boundary, endpoint, audio, format, prompt));
     authorize(request, endpoint);
-    byte[] body = withinDeadline(timeout, () -> send(request.build()));
-    return parseText(body);
+    // The call runs on callExecutor; the path class is the caller's.
+    HttpClient client = measured.ofCallingThread();
+    try {
+      Transcript transcript =
+          parseText(withinDeadline(timeout, () -> send(client, request.build())));
+      countRequest("success");
+      if (transcript.audioSeconds() > 0) {
+        Counter.builder("opaa.transcription.audio")
+            .baseUnit("seconds")
+            .description("Seconds of audio transcribed, as the endpoint reported them")
+            .register(meterRegistry)
+            .increment(transcript.audioSeconds());
+      }
+      return transcript.text();
+    } catch (TranscriptionUnavailableException e) {
+      countRequest(e.answered() ? "refused" : "failed");
+      throw e;
+    }
+  }
+
+  /**
+   * One recording: {@code success}, {@code refused} (the endpoint answered without a text) or
+   * {@code failed} (not reached, timed out).
+   */
+  private void countRequest(String result) {
+    Counter.builder("opaa.transcription.requests")
+        .tag("result", result)
+        .description("Recordings sent to the transcription endpoint, by result")
+        .register(meterRegistry)
+        .increment();
   }
 
   /** Asks {@code GET {baseUrl}/models}; costs nothing and sends no audio. */
@@ -137,7 +179,9 @@ public class TranscriptionClient {
       URI uri = endpointUri(endpoint.baseUrl(), "/models");
       HttpRequest.Builder request = HttpRequest.newBuilder(uri).GET();
       authorize(request, endpoint);
-      withinDeadline(timeout, () -> send(request.build()));
+      // The call runs on callExecutor; the path class is the caller's.
+      HttpClient client = measured.ofCallingThread();
+      withinDeadline(timeout, () -> send(client, request.build()));
       return null;
     } catch (TranscriptionUnavailableException e) {
       return new ProbeFailure(e.getMessage(), e.timedOut());
@@ -151,9 +195,10 @@ public class TranscriptionClient {
   }
 
   /** Sends and reads at most {@link #MAX_RESPONSE_BYTES}; any status but 200 is a failure. */
-  private byte[] send(HttpRequest request) throws IOException, InterruptedException {
+  private byte[] send(HttpClient client, HttpRequest request)
+      throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        client.send(request, HttpResponse.BodyHandlers.ofInputStream());
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
         throw new TranscriptionUnavailableException(
@@ -235,8 +280,15 @@ public class TranscriptionClient {
     out.writeBytes(text.getBytes(StandardCharsets.UTF_8));
   }
 
-  /** Reads {@code text}; a parse failure is reported without its cause, which quotes the body. */
-  private String parseText(byte[] body) {
+  /** The text, and the seconds of audio the endpoint reported, 0 without such a field. */
+  private record Transcript(String text, double audioSeconds) {}
+
+  /**
+   * Reads {@code text} and the audio duration: {@code usage.seconds} of a usage of type {@code
+   * duration} (OpenAI, vLLM) or a top-level {@code duration}. A parse failure is reported without
+   * its cause, which quotes the body.
+   */
+  private Transcript parseText(byte[] body) {
     JsonNode root;
     try {
       root = objectMapper.readTree(body);
@@ -249,7 +301,17 @@ public class TranscriptionClient {
       throw new TranscriptionUnavailableException(
           "endpoint response contains no text", false, true);
     }
-    return text.asString().strip();
+    return new Transcript(text.asString().strip(), audioSeconds(root));
+  }
+
+  private static double audioSeconds(JsonNode root) {
+    JsonNode usage = root.path("usage");
+    JsonNode seconds =
+        "duration".equals(usage.path("type").asString(""))
+            ? usage.path("seconds")
+            : root.path("duration");
+    double value = seconds.isNumber() ? seconds.asDouble() : 0;
+    return Double.isFinite(value) && value > 0 ? value : 0;
   }
 
   /** The cause is not attached: it may quote the configured address. */

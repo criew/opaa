@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.llm.TextRecognitionClient.TestOutcome;
 import io.opaa.llm.TextRecognitionClient.TextRecognitionRejectedException;
@@ -46,6 +47,7 @@ class TextRecognitionClientTest {
   private HttpServer server;
   private String baseUrl;
   private TextRecognitionClient client;
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   private record Captured(String method, String body, Map<String, List<String>> headers) {}
 
@@ -55,7 +57,7 @@ class TextRecognitionClientTest {
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
-    client = new TextRecognitionClient(new ObjectMapper());
+    client = new TextRecognitionClient(new ObjectMapper(), meterRegistry);
   }
 
   @AfterEach
@@ -101,6 +103,30 @@ class TextRecognitionClientTest {
       }
     }
     exchange.close();
+  }
+
+  @Test
+  void doclingCountsAsOcrAndAVisionModelAsVision() {
+    respond("/v1/convert/file", 200, DOCLING_SUCCESS, null);
+    respond("/v1/chat/completions", 500, "", null);
+
+    client.convertWithDocling(docling(""), TIMEOUT, PDF);
+    assertThatThrownBy(
+            () -> client.recognizePageWithVision(vision(""), TIMEOUT, new byte[] {1}, "image/png"))
+        .isInstanceOf(TextRecognitionClient.TextRecognitionUnavailableException.class);
+
+    assertThat(outboundRequests("ocr", "success")).isEqualTo(1);
+    assertThat(outboundRequests("vision", "server_error")).isEqualTo(1);
+  }
+
+  private long outboundRequests(String target, String outcome) {
+    return meterRegistry
+        .get("opaa.outbound.requests")
+        .tag("target", target)
+        .tag("outcome", outcome)
+        .tag("path_class", "background")
+        .timer()
+        .count();
   }
 
   @Test

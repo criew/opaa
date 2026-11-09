@@ -13,6 +13,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -79,7 +80,9 @@ class NimbusOidcJwtDecoderFactoryTest {
   private NimbusOidcJwtDecoderFactory factory() {
     return new NimbusOidcJwtDecoderFactory(
         new OidcDiscoveryClient(
-            new OidcAddressPolicy(new TargetAddressValidator(true, List.of("127.0.0.1")))));
+            new OidcAddressPolicy(new TargetAddressValidator(true, List.of("127.0.0.1"))),
+            new SimpleMeterRegistry()),
+        new SimpleMeterRegistry());
   }
 
   private OidcProvider provider(String jwkSetUri) {

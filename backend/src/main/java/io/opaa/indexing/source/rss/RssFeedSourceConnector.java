@@ -177,7 +177,7 @@ public class RssFeedSourceConnector
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String url = requireHttpUrl(RssFeedSourceConnector.TYPE, settings);
     BasicCredentials config = basicCredentials(settings);
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("rss_feed");
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     Map<String, String> headers = requestPolicy.headers(authHeader);

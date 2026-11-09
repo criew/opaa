@@ -1,6 +1,11 @@
 package io.opaa.llm;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundPathClass;
+import io.opaa.observability.OutboundTarget;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
@@ -108,8 +113,19 @@ public class RerankClient {
    */
   private final ExecutorService bodyReadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-  public RerankClient(ObjectMapper objectMapper) {
+  /**
+   * The same client, measured in {@code opaa.outbound.requests}: a query's call as interactive, a
+   * probe by the thread it runs on (the schedule, or an administrator testing a draft).
+   */
+  private final HttpClient queryClient;
+
+  private final HttpClient probeClient;
+
+  public RerankClient(ObjectMapper objectMapper, MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
+    OutboundMetrics metrics = new OutboundMetrics(meterRegistry, OutboundTarget.RERANK, null);
+    this.queryClient = MeteredHttpClient.of(httpClient, metrics, OutboundPathClass.INTERACTIVE);
+    this.probeClient = MeteredHttpClient.of(httpClient, metrics);
   }
 
   @PreDestroy
@@ -197,7 +213,9 @@ public class RerankClient {
     Dialect known = dialect.get();
     Dialect first = known == null ? Dialect.COHERE : known;
     try {
-      List<ScoredCandidate> scored = send(endpoint, timeout, query, documents, first);
+      List<ScoredCandidate> scored =
+          send(
+              learnDialect ? queryClient : probeClient, endpoint, timeout, query, documents, first);
       if (learnDialect) {
         dialect.set(first);
       }
@@ -208,7 +226,14 @@ public class RerankClient {
         throw new RerankTimeoutException("no time left for the second request spelling", e);
       }
       Dialect fallback = first.other();
-      List<ScoredCandidate> scored = send(endpoint, remaining, query, documents, fallback);
+      List<ScoredCandidate> scored =
+          send(
+              learnDialect ? queryClient : probeClient,
+              endpoint,
+              remaining,
+              query,
+              documents,
+              fallback);
       if (learnDialect) {
         dialect.set(fallback);
       }
@@ -217,6 +242,7 @@ public class RerankClient {
   }
 
   private List<ScoredCandidate> send(
+      HttpClient client,
       RerankEndpoint endpoint,
       Duration timeout,
       String query,
@@ -238,7 +264,7 @@ public class RerankClient {
     long callStartNanos = System.nanoTime();
     try {
       HttpResponse<InputStream> response =
-          httpClient.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
+          client.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
       try (InputStream responseBody = response.body()) {
         if (response.statusCode() == 400 || response.statusCode() == 422) {
           throw new SchemaMismatchException(describeStatus(response.statusCode()));

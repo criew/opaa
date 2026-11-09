@@ -158,7 +158,7 @@ public class ServiceAccountTokens {
     try {
       response =
           SourceFormPost.post(
-              SourceHttpClientFactory.buildHttpClient(),
+              SourceHttpClientFactory.buildHttpClient("service_account"),
               auth.tokenEndpoint(),
               Map.of("grant_type", GRANT_TYPE, "assertion", assertion),
               TIMEOUT,

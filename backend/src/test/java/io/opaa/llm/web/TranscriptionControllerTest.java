@@ -11,6 +11,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.GlobalExceptionHandler;
 import io.opaa.api.RequestLoggingFilter;
 import io.opaa.api.types.SystemRole;
@@ -121,7 +122,7 @@ class TranscriptionControllerTest {
           answer(exchange, upstreamStatus.get(), upstreamBody);
         });
     upstream.start();
-    client = new TranscriptionClient(new ObjectMapper());
+    client = new TranscriptionClient(new ObjectMapper(), new SimpleMeterRegistry());
 
     logs = new ListAppender<>();
     logs.start();

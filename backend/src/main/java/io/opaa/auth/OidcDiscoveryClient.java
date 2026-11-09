@@ -1,7 +1,11 @@
 package io.opaa.auth;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.common.ValidationException;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,13 +73,16 @@ public class OidcDiscoveryClient {
   private final OidcAddressPolicy addressPolicy;
   private final HttpClient httpClient;
 
-  public OidcDiscoveryClient(OidcAddressPolicy addressPolicy) {
+  /** Every request counts in {@code opaa.outbound.requests} with target {@code oidc}. */
+  public OidcDiscoveryClient(OidcAddressPolicy addressPolicy, MeterRegistry meterRegistry) {
     this.addressPolicy = addressPolicy;
     this.httpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
+        MeteredHttpClient.of(
+            HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build(),
+            new OutboundMetrics(meterRegistry, OutboundTarget.OIDC, null));
   }
 
   /**

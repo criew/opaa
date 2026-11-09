@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.llm.RerankClient.RerankUnavailableException;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import java.io.IOException;
@@ -37,6 +38,7 @@ class RerankClientTest {
   private HttpServer server;
   private String baseUrl;
   private RerankClient client;
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   /** An endpoint with the budget of one call. */
   private record Call(RerankEndpoint endpoint, Duration timeout) {}
@@ -54,7 +56,7 @@ class RerankClientTest {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1";
-    client = new RerankClient(new ObjectMapper());
+    client = new RerankClient(new ObjectMapper(), meterRegistry);
   }
 
   @AfterEach
@@ -101,6 +103,27 @@ class RerankClientTest {
     assertThat(requestBody.get()).contains("\"model\":\"bge-reranker\"");
     assertThat(requestBody.get()).contains("\"query\":\"Gebührensatzung\"");
     assertThat(requestBody.get()).contains("erster Text").contains("zweiter Text");
+  }
+
+  @Test
+  void aQueryCallIsAnInteractiveRerankRequestAndAProbeABackgroundOne() {
+    respond("[{\"index\":0,\"score\":1.0}]", new AtomicReference<>());
+
+    rerank(properties(""), "Frage", List.of("Text"));
+    probe(properties(""));
+
+    assertThat(rerankRequests("interactive")).isEqualTo(1);
+    assertThat(rerankRequests("background")).isEqualTo(1);
+  }
+
+  private long rerankRequests(String pathClass) {
+    return meterRegistry
+        .get("opaa.outbound.requests")
+        .tag("target", "rerank")
+        .tag("outcome", "success")
+        .tag("path_class", pathClass)
+        .timer()
+        .count();
   }
 
   /** Text Embeddings Inference answers with a bare array and a {@code score} field. */

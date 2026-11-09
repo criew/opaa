@@ -1,6 +1,10 @@
 package io.opaa.auth;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,14 +35,18 @@ public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
   private final OidcDiscoveryClient discoveryClient;
   private final RestTemplate jwkSetClient;
 
-  public NimbusOidcJwtDecoderFactory(OidcDiscoveryClient discoveryClient) {
+  /** Every JWK set request counts in {@code opaa.outbound.requests} with target {@code oidc}. */
+  public NimbusOidcJwtDecoderFactory(
+      OidcDiscoveryClient discoveryClient, MeterRegistry meterRegistry) {
     this.discoveryClient = discoveryClient;
     JdkClientHttpRequestFactory requestFactory =
         new JdkClientHttpRequestFactory(
-            HttpClient.newBuilder()
-                .connectTimeout(OidcDiscoveryClient.CONNECT_TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build());
+            MeteredHttpClient.of(
+                HttpClient.newBuilder()
+                    .connectTimeout(OidcDiscoveryClient.CONNECT_TIMEOUT)
+                    .followRedirects(HttpClient.Redirect.NEVER)
+                    .build(),
+                new OutboundMetrics(meterRegistry, OutboundTarget.OIDC, null)));
     requestFactory.setReadTimeout(OidcDiscoveryClient.REQUEST_TIMEOUT);
     this.jwkSetClient = new RestTemplate(requestFactory);
   }
