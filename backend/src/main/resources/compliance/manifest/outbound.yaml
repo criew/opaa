@@ -404,11 +404,12 @@ dataFlows:
       nur den freigegebenen Merkmalen: Methode, Routenvorlage ohne Kennungen und Suchparameter,
       Status, Ergebnisklasse, Fehlerklasse, Zieldienst, Modell, Tokenzahlen. Keine Adresse mit Pfad
       oder Abfrage, kein Konto, keine Anmeldedaten, kein SQL, keine Frage, Antwort, Suchtext oder
-      Fehlermeldung. Zusätzlich trägt jeder ausgehende HTTP-Aufruf, auch an Modelle und Quellen, den
-      Kopf traceparent mit Trace- und Span-ID
+      Fehlermeldung. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle,
+      Quellen oder Mailserver trägt einen Kopf traceparent, auch nicht bei eingeschaltetem Tracing,
+      und ein mitgeschickter traceparent eines Aufrufers wird verworfen
     trigger: >-
-      Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent);
-      der Aufruf zum Rundgang-Hinweis nie
+      Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent),
+      gezogen über eine Trace-ID, die OPAA selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
     switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse bricht der Start ab
     settings:
       - management.tracing.export.enabled

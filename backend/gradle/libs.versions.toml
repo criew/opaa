@@ -202,7 +202,7 @@ spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-st
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
-# Optional OpenTelemetry tracing over OTLP, off unless OPAA_TRACING_ENABLED (ADR-0070). The
+# Optional OpenTelemetry tracing over OTLP, off unless OPAA_TRACING_ENABLED (ADR-0071). The
 # exporter's OkHttp sender is excluded in build.gradle.kts: it needs okhttp-jvm 5 beside the okhttp
 # 4 pinned above, so the JDK HttpClient sender takes its place. Versions from the Spring Boot BOM.
 spring-boot-micrometer-tracing-opentelemetry = { module = "org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry" }

@@ -17,8 +17,8 @@ class TranscriptionWebConfiguration {
   static final String PATH = "/api/v1/transcriptions";
 
   /**
-   * Right after the request id, which reads a header only, so no later filter can trigger multipart
-   * parsing on this path.
+   * Right after the request id and the installation's filters, which read a header or only the body
+   * of an installation path, so no later filter can trigger multipart parsing on this path.
    */
   @Bean
   FilterRegistrationBean<TranscriptionMultipartGuard> transcriptionMultipartGuard(
@@ -26,7 +26,7 @@ class TranscriptionWebConfiguration {
     FilterRegistrationBean<TranscriptionMultipartGuard> registration =
         new FilterRegistrationBean<>(new TranscriptionMultipartGuard(objectMapper, clock));
     registration.addUrlPatterns(PATH);
-    registration.setOrder(RequestIdFilter.ORDER + 1);
+    registration.setOrder(RequestIdFilter.ORDER + 3);
     return registration;
   }
 }

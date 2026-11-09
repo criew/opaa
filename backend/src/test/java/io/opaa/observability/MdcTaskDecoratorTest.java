@@ -3,6 +3,9 @@ package io.opaa.observability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -64,5 +67,23 @@ class MdcTaskDecoratorTest {
     simple.execute(() -> submitted.complete(MDC.get(RequestIds.MDC_KEY)));
 
     assertThat(submitted.get(5, TimeUnit.SECONDS)).isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
+  }
+
+  @Test
+  void aTaskOfAPlainJdkPoolWrappedWithTheCallersMdcCarriesItAndLeavesTheThreadClean()
+      throws Exception {
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      MDC.put(RequestIds.MDC_KEY, "4bf92f3577b34da6a3ce929d0e0e4736");
+      Future<String> called =
+          pool.submit(MdcTaskDecorator.withCallersMdc(() -> MDC.get(RequestIds.MDC_KEY)));
+      assertThat(called.get(5, TimeUnit.SECONDS)).isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");
+
+      MDC.clear();
+      Future<String> next = pool.submit(() -> String.valueOf(MDC.get(RequestIds.MDC_KEY)));
+      assertThat(next.get(5, TimeUnit.SECONDS)).isEqualTo("null");
+    } finally {
+      pool.shutdown();
+    }
   }
 }

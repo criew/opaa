@@ -101,7 +101,8 @@ class AuditRequestCorrelationTest {
   }
 
   // The correlation ref - and with it the request id - is no field of the SIEM export, neither in
-  // the record it formats nor in the query that reads the protocol for it.
+  // the record it formats nor in the query that reads the protocol for it; the rendered message is
+  // checked in SiemExportServiceIntegrationTest.
   @Test
   void theSiemExportCarriesNoCorrelationRef() throws Exception {
     assertThat(

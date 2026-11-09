@@ -223,7 +223,7 @@ public class RateLimitConfiguration {
         new FilterRegistrationBean<>(
             new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper, clock));
     registration.addUrlPatterns("/api/*");
-    registration.setOrder(RequestIdFilter.ORDER + 2);
+    registration.setOrder(RequestIdFilter.ORDER + 4);
     return registration;
   }
 

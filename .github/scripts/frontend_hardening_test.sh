@@ -6,9 +6,9 @@
 # (Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy), only the self-disclosure download
 # may be framed (by the application itself), the access log leaves out the marker of the
 # quick-tour hint, a valid X-Request-Id reaches the upstream and the access log while any other is
-# replaced by 32 hex characters, and the start refuses an invalid
-# OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
-# OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
+# replaced by 32 hex characters, a caller's trace context reaches no upstream, and the start refuses
+# an invalid OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy,
+# and with OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
 # by the other, with its body and URI intact, within a few seconds. A slow answer, a streamed /mcp
 # answer, a streamed chat answer and uploads up to the size limits pass unchanged. A request other
@@ -67,6 +67,10 @@ echo_conf="server {
     location / {
         default_type text/plain;
         return 200 $echo_body;
+    }
+    location = /api/v1/trace-context {
+        default_type text/plain;
+        return 200 \"trace=[\$http_traceparent\$http_tracestate\$http_baggage\$http_b3\$http_x_b3_traceid\$http_x_b3_sampled]\\n\";
     }
     location = /api/v1/request-id {
         default_type text/plain;
@@ -195,6 +199,12 @@ done
 received="$(curl -sS --max-time 10 "$base/api/v1/request-id" || true)"
 [[ "$received" =~ ^request-id=\[[0-9a-f]{32}\]$ ]] && echo "generated as expected: no request id" ||
   fail "a request without id reached the upstream as '${received:-no answer}'"
+# A caller's trace context reaches no backend: its trace id would decide the backend's sampling.
+received="$(curl -sS --max-time 10 -H 'traceparent: 00-ffffffffffffffff0000000000000001-0000000000000001-01' \
+  -H 'tracestate: a=b' -H 'baggage: user=x' -H 'b3: 1-2-1' -H 'X-B3-TraceId: 1' -H 'X-B3-Sampled: 1' \
+  "$base/api/v1/trace-context" || true)"
+[[ "$received" == "trace=[]" ]] && echo "dropped as expected: the caller's trace context" ||
+  fail "the caller's trace context reached the upstream: ${received:-no answer}"
 
 echo "--- OPAA_CSP_CONNECT_SRC_EXTRA"
 # Starts the image with the value and reports whether nginx came up within a few seconds.

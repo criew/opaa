@@ -7,6 +7,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.DelegatingSpanData;
 import io.opentelemetry.sdk.trace.data.EventData;
+import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
@@ -18,7 +19,8 @@ import java.util.Set;
  * Hands a span to the collector with only the attributes of {@link #ALLOWED}: route templates,
  * methods, status and outcome classes, model and token counts - never a URL with path or query, a
  * principal, an SQL text, a prompt, an answer or a search text, whichever instrumentation recorded
- * it. Events (an exception message among them) and the status description are dropped as well.
+ * it. Events (an exception message among them), links to other spans with their attributes and the
+ * status description are dropped as well.
  */
 public final class AllowlistedSpanExporter implements SpanExporter {
 
@@ -116,6 +118,16 @@ public final class AllowlistedSpanExporter implements SpanExporter {
       @Override
       public StatusData getStatus() {
         return status;
+      }
+
+      @Override
+      public List<LinkData> getLinks() {
+        return List.of();
+      }
+
+      @Override
+      public int getTotalRecordedLinks() {
+        return 0;
       }
     };
   }

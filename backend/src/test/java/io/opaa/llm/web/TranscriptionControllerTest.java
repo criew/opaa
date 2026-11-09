@@ -382,12 +382,12 @@ class TranscriptionControllerTest {
   }
 
   @Test
-  void theGuardComesRightAfterTheRequestIdAndBeforeEveryOtherFilter() {
+  void theGuardComesRightAfterTheRequestIdAndTheInstallationsFilters() {
     assertThat(
             new TranscriptionWebConfiguration()
                 .transcriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC())
                 .getOrder())
-        .isEqualTo(io.opaa.observability.RequestIdFilter.ORDER + 1);
+        .isEqualTo(io.opaa.observability.RequestIdFilter.ORDER + 3);
   }
 
   /** A refusal of one recording is answered with 502 and leaves dictation on for everybody. */

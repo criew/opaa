@@ -883,13 +883,20 @@ opaa:
 management:
   # Optional OpenTelemetry tracing (ADR-0071): off unless OPAA_TRACING_ENABLED, then spans go to
   # OPAA_TRACING_OTLP_ENDPOINT over OTLP/HTTP (the only transport of the JDK sender on the
-  # classpath). The sampling ratio applies to every request, whatever a caller's traceparent asks
-  # for; io.opaa.observability.TracingConfiguration keeps only allowlisted span attributes.
+  # classpath). io.opaa.observability.RequestIdFilter hides a caller's traceparent, so every request
+  # starts its own trace and the ratio decides on an id OPAA drew; TracingConfiguration keeps only
+  # allowlisted span attributes. No trace id becomes an exemplar of a metric.
   tracing:
     export:
       enabled: ${OPAA_TRACING_ENABLED:false}
     sampling:
       probability: ${OPAA_TRACING_SAMPLING_PROBABILITY:0.05}
+    exemplars:
+      include: none
+    # A trace ends at the installation's edge: no outgoing call carries a traceparent, so no model
+    # provider, source or mail server gets an id that the own log ties to a request.
+    propagation:
+      produce: ""
   opentelemetry:
     # No OTEL_* variable of the container switches an export on behind the OPAA_* keys.
     map-environment-variables: false

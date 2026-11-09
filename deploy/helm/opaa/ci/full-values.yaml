@@ -61,8 +61,13 @@ tracing:
   otlpEndpoint: http://otel-collector.monitoring:4318/v1/traces
   samplingProbability: "0.1"
   egress:
-    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } } }]
-      ports: [{ port: 4318, protocol: TCP }]
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 4318
+          protocol: TCP
 siemExport:
   enabled: true
   host: siem.security.svc

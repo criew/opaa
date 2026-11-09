@@ -21,6 +21,7 @@ import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.observability.MdcTaskDecorator;
 import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
@@ -938,11 +939,12 @@ public final class FileSync implements AutoCloseable {
     Future<FetchedFile> future =
         downloadPool()
             .submit(
-                () -> {
-                  FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
-                  landed.add(fetched.file());
-                  return fetched;
-                });
+                MdcTaskDecorator.withCallersMdc(
+                    () -> {
+                      FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
+                      landed.add(fetched.file());
+                      return fetched;
+                    }));
     pending.add(new PendingDownload(entry, folderId, page, future));
   }
 
