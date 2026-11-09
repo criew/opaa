@@ -109,7 +109,7 @@ describe('AppShell', () => {
     renderShell()
     const main = screen.getByRole('main')
     expect(getComputedStyle(main).position).toBe('relative')
-    expect(getComputedStyle(main).overflow).toBe('hidden')
+    expect(getComputedStyle(main).overflow).toBe('clip')
   })
 
   it('offers the skip link as the first focusable element', async () => {
