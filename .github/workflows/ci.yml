@@ -595,7 +595,7 @@ jobs:
       - name: Langsamste Testklassen
         if: always()
         working-directory: .
-        run: python3 .github/scripts/slowest_test_classes.py backend/build/test-results/test >> "$GITHUB_STEP_SUMMARY"
+        run: python3 .github/scripts/slowest_test_classes.py backend/build/test-results/test | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test reports
         if: always()
