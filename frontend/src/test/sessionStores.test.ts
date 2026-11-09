@@ -10,6 +10,8 @@ import { registeredSessionStores } from '@/shared/session/resettableStores'
  * an expired session and a handover to another account reset exactly these.
  */
 const SESSION_STORES = [
+  'useAgentAvailability',
+  'useAgentStore',
   'useCatalogStore',
   'useChatListStore',
   'useChatStore',
