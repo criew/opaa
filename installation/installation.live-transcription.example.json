@@ -1,0 +1,34 @@
+{
+  "firstAdmin": {
+    "email": "it-betrieb@stadt.example",
+    "displayName": "Systemverwaltung",
+    "passwordFile": "/run/opaa/installation/admin-password",
+    "requirePasswordChange": true
+  },
+  "signIn": {
+    "mode": "LOCAL_ONLY"
+  },
+  "chatModel": {
+    "baseUrl": "http://ollama:11434/v1",
+    "model": "phi3:mini",
+    "apiKeyFile": null,
+    "maxTokens": 8000
+  },
+  "embeddingModel": {
+    "baseUrl": "http://ollama:11434/v1",
+    "model": "bge-m3",
+    "apiKeyFile": null
+  },
+  "transcriptionModel": {
+    "baseUrl": "http://speaches:8000/v1",
+    "model": "Systran/faster-whisper-large-v3",
+    "apiKeyFile": null,
+    "language": "de",
+    "realtime": {
+      "protocol": "VLLM",
+      "url": "ws://vllm:8000/v1/realtime",
+      "model": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+      "apiKeyFile": null
+    }
+  }
+}

@@ -124,8 +124,16 @@ components:
         realtimeAvailable:
           type: boolean
           description: >
-            Whether text can appear while speaking. Always false today; reserved for a live
-            transcription endpoint.
+            Whether text can appear while speaking: a live upstream is stored, the role is usable,
+            the last probe of the live upstream succeeded and the installation has a free live
+            session. The browser then opens the WebSocket GET /api/v1/transcriptions/stream
+            (subprotocol opaa-transcription.v1; the bearer token travels as a second subprotocol
+            opaa-bearer.<token>, since a browser cannot set headers on a WebSocket). The server sends
+            {"type":"ready","sampleRate":24000|16000} first; the client sends binary frames of PCM16
+            mono little-endian audio in that rate and finally {"type":"commit"}; the server answers
+            {"type":"delta","text"} while speaking, {"type":"done","text"} at the end and
+            {"type":"error","reason"} on any failure, after which the client sends its recording
+            through createTranscription instead.
     TranscriptionResponse:
       type: object
       required: [text]

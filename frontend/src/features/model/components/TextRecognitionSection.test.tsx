@@ -72,7 +72,7 @@ describe('TextRecognitionSection', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Texterkennung einschalten' })).toBeChecked()
     expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('http://opaa-ocr:5001')
-    expect(screen.getByLabelText(/Zugangsschlüssel/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/)).toHaveValue('')
     expect(
       screen.getByText('Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'),
     ).toBeInTheDocument()
@@ -153,7 +153,7 @@ describe('TextRecognitionSection', () => {
     mockModelRoles.textRecognition = configuredTextRecognitionModel()
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.type(await screen.findByLabelText(/Zugangsschlüssel/), 'falsch')
+    await user.type(await screen.findByLabelText(/^Zugangsschlüssel(?! anzeigen)/), 'falsch')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })

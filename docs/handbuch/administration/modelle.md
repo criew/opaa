@@ -55,6 +55,33 @@ speichern. Fehlt der Betriebsschalter für die Spracheingabe, lässt sie sich nu
 Spracheingabe verarbeitet Stimmen; sie gehört vor dem Einschalten mit der Personalvertretung
 geklärt ([Einführung vorbereiten](einfuehrung.md)).
 
+## Live-Transkript einrichten
+
+Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Es kommt zum Diktat hinzu und
+ersetzt es nicht: Das Diktat bleibt immer verfügbar, und fällt der Live-Dienst aus, wird die ganze
+Aufnahme wie beim Diktat verarbeitet. Im Chat gibt es keinen Umschalter; das Mikrofon nutzt Live von
+selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Transkript (optional)“:
+
+1. „Live-Transkript einschalten“ anschalten.
+2. Den „Live-Dienst“ wählen: „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“. „Live-Adresse“ und
+   „Live-Modell“ werden dabei vorbelegt; beim eigenen Server den Host anpassen. Sind Basis-Adresse
+   und Modell-Kennung des Diktats noch leer, belegt die Wahl auch sie vor, siehe
+   [Nur ein Live-Dienst vorhanden?](../betrieb/modell-endpunkte.md#nur-ein-live-dienst-vorhanden).
+3. Den „Live-Schlüssel“ eintragen, wenn der Dienst einen anderen Schlüssel als das
+   Transkriptionsmodell braucht. Ohne ihn geht der Schlüssel des Transkriptionsmodells mit, aber
+   nur an die gleiche Adresse bis zum Port (Schema, Host, Port). OpenAI und Mistral verlangen
+   einen Schlüssel: Liegt das Transkriptionsmodell unter einer anderen Adresse, etwa auf einem
+   eigenen speaches, lehnt „Speichern“ ohne Live-Schlüssel ab. Das Auge neben dem Feld zeigt den eingetippten Schlüssel zur Kontrolle.
+4. „Gleichzeitige Live-Sitzungen“ für die ganze Installation festlegen. Wer darüber diktiert,
+   bekommt den Text wie ohne Live nach dem Ende der Aufnahme.
+5. „Live-Dienst testen“ öffnet eine Sitzung ohne Audio; dann „Speichern“.
+
+Den Schalter ausschalten und „Speichern“ entfernt den Live-Dienst samt Schlüssel. Fällt der Live-Dienst aus,
+diktieren alle weiter, nur ohne Live-Text. Ein externer Dienst erhält die Aufnahme laufend während
+des Sprechens; das gehört wie die Spracheingabe selbst vorher mit Datenschutz und
+Personalvertretung geklärt. Was ein eigener Server leisten muss, steht unter
+[Live-Transkript im Betrieb](../betrieb/modell-endpunkte.md#live-transkript).
+
 ## Texterkennung einrichten
 
 Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie findet. Reiter

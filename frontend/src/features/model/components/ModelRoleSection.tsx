@@ -20,13 +20,25 @@ import VocabularyField from '@/shared/ui/transcription/VocabularyField'
 import { notify } from '@/shared/stores/notificationStore'
 import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
+  batchPrefillFor,
+  batchUntouched,
+  liveKeyMissing,
+  NO_REALTIME,
+  REALTIME_TEXTS,
+  realtimeUrlError,
+  type BatchPrefill,
+  type RealtimeDraft,
+} from '@/shared/ui/transcription/realtimeTranscription'
+import {
   getRerankModelSettings,
   getTranscriptionModelSettings,
   testRerankModel,
   testTranscriptionModel,
+  testTranscriptionRealtimeModel,
   updateRerankModelSettings,
   updateTranscriptionModelSettings,
 } from '../api/modelApi'
+import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
 import RoleApiKeyField from './RoleApiKeyField'
 import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
 
@@ -38,11 +50,12 @@ const RECHECK_DELAY_MS = 3000
 /** What the section shows of a stored role; the rerank role has no language. */
 type RoleSettings = Omit<
   TranscriptionModelSettingsResponse,
-  'language' | 'vocabulary' | 'speechInputAvailable'
+  'language' | 'vocabulary' | 'speechInputAvailable' | 'realtime'
 > & {
   language?: string
   vocabulary?: string
   speechInputAvailable?: boolean
+  realtime?: TranscriptionModelSettingsResponse['realtime']
 }
 
 interface RoleTexts {
@@ -69,6 +82,24 @@ const STATE_TEXT: Record<SearchModelRoleState, string> = {
   ACTIVE: 'Eingeschaltet, der Endpunkt antwortet.',
   UNCONFIGURED: 'Eingeschaltet, aber Basis-Adresse oder Modell fehlen.',
   UNREACHABLE: 'Eingeschaltet, aber der Endpunkt antwortet noch nicht.',
+}
+
+const LIVE_STATE_TEXT: Record<SearchModelRoleState, string> = {
+  DISABLED: 'Ausgeschaltet; das Diktat verarbeitet die ganze Aufnahme.',
+  ACTIVE: 'Der Live-Dienst nimmt Sitzungen an.',
+  UNCONFIGURED: 'Live-Transkript gewählt, aber Adresse oder Modell fehlen.',
+  UNREACHABLE:
+    'Live-Transkript gewählt, aber der Live-Dienst antwortet noch nicht; diktiert wird mit ganzer Aufnahme.',
+}
+
+function realtimeDraftOf(stored: RoleSettings['realtime']): RealtimeDraft {
+  if (!stored?.enabled) return NO_REALTIME
+  return {
+    live: true,
+    protocol: stored.protocol ?? null,
+    url: stored.url ?? '',
+    model: stored.model ?? '',
+  }
 }
 
 function load(kind: ModelRoleKind): Promise<RoleSettings> {
@@ -98,6 +129,12 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const [testResult, setTestResult] = useState<LlmModelTestResponse | null>(null)
   // A saved, switched-on role is probed right after the save; its state is read once more then.
   const [checking, setChecking] = useState(false)
+  const [realtime, setRealtime] = useState<RealtimeDraft>(NO_REALTIME)
+  const [liveKey, setLiveKey] = useState<ApiKeyDraft>(UNTOUCHED_API_KEY)
+  const [maxSessions, setMaxSessions] = useState('1')
+  const [liveTesting, setLiveTesting] = useState(false)
+  const [liveTestResult, setLiveTestResult] = useState<LlmModelTestResponse | null>(null)
+  const [prefill, setPrefill] = useState<BatchPrefill | null>(null)
 
   function apply(stored: RoleSettings) {
     setSettings(stored)
@@ -107,6 +144,42 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     setLanguage(stored.language ?? '')
     setVocabulary(stored.vocabulary ?? '')
     setApiKey(UNTOUCHED_API_KEY)
+    setRealtime(realtimeDraftOf(stored.realtime))
+    setLiveKey(UNTOUCHED_API_KEY)
+    setPrefill(null)
+    setMaxSessions(String(stored.realtime?.maxSessions ?? 1))
+  }
+
+  /**
+   * Fills the dictation endpoint for the live service while it is empty or holds the last fill,
+   * as the installation step does; the dictation endpoint stays mandatory.
+   */
+  function fillBatch(next: RealtimeDraft) {
+    if (!batchUntouched(baseUrl, model, prefill)) return
+    const fill = batchPrefillFor(next.protocol, next.url, next.model)
+    if (fill === null) {
+      if (prefill === null) return
+      setBaseUrl('')
+      setModel('')
+      setPrefill(null)
+      return
+    }
+    setBaseUrl(fill.baseUrl)
+    setModel(fill.model)
+    setPrefill(fill)
+  }
+
+  function realtimeRequest() {
+    if (!realtime.live) return { enabled: false }
+    const sessions = Number.parseInt(maxSessions, 10)
+    return {
+      enabled: true,
+      protocol: realtime.protocol,
+      url: realtime.url.trim(),
+      model: realtime.model.trim(),
+      apiKey: resolveApiKey(liveKey),
+      maxSessions: Number.isNaN(sessions) ? undefined : sessions,
+    }
   }
 
   useEffect(() => {
@@ -137,9 +210,26 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   }, [checking, kind])
 
   async function handleSave() {
-    setSaving(true)
     setErrors({})
     setError(null)
+    if (
+      kind === 'transcription' &&
+      enabled &&
+      realtime.live &&
+      liveKeyMissing({
+        protocol: realtime.protocol,
+        liveUrl: realtime.url,
+        ownKey:
+          liveKey.input !== '' ||
+          (Boolean(settings?.realtime?.apiKeySet) && !liveKey.clearRequested),
+        batchUrl: baseUrl,
+        batchKey: apiKey.input !== '' || (Boolean(settings?.apiKeySet) && !apiKey.clearRequested),
+      })
+    ) {
+      setErrors({ 'realtime.apiKey': REALTIME_TEXTS.keyMissing })
+      return
+    }
+    setSaving(true)
     const common = {
       enabled,
       baseUrl: baseUrl.trim(),
@@ -154,6 +244,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
               ...common,
               language: language.trim(),
               vocabulary: vocabulary.trim(),
+              realtime: realtimeRequest(),
             })
       apply(saved)
       setChecking(saved.enabled && saved.state !== 'ACTIVE')
@@ -181,6 +272,39 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       })
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function handleLiveTest() {
+    const urlProblem = realtimeUrlError(realtime.url)
+    if (urlProblem || realtime.protocol === null) {
+      setErrors((current) => ({
+        ...current,
+        ...(urlProblem ? { 'realtime.url': urlProblem } : {}),
+        ...(realtime.protocol === null
+          ? { 'realtime.protocol': 'Bitte einen Live-Dienst wählen.' }
+          : {}),
+      }))
+      return
+    }
+    setLiveTesting(true)
+    setLiveTestResult(null)
+    try {
+      setLiveTestResult(
+        await testTranscriptionRealtimeModel({
+          protocol: realtime.protocol,
+          url: realtime.url.trim(),
+          model: realtime.model.trim(),
+          apiKey: resolveApiKey(liveKey),
+        }),
+      )
+    } catch (err) {
+      setLiveTestResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'Verbindungstest fehlgeschlagen',
+      })
+    } finally {
+      setLiveTesting(false)
     }
   }
 
@@ -288,7 +412,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
         {testResult && (
           <Alert severity={testResult.success ? 'success' : 'error'}>{testResult.message}</Alert>
         )}
-        <Stack direction="row" spacing={1}>
+        <Box>
           <BusyButton
             variant="outlined"
             busy={testing}
@@ -298,6 +422,78 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           >
             Verbindung testen
           </BusyButton>
+        </Box>
+        {kind === 'transcription' && (
+          <Box component="section" aria-labelledby={`${prefix}-live-heading`}>
+            <Typography
+              id={`${prefix}-live-heading`}
+              component="h3"
+              sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}
+            >
+              {REALTIME_TEXTS.sectionLabel}
+            </Typography>
+            <Typography role="status" sx={{ fontSize: 13, mb: 1.5 }}>
+              Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
+            </Typography>
+            <RealtimeTranscriptionFields
+              idPrefix={`${prefix}-live`}
+              value={realtime}
+              onChange={(next) => {
+                setRealtime(next)
+                setLiveTestResult(null)
+                if (next.live) fillBatch(next)
+              }}
+              errors={{
+                protocol: errors['realtime.protocol'],
+                url: errors['realtime.url'],
+                model: errors['realtime.model'],
+              }}
+            >
+              {prefill !== null && <Alert severity="info">{REALTIME_TEXTS.batchPrefilled}</Alert>}
+              <RoleApiKeyField
+                id={`${prefix}-live-api-key`}
+                label={`${REALTIME_TEXTS.keyLabel} (optional)`}
+                value={liveKey}
+                onChange={setLiveKey}
+                apiKeySet={settings.realtime?.apiKeySet ?? false}
+                error={errors['realtime.apiKey']}
+                emptyHint={`Wird verschlüsselt gespeichert und nie wieder angezeigt. ${REALTIME_TEXTS.keyHint}`}
+              />
+              <TextField
+                id={`${prefix}-live-max-sessions`}
+                label="Gleichzeitige Live-Sitzungen"
+                type="number"
+                value={maxSessions}
+                onChange={(e) => setMaxSessions(e.target.value)}
+                error={Boolean(errors['realtime.maxSessions'])}
+                helperText={
+                  errors['realtime.maxSessions'] ??
+                  'Für die ganze Installation, 1 bis 100. Wer darüber diktiert, bekommt den Text nach dem Ende der Aufnahme. Ein eigener Server mit 16 GB GPU-Speicher trägt etwa eine Sitzung.'
+                }
+                size="small"
+                sx={{ maxWidth: 320 }}
+                slotProps={{ htmlInput: { min: 1, max: 100 } }}
+              />
+              {liveTestResult && (
+                <Alert severity={liveTestResult.success ? 'success' : 'error'}>
+                  {liveTestResult.message}
+                </Alert>
+              )}
+              <Box>
+                <BusyButton
+                  variant="outlined"
+                  busy={liveTesting}
+                  busyAnnouncement="Live-Dienst wird getestet"
+                  disabled={realtime.url.trim() === '' || realtime.model.trim() === ''}
+                  onClick={() => void handleLiveTest()}
+                >
+                  Live-Dienst testen
+                </BusyButton>
+              </Box>
+            </RealtimeTranscriptionFields>
+          </Box>
+        )}
+        <Box>
           <BusyButton
             variant="contained"
             busy={saving}
@@ -307,7 +503,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           >
             Speichern
           </BusyButton>
-        </Stack>
+        </Box>
       </Stack>
     </Box>
   )

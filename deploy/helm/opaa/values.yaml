@@ -780,6 +780,10 @@ networkPolicy:
 #   nginx.ingress.kubernetes.io/client-body-buffer-size: 11m
 # The last one keeps a dictation recording (up to 11m, see transcription) in memory; with the
 # controller's small default buffer it is written to a temporary file on the controller's disk.
+# Live dictation is a WebSocket (/api/v1/transcriptions/stream, at most two minutes per session):
+# the controller has to pass the upgrade on, which ingress-nginx, HAProxy Ingress, Traefik and the
+# common Gateway API implementations do without further settings; its read timeout above covers a
+# session. Without the upgrade the dictation silently stays with the recording sent as a whole.
 # HAProxy Ingress: haproxy-ingress.github.io/proxy-body-size: 52m
 # Traefik has no request size limit by default.
 ingress:

@@ -361,7 +361,20 @@ nonPersonalTables:
     - reference_vectors
   rerank_model: [id, enabled, base_url, model_identifier, api_key_ciphertext, updated_at]
   transcription_model:
-    [id, enabled, base_url, model_identifier, api_key_ciphertext, language, vocabulary, updated_at]
+    - id
+    - enabled
+    - base_url
+    - model_identifier
+    - api_key_ciphertext
+    - language
+    - vocabulary
+    - updated_at
+    - realtime_protocol
+    - realtime_url
+    - realtime_model
+    - realtime_api_key_ciphertext
+    - realtime_max_sessions
+  transcription_realtime_slots: [id, opened_at]
   text_recognition_model:
     [id, enabled, connection_type, base_url, model_identifier, api_key_ciphertext, updated_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
