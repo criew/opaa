@@ -154,6 +154,8 @@ class QueryServiceTest {
 
   private QueryService queryService;
 
+  private final AgentTurnHandler agentTurnHandler = mock(AgentTurnHandler.class);
+
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
   private final UUID readableLibraryId = UUID.randomUUID();
@@ -231,7 +233,8 @@ class QueryServiceTest {
         mock(MetadataFilterValidator.class),
         promptService,
         toolLoopHandler,
-        neighborChunkExpansion);
+        neighborChunkExpansion,
+        agentTurnHandler);
   }
 
   /**
@@ -958,6 +961,106 @@ class QueryServiceTest {
 
     assertThat(response).isSameAs(spikeResult);
     verifyNoInteractions(answerGenerationService);
+  }
+
+  /** Regression guard for ADR-0070: only a chosen agent leaves the ordinary path. */
+  @Test
+  void aTurnWithAnAgentRunsThroughTheAgentHandlerWithTheCallersRightsAndNoOrdinarySearch() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    UUID agentId = UUID.randomUUID();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(chatService.attachmentContext(eq(chat), any(), any()))
+        .thenReturn(ChatAttachmentContext.NONE);
+    QueryResult agentResult =
+        new QueryResult(
+            "Agenten-Antwort",
+            List.of(),
+            new QueryOutcome(
+                "gpt-4o",
+                10,
+                5L,
+                false,
+                false,
+                false,
+                false,
+                List.of(),
+                AnswerCompleteness.COMPLETE),
+            chatId,
+            null,
+            null);
+    ArgumentCaptor<AgentTurn> turn = ArgumentCaptor.captor();
+    when(agentTurnHandler.handle(turn.capture())).thenReturn(agentResult);
+    QueryService service =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
+
+    QueryResult response =
+        service.query(
+            "Prüfe den Antrag",
+            chatId,
+            caller,
+            true,
+            List.of(),
+            MetadataFilter.NONE,
+            null,
+            null,
+            List.of(),
+            agentId);
+
+    assertThat(response).isSameAs(agentResult);
+    assertThat(turn.getValue().agentId()).isEqualTo(agentId);
+    assertThat(turn.getValue().readableLibraryIds()).containsExactly(readableLibraryId);
+    assertThat(turn.getValue().userId()).isEqualTo(currentUserId);
+    verifyNoInteractions(answerGenerationService, queryDecompositionService, vectorChunkSearch);
+  }
+
+  @Test
+  void anAgentNeedsAPersistedChatOfTheCaller() {
+    QueryService service =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
+
+    assertThatThrownBy(
+            () ->
+                service.query(
+                    "Prüfe den Antrag",
+                    null,
+                    caller,
+                    true,
+                    List.of(),
+                    MetadataFilter.NONE,
+                    null,
+                    null,
+                    List.of(),
+                    UUID.randomUUID()))
+        .isInstanceOf(ValidationException.class);
+    verifyNoInteractions(agentTurnHandler);
+  }
+
+  /** Regression guard for ADR-0070: without an agent no tool definition reaches the model. */
+  @Test
+  void aTurnWithoutAgentNeverReachesTheAgentHandler() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+    when(chatService.historyAsSpringAiMessages(chat.getId(), 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
+    when(chatService.attachmentContext(eq(chat), any(), any()))
+        .thenReturn(ChatAttachmentContext.NONE);
+    when(chatService.spaceHasLibraryAssociations(any(), any(), any())).thenReturn(true);
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    QueryService service =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
+
+    service.query("Was gilt?", chat.getId(), caller, true, List.of());
+
+    verifyNoInteractions(agentTurnHandler);
   }
 
   @Test

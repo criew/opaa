@@ -59,4 +59,25 @@ public class KnowledgeRetrieval {
     }
     return result;
   }
+
+  /**
+   * Runs the pipeline over {@code searchScope} with {@code searchQuery} searched as given, without
+   * conversation window and without the sub-question decomposition - the search of a tool call of
+   * the agent loop, whose model formulates the query itself. Everything else is the pipeline of
+   * {@link #retrieve}: the same search paths, fusion, reranking and permission filter.
+   */
+  public RetrievalPipelineResult retrieveAsGiven(
+      String searchQuery, Set<UUID> searchScope, MetadataFilter metadataFilter) {
+    RetrievalContext context =
+        retrievalContextFactory.contextFor(searchQuery, List.of(), searchScope, metadataFilter);
+    return retrievalPipeline.run(
+        new RetrievalContext(
+            context.question(),
+            context.conversationHistory(),
+            context.conversationNote(),
+            context.searchScope(),
+            context.metadataFilter(),
+            context.queryProperties().withoutDecomposition(),
+            context.rerankAvailability()));
+  }
 }

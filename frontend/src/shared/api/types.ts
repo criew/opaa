@@ -23,6 +23,8 @@ export type DocumentTextPassage = components['schemas']['DocumentTextPassage']
 export type DocumentTextSection = components['schemas']['DocumentTextSection']
 export type SearchedLibrary = components['schemas']['SearchedLibrary']
 export type AnswerEvidence = components['schemas']['AnswerEvidence']
+export type AgentRun = components['schemas']['AgentRun']
+export type AgentRunStep = components['schemas']['AgentRunStep']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']

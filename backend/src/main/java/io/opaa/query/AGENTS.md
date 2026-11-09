@@ -33,7 +33,14 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
   Das gilt auch für `prompt.web`: Die Prompts eines Space holt `PromptService` über den Port
   `SpaceAssetDirectory`.
 - **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
-  `QueryService` kennt nur die Schnittstelle `ToolLoopQueryHandler`.
+  `QueryService` kennt nur die Schnittstelle `ToolLoopQueryHandler`. Ebenso `query.toolloop`, die
+  Werkzeugschleife der Agenten: `QueryService` kennt nur `AgentTurnHandler`.
+
+- **Werkzeugschleife (`query.toolloop`):** Werkzeuge sind `AgentTool`-Beans mit Rechteklasse, die
+  `ToolRegistry` beim Start prüft. Rechte und Suchbereich kommen nur aus dem `AgentRun`, nie aus den
+  Argumenten des Modells; eine fremde Bibliothek wird ignoriert und im Schritt vermerkt. Lesende
+  Werkzeuge schreiben nichts ins Revisionsprotokoll. Belege prüft das Backend über die Stellen aller
+  Schritte zusammen.
 
 ## Maßgebliche ADRs
 
@@ -43,6 +50,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
 - [ADR-0035](../../../../../../../docs/decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 5): ein Zugriffsweg für Fremdzugänge
 - [ADR-0036](../../../../../../../docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 7): Diagnose im Gruppenkontext
 - [ADR-0043](../../../../../../../docs/decisions/0043-anweisung-je-space.md) (Entscheidungen 6, 8): Space-Anweisung im Prompt
+- [ADR-0070](../../../../../../../docs/decisions/0070-werkzeugaufrufe-im-chat.md), [ADR-0071](../../../../../../../docs/decisions/0071-betriebsbeobachtung.md): Werkzeugschleife und ihre Metriken
 
 ## Verweise
 

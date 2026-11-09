@@ -29,6 +29,7 @@ export function toChatMessage(message: ChatMessageResponse): ChatMessage {
     ...(message.attachments?.length ? { attachments: message.attachments } : {}),
     ...(message.privateSourcesInContext ? { privateSourcesInContext: true } : {}),
     ...(message.evidence ? { evidence: message.evidence } : {}),
+    ...(message.agentRun ? { agentRun: message.agentRun } : {}),
     timestamp: new Date(message.createdAt),
   }
 }

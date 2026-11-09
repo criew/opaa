@@ -33,6 +33,7 @@ final class QueryResponseMapper {
                 toMetadata(result.metadata()),
                 result.chatId())
             .evidence(ChatResponseMapper.toEvidence(result.evidence()))
+            .agentRun(ChatResponseMapper.toAgentRun(result.agentRun()))
             .chatTitle(result.chatTitle())
             .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
     // Left at the DTO's empty list unless a tool produced files: the field is never null.
