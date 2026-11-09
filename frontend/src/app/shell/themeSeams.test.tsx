@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../test/test-utils'
 import { useChatListStore } from '@/features/chat'
 import { loadSpaceList, renderSpaceChats } from './themeSeams'
 

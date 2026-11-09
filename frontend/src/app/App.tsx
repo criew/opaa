@@ -11,7 +11,7 @@ import AppShell from './shell/AppShell'
 import PageLoading from './shell/PageLoading'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import { renderSpaceChats } from './themeSeams'
+import { renderSpaceChats } from './shell/themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
