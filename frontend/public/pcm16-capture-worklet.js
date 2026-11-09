@@ -2,8 +2,9 @@
  * Audio worklet of live dictation (ADR-0072): turns the microphone's float samples into PCM16 mono
  * little-endian at the rate the server named in `ready`, and posts one ArrayBuffer about every
  * 100 ms. Before decimating, a moving average over the decimation window damps what lies above the
- * target's Nyquist frequency, so it does not fold back as noise; then linear interpolation. The message `flush` posts what is left and then `flushed`.
- * Nothing is kept beyond the current frame.
+ * target's Nyquist frequency; a filter this simple reduces aliasing but does not remove it. Then
+ * linear interpolation. The message `flush` posts what is left and then `flushed`. Nothing is kept
+ * beyond the current frame.
  */
 class Pcm16CaptureProcessor extends AudioWorkletProcessor {
   constructor(options) {

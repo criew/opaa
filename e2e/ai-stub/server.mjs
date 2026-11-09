@@ -462,11 +462,17 @@ function sendJson(res, status, body) {
 // convention has ever actually been exercised against a reachable server before this stub, so
 // matching on the path suffix - not the full path - works no matter which one e2e.env ends up
 // using.
+function isWebSocketUpgrade(req) {
+  return (req.headers.upgrade ?? '').toLowerCase() === 'websocket'
+}
+
 function matchesEndpoint(url, name) {
   return url != null && url.split('?')[0].endsWith(name)
 }
 
-const server = createServer(async (req, res) => {
+// Only a WebSocket upgrade leaves the request handler: the JDK client asks a plain-http endpoint for
+// an h2c upgrade on every call, and Node would otherwise hand those requests to 'upgrade' as well.
+const server = createServer({ shouldUpgradeCallback: isWebSocketUpgrade }, async (req, res) => {
   try {
     if (req.method === 'GET' && matchesEndpoint(req.url, '/health')) {
       sendJson(res, 200, { status: 'ok' })
