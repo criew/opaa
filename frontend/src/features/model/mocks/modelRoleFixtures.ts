@@ -29,6 +29,15 @@ export function factoryTranscriptionModel(): TranscriptionModelSettingsResponse 
     speechInputAvailable: true,
     updatedAt: null,
     retiredVariables: [],
+    realtime: {
+      enabled: false,
+      protocol: null,
+      url: null,
+      model: null,
+      apiKeySet: false,
+      maxSessions: 1,
+      state: 'DISABLED',
+    },
   }
 }
 

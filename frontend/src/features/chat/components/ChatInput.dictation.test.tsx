@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatInput from './ChatInput'
@@ -14,6 +14,15 @@ const mocks = vi.hoisted(() => ({
   ),
   getTranscriptionAvailability: vi.fn(),
   tracksStopped: 0,
+  realtime: false,
+  live: null as null | { onText: (text: string) => void },
+}))
+
+vi.mock('../utils/liveTranscription', () => ({
+  startLiveTranscription: (options: { onText: (text: string) => void }) => {
+    mocks.live = options
+    return { finish: async () => 'Welche Frist gilt live?', cancel: () => {} }
+  },
 }))
 
 vi.mock('../api/transcriptionApi', () => ({
@@ -24,6 +33,7 @@ vi.mock('../api/transcriptionApi', () => ({
 vi.mock('../utils/audioRecording', () => ({
   isRecordingSupported: () => mocks.supported,
   startRecording: async () => ({
+    stream: {},
     stop: async () => {
       mocks.tracksStopped += 1
       return new Blob(['audio'], { type: 'audio/webm' })
@@ -40,11 +50,13 @@ describe('ChatInput dictation', () => {
     mocks.available = true
     mocks.supported = true
     mocks.tracksStopped = 0
+    mocks.realtime = false
+    mocks.live = null
     mocks.transcribeRecording.mockClear()
     mocks.getTranscriptionAvailability.mockReset()
     mocks.getTranscriptionAvailability.mockImplementation(async () => ({
       available: mocks.available,
-      realtimeAvailable: false,
+      realtimeAvailable: mocks.realtime,
     }))
     useAuthStore.setState({ features: {} })
     useSpaceStore.setState({
@@ -67,6 +79,38 @@ describe('ChatInput dictation', () => {
 
   afterEach(() => {
     useAuthStore.setState({ features: {} })
+    vi.unstubAllGlobals()
+  })
+
+  it('shows the live text dimmed while speaking and takes the final live text', async () => {
+    mocks.realtime = true
+    vi.stubGlobal('AudioContext', class {})
+    vi.stubGlobal('AudioWorkletNode', class {})
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await waitFor(() => expect(mocks.live).not.toBeNull())
+    act(() => mocks.live?.onText('Welche Frist'))
+    expect(await screen.findByTestId('dictation-interim')).toHaveTextContent('Welche Frist')
+    expect(screen.getByTestId('dictation-interim')).toHaveStyle({ fontStyle: 'italic' })
+    await user.click(screen.getByRole('button', { name: 'Aufnahme beenden' }))
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('Welche Frist gilt live?'))
+    expect(mocks.transcribeRecording).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('dictation-interim')).not.toBeInTheDocument()
+  })
+
+  it('offers no live text where the browser has no audio worklet', async () => {
+    mocks.realtime = true
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Aufnahme beenden' }))
+
+    await waitFor(() => expect(mocks.transcribeRecording).toHaveBeenCalledTimes(1))
+    expect(mocks.live).toBeNull()
   })
 
   it('appends the dictated text to the draft and does not send it', async () => {

@@ -19,6 +19,7 @@ import {
   type InstallationStepState,
   type InstallationTextRecognitionModel,
   type InstallationTranscriptionModel,
+  type InstallationTranscriptionModelView,
 } from '../api/types'
 import {
   MOCK_EMBEDDING_DIMENSIONS,
@@ -126,16 +127,26 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
     return { chatModel: { ...rest, maxTokens: maxTokens ?? 8000, apiKeySet: keySet } }
   }
   if (step.step === 'TRANSCRIPTION_MODEL') {
-    const { apiKey, language, ...rest } = part as InstallationTranscriptionModel
+    const { apiKey, language, realtime, ...rest } = part as InstallationTranscriptionModel
     const keySet =
       apiKey === undefined || apiKey === null
         ? Boolean(step.transcriptionModel?.apiKeySet)
         : apiKey !== ''
+    let live: InstallationTranscriptionModelView['realtime']
+    if (realtime) {
+      const { apiKey: liveKey, ...liveRest } = realtime
+      const liveKeySet =
+        liveKey === undefined || liveKey === null
+          ? Boolean(step.transcriptionModel?.realtime?.apiKeySet)
+          : liveKey !== ''
+      live = { ...liveRest, apiKeySet: liveKeySet }
+    }
     return {
       transcriptionModel: {
         ...rest,
         language: (language ?? 'de').trim().toLowerCase(),
         apiKeySet: keySet,
+        ...(live ? { realtime: live } : {}),
       },
     }
   }
