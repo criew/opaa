@@ -12,6 +12,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.common.NotFoundException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -93,6 +94,7 @@ public class DirectorySyncService {
   private final DirectorySyncRunLock runLock;
   private final Clock clock;
   private final DatabaseClock databaseClock;
+  private final DirectorySyncMetrics metrics;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -105,7 +107,8 @@ public class DirectorySyncService {
       AuditEventRecorder auditEventRecorder,
       DirectorySyncRunLock runLock,
       Clock clock,
-      DatabaseClock databaseClock) {
+      DatabaseClock databaseClock,
+      DirectorySyncMetrics metrics) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
@@ -117,6 +120,7 @@ public class DirectorySyncService {
     this.runLock = runLock;
     this.clock = clock;
     this.databaseClock = databaseClock;
+    this.metrics = metrics;
   }
 
   /**
@@ -309,15 +313,19 @@ public class DirectorySyncService {
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
+    long started = System.nanoTime();
     Instant now = Instant.now(clock);
     Instant runAt = databaseClock.now();
     DirectorySnapshot snapshot;
     try {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
-      return recordUnreachable(target, now, runAt, e);
+      SyncReport unreachable = recordUnreachable(target, now, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.UNREACHABLE, started);
+      return unreachable;
     } catch (RuntimeException e) {
       recordFailed(target, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.FAILED, started);
       throw e;
     }
     SyncReport report;
@@ -325,10 +333,22 @@ public class DirectorySyncService {
       report = plan.apply(snapshot, now);
     } catch (RuntimeException e) {
       recordFailed(target, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.FAILED, started);
       throw e;
     }
     recordStatusSafely(target, runAt, report.outcome(), report.message(), report.changedFraction());
+    recordMetrics(target, report.outcome(), started);
     return report;
+  }
+
+  /** Counts the ended run; a failure of the metrics never changes the run's own result. */
+  private void recordMetrics(SyncTarget target, DirectorySyncOutcome outcome, long startedNanos) {
+    try {
+      metrics.recordRun(
+          target.providerId(), outcome, Duration.ofNanos(System.nanoTime() - startedNanos));
+    } catch (RuntimeException e) {
+      log.warn("Directory sync: could not count the run of provider {}", target.providerId(), e);
+    }
   }
 
   /**

@@ -43,6 +43,7 @@ import io.opaa.metadata.ModelExtractionOutcome;
 import io.opaa.metadata.ModelExtractionPrompt;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.observability.IndexingStage;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.time.Clock;
@@ -258,6 +259,7 @@ public class DocumentIngestService {
         new EnumMap<>(IngestTextSanitizer.Finding.class);
     DocumentIngest ingest = declared.withCleanNames(findings);
     KnowledgeLibrary library = ingest.library();
+    String connector = connectorKey(library);
     LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
     String fileName = ingest.fileName();
@@ -289,7 +291,7 @@ public class DocumentIngestService {
       if (ingest.existingRow()) {
         if (existing.isEmpty()) {
           log.warn("Document {} no longer exists, skipping", names.of(filePath));
-          metrics.recordSkipped();
+          metrics.recordSkipped(connector);
           return DocumentIngestResult.SKIPPED;
         }
         doc = existing.get();
@@ -307,7 +309,7 @@ public class DocumentIngestService {
           log.info(
               "Skipping unchanged document with a malware finding: {}",
               names.of(filePath, existingDoc.getId()));
-          metrics.recordSkipped();
+          metrics.recordSkipped(connector);
           return DocumentIngestResult.SKIPPED;
         }
         if (checksum.equals(existingDoc.getChecksum())
@@ -316,7 +318,7 @@ public class DocumentIngestService {
           log.info(
               "Skipping unchanged document (same checksum): {}",
               names.of(filePath, existingDoc.getId()));
-          metrics.recordSkipped();
+          metrics.recordSkipped(connector);
           return DocumentIngestResult.SKIPPED;
         }
         // The row is still present when the quota is checked, so the check measures the size
@@ -355,12 +357,14 @@ public class DocumentIngestService {
     Optional<String> routingExtension = selection.routingExtension();
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
+    long[] attachmentNanos = {0};
     try {
       DocumentIngestResult keptOut =
           scanForMalware(ingest, documentId, replacingExistingChunks, checksum, events);
       if (keptOut != null) {
         return keptOut;
       }
+      long parseStart = IndexingStage.start();
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
               pipeline,
@@ -375,15 +379,18 @@ public class DocumentIngestService {
                 // corrected (attachment-free) fileSize, or the attachment bytes count twice.
                 applyContentByteSizeOverride(savedDoc, result);
                 int rejectedBefore = attachmentAccess.progress().quotaRejections();
+                long attachmentsStart = System.nanoTime();
                 processDiscoveredAttachments(
                     result.discoveredAttachments(),
                     documentId,
                     savedDoc.getFilePath(),
                     savedDoc.getSourceType(),
                     attachmentAccess);
+                attachmentNanos[0] += System.nanoTime() - attachmentsStart;
                 attachmentAtQuota[0] =
                     attachmentAccess.progress().quotaRejections() > rejectedBefore;
               });
+      IndexingStage.PARSE.recordNanos(System.nanoTime() - parseStart - attachmentNanos[0]);
       Optional<ScannedDocumentRecognition.Recognized> recognized =
           recognizeScan(pipeline, parsed, ingest, documentId, checksum, events);
       if (recognized.isPresent()) {
@@ -409,27 +416,31 @@ public class DocumentIngestService {
               "No usable text extracted from {} by pipeline {}",
               names.of(filePath, documentId),
               pipeline.id());
+          metrics.recordParseFailure(selection.contentType(), "no_text");
           deletePreviousChunks(replacingExistingChunks, documentId);
-          return markConnectorRejected(documentId);
+          return markConnectorRejected(connector, documentId);
         }
         case NO_CONTENT -> {
           log.warn(
               "No content extracted from {} by pipeline {}",
               names.of(filePath, documentId),
               pipeline.id());
+          metrics.recordParseFailure(selection.contentType(), "no_content");
           deletePreviousChunks(replacingExistingChunks, documentId);
-          return markConnectorFailed(documentId, true, NO_CONTENT_MESSAGE);
+          return markConnectorFailed(connector, documentId, true, NO_CONTENT_MESSAGE);
         }
         case PARSE_FAILED -> {
           log.warn(
               "Could not parse {} with pipeline {}", names.of(filePath, documentId), pipeline.id());
-          return markConnectorFailed(documentId, false, PROCESSING_FAILED_MESSAGE);
+          metrics.recordParseFailure(selection.contentType(), "parse_failed");
+          return markConnectorFailed(connector, documentId, false, PROCESSING_FAILED_MESSAGE);
         }
         case CHUNKED ->
             log.debug("{} chunked via pipeline {}", names.of(filePath, documentId), pipeline.id());
       }
       parsed.sanitizerFindings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+      long chunkStart = IndexingStage.start();
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
               doc,
@@ -457,11 +468,13 @@ public class DocumentIngestService {
               pipeline,
               routingExtension,
               coreMetadata,
-              ingest.context());
+              ingest.context(),
+              chunkStart);
 
       boolean unsettled = attachmentAtQuota[0] && !ingest.existingRow();
       DocumentIngestResult result =
           markConnectorIndexed(
+              connector,
               documentId,
               storedChunks,
               unsettled ? null : checksum,
@@ -469,17 +482,18 @@ public class DocumentIngestService {
       if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }
+      metrics.recordChunks(storedChunks);
     } catch (Exception | Error e) {
       // every Error but a process-fatal one is booked, so an upload never stays PENDING after it
       FatalErrors.rethrowIfProcessFatal(e);
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
-      metrics.recordFailed();
+      metrics.recordFailed(connector);
       throw e;
     }
 
-    metrics.recordProcessed();
+    metrics.recordProcessed(connector);
     reportSuspiciousPatterns(names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
   }
@@ -501,15 +515,20 @@ public class DocumentIngestService {
         || !(ingest.content() instanceof DocumentIngest.File file)) {
       return Optional.empty();
     }
-    return scannedDocumentRecognition.recognize(
-        new ScannedDocumentRecognition.Candidate(
-            documentId,
-            checksum,
-            file.path(),
-            ingest.filePath(),
-            ingest.library().loggedNames(),
-            events,
-            ingest.reindex()));
+    long ocrStart = IndexingStage.start();
+    try {
+      return scannedDocumentRecognition.recognize(
+          new ScannedDocumentRecognition.Candidate(
+              documentId,
+              checksum,
+              file.path(),
+              ingest.filePath(),
+              ingest.library().loggedNames(),
+              events,
+              ingest.reindex()));
+    } finally {
+      IndexingStage.OCR.recordSince(ocrStart);
+    }
   }
 
   /**
@@ -616,7 +635,7 @@ public class DocumentIngestService {
       if (existingRow != null && !ingest.reindex()) {
         markConnectorFailedAfterException(existingRow.getId(), true, PROCESSING_FAILED_MESSAGE);
       }
-      metrics.recordFailed();
+      metrics.recordFailed(connectorKey(ingest.library()));
       throw e;
     }
   }
@@ -715,7 +734,7 @@ public class DocumentIngestService {
           "Skipping {}: the owner's storage quota of private library {} would be exceeded",
           library.loggedNames().of(filePath),
           library.getId());
-      metrics.recordSkipped();
+      metrics.recordSkipped(connectorKey(library));
       return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
     }
     return null;
@@ -726,7 +745,7 @@ public class DocumentIngestService {
         "Skipping {}: its file path of {} characters exceeds the stored identity",
         library.loggedNames().of(FilePathLimit.cut(filePath)),
         filePath.length());
-    metrics.recordSkipped();
+    metrics.recordSkipped(connectorKey(library));
     return DocumentIngestResult.FILE_PATH_TOO_LONG;
   }
 
@@ -735,7 +754,7 @@ public class DocumentIngestService {
         "Skipping {}: library {} storage quota would be exceeded",
         library.loggedNames().of(filePath),
         library.getId());
-    metrics.recordSkipped();
+    metrics.recordSkipped(connectorKey(library));
     return DocumentIngestResult.QUOTA_EXCEEDED;
   }
 
@@ -831,6 +850,11 @@ public class DocumentIngestService {
   }
 
   /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
+  /** The source type key {@link IndexingMetrics} names the library's connector by. */
+  private static String connectorKey(KnowledgeLibrary library) {
+    return library.getSourceType() == null ? null : library.getSourceType().key();
+  }
+
   private static String contextTitleFor(DocumentIngest ingest) {
     return ChunkContextPrefix.ingestTitle(
         ingest.syntheticName(), ingest.fileName(), ingest.title(), ingest.context());
@@ -856,7 +880,11 @@ public class DocumentIngestService {
    *     removed again here - otherwise {@link DocumentIngestResult#PROCESSED}
    */
   private DocumentIngestResult markConnectorIndexed(
-      UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
+      String connector,
+      UUID documentId,
+      int chunkCount,
+      String checksum,
+      String lastModifiedRemote) {
     int updated =
         documentRepository.markIndexedFromSource(
             documentId, chunkCount, Instant.now(clock), checksum, lastModifiedRemote);
@@ -865,7 +893,7 @@ public class DocumentIngestService {
           "Document {} was deleted while its chunks were being written; removing them again",
           documentId);
       vectorChunkStore.deleteByDocumentId(documentId);
-      metrics.recordSkipped();
+      metrics.recordSkipped(connector);
       return DocumentIngestResult.SKIPPED;
     }
     return DocumentIngestResult.PROCESSED;
@@ -881,17 +909,17 @@ public class DocumentIngestService {
    * @param errorMessage the German, user-facing reason the row carries
    */
   private DocumentIngestResult markConnectorFailed(
-      UUID documentId, boolean chunksRemoved, String errorMessage) {
+      String connector, UUID documentId, boolean chunksRemoved, String errorMessage) {
     int updated =
         chunksRemoved
             ? documentRepository.markFailedWithoutChunks(documentId, errorMessage)
             : documentRepository.markFailed(documentId, errorMessage);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
-      metrics.recordSkipped();
+      metrics.recordSkipped(connector);
       return DocumentIngestResult.SKIPPED;
     }
-    metrics.recordFailed();
+    metrics.recordFailed(connector);
     return DocumentIngestResult.FAILED;
   }
 
@@ -899,16 +927,16 @@ public class DocumentIngestService {
    * The {@code FAILED} transition for a document without a usable chunk: marked with {@link
    * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}, always with {@code chunk_count = 0}.
    */
-  private DocumentIngestResult markConnectorRejected(UUID documentId) {
+  private DocumentIngestResult markConnectorRejected(String connector, UUID documentId) {
     int updated =
         documentRepository.markFailedWithoutChunks(
             documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked as rejected", documentId);
-      metrics.recordSkipped();
+      metrics.recordSkipped(connector);
       return DocumentIngestResult.SKIPPED;
     }
-    metrics.recordSkipped();
+    metrics.recordSkipped(connector);
     return DocumentIngestResult.NO_EXTRACTABLE_TEXT;
   }
 
@@ -941,26 +969,31 @@ public class DocumentIngestService {
       }
       case MalwareScanService.Verdict.Infected infected -> {
         deletePreviousChunks(replacingExistingChunks, documentId);
-        yield markMalwareFound(documentId, infected.signature(), checksum);
+        yield markMalwareFound(
+            connectorKey(ingest.library()), documentId, infected.signature(), checksum);
       }
       case MalwareScanService.Verdict.Unscanned unscanned ->
           ingest.reindex()
               ? DocumentIngestResult.FAILED
-              : markConnectorFailed(documentId, false, MalwareScanService.UNSCANNED_MESSAGE);
+              : markConnectorFailed(
+                  connectorKey(ingest.library()),
+                  documentId,
+                  false,
+                  MalwareScanService.UNSCANNED_MESSAGE);
     };
   }
 
   private DocumentIngestResult markMalwareFound(
-      UUID documentId, String signature, String checksum) {
+      String connector, UUID documentId, String signature, String checksum) {
     int updated =
         documentRepository.markMalwareFound(
             documentId, MalwareScanService.INFECTED_MESSAGE, signature, checksum);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked as infected", documentId);
-      metrics.recordSkipped();
+      metrics.recordSkipped(connector);
       return DocumentIngestResult.SKIPPED;
     }
-    metrics.recordSkipped();
+    metrics.recordSkipped(connector);
     return DocumentIngestResult.MALWARE_FOUND;
   }
 
@@ -1119,7 +1152,8 @@ public class DocumentIngestService {
       DocumentFormat pipeline,
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata,
-      SourceDocumentContext sourceContext) {
+      SourceDocumentContext sourceContext,
+      long chunkStart) {
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
     // at all - an RSS entry without a headline never does. That decision is recorded below, so the
@@ -1141,6 +1175,8 @@ public class DocumentIngestService {
 
     List<org.springframework.ai.document.Document> pieces = chunks;
     List<org.springframework.ai.document.Document> enriched = enrichment.apply(pieces);
+    IndexingStage.CHUNK.recordSince(chunkStart);
+    long embedStart = IndexingStage.start();
     Map<String, float[]> verified = new HashMap<>();
     Long verifiedGeneration = null;
     int generationChanges = 0;
@@ -1182,6 +1218,7 @@ public class DocumentIngestService {
       pieces = splitOverlong(document, pieces, check.overlong());
       enriched = enrichment.apply(pieces);
     }
+    IndexingStage.EMBED.recordSince(embedStart);
 
     addToVectorStore(enriched, verified, verifiedGeneration);
     // Recorded only after the chunks exist: the stamp says "these chunks carry this prefix", which

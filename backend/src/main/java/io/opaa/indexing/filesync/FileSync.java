@@ -21,6 +21,7 @@ import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.observability.IndexingStage;
 import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
@@ -939,7 +940,7 @@ public final class FileSync implements AutoCloseable {
         downloadPool()
             .submit(
                 () -> {
-                  FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
+                  FetchedFile fetched = timedFetch(entry);
                   landed.add(fetched.file());
                   return fetched;
                 });
@@ -1143,10 +1144,18 @@ public final class FileSync implements AutoCloseable {
     return true;
   }
 
+  /** The store's download of {@code entry}, timed as {@link IndexingStage#FETCH} when it lands. */
+  private FetchedFile timedFetch(FileEntry entry) throws FileAccessException, InterruptedException {
+    long start = IndexingStage.start();
+    FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
+    IndexingStage.FETCH.recordSince(start);
+    return fetched;
+  }
+
   /** The entry's bytes in a temp file, or {@code null} once the failure was handled. */
   private FetchedFile fetch(FileEntry entry) throws InterruptedException {
     try {
-      return store.fetch(entry, settings.maxFileSizeBytes());
+      return timedFetch(entry);
     } catch (FileAccessException e) {
       unsettle(entry);
       handleFailure(entry.filePath(), e);

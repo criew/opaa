@@ -7,9 +7,11 @@ import io.opaa.common.DatabaseClock;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.observability.IndexingMetrics;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,13 +53,14 @@ public class IndexingJobService {
   private final CurrentInstance currentInstance;
   private final InstanceRegistry instanceRegistry;
   private final EmbeddingModelService embeddingModels;
+  private final IndexingMetrics metrics;
 
   /**
    * {@code databaseClock} stamps the progress heartbeat {@code lastProgressAt} and judges it stale:
    * another instance may read and compare it (ADR-0053, Entscheidung 9). A job belongs to the
    * {@code currentInstance} that started it; {@code instanceRegistry} tells whether its owner lives
    * (Entscheidung 8). A run embeds: without an installed embedding model {@code embeddingModels}
-   * refuses every start.
+   * refuses every start. Every run this service ends counts once in {@code metrics}.
    */
   public IndexingJobService(
       IndexingJobRepository indexingJobRepository,
@@ -66,7 +69,8 @@ public class IndexingJobService {
       DatabaseClock databaseClock,
       CurrentInstance currentInstance,
       InstanceRegistry instanceRegistry,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      IndexingMetrics metrics) {
     this.indexingJobRepository = indexingJobRepository;
     this.assetRepository = assetRepository;
     this.clock = clock;
@@ -74,6 +78,7 @@ public class IndexingJobService {
     this.currentInstance = currentInstance;
     this.instanceRegistry = instanceRegistry;
     this.embeddingModels = embeddingModels;
+    this.metrics = metrics;
   }
 
   /**
@@ -179,7 +184,30 @@ public class IndexingJobService {
             documentsIndexedTotal,
             Instant.now(clock));
     requireJobExistedIfNoRowsUpdated(jobId, updated);
+    if (updated > 0) {
+      recordEnded(jobId);
+    }
     return updated > 0;
+  }
+
+  /** Counts the run {@code jobId} this service just ended. */
+  private void recordEnded(UUID jobId) {
+    indexingJobRepository.findEndedRun(jobId).ifPresent(run -> run.recordIn(metrics, null));
+  }
+
+  /** Counts every run a recovery failed at {@code completedAt} with {@code errorMessage}. */
+  private void recordRecovered(Instant completedAt, String errorMessage) {
+    indexingJobRepository
+        .findRunsFailedAt(completedAt, errorMessage)
+        .forEach(run -> run.recordIn(metrics, EndedRun.ABANDONED));
+  }
+
+  /**
+   * A recovery's end time at the precision the database keeps, so {@link #recordRecovered} finds
+   * the rows again by it.
+   */
+  private static Instant storedPrecision(Instant instant) {
+    return instant.truncatedTo(ChronoUnit.MICROS);
   }
 
   /**
@@ -260,6 +288,9 @@ public class IndexingJobService {
         indexingJobRepository.failIfRunning(
             jobId, errorMessage, failureCategory, Instant.now(clock));
     requireJobExistedIfNoRowsUpdated(jobId, updated);
+    if (updated > 0) {
+      recordEnded(jobId);
+    }
   }
 
   /**
@@ -464,9 +495,13 @@ public class IndexingJobService {
     int recovered = 0;
     for (UUID owner : indexingJobRepository.findOwnersOfRunningJobs()) {
       if (!instanceRegistry.isAlive(owner)) {
-        recovered +=
-            indexingJobRepository.failRunningJobsOwnedBy(
-                owner, RESTART_ABORTED_MESSAGE, Instant.now(clock));
+        Instant now = storedPrecision(Instant.now(clock));
+        int failed =
+            indexingJobRepository.failRunningJobsOwnedBy(owner, RESTART_ABORTED_MESSAGE, now);
+        if (failed > 0) {
+          recordRecovered(now, RESTART_ABORTED_MESSAGE);
+        }
+        recovered += failed;
       }
     }
     return recovered;
@@ -480,8 +515,12 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverJobsWithoutOwner() {
-    return indexingJobRepository.failRunningJobsWithoutOwner(
-        RESTART_ABORTED_MESSAGE, Instant.now(clock));
+    Instant now = storedPrecision(Instant.now(clock));
+    int failed = indexingJobRepository.failRunningJobsWithoutOwner(RESTART_ABORTED_MESSAGE, now);
+    if (failed > 0) {
+      recordRecovered(now, RESTART_ABORTED_MESSAGE);
+    }
+    return failed;
   }
 
   /**
@@ -494,8 +533,12 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverStaleJobs(Duration staleAfter) {
-    Instant now = databaseClock.now();
-    return indexingJobRepository.failStaleRunningJobs(
-        STALE_RUN_MESSAGE, now.minus(staleAfter), now);
+    Instant now = storedPrecision(databaseClock.now());
+    int failed =
+        indexingJobRepository.failStaleRunningJobs(STALE_RUN_MESSAGE, now.minus(staleAfter), now);
+    if (failed > 0) {
+      recordRecovered(now, STALE_RUN_MESSAGE);
+    }
+    return failed;
   }
 }

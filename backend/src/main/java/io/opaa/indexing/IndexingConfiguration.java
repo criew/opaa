@@ -102,7 +102,8 @@ public class IndexingConfiguration {
       DatabaseClock databaseClock,
       CurrentInstance currentInstance,
       InstanceRegistry instanceRegistry,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      IndexingMetrics indexingMetrics) {
     return new IndexingJobService(
         indexingJobRepository,
         assetRepository,
@@ -110,7 +111,8 @@ public class IndexingConfiguration {
         databaseClock,
         currentInstance,
         instanceRegistry,
-        embeddingModels);
+        embeddingModels,
+        indexingMetrics);
   }
 
   @Bean

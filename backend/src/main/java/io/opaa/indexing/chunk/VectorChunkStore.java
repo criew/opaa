@@ -7,6 +7,7 @@ import io.opaa.llm.EmbeddingClients;
 import io.opaa.llm.EmbeddingClients.Pinned;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import io.opaa.observability.IndexingStage;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -161,6 +162,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
     for (int attempt = 1; ; attempt++) {
       Pinned pinned = clients.pin();
       Map<String, float[]> reusable = pinned.generation() == knownGeneration ? known : Map.of();
+      long embedStart = IndexingStage.start();
       EmbeddingInputCheck check = checkInputs(pinned, chunks, reusable, Runnable::run);
       if (!check.overlong().isEmpty()) {
         EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
@@ -168,8 +170,11 @@ public class VectorChunkStore implements ChunkMetadataStore {
       }
       warnUnverified(pinned, chunks, check);
       try {
-        vectorStoreWriter.writeEmbeddedChunks(
-            chunks, vectorsFor(pinned, chunks, reusable, check.vectors()), pinned.generation());
+        List<float[]> vectors = vectorsFor(pinned, chunks, reusable, check.vectors());
+        IndexingStage.EMBED.recordSince(embedStart);
+        long storeStart = IndexingStage.start();
+        vectorStoreWriter.writeEmbeddedChunks(chunks, vectors, pinned.generation());
+        IndexingStage.STORE.recordSince(storeStart);
         return;
       } catch (EmbeddingGenerationChangedException e) {
         if (attempt >= GENERATION_ATTEMPTS) {

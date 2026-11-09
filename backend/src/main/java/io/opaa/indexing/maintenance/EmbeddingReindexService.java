@@ -211,6 +211,19 @@ public class EmbeddingReindexService {
         });
   }
 
+  /**
+   * The chunks a model change still has to embed, counted like {@link #progress}; {@code 0} without
+   * a pending change, which counts nothing.
+   */
+  public long remainingChunks() {
+    boolean stale = state.withStableColumns(snapshot -> snapshot != null && snapshot.stale());
+    if (!stale) {
+      return 0;
+    }
+    EmbeddingReindexProgress progress = progress();
+    return progress.stale() ? Math.max(0, progress.totalChunks() - progress.embeddedChunks()) : 0;
+  }
+
   /** The chunks {@link #progress} reports, of the private libraries only when they are counted. */
   private record Counted(long total, long embedded, long withoutCurrent) {}
 
