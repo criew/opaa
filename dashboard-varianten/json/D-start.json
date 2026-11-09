@@ -1,0 +1,1636 @@
+{
+  "uid": "opaa-d-start",
+  "title": "OPAA · D · Wegweiser",
+  "description": "Variante D: gemeinsame Startseite mit Status je Bereich, darunter je Bereich ein schlankes Dashboard.",
+  "tags": [
+    "opaa",
+    "variante-d"
+  ],
+  "timezone": "Europe/Berlin",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "fiscalYearStartMonth": 0,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "enable": true,
+        "iconColor": "#0B6FBC",
+        "name": "Neustart / Versionswechsel",
+        "expr": "changes(process_start_time_seconds{instance=~\"$instance\"}[2m]) > 0",
+        "step": "60s",
+        "titleFormat": "Neustart {{instance}}",
+        "textFormat": "Pod neu gestartet (Rollout oder Absturz)",
+        "tagKeys": "instance",
+        "useValueForTime": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Betrieb & Bereitschaft",
+      "type": "link",
+      "url": "/d/opaa-d-betrieb?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Wissensbestand & Bibliotheken",
+      "type": "link",
+      "url": "/d/opaa-d-wissen?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "KI-Modelle & Kosten",
+      "type": "link",
+      "url": "/d/opaa-d-modelle?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Sicherheit & Nachweis",
+      "type": "link",
+      "url": "/d/opaa-d-sicherheit?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_build_info, instance)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_build_info, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "connector",
+        "label": "Konnektortyp",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_indexing_runs_total, connector)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_indexing_runs_total, connector)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1,
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 401,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "transparent": true,
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"background:#012142;color:#fff;padding:10px 18px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:16px;height:100%;box-sizing:border-box\"><span style=\"font-size:20px;font-weight:600;letter-spacing:.2px\">OPAA · Wegweiser</span><span style=\"font-size:13px;opacity:.95\">Ein Bereich je Zuständigkeit – Klick auf eine Kachel öffnet den Bereich</span></div>"
+      }
+    },
+    {
+      "id": 402,
+      "type": "stat",
+      "title": "Betrieb & Bereitschaft",
+      "description": "Für die Bereitschaft: läuft OPAA, sind alle Bausteine da, hängt etwas im Hintergrund? Die Farbe ist der schlechteste Zustand im Bereich.",
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 6,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace((max(label_replace((((((sum(increase(opaa_query_count_total{status=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) < bool 0.99) + ((((sum(increase(opaa_query_count_total{status=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) < bool 0.95)), \"k\", \"s0\", \"\", \"\") or label_replace((((((histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[15m])))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) > bool 3) + ((((histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[15m])))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) > bool 10)), \"k\", \"s1\", \"\", \"\") or label_replace((((((sum(increase(opaa_auth_logins_total{result=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) >= 5))) < bool 0.98) + ((((sum(increase(opaa_auth_logins_total{result=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) >= 5))) < bool 0.9)), \"k\", \"s2\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))), \"k\", \"s0\", \"\", \"\") or label_replace((max(label_replace(((2 * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) < bool sum(kube_deployment_spec_replicas{deployment=\"opaa-backend\"})) * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) > bool 0))), \"k\", \"s0\", \"\", \"\") or label_replace(((2 * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) < bool sum(kube_deployment_spec_replicas{deployment=\"opaa-frontend\"})) * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) > bool 0))), \"k\", \"s1\", \"\", \"\") or label_replace((max(label_replace((2 * (min(pg_up) == bool 0)), \"k\", \"s0\", \"\", \"\") or label_replace(((sum(increase(hikaricp_connections_timeout_total{instance=~\"$instance\"}[10m])) > bool 0)), \"k\", \"s1\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))), \"k\", \"s2\", \"\", \"\") or label_replace(((((2 * ((sum(increase(opaa_auth_logins_total{method=\"oidc\",result=\"idp_error\",instance=~\"$instance\"}[10m])) / sum(increase(opaa_auth_logins_total{method=\"oidc\",instance=~\"$instance\"}[10m]))) > bool 0.5)) and on() ((sum(increase(opaa_auth_logins_total{method=\"oidc\",instance=~\"$instance\"}[10m]))) >= 10)))), \"k\", \"s3\", \"\", \"\") or label_replace((max(jvm_gc_live_data_size_bytes{instance=~\"$instance\"} / jvm_gc_max_data_size_bytes{instance=~\"$instance\"}) > bool 0.85), \"k\", \"s4\", \"\", \"\") or label_replace((count(count by (version) (opaa_build_info)) > bool 1), \"k\", \"s5\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))), \"k\", \"s1\", \"\", \"\") or label_replace((max(label_replace(((count(((time() - max by (job) (opaa_scheduled_last_success_seconds{job!~\"audit-.*\"})) > 3 * max by (job) (opaa_scheduled_expected_interval_seconds)) > 900) or vector(0)) > bool 0), \"k\", \"s0\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{queue=\"mail_outbox\"}) > bool 1800), \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{queue=\"source_event_batches\"}) > bool 3600), \"k\", \"s2\", \"\", \"\") or label_replace((((time() - max(opaa_directory_sync_last_applied_seconds)) > bool 2700) + ((time() - max(opaa_directory_sync_last_applied_seconds)) > bool 93600)), \"k\", \"s3\", \"\", \"\") or label_replace((max(opaa_directory_sync_plan_pending) > bool 0), \"k\", \"s4\", \"\", \"\") or label_replace((min(opaa_invalidation_bus_connected) == bool 0), \"k\", \"s5\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))), \"k\", \"s2\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "Betrieb & Bereitschaft",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": [
+            {
+              "title": "Bereich öffnen: Betrieb & Bereitschaft",
+              "url": "/d/opaa-d-betrieb?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 30
+        }
+      }
+    },
+    {
+      "id": 403,
+      "type": "stat",
+      "title": "",
+      "description": "Für die Bereitschaft: läuft OPAA, sind alle Bausteine da, hängt etwas im Hintergrund?",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((sum(increase(opaa_query_count_total{status=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) or on() vector(-1)",
+          "legendFormat": "Chat erfolgreich (15 min)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[15m])))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) or on() vector(-1)",
+          "legendFormat": "Erstes Wort (p95)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": [
+            {
+              "title": "Bereich öffnen: Betrieb & Bereitschaft",
+              "url": "/d/opaa-d-betrieb?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chat erfolgreich (15 min)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#CE2C31",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 0.95
+                    },
+                    {
+                      "color": "#11774F",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "wenig Verkehr",
+                        "color": "#5A6270",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erstes Wort (p95)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 3
+                    },
+                    {
+                      "color": "#CE2C31",
+                      "value": 10
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "wenig Verkehr",
+                        "color": "#5A6270",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      }
+    },
+    {
+      "id": 404,
+      "type": "stat",
+      "title": "Wissensbestand & Bibliotheken",
+      "description": "Für die Systemverwaltung und Fachbetreuung: sind die Bibliotheken aktuell, kommt alles an? Die Farbe ist der schlechteste Zustand im Bereich.",
+      "gridPos": {
+        "x": 6,
+        "y": 2,
+        "w": 6,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace(((sum(max by (connector) (opaa_indexing_libraries_overdue{connector=~\"$connector\"}))) > bool 0), \"k\", \"s0\", \"\", \"\") or label_replace(((((max(sum by (connector) (increase(opaa_indexing_runs_total{result=\"failed\",connector=~\"$connector\"}[6h])) / sum by (connector) (increase(opaa_indexing_runs_total{connector=~\"$connector\"}[6h])))) and on() ((min(sum by (connector) (increase(opaa_indexing_runs_total{connector=~\"$connector\"}[6h])))) >= 4))) > bool 0.25), \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{queue=\"indexing\"}) > bool 7200), \"k\", \"s2\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{queue=\"ocr\"}) > bool 21600), \"k\", \"s3\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "Wissensbestand & Bibliotheken",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": [
+            {
+              "title": "Bereich öffnen: Wissensbestand & Bibliotheken",
+              "url": "/d/opaa-d-wissen?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 30
+        }
+      }
+    },
+    {
+      "id": 405,
+      "type": "stat",
+      "title": "",
+      "description": "Für die Systemverwaltung und Fachbetreuung: sind die Bibliotheken aktuell, kommt alles an?",
+      "gridPos": {
+        "x": 6,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(max by (connector) (opaa_indexing_libraries_overdue{connector=~\"$connector\"})) or vector(0)",
+          "legendFormat": "Bibliotheken überfällig",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_queue_oldest_age_seconds{queue=~\"indexing|ocr\"}) / 60",
+          "legendFormat": "ältester Auftrag",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": [
+            {
+              "title": "Bereich öffnen: Wissensbestand & Bibliotheken",
+              "url": "/d/opaa-d-wissen?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bibliotheken überfällig"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ältester Auftrag"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: min"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 120
+                    },
+                    {
+                      "color": "#CE2C31",
+                      "value": 360
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      }
+    },
+    {
+      "id": 406,
+      "type": "stat",
+      "title": "KI-Modelle & Kosten",
+      "description": "Für Modellbetrieb und Steuerung: sind die Modelle erreichbar, wie schnell, was kostet es? Kosten nur im Bereich. Die Farbe ist der schlechteste Zustand im Bereich.",
+      "gridPos": {
+        "x": 12,
+        "y": 2,
+        "w": 6,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace((2 * (min(opaa_model_role_available{role=\"chat\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s0\", \"\", \"\") or label_replace((2 * (min(opaa_model_role_available{role=\"embedding\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s1\", \"\", \"\") or label_replace((1 * (min(opaa_model_role_available{role=\"rerank\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s2\", \"\", \"\") or label_replace((1 * (min(opaa_model_role_available{role=\"ocr\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s3\", \"\", \"\") or label_replace((1 * (min(opaa_model_role_available{role=\"transcription\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s4\", \"\", \"\") or label_replace((1 * (min(opaa_model_role_available{role=\"vision\",instance=~\"$instance\"}) == bool 0)), \"k\", \"s5\", \"\", \"\") or label_replace(((((sum(increase(opaa_model_requests_total{role=\"chat\",result=\"throttled\",instance=~\"$instance\"}[30m])) / sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) > bool 0.2) and on() ((sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) >= 20))), \"k\", \"s6\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "KI-Modelle & Kosten",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": [
+            {
+              "title": "Bereich öffnen: KI-Modelle & Kosten",
+              "url": "/d/opaa-d-modelle?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 30
+        }
+      }
+    },
+    {
+      "id": 407,
+      "type": "stat",
+      "title": "",
+      "description": "Für Modellbetrieb und Steuerung: sind die Modelle erreichbar, wie schnell, was kostet es? Kosten nur im Bereich.",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(opaa_model_role_available{instance=~\"$instance\"} == 1) / count(opaa_model_role_available{instance=~\"$instance\"})",
+          "legendFormat": "Rollen bereit",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((sum(increase(opaa_model_requests_total{role=\"chat\",result=\"throttled\",instance=~\"$instance\"}[30m])) / sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) and on() ((sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) >= 20))) or on() vector(-1)",
+          "legendFormat": "Chat gedrosselt (30 min)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": [
+            {
+              "title": "Bereich öffnen: KI-Modelle & Kosten",
+              "url": "/d/opaa-d-modelle?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Rollen bereit"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#CE2C31",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "#11774F",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chat gedrosselt (30 min)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 0.2
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "wenig Verkehr",
+                        "color": "#5A6270",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      }
+    },
+    {
+      "id": 408,
+      "type": "stat",
+      "title": "Sicherheit & Nachweis",
+      "description": "Für Informationssicherheit und Revision: Viren, Anmeldungen, Schutzgrenzen, Nachweispflichten. Die Farbe ist der schlechteste Zustand im Bereich.",
+      "gridPos": {
+        "x": 18,
+        "y": 2,
+        "w": 6,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace((max(label_replace((max(opaa_audit_chain_lag_seconds) > bool 21600), \"k\", \"s0\", \"\", \"\") or label_replace((max(opaa_audit_chain_unsealed_months) > bool 0), \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_siem_export_lag_seconds) > bool 3600), \"k\", \"s2\", \"\", \"\") or label_replace((max(opaa_audit_retention_last_run_age_seconds) > bool 3024000), \"k\", \"s3\", \"\", \"\") or label_replace((((min(opaa_audit_log_horizon_seconds)) < bool 1209600) + ((min(opaa_audit_log_horizon_seconds)) < bool 172800)), \"k\", \"s4\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))), \"k\", \"s0\", \"\", \"\") or label_replace((sum(increase(opaa_malware_scans_total{result=\"failed\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_malware_scans_total{instance=~\"$instance\"}[15m])) > bool 0.5), \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_malware_signature_age_seconds) > bool 259200), \"k\", \"s2\", \"\", \"\") or label_replace((sum(increase(opaa_rate_limit_rejected_total{scope=\"global\",instance=~\"$instance\"}[15m])) > bool 0), \"k\", \"s3\", \"\", \"\") or label_replace((max(ALERTS{alertstate=\"firing\",component=\"security\",severity!=\"info\"}) or vector(0)), \"k\", \"s4\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "Sicherheit & Nachweis",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": [
+            {
+              "title": "Bereich öffnen: Sicherheit & Nachweis",
+              "url": "/d/opaa-d-sicherheit?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "valueSize": 30
+        }
+      }
+    },
+    {
+      "id": 409,
+      "type": "stat",
+      "title": "",
+      "description": "Für Informationssicherheit und Revision: Viren, Anmeldungen, Schutzgrenzen, Nachweispflichten.",
+      "gridPos": {
+        "x": 18,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_malware_scans_total{result=\"infected\",instance=~\"$instance\"}[24h]))",
+          "legendFormat": "Virenfunde (24 h)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace((max(opaa_audit_chain_lag_seconds) > bool 21600), \"k\", \"s0\", \"\", \"\") or label_replace((max(opaa_audit_chain_unsealed_months) > bool 0), \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_siem_export_lag_seconds) > bool 3600), \"k\", \"s2\", \"\", \"\") or label_replace((max(opaa_audit_retention_last_run_age_seconds) > bool 3024000), \"k\", \"s3\", \"\", \"\") or label_replace((((min(opaa_audit_log_horizon_seconds)) < bool 1209600) + ((min(opaa_audit_log_horizon_seconds)) < bool 172800)), \"k\", \"s4\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "Nachweispflichten",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": [
+            {
+              "title": "Bereich öffnen: Sicherheit & Nachweis",
+              "url": "/d/opaa-d-sicherheit?${__url_time_range}&${instance:queryparam}"
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Virenfunde (24 h)"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#5A6270",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nachweispflichten"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "-1": {
+                        "text": "nicht eingerichtet",
+                        "color": "#5A6270",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "in Ordnung",
+                        "color": "#11774F",
+                        "index": 1
+                      },
+                      "1": {
+                        "text": "prüfen",
+                        "color": "#8F5A00",
+                        "index": 2
+                      },
+                      "2": {
+                        "text": "gestört",
+                        "color": "#CE2C31",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#5A6270",
+                      "value": null
+                    },
+                    {
+                      "color": "#11774F",
+                      "value": 0
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 1
+                    },
+                    {
+                      "color": "#CE2C31",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      }
+    },
+    {
+      "id": 410,
+      "type": "table",
+      "title": "Was feuert gerade? (aktive Alarme)",
+      "description": "Aktive OPAA-Alarme aus Prometheus (ALERTS) mit Schweregrad und Zuständigkeit (component). Klick auf den Alarmnamen öffnet das Runbook im Handbuch.",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 15,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(ALERTS{alertstate=\"firing\",alertname=~\"Opaa.*\"}, \"betrifft\", \"\", \"connector\", \"role\")",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "alertstate": true,
+              "connector": true,
+              "role": true
+            },
+            "indexByName": {
+              "alertname": 0,
+              "severity": 1,
+              "component": 2
+            },
+            "renameByName": {
+              "alertname": "Alarm",
+              "severity": "Schweregrad",
+              "component": "Zuständig",
+              "betrifft": "betrifft"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "noValue": "Keine aktiven Alarme",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Schweregrad"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "text": "sofort",
+                        "color": "#CE2C31",
+                        "index": 0
+                      },
+                      "warning": {
+                        "text": "Ticket",
+                        "color": "#8F5A00",
+                        "index": 1
+                      },
+                      "info": {
+                        "text": "Info",
+                        "color": "#5A6270",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zuständig"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alarm"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Runbook öffnen",
+                    "url": "https://opaa.example/handbuch/betrieb/alarme/#${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 411,
+      "type": "table",
+      "title": "Was hat sich geändert? Version je Pod",
+      "description": "Laufende OPAA-Version und Startzeit je Backend-Pod. Unterschiedliche Versionen = Rollout läuft oder hängt (Mischstand). Neustarts erscheinen zusätzlich als Markierung auf allen Zeitreihen.",
+      "gridPos": {
+        "x": 15,
+        "y": 12,
+        "w": 9,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "opaa_build_info{instance=~\"$instance\"}",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_start_time_seconds{instance=~\"$instance\"} * 1000",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value #A": true,
+              "__name__": true,
+              "job": true,
+              "application": true,
+              "commit": true
+            },
+            "indexByName": {
+              "instance": 0,
+              "version": 1,
+              "commit": 2,
+              "Value #B": 3
+            },
+            "renameByName": {
+              "instance": "Pod",
+              "version": "Version",
+              "commit": "Commit",
+              "Value #B": "gestartet"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "noValue": "nichts",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gestartet"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Version"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      }
+    }
+  ],
+  "version": 1
+}

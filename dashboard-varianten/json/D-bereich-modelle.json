@@ -1,0 +1,893 @@
+{
+  "uid": "opaa-d-modelle",
+  "title": "OPAA · D · KI-Modelle & Kosten",
+  "description": "Bereich Modelle: Erreichbarkeit, Antwortzeit, Drosselung, Tokens, Kosten.",
+  "tags": [
+    "opaa",
+    "variante-d"
+  ],
+  "timezone": "Europe/Berlin",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "fiscalYearStartMonth": 0,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "enable": true,
+        "iconColor": "#0B6FBC",
+        "name": "Neustart / Versionswechsel",
+        "expr": "changes(process_start_time_seconds{instance=~\"$instance\"}[2m]) > 0",
+        "step": "60s",
+        "titleFormat": "Neustart {{instance}}",
+        "textFormat": "Pod neu gestartet (Rollout oder Absturz)",
+        "tagKeys": "instance",
+        "useValueForTime": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Wegweiser",
+      "type": "link",
+      "url": "/d/opaa-d-start?${__url_time_range}&${instance:queryparam}",
+      "icon": "arrow-left",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Betrieb & Bereitschaft",
+      "type": "link",
+      "url": "/d/opaa-d-betrieb?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Wissensbestand & Bibliotheken",
+      "type": "link",
+      "url": "/d/opaa-d-wissen?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "KI-Modelle & Kosten",
+      "type": "link",
+      "url": "/d/opaa-d-modelle?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Sicherheit & Nachweis",
+      "type": "link",
+      "url": "/d/opaa-d-sicherheit?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_build_info, instance)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_build_info, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "model",
+        "label": "Modell",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_model_requests_total, model)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_model_requests_total, model)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 701,
+      "type": "stat",
+      "title": "Modellrollen",
+      "description": "Erreichbarkeit je Rolle (opaa_model_role_available). Nicht eingerichtete Rollen grau.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(label_replace(((2 * (min(opaa_model_role_available{role=\"chat\",instance=~\"$instance\"}) == bool 0))), \"k\", \"s0\", \"\", \"\") or label_replace(((((sum(increase(opaa_model_requests_total{role=\"chat\",result=\"throttled\",instance=~\"$instance\"}[30m])) / sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) > bool 0.2) and on() ((sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) >= 20))), \"k\", \"s1\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\")) and on() count(opaa_model_role_available{role=\"chat\",instance=~\"$instance\"})) or on() vector(-1)",
+          "legendFormat": "Chat-Modell",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(2 * (min(opaa_model_role_available{role=\"embedding\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Embedding",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"rerank\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Rerank",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"ocr\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Texterkennung",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"transcription\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Transkription",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"vision\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Bildverstehen",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 16
+        }
+      }
+    },
+    {
+      "id": 702,
+      "type": "stat",
+      "title": "Steuerung (gewählter Zeitraum)",
+      "description": "Abgeleitete Kosten aus Tokens × Preis der Modellkonfiguration (opaa_model_cost_euros_total), Tokens aller Zwecke, Hochrechnung auf 30 Tage, gedrosselte Aufrufe.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_model_cost_euros_total{model=~\"$model\",instance=~\"$instance\"}[$__range]))",
+          "legendFormat": "Kosten",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_model_tokens_total{model=~\"$model\",instance=~\"$instance\"}[$__range])) / 1e6",
+          "legendFormat": "Tokens",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_model_cost_euros_total{model=~\"$model\",instance=~\"$instance\"}[$__range])) / ($__range_s / 86400) * 30",
+          "legendFormat": "Hochrechnung 30 Tage",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_model_requests_total{result=\"throttled\",model=~\"$model\",instance=~\"$instance\"}[$__range]))",
+          "legendFormat": "gedrosselt",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Kosten"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: €"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Hochrechnung 30 Tage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: €"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: Mio."
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gedrosselt"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {}
+      }
+    },
+    {
+      "id": 703,
+      "type": "timeseries",
+      "title": "Modell-Antwortzeit (p95) je Modell",
+      "description": "95. Perzentil der Aufrufdauer je Modell (gen_ai_client_operation_seconds, nur Anzeige, keine Ampel).",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (gen_ai_request_model, le) (rate(gen_ai_client_operation_seconds_bucket{error_type=\"none\",gen_ai_request_model=~\"$model\",instance=~\"$instance\"}[10m])))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 704,
+      "type": "timeseries",
+      "title": "Fehlgeschlagene Modellaufrufe nach Ursache",
+      "description": "Ausgehende Modellaufrufe (Chat, Embedding, Rerank, Texterkennung, Transkription), die nicht erfolgreich waren, pro Stunde nach Ursache.",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (result) (increase(opaa_model_requests_total{result!=\"success\",model=~\"$model\",instance=~\"$instance\"}[$__interval]))",
+          "legendFormat": "{{result}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "15m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "erfolgreich"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "throttled"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "gedrosselt (429)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "timeout"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Zeitüberschreitung"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Serverfehler"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "15m"
+    },
+    {
+      "id": 705,
+      "type": "timeseries",
+      "title": "Tokens pro Stunde nach Zweck",
+      "description": "Antwort, Zerlegung, Titel, Notiz, Embedding.",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (purpose) (increase(opaa_model_tokens_total{model=~\"$model\",instance=~\"$instance\"}[$__interval]))",
+          "legendFormat": "{{purpose}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
+    },
+    {
+      "id": 706,
+      "type": "timeseries",
+      "title": "Kosten pro Stunde nach Modell",
+      "description": "Abgeleitete Kosten in Euro.",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (increase(opaa_model_cost_euros_total{model=~\"$model\",instance=~\"$instance\"}[$__interval]))",
+          "legendFormat": "{{model}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
+    }
+  ],
+  "version": 1
+}

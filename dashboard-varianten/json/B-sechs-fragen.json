@@ -1,0 +1,1786 @@
+{
+  "uid": "opaa-b-fragen",
+  "title": "OPAA · B · Sechs Fragen",
+  "description": "Variante B: die Startseite beantwortet sechs Fragen der Bereitschaft in fester Reihenfolge.",
+  "tags": [
+    "opaa",
+    "variante-b"
+  ],
+  "timezone": "Europe/Berlin",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "fiscalYearStartMonth": 0,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "enable": true,
+        "iconColor": "#0B6FBC",
+        "name": "Neustart / Versionswechsel",
+        "expr": "changes(process_start_time_seconds{instance=~\"$instance\"}[2m]) > 0",
+        "step": "60s",
+        "titleFormat": "Neustart {{instance}}",
+        "textFormat": "Pod neu gestartet (Rollout oder Absturz)",
+        "tagKeys": "instance",
+        "useValueForTime": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Modelle & Kosten",
+      "type": "link",
+      "url": "/d/opaa-d-modelle?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "Indizierung",
+      "type": "link",
+      "url": "/d/opaa-a-indizierung?${__url_time_range}&${instance:queryparam}",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_build_info, instance)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_build_info, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "connector",
+        "label": "Konnektortyp",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(opaa_indexing_runs_total, connector)",
+          "refId": "v"
+        },
+        "definition": "label_values(opaa_indexing_runs_total, connector)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Alle",
+          "value": "$__all"
+        },
+        "sort": 1,
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 201,
+      "type": "row",
+      "title": "1 · Können die Leute gerade arbeiten?",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 202,
+      "type": "stat",
+      "title": "",
+      "description": "Erfolgsquote Chat und Anmeldung in den letzten 15 min (nur ab Mindestvolumen, nachts sonst „wenig Verkehr“) und Wartezeit bis zum ersten Wort (p95). Ziele: Chat ≥ 99 %, Anmeldung ≥ 98 %, erstes Wort < 3 s.",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 14,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((sum(increase(opaa_query_count_total{status=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) or on() vector(-1)",
+          "legendFormat": "Chat-Fragen erfolgreich",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((sum(increase(opaa_auth_logins_total{result=\"success\",instance=~\"$instance\"}[15m])) / sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) and on() ((sum(increase(opaa_auth_logins_total{result=~\"success|idp_error\",instance=~\"$instance\"}[15m]))) >= 5))) or on() vector(-1)",
+          "legendFormat": "Anmeldungen erfolgreich",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[15m])))) and on() ((sum(increase(opaa_query_count_total{instance=~\"$instance\"}[15m]))) >= 8))) or on() vector(-1)",
+          "legendFormat": "Erstes Wort nach (p95)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#CE2C31",
+                "value": null
+              },
+              {
+                "color": "#8F5A00",
+                "value": 0.95
+              },
+              {
+                "color": "#11774F",
+                "value": 0.99
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "wenig Verkehr",
+                  "color": "#5A6270",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "links": [],
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anmeldungen erfolgreich"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#CE2C31",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 0.9
+                    },
+                    {
+                      "color": "#11774F",
+                      "value": 0.98
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erstes Wort nach (p95)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 3
+                    },
+                    {
+                      "color": "#CE2C31",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 16,
+          "valueSize": 34
+        }
+      }
+    },
+    {
+      "id": 203,
+      "type": "timeseries",
+      "title": "Fragen pro Stunde",
+      "description": "Gestellte Fragen pro Stunde über alle Kanäle, grob aufgelöst, als Kontext für Quoten (nachts wenig Verkehr = Quoten nicht aussagekräftig). Keine Aufteilung nach Kanal oder Person.",
+      "gridPos": {
+        "x": 14,
+        "y": 1,
+        "w": 10,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(opaa_query_count_total{instance=~\"$instance\"}[$__interval]))",
+          "legendFormat": "Fragen",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fragen"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
+    },
+    {
+      "id": 204,
+      "type": "row",
+      "title": "2 · Wenn nicht: welcher Baustein?",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 205,
+      "type": "stat",
+      "title": "",
+      "description": "Je Baustein ein Zustand. Backend/Frontend: bereite Pods gegen Soll (Teilausfall = prüfen). Datenbank: erreichbar, keine Verbindungs-Timeouts. Anmeldedienst: Anteil IdP-Fehler (ab 10 Anmeldungen). Modellrollen aus opaa_model_role_available; nicht eingerichtete Rollen sind grau, nicht rot.",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(2 * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) < bool sum(kube_deployment_spec_replicas{deployment=\"opaa-backend\"})) * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-backend\"}) > bool 0))",
+          "legendFormat": "Backend",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(2 * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) < bool sum(kube_deployment_spec_replicas{deployment=\"opaa-frontend\"})) * (sum(kube_deployment_status_replicas_available{deployment=\"opaa-frontend\"}) > bool 0))",
+          "legendFormat": "Frontend",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(label_replace((2 * (min(pg_up) == bool 0)), \"k\", \"s0\", \"\", \"\") or label_replace(((sum(increase(hikaricp_connections_timeout_total{instance=~\"$instance\"}[10m])) > bool 0)), \"k\", \"s1\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\"))",
+          "legendFormat": "Datenbank",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(((2 * ((sum(increase(opaa_auth_logins_total{method=\"oidc\",result=\"idp_error\",instance=~\"$instance\"}[10m])) / sum(increase(opaa_auth_logins_total{method=\"oidc\",instance=~\"$instance\"}[10m]))) > bool 0.5)) and on() ((sum(increase(opaa_auth_logins_total{method=\"oidc\",instance=~\"$instance\"}[10m]))) >= 10))) or on() vector(0)",
+          "legendFormat": "Anmeldedienst (IdP)",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(label_replace(((2 * (min(opaa_model_role_available{role=\"chat\",instance=~\"$instance\"}) == bool 0))), \"k\", \"s0\", \"\", \"\") or label_replace(((((sum(increase(opaa_model_requests_total{role=\"chat\",result=\"throttled\",instance=~\"$instance\"}[30m])) / sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) > bool 0.2) and on() ((sum(increase(opaa_model_requests_total{role=\"chat\",instance=~\"$instance\"}[30m]))) >= 20))), \"k\", \"s1\", \"\", \"\") or label_replace(vector(0), \"k\", \"zero\", \"\", \"\")) and on() count(opaa_model_role_available{role=\"chat\",instance=~\"$instance\"})) or on() vector(-1)",
+          "legendFormat": "Chat-Modell",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(2 * (min(opaa_model_role_available{role=\"embedding\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Embedding",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"rerank\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Rerank",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"ocr\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Texterkennung",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"transcription\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Transkription",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 * (min(opaa_model_role_available{role=\"vision\",instance=~\"$instance\"}) == bool 0)) or on() vector(-1)",
+          "legendFormat": "Bildverstehen",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "nicht eingerichtet",
+                  "color": "#5A6270",
+                  "index": 0
+                },
+                "0": {
+                  "text": "in Ordnung",
+                  "color": "#11774F",
+                  "index": 1
+                },
+                "1": {
+                  "text": "prüfen",
+                  "color": "#8F5A00",
+                  "index": 2
+                },
+                "2": {
+                  "text": "gestört",
+                  "color": "#CE2C31",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5A6270",
+                "value": null
+              },
+              {
+                "color": "#11774F",
+                "value": 0
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              },
+              {
+                "color": "#CE2C31",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "keine Daten",
+          "links": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      }
+    },
+    {
+      "id": 206,
+      "type": "row",
+      "title": "3 · Ist über Nacht etwas liegen geblieben?",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 207,
+      "type": "stat",
+      "title": "",
+      "description": "Überfällige Bibliotheken je Konnektortyp (Bibliothek hat ihren eigenen Zeitplan verpasst; nur Anzahl), Verzeichnisabgleich (zuletzt angewendet, Plan wartet auf Bestätigung der Systemverwaltung), überfällige Scheduler-Jobs und Warteschlangen über ihrer Schwelle.",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (connector) (opaa_indexing_libraries_overdue) > 0",
+          "legendFormat": "überfällig: {{connector}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(max by (connector) (opaa_indexing_libraries_overdue)) == 0)",
+          "legendFormat": "Bibliotheken: alle pünktlich",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(time() - max(opaa_directory_sync_last_applied_seconds)) / 60",
+          "legendFormat": "Verzeichnisabgleich angewendet vor",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_directory_sync_plan_pending)",
+          "legendFormat": "Abgleichplan wartet",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(((time() - max by (job) (opaa_scheduled_last_success_seconds{job!~\"audit-.*\"})) > 3 * max by (job) (opaa_scheduled_expected_interval_seconds)) > 900) or vector(0)",
+          "legendFormat": "Jobs überfällig",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (queue) (opaa_queue_oldest_age_seconds{queue=\"mail_outbox\"}) > 1800 or max by (queue) (opaa_queue_oldest_age_seconds{queue=\"source_event_batches\"}) > 3600 or max by (queue) (opaa_queue_oldest_age_seconds{queue=\"ocr\"}) > 21600 or max by (queue) (opaa_queue_oldest_age_seconds{queue=\"indexing\"}) > 7200) or vector(0)",
+          "legendFormat": "Warteschlangen im Verzug",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#11774F",
+                "value": null
+              },
+              {
+                "color": "#8F5A00",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Verzeichnisabgleich angewendet vor"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: min"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 45
+                    },
+                    {
+                      "color": "#CE2C31",
+                      "value": 1560
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Abgleichplan wartet"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "nein",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "ja",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "überfällig: .*"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#8F5A00",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 24
+        }
+      }
+    },
+    {
+      "id": 208,
+      "type": "row",
+      "title": "4 · Sind die Nachweispflichten erfüllt?",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 209,
+      "type": "stat",
+      "title": "",
+      "description": "Prüfsummenkette: Rückstand (Schwelle 6 h). Monate ohne Siegel. SIEM-Export: Rückstand (Schwelle 1 h). Letzter Löschlauf (Schwelle 35 Tage). Protokollhorizont: Zeit, bis das Protokoll nicht mehr schreiben kann (unter 14 Tagen prüfen, unter 48 h sofort).",
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_audit_chain_lag_seconds) / 60",
+          "legendFormat": "Prüfsummenkette Rückstand",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_audit_chain_unsealed_months)",
+          "legendFormat": "Monate ohne Siegel",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_siem_export_lag_seconds) / 60",
+          "legendFormat": "SIEM-Rückstand",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(opaa_audit_retention_last_run_age_seconds) / 86400",
+          "legendFormat": "Löschlauf vor",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min(opaa_audit_log_horizon_seconds) / 86400",
+          "legendFormat": "Protokollhorizont",
+          "range": false,
+          "instant": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#11774F",
+                "value": null
+              },
+              {
+                "color": "#8F5A00",
+                "value": 360
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "–",
+          "mappings": [],
+          "links": [],
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Monate ohne Siegel"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SIEM-Rückstand"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 60
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Löschlauf vor"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: Tage"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#11774F",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 35
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Protokollhorizont"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: Tage"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#CE2C31",
+                      "value": null
+                    },
+                    {
+                      "color": "#8F5A00",
+                      "value": 2
+                    },
+                    {
+                      "color": "#11774F",
+                      "value": 14
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 24
+        }
+      }
+    },
+    {
+      "id": 210,
+      "type": "row",
+      "title": "5 · Was hat sich geändert? 6 · Was feuert gerade?",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 211,
+      "type": "table",
+      "title": "Version je Pod",
+      "description": "Laufende OPAA-Version und Startzeit je Backend-Pod. Unterschiedliche Versionen = Rollout läuft oder hängt (Mischstand). Neustarts erscheinen zusätzlich als Markierung auf allen Zeitreihen.",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 9,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "opaa_build_info{instance=~\"$instance\"}",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_start_time_seconds{instance=~\"$instance\"} * 1000",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value #A": true,
+              "__name__": true,
+              "job": true,
+              "application": true,
+              "commit": true
+            },
+            "indexByName": {
+              "instance": 0,
+              "version": 1,
+              "commit": 2,
+              "Value #B": 3
+            },
+            "renameByName": {
+              "instance": "Pod",
+              "version": "Version",
+              "commit": "Commit",
+              "Value #B": "gestartet"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "noValue": "nichts",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gestartet"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Version"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 212,
+      "type": "table",
+      "title": "Aktive Alarme",
+      "description": "Aktive OPAA-Alarme aus Prometheus (ALERTS) mit Schweregrad und Zuständigkeit (component). Klick auf den Alarmnamen öffnet das Runbook im Handbuch.",
+      "gridPos": {
+        "x": 9,
+        "y": 18,
+        "w": 15,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(ALERTS{alertstate=\"firing\",alertname=~\"Opaa.*\"}, \"betrifft\", \"\", \"connector\", \"role\")",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "alertstate": true,
+              "connector": true,
+              "role": true
+            },
+            "indexByName": {
+              "alertname": 0,
+              "severity": 1,
+              "component": 2
+            },
+            "renameByName": {
+              "alertname": "Alarm",
+              "severity": "Schweregrad",
+              "component": "Zuständig",
+              "betrifft": "betrifft"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "noValue": "Keine aktiven Alarme",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Schweregrad"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "text": "sofort",
+                        "color": "#CE2C31",
+                        "index": 0
+                      },
+                      "warning": {
+                        "text": "Ticket",
+                        "color": "#8F5A00",
+                        "index": 1
+                      },
+                      "info": {
+                        "text": "Info",
+                        "color": "#5A6270",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zuständig"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alarm"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Runbook öffnen",
+                    "url": "https://opaa.example/handbuch/betrieb/alarme/#${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      }
+    },
+    {
+      "id": 216,
+      "type": "row",
+      "title": "Kapazität (Trend) – Kosten und Tokens unter „Modelle & Kosten“",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 213,
+          "type": "timeseries",
+          "title": "Speicher belegt",
+          "description": "Belegter Speicher (geteilt und privat) gegen Quote.",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 8,
+            "h": 7
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "max by (kind) (opaa_storage_used_bytes{instance=~\"$instance\"})",
+              "legendFormat": "{{kind}}",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "max(opaa_storage_quota_bytes{instance=~\"$instance\"})",
+              "legendFormat": "Quote",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 12,
+                "gradientMode": "none",
+                "showPoints": "never",
+                "spanNulls": 300000,
+                "lineInterpolation": "smooth",
+                "barAlignment": -1,
+                "axisBorderShow": false,
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Quote"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        10,
+                        10
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 214,
+          "type": "timeseries",
+          "title": "Heap nach GC",
+          "description": "Live-Daten nach Garbage Collection gegen Maximum; Schwelle 85 %.",
+          "gridPos": {
+            "x": 8,
+            "y": 24,
+            "w": 8,
+            "h": 7
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "jvm_gc_live_data_size_bytes{instance=~\"$instance\"} / jvm_gc_max_data_size_bytes{instance=~\"$instance\"}",
+              "legendFormat": "{{instance}}",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 12,
+                "gradientMode": "none",
+                "showPoints": "never",
+                "spanNulls": 300000,
+                "lineInterpolation": "smooth",
+                "barAlignment": -1,
+                "axisBorderShow": false,
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                },
+                "thresholdsStyle": {
+                  "mode": "dashed"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.85
+                  }
+                ]
+              },
+              "max": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 215,
+          "type": "timeseries",
+          "title": "Datenbank-Verbindungen",
+          "description": "Aktive und wartende Verbindungen im Pool.",
+          "gridPos": {
+            "x": 16,
+            "y": 24,
+            "w": 8,
+            "h": 7
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(hikaricp_connections_active{instance=~\"$instance\"})",
+              "legendFormat": "aktiv",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(hikaricp_connections_pending{instance=~\"$instance\"})",
+              "legendFormat": "wartend",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(hikaricp_connections_max{instance=~\"$instance\"})",
+              "legendFormat": "Maximum",
+              "range": true,
+              "instant": false,
+              "editorMode": "code"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 12,
+                "gradientMode": "none",
+                "showPoints": "never",
+                "spanNulls": 300000,
+                "lineInterpolation": "smooth",
+                "barAlignment": -1,
+                "axisBorderShow": false,
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "version": 1
+}
