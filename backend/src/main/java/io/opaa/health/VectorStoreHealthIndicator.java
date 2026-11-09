@@ -4,6 +4,7 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.EmbeddingModelService;
+import java.time.Clock;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,7 +34,8 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
       VectorStore vectorStore,
       EmbeddingIndexState indexState,
       EmbeddingInfoService embeddingInfo,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      Clock clock) {
     this.vectorStore = vectorStore;
     this.indexState = indexState;
     this.embeddingInfo = embeddingInfo;

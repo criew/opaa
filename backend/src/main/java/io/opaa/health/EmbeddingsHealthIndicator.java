@@ -3,6 +3,7 @@ package io.opaa.health;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.EmbeddingModelNotInstalledException;
 import io.opaa.llm.EmbeddingModelService;
+import java.time.Clock;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
@@ -31,7 +32,7 @@ public class EmbeddingsHealthIndicator implements HealthIndicator {
   private final EmbeddingModelService embeddingModels;
 
   public EmbeddingsHealthIndicator(
-      EmbeddingModel embeddingModel, EmbeddingModelService embeddingModels) {
+      EmbeddingModel embeddingModel, EmbeddingModelService embeddingModels, Clock clock) {
     this.embeddingModel = embeddingModel;
     this.embeddingModels = embeddingModels;
   }
