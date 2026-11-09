@@ -108,7 +108,7 @@ Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit �
 
 ### H · Monitoring, Kosten & Governance
 
-**[Roadmap](./ROADMAP.md)**
+**[ADR-0071](./decisions/0071-betriebsbeobachtung.md)** · **[Roadmap](./ROADMAP.md)**
 
 Betriebsmetriken und Gesundheitsendpunkt · Grenzen je Nutzerin und Nutzer · Transparenz über Token- und
 Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Personenbezug.

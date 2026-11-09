@@ -880,8 +880,8 @@ Fragen und an der Fehlerquote.
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness))
-und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness);
+Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
 `embedding-model` und `vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist kein
 Ausfall, die Readiness bleibt `UP`. Eine Überwachung, die nur auf `DOWN` achtet, bemerkt ein nie
 eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus oder

@@ -78,7 +78,7 @@ public class IndexingMetrics {
 
   /**
    * One indexed document whose text showed {@code patternClass}, a pattern typical of prompt
-   * injection. Counted installation-wide: neither library nor document is a label (ADR-0070); the
+   * injection. Counted installation-wide: neither library nor document is a label (ADR-0071); the
    * run protocol of the library names the document.
    */
   public void recordSuspiciousPattern(String patternClass) {

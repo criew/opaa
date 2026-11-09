@@ -19,7 +19,7 @@ zugleich ([Mehrere Backend-Instanzen](mehrere-instanzen.md)).
 |---|---|---|
 | Installations-API | erreichbar, nur mit Installations-Token | `404`, auf jeder Instanz |
 | Anmeldekonfiguration und Branding der Oberfläche | erreichbar; meldet „Installation ausstehend" | wie immer |
-| Health, Readiness, Liveness | `UP`; der Systemverwaltung zeigt `/actuator/health` die Komponente `installation` mit `pending: true` | `pending: false` |
+| Health, Readiness, Liveness | `UP`; die Metrik `opaa_installation_pending` (nächste Zeile) zeigt den Modus, ein Systemverwaltungskonto gibt es meist noch nicht | `UP` |
 | Metrik `opaa_installation_pending` | `1` | `0` |
 | jeder andere Aufruf | `503` mit dem Code `INSTALLATION_PENDING` | wie immer |
 

@@ -124,7 +124,7 @@ spring:
           resource: false
           prompt: false
           completion: false
-    # Observations carry no content (ADR-0070): no prompt, answer, retrieved chunk or tool argument
+    # Observations carry no content (ADR-0071): no prompt, answer, retrieved chunk or tool argument
     # goes into a log, span or metric. Set explicitly so a changed library default cannot switch
     # one on; SpringAiContentPropertiesTest requires every such property Spring AI declares here.
     chat:
@@ -907,7 +907,7 @@ management:
   endpoint:
     health:
       # Details (provider, endpoint, error) only for the system administration; every other
-      # signed-in account sees the status (ADR-0070).
+      # signed-in account sees the status (ADR-0071).
       show-details: when-authorized
       roles: SYSTEM_ADMIN
       # Spring Boot enables the two probes in a web application anyway; set here so the paths a
@@ -927,7 +927,7 @@ management:
     tags:
       application: ${spring.application.name}
       host: ${HOSTNAME:unknown}
-    # Histogram buckets at the SLO thresholds of the latency timers (ADR-0070); comma-separated
+    # Histogram buckets at the SLO thresholds of the latency timers (ADR-0071); comma-separated
     # durations, each list replaceable through its variable.
     distribution:
       slo:

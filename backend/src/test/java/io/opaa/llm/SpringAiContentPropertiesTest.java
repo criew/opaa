@@ -21,7 +21,8 @@ import org.springframework.core.io.ClassPathResource;
  * Every property with which Spring AI would put prompts, answers, transcripts, retrieved chunks or
  * tool arguments into observations, logs or spans stands explicitly on {@code false} in the base
  * document of {@code application.yml}, so a changed library default cannot switch one on. Any such
- * property a Spring AI module on the classpath declares has to be in {@link #KEYS}.
+ * property a Spring AI module on the classpath declares has to be in {@link #KEYS} (regression
+ * guard for ADR-0071, decision 3).
  */
 class SpringAiContentPropertiesTest {
 

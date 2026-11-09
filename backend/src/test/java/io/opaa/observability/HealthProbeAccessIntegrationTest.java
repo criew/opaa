@@ -1,5 +1,8 @@
 package io.opaa.observability;
 
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -80,13 +83,15 @@ class HealthProbeAccessIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"embedding-model", "vector-store", "chat-model", "mail"})
+  // regression guard for ADR-0071, decision 5: details only for the system administration
   void anAccountWithoutTheSystemAdministrationSeesTheStatusOnly(String group) throws Exception {
     String bearer =
         bearer(fixtures.activeUser("health-" + UUID.randomUUID() + "@stadt.example").email());
 
     mockMvc
         .perform(get("/actuator/health/" + group).header(HttpHeaders.AUTHORIZATION, bearer))
-        .andExpect(jsonPath("$.status").exists())
+        .andExpect(status().is(anyOf(is(200), is(503))))
+        .andExpect(jsonPath("$.status", is(oneOf("UP", "DOWN", "UNKNOWN", "OUT_OF_SERVICE"))))
         .andExpect(jsonPath("$.components").doesNotExist())
         .andExpect(jsonPath("$.details").doesNotExist());
   }

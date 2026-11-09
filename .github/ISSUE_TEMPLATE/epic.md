@@ -56,7 +56,7 @@ Betrieb (docs/AGENT-ORGANIZATION.md).
 ### Betriebsbeobachtung
 
 <!--
-Pflicht. Nach ADR-0070 (docs/decisions/0070-betriebsbeobachtung.md); Labels nur aus festen,
+Pflicht. Nach ADR-0071 (docs/decisions/0071-betriebsbeobachtung.md); Labels nur aus festen,
 kleinen Wertemengen, nie Kennungen von Personen, Spaces, Bibliotheken, Dokumenten, keine Pfade
 oder Inhalte (Entscheidung 2). Die Sub-Issues übernehmen die Punkte als Abnahmekriterium.
 -->

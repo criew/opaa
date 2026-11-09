@@ -79,7 +79,9 @@ anonymous:
       Fehlerseite des Servlet-Containers; direkt aufgerufen liefert sie eine leere Fehlerhülle ohne
       Daten.
   - operation: GET /actuator/health
-    reason: Gesamtstatus ohne Details (show-details when-authorized).
+    reason: >-
+      Gesamtstatus ohne Details; Details nur mit Anmeldung und Systemrolle SYSTEM_ADMIN
+      (management.endpoint.health.roles).
   - operation: GET /actuator/health/readiness
     reason: Readiness-Probe für Load Balancer und Health Check des Containers; nur der Status.
   - operation: GET /actuator/health/liveness

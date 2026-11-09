@@ -1,4 +1,4 @@
-# ADR-0070: Betriebsbeobachtung — Metriken, Health und Korrelation ohne eigene Datenhaltung
+# ADR-0071: Betriebsbeobachtung — Metriken und Health ohne eigene Datenhaltung
 
 ## Status
 
@@ -11,8 +11,8 @@ den Bordmitteln eines üblichen Kubernetes-Monitorings. Actuator, Prometheus-Reg
 Health-Gruppen je Modellrolle, ServiceMonitor, Alarme und rund 40 eigene Metriken gab es bereits,
 die Grundsätze dazu standen aber verstreut in ADR-0030 (Health-Gruppen), ADR-0053 (Metriken je
 Pod), ADR-0055 und ADR-0059 (Metriken der Ausleitung und der Prüfsummenkette), ADR-0060
-(Installationsmodus) und ADR-0066 (keine Suchbegriffe in Metriken). Es fehlten Latenzverteilungen,
-eine Zuordnung der Reihen zu Anwendung und Instanz und eine Korrelation über die Komponenten.
+(Installationsmodus) und ADR-0066 (keine Suchbegriffe in Metriken). Es fehlten Latenzverteilungen
+und eine Zuordnung der Reihen zu Anwendung und Instanz.
 
 Drei Spannungen bestimmen die Entscheidung. Metriken sind eine Auswertungsmöglichkeit im Sinn der
 Mitbestimmung: Eine Reihe je Person, Bibliothek oder Dokument macht aus einer Betriebszahl eine
@@ -38,35 +38,36 @@ Frist, eigener Sichtbarkeit und eigenem Mitbestimmungsbedarf; der Betrieb hat Pr
 Ein Label nimmt nur Werte aus einer festen, kleinen Menge an: Modell, Anbieter, Rolle, Operation,
 Konnektortyp, Ergebnisklasse, Stufe, Job- oder Queue-Name. Nie trägt eine Metrik Personen-, Space-,
 Bibliotheks-, Ordner-, Dokument- oder Chat-Kennungen, Dateinamen, Pfade, Adressen, Suchbegriffe
-oder Inhalte. Zwei Tests wachen darüber: `MeterTagCardinalityIntegrationTest` prüft jede
-registrierte Metrik der laufenden Anwendung, `MetricTagSourceTest` jeden Tag-Schlüssel im
-Quelltext. Für Labels, deren Werte die Verwaltung wählt (Modellname, Werkzeugname), lässt
-`MetricsConfiguration` höchstens 20 Werte je Label zu und verwirft weitere Reihen mit einer Warnung
-im Log. Routen, deren Aufruf selbst etwas über eine Person aussagt, erscheinen in keiner Metrik
-(`UnobservedRoutes`).
+oder Inhalte. Automatische Prüfungen weisen Tag-Schlüssel einer Sperrliste zurück, im Quelltext und
+an jeder registrierten Metrik der laufenden Anwendung, dort auch Werte, die wie eine Kennung oder
+eine Mailadresse aussehen. Für Labels, deren Werte die Verwaltung wählt (Modellname,
+Werkzeugname), lässt die Anwendung höchstens 20 Werte je Label zu und verwirft weitere Reihen mit
+einer Warnung im Log. Routen, deren Aufruf selbst etwas über eine Person aussagt, erscheinen in
+keiner Metrik.
 
 ### 3. Namensschema: `opaa.*` eigen, `gen_ai.*` aus Spring AI
 
 Eigene Metriken heißen `opaa.<bereich>.<größe>` in Micrometer-Schreibweise mit Basiseinheiten.
 Die `gen_ai.*`-Metriken (`gen_ai.client.operation`, `gen_ai.client.token.usage`) liefert Spring AI
 aus den Observations der Chat- und Embedding-Clients; OPAA baut sie nicht nach und benennt sie
-nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind.
-`SpringAiMetricsIntegrationTest` belegt, dass sie mit beschränkten Tags erscheinen. Jede
+nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Jede
 Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-query-response`,
-`include-content`) steht in `application.yml` ausdrücklich auf `false`;
-`SpringAiContentPropertiesTest` verlangt jede, die ein Spring-AI-Modul deklariert.
+`include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
+Standardwert der Bibliothek keine Inhalte in Observations, Logs oder Spans bringt; eine Prüfung
+verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad deklariert.
 
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
 `http.server.requests`, `opaa.query.duration`, `opaa.ocr.duration`, `gen_ai.client.operation` und
 `tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
 (`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
-einstellbar. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg
-aggregieren lassen, und statt des vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die
-Zahl der Reihen klein halten. Jede Reihe trägt `application` und `host` (Rechnername, unter
-Kubernetes der Pod); nicht `instance`, weil Prometheus dieses Label selbst setzt und ein
-gleichnamiges umbenennt. `opaa.build.info` (immer 1, mit `version` und `commit`) zeigt, welcher
-Build wo läuft, auch einen gemischten Stand während eines Rolling Updates.
+einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
+Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
+vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
+Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
+weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
+(immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
+während eines Rolling Updates.
 
 ### 5. Management-Port, Health-Gruppen und Probe-Modell
 
@@ -82,25 +83,7 @@ ihr Ergebnis je Instanz kurz zwischengespeichert aus (`CachedProbe`), damit wied
 keinen Modellaufruf je Abruf auslösen. Der Endpunkt-Cache von Spring Boot hilft dafür nicht: Er
 speichert keine Operation mit Pfadselektor und hielte das Ergebnis je angemeldeter Person.
 
-### 6. Korrelation durchgängig, Tracing optional und aus
-
-Eine Request-ID läuft vom Frontend-nginx über das Anwendungslog und die Fehlerantwort bis in den
-Eintrag des Revisionsprotokolls (`correlation_ref`). Sie ist eine technische Kennung, aber
-personenbeziehbar über Verknüpfung: nginx-Log mit Client-Adresse, Logzeilen mit Konto und
-Revisionsprotokoll lassen sich über sie verbinden. Deshalb geht `correlation_ref` nicht in die
-Ausleitung an das Sicherheitsmonitoring (ADR-0055). Verteiltes Tracing per OpenTelemetry ist
-optional und standardmäßig aus. Eingeschaltet trägt ein Span nur Attribute einer Positivliste,
-Pfad-Templates statt Pfade, keine Inhalte, und die Vorgabe der Abtastrate ist niedrig.
-
-### 7. Alarme mit Schweregrad, Zuständigkeit und Runbook
-
-Jeder mitgelieferte Alarm trägt `severity` aus `critical` (weckt, auch nachts), `warning` (Ticket
-am nächsten Arbeitstag) und `info` (kein Versand), ein Label `component` für das Routing nach
-Zuständigkeit und eine `runbook_url` auf einen Anker im Handbuch. Ein Alarm der Stufe `critical`
-steht auf `opaa.*`-Metriken oder auf Metriken der Plattform, nie auf `gen_ai.*`: Diese Namen ändern
-sich mit den Konventionen, und ein Alarm auf einem verschwundenen Namen feuert still nie mehr.
-
-### 8. Jedes Feature plant seine Betriebsbeobachtung im Epic
+### 6. Jedes Feature plant seine Betriebsbeobachtung im Epic
 
 Ein Epic legt im Abschnitt „Betriebsbeobachtung“ fest, welche Metriken das Feature braucht (Rate,
 Fehler und Dauer seiner Anfragen, Auslastung seiner Ressourcen, bei Hintergrundjobs der Zeitpunkt

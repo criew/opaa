@@ -64,7 +64,6 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
 | `opaa_conversations_active` | Gespräche, die diese Instanz im Speicher hält |
 | `opaa_installation_pending` | `1`, solange die Installation nicht abgeschlossen ist ([Installation](installation.md)) |
-
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modell-endpunkte.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)) |

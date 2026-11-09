@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0070](0070-betriebsbeobachtung.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0071](0071-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -114,7 +114,7 @@ den Start nicht: Chat, Suche und indizierte Inhalte funktionieren ohne ihn. Dara
 Health-Beitrag (`UploadStoreHealthIndicator`) erscheint als eigener Eintrag mit eigener Gruppe und
 geht nicht in den Gesamtstatus — er nähme im
 Mehrinstanzbetrieb eine Instanz aus der Lastverteilung, die Chat und Suche weiter bedient. Das
-Probe-Modell aller Health-Gruppen steht in ADR-0070, Entscheidung 5. Der
+Probe-Modell aller Health-Gruppen steht in ADR-0071, Entscheidung 5. Der
 Abruf eines Originals unterscheidet „Objekt nicht vorhanden" (`404` ohne Unterscheidbarkeit) von
 „Speicher nicht erreichbar" (`503` mit deutscher Meldung).
 

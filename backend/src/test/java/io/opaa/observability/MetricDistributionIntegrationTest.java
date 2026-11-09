@@ -52,8 +52,10 @@ class MetricDistributionIntegrationTest {
   }
 
   /**
-   * One sample of {@code timer} through the code that records it in production, so the series
-   * carries the tag keys it always has: Prometheus drops a second tag set under the same name.
+   * One sample of {@code timer} with the tag keys production gives it, since Prometheus drops a
+   * second tag set under the same name: through the production code for the HTTP, query and OCR
+   * timers, and for {@code tasks.scheduled.execution} by observing a method by hand with the
+   * observation and convention the scheduler uses, as no scheduled job of the context is due.
    * {@code gen_ai.client.operation} is covered by {@code SpringAiMetricsIntegrationTest}.
    */
   private void record(String timer) throws Exception {
@@ -79,6 +81,16 @@ class MetricDistributionIntegrationTest {
   }
 
   private void scheduledTick() {}
+
+  @Test
+  void theLongTaskTimersBesideTheLatencyTimersPublishNoBuckets() throws Exception {
+    record("http.server.requests");
+    record("tasks.scheduled.execution");
+
+    String scrape = scrape();
+    assertThat(scrape).contains("http_server_requests_active_seconds");
+    assertThat(scrape.lines().filter(line -> line.contains("_active_seconds_bucket{"))).isEmpty();
+  }
 
   @Test
   void everySeriesNamesTheApplicationAndTheHost() throws Exception {

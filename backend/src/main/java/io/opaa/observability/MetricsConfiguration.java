@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.config.MeterFilterReply;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
@@ -13,13 +14,16 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 
 /**
- * Metrics every instance publishes beyond those of its features (ADR-0070): the build it runs as
- * {@code opaa.build.info}, and an emergency brake on tags whose values come from configuration
- * rather than from a fixed set. Histogram buckets and the common tags {@code application} and
- * {@code host} are properties under {@code management.metrics} in {@code application.yml}.
+ * Metrics every instance publishes beyond those of its features (ADR-0071): the build it runs as
+ * {@code opaa.build.info}, an emergency brake on tags whose values come from configuration rather
+ * than from a fixed set, and no buckets on long task timers. Histogram buckets and the common tags
+ * {@code application} and {@code host} are properties under {@code management.metrics} in {@code
+ * application.yml}.
  */
 @Configuration(proxyBeanMethods = false)
 public class MetricsConfiguration {
@@ -79,6 +83,31 @@ public class MetricsConfiguration {
               }
               return true;
             }));
+  }
+
+  /**
+   * Keeps the long task timers beside the latency timers ({@code http.server.requests.active} and
+   * the like) free of buckets: the SLO properties match by name prefix, and buckets of running
+   * tasks would multiply the series without answering a latency question. Ordered last so it
+   * overrides the properties.
+   */
+  @Bean
+  @Order(Ordered.LOWEST_PRECEDENCE)
+  MeterFilter noBucketsForLongTaskTimers() {
+    return new MeterFilter() {
+      @Override
+      public DistributionStatisticConfig configure(
+          Meter.Id id, DistributionStatisticConfig config) {
+        if (id.getType() != Meter.Type.LONG_TASK_TIMER) {
+          return config;
+        }
+        return DistributionStatisticConfig.builder()
+            .percentilesHistogram(false)
+            .serviceLevelObjectives()
+            .build()
+            .merge(config);
+      }
+    };
   }
 
   /**

@@ -44,7 +44,7 @@ services:
     # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend
     # port from outside the host would carry a spoofable X-Forwarded-For past the frontend's nginx.
     # The frontend container reaches the backend over the Compose network, never through this port.
-    # The second port is the management port (probes, health, metrics; ADR-0070): metrics answer
+    # The second port is the management port (probes, health, metrics; ADR-0071): metrics answer
     # there without a token, so a Prometheus on this host reads them; on the API port the actuator
     # is gone.
     ports:

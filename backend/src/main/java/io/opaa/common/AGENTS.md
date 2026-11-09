@@ -6,7 +6,7 @@ ratelimit, sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze, Verschlüsselung,
-Ratenbegrenzung, Metriken (Labels nur aus festen kleinen Mengen, [ADR-0070](../../../../../../../docs/decisions/0070-betriebsbeobachtung.md)), Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client, Compliance-Manifest, Instanzregister.
+Ratenbegrenzung, Metriken (Labels nur aus festen kleinen Mengen, [ADR-0071](../../../../../../../docs/decisions/0071-betriebsbeobachtung.md)), Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client, Compliance-Manifest, Instanzregister.
 
 ## Invarianten und Stolpersteine
 

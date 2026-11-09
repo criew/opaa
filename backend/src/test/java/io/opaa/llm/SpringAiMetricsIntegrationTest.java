@@ -39,7 +39,8 @@ import org.springframework.test.web.servlet.MockMvc;
  * clients OPAA builds itself ({@link ActiveChatModelResolver}, {@link
  * OpenAiEmbeddingClientFactory}): operation duration with SLO buckets and token usage, each with
  * tags from a small fixed set only - no prompt, answer, person or library. Also asserts that every
- * content property of Spring AI's observations is off in the running application.
+ * content property of Spring AI's observations is off in the running application (regression guard
+ * for ADR-0071, decision 3).
  */
 @OpaaIntegrationTest
 class SpringAiMetricsIntegrationTest {
