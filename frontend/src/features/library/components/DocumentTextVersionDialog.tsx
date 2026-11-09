@@ -14,7 +14,6 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import TocIcon from '@mui/icons-material/Toc'
 import type {
-  ChunkAnchor,
   DocumentTextPassage,
   DocumentTextResponse,
   DocumentTextSection,
@@ -24,17 +23,8 @@ import { markHighlight } from '@/shared/theme/tokens'
 import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import { getDocumentText } from '../api/libraryApi'
 import { downloadDocumentContent } from '../utils/documentContent'
+import type { TextVersionPreview } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-
-/** A document whose Textfassung „Dokument öffnen“ shows, and the cited passage in it. */
-export interface TextVersionPreview {
-  documentId: string
-  fileName: string
-  /** The cited passage; without one the Textfassung opens at its beginning. */
-  chunkIndex?: number | null
-  /** The cited passage's anchor as the citation recorded it. */
-  anchor?: ChunkAnchor | null
-}
 
 /** Passages per request - the server's own upper bound. */
 const WINDOW = 40
