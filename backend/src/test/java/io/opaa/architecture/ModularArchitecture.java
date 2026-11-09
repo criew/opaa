@@ -828,38 +828,54 @@ public final class ModularArchitecture {
 
   /**
    * The edges {@code a -> b} between two packages below the same top-level package that lie on a
-   * cycle, that is whose ends share a strongly connected component; each with one dependency as
-   * evidence.
+   * cycle, that is whose ends share a strongly connected component; each with one reference as
+   * evidence. {@code namedInSources} adds the edges only the sources show, from a package to the
+   * packages it names, both fully qualified, each with its evidence.
    */
-  private Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
-    Map<String, Map<String, Dependency>> graph = new TreeMap<>();
+  Map<String, String> subpackageCycleEdges(
+      Iterable<JavaClass> classes, Map<String, Map<String, String>> namedInSources) {
+    Map<String, Map<String, String>> graph = new TreeMap<>();
     for (JavaClass origin : classes) {
-      String from = relative(origin.getPackageName());
-      if (from == null || from.isEmpty()) {
-        continue;
-      }
       for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
-        String to = relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
-        if (to != null
-            && !to.isEmpty()
-            && !to.equals(from)
-            && !isOutsideTheLayering(to)
-            && topLevel(to).equals(topLevel(from))) {
-          graph.computeIfAbsent(from, key -> new TreeMap<>()).putIfAbsent(to, dependency);
-        }
+        addSubpackageEdge(
+            graph,
+            origin.getPackageName(),
+            dependency.getTargetClass().getBaseComponentType().getPackageName(),
+            dependency.getDescription());
       }
     }
+    namedInSources.forEach(
+        (from, targets) ->
+            targets.forEach((to, evidence) -> addSubpackageEdge(graph, from, to, evidence)));
     Map<String, Integer> component = StronglyConnectedComponents.of(graph);
-    Map<String, Dependency> cyclic = new TreeMap<>();
+    Map<String, String> cyclic = new TreeMap<>();
     graph.forEach(
         (from, targets) ->
             targets.forEach(
-                (to, dependency) -> {
+                (to, evidence) -> {
                   if (component.get(from).equals(component.get(to))) {
-                    cyclic.put(from + " -> " + to, dependency);
+                    cyclic.put(from + " -> " + to, evidence);
                   }
                 }));
     return cyclic;
+  }
+
+  private void addSubpackageEdge(
+      Map<String, Map<String, String>> graph,
+      String fromPackage,
+      String toPackage,
+      String evidence) {
+    String from = relative(fromPackage);
+    String to = relative(toPackage);
+    if (from != null
+        && !from.isEmpty()
+        && to != null
+        && !to.isEmpty()
+        && !to.equals(from)
+        && !isOutsideTheLayering(to)
+        && topLevel(to).equals(topLevel(from))) {
+      graph.computeIfAbsent(from, key -> new TreeMap<>()).putIfAbsent(to, evidence);
+    }
   }
 
   private ArchCondition<JavaClass> formNoSubpackageCycle() {
@@ -873,15 +889,12 @@ public final class ModularArchitecture {
 
       @Override
       public void finish(ConditionEvents events) {
-        subpackageCycleEdges(seen)
+        subpackageCycleEdges(seen, Map.of())
             .forEach(
-                (edge, dependency) ->
+                (edge, evidence) ->
                     events.add(
                         SimpleConditionEvent.violated(
-                            dependency,
-                            edge
-                                + " lies on a cycle between subpackages: "
-                                + dependency.getDescription())));
+                            edge, edge + " lies on a cycle between subpackages: " + evidence)));
       }
     };
   }
