@@ -97,7 +97,7 @@ test.describe.serial('Live-Diktat', () => {
     await page.getByRole('button', { name: 'Spracheingabe starten' }).click()
     const interim = page.getByTestId('dictation-interim')
     await expect(interim).toContainText('Welche Frist', { timeout: 15_000 })
-    await expect(interim).toHaveCSS('font-style', 'italic')
+    await expect(page.getByTestId('dictation-field')).toBeVisible()
     await page.getByRole('button', { name: 'Aufnahme beenden' }).click()
 
     const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })

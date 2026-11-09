@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0053 und ADR-0060
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0053 und ADR-0060
 
 ## Kontext
 
@@ -95,8 +95,10 @@ Sitzung einer anderen Person.
 Neben jeder Live-Sitzung nimmt der Browser wie bisher mit `MediaRecorder` auf. Bricht Live ab, ist
 kein Platz frei oder kommt nach dem Ende kein endgültiger Text, geht die Aufnahme an
 `POST /api/v1/transcriptions`; die Person sieht dafür keine Fehlermeldung. Der vorläufige Text
-erscheint gedimmt unter der Eingabe, in einer Farbe mit mindestens 4,5:1 Kontrast, und wird erst mit
-dem endgültigen Text in den Entwurf übernommen. Begründung: Live ist eine Komfortstufe; die
+erscheint gedimmt dort, wo während der Aufnahme das Eingabefeld steht, in einer Farbe mit mindestens
+4,5:1 Kontrast, und wird erst mit dem endgültigen Text in den Entwurf übernommen. Auch „Senden“
+während der Aufnahme wartet auf den endgültigen Text oder den Rückfall und schickt nie den
+vorläufigen. Begründung: Live ist eine Komfortstufe; die
 Spracheingabe hängt nicht von ihr ab.
 
 ### 8. Kein Speichern, kein Protokollieren

@@ -31,6 +31,8 @@ import { ChatAttachmentDraftChips } from './ChatAttachmentChips'
 import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
+import DictationField from './DictationField'
+import { useChatDictation } from './useChatDictation'
 import { withDictatedText } from './dictationText'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
@@ -273,8 +275,8 @@ export default function ChatInput({
     trackMention(nextValue, cursor, scopeLocked)
   }
 
-  const handleSend = () => {
-    const trimmed = value.trim()
+  const handleSend = (text: string = value) => {
+    const trimmed = text.trim()
     if (
       sendLocked ||
       !trimmed ||
@@ -282,7 +284,7 @@ export default function ChatInput({
       actions.isInserting ||
       attachmentsPending
     )
-      return
+      return false
     // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
     const selected = actions.selected
     const mark =
@@ -310,11 +312,11 @@ export default function ChatInput({
       draft.restore(attachments)
       result.onRestored?.()
     })
+    return true
   }
 
-  // Dictation only ever fills the input; sending stays the person's own action.
+  // Dictation fills the input; only the send button sends, during a recording with its final text.
   const [dictationError, setDictationError] = useState<string | null>(null)
-  const [interimDictation, setInterimDictation] = useState('')
   const appendDictatedText = useCallback((text: string) => {
     setValue((draft) => withDictatedText(draft, text))
     requestAnimationFrame(() => {
@@ -324,6 +326,14 @@ export default function ChatInput({
       input.setSelectionRange(input.value.length, input.value.length)
     })
   }, [])
+  const dictation = useChatDictation({ onText: appendDictatedText, onError: setDictationError })
+  const sendDictation = async () => {
+    const text = await dictation.stop(false)
+    if (!text) return
+    // A question that cannot go out now (too long, answer still running) stays in the field.
+    const question = withDictatedText(value, text)
+    if (!handleSend(question)) setValue(question)
+  }
 
   const chooseAction = (index: number) => {
     const entry = actions.matches[index]
@@ -475,54 +485,58 @@ export default function ChatInput({
           }),
         })}
       >
-        <TextField
-          ref={setFieldEl}
-          fullWidth
-          multiline
-          maxRows={6}
-          placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={disabled}
-          inputRef={inputRef}
-          variant="standard"
-          slotProps={{
-            htmlInput: {
-              role: 'combobox',
-              'aria-expanded': comboboxExpanded,
-              'aria-haspopup': 'listbox',
-              'aria-controls': comboboxControls,
-              'aria-autocomplete': 'list',
-              'aria-activedescendant': activeDescendant,
-              'aria-invalid': questionTooLong,
-              'aria-label': INPUT_LABEL,
-              [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
-              'aria-describedby':
-                [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
-                  .filter((id) => id !== null)
-                  .join(' ') || undefined,
-            },
-          }}
-          sx={{
-            '& .MuiInputBase-root': {
-              borderRadius: 0,
-              background: 'none',
-              px: 1.5,
-              py: 1,
-              alignItems: 'flex-start',
-              '&::before, &::after': { display: 'none' },
-            },
-            '& textarea': {
-              overflowY: 'auto !important',
-              resize: 'none',
-            },
-            // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
-            '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
-          }}
-        />
-        {uploadsEnabled && (
+        {dictation.busy ? (
+          <DictationField dictation={dictation} draft={value} />
+        ) : (
+          <TextField
+            ref={setFieldEl}
+            fullWidth
+            multiline
+            maxRows={6}
+            placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            inputRef={inputRef}
+            variant="standard"
+            slotProps={{
+              htmlInput: {
+                role: 'combobox',
+                'aria-expanded': comboboxExpanded,
+                'aria-haspopup': 'listbox',
+                'aria-controls': comboboxControls,
+                'aria-autocomplete': 'list',
+                'aria-activedescendant': activeDescendant,
+                'aria-invalid': questionTooLong,
+                'aria-label': INPUT_LABEL,
+                [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
+                'aria-describedby':
+                  [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
+                    .filter((id) => id !== null)
+                    .join(' ') || undefined,
+              },
+            }}
+            sx={{
+              '& .MuiInputBase-root': {
+                borderRadius: 0,
+                background: 'none',
+                px: 1.5,
+                py: 1,
+                alignItems: 'flex-start',
+                '&::before, &::after': { display: 'none' },
+              },
+              '& textarea': {
+                overflowY: 'auto !important',
+                resize: 'none',
+              },
+              // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
+              '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
+            }}
+          />
+        )}
+        {uploadsEnabled && !dictation.busy && (
           <>
             <input
               ref={fileInputRef}
@@ -542,12 +556,7 @@ export default function ChatInput({
             </IconButton>
           </>
         )}
-        <DictationControl
-          onText={appendDictatedText}
-          onError={setDictationError}
-          onInterimText={setInterimDictation}
-          disabled={disabled}
-        />
+        <DictationControl dictation={dictation} disabled={disabled} />
         {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
         {answerPending && onCancelAnswer && (
           <IconButton
@@ -568,10 +577,11 @@ export default function ChatInput({
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
-          onClick={handleSend}
+          onClick={() => (dictation.status === 'recording' ? void sendDictation() : handleSend())}
           disabled={
             sendLocked ||
-            !value.trim() ||
+            dictation.status === 'processing' ||
+            (!value.trim() && dictation.status !== 'recording') ||
             questionTooLong ||
             actions.isInserting ||
             attachmentsPending
@@ -716,16 +726,6 @@ export default function ChatInput({
           </Typography>
         )}
         <AiNotice variant="line" />
-        {/* The live text is not yet the input: dimmed, and announced only once it is final. */}
-        {interimDictation && (
-          <Typography
-            component="div"
-            data-testid="dictation-interim"
-            sx={{ fontSize: 13, color: 'text.secondary', fontStyle: 'italic' }}
-          >
-            {interimDictation}
-          </Typography>
-        )}
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
             {dictationError}
