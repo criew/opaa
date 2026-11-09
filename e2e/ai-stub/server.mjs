@@ -31,13 +31,25 @@
 // model, which is all the transcription role's probe and the set-up assistant's discovery ask for.
 // Only below /transcription - the chat and embedding steps rely on this stub listing no models.
 //
+// Live transcription (ADR-0070): a WebSocket upgrade on <base>/realtime speaks the vLLM dialect -
+// session.update, input_audio_buffer.append/commit, transcription.delta/done - and answers every
+// fifth audio frame with one more word. POST /control/realtime {"drop": true} makes it close the
+// TCP connection at the first audio frame, as a crashed upstream would, so the browser falls back
+// to the batch endpoint <base>/transcription/audio/transcriptions, which answers BATCH_TRANSCRIPT.
+//
 // Gesprächsnotiz condensation (test(e2e) #1489): the same endpoint also serves
 // io.opaa.chat.ChatNoteExtractionService, whose prompt is recognised by NOTE_PROMPT_MARKER below
 // and answered with a fixed line per user message - see condensedNote().
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8089
 const TRANSCRIPTION_MODEL = 'ai-stub-whisper'
+const LIVE_WORDS = ['Welche', 'Frist', 'gilt', 'live']
+const LIVE_TRANSCRIPT = 'Welche Frist gilt live?'
+const BATCH_TRANSCRIPT = 'Welche Frist gilt aus der Aufnahme?'
+let dropLiveSessions = false
+const liveSessions = { opened: 0, dropped: 0, done: 0 }
 const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
   ? Number(process.env.EMBEDDING_DIMENSIONS)
   : 1536
@@ -491,6 +503,24 @@ const server = createServer(async (req, res) => {
       return
     }
 
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/control/realtime')) {
+      const body = JSON.parse(await readBody(req))
+      dropLiveSessions = body.drop === true
+      sendJson(res, 200, { drop: dropLiveSessions, ...liveSessions })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/control/realtime')) {
+      sendJson(res, 200, { drop: dropLiveSessions, ...liveSessions })
+      return
+    }
+
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/transcription/audio/transcriptions')) {
+      await readBody(req)
+      sendJson(res, 200, { text: BATCH_TRANSCRIPT })
+      return
+    }
+
     if (req.method === 'GET' && matchesEndpoint(req.url, '/transcription/models')) {
       sendJson(res, 200, {
         object: 'list',
@@ -624,6 +654,95 @@ const server = createServer(async (req, res) => {
   } catch (error) {
     sendJson(res, 500, { error: error instanceof Error ? error.message : 'internal error' })
   }
+})
+
+// --- Live transcription over a WebSocket (RFC 6455, text frames, no extensions) ----------------
+
+function sendFrame(socket, text) {
+  const payload = Buffer.from(text, 'utf8')
+  const header =
+    payload.length < 126
+      ? Buffer.from([0x81, payload.length])
+      : Buffer.from([0x81, 126, payload.length >> 8, payload.length & 0xff])
+  socket.write(Buffer.concat([header, payload]))
+}
+
+/** Reads the client's masked frames from `buffer`; answers with the frames still incomplete. */
+function readFrames(buffer, onText, onClose) {
+  let offset = 0
+  while (buffer.length - offset >= 2) {
+    const opcode = buffer[offset] & 0x0f
+    let length = buffer[offset + 1] & 0x7f
+    let start = offset + 2
+    if (length === 126) {
+      if (buffer.length - offset < 4) break
+      length = buffer.readUInt16BE(offset + 2)
+      start = offset + 4
+    } else if (length === 127) {
+      if (buffer.length - offset < 10) break
+      length = Number(buffer.readBigUInt64BE(offset + 2))
+      start = offset + 10
+    }
+    const masked = (buffer[offset + 1] & 0x80) !== 0
+    const end = start + (masked ? 4 : 0) + length
+    if (buffer.length < end) break
+    const payload = Buffer.from(buffer.subarray(end - length, end))
+    if (masked) {
+      const mask = buffer.subarray(start, start + 4)
+      for (let i = 0; i < payload.length; i += 1) payload[i] ^= mask[i % 4]
+    }
+    if (opcode === 0x8) onClose()
+    else if (opcode === 0x1) onText(payload.toString('utf8'))
+    offset = end
+  }
+  return buffer.subarray(offset)
+}
+
+server.on('upgrade', (req, socket) => {
+  if (!matchesEndpoint(req.url, '/realtime') || !req.headers['sec-websocket-key']) {
+    socket.end('HTTP/1.1 404 Not Found\r\n\r\n')
+    return
+  }
+  const accept = createHash('sha1')
+    .update(`${req.headers['sec-websocket-key']}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
+    .digest('base64')
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+      `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
+  )
+  liveSessions.opened += 1
+  sendFrame(socket, JSON.stringify({ type: 'session.created' }))
+  let pending = Buffer.alloc(0)
+  let frames = 0
+  let words = 0
+  socket.on('data', (chunk) => {
+    pending = readFrames(
+      Buffer.concat([pending, chunk]),
+      (text) => {
+        const message = JSON.parse(text)
+        if (message.type === 'input_audio_buffer.append') {
+          if (dropLiveSessions) {
+            liveSessions.dropped += 1
+            socket.destroy()
+            return
+          }
+          frames += 1
+          if (frames % 5 === 1 && words < LIVE_WORDS.length) {
+            sendFrame(
+              socket,
+              JSON.stringify({ type: 'transcription.delta', delta: `${LIVE_WORDS[words]} ` }),
+            )
+            words += 1
+          }
+        } else if (message.type === 'input_audio_buffer.commit' && message.final === true) {
+          liveSessions.done += 1
+          sendFrame(socket, JSON.stringify({ type: 'transcription.done', text: LIVE_TRANSCRIPT }))
+        }
+      },
+      () => socket.end(Buffer.from([0x88, 0])),
+    )
+  })
+  socket.on('error', () => socket.destroy())
 })
 
 server.listen(PORT, () => {
