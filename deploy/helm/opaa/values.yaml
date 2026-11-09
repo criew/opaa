@@ -136,6 +136,23 @@ siemExport:
   # Budget of one delivery; empty keeps the default (30s).
   timeout: ""
 
+# Optional OpenTelemetry tracing (ADR-0071): spans of requests, model calls and background jobs go
+# over OTLP/HTTP to a collector of the operator. Off by default. A span carries route templates,
+# methods, status, model and token counts only - no URL with path or query, no account, no prompt,
+# answer or search text.
+tracing:
+  enabled: false
+  # OTLP/HTTP address of the collector including the path, e.g.
+  # http://otel-collector.monitoring:4318/v1/traces; required when enabled.
+  otlpEndpoint: ""
+  # Share of requests traced, from 0.0 to 1.0; empty keeps the application default (0.05).
+  samplingProbability: ""
+  # NetworkPolicy egress rules of the backend to the collector, added while tracing is on and
+  # networkPolicy.egress is enabled, e.g.
+  #   - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } } }]
+  #     ports: [{ port: 4318, protocol: TCP }]
+  egress: []
+
 # Load limits of the transcription model role (dictation in the chat). Switch, endpoint, model, key
 # and language are set by the system administration under Modelle > Spracheingabe. Recordings are
 # passed through, never stored.

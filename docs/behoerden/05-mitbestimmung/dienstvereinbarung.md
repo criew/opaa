@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-31
+stand: 2026-11-09
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -158,6 +158,14 @@ Anwendung es dafür vollständig der Reihe nach und sendet es ohne Pseudonyme vo
 [benannte Stelle] betreibt es und bewahrt die Meldungen [Frist] auf. Ausgeleitetes Protokoll und
 Anwendungslog werden nicht miteinander verknüpft, um eine Person zu bestimmen, außer in einer
 Klärung nach Nummer 8.
+
+(6) Jede Anfrage trägt eine Kennung (Request-ID), die im Log des Frontends mit der Client-Adresse,
+im Anwendungslog und im Nachweisprotokoll steht; ist das Tracing eingeschaltet, erhält der
+Trace-Collector eine Kennung, die auch im Anwendungslog steht. Über diese Kennungen werden Einträge
+nur in einer Klärung nach Nummer 8 oder zur Fehlerbehebung an einer einzelnen gemeldeten Anfrage
+verbunden, nicht, um das Verhalten einer Person nachzuzeichnen. Der Trace-Collector ist ein
+Zugriffsweg nach Absatz 1; [benannte Stelle] betreibt ihn und bewahrt die Spans [Frist] auf, die Logs
+mit der Request-ID [Frist].
 
 #### 8. Anlassbezogene Klärung
 

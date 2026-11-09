@@ -157,6 +157,51 @@ Den Weg zum Empfänger öffnet eine Regel unter `networkPolicy.egress.backendRul
 einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Vertrauensspeicher
 ([Kubernetes](kubernetes.md)). Nicht gebaut ist ein Client-Zertifikat für TLS.
 
+## Korrelation und Tracing
+
+> **Beispiel.** Eine Person meldet „Beim Speichern kam ein Fehler“ und schickt einen Screenshot mit
+> der Fehlermeldung. Der Betrieb sucht die dort genannte Kennung im Zugriffslog des Frontends und im
+> Log des Backends und findet beide Zeilen der Anfrage, auch die eines Hintergrundlaufs, den sie
+> angestoßen hat.
+
+- **Request-ID:** Jede Anfrage bekommt eine Kennung aus 32 Hexadezimalzeichen. Das Frontend
+  übernimmt eine mitgeschickte Kennung (`X-Request-Id`) nur, wenn sie 8 bis 64 Zeichen aus
+  Buchstaben, Ziffern, `-` und `_` hat; jede andere ersetzt es, ebenso das Backend bei einem Aufruf
+  ohne Frontend. Dieselbe Kennung steht am Ende der Zeile im Zugriffslog des Frontends, in jeder
+  Logzeile des Backends zur Anfrage, auch aus Hintergrundaufgaben, die sie startet, im
+  Antwort-Header `X-Request-Id` und im Feld `requestId` jeder Fehlerantwort.
+- **Im Log:** Im Textformat steht sie in eckigen Klammern vor dem Loggernamen, in `ecs`, `logstash`
+  und `gelf` als Feld `requestId`. Dort tragen Logzeilen eines Indexierungslaufs zusätzlich dessen
+  Kennung (`indexingRunId`), auch ein geplanter Lauf ohne Anfrage.
+- **Im Revisionsprotokoll:** Ein Eintrag ohne eigene Vorgangskennung trägt die Request-ID als
+  `request:<id>` in der Korrelationsangabe. Die Ausleitung an ein Sicherheitsmonitoring sendet sie
+  nicht.
+- **Personenbeziehbar über Verknüpfung:** Für sich nennt die Kennung niemanden. Das Zugriffslog
+  enthält aber die Client-Adresse, manche Logzeilen des Backends die Kennung eines Kontos und das
+  Revisionsprotokoll die handelnde Person; über die Request-ID lassen sich diese Zeilen verbinden.
+  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht OPAA. Die
+  Dienstvereinbarung regelt, dass die Verknüpfung nur in der anlassbezogenen Klärung geschieht.
+- **Tracing**, ab Werk aus: Mit `OPAA_TRACING_ENABLED=true` sendet das Backend Spans über OTLP/HTTP
+  an einen Collector (`OPAA_TRACING_OTLP_ENDPOINT`, Pflicht, sonst bricht der Start ab), über den
+  [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy), falls einer eingerichtet ist. Ausgewählt
+  wird nur ein kleiner Teil der Anfragen (`OPAA_TRACING_SAMPLING_PROBABILITY`), unabhängig von
+  einem mitgeschickten `traceparent`. Ist das Tracing aus, verlässt nichts die Installation.
+- **Inhalt eines Spans:** Name, Dauer, Methode, Routenmuster mit Platzhaltern statt IDs, Status,
+  Art des Fehlers, Modell und Tokenzahlen eines Modellaufrufs, Art der Datenbankoperation. Nicht
+  enthalten sind vollständige URL mit Parametern, Konto, SQL-Anweisung, Prompt, Antwort,
+  Fehlermeldung und Ereignisse. Den Aufruf `PUT /api/v1/me/quick-tour-hint` erfasst kein Span.
+- **Collector:** Er erhält die Trace-ID, die auch in den Logzeilen steht, und ist damit ein weiterer
+  Zugriffsweg auf die Verknüpfung. Zugriff und Aufbewahrung regelt der Betrieb dort wie beim Log.
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `OPAA_TRACING_ENABLED` | `false` | Export der Spans ein |
+| `OPAA_TRACING_OTLP_ENDPOINT` | — | Adresse des Collectors mit Pfad, etwa `http://otel-collector.monitoring:4318/v1/traces` |
+| `OPAA_TRACING_SAMPLING_PROBABILITY` | `0.05` | Anteil der erfassten Anfragen, 0.0 bis 1.0 |
+
+Unter Kubernetes stehen die drei Werte unter `tracing` im Helm-Chart; `tracing.egress` öffnet den
+Weg zum Collector, solange das Tracing an ist ([Kubernetes](kubernetes.md)).
+
 ## Diagnose ohne Shell
 
 Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend.
