@@ -57,6 +57,13 @@ public enum AuditEventType {
   PROMPT_LIBRARY_CHANGED,
   PROMPT_LIBRARY_DELETED,
   /**
+   * An agent was created, changed or deleted. A change names the changed fields, never their
+   * values: the instruction text never appears. Using an agent writes nothing.
+   */
+  AGENT_CREATED,
+  AGENT_CHANGED,
+  AGENT_DELETED,
+  /**
    * A prompt was added to, changed in or removed from its library. The object is the prompt, the
    * payload names its library; the prompt text never appears.
    */
@@ -710,6 +717,9 @@ public enum AuditEventType {
    * request to a foreign model, and the closed event list does not name it.
    */
   EXTERNAL_ACCESS_SETTINGS_CHANGED,
+
+  /** The installation-wide switch for agents was turned on or off; before/after of the flag. */
+  AGENT_SETTINGS_CHANGED,
 
   // Verbindungsprofile ("Zugänge", ADR-0041 Entscheidung 7)
   /** A connection profile was created; the client secret appears only as whether one is set. */

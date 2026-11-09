@@ -206,7 +206,13 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "chat_locked_account_cleanup_state",
                   "locked_account_chat_cleanup_settings",
                   "prompt_libraries",
-                  "prompts")),
+                  "prompts",
+                  "agents",
+                  "agent_libraries",
+                  "agent_tools",
+                  "agent_settings",
+                  "agent_settings_tools",
+                  "agent_seeds")),
           Map.entry(
               EXTERNAL,
               List.of(

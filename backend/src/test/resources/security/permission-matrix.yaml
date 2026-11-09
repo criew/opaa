@@ -390,6 +390,14 @@ operations:
   getPromptLibrary:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updatePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   deletePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listAgents:                                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createAgent:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "CREATE_AGENT is delivered to nobody; only the administration holds every right"}
+  getAgentAvailability:                      {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getAgent:                                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateAgent:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteAgent:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getAgentSettings:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateAgentSettings:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listPrompts:                               {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   createPrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   getPrompt:                                 {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}

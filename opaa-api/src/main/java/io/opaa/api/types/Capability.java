@@ -36,5 +36,12 @@ public enum Capability {
    * Creating a prompt library. Delivered to all accounts: a prompt binds no knowledge and reaches
    * no source, so creating one widens nothing.
    */
-  CREATE_PROMPT_LIBRARY
+  CREATE_PROMPT_LIBRARY,
+
+  /**
+   * Creating an agent. Delivered to nobody: an agent runs the tool loop for whoever calls it, so
+   * the system administration names who may build one. Offered only while the installation switch
+   * for agents is on.
+   */
+  CREATE_AGENT
 }

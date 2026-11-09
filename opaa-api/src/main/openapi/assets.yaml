@@ -482,7 +482,7 @@ components:
         The type of an asset on the asset shell.
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
-      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
+      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY, AGENT]
 
     AssetOrigin:
       type: string

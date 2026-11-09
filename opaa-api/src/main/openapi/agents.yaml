@@ -1,0 +1,425 @@
+# Topic "agents": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: agent
+    description: >
+      Agents: catalog entries that run the tool loop with their own instruction, libraries, tools,
+      plan step and limits (ADR-0070), and the installation-wide settings of agents. While the
+      installation switch for agents is off, every path under /api/v1/agents/{agentId} and the
+      list answer like an unknown address; the settings and the availability stay readable.
+paths:
+  /api/v1/agents:
+    get:
+      operationId: listAgents
+      tags: [agent]
+      summary: >
+        List the agents the caller may read - direct grant, grant to one of their groups, or
+        organization-wide release. A system administrator sees here only what the formula grants
+        them.
+      responses:
+        "200":
+          description: The readable agents, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createAgent
+      tags: [agent]
+      summary: >
+        Create an empty agent, owned by the caller or by one of the caller's groups. Needs the
+        capability CREATE_AGENT, which is offered only while agents are switched on. The agent
+        starts without instruction and libraries (the caller's whole readable scope), with the
+        tools search_knowledge and read_document, without plan step and with the installation's
+        limits. Rights are then given through /api/v1/assets/AGENT/{assetId}/grants.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentCreateRequest"
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The caller lacks the capability CREATE_AGENT (code CAPABILITY_REQUIRED), or the named
+            owner group is one the caller is not a member of.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agents/availability:
+    get:
+      operationId: getAgentAvailability
+      tags: [agent]
+      summary: >
+        Whether agents are switched on right now, for every signed-in account. The interface asks
+        it to decide whether to offer agents at all; every agent path checks the switch itself.
+      responses:
+        "200":
+          description: The switch as it stands
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentAvailabilityResponse"
+
+  /api/v1/agents/{agentId}:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getAgent
+      tags: [agent]
+      summary: Get an agent (VIEWER or above; a system administrator counts as OWNER)
+      responses:
+        "200":
+          description: The agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateAgent
+      tags: [agent]
+      summary: >
+        Replace name, purpose and configuration (MANAGER or above). A library is accepted only if
+        the caller may read it; an assigned library the caller may not read stays assigned even
+        when the request leaves it out, because the caller cannot see it. Every change counts the
+        revision up. The limits may only lower the installation's limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentUpdateRequest"
+      responses:
+        "200":
+          description: Agent updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteAgent
+      tags: [agent]
+      summary: Delete an agent (OWNER only) together with its grants and space associations.
+      responses:
+        "204":
+          description: Agent deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/system/agents:
+    get:
+      operationId: getAgentSettings
+      tags: [agent]
+      summary: The installation-wide settings of agents (system admin only)
+      responses:
+        "200":
+          description: The settings and who changed them last
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateAgentSettings
+      tags: [agent]
+      summary: >
+        Replace the installation-wide settings of agents (system admin only). enabled is the
+        switch for agents, default off; it takes effect with the next call on every instance and
+        destroys no agent. enabledTools are the tools a run may be offered. Switching agents on
+        provisions the delivered agent "Recherche" for the caller's organization once. A change
+        is audited as AGENT_SETTINGS_CHANGED with before/after of the changed keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentSettingsUpdateRequest"
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  schemas:
+    AgentPlanStep:
+      type: string
+      description: >
+        Whether a run starts with a plan. OFF starts right away; CONFIRM ends the run with the plan,
+        and the confirmation starts a new run (ADR-0070, Entscheidung 1).
+      enum: ["OFF", CONFIRM]
+
+    AgentLimits:
+      type: object
+      description: >
+        The limits of one run; a missing or null value leaves the installation's limit in force.
+        Each value is at least 1 and at most the installation's limit.
+      properties:
+        maxToolCalls:
+          type: integer
+          nullable: true
+          description: Tool calls per run.
+        maxSearchCalls:
+          type: integer
+          nullable: true
+          description: Calls of the search tool per run.
+        maxDurationSeconds:
+          type: integer
+          nullable: true
+          description: Wall-clock time of a run, in seconds.
+        maxCollectedChars:
+          type: integer
+          nullable: true
+          description: Characters of all tool results of a run.
+
+    AgentLibrary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    AgentCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Vergabeprüfung
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: The purpose, shown next to the agent in the chat.
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+          description: Defaults to USER (the creator) when omitted
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required when ownerType is GROUP (the caller must be a member of that group). Ignored
+            for ownerType USER, which always owns as the creator.
+
+    AgentUpdateRequest:
+      type: object
+      required: [name, instruction, libraryIds, toolNames, planStep, limits]
+      description: Replaces name, purpose and configuration as a whole.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        instruction:
+          type: string
+          maxLength: 8000
+          description: >
+            Appended to the fixed rules as a marked block, never replacing them (ADR-0070,
+            Entscheidung 5). May be empty.
+        libraryIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+          description: Empty narrows nothing - a run searches whatever the calling person may read.
+        toolNames:
+          type: array
+          items:
+            type: string
+          description: >
+            Any of search_knowledge, read_document, list_sources, run_code, ask_user. A run is
+            offered only those the installation has switched on.
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+
+    AgentResponse:
+      type: object
+      required:
+        - id
+        - name
+        - instruction
+        - libraries
+        - hiddenLibraryCount
+        - toolNames
+        - planStep
+        - limits
+        - revision
+        - delivered
+        - ownerType
+        - ownerId
+        - reach
+        - myRole
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        instruction:
+          type: string
+        libraries:
+          type: array
+          description: The assigned libraries the caller may read, by name.
+          items:
+            $ref: "#/components/schemas/AgentLibrary"
+        hiddenLibraryCount:
+          type: integer
+          description: >
+            Assigned libraries the caller may not read or that no longer exist - counted, never
+            named. A run never reads them for this caller.
+        toolNames:
+          type: array
+          items:
+            type: string
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+        revision:
+          type: integer
+          description: Counts up with every saved change (the "Fassung").
+        delivered:
+          type: boolean
+          description: The installation delivered this agent ("Recherche"); it is changeable all the same.
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning user or group, whichever ownerType names.
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning person or group; null when it cannot be resolved or the
+            group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
+        myRole:
+          description: >
+            The role the caller holds. In the list, the role of the formula (at least VIEWER); for
+            a single agent a system administrator counts as OWNER, as for every asset.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        succession:
+          description: >
+            Set while the agent has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AgentAvailabilityResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    AgentSettingsUpdateRequest:
+      type: object
+      required: [enabled, enabledTools]
+      properties:
+        enabled:
+          type: boolean
+          description: The installation-wide switch for agents.
+        enabledTools:
+          type: array
+          items:
+            type: string
+          description: The tools a run may be offered.
+
+    AgentSettingsResponse:
+      type: object
+      required: [enabled, enabledTools, availableTools, updatedAt]
+      properties:
+        enabled:
+          type: boolean
+        enabledTools:
+          type: array
+          items:
+            type: string
+        availableTools:
+          type: array
+          description: Every tool the installation knows, in display order.
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          nullable: true
+          description: >
+            Display name of who changed the settings last; null unless that person belongs to the
+            caller's organization.

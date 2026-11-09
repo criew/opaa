@@ -78,7 +78,7 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 | workspace | space, revision, diagnosticaccess | foundation, identity, rights, knowledge |
 | library | library | foundation, format, identity, rights, knowledge, connections |
 | retrieval | retrieval | foundation, format, knowledge |
-| assistant | prompt, chat, query, search, searchadmin | foundation, format, identity, rights, knowledge, workspace, library, retrieval |
+| assistant | prompt, chat, query, search, searchadmin, agent | foundation, format, identity, rights, knowledge, workspace, library, retrieval |
 | external | externalaccess, mcp | foundation, identity, rights, knowledge, library, assistant |
 | app | api, config, `OpaaApplication` | foundation, knowledge |
 

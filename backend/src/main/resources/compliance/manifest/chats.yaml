@@ -224,6 +224,22 @@ nonPersonalTables:
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
+  agents:
+    - id
+    - asset_type
+    - organization_id
+    - instruction
+    - plan_step
+    - max_tool_calls
+    - max_search_calls
+    - max_duration_seconds
+    - max_collected_chars
+    - revision
+    - seed_key
+  agent_libraries: [agent_id, library_id]
+  agent_tools: [agent_id, tool_name]
+  agent_settings_tools: [settings_id, tool_name]
+  agent_seeds: [organization_id, seed_key, created_at]
   prompts:
     - id
     - library_id
