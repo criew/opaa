@@ -497,9 +497,9 @@ val testShards = mapOf(
         "io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.metadata.*", "io.opaa.llm.*",
         "io.opaa.installation.*",
     ),
+    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*"),
     // each migration test class boots its own container with a template database
     "migration" to listOf("io.opaa.migration.*"),
-    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*"),
 )
 
 // The DNS rebinding tests (*RebindingTest, ADR-0063) run in a JVM of their own that caches no

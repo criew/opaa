@@ -844,7 +844,7 @@ jobs:
           retention-days: 14
 
   frontend-test:
-    name: frontend-test (${{ matrix.shard }}/3)
+    name: frontend-test (${{ matrix.shard }})
     needs: paths
     if: github.event_name != 'pull_request' || needs.paths.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -873,10 +873,8 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-      - name: Test (Shard ${{ matrix.shard }}/3)
-        run: |
-          pnpm run generate:api-types
-          pnpm exec vitest run --shard=${{ matrix.shard }}/3
+      - name: Test (Shard ${{ matrix.shard }})
+        run: pnpm run test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   # Required status check. always(): the aggregate must run even when a shard failed, otherwise it
   # would be skipped and a skipped required check reads as passed.

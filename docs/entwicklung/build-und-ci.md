@@ -3,6 +3,19 @@
 Nachschlagewerk zu Befehlen außerhalb des täglichen Builds. Die Grundbefehle (Build, Test, Formatierung,
 Start von Backend und Frontend) und die Pre-Push-Checkliste stehen in [AGENTS.md](../../AGENTS.md#build--test).
 
+## Aufbau der CI und Shards
+
+`ci.yml` startet zuerst den Job `paths`, der nur den Pfadfilter enthält; alle Test- und Build-Jobs hängen
+an ihm und starten ohne Warten auf die Repo-Prüfungen. Die Pflicht-Checks sind Aggregatoren:
+
+- `changes` führt die Repo-Prüfungen aus und scheitert auch, wenn `paths` scheitert.
+- `backend` sammelt `backend-build`, `openapi-bundle-parity` und die Testshards `backend-test (api | indexing |
+  connection | migration | core)`. Die Paketlisten stehen in `testShards` in `backend/build.gradle.kts`, `core`
+  ist das Komplement. Jeder Shard schreibt seine langsamsten Testklassen ins Job-Summary
+  (`.github/scripts/slowest_test_classes.py`); danach die Listen ausbalancieren.
+- `frontend` sammelt `frontend-check` (Format, Lint, Lizenzen, Themengrenzen, Build) und drei
+  vitest-Shards `frontend-test (1…3)`. Einen Shard lokal nachstellen: `pnpm run test --shard=1/3`.
+
 ## Frontend mit Mocks
 
 ```bash
