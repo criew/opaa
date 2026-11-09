@@ -875,6 +875,29 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
+  it('drops the measurement run when the value changes', async () => {
+    signInAs('SYSTEM_ADMIN')
+    await useLlmModelStore.getState().loadModels()
+    await useLlmModelStore.getState().setToolCapability('llm-model-ollama-lokal', {
+      ...OLLAMA_COMBINATION,
+      value: 'CAPABLE',
+      basis: 'MEASURED',
+      measurementRun: 'tc-2026-11-09-1',
+    })
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
+    await user.click(within(dialog).getByRole('radio', { name: /^Nicht fähig/ }))
+
+    expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('')
+    expect(within(dialog).getByRole('button', { name: 'Gemessene Angabe ersetzen' })).toBeDisabled()
+
+    await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
+    expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('tc-2026-11-09-1')
+  })
+
   it('shows the conflict when the model changed after the list was loaded', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

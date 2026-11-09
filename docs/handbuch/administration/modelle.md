@@ -76,8 +76,8 @@ Update an derselben Adresse setzt nichts zurück; dann die Angabe selbst auf „
 neu prüfen. Hat jemand anderes das Modell geändert, während der Dialog offen war, lehnt OPAA das
 Speichern ab; die Liste neu laden und die Angabe für die neue Kombination erneut prüfen.
 
-Während eines Updates mit mehreren Instanzen kann eine Instanz der alten Version die Adresse ändern,
-ohne die Angabe zurückzusetzen. Basis-Adresse und Modell-Kennung deshalb erst ändern, wenn alle
+Beim Update auf die Version, die die Werkzeugfähigkeit einführt, kann bei mehreren Instanzen eine
+Instanz der alten Version die Adresse ändern, ohne die Angabe zurückzusetzen. Basis-Adresse und Modell-Kennung deshalb erst ändern, wenn alle
 Instanzen die neue Version fahren, oder die Angabe danach selbst auf „Ungeprüft“ stellen.
 
 Ist das aktive Modell beim Start „Ungeprüft“, schreibt jede Instanz eine Warnung ins Log; der Start

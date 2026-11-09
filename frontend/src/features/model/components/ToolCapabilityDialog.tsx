@@ -71,6 +71,12 @@ export default function ToolCapabilityDialog({
   const runMissing = value !== 'UNVERIFIED' && basis === 'MEASURED' && run === ''
   const replacesMeasured = stored.basis === 'MEASURED' && !unchanged
 
+  // A measurement run belongs to the measured value; switching the value drops it.
+  function chooseValue(next: ToolCapability) {
+    setValue(next)
+    setMeasurementRun(next === stored.value ? (stored.measurementRun ?? '') : '')
+  }
+
   function request(): LlmModelToolCapabilityRequest {
     const combination = { baseUrl: model.baseUrl, modelIdentifier: model.modelIdentifier }
     if (value === 'UNVERIFIED') return { ...combination, value }
@@ -125,7 +131,7 @@ export default function ToolCapabilityDialog({
           <RadioGroup
             aria-labelledby={choiceId}
             value={value}
-            onChange={(e) => setValue(e.target.value as ToolCapability)}
+            onChange={(e) => chooseValue(e.target.value as ToolCapability)}
           >
             {ORDER.map((key) => (
               <FormControlLabel
