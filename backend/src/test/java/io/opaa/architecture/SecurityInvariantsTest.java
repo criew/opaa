@@ -67,6 +67,8 @@ class SecurityInvariantsTest {
                   + " checked with ModelAddressPolicy when it was stored"),
           Map.entry("io.opaa.llm.RerankClient#send", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.llm.RealtimeTranscriptionClient$Connection#connect", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.audit.SyslogSender#deliver",
@@ -157,12 +159,18 @@ class SecurityInvariantsTest {
                   + " (ModelEndpointRules#sameEndpoint)"),
           Map.entry("io.opaa.llm.InstalledEmbeddingModel#build", OWN_ADDRESS_AND_KEY),
           Map.entry(
+              "io.opaa.llm.ModelRoleAdministration#decryptForTest",
+              "reuses the stored live key for a test only at the stored live address"
+                  + " (ModelEndpointRules#sameEndpoint) and the batch key only at the batch"
+                  + " address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
+          Map.entry(
               "io.opaa.llm.ModelRoleAdministration#testKey",
               "reuses a role's stored key for a test only at the stored address"
                   + " (ModelEndpointRules#sameEndpoint)"),
           Map.entry(
               "io.opaa.llm.ModelRoleEndpoints#decrypt",
-              "loads the rerank and transcription endpoints with their own address and key"),
+              "loads the rerank and transcription endpoints with their own address and key; the"
+                  + " live upstream borrows the batch key only at its origin"),
           Map.entry(
               "io.opaa.mail.MailOutbox#decrypt",
               "queued mails (recipient, subject, body); no credential"),

@@ -18,6 +18,9 @@ public interface ModelRoleObservations {
   /** The role of the transcription model. */
   String TRANSCRIPTION = "TRANSCRIPTION";
 
+  /** The live upstream of the transcription role; its model is keyed with the protocol. */
+  String TRANSCRIPTION_REALTIME = "TRANSCRIPTION_REALTIME";
+
   /** The role of the text recognition service; its model is keyed with the connection type. */
   String TEXT_RECOGNITION = "TEXT_RECOGNITION";
 

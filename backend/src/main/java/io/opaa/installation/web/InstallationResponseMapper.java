@@ -14,6 +14,7 @@ import io.opaa.api.dto.InstallationStep;
 import io.opaa.api.dto.InstallationStepState;
 import io.opaa.api.dto.InstallationTextRecognitionModelView;
 import io.opaa.api.dto.InstallationTranscriptionModelView;
+import io.opaa.api.dto.InstallationTranscriptionRealtimeView;
 import io.opaa.installation.InstallationOverview;
 import io.opaa.installation.StepInput;
 
@@ -67,10 +68,20 @@ final class InstallationResponseMapper {
       case InstallationOverview.RerankModel model ->
           response.setRerankModel(
               new InstallationRerankModelView(model.baseUrl(), model.model(), model.apiKeySet()));
-      case InstallationOverview.TranscriptionModel model ->
-          response.setTranscriptionModel(
-              new InstallationTranscriptionModelView(
-                  model.baseUrl(), model.model(), model.apiKeySet(), model.language()));
+      case InstallationOverview.TranscriptionModel model -> {
+        InstallationTranscriptionModelView view =
+            new InstallationTranscriptionModelView(
+                model.baseUrl(), model.model(), model.apiKeySet(), model.language());
+        if (model.realtime() != null) {
+          view.setRealtime(
+              new InstallationTranscriptionRealtimeView(
+                  model.realtime().protocol(),
+                  model.realtime().url(),
+                  model.realtime().model(),
+                  model.realtime().apiKeySet()));
+        }
+        response.setTranscriptionModel(view);
+      }
       case InstallationOverview.TextRecognitionModel model -> {
         InstallationTextRecognitionModelView view =
             new InstallationTextRecognitionModelView(

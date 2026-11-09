@@ -6,6 +6,7 @@ import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.RealtimeTranscriptionEndpoint;
 import io.opaa.llm.TextRecognitionClient;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
@@ -166,10 +167,45 @@ class StepChecks {
     if (blocked != null) {
       return new Outcome(false, blocked);
     }
+    StepRules.RealtimePayload realtime = model.realtime();
+    if (realtime != null) {
+      String liveBlocked =
+          StepRules.blockedModelAddress(
+              modelAddresses, RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()));
+      if (liveBlocked != null) {
+        return new Outcome(false, liveBlocked.replace("Basis-Adresse", "Live-Adresse"));
+      }
+    }
     return withKey(
         InstallationStep.TRANSCRIPTION_MODEL,
         secret,
-        apiKey -> outcome(modelRoles.probeTranscription(model.baseUrl(), model.model(), apiKey)));
+        apiKey -> {
+          Outcome batch =
+              outcome(modelRoles.probeTranscription(model.baseUrl(), model.model(), apiKey));
+          if (!batch.succeeded() || realtime == null) {
+            return batch;
+          }
+          String liveKey;
+          if (realtime.apiKeyCiphertext() != null) {
+            try {
+              liveKey =
+                  rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, realtime.apiKeyCiphertext());
+            } catch (IllegalStateException e) {
+              return new Outcome(false, UNREADABLE_KEY);
+            }
+          } else {
+            liveKey =
+                RealtimeTranscriptionEndpoint.sharesOrigin(realtime.url(), model.baseUrl())
+                    ? apiKey
+                    : "";
+          }
+          ModelRoleAdministration.TestOutcome live =
+              modelRoles.probeTranscriptionRealtime(
+                  realtime.protocol(), realtime.url(), realtime.model(), liveKey);
+          return live.success()
+              ? new Outcome(true, batch.message() + " " + live.message())
+              : new Outcome(false, "Live-Transkript: " + live.message());
+        });
   }
 
   private static Outcome outcome(ModelRoleAdministration.TestOutcome outcome) {

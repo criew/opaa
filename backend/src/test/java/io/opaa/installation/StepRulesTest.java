@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
@@ -755,7 +756,8 @@ class StepRulesTest {
         .isEqualTo("sk-stt");
     assertThat(rules.transcriptionModelPayload(stored.payload()))
         .isEqualTo(
-            new StepRules.TranscriptionModelPayload("http://ollama:8000/v1", "whisper", "en"));
+            new StepRules.TranscriptionModelPayload(
+                "http://ollama:8000/v1", "whisper", "en", null));
 
     StepRules.Stored withoutLanguage =
         rules.toStored(
@@ -803,6 +805,127 @@ class StepRulesTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::code)
                     .containsExactly("BLOCKED"));
+  }
+
+  @Test
+  void aLiveKeyOfItsOwnIsStoredEncryptedInsideThePayloadAndKeptForTheSameLiveAddress() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI,
+                    "wss://ollama.example.org/v1/realtime",
+                    "gpt-live-transcribe",
+                    "sk-live")),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("sk-live");
+    StepRules.RealtimePayload live = rules.transcriptionModelPayload(stored.payload()).realtime();
+    assertThat(
+            encryptor.decrypt(
+                live.apiKeyCiphertext(),
+                InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL)))
+        .isEqualTo("sk-live");
+    assertThat(live.toString()).doesNotContain(live.apiKeyCiphertext());
+
+    StepRules.Stored again =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI,
+                    "wss://ollama.example.org/v1/realtime",
+                    "gpt-live-transcribe",
+                    null)),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.transcriptionModelPayload(again.payload()).realtime().apiKeyCiphertext())
+        .isEqualTo(live.apiKeyCiphertext());
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TranscriptionModel(
+                        "http://ollama:8000/v1",
+                        "whisper",
+                        null,
+                        "de",
+                        new StepInput.TranscriptionRealtime(
+                            RealtimeTranscriptionProtocol.OPENAI,
+                            "wss://ollama:9000/v1/realtime",
+                            "gpt-live-transcribe",
+                            null)),
+                    stored.payload(),
+                    stored.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcriptionModel.realtime.apiKey"));
+  }
+
+  @Test
+  void openAiAndMistralLiveNeedAKeyThatReachesThemWhileVllmGoesWithout() {
+    for (RealtimeTranscriptionProtocol protocol :
+        List.of(RealtimeTranscriptionProtocol.OPENAI, RealtimeTranscriptionProtocol.MISTRAL)) {
+      assertThatThrownBy(
+              () ->
+                  rules.toStored(
+                      new StepInput.TranscriptionModel(
+                          "http://ollama:8000/v1",
+                          "whisper",
+                          "sk-batch",
+                          "de",
+                          new StepInput.TranscriptionRealtime(
+                              protocol, "wss://ollama.example.org/v1/realtime", "live", null)),
+                      null,
+                      null))
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(FieldValidationException.FieldError::field)
+                      .containsExactly("transcriptionModel.realtime.apiKey"));
+    }
+
+    StepRules.Stored sameOrigin =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                "sk-batch",
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI, "ws://ollama:8000/v1/realtime", "live")),
+            null,
+            null);
+    assertThat(rules.transcriptionModelPayload(sameOrigin.payload()).realtime().apiKeyCiphertext())
+        .isNull();
+
+    StepRules.Stored vllm =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.VLLM,
+                    "ws://ollama.example.org:8000/v1/realtime",
+                    "voxtral")),
+            null,
+            null);
+    assertThat(rules.transcriptionModelPayload(vllm.payload()).realtime().protocol())
+        .isEqualTo(RealtimeTranscriptionProtocol.VLLM);
   }
 
   @Test

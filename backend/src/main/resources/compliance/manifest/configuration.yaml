@@ -108,6 +108,37 @@ settings:
       - >-
         Auch der Abschluss der Installation legt es fest, wenn der Schritt Transkriptionsmodell
         geprüft ist; die Systemverwaltung ändert es unter Modelle → Spracheingabe
+  - key: transcription_model.realtime_protocol
+    source: DATABASE
+    defaultValue: ""
+    effect: >-
+      Ob und in welchem Protokoll (OPENAI, VLLM, MISTRAL) die Spracheingabe zusätzlich ein
+      Live-Transkript bei einem Live-Dienst anfragt; ohne Angabe nur Diktat mit ganzer Aufnahme
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Die Systemverwaltung wählt es unter Modelle → Spracheingabe, oder der Abschluss der
+        Installation mit einem geprüften Schritt Transkriptionsmodell, der das Live-Transkript wählt;
+        wirkt nur, solange auch die Spracheingabe eingeschaltet ist
+  - key: transcription_model.realtime_url
+    source: DATABASE
+    defaultValue: ""
+    effect: WebSocket-Adresse (ws:// oder wss://) des Live-Dienstes
+    bearings: [DATA_FLOW]
+    notes:
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+  - key: transcription_model.realtime_model
+    source: DATABASE
+    defaultValue: ""
+    effect: Modell des Live-Dienstes
+    bearings: [DATA_FLOW]
+  - key: transcription_model.realtime_max_sessions
+    source: DATABASE
+    defaultValue: "1"
+    effect: >-
+      Höchstzahl gleichzeitiger Live-Sitzungen der ganzen Installation, über alle Instanzen;
+      darüber diktiert die Person mit ganzer Aufnahme
+    bearings: [DATA_FLOW]
   - key: opaa.ocr.enabled
     defaultValue: "false"
     effect: >-

@@ -3,6 +3,7 @@ package io.opaa.llm;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
@@ -60,6 +62,7 @@ public class ModelRoleAdministration {
   static final String RERANK = "rerank";
   static final String TRANSCRIPTION = "transcription";
   static final String TEXT_RECOGNITION = "textRecognition";
+  static final String TRANSCRIPTION_REALTIME = "transcription.realtime";
 
   /** The budget of a text recognition test: the first conversion may load the OCR models. */
   static final Duration TEXT_RECOGNITION_TEST_TIMEOUT = Duration.ofMinutes(3);
@@ -93,10 +96,47 @@ public class ModelRoleAdministration {
       boolean apiKeySet,
       String language,
       String vocabulary,
+      RealtimeView realtime,
       OptionalRoleStatus status,
       boolean speechInputAvailable,
       Instant updatedAt,
       List<String> retiredVariables) {}
+
+  /**
+   * The live upstream of the transcription role as the page shows it (ADR-0070); {@code apiKeySet}
+   * names a key of its own only.
+   */
+  public record RealtimeView(
+      boolean enabled,
+      RealtimeTranscriptionProtocol protocol,
+      String url,
+      String model,
+      boolean apiKeySet,
+      int maxSessions,
+      OptionalRoleStatus status) {}
+
+  /**
+   * A change of the live upstream: {@code enabled} false removes it with its key; {@code apiKey}
+   * {@code null} keeps the stored key for the same address, blank removes it; {@code maxSessions}
+   * {@code null} keeps the stored number.
+   */
+  public record RealtimeChange(
+      boolean enabled,
+      RealtimeTranscriptionProtocol protocol,
+      String url,
+      String model,
+      String apiKey,
+      Integer maxSessions) {
+
+    /**
+     * The live upstream of an installation step, switched on; {@code apiKey} {@code null} for none
+     * of its own.
+     */
+    public static RealtimeChange installed(
+        RealtimeTranscriptionProtocol protocol, String url, String model, String apiKey) {
+      return new RealtimeChange(true, protocol, url, model, apiKey == null ? "" : apiKey, null);
+    }
+  }
 
   /** The text recognition role as the page shows it, with the operation's limit. */
   public record TextRecognitionModelView(
@@ -125,6 +165,8 @@ public class ModelRoleAdministration {
   private final ModelRoleEndpoints endpoints;
   private final OptionalRoleStatusResolver<RerankEndpoint> rerankRole;
   private final OptionalRoleStatusResolver<TranscriptionEndpoint> transcriptionRole;
+  private final RealtimeTranscriptionStatusResolver realtimeRole;
+  private final RealtimeTranscriptionClient realtimeClient;
   private final boolean speechInputAvailable;
   private final TextRecognitionModelRole textRecognitionRole;
   private final RerankClient rerankClient;
@@ -146,10 +188,12 @@ public class ModelRoleAdministration {
       ModelRoleEndpoints endpoints,
       OptionalRoleStatusResolver<RerankEndpoint> rerankRole,
       OptionalRoleStatusResolver<TranscriptionEndpoint> transcriptionRole,
+      RealtimeTranscriptionStatusResolver realtimeRole,
       TextRecognitionModelRole textRecognitionRole,
       FeatureFlags featureFlags,
       RerankClient rerankClient,
       TranscriptionClient transcriptionClient,
+      RealtimeTranscriptionClient realtimeClient,
       TextRecognitionClient textRecognitionClient,
       SettingsEncryptor settingsEncryptor,
       ModelAddressPolicy modelAddresses,
@@ -199,6 +243,8 @@ public class ModelRoleAdministration {
     this.endpoints = endpoints;
     this.rerankRole = rerankRole;
     this.transcriptionRole = transcriptionRole;
+    this.realtimeRole = realtimeRole;
+    this.realtimeClient = realtimeClient;
     this.speechInputAvailable = speechInput;
     this.textRecognitionRole = textRecognitionRole;
     this.rerankClient = rerankClient;
@@ -369,6 +415,7 @@ public class ModelRoleAdministration {
     table.rows().save(row);
     Map<String, Object> after = table.payload().apply(row);
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
+    columns.annotate(after);
     record(organizationId, actor, table.changed(), table.name(), table.label(), before, after);
     afterCommit(table.role());
     return row;
@@ -380,6 +427,9 @@ public class ModelRoleAdministration {
     boolean unchanged();
 
     void replace(R row);
+
+    /** Adds what the audit state of the row cannot tell, such as a changed key of its own. */
+    default void annotate(Map<String, Object> after) {}
 
     static <R> OwnColumns<R> none() {
       return new OwnColumns<>() {
@@ -425,12 +475,15 @@ public class ModelRoleAdministration {
       String model,
       String apiKey,
       String language,
-      String vocabulary) {
+      String vocabulary,
+      RealtimeChange realtime) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
     String lang = TranscriptionEndpoint.normalisedLanguage(language);
     String terms = TranscriptionVocabulary.normalised(vocabulary);
+    RealtimeChange live = normalised(realtime);
     List<FieldError> errors = transcriptionErrors(enabled, address, identifier, apiKey, lang);
+    realtimeErrors(live, errors);
     if (!TranscriptionVocabulary.isValid(terms)) {
       errors.add(
           new FieldError(
@@ -439,6 +492,11 @@ public class ModelRoleAdministration {
               TranscriptionVocabulary.RULE));
     }
     blockedAddressError(TRANSCRIPTION, address, storedAddress(transcriptionTable), errors);
+    blockedRealtimeAddressError(live, storedRealtimeUrl(), errors);
+    if (errors.isEmpty()) {
+      liveKeyError(live, address, apiKey, transcriptionTable.rows().findStored().orElse(null))
+          .ifPresent(errors::add);
+    }
     requireNoErrors(errors);
     return transactions.execute(
         status ->
@@ -451,7 +509,7 @@ public class ModelRoleAdministration {
                     address,
                     identifier,
                     changedSecret(TRANSCRIPTION, apiKey, address),
-                    (row, stored) -> transcriptionColumns(row, stored, lang, terms))));
+                    (row, stored) -> transcriptionColumns(row, stored, lang, terms, live))));
   }
 
   /**
@@ -468,11 +526,20 @@ public class ModelRoleAdministration {
       String baseUrl,
       String model,
       String apiKey,
-      String language) {
+      String language,
+      RealtimeChange realtime) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
     String lang = TranscriptionEndpoint.normalisedLanguage(language);
-    requireNoErrors(transcriptionErrors(true, address, identifier, null, lang));
+    RealtimeChange live =
+        normalised(
+            realtime == null ? new RealtimeChange(false, null, null, null, null, null) : realtime);
+    List<FieldError> errors = transcriptionErrors(true, address, identifier, null, lang);
+    realtimeErrors(live, errors);
+    if (errors.isEmpty()) {
+      liveKeyError(live, address, apiKey == null ? "" : apiKey, null).ifPresent(errors::add);
+    }
+    requireNoErrors(errors);
     return transactions.execute(
         status ->
             transcriptionView(
@@ -484,7 +551,34 @@ public class ModelRoleAdministration {
                     address,
                     identifier,
                     row -> encryptInstalled(TRANSCRIPTION, apiKey),
-                    (row, stored) -> transcriptionColumns(row, stored, lang, null))));
+                    (row, stored) -> transcriptionColumns(row, stored, lang, null, live))));
+  }
+
+  /**
+   * The refusal of a switched-on live upstream that would run without a key it needs ({@link
+   * RealtimeTranscriptionEndpoint#lacksRequiredKey}); a {@code null} key keeps the stored one, a
+   * blank one removes it.
+   */
+  private static Optional<FieldError> liveKeyError(
+      RealtimeChange live, String batchAddress, String batchKey, TranscriptionModelSettings row) {
+    if (live == null || !live.enabled()) {
+      return Optional.empty();
+    }
+    boolean ownKey =
+        live.apiKey() == null
+            ? row != null && row.getRealtimeApiKeyCiphertext() != null
+            : !live.apiKey().isBlank();
+    boolean anyBatchKey =
+        batchKey == null ? row != null && row.getApiKeyCiphertext() != null : !batchKey.isBlank();
+    if (!RealtimeTranscriptionEndpoint.lacksRequiredKey(
+        live.protocol(), live.url(), ownKey, batchAddress, anyBatchKey)) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new FieldError(
+            TRANSCRIPTION_REALTIME + ".apiKey",
+            ModelEndpointRules.REQUIRED,
+            RealtimeTranscriptionEndpoint.KEY_RULE));
   }
 
   /** The rules of a transcription endpoint and its language, as field errors. */
@@ -506,28 +600,260 @@ public class ModelRoleAdministration {
    * The transcription role's own columns: {@code null} keeps what is stored, the factory language
    * for a first row, blank removes it.
    */
-  private static OwnColumns<TranscriptionModelSettings> transcriptionColumns(
+  private OwnColumns<TranscriptionModelSettings> transcriptionColumns(
       TranscriptionModelSettings row,
       boolean stored,
       String requestedLanguage,
-      String requestedVocabulary) {
+      String requestedVocabulary,
+      RealtimeChange realtime) {
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String storedVocabulary = stored ? row.getVocabulary() : null;
     String vocabulary =
         requestedVocabulary == null ? storedVocabulary : emptyToNull(requestedVocabulary);
+    RealtimeColumns live = realtimeColumns(row, realtime);
+    String previousLiveCiphertext = row.getRealtimeApiKeyCiphertext();
     return new OwnColumns<>() {
       @Override
       public boolean unchanged() {
         return Objects.equals(storedLanguage, language)
-            && Objects.equals(storedVocabulary, vocabulary);
+            && Objects.equals(storedVocabulary, vocabulary)
+            && live.sameAs(row);
       }
 
       @Override
       public void replace(TranscriptionModelSettings target) {
         target.replaceOwn(language, vocabulary);
+        target.replaceRealtime(
+            live.protocol(), live.url(), live.model(), live.ciphertext(), live.maxSessions());
+      }
+
+      @Override
+      public void annotate(Map<String, Object> after) {
+        AuditSecretChange.put(after, "realtimeApiKey", previousLiveCiphertext, live.ciphertext());
       }
     };
+  }
+
+  /** The live columns a change stores; {@code null} protocol means none. */
+  private record RealtimeColumns(
+      RealtimeTranscriptionProtocol protocol,
+      String url,
+      String model,
+      String ciphertext,
+      Integer maxSessions) {
+
+    boolean sameAs(TranscriptionModelSettings row) {
+      return protocol == row.getRealtimeProtocol()
+          && Objects.equals(url, row.getRealtimeUrl())
+          && Objects.equals(model, row.getRealtimeModel())
+          && Objects.equals(ciphertext, row.getRealtimeApiKeyCiphertext())
+          && Objects.equals(maxSessions, row.getRealtimeMaxSessions());
+    }
+  }
+
+  /**
+   * The live columns for {@code change} on {@code row}: {@code null} keeps all, off removes all,
+   * the key follows the rule of the batch key ({@link #secretOf}) for the live address.
+   */
+  private RealtimeColumns realtimeColumns(TranscriptionModelSettings row, RealtimeChange change) {
+    if (change == null) {
+      return new RealtimeColumns(
+          row.getRealtimeProtocol(),
+          row.getRealtimeUrl(),
+          row.getRealtimeModel(),
+          row.getRealtimeApiKeyCiphertext(),
+          row.getRealtimeMaxSessions());
+    }
+    if (!change.enabled()) {
+      return new RealtimeColumns(null, null, null, null, null);
+    }
+    String ciphertext =
+        secretOf(
+            TRANSCRIPTION_REALTIME,
+            change.apiKey(),
+            RealtimeTranscriptionEndpoint.httpEquivalent(row.getRealtimeUrl()),
+            RealtimeTranscriptionEndpoint.httpEquivalent(change.url()),
+            row.getRealtimeApiKeyCiphertext());
+    Integer sessions =
+        change.maxSessions() == null ? row.getRealtimeMaxSessions() : change.maxSessions();
+    return new RealtimeColumns(
+        change.protocol(), change.url(), change.model(), ciphertext, sessions);
+  }
+
+  /** A change with stripped texts; {@code null} stays {@code null}. */
+  private static RealtimeChange normalised(RealtimeChange change) {
+    if (change == null) {
+      return null;
+    }
+    return new RealtimeChange(
+        change.enabled(),
+        change.protocol(),
+        trimmed(change.url()),
+        trimmed(change.model()),
+        change.apiKey(),
+        change.maxSessions());
+  }
+
+  /** The rules of a live upstream, as field errors under {@code transcription.realtime.}. */
+  public static void realtimeErrors(RealtimeChange change, List<FieldError> errors) {
+    realtimeErrors(TRANSCRIPTION_REALTIME, change, errors);
+  }
+
+  /** The rules of a live upstream, as field errors under {@code prefix}. */
+  public static void realtimeErrors(String prefix, RealtimeChange change, List<FieldError> errors) {
+    if (change == null || !change.enabled()) {
+      return;
+    }
+    String url = trimmed(change.url());
+    String model = trimmed(change.model());
+    if (change.protocol() == null) {
+      errors.add(
+          new FieldError(
+              prefix + ".protocol", ModelEndpointRules.REQUIRED, "Das Protokoll fehlt."));
+    }
+    if (url.isEmpty()) {
+      errors.add(
+          new FieldError(prefix + ".url", ModelEndpointRules.REQUIRED, "Die Live-Adresse fehlt."));
+    } else if (!RealtimeTranscriptionEndpoint.isWebSocketAddress(url)) {
+      errors.add(
+          new FieldError(
+              prefix + ".url",
+              ModelEndpointRules.INVALID,
+              "Die Live-Adresse muss mit ws:// oder wss:// beginnen."));
+    } else if (ModelEndpointUri.containsCredentials(url)) {
+      errors.add(
+          new FieldError(
+              prefix + ".url",
+              ModelEndpointRules.INVALID,
+              "Die Live-Adresse darf keine Anmeldedaten enthalten; der Schlüssel gehört in das Feld"
+                  + " Live-Schlüssel."));
+    }
+    if (model.isEmpty()) {
+      errors.add(
+          new FieldError(prefix + ".model", ModelEndpointRules.REQUIRED, "Das Live-Modell fehlt."));
+    }
+    ModelEndpointRules.requireAtMost(errors, prefix + ".url", url, ModelEndpointRules.MAX_ADDRESS);
+    ModelEndpointRules.requireAtMost(errors, prefix + ".model", model, ModelEndpointRules.MAX_NAME);
+    ModelEndpointRules.requireAtMost(
+        errors, prefix + ".apiKey", change.apiKey(), ModelEndpointRules.MAX_API_KEY);
+    if (change.apiKey() != null
+        && change.apiKey().strip().chars().anyMatch(c -> c < 0x20 || c == 0x7f)) {
+      errors.add(
+          new FieldError(
+              prefix + ".apiKey",
+              ModelEndpointRules.INVALID,
+              "Der Zugangsschlüssel enthält Steuerzeichen wie einen Zeilenumbruch."));
+    }
+    Integer sessions = change.maxSessions();
+    if (sessions != null
+        && (sessions < 1 || sessions > RealtimeTranscriptionEndpoint.MAX_MAX_SESSIONS)) {
+      errors.add(
+          new FieldError(
+              prefix + ".maxSessions",
+              ModelEndpointRules.INVALID,
+              "Die Zahl gleichzeitiger Live-Sitzungen liegt zwischen 1 und "
+                  + RealtimeTranscriptionEndpoint.MAX_MAX_SESSIONS
+                  + "."));
+    }
+  }
+
+  /** The address check of a valid live address, compared as its http(s) equivalent. */
+  private void blockedRealtimeAddressError(
+      RealtimeChange change, String storedUrl, List<FieldError> errors) {
+    if (change == null || !change.enabled() || !errors.isEmpty()) {
+      return;
+    }
+    String blocked =
+        modelAddresses.blockedReason(
+            RealtimeTranscriptionEndpoint.httpEquivalent(change.url()),
+            RealtimeTranscriptionEndpoint.httpEquivalent(storedUrl));
+    if (blocked != null) {
+      errors.add(
+          new FieldError(
+              TRANSCRIPTION_REALTIME + ".url",
+              ModelEndpointRules.BLOCKED,
+              blocked.replace("Basis-Adresse", "Live-Adresse")));
+    }
+  }
+
+  private String storedRealtimeUrl() {
+    return transcriptionTable
+        .rows()
+        .findStored()
+        .map(TranscriptionModelSettings::getRealtimeUrl)
+        .orElse(null);
+  }
+
+  /**
+   * Opens a session of the draft live upstream and closes it without audio. {@code apiKey} {@code
+   * null} sends the stored live key for the stored live address, or, while no live key of its own
+   * is stored, the stored batch key to the origin of the batch address. Call outside any
+   * transaction: it waits for the network.
+   *
+   * @throws FieldValidationException for a draft the rules refuse, under {@code
+   *     transcription.realtime.}
+   */
+  public TestOutcome testTranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol, String url, String model, String apiKey) {
+    RealtimeChange change =
+        normalised(new RealtimeChange(true, protocol, url, model, apiKey, null));
+    List<FieldError> errors = new ArrayList<>();
+    realtimeErrors(change, errors);
+    TranscriptionModelSettings row = transcriptionTable.rows().findStored().orElse(null);
+    String storedUrl = row == null ? null : row.getRealtimeUrl();
+    blockedRealtimeAddressError(change, storedUrl, errors);
+    requireNoErrors(errors);
+    String key;
+    if (apiKey != null) {
+      key = apiKey.strip();
+    } else if (row != null && row.getRealtimeApiKeyCiphertext() != null) {
+      if (!ModelEndpointRules.sameEndpoint(
+          RealtimeTranscriptionEndpoint.httpEquivalent(storedUrl),
+          RealtimeTranscriptionEndpoint.httpEquivalent(change.url()))) {
+        throw FieldValidationException.of(
+            TRANSCRIPTION_REALTIME + ".apiKey",
+            ModelEndpointRules.REQUIRED,
+            "Der gespeicherte Live-Schlüssel gilt nur für die gespeicherte Live-Adresse:"
+                + " Bitte den Schlüssel erneut eingeben oder das Feld leeren, um ohne Schlüssel zu"
+                + " prüfen.");
+      }
+      key = decryptForTest(row.getRealtimeApiKeyCiphertext(), TRANSCRIPTION_REALTIME);
+    } else if (row != null
+        && row.getApiKeyCiphertext() != null
+        && RealtimeTranscriptionEndpoint.sharesOrigin(change.url(), row.getBaseUrl())) {
+      key = decryptForTest(row.getApiKeyCiphertext(), TRANSCRIPTION);
+    } else {
+      key = "";
+    }
+    return probeTranscriptionRealtime(change.protocol(), change.url(), change.model(), key);
+  }
+
+  private String decryptForTest(String ciphertext, String prefix) {
+    try {
+      return settingsEncryptor.decrypt(ciphertext, rowOf(prefix));
+    } catch (IllegalStateException e) {
+      throw FieldValidationException.of(
+          TRANSCRIPTION_REALTIME + ".apiKey",
+          ModelEndpointRules.INVALID,
+          "Der gespeicherte Zugangsschlüssel ist nicht lesbar; bitte den Schlüssel erneut"
+              + " eingeben.");
+    }
+  }
+
+  /**
+   * The probe of {@link #testTranscriptionRealtime}, without an address check of its own; the same
+   * precondition as {@link #probeRerank}. Sends no audio. Call outside any transaction.
+   */
+  public TestOutcome probeTranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol, String url, String model, String apiKey) {
+    RealtimeTranscriptionClient.ProbeFailure failure =
+        realtimeClient.probe(
+            new RealtimeTranscriptionEndpoint(protocol, url, model, apiKey, 1), TEST_TIMEOUT);
+    return failure == null
+        ? new TestOutcome(
+            true, "Verbindung erfolgreich, der Live-Dienst hat eine Sitzung angenommen.")
+        : new TestOutcome(false, german(failure.message(), failure.timedOut()));
   }
 
   /**
@@ -874,10 +1200,49 @@ public class ModelRoleAdministration {
         row != null && row.getApiKeyCiphertext() != null,
         endpoint.language(),
         endpoint.vocabulary(),
+        realtimeView(row, endpoint),
         transcriptionRole.statusFor(endpoint),
         speechInputAvailable,
         row == null ? null : row.getUpdatedAt(),
         RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.TRANSCRIPTION));
+  }
+
+  private RealtimeView realtimeView(TranscriptionModelSettings row, TranscriptionEndpoint batch) {
+    if (row == null || row.getRealtimeProtocol() == null) {
+      return new RealtimeView(
+          false,
+          null,
+          null,
+          null,
+          false,
+          RealtimeTranscriptionEndpoint.DEFAULT_MAX_SESSIONS,
+          OptionalRoleStatus.disabled());
+    }
+    RealtimeTranscriptionEndpoint live =
+        new RealtimeTranscriptionEndpoint(
+            row.getRealtimeProtocol(),
+            row.getRealtimeUrl(),
+            row.getRealtimeModel(),
+            "",
+            row.getRealtimeMaxSessions() == null
+                ? RealtimeTranscriptionEndpoint.DEFAULT_MAX_SESSIONS
+                : row.getRealtimeMaxSessions());
+    return new RealtimeView(
+        true,
+        live.protocol(),
+        row.getRealtimeUrl(),
+        row.getRealtimeModel(),
+        row.getRealtimeApiKeyCiphertext() != null,
+        live.maxSessions(),
+        realtimeRole.realtimeStatusFor(
+            new TranscriptionEndpoint(
+                batch.enabled(),
+                batch.baseUrl(),
+                batch.model(),
+                "",
+                batch.language(),
+                batch.vocabulary(),
+                live)));
   }
 
   private TextRecognitionModelView textRecognitionView(TextRecognitionModelSettings row) {
@@ -962,6 +1327,7 @@ public class ModelRoleAdministration {
       case TRANSCRIPTION ->
           LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(TranscriptionModelSettings.SINGLETON_ID);
       case TEXT_RECOGNITION -> LlmEncryptedColumns.textRecognitionModelKey();
+      case TRANSCRIPTION_REALTIME -> LlmEncryptedColumns.transcriptionRealtimeKey();
       default -> throw new IllegalArgumentException("no model role " + prefix);
     };
   }
@@ -1016,6 +1382,17 @@ public class ModelRoleAdministration {
     String language = row == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : row.getLanguage();
     state.put("language", language == null ? "" : language);
     putIfPresent(state, "vocabulary", row == null ? null : row.getVocabulary());
+    if (row != null && row.getRealtimeProtocol() != null) {
+      state.put("realtimeProtocol", row.getRealtimeProtocol().name());
+      putIfPresent(state, "realtimeUrl", ModelEndpointUri.withoutSecrets(row.getRealtimeUrl()));
+      putIfPresent(state, "realtimeModel", row.getRealtimeModel());
+      state.put("realtimeApiKeySet", row.getRealtimeApiKeyCiphertext() != null);
+      state.put(
+          "realtimeMaxSessions",
+          row.getRealtimeMaxSessions() == null
+              ? RealtimeTranscriptionEndpoint.DEFAULT_MAX_SESSIONS
+              : row.getRealtimeMaxSessions());
+    }
     return state;
   }
 

@@ -85,6 +85,30 @@ dataFlows:
     settings:
       [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled,
       installation_steps.payload]
+  - id: transcription-realtime
+    group: MODEL
+    viaOutboundProxy: true
+    target: >-
+      Der Live-Dienst (WebSocket, Protokoll OpenAI, vLLM oder Mistral), den die Systemverwaltung in
+      der Modellverwaltung hinterlegt, und im Installationsassistenten der Dienst, den die
+      einrichtende Person angibt
+    data: >-
+      Die Sprachaufnahme einer Person fortlaufend während des Diktats, als PCM-Audio, dazu Sprache
+      und die Begriffslisten der Installation und der Person, soweit hinterlegt;
+      Statusprüfung, Verbindungstest und die Prüfung im Assistenten eröffnen nur eine Sitzung ohne
+      Audio
+    trigger: >-
+      Spracheingabe im Chat mit Live-Transkript, Statusprüfung (beim Start, nach jeder Änderung und
+      höchstens einmal je Minute von einer Instanz), Verbindungstest in der Modellverwaltung; im
+      Installationsassistenten die Prüfung des Schritts Transkriptionsmodell, nur mit dem
+      Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
+    switchOff: >-
+      Ohne Live-Dienst in der Modellverwaltung (Voreinstellung) findet er nicht statt; er setzt
+      die eingeschaltete Spracheingabe voraus und endet mit ihr und mit dem Feature-Flag der
+      Spracheingabe
+    settings:
+      [transcription_model.realtime_protocol, transcription_model.realtime_url,
+      transcription_model.enabled, opaa.features.speech-input.enabled, installation_steps.payload]
   - id: text-recognition-model
     group: MODEL
     viaOutboundProxy: true

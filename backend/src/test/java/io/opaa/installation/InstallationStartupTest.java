@@ -14,6 +14,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.account.LocalAdminReset;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
@@ -400,6 +401,46 @@ class InstallationStartupTest {
                             .equals(
                                 new StepInput.TranscriptionModel(
                                     "http://speaches:8000/v1", "whisper", "sk-stt", ""))));
+  }
+
+  @Test
+  void theLiveKeyOfAnAnswerFileComesFromItsFileAndNeverInPlainText() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("live-key"), "sk-live\n");
+    String live =
+        "\"realtime\":{\"protocol\":\"OPENAI\","
+            + "\"url\":\"wss://api.openai.com/v1/realtime?intent=transcription\","
+            + "\"model\":\"gpt-live-transcribe\",";
+    String head =
+        "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+            + "\"passwordFile\":\""
+            + password
+            + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+            + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+            + "\"model\":\"whisper\",";
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            head + live + "\"apiKeyFile\":\"" + key + "\"}}}");
+
+    startup("oidc", null, answers.toString()).decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.getLast() instanceof StepInput.TranscriptionModel model
+                        && model.realtime() != null
+                        && "sk-live".equals(model.realtime().apiKey())
+                        && model.realtime().protocol() == RealtimeTranscriptionProtocol.OPENAI));
+
+    Path plain =
+        Files.writeString(
+            directory.resolve("plain.json"), head + live + "\"apiKey\":\"sk-live-klar\"}}}");
+    assertThat(startup("oidc", null, plain.toString()).decide()).isFalse();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("sk-live-klar"));
   }
 
   @Test

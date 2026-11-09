@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
 
@@ -84,8 +85,15 @@ public sealed interface StepInput {
    * an empty value removes it; {@code language} {@code null} means the default {@code de}, empty
    * lets the model detect it.
    */
-  record TranscriptionModel(String baseUrl, String model, String apiKey, String language)
+  record TranscriptionModel(
+      String baseUrl, String model, String apiKey, String language, TranscriptionRealtime realtime)
       implements StepInput {
+
+    /** Dictation by recording only. */
+    TranscriptionModel(String baseUrl, String model, String apiKey, String language) {
+      this(baseUrl, model, apiKey, language, null);
+    }
+
     @Override
     public InstallationStep step() {
       return InstallationStep.TRANSCRIPTION_MODEL;
@@ -102,6 +110,36 @@ public sealed interface StepInput {
           + (apiKey == null ? "null" : "***")
           + ", language="
           + language
+          + ", realtime="
+          + realtime
+          + "]";
+    }
+  }
+
+  /**
+   * The live transcription on top of dictation (ADR-0070), {@code null} for none. {@code apiKey} is
+   * its own key: {@code null} keeps one saved before for the same live address, empty removes it;
+   * without one it sends the key of the transcription step on that step's origin only.
+   */
+  record TranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol, String url, String model, String apiKey) {
+
+    /** Without its own key. */
+    TranscriptionRealtime(RealtimeTranscriptionProtocol protocol, String url, String model) {
+      this(protocol, url, model, null);
+    }
+
+    /** Without the key, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "TranscriptionRealtime[protocol="
+          + protocol
+          + ", url="
+          + url
+          + ", model="
+          + model
+          + ", apiKey="
+          + (apiKey == null ? "null" : "***")
           + "]";
     }
   }
