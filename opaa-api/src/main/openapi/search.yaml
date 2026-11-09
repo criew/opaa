@@ -2534,6 +2534,15 @@ components:
           description: >
             Both counts are list entries, not distinct chunks: the same chunk found by two
             sub-queries is two entries before fusion and one after.
+        durationMs:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            Wall-clock time of the stage in milliseconds, measured around the stage call. Set for
+            EXECUTED and UNAVAILABLE (time until the failure), null for DISABLED and NOT_REACHED.
+            A stage that runs once per sub-query counts all sub-queries together; they run in
+            sequence. Answer generation is not part of a diagnosis and has no entry.
         notes:
           type: array
           items:

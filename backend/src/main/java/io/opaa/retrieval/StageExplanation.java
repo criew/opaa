@@ -19,6 +19,10 @@ import java.util.List;
  *     candidates at all.
  * @param notes short, technical statements of what the stage decided beyond its verdicts - the
  *     search scope's library count, the sub-queries produced, the parameter a budget came from.
+ * @param durationMs wall-clock time of the stage's own work, stamped by {@link RetrievalPipeline}
+ *     around the stage call; a stage never sets it itself. Present for every stage the pipeline
+ *     called - also one that came back {@link StageStatus#UNAVAILABLE}, where it is the time until
+ *     the failure - and {@code null} for a stage that was switched off or never reached.
  */
 public record StageExplanation(
     RetrievalStageName stage,
@@ -26,11 +30,18 @@ public record StageExplanation(
     int incomingCount,
     int outgoingCount,
     List<CandidateVerdict> verdicts,
-    List<String> notes) {
+    List<String> notes,
+    Long durationMs) {
 
   public StageExplanation {
     verdicts = List.copyOf(verdicts);
     notes = List.copyOf(notes);
+  }
+
+  /** This explanation with the measured duration - the pipeline's stamp after the stage call. */
+  StageExplanation withDurationMs(long measuredMs) {
+    return new StageExplanation(
+        stage, status, incomingCount, outgoingCount, verdicts, notes, measuredMs);
   }
 
   /** A stage that ran, with its verdicts and notes. */
@@ -41,7 +52,7 @@ public record StageExplanation(
       List<CandidateVerdict> verdicts,
       List<String> notes) {
     return new StageExplanation(
-        stage, StageStatus.EXECUTED, incomingCount, outgoingCount, verdicts, notes);
+        stage, StageStatus.EXECUTED, incomingCount, outgoingCount, verdicts, notes, null);
   }
 
   /**
@@ -66,6 +77,6 @@ public record StageExplanation(
       int outgoingCount,
       String note) {
     return new StageExplanation(
-        stage, status, incomingCount, outgoingCount, List.of(), List.of(note));
+        stage, status, incomingCount, outgoingCount, List.of(), List.of(note), null);
   }
 }
