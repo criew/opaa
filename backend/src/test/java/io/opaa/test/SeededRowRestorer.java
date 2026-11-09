@@ -66,6 +66,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
               Map.entry("rerank_model", Ownership.WHOLE_TABLE),
               Map.entry("transcription_model", Ownership.WHOLE_TABLE),
               Map.entry("text_recognition_model", Ownership.WHOLE_TABLE),
+              Map.entry("malware_scan_settings", Ownership.WHOLE_TABLE),
               Map.entry("outbound_proxy_settings", Ownership.WHOLE_TABLE),
               Map.entry("capability_grants", Ownership.BY_ID),
               Map.entry("capability_grant_history", Ownership.BY_ID),
