@@ -15,6 +15,7 @@ import { IndexingSnackbar } from '@/features/search-admin'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
+import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { SpaceListContext } from '@/features/asset'
 import { loadSpaceList } from '../themeSeams'
 import PageLoading from './PageLoading'
@@ -30,7 +31,16 @@ export default function AppShell() {
   const previousPathname = useRef(pathname)
   // Global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
+  const loadAgentAvailability = useAgentAvailability((s) => s.load)
+  // `/agents` counts as the catalog's scope only while the switch is on; subscribing re-renders
+  // the frame (and the rail below it) once the answer arrives.
+  useAgentAvailability((s) => s.enabled)
   const isGlobalArea = isGlobalAreaPath(pathname)
+
+  // The agents switch is a runtime setting, not a feature flag: asked once per signed-in shell.
+  useEffect(() => {
+    void loadAgentAvailability()
+  }, [loadAgentAvailability])
 
   // On every route change, move focus to the new page's heading so screen readers announce it, or
   // to the element the page marks as its arrival focus target; if neither is rendered yet (data

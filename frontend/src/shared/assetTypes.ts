@@ -1,8 +1,10 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { useMemo } from 'react'
-import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
+import { CATALOG_ROUTE, agentRoute, promptLibraryRoute } from '@/shared/routes'
+import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { AssetType, Capability } from '@/shared/api/types'
 import type { FeatureFlags } from '@/shared/session/types'
@@ -73,25 +75,43 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     createCapabilities: ['CREATE_PROMPT_LIBRARY'],
     extentLabel: (count) => (count === 1 ? '1 Prompt' : `${count} Prompts`),
   },
+  {
+    type: 'AGENT',
+    slug: 'agents',
+    label: 'Agenten',
+    title: 'Agent',
+    noun: 'Agent',
+    description: 'Arbeitet eine Frage in mehreren Schritten mit Werkzeugen ab, im Chat per „@“.',
+    Icon: SmartToyOutlinedIcon,
+    routePrefix: '/agents',
+    detailRoute: (assetId) => agentRoute(assetId),
+    createRoute: '/agents/new',
+    createCapabilities: ['CREATE_AGENT'],
+    extentLabel: (count) => (count === 1 ? '1 Werkzeug' : `${count} Werkzeuge`),
+  },
 ]
 
 /**
- * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) is on; a type behind
- * a switched-off feature is offered nowhere - no filter, tile, "Neuer Katalogeintrag" option, picker or page.
+ * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) or, for agents, whose
+ * runtime switch is on; a type behind a switched-off one is offered nowhere - no filter, tile, "Neuer Katalogeintrag" option, picker or page.
  */
-function activeIn(features: FeatureFlags): AssetTypeDefinition[] {
-  return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features))
+function activeIn(features: FeatureFlags, agents: boolean): AssetTypeDefinition[] {
+  return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features, agents))
 }
 
 /** The types the installation offers, for code outside React; components use the hook. */
 export function activeAssetTypes(): AssetTypeDefinition[] {
-  return activeIn(useAuthStore.getState().features)
+  return activeIn(
+    useAuthStore.getState().features,
+    useAgentAvailability.getState().enabled === true,
+  )
 }
 
 /** The types the installation offers; re-renders when the feature flags are read again. */
 export function useActiveAssetTypes(): AssetTypeDefinition[] {
   const features = useAuthStore((state) => state.features)
-  return useMemo(() => activeIn(features), [features])
+  const agents = useAgentAvailability((state) => state.enabled === true)
+  return useMemo(() => activeIn(features, agents), [features, agents])
 }
 
 /** The definition of an offered type; a type behind a switched-off feature has none. */

@@ -8,9 +8,17 @@ import type { FeatureFlags, FeatureName } from './types'
  */
 let snapshot: FeatureFlags = {}
 
+/** The agents switch as `agentAvailability` last recorded it; off until the backend says on. */
+let agentsEnabled = false
+
 /** Called by `authStore` on every change of its flags. */
 export function recordInstallationFeatures(features: FeatureFlags): void {
   snapshot = features
+}
+
+/** Called by `agentAvailability` on every change of the agents switch. */
+export function recordAgentsEnabled(enabled: boolean): void {
+  agentsEnabled = enabled
 }
 
 /** The one rule every reader shares: a flag that is not named counts as on. */
@@ -32,13 +40,16 @@ export const CAPABILITY_FEATURES: Partial<Record<Capability, FeatureName>> = {
 export function isAssetTypeOffered(
   assetType: AssetType | string | null | undefined,
   features: FeatureFlags = snapshot,
+  agents: boolean = agentsEnabled,
 ): boolean {
+  if (assetType === 'AGENT') return agents
   const feature = ASSET_TYPE_FEATURES[assetType as AssetType]
   return !feature || featureEnabledIn(features, feature)
 }
 
 /** Whether the installation offers the capability right now. */
 export function isCapabilityOffered(capability: Capability): boolean {
+  if (capability === 'CREATE_AGENT') return agentsEnabled
   const feature = CAPABILITY_FEATURES[capability]
   return !feature || featureEnabledIn(snapshot, feature)
 }

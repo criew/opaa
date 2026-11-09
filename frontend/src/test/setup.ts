@@ -24,6 +24,7 @@ import { resetIndexingState } from '@/features/library/mocks/indexingHandlers'
 import { resetDocumentMockState } from '@/features/library/mocks/libraryDocumentHandlers'
 // prompt
 import { resetMockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtures'
+import { resetMockAgents } from '@/features/agent/mocks/agentFixtures'
 // user
 import {
   resetMockLocalAuthSettings,
@@ -119,6 +120,7 @@ afterEach(() => {
   resetServiceAccountMockState()
   // Prompt libraries, their prompts and the space associations are mutable in the mocks as well.
   resetMockPromptLibraries()
+  resetMockAgents()
   resetMockSpaceAssetAssociations()
   clearCookies()
 })
