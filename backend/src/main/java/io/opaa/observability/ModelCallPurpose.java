@@ -8,12 +8,13 @@ public enum ModelCallPurpose {
   ANSWER,
   /** The sub-question decomposition of a chat question. */
   DECOMPOSE,
-  /** The generated title of a chat. */
-  TITLE,
   /** The condensation of a question into the Gesprächsnotiz. */
   NOTE,
-  /** The model-backed metadata extraction during indexing. */
-  METADATA,
+  /**
+   * The generated title of a chat and the model-backed metadata extraction during indexing, kept
+   * together so no series counts new chats per period.
+   */
+  AUXILIARY,
   /** The tool loop that took over a chat question. */
   AGENT;
 

@@ -287,7 +287,7 @@ public class AnswerGenerationService {
         listener == null
             ? call(chatClient, systemText, messages)
             : stream(chatClient, systemText, messages, listener);
-    activeChatModelResolver.recordUsage(ModelCallPurpose.ANSWER, response);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.ANSWER, chatClient, response);
 
     chatMemory.add(conversationId, new UserMessage(question));
     // The window gets the answer without its citation markers, and nothing at all when only

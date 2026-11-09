@@ -134,13 +134,13 @@ class ChatTitleGenerationServiceTest {
     verifyNoInteractions(chatRepository);
   }
 
-  /** The title call's tokens count under {@code purpose=title} in {@code opaa.model.tokens}. */
+  /** The title call's tokens count under {@code purpose=auxiliary} in {@code opaa.model.tokens}. */
   @Test
-  void generateTitleAsyncCountsItsTokensAsTitle() {
+  void generateTitleAsyncCountsItsTokensAsAuxiliary() {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponseWith("Rückstellung"));
 
     service.generateTitleAsync(CHAT_ID, "Wie hoch ist die Rückstellung?", "42.000 EUR.");
 
-    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.TITLE), notNull());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.AUXILIARY), any(), notNull());
   }
 }

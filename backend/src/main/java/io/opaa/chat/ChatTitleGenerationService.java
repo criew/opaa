@@ -108,7 +108,7 @@ public class ChatTitleGenerationService {
     String prompt = TITLE_PROMPT_TEMPLATE.formatted(question, answer);
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
-    activeChatModelResolver.recordUsage(ModelCallPurpose.TITLE, response);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.AUXILIARY, chatClient, response);
     if (response == null
         || response.getResult() == null
         || response.getResult().getOutput() == null) {

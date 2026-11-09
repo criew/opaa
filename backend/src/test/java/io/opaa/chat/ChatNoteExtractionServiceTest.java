@@ -197,6 +197,6 @@ class ChatNoteExtractionServiceTest {
 
     service.condense("Ich arbeite in der Nebenstelle 3.");
 
-    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.NOTE), notNull());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.NOTE), any(), notNull());
   }
 }

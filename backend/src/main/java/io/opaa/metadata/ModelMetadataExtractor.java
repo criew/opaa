@@ -202,7 +202,7 @@ public class ModelMetadataExtractor {
           CompletableFuture.supplyAsync(
               () -> {
                 ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
-                chatModelResolver.recordUsage(ModelCallPurpose.METADATA, response);
+                chatModelResolver.recordUsage(ModelCallPurpose.AUXILIARY, chatClient, response);
                 return response == null ? null : ChatResponses.textOrNull(response);
               },
               callExecutor);

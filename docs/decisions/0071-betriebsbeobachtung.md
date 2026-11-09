@@ -52,8 +52,9 @@ Die `gen_ai.*`-Metriken (`gen_ai.client.operation`, `gen_ai.client.token.usage`)
 aus den Observations der Chat- und Embedding-Clients; OPAA baut sie nicht nach und benennt sie
 nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Was sie nicht
 unterscheiden, zählt OPAA selbst: `opaa.model.tokens` trägt den Zweck eines Aufrufs des
-Chat-Modells (Antwort, Zerlegung, Titel, Notiz, Metadaten, Agent) und als `model` den Namen aus der
-Modellverwaltung, nicht den Namen, den die Antwort des Anbieters nennt. Jede
+Chat-Modells (Antwort, Zerlegung, Notiz, Nebenaufgaben, Agent) und als `model` den Namen aus der
+Modellverwaltung, nicht den Namen, den die Antwort des Anbieters nennt. Titel und Metadaten teilen
+sich den Zweck Nebenaufgaben, damit keine Reihe die neuen Chats eines Zeitraums zählt. Jede
 Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-query-response`,
 `include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
 Standardwert der Bibliothek keine Inhalte in Observations, Logs oder Spans bringt; eine Prüfung
@@ -71,6 +72,11 @@ Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); n
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
 (immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
 während eines Rolling Updates.
+
+Das SLO der Chat-Fragen ist `success / (success + error)` aus `opaa.query.count`. Anfragefehler —
+ungültige Eingabe, fehlende Berechtigung, nicht gefunden, archivierter Space, kein Chat-Modell
+eingerichtet — zählen als `status=rejected`, ohne Dauer und ohne Abbruchursache, und bleiben
+außerhalb des SLO, weil sie nichts über den Zustand des Dienstes sagen.
 
 ### 5. Management-Port, Health-Gruppen und Probe-Modell
 

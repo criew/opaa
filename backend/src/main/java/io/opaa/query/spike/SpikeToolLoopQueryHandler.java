@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -223,9 +224,9 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     ToolCallingAdvisor toolCallingAdvisor =
         ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager).build();
 
+    ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
-        activeChatModelResolver
-            .resolveChatClient()
+        chatClient
             .prompt()
             .system(
                 SYSTEM_PROMPT.formatted(runState.blockId())
@@ -236,7 +237,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
             .advisors(toolCallingAdvisor)
             .call()
             .chatResponse();
-    activeChatModelResolver.recordUsage(ModelCallPurpose.AGENT, response);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.AGENT, chatClient, response);
 
     // The breach text (either the library's own English sentence or the last raw tool response,
     // see ToolCallLimitExceededException#buildGeneration) is never fit for a persisted or

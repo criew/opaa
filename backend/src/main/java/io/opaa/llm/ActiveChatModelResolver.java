@@ -9,8 +9,11 @@ import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.ModelTokenMetrics;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,10 +68,13 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
   private final AtomicReference<TimedResolved> timedCache = new AtomicReference<>();
 
   /**
-   * The configured identifier of the model the last client was built for - the {@code model} tag of
-   * {@link #recordUsage}, so the tag stays within the identifiers the administration chose.
+   * The configured identifier of the model each built client talks to - the {@code model} tag of
+   * {@link #recordUsage}, so the tag stays within the identifiers the administration chose and
+   * names the model of the client that made the call. Weak keys: a client no cache holds any more
+   * drops out with it.
    */
-  private volatile String builtModelIdentifier;
+  private final Map<ChatClient, String> modelIdentifiers =
+      Collections.synchronizedMap(new WeakHashMap<>());
 
   private final AtomicLong generation = new AtomicLong();
   private final AtomicInteger buildCount = new AtomicInteger();
@@ -200,9 +206,10 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
 
   /**
    * Counts the tokens {@code response} reports under {@code purpose} and the configured identifier
-   * of the active model ({@code opaa.model.tokens}); a response without usage counts nothing.
+   * of the model {@code chatClient} was built for ({@code opaa.model.tokens}); a response without
+   * usage counts nothing, a client this resolver did not build counts as model {@code unknown}.
    */
-  public void recordUsage(ModelCallPurpose purpose, ChatResponse response) {
+  public void recordUsage(ModelCallPurpose purpose, ChatClient chatClient, ChatResponse response) {
     MeterRegistry registry = meterRegistryProvider.getIfAvailable();
     if (registry == null
         || response == null
@@ -214,21 +221,23 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     ModelTokenMetrics.record(
         registry,
         purpose,
-        builtModelIdentifier,
+        chatClient == null ? null : modelIdentifiers.get(chatClient),
         usage.getPromptTokens(),
         usage.getCompletionTokens());
   }
 
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */
   private ChatClient newChatClient(LlmModel model, Duration requestTimeout) {
-    builtModelIdentifier = model.getModelIdentifier();
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     OpenAiChatModel chatModel =
         chatModelBuilder(model, observationRegistry, requestTimeout).build();
-    return ChatClient.builder(
-            new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
-        .build();
+    ChatClient client =
+        ChatClient.builder(
+                new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
+            .build();
+    modelIdentifiers.put(client, model.getModelIdentifier());
+    return client;
   }
 
   /**
@@ -256,6 +265,10 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     if (requestTimeout != null) {
       optionsBuilder.timeout(requestTimeout);
     }
+    // A streamed answer reports its usage only when asked for it (stream_options.include_usage);
+    // a server that rejects the option fails before the first chunk, and the answer is asked
+    // again without streaming (StreamedAnswerFailures).
+    optionsBuilder.streamUsage(true);
     OpenAiChatOptions options = optionsBuilder.build();
     return OpenAiChatModel.builder()
         .options(options)

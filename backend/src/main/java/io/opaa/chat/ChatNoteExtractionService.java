@@ -109,7 +109,7 @@ public class ChatNoteExtractionService {
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
         chatClient.prompt().user(ChatNoteExtraction.prompt(userMessage)).call().chatResponse();
-    activeChatModelResolver.recordUsage(ModelCallPurpose.NOTE, response);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.NOTE, chatClient, response);
     if (response == null
         || response.getResult() == null
         || response.getResult().getOutput() == null) {

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * Encapsulates all Micrometer metrics of the chat question (ADR-0071): rate, errors and duration by
- * {@link Mode}, the time to the first streamed chunk, the stages a question spends its time in, the
+ * {@link Mode}, the time to the first visible text, the stages a question spends its time in, the
  * retrieval's hits, the answer's context and finish reason, and why a question ended without one.
  * Every tag takes a value of a fixed set; none names a person, chat, space or the question.
  */
@@ -101,6 +101,7 @@ public class QueryMetrics {
 
   private static final String STATUS_SUCCESS = "success";
   private static final String STATUS_ERROR = "error";
+  private static final String STATUS_REJECTED = "rejected";
 
   /**
    * Every reason the sub-query decomposition fell back to the undecomposed question, on one counter
@@ -111,6 +112,7 @@ public class QueryMetrics {
   private final Map<Mode, Timer> durationTimers = new EnumMap<>(Mode.class);
   private final Map<Mode, Counter> successCounters = new EnumMap<>(Mode.class);
   private final Map<Mode, Counter> errorCounters = new EnumMap<>(Mode.class);
+  private final Map<Mode, Counter> rejectedCounters = new EnumMap<>(Mode.class);
   private final Map<Mode, Timer> timeToFirstTokenTimers = new EnumMap<>(Mode.class);
   private final Map<Stage, Timer> stageTimers = new EnumMap<>(Stage.class);
   private final Map<FinishReason, Counter> finishReasonCounters = new EnumMap<>(FinishReason.class);
@@ -150,11 +152,18 @@ public class QueryMetrics {
               .tag("mode", mode.tag())
               .description("Queries by outcome")
               .register(meterRegistry));
+      rejectedCounters.put(
+          mode,
+          Counter.builder("opaa.query.count")
+              .tag("status", STATUS_REJECTED)
+              .tag("mode", mode.tag())
+              .description("Queries by outcome")
+              .register(meterRegistry));
       timeToFirstTokenTimers.put(
           mode,
           Timer.builder("opaa.query.time_to_first_token")
               .tag("mode", mode.tag())
-              .description("Time from the question to the first streamed chunk of the answer")
+              .description("Time from the question to the first visible text of the answer")
               .register(meterRegistry));
     }
     for (Stage stage : Stage.values()) {
@@ -195,7 +204,7 @@ public class QueryMetrics {
             .register(meterRegistry);
     this.contextTruncated =
         Counter.builder("opaa.query.context.truncated")
-            .description("Answers whose conversation history was cut to the conversation window")
+            .description("Answers whose chat history was longer than the conversation window")
             .register(meterRegistry);
     this.degenerateDecompositionCounter =
         Counter.builder(DECOMPOSITION_FALLBACK)
@@ -232,7 +241,18 @@ public class QueryMetrics {
     (success ? successCounters : errorCounters).get(mode).increment();
   }
 
-  /** The first chunk of a streamed answer arrived {@code sinceQuestion} after the question. */
+  /**
+   * One question refused as a request error - invalid, not permitted, archived, or no chat model
+   * set up. It counts as {@code status=rejected} only: no duration and no abort, so it does not
+   * weigh on the chat SLO of {@code success / (success + error)}.
+   */
+  public void recordRejected(Mode mode) {
+    rejectedCounters.get(mode).increment();
+  }
+
+  /**
+   * The first visible text of a streamed answer arrived {@code sinceQuestion} after the question.
+   */
   public void recordTimeToFirstToken(Mode mode, Duration sinceQuestion) {
     timeToFirstTokenTimers.get(mode).record(sinceQuestion);
   }
@@ -259,7 +279,7 @@ public class QueryMetrics {
     }
   }
 
-  /** The conversation history of one answer was longer than the conversation window. */
+  /** The chat history of one answered question was longer than the conversation window. */
   public void recordContextTruncated() {
     contextTruncated.increment();
   }

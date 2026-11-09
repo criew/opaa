@@ -13,10 +13,17 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchScopeResolver;
 import io.opaa.chat.UsedPrompt;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.FieldValidationException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
+import io.opaa.llm.NoActiveChatModelException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.QueryEmbeddingTime;
@@ -285,9 +292,7 @@ public class QueryService {
           UUID effectiveChatId =
               chat.map(Chat::getId).orElseGet(() -> chatId != null ? chatId : UUID.randomUUID());
           String conversationKey = currentUserId + ":" + effectiveChatId;
-          if (seedConversationMemoryFromPersistedHistory(chat, conversationKey)) {
-            metrics.recordContextTruncated();
-          }
+          boolean historyCut = seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
           // The Gesprächsnotiz as it stands *before* this turn - the state that goes into
           // this answer and is returned with it. The condensation of this turn's own question
@@ -332,19 +337,26 @@ public class QueryService {
               toolLoopQueryHandler
                   .filter(handler -> attachments.newAttachmentIds().isEmpty())
                   .flatMap(
-                      handler ->
-                          handler.handle(
-                              question,
-                              chat,
-                              effectiveChatId,
-                              conversationKey,
-                              notePoints,
-                              searchScope,
-                              metadataFilter,
-                              startTime,
-                              usedPrompt));
+                      handler -> {
+                        QueryMetrics.Mode ordinaryMode = clock.mode;
+                        clock.mode = QueryMetrics.Mode.AGENT;
+                        Optional<QueryResult> taken =
+                            handler.handle(
+                                question,
+                                chat,
+                                effectiveChatId,
+                                conversationKey,
+                                notePoints,
+                                searchScope,
+                                metadataFilter,
+                                startTime,
+                                usedPrompt);
+                        if (taken.isEmpty()) {
+                          clock.mode = ordinaryMode;
+                        }
+                        return taken;
+                      });
           if (toolLoopResult.isPresent()) {
-            clock.mode = QueryMetrics.Mode.AGENT;
             return toolLoopResult.get();
           }
 
@@ -535,6 +547,9 @@ public class QueryService {
                   noSpaceContext,
                   chatSourceAssembler.searchedLibraries(searchScope),
                   completeness);
+          if (historyCut) {
+            metrics.recordContextTruncated();
+          }
           return new QueryResult(
               answer, sources, metadata, effectiveChatId, chatTitle, notePoints, evidence);
         });
@@ -551,13 +566,32 @@ public class QueryService {
       metrics.recordQuery(clock.mode, true, clock.elapsed());
       return result;
     } catch (RuntimeException failure) {
-      metrics.recordQuery(clock.mode, false, clock.elapsed());
-      metrics.recordAborted(
-          failure instanceof AnswerReaderGoneException
-              ? QueryMetrics.AbortCause.CLIENT_CANCEL
-              : QueryMetrics.abortCause(failure));
+      if (isRejection(failure)) {
+        metrics.recordRejected(clock.mode);
+      } else {
+        metrics.recordQuery(clock.mode, false, clock.elapsed());
+        metrics.recordAborted(
+            failure instanceof AnswerReaderGoneException
+                ? QueryMetrics.AbortCause.CLIENT_CANCEL
+                : QueryMetrics.abortCause(failure));
+      }
       throw failure;
     }
+  }
+
+  /**
+   * A request error rather than a failure of the service: invalid, not permitted, not found, an
+   * archived space, or no chat model set up. Counted as rejected, outside the chat SLO.
+   */
+  private static boolean isRejection(RuntimeException failure) {
+    return failure instanceof ValidationException
+        || failure instanceof FieldValidationException
+        || failure instanceof AccessDeniedException
+        || failure instanceof UnauthorizedException
+        || failure instanceof NotFoundException
+        || failure instanceof ConflictException
+        || failure instanceof PayloadTooLargeException
+        || failure instanceof NoActiveChatModelException;
   }
 
   /**
@@ -607,23 +641,26 @@ public class QueryService {
       return Duration.ofNanos(System.nanoTime() - startedNanos);
     }
 
-    /** {@code listener}, recording the time to its first {@code started} call. */
+    /**
+     * {@code listener}, recording the time to its first {@code provisional} call - the first text
+     * the reader sees; a leading reasoning block the stream holds back does not count.
+     */
     AnswerStreamListener timeToFirstToken(AnswerStreamListener listener) {
       QueryMetrics.Mode streamedMode = mode;
       return new AnswerStreamListener() {
-        private boolean started;
+        private boolean visible;
 
         @Override
         public void started() throws IOException {
-          if (!started) {
-            started = true;
-            metrics.recordTimeToFirstToken(streamedMode, elapsed());
-          }
           listener.started();
         }
 
         @Override
         public void provisional(String text, boolean replace) throws IOException {
+          if (!visible) {
+            visible = true;
+            metrics.recordTimeToFirstToken(streamedMode, elapsed());
+          }
           listener.provisional(text, replace);
         }
 
@@ -706,7 +743,8 @@ public class QueryService {
    * same {@link ConversationWindowMessages} the first one uses, which is what makes the same chat
    * send the same prompt before and after a restart, a cache eviction or a change of instance.
    *
-   * @return whether the window is full, so older messages of the chat no longer reach the model.
+   * @return whether the chat holds more messages than the window, so older ones no longer reach the
+   *     model.
    */
   private boolean seedConversationMemoryFromPersistedHistory(
       Optional<Chat> chat, String conversationKey) {
@@ -714,13 +752,15 @@ public class QueryService {
       return false;
     }
     int window = retrievalContextFactory.queryProperties().conversationWindowMessages();
+    // One message more than the window tells whether the chat holds more than fits.
+    List<Message> loaded = chatService.historyAsSpringAiMessages(chat.get().getId(), window + 1);
     List<Message> persistedHistory =
-        chatService.historyAsSpringAiMessages(chat.get().getId(), window);
+        loaded.size() > window ? loaded.subList(loaded.size() - window, loaded.size()) : loaded;
     chatMemory.clear(conversationKey);
     if (!persistedHistory.isEmpty()) {
       chatMemory.add(conversationKey, ConversationWindowMessages.reloaded(persistedHistory));
     }
-    return persistedHistory.size() >= window;
+    return loaded.size() > window;
   }
 
   /**

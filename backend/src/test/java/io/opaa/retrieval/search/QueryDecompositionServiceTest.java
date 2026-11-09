@@ -713,6 +713,6 @@ class QueryDecompositionServiceTest {
 
     service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
 
-    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.DECOMPOSE), notNull());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.DECOMPOSE), any(), notNull());
   }
 }

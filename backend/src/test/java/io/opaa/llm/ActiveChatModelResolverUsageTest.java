@@ -13,16 +13,19 @@ import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.DefaultUsage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 /**
  * {@link ActiveChatModelResolver#recordUsage} counts a call's tokens under the identifier the model
- * administration configured, never under the model name the provider reports in its response.
+ * administration configured for the client that made the call, never under the model name the
+ * provider reports in its response.
  */
 class ActiveChatModelResolverUsageTest {
 
@@ -31,12 +34,13 @@ class ActiveChatModelResolverUsageTest {
   @Test
   void theTokensOfACallCountUnderPurposeTokenTypeAndTheConfiguredModel() {
     ActiveChatModelResolver resolver = resolver();
-    resolver.resolveChatClient();
+    ChatClient client = resolver.resolveChatClient();
 
-    resolver.recordUsage(ModelCallPurpose.TITLE, response("provider-model-2026-01-01", 120, 30));
+    resolver.recordUsage(
+        ModelCallPurpose.AUXILIARY, client, response("provider-model-2026-01-01", 120, 30));
 
-    assertThat(tokens("title", "input", "model-r")).isEqualTo(120);
-    assertThat(tokens("title", "output", "model-r")).isEqualTo(30);
+    assertThat(tokens("auxiliary", "input", "model-r")).isEqualTo(120);
+    assertThat(tokens("auxiliary", "output", "model-r")).isEqualTo(30);
     assertThat(meterRegistry.find("opaa.model.tokens").tag("model", "provider-model-2026-01-01"))
         .satisfies(search -> assertThat(search.counters()).isEmpty());
   }
@@ -44,14 +48,29 @@ class ActiveChatModelResolverUsageTest {
   @Test
   void aResponseWithoutUsageCountsNothing() {
     ActiveChatModelResolver resolver = resolver();
+    ChatClient client = resolver.resolveChatClient();
+
+    resolver.recordUsage(
+        ModelCallPurpose.NOTE,
+        client,
+        new ChatResponse(List.of(new Generation(new AssistantMessage("x")))));
+    resolver.recordUsage(ModelCallPurpose.NOTE, client, null);
+
+    assertThat(meterRegistry.find("opaa.model.tokens").counters()).isEmpty();
+  }
+
+  /** A client the resolver did not build names no configured model, so none is claimed. */
+  @Test
+  void aForeignClientCountsUnderUnknown() {
+    ActiveChatModelResolver resolver = resolver();
     resolver.resolveChatClient();
 
     resolver.recordUsage(
         ModelCallPurpose.NOTE,
-        new ChatResponse(List.of(new Generation(new AssistantMessage("x")))));
-    resolver.recordUsage(ModelCallPurpose.NOTE, null);
+        ChatClient.builder(mock(ChatModel.class)).build(),
+        response("provider-model", 5, 1));
 
-    assertThat(meterRegistry.find("opaa.model.tokens").counters()).isEmpty();
+    assertThat(tokens("note", "input", "unknown")).isEqualTo(5);
   }
 
   private double tokens(String purpose, String tokenType, String model) {

@@ -29,15 +29,15 @@ class ModelTokenMetricsTest {
             registry.find(ModelTokenMetrics.NAME).counters().stream()
                 .map(counter -> counter.getId().getTag("purpose"))
                 .distinct())
-        .containsExactlyInAnyOrder("answer", "decompose", "title", "note", "metadata", "agent");
+        .containsExactlyInAnyOrder("answer", "decompose", "note", "auxiliary", "agent");
   }
 
   @Test
   void anAbsentCountRecordsNothingAndAnAbsentModelIsUnknown() {
-    ModelTokenMetrics.record(registry, ModelCallPurpose.TITLE, null, 12, null);
-    ModelTokenMetrics.record(registry, ModelCallPurpose.TITLE, "m", 0, null);
+    ModelTokenMetrics.record(registry, ModelCallPurpose.AUXILIARY, null, 12, null);
+    ModelTokenMetrics.record(registry, ModelCallPurpose.AUXILIARY, "m", 0, null);
 
-    assertThat(tokens("title", "input", "unknown")).isEqualTo(12);
+    assertThat(tokens("auxiliary", "input", "unknown")).isEqualTo(12);
     assertThat(registry.find(ModelTokenMetrics.NAME).tag("token_type", "output").counters())
         .isEmpty();
     assertThat(registry.find(ModelTokenMetrics.NAME).tag("model", "m").counters()).isEmpty();

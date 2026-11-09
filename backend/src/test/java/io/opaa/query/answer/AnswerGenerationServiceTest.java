@@ -994,6 +994,6 @@ class AnswerGenerationServiceTest {
     answerGenerationService.generateAnswer(
         "Was kostet der Ausweis?", List.of(), "conv-usage", List.of(), false, true, null);
 
-    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.ANSWER), notNull());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.ANSWER), any(), notNull());
   }
 }

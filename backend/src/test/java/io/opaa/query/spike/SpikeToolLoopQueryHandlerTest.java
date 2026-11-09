@@ -190,7 +190,7 @@ class SpikeToolLoopQueryHandlerTest {
             eq(searchScope),
             eq(metadataFilter));
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
-    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.AGENT), notNull());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.AGENT), any(), notNull());
   }
 
   /**
