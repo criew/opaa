@@ -1831,6 +1831,8 @@
       
         
       
+        
+      
     
     
     
@@ -2280,6 +2282,34 @@
     
   
     E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/virenpruefung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virenprüfung einrichten
   
 
     
@@ -4454,16 +4484,23 @@ Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber�
 geschnitten und, beim Upload, in der Originalablage abgelegt.</p>
 <blockquote>
 <p><strong>Beispiel.</strong> Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
-Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+Die Systemverwaltung trägt dessen Adresse unter „Administration → Virenprüfung“ ein und schaltet
+die Prüfung ein. Lädt eine Sachbearbeiterin eine
 befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
 der Originalablage noch im Index.</p>
 </blockquote>
 <ul>
 <li><strong>Scanner:</strong> ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl <code>INSTREAM</code>. OPAA
-  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
-  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
-  Datei, weder Namen noch Bibliothek noch Person.</li>
-<li><strong>Ab Werk aus.</strong> Eingeschaltet ohne Adresse bricht der Start ab.</li>
+  bringt keinen Scanner mit, weder als Image noch als Zusatzdatei für Compose oder Helm; der Dienst
+  der Behörde wird angebunden wie ein Modell oder die Texterkennung. Die Verbindung geht direkt, nie
+  über den Ausgangsproxy, und trägt nur den Inhalt der Datei, weder Namen noch Bibliothek noch
+  Person.</li>
+<li><strong>Einrichten:</strong> ab Werk aus. Eingerichtet wird der Scanner im optionalen Schritt „Virenprüfung“
+  der <a href="installation.html#schritte">Installation</a> oder danach unter „Administration → Virenprüfung“
+  (<a href="../administration/virenpruefung.html">Virenprüfung einrichten</a>), mit Host, Port, Zeitlimit und
+  dem Verhalten bei Ausfall. OPAA liest die Einstellung für jede Datei neu; eine Änderung wirkt ohne
+  Neustart auf allen Instanzen. Umgebungsvariablen gibt es dafür nicht mehr; setzt ein Start noch
+  eine der früheren <code>OPAA_MALWARE_SCAN_*</code>, nennt das Log sie als wirkungslos.</li>
 <li><strong>Befund:</strong> Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
   Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
   abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
@@ -4476,13 +4513,12 @@ der Originalablage noch im Index.</p>
   nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
   Bibliothek auf ihre Eigentümerin schließen ließe.</li>
 <li><strong>Scanner nicht erreichbar:</strong> Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
-  seiner Grenze für Datenströme gilt als nicht geprüft. Mit <code>OPAA_MALWARE_SCAN_ON_UNAVAILABLE</code> auf
-  <code>REJECT</code> wird sie nicht aufgenommen: Der Upload antwortet <code>503</code>, ein Dokument einer Quelle wird beim
-  nächsten Lauf erneut versucht. Mit <code>ACCEPT</code> wird sie ungeprüft aufgenommen; das Laufprotokoll
-  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
-  Einstellung.</li>
-<li><strong>Frist:</strong> <code>OPAA_MALWARE_SCAN_TIMEOUT</code> begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
-  Antwort; danach gilt die Datei als nicht geprüft.</li>
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit „Ablehnen“ (ab Werk) wird sie nicht
+  aufgenommen: Der Upload antwortet <code>503</code>, ein Dokument einer Quelle wird beim nächsten Lauf erneut
+  versucht. Mit „Ungeprüft aufnehmen“ wird sie ungeprüft aufgenommen; das Laufprotokoll nennt sie
+  unter „Ohne Virenprüfung aufgenommen“.</li>
+<li><strong>Frist:</strong> Das Zeitlimit begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur Antwort;
+  danach gilt die Datei als nicht geprüft.</li>
 <li><strong>Grenzen des Scanners:</strong> <code>StreamMaxLength</code> von clamd muss die größte Datei fassen, die OPAA
   annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
   Grund. Über <code>MaxFileSize</code> und <code>MaxScanSize</code> hinaus prüft clamd eine Datei nur teilweise und meldet
@@ -4501,44 +4537,8 @@ der Originalablage noch im Index.</p>
 <p>Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands mit neuen Signaturen
 und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
 eines Feeds).</p>
-<table>
-<thead>
-<tr>
-<th>Variable</th>
-<th>Standard</th>
-<th>Bedeutung</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_ENABLED</code></td>
-<td><code>false</code></td>
-<td>Virenprüfung ein</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_HOST</code></td>
-<td>—</td>
-<td>Adresse des clamd-Dienstes, ohne Schema</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_PORT</code></td>
-<td><code>3310</code></td>
-<td>Port des clamd-Dienstes</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_TIMEOUT</code></td>
-<td><code>30s</code></td>
-<td>Frist eines Scans insgesamt</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_ON_UNAVAILABLE</code></td>
-<td><code>REJECT</code></td>
-<td>Umgang mit einer nicht geprüften Datei: <code>REJECT</code> oder <code>ACCEPT</code></td>
-</tr>
-</tbody>
-</table>
-<p>Unter Kubernetes stehen dieselben Werte unter <code>malwareScan</code> im Helm-Chart; eine NetworkPolicy muss
-dem Backend den Weg zum Scanner öffnen.</p>
+<p>Unter Kubernetes muss eine NetworkPolicy dem Backend den Weg zu Host und Port des Scanners öffnen;
+der Helm-Chart kennt dafür keine eigenen Werte mehr.</p>
 <h2 id="schlüssel-und-geheimnisse">Schlüssel und Geheimnisse<a class="headerlink" href="#schlüssel-und-geheimnisse" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

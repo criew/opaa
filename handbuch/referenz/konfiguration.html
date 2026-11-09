@@ -1831,6 +1831,8 @@
       
         
       
+        
+      
     
     
     
@@ -2280,6 +2282,34 @@
     
   
     E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/virenpruefung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virenprüfung einrichten
   
 
     
@@ -5165,42 +5195,6 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Schonfrist des Aufräumlaufs für verwaiste Originale: Minuten, die ein abgelegtes Original alt sein muss, bevor der Lauf es überhaupt melden oder entfernen darf — ein Upload, dessen Zeile gerade entsteht oder dessen Verarbeitung noch läuft, ist kein verwaistes Original. Ein Melde-Aufruf darf die Frist je Aufruf anheben, nie unterschreiten. Siehe <a href="../betrieb/originalablage.html#verwaiste-originale-aufräumen">„Verwaiste Originale aufräumen"</a></td>
 </tr>
 <tr>
-<td><strong>Virenprüfung</strong></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_ENABLED</code></td>
-<td><code>false</code></td>
-<td><code>false</code></td>
-<td>Jede Datei geht vor der Aufnahme an einen clamd-Dienst; eingeschaltet ohne <code>OPAA_MALWARE_SCAN_HOST</code> bricht der Start ab (siehe <a href="../betrieb/netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">„Virenprüfung der aufgenommenen Dateien“</a>)</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_HOST</code></td>
-<td>— (leer)</td>
-<td>nicht gesetzt (auskommentiert)</td>
-<td>Host oder Adresse des clamd-Dienstes, ohne Schema und Port</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_PORT</code></td>
-<td><code>3310</code></td>
-<td>nicht gesetzt (auskommentiert)</td>
-<td>TCP-Port des clamd-Dienstes</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_TIMEOUT</code></td>
-<td><code>30s</code></td>
-<td>nicht gesetzt (auskommentiert)</td>
-<td>Frist eines Scans insgesamt, vom Verbindungsaufbau bis zur Antwort</td>
-</tr>
-<tr>
-<td><code>OPAA_MALWARE_SCAN_ON_UNAVAILABLE</code></td>
-<td><code>REJECT</code></td>
-<td>nicht gesetzt (auskommentiert)</td>
-<td>Umgang mit einer Datei, die der Scanner nicht prüfen konnte: <code>REJECT</code> nimmt sie nicht auf, <code>ACCEPT</code> nimmt sie ungeprüft auf</td>
-</tr>
-<tr>
 <td><strong>Texterkennung</strong></td>
 <td></td>
 <td></td>
@@ -6596,6 +6590,11 @@ um.</p>
 <td><code>OPAA_TRANSCRIPTION_ENABLED</code>, <code>OPAA_TRANSCRIPTION_BASE_URL</code>, <code>OPAA_TRANSCRIPTION_MODEL</code>, <code>OPAA_TRANSCRIPTION_API_KEY</code>, <code>OPAA_TRANSCRIPTION_LANGUAGE</code></td>
 <td>Reiter „Spracheingabe" unter Administration → Modelle</td>
 <td>nicht übernommen; ohne Eintrag ist die Spracheingabe aus und der Chat zeigt kein Mikrofon. Der Start warnt, solange eine davon gesetzt ist (<a href="../betrieb/modell-endpunkte.html#rerank--und-transkriptionsmodell">Modelle</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_MALWARE_SCAN_ENABLED</code>, <code>OPAA_MALWARE_SCAN_HOST</code>, <code>OPAA_MALWARE_SCAN_PORT</code>, <code>OPAA_MALWARE_SCAN_TIMEOUT</code>, <code>OPAA_MALWARE_SCAN_ON_UNAVAILABLE</code></td>
+<td>Administration → Virenprüfung oder der Schritt „Virenprüfung“ der Installation</td>
+<td><strong>nicht übernommen; ohne Eintrag ist die Virenprüfung aus und Dateien werden ungeprüft gelesen.</strong> Nach dem Update den Scanner dort eintragen. Der Start warnt, solange eine davon gesetzt ist (<a href="../administration/virenpruefung.html">Virenprüfung einrichten</a>)</td>
 </tr>
 <tr>
 <td><code>OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL</code>, <code>OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL</code>, <code>OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL</code>, <code>OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL</code></td>
