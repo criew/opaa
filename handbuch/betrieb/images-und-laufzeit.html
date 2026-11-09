@@ -4392,8 +4392,9 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 </tbody>
 </table>
 <ul>
-<li>Ohne Anmeldung antworten sie nur mit <code>UP</code>/<code>DOWN</code>; Details und alle weiteren Health Groups
-  verlangen ein Zugangstoken.</li>
+<li>Ohne Anmeldung antworten sie nur mit <code>UP</code>/<code>DOWN</code>; alle weiteren Health Groups verlangen ein
+  Zugangstoken. Details wie Anbieter, Adresse oder Fehler sieht nur die Systemverwaltung, jedes
+  andere Konto nur den Status.</li>
 <li>Die Readiness braucht eine Datenbankverbindung: Auch ein erschöpfter Connection Pool meldet <code>DOWN</code>.
   Bei knappen Pools die Probe nachsichtig konfigurieren.</li>
 <li>Modelldienste stehen bewusst nicht in der Readiness; ein hängender Modellserver nimmt die Instanz
@@ -4413,7 +4414,7 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 </tr>
 <tr>
 <td><code>embedding-model</code></td>
-<td>einen echten Embedding-Aufruf</td>
+<td>einen echten Embedding-Aufruf, Ergebnis kurz zwischengespeichert</td>
 </tr>
 <tr>
 <td><code>transcription-model</code></td>
@@ -4421,7 +4422,7 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 </tr>
 <tr>
 <td><code>vector-store</code></td>
-<td>eine echte Ähnlichkeitssuche</td>
+<td>eine echte Ähnlichkeitssuche, Ergebnis kurz zwischengespeichert</td>
 </tr>
 <tr>
 <td><code>upload-store</code></td>

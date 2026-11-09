@@ -3972,13 +3972,25 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
   (<code>org.springframework.web</code>) mit Pfad und Controller, der Datenbankzugriff
   (<code>org.springframework.jdbc</code>) mit der SQL-Anweisung.</li>
 <li><strong>Metriken</strong> im Prometheus-Format unter <code>/actuator/prometheus</code>, einzeln unter <code>/actuator/metrics</code>.
-  Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
+  Sie nennen Pfade, Modelle und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (<code>MANAGEMENT_SERVER_PORT</code>, unter Kubernetes <code>backend.managementPort</code>),
   den eine Netzregel nur dem Prometheus öffnet. Mit eigenem Management-Port gibt es die
   Actuator-Pfade auf dem API-Port nicht. Ohne ihn liegen sie auf dem API-Port, und die Metriken
-  antworten dort nur mit Anmeldung. Der Helm-Chart richtet den Management-Port ein; unter Docker
-  Compose läuft der Actuator auf dem API-Port, wer dort Metriken einsammeln will, setzt
-  <code>MANAGEMENT_SERVER_PORT</code> (<a href="../referenz/konfiguration.html">Konfiguration</a>):</li>
+  antworten dort nur mit Anmeldung. Helm-Chart und Compose-Stapel richten den Management-Port ein;
+  unter Docker Compose ist er auf dem Host unter <code>127.0.0.1</code> erreichbar
+  (<code>OPAA_BACKEND_MANAGEMENT_PORT</code>, <a href="../referenz/konfiguration.html">Konfiguration</a>).</li>
+<li><strong>Jede Reihe</strong> trägt <code>application</code> (<code>opaa</code>) und <code>host</code>, den Rechnernamen der Instanz, unter
+  Kubernetes den Namen des Pods. <code>opaa_build_info</code> nennt je Instanz <code>version</code> und <code>commit</code>; zwei
+  Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.</li>
+<li><strong>Latenzen als Histogramm:</strong> Die Dauer von HTTP-Anfragen, Chat-Fragen, Modellaufrufen,
+  Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (<code>_bucket</code> mit <code>le</code>), aus denen
+  Prometheus Perzentile über alle Pods rechnet, etwa das p95 der Chat-Fragen:
+  <code>histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))</code>. Die
+  Schwellen lassen sich je Timer über <code>OPAA_METRICS_SLO_*</code> an die eigenen Zielwerte anpassen; ein
+  Zielwert sollte genau auf einer Schwelle liegen.</li>
+<li><strong>Ohne Personenbezug:</strong> Keine Metrik nennt Person, Space, Bibliothek, Dokument, Datei, Adresse
+  oder Suchbegriff; Werte stammen aus festen kleinen Mengen wie Ergebnis, Modell oder Konnektortyp.
+  Zählungen gelten für die ganze Installation.</li>
 </ul>
 <table>
 <thead>
@@ -3990,15 +4002,31 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <tbody>
 <tr>
 <td><code>http_server_requests_seconds_*</code></td>
-<td>Anfragen nach Pfad, Methode, Status</td>
+<td>Anfragen nach Pfad, Methode, Status, mit Buckets</td>
 </tr>
 <tr>
-<td><code>opaa_query_duration_seconds_*</code>, <code>opaa_query_count_total</code></td>
-<td>Dauer und Zahl der Chat-Fragen</td>
+<td><code>opaa_build_info</code></td>
+<td>Version und Commit der Instanz, immer <code>1</code></td>
 </tr>
 <tr>
-<td><code>opaa_query_tokens_total</code></td>
-<td>Token der Antwortaufrufe</td>
+<td><code>opaa_query_duration_seconds_*</code>, <code>opaa_query_count_total</code>, <code>opaa_query_tokens_total</code></td>
+<td>Dauer je Frage mit Buckets, Fragen nach Erfolg und Fehler, Tokens der Antwortaufrufe des Chat-Modells</td>
+</tr>
+<tr>
+<td><code>gen_ai_client_operation_seconds_*</code></td>
+<td>Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (<code>chat</code>, <code>embedding</code>), Anbieter und Modell, mit Buckets; <code>error</code> nennt die Fehlerklasse</td>
+</tr>
+<tr>
+<td><code>gen_ai_client_token_usage_total</code></td>
+<td>Tokens nach Operation, Modell und Art (<code>input</code>, <code>output</code>, <code>total</code>), ohne Person und Inhalt</td>
+</tr>
+<tr>
+<td><code>opaa_conversations_active</code></td>
+<td>Gespräche, die diese Instanz im Speicher hält</td>
+</tr>
+<tr>
+<td><code>opaa_installation_pending</code></td>
+<td><code>1</code>, solange die Installation nicht abgeschlossen ist (<a href="installation.html">Installation</a>)</td>
 </tr>
 <tr>
 <td><code>opaa_indexing_documents_total</code></td>
@@ -4010,11 +4038,11 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_indexing_suspicious_patterns_total</code></td>
-<td>verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (<code>library</code>: Kennung, für private Bibliotheken gemeinsam <code>private</code>) und Art (<code>class</code>: <code>INVISIBLE_CHARACTERS</code>, <code>ROLE_TOKEN</code>, <code>INSTRUCTION_PHRASE</code>, <code>DATA_URL_PLACEHOLDER</code>; <a href="../referenz/wie-indexierung-arbeitet.html#laufprotokoll">Wissensbibliotheken</a>)</td>
+<td>verarbeitete Dokumente mit auffälligen Mustern nach Art (<code>class</code>: <code>INVISIBLE_CHARACTERS</code>, <code>ROLE_TOKEN</code>, <code>INSTRUCTION_PHRASE</code>, <code>DATA_URL_PLACEHOLDER</code>; <a href="../referenz/wie-indexierung-arbeitet.html#laufprotokoll">Wissensbibliotheken</a>)</td>
 </tr>
 <tr>
 <td><code>opaa_ocr_documents_total</code>, <code>opaa_ocr_pages_total</code>, <code>opaa_ocr_duration_seconds_*</code></td>
-<td>Texterkennung gescannter Dokumente nach Ergebnis (<code>recognized</code>, <code>reused</code>, <code>failed</code>, <code>blocked</code>, <code>pending</code>) und Verbindungstyp, gesendete Seiten und Dauer; steigt <code>failed</code>, ist der Dienst nicht verfügbar (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
+<td>Texterkennung gescannter Dokumente nach Ergebnis (<code>recognized</code>, <code>empty</code>, <code>reused</code>, <code>failed</code>, <code>blocked</code>, <code>pending</code>) und Verbindungstyp, gesendete Seiten und Dauer mit Buckets; <code>empty</code> heißt, der Dienst hat geantwortet, aber keinen Text erkannt; steigt <code>failed</code>, ist der Dienst nicht verfügbar (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
 </tr>
 <tr>
 <td><code>opaa_malware_scans_total</code></td>
@@ -4073,6 +4101,10 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Sperren lokaler Konten</td>
 </tr>
 <tr>
+<td><code>opaa_auth_personal_space_provisioning_total</code></td>
+<td>gescheiterte Anlagen des persönlichen Bereichs bei der ersten Anmeldung (<code>result="failed"</code>); jeder Anstieg verdient einen Blick ins Log</td>
+</tr>
+<tr>
 <td><code>opaa_self_disclosure_exports_total</code></td>
 <td>Selbstauskünfte nach Ergebnis (<code>started</code>, <code>completed</code>, <code>aborted</code>) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout</td>
 </tr>
@@ -4083,10 +4115,6 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <tr>
 <td><code>opaa_self_disclosure_duration_seconds_*</code>, <code>opaa_self_disclosure_size_bytes_*</code>, <code>opaa_self_disclosure_running</code></td>
 <td>Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person</td>
-</tr>
-<tr>
-<td><code>opaa_query_duration_seconds_*</code>, <code>opaa_query_count_total</code>, <code>opaa_query_tokens_total</code></td>
-<td>Dauer je Frage, Fragen nach Erfolg und Fehler, verbrauchte Tokens des Chat-Modells</td>
 </tr>
 <tr>
 <td><code>opaa_query_decomposition_fallback_total</code>, <code>opaa_query_decomposition_no_search_total</code></td>
@@ -4103,6 +4131,14 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <tr>
 <td><code>opaa_chat_note_extraction_total</code></td>
 <td>Verdichtungen der Gesprächsnotiz nach Ausgang (<code>applied</code>, <code>empty</code>, <code>failed</code>, <code>discarded</code>, <code>rejected</code>)</td>
+</tr>
+<tr>
+<td><code>tasks_scheduled_execution_seconds_*</code></td>
+<td>Dauer und Ausgang der geplanten Läufe nach Methode, mit Buckets</td>
+</tr>
+<tr>
+<td><code>executor_*</code></td>
+<td>Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (<code>name</code>), etwa Indexierung und Uploads</td>
 </tr>
 <tr>
 <td><code>hikaricp_connections_*</code></td>
@@ -4233,17 +4269,21 @@ Den Weg zum Empfänger öffnet eine Regel unter <code>networkPolicy.egress.backe
 einer internen Zertifizierungsstelle kommt über <code>extraCACertificates</code> in den Vertrauensspeicher
 (<a href="kubernetes.html">Kubernetes</a>). Nicht gebaut ist ein Client-Zertifikat für TLS.</p>
 <h2 id="diagnose-ohne-shell">Diagnose ohne Shell<a class="headerlink" href="#diagnose-ohne-shell" title="Permanent link">&para;</a></h2>
-<p>Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend.
-Unter Docker Compose ist <code>localhost:8081</code> der API-Port des Backends auf dem Host
-(<code>OPAA_BACKEND_PORT</code>), unter Kubernetes die Portweiterleitung auf den Management-Port
-(<code>kubectl port-forward deploy/opaa-backend 8081:8081</code>):</p>
+<p>Actuator-Pfade sind nur über den Management-Port erreichbar, nicht über das Frontend. Unter Docker
+Compose ist das <code>localhost:8082</code> auf dem Host (<code>OPAA_BACKEND_MANAGEMENT_PORT</code>), unter Kubernetes
+die Portweiterleitung <code>kubectl port-forward deploy/opaa-backend 8081:8081</code>; die Beispiele nennen
+den Port von Kubernetes:</p>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/info<span class="w">              </span><span class="c1"># Version</span>
 curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/health/readiness<span class="w">  </span><span class="c1"># Readiness</span>
-curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/prometheus<span class="w">        </span><span class="c1"># Metriken, Kubernetes (Management-Port)</span>
-curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span>http://localhost:8081/actuator/prometheus<span class="w">  </span><span class="c1"># Compose</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/prometheus<span class="w">        </span><span class="c1"># Metriken</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span>http://localhost:8081/actuator/health/embedding-model
 curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span>https://&lt;host&gt;/api/v1/admin/diagnostics/client-address
 </code></pre></div>
-<p><code>&lt;token&gt;</code> ist das Token einer angemeldeten Sitzung, etwa aus dem Browser.</p>
+<p><code>&lt;token&gt;</code> ist das Token einer angemeldeten Sitzung, etwa aus dem Browser. Die Health Groups außer
+Readiness und Liveness verlangen ein Token; Einzelheiten wie Anbieter, Adresse oder Fehler zeigen
+sie nur der Systemverwaltung, jedem anderen Konto nur den Status. <code>embedding-model</code> und
+<code>vector-store</code> rufen das Modell bzw. die Vektorablage wirklich auf und geben ihr Ergebnis danach
+kurz zwischengespeichert aus, sodass häufige Abfragen keine Kosten beim Modellanbieter erzeugen.</p>
 <p>Der letzte Aufruf (Systemverwaltung, über den Proxy) zeigt, welche Client-Adresse das Backend für
 diese Anfrage ermittelt (<code>clientAddress</code>). Steht dort die Adresse des Proxys, fehlt er in
 <code>OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS</code>. Dumps und Dateien aus dem Container:

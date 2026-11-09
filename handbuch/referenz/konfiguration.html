@@ -4099,8 +4099,38 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <tr>
 <td><code>MANAGEMENT_SERVER_PORT</code></td>
 <td>— (leer: Actuator auf dem API-Port)</td>
-<td>nicht gesetzt</td>
-<td>Eigener Port für Probes, Health und Metriken (<code>management.server.port</code>), getrennt von der API; unter Kubernetes setzt ihn <code>backend.managementPort</code>. Nur auf diesem Port antworten die Metriken (<code>/actuator/prometheus</code>, <code>/actuator/metrics</code>) ohne Anmeldung; mit eigenem Port gibt es die Actuator-Pfade auf dem API-Port nicht, ohne ihn antworten die Metriken dort nur mit Anmeldung (siehe <a href="../betrieb/ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>). Mit eigenem Port liegen auch die Probes dort; die Health-Prüfung des Compose-Containers fragt den API-Port und braucht dann die Adresse des Management-Ports als Argument</td>
+<td><code>8081</code>, fest im <code>environment:</code> von <code>docker-compose.yml</code></td>
+<td>Eigener Port für Probes, Health und Metriken (<code>management.server.port</code>), getrennt von der API; unter Kubernetes setzt ihn <code>backend.managementPort</code>, unter Docker Compose <code>docker-compose.yml</code> (auf dem Host <code>OPAA_BACKEND_MANAGEMENT_PORT</code>). Nur auf diesem Port antworten die Metriken (<code>/actuator/prometheus</code>, <code>/actuator/metrics</code>) ohne Anmeldung; mit eigenem Port gibt es die Actuator-Pfade auf dem API-Port nicht, ohne ihn antworten die Metriken dort nur mit Anmeldung (siehe <a href="../betrieb/ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>). Die Health-Prüfung des Compose-Containers fragt die Readiness auf diesem Port</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_HTTP</code></td>
+<td><code>100ms,250ms,500ms,1s,2500ms,5s,10s,30s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Schwellen der Histogramm-Buckets für die Dauer der HTTP-Anfragen (<code>http_server_requests_seconds_bucket</code>), kommagetrennt. Ein Zielwert (SLO) sollte genau auf einer Schwelle liegen; jede Schwelle ist eine Reihe mehr je Pfad, Methode und Status (<a href="../betrieb/ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_QUERY</code></td>
+<td><code>1s,2500ms,5s,10s,20s,30s,60s,120s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer einer Chat-Frage (<code>opaa_query_duration_seconds_bucket</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_MODEL</code></td>
+<td><code>250ms,500ms,1s,2500ms,5s,10s,30s,60s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Aufrufs von Chat- oder Embedding-Modell (<code>gen_ai_client_operation_seconds_bucket</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_OCR</code></td>
+<td><code>1s,5s,10s,30s,60s,120s,300s,600s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Texterkennung eines Dokuments (<code>opaa_ocr_duration_seconds_bucket</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_SCHEDULED</code></td>
+<td><code>100ms,1s,10s,60s,300s,900s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer der geplanten Läufe (<code>tasks_scheduled_execution_seconds_bucket</code>)</td>
 </tr>
 <tr>
 <td><code>OPAA_CORS_ALLOWED_ORIGINS</code></td>
@@ -6213,6 +6243,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>— (kein Spring-Property; nur <code>docker-compose.yml</code>, dort Compose-Default <code>8081</code>)</td>
 <td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben) — <code>.env.docker.example</code> lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default <code>8081</code></td>
 <td>Backend-Host-Port</td>
+</tr>
+<tr>
+<td><code>OPAA_BACKEND_MANAGEMENT_PORT</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.yml</code>, dort Compose-Default <code>8082</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben) — <code>.env.docker.example</code> lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default <code>8082</code></td>
+<td>Host-Port des Management-Ports (Probes, Health, Metriken ohne Anmeldung), an <code>127.0.0.1</code> gebunden</td>
 </tr>
 <tr>
 <td><code>OPAA_FRONTEND_PORT</code></td>

@@ -4447,13 +4447,15 @@ lautet das Ziel <code>s3://&lt;bucket&gt;/&lt;präfix&gt;</code>.</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>backend
 </code></pre></div>
 <p><strong>7. Prüfen.</strong> Vier Proben, in dieser Reihenfolge. Die ersten beiden von der Kommandozeile:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/health/upload-store<span class="w">   </span><span class="c1"># Endpunkt und Bucket, Status UP</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>http://localhost:8082/actuator/health/upload-store<span class="w">         </span><span class="c1"># Endpunkt und Bucket, Status UP</span>
 docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="s2">"SELECT file_name, file_path FROM documents WHERE source_type = 'UPLOAD' LIMIT 5;"</span>
 </code></pre></div>
-<p>Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
-in einem OIDC-Deployment antwortet ein anonymes <code>curl</code> nur mit dem Status, wie unter
-<a href="ueberwachung-und-fehlerbehebung.html#diagnose-ohne-shell">„Diagnose ohne Shell"</a> beschrieben.</p>
+<p><code>&lt;token&gt;</code> ist das Token einer Sitzung der Systemverwaltung, <code>8082</code> der Management-Port des
+Compose-Stapels. Endpunkt, Bucket und im Störungsfall der Grund erscheinen nur der
+Systemverwaltung; ohne Token antwortet die Gruppe mit <code>401</code>, jedem anderen Konto nur mit dem Status
+(<a href="ueberwachung-und-fehlerbehebung.html#diagnose-ohne-shell">„Diagnose ohne Shell"</a>).</p>
 <p>Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
 herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar
 wird, dass auch die zusammengesetzten Verweise noch stimmen. Die vierte prüft den Schreibweg: eine

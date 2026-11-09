@@ -5416,8 +5416,8 @@ Fragen und an der Fehlerquote.</p>
 <h2 id="fehlerbilder">Fehlerbilder<a class="headerlink" href="#fehlerbilder" title="Permanent link">&para;</a></h2>
 <p>Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche &amp; Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-<code>GET /actuator/health/chat-model</code>, <code>…/embedding-model</code> und <code>…/transcription-model</code> (<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness</a>)
-und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden <code>chat-model</code>,
+<code>GET /actuator/health/chat-model</code>, <code>…/embedding-model</code> und <code>…/transcription-model</code> (<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness</a>;
+Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden <code>chat-model</code>,
 <code>embedding-model</code> und <code>vector-store</code> <code>UNKNOWN</code> mit dem Detail <code>NOT_CONFIGURED</code>; das ist kein
 Ausfall, die Readiness bleibt <code>UP</code>. Eine Überwachung, die nur auf <code>DOWN</code> achtet, bemerkt ein nie
 eingerichtetes Modell deshalb nicht; sie wertet das Detail <code>NOT_CONFIGURED</code> aus oder

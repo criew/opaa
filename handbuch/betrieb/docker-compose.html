@@ -4720,9 +4720,9 @@ leere Datenbank im Installationsmodus (<a href="#installation-im-compose-stapel"
 </tr>
 <tr>
 <td>backend</td>
-<td>8081</td>
-<td>8080</td>
-<td>Spring Boot API</td>
+<td>8081, 8082 (Management-Port)</td>
+<td>8080, 8081</td>
+<td>Spring Boot API; Probes, Health und Metriken auf dem Management-Port, beide an <code>127.0.0.1</code> gebunden</td>
 </tr>
 <tr>
 <td>postgres</td>
