@@ -439,7 +439,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("receivePush", same("{}"));
     probes.put("generatePushSecret", same());
     probes.put("removePushSecret", same());
-    probes.put("updateLibraryShareCap", same("{\"allAccountsGrantAllowed\": false}"));
     probes.put(
         "submitQuery",
         // the query ignores libraryIds without a chat; an unknown prompt ends it before the model

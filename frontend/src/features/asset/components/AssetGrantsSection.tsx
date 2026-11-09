@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -79,8 +79,6 @@ function isValidUuid(value: string): boolean {
 export interface AssetGrantsSectionProps {
   assetType: AssetType
   assetId: string
-  /** The system administration's upper bound, below the list — only where there is one. */
-  capControl?: ReactNode
 }
 
 function formatExpiry(expiresAt: string | null | undefined): string {
@@ -123,11 +121,7 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
  * and the form for sharing, without a dialog in front. The section knows only the type's word;
  * whatever a type has beyond that comes in as a slot.
  */
-export default function AssetGrantsSection({
-  assetType,
-  assetId,
-  capControl,
-}: AssetGrantsSectionProps) {
+export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSectionProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const grants = useGrantStore((s) => s.grantsByAsset[assetKey(assetType, assetId)]) ?? []
   const isLoading = useGrantStore((s) => s.isLoading)
@@ -593,8 +587,6 @@ export default function AssetGrantsSection({
           </TextAction>
         </Box>
       )}
-
-      {capControl}
     </DetailSection>
   )
 }

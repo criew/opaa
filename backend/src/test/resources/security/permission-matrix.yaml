@@ -287,7 +287,6 @@ operations:
   getLibrary:                                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updateLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   deleteLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
-  updateLibraryShareCap:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   disconnectLibrarySource:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   connectLibraryProfile:                     {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
   disconnectLibraryProfile:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}

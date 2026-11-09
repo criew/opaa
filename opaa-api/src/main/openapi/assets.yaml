@@ -40,9 +40,8 @@ paths:
         subjectId (ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
         responsibilities - granting rights, ownership, succession - and are refused with 400 for
         this subject, because a responsibility is borne by a named person or group. It replaces the
-        former release level AssetVisibility, so a connector library's share cap is enforced
-        here: while the system administration forbids it, such a grant is refused with 409 - the
-        caller's own role is not in question.
+        former release level AssetVisibility; who may create an asset decides who may reach
+        everybody with it, there is no further ceiling per asset.
         .
         While the asset's succession is open (ADR-0036, Entscheidung 6) its reach is frozen: a new
         grant, a higher role and a postponed expiry are refused with 409 and the code

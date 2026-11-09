@@ -320,7 +320,7 @@ auditEvents:
     details: before und after tragen Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_REVOKED
-    trigger: Ein Recht an einem Asset wird entzogen, auch durch eine gesenkte Freigabe-Obergrenze
+    trigger: Ein Recht an einem Asset wird entzogen
     details: before trägt Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_EXPIRED
@@ -648,7 +648,9 @@ auditEvents:
   - id: MODEL_POLICY_CHANGED
     trigger: Modellvorgaben oder die Freigabe externer Modelle ändern sich (noch nicht verdrahtet)
   - id: CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED
-    trigger: Die Freigabe-Obergrenze einer konnektor-gespeisten Bibliothek wird gesetzt oder geändert
+    trigger: >-
+      Nicht mehr geschrieben; frühere Freigabe-Obergrenze einer Konnektorbibliothek, lesbar bis zum
+      Fristablauf
     payloadKeys: [allAccountsGrantAllowed]
   - id: PRIVATE_STORAGE_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
