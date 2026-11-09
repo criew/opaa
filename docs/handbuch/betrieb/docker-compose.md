@@ -203,6 +203,12 @@ nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Absch
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 `docker compose logs backend | grep "answer file"` nennt Schritt und Grund.
 
+`installation/installation.live-transcription.example.json` zeigt dieselbe Datei mit
+Spracheingabe: das Diktat über speaches, das Live-Transkript über einen eigenen vLLM-Server mit
+Voxtral Realtime ([Live-Transkript](modell-endpunkte.md#live-transkript)). Beide Dienste bringt der
+Stapel nicht mit; Hosts und Modelle sind anzupassen, und beide Hosts gehören in
+`OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, sonst scheitert die Prüfung des Schritts.
+
 **Mit dem gebündelten Keycloak** (Profil `oidc`) bekommt die Antwortdatei das Anmeldeverfahren
 `LOCAL_AND_OIDC`. Der Browser erreicht den Issuer unter `localhost`, das Backend die Schlüssel unter
 dem Dienstnamen:
