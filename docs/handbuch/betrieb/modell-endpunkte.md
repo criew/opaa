@@ -855,6 +855,67 @@ Sie gehen an den angegebenen Endpunkt und an sonst niemanden. Beim ersten Lauf k
 Downloads aus den Voraussetzungen dazu: Gradle und Maven Central, Docker Hub und die
 Ollama-Registry; danach liegt alles im lokalen Zwischenspeicher.
 
+## Modell auf Werkzeugaufrufe messen
+
+Ob ein Modell ein Werkzeug verlässlich aufruft, hängt nicht am Modell allein, sondern an der
+Kombination aus Modell, Quantisierung, Laufzeit und deren Einstellungen. Dasselbe Modell kann unter
+Ollama Werkzeuge sauber aufrufen und unter einer anderen Laufzeit nicht. Eine feste Fallbasis misst
+das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die eine Suche verlangt, ein
+Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
+eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.
+
+**Voraussetzungen:** ein Rechner mit JDK 21 und dem Quellstand der installierten Version, Netzzugang
+zum Endpunkt des Modells, beim ersten Lauf Internetzugang für Gradle und Maven Central. Docker ist
+nicht nötig.
+
+**Aufruf** aus dem Verzeichnis `backend/` des Quellstands:
+
+```bash
+export OPAA_EVAL_CHAT_API_KEY=...    # nur, wenn der Endpunkt einen Schlüssel verlangt
+./gradlew evaluateToolCalling \
+  -Dopaa.eval.chatBaseUrl=http://ollama.stadt.example:11434/v1 \
+  -Dopaa.eval.chatModel=modellname \
+  -Dopaa.eval.toolCalling.quantization=Q4_K_M \
+  -Dopaa.eval.toolCalling.runtime=ollama \
+  -Dopaa.eval.toolCalling.runtimeVersion=0.40.3 \
+  -Dopaa.eval.toolCalling.hardware="1 GPU, 24 GB" \
+  -Dopaa.eval.toolCalling.contextLength=8192
+```
+
+Adresse und Schlüssel folgen denselben Regeln wie unter
+[Modell gegen Prompt-Injection messen](#modell-gegen-prompt-injection-messen). Die Angaben zu
+Quantisierung, Laufzeit, Version, Hardware und Kontextlänge ändern nichts an der Messung; sie
+benennen die Kombination im Bericht und gehören vollständig dazu, sonst bleibt unklar, wofür das
+Ergebnis gilt. Mit `-Dopaa.eval.toolCalling.streaming=true` misst der Lauf die Ausgabe im Fluss,
+mit `-Dopaa.eval.toolCalling.repetitions` eine andere Zahl von Läufen je Fall als drei.
+
+**Bericht:** `backend/build/eval-reports/tool-calling.md` (dazu `.json`). Er beginnt mit der
+Kennung des Messlaufs und dem Datum und nennt je Fallklasse eine Zahl, etwa „12 von 12 Läufen
+bestanden“; für die eingeschmuggelte Anweisung „Anweisung wirksam in 1 von 12 erreichten Läufen“,
+nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.
+
+- **Untergrenze:** Als werkzeugfähig darf eine Kombination nur gelten, wenn jeder Lauf von
+  „ruft, wenn nötig“, „gültige Argumente“ und „hält die Grenze“ bestanden hat. Der Bericht sagt, ob
+  das zutrifft. Die übrigen Klassen wägt das Haus selbst.
+- **Ein Ergebnis gilt nur seiner Kombination.** Nach einem Wechsel von Laufzeit, Version,
+  Quantisierung oder Kontextlänge wird neu gemessen.
+- **Fällt ein sonst fähiges Modell durch,** kann die Laufzeit die Ursache sein, siehe Fehlerbilder
+  unten.
+
+**Fehlerbilder:** Die Ursachen in den ersten drei Zeilen sind noch an keiner Kombination
+nachgestellt und als Vermutung zu lesen; belegt ist nur die letzte Zeile, weil der Bericht den
+Abschlussgrund jedes Modellaufrufs festhält.
+
+| Bild im Bericht | Mögliche Ursache | Abhilfe |
+|---|---|---|
+| Das Modell sucht fast nie, antwortet aber flüssig | Kontextlänge der Laufzeit zu klein; die Laufzeit kürzt die Anfrage womöglich still um die Werkzeugbeschreibung | Kontextlänge am Server erhöhen (Ollama: `OLLAMA_CONTEXT_LENGTH`), neu messen |
+| Ohne Fluss gut, mit `streaming=true` sucht es kaum | Laufzeit verliert womöglich Werkzeugaufrufe bei der Ausgabe im Fluss | Laufzeit aktualisieren oder anderen Auswerter für Werkzeugaufrufe wählen |
+| Alle Läufe als Fehler | etwa vLLM ohne `--enable-auto-tool-choice` und passenden `--tool-call-parser` | Server mit beiden Schaltern starten |
+| Läufe als abgeschnitten | Die Antwort endete an der Längenbegrenzung (Abschlussgrund `length`), meist bei Modellen mit langem Denktext | `-Dopaa.eval.toolCalling.maxTokens` erhöhen, neu messen; dieselbe Grenze am Modelleintrag prüfen |
+
+**Datenfluss:** Fälle und Suchergebnisse sind frei erfunden und gehen nur an den angegebenen
+Endpunkt.
+
 ## Ausfall eines Modells
 
 Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
@@ -880,8 +941,8 @@ Fragen und an der Fehlerquote.
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness))
-und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness);
+Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
 `embedding-model` und `vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist kein
 Ausfall, die Readiness bleibt `UP`. Eine Überwachung, die nur auf `DOWN` achtet, bemerkt ein nie
 eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus oder

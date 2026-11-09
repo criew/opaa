@@ -416,14 +416,16 @@ docker compose up -d backend
 **7. Prüfen.** Vier Proben, in dieser Reihenfolge. Die ersten beiden von der Kommandozeile:
 
 ```bash
-curl -s http://localhost:8081/actuator/health/upload-store   # Endpunkt und Bucket, Status UP
+curl -s -H "Authorization: Bearer <token>" \
+  http://localhost:8082/actuator/health/upload-store         # Endpunkt und Bucket, Status UP
 docker compose exec postgres psql -U opaa -d opaa -c \
   "SELECT file_name, file_path FROM documents WHERE source_type = 'UPLOAD' LIMIT 5;"
 ```
 
-Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
-in einem OIDC-Deployment antwortet ein anonymes `curl` nur mit dem Status, wie unter
-[„Diagnose ohne Shell"](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell) beschrieben.
+`<token>` ist das Token einer Sitzung der Systemverwaltung, `8082` der Management-Port des
+Compose-Stapels. Endpunkt, Bucket und im Störungsfall der Grund erscheinen nur der
+Systemverwaltung; ohne Token antwortet die Gruppe mit `401`, jedem anderen Konto nur mit dem Status
+([„Diagnose ohne Shell"](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell)).
 
 Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
 herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar

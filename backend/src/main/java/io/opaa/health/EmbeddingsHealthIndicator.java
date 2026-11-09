@@ -3,6 +3,7 @@ package io.opaa.health;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.EmbeddingModelNotInstalledException;
 import io.opaa.llm.EmbeddingModelService;
+import java.time.Clock;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
@@ -14,7 +15,8 @@ import org.springframework.stereotype.Component;
  * with {@code embeddingModel: NOT_CONFIGURED}: an installation in progress or one that skipped its
  * embedding model is a regular state, no outage (ADR-0060, Entscheidungen 4 and 6). A vector table
  * with chunks but no model row is an error, {@code DOWN} with {@code embeddingModel:
- * MISSING_WITH_CHUNKS}.
+ * MISSING_WITH_CHUNKS}. The result is handed out again for a short time ({@link CachedProbe}), so
+ * repeated calls of the group cost one model call.
  */
 @DataFlow("embedding-model")
 @Component
@@ -29,11 +31,13 @@ public class EmbeddingsHealthIndicator implements HealthIndicator {
 
   private final EmbeddingModel embeddingModel;
   private final EmbeddingModelService embeddingModels;
+  private final CachedProbe probe;
 
   public EmbeddingsHealthIndicator(
-      EmbeddingModel embeddingModel, EmbeddingModelService embeddingModels) {
+      EmbeddingModel embeddingModel, EmbeddingModelService embeddingModels, Clock clock) {
     this.embeddingModel = embeddingModel;
     this.embeddingModels = embeddingModels;
+    this.probe = new CachedProbe(this::probe, clock);
   }
 
   /** {@code UNKNOWN} without a model, {@code DOWN} when chunks are left without one. */
@@ -45,6 +49,10 @@ public class EmbeddingsHealthIndicator implements HealthIndicator {
 
   @Override
   public Health health() {
+    return probe.health();
+  }
+
+  private Health probe() {
     try {
       embeddingModel.embed("health check");
       String provider = embeddingModel.getClass().getSimpleName();

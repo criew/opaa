@@ -480,7 +480,7 @@ public class DocumentIngestService {
     }
 
     metrics.recordProcessed();
-    reportSuspiciousPatterns(library, names.of(filePath, documentId), filePath, findings, events);
+    reportSuspiciousPatterns(names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
   }
 
@@ -514,11 +514,9 @@ public class DocumentIngestService {
 
   /**
    * The cleanup's findings of a processed document: a log line and the metric with counts per class
-   * only, and one protocol entry when the caller has a protocol. Private libraries share one metric
-   * label, so no series stands for one person.
+   * only, and one protocol entry when the caller has a protocol.
    */
   private void reportSuspiciousPatterns(
-      KnowledgeLibrary library,
       Object loggedName,
       String filePath,
       Map<IngestTextSanitizer.Finding, Integer> findings,
@@ -528,20 +526,10 @@ public class DocumentIngestService {
       return;
     }
     log.info("Sanitized extracted text of {}: {}", loggedName, findings);
-    String libraryLabel = metricLabel(library);
-    findings
-        .keySet()
-        .forEach(finding -> metrics.recordSuspiciousPattern(libraryLabel, finding.name()));
+    findings.keySet().forEach(finding -> metrics.recordSuspiciousPattern(finding.name()));
     if (events != null) {
       events.record(IndexingEventCategory.SUSPICIOUS_PATTERNS, note, filePath);
     }
-  }
-
-  /** The metric label of {@code library}: its id, for a private library the shared label. */
-  static String metricLabel(KnowledgeLibrary library) {
-    return library.isOwnerOnly()
-        ? IndexingMetrics.PRIVATE_LIBRARY_LABEL
-        : String.valueOf(library.getId());
   }
 
   /**

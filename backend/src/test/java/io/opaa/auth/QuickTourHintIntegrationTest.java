@@ -178,6 +178,26 @@ class QuickTourHintIntegrationTest {
     }
   }
 
+  /** The scrape a Prometheus reads, histogram buckets of the HTTP timer included. */
+  @Test
+  void theMarkerAppearsInNoSeriesOfTheScrapeHistogramBucketsIncluded() throws Exception {
+    mockMvc.perform(put(HINT).with(dev("dev-user"))).andExpect(status().isNoContent());
+    mockMvc.perform(get("/actuator/prometheus")).andExpect(status().isOk());
+
+    String scrape =
+        mockMvc
+            .perform(get("/actuator/prometheus"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(scrape)
+        .contains("http_server_requests_seconds_bucket{")
+        .doesNotContain("quick-tour")
+        .doesNotContain("quick_tour");
+  }
+
   @Test
   void aSignInThroughAnIdentityProviderNeverResetsTheMarker() {
     User created =

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0071](0071-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -107,7 +107,7 @@ Lücke.
   Vorrücken ab, kommt derselbe Stapel noch einmal, erkennbar an `externalId`. Ein Empfänger, der die
   Daten annimmt und danach verwirft, fällt ohne Bestätigung je Meldung nicht auf. Eine lang offene
   Transaktion hält die Ausleitung an, bis sie endet; die Metrik `opaa.siem.export.lag` zeigt den
-  Rückstand, und das Log warnt mit der Sitzung, die ihn verursacht. Die Sicht auf `pg_stat_activity` umfasst nur
+  Rückstand (Grundsätze der Metriken: ADR-0071), und das Log warnt mit der Sitzung, die ihn verursacht. Die Sicht auf `pg_stat_activity` umfasst nur
   Sitzungen derselben Datenbankrolle; schreibt eine andere Rolle ins Protokoll, braucht das
   Anwendungskonto `pg_read_all_stats`. Ohne TLS gehen die Einträge unverschlüsselt durchs Netz.
 
