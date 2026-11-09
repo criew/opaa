@@ -404,7 +404,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_CREATED,
         LLM_MODEL_CHANGED);
     put(
@@ -416,7 +420,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_DELETED);
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
