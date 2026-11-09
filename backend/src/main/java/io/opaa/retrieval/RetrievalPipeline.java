@@ -79,8 +79,9 @@ public class RetrievalPipeline {
    * explanation protocol. {@code context.searchScope()} is taken as given: this method applies it
    * as the {@code library_id} filter of every search but resolves no permissions of its own. Once a
    * stage halts the run, the remaining stages are recorded as not reached instead of being
-   * executed. Every stage that is called gets its wall-clock duration stamped into its explanation;
-   * a stage running once per sub-query measures all sub-queries together, as they run in sequence.
+   * executed. Every stage that is called and does not report itself switched off gets its
+   * wall-clock duration stamped into its explanation; a stage running once per sub-query measures
+   * all sub-queries together, as they run in sequence.
    */
   public RetrievalPipelineResult run(RetrievalContext rawContext) {
     // Without the rerank stage nothing would restore the top-k cap, so the fusion must
@@ -103,7 +104,12 @@ public class RetrievalPipeline {
       StageOutcome outcome = stage.apply(context, state);
       long durationMs = TimeUnit.NANOSECONDS.toMillis(nanoTicker.getAsLong() - startedAt);
       state = outcome.state();
-      explanations.add(outcome.explanation().withDurationMs(durationMs));
+      StageExplanation explanation = outcome.explanation();
+      // A stage that switched itself off reads like one the pipeline skipped: no duration.
+      explanations.add(
+          explanation.status() == StageStatus.DISABLED
+              ? explanation
+              : explanation.withDurationMs(durationMs));
     }
 
     return new RetrievalPipelineResult(

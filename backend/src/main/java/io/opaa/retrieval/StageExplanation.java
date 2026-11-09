@@ -22,7 +22,8 @@ import java.util.List;
  * @param durationMs wall-clock time of the stage's own work, stamped by {@link RetrievalPipeline}
  *     around the stage call; a stage never sets it itself. Present for every stage the pipeline
  *     called - also one that came back {@link StageStatus#UNAVAILABLE}, where it is the time until
- *     the failure - and {@code null} for a stage that was switched off or never reached.
+ *     the failure - and {@code null} for a stage that was switched off (by the pipeline or by
+ *     itself, status {@link StageStatus#DISABLED}) or never reached.
  */
 public record StageExplanation(
     RetrievalStageName stage,

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Per-stage durations in the protocol: every stage the pipeline called carries the wall-clock time
  * of its call - including one that reports itself unavailable - and a stage that was switched off
- * or never reached carries none.
+ * (by the pipeline or by itself) or never reached carries none.
  */
 class RetrievalPipelineDurationTest {
 
@@ -60,6 +60,18 @@ class RetrievalPipelineDurationTest {
                     500,
                     state -> executed(RetrievalStageName.METADATA_FILTER, state)),
                 stage(
+                    RetrievalStageName.MMR_SELECTION,
+                    4,
+                    state ->
+                        new StageOutcome(
+                            state,
+                            StageExplanation.notRun(
+                                RetrievalStageName.MMR_SELECTION,
+                                StageStatus.DISABLED,
+                                0,
+                                0,
+                                "switched off by its own parameter"))),
+                stage(
                     RetrievalStageName.RERANK,
                     1200,
                     state ->
@@ -92,6 +104,7 @@ class RetrievalPipelineDurationTest {
     assertThat(byStage.get(RetrievalStageName.METADATA_FILTER).status())
         .isEqualTo(StageStatus.DISABLED);
     assertThat(byStage.get(RetrievalStageName.METADATA_FILTER).durationMs()).isNull();
+    assertThat(byStage.get(RetrievalStageName.MMR_SELECTION).durationMs()).isNull();
     assertThat(byStage.get(RetrievalStageName.RERANK).status()).isEqualTo(StageStatus.UNAVAILABLE);
     assertThat(byStage.get(RetrievalStageName.RERANK).durationMs()).isEqualTo(1200L);
     assertThat(byStage.get(RetrievalStageName.RELEVANCE_CUTOFF).durationMs()).isEqualTo(7L);
