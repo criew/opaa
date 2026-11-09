@@ -115,6 +115,10 @@ export default function AppShell() {
             flexDirection: 'column',
             minHeight: 0,
             overflow: 'hidden',
+            // Containing block for absolutely positioned descendants of the page scroll containers
+            // (visually hidden live regions): without it they resolve against the document at
+            // their static position and stretch it below the shell - a second, empty scrollbar.
+            position: 'relative',
             // Focused only programmatically (skip link, route change) - no ring on the region itself.
             '&:focus': { outline: 'none' },
           }}
