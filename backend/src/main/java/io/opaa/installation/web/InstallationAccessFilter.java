@@ -4,6 +4,7 @@ import io.opaa.api.dto.ErrorResponse;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -94,7 +95,7 @@ public class InstallationAccessFilter extends OncePerRequestFilter {
 
   private void write(HttpServletResponse response, HttpStatus status, String message)
       throws IOException {
-    ErrorResponse body = new ErrorResponse(message, status.value(), clock.instant());
+    ErrorResponse body = RequestIds.errorResponse(message, status.value(), clock.instant());
     response.setStatus(status.value());
     // runs before the security chain, so its default headers never reach this answer
     response.setHeader("X-Content-Type-Options", "nosniff");

@@ -48,6 +48,7 @@ datenkatalog#space-membership-history
 datenkatalog#spaces
 datenkatalog#succession
 datenkatalog#tabellen-ohne-personenbezug
+datenkatalog#traces
 datenkatalog#transcription-vocabularies
 protokollereignisse
 protokollereignisse#account-deactivated
@@ -275,6 +276,7 @@ datenfluesse#source-sharepoint
 datenfluesse#source-smb
 datenfluesse#source-web
 datenfluesse#text-recognition-model
+datenfluesse#trace-export
 datenfluesse#transcription-model
 datenfluesse#uebersicht
 voreinstellungen
@@ -286,6 +288,7 @@ voreinstellungen#bereich-chats
 voreinstellungen#bereich-configuration
 voreinstellungen#bereich-connections
 voreinstellungen#bereich-external-access
+voreinstellungen#bereich-outbound
 voreinstellungen#bereich-rights
 voreinstellungen#bereich-spaces
 voreinstellungen#chat-auto-cleanup-settings-archive-after-days
@@ -327,6 +330,9 @@ voreinstellungen#local-auth-settings-lockout-max-attempts
 voreinstellungen#local-auth-settings-reset-token-ttl-minutes
 voreinstellungen#locked-account-chat-cleanup-settings-delete-after-days
 voreinstellungen#locked-account-chat-cleanup-settings-enabled
+voreinstellungen#management-opentelemetry-tracing-export-otlp-endpoint
+voreinstellungen#management-tracing-export-enabled
+voreinstellungen#management-tracing-sampling-probability
 voreinstellungen#opaa-audit-incident-scope-max-days
 voreinstellungen#opaa-auth-local-access-token-ttl
 voreinstellungen#opaa-auth-local-admin-refresh-token-ttl

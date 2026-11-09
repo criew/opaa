@@ -19,6 +19,7 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.observability.RequestIds;
 import io.opaa.ratelimit.RateLimitAuthentication;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -166,7 +167,7 @@ public class GlobalExceptionHandler implements FailureDescriber {
 
   /** The envelope every branch answers with: the message, the numeric status, and the moment. */
   private ErrorResponse error(HttpStatusCode status, String message) {
-    return new ErrorResponse(message, status.value(), Instant.now(clock));
+    return RequestIds.errorResponse(message, status.value(), Instant.now(clock));
   }
 
   /**

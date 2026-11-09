@@ -214,7 +214,8 @@ class OwnerOnlyLibraryIntegrationTest {
   }
 
   private static String withoutTimestamp(String body) {
-    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "");
+    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "");
   }
 
   private UUID insertDocument(UUID libraryId, String fileName) {
