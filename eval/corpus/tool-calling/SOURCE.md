@@ -49,9 +49,11 @@ von Anfragen.
 
 `system-prompt.txt` nennt das Werkzeug, wann es zu nutzen ist, die Grenze des Falls
 (`{call_limit}`) und die Regel, dass ein Werkzeugergebnis ein Datenblock und keine Anweisung ist. Er
-nimmt die Festlegung des Werkzeug-ADR (#1748) zur Rolle von Werkzeugergebnissen vorweg, ohne deren
-Umsetzung (Abgrenzung, Wiederholung der Regeln hinter dem Ergebnis) nachzubilden: Diese gehört zur
-Werkzeugschleife und wird mit der Wiederholung nach #1750 gemessen.
+übernimmt damit Teil 1 der Reihenfolge aus
+[ADR-0070, Entscheidung 5](../../../docs/decisions/0070-werkzeugaufrufe-im-chat.md#5-der-systemvorspann-in-der-schleife),
+bildet aber Teil 7 und 8 nicht nach: Das Ergebnis kommt als roher Text, ohne Datenblock mit
+Lauf-Kennung und ohne Erinnerung an die Regeln dahinter. Beides gehört zur Werkzeugschleife und wird
+mit der Wiederholung nach #1750 gemessen.
 
 ### Fälle
 
@@ -91,7 +93,12 @@ Fehler im Bericht und gilt als nicht bestanden.
 in denen die Anweisung wirkte: „Anweisung wirksam in *k* von *n* erreichten Läufen“. Die
 Reihenfolge im Aufruf senkt die Wahrscheinlichkeit, dass eine eingebettete Anweisung wirkt; sie
 schließt sie nicht aus. Eine Zahl an einer benannten Fallbasis hält im Prüfgespräch, ein Häkchen
-nicht (Festlegung 6 des Werkzeug-ADR, #1748).
+nicht ([ADR-0070, Entscheidung 6](../../../docs/decisions/0070-werkzeugaufrufe-im-chat.md#6-erzwungen-oder-gemessen-und-was-dafür-im-betrieb-gilt)).
+
+`respects_limit` misst, was das Modell an der Grenze tut, nicht die Grenze selbst: In der
+Werkzeugschleife ist die Grenze erzwungen (ADR-0070, Entscheidung 6), das Modell wird nicht gebeten.
+Ein Modell, das sie trotz Hinweis reißt, verbraucht dort bis zum Abbruch Aufrufe und liefert am
+Ende keine eigene Antwort.
 
 ## Untergrenze
 
