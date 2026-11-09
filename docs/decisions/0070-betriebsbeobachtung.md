@@ -100,6 +100,19 @@ Zuständigkeit und eine `runbook_url` auf einen Anker im Handbuch. Ein Alarm der
 steht auf `opaa.*`-Metriken oder auf Metriken der Plattform, nie auf `gen_ai.*`: Diese Namen ändern
 sich mit den Konventionen, und ein Alarm auf einem verschwundenen Namen feuert still nie mehr.
 
+### 8. Jedes Feature plant seine Betriebsbeobachtung im Epic
+
+Ein Epic legt im Abschnitt „Betriebsbeobachtung“ fest, welche Metriken das Feature braucht (Rate,
+Fehler und Dauer seiner Anfragen, Auslastung seiner Ressourcen, bei Hintergrundjobs der Zeitpunkt
+des letzten Erfolgs), in welchem Dashboard-Bereich sie erscheinen und welche Alarme es mitbringt,
+oder es begründet, warum keine nötig sind. Die Dashboard-Bereiche sind Betrieb, Wissensbestand,
+Modelle und Kosten sowie Sicherheit und Nachweis; auf die Startseite kommt nur, was den Betrieb
+unmittelbar betrifft. Die Sub-Issues tragen das als Abnahmekriterium, der Code Review prüft neue
+Metriken gegen Entscheidung 2 und die Metriktabelle des Handbuchs, und eine wöchentliche, nur
+lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboards und Alarmen. Eine
+Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
+gebraucht worden wäre.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
