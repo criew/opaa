@@ -1,4 +1,6 @@
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
+import { LAB_SPOKEN_TEXT } from './mockSpeech'
 import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 
 /** The text every mocked recording is recognised as. */
@@ -13,13 +15,19 @@ export const transcriptionHandlers = [
     if (mockAuthConfig.features?.speechInput === false) {
       return new HttpResponse(null, { status: 404 })
     }
-    return HttpResponse.json({ available: true, realtimeAvailable: false })
+    const variant = currentUiLabVariant()
+    return HttpResponse.json({
+      available: true,
+      realtimeAvailable: variant?.endsWith('-live') ?? false,
+    })
   }),
-  http.post('/api/v1/transcriptions', () => {
+  http.post('/api/v1/transcriptions', async () => {
     if (mockAuthConfig.features?.speechInput === false) {
       return new HttpResponse(null, { status: 404 })
     }
-    return HttpResponse.json({ text: MOCK_TRANSCRIPT })
+    if (!import.meta.env.VITE_ENABLE_MOCKS) return HttpResponse.json({ text: MOCK_TRANSCRIPT })
+    await delay(1400)
+    return HttpResponse.json({ text: LAB_SPOKEN_TEXT })
   }),
   http.get('/api/v1/me/transcription-vocabulary', () => {
     if (mockAuthConfig.features?.speechInput === false) {

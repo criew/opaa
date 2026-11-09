@@ -32,6 +32,16 @@ import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
 import { withDictatedText } from './dictationText'
+import {
+  LabDictationStatus,
+  LabFieldRecording,
+  LabIconButton,
+  LabMicButton,
+  LabRecordingCard,
+  LabRecordingMicButton,
+  labSpeechVariant,
+  useLabSpeech,
+} from './speechLab/speechLab'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
 import { CHAT_ACTION_SOURCES } from './chatActionSources'
@@ -273,8 +283,8 @@ export default function ChatInput({
     trackMention(nextValue, cursor, scopeLocked)
   }
 
-  const handleSend = () => {
-    const trimmed = value.trim()
+  const handleSend = (override?: string) => {
+    const trimmed = (override ?? value).trim()
     if (
       sendLocked ||
       !trimmed ||
@@ -315,6 +325,8 @@ export default function ChatInput({
   // Dictation only ever fills the input; sending stays the person's own action.
   const [dictationError, setDictationError] = useState<string | null>(null)
   const [interimDictation, setInterimDictation] = useState('')
+  const lab = labSpeechVariant()
+  const speech = useLabSpeech(lab?.live ?? false)
   const appendDictatedText = useCallback((text: string) => {
     setValue((draft) => withDictatedText(draft, text))
     requestAnimationFrame(() => {
@@ -332,6 +344,11 @@ export default function ChatInput({
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (lab && speech.active && e.key === 'Escape') {
+      e.preventDefault()
+      speech.cancel()
+      return
+    }
     // While the '/' selection is open - loading, empty or failed alike - Enter never sends: the
     // '/' text is a command in the making, not a question. Escape turns it into plain text.
     if (actions.isOpen) {
@@ -448,6 +465,16 @@ export default function ChatInput({
         disabled={disabled}
       />
 
+      {lab?.kind === 'b' && (
+        <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto' }}>
+          <LabRecordingCard
+            speech={speech}
+            live={lab.live}
+            onTakeOver={appendDictatedText}
+            onSend={(text) => handleSend(withDictatedText(value, text))}
+          />
+        </Box>
+      )}
       <Box
         ref={setInputBoxEl}
         sx={(theme) => ({
@@ -475,54 +502,63 @@ export default function ChatInput({
           }),
         })}
       >
-        <TextField
-          ref={setFieldEl}
-          fullWidth
-          multiline
-          maxRows={6}
-          placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={disabled}
-          inputRef={inputRef}
-          variant="standard"
-          slotProps={{
-            htmlInput: {
-              role: 'combobox',
-              'aria-expanded': comboboxExpanded,
-              'aria-haspopup': 'listbox',
-              'aria-controls': comboboxControls,
-              'aria-autocomplete': 'list',
-              'aria-activedescendant': activeDescendant,
-              'aria-invalid': questionTooLong,
-              'aria-label': INPUT_LABEL,
-              [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
-              'aria-describedby':
-                [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
-                  .filter((id) => id !== null)
-                  .join(' ') || undefined,
-            },
-          }}
-          sx={{
-            '& .MuiInputBase-root': {
-              borderRadius: 0,
-              background: 'none',
-              px: 1.5,
-              py: 1,
-              alignItems: 'flex-start',
-              '&::before, &::after': { display: 'none' },
-            },
-            '& textarea': {
-              overflowY: 'auto !important',
-              resize: 'none',
-            },
-            // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
-            '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
-          }}
-        />
-        {uploadsEnabled && (
+        {lab?.kind === 'a' && speech.active ? (
+          <LabFieldRecording speech={speech} draft={value} />
+        ) : (
+          <TextField
+            ref={setFieldEl}
+            fullWidth
+            multiline
+            maxRows={6}
+            placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
+            value={
+              lab?.kind === 'c' && speech.interim ? withDictatedText(value, speech.interim) : value
+            }
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            inputRef={inputRef}
+            variant="standard"
+            slotProps={{
+              htmlInput: {
+                readOnly: lab?.kind === 'c' && speech.active,
+                role: 'combobox',
+                'aria-expanded': comboboxExpanded,
+                'aria-haspopup': 'listbox',
+                'aria-controls': comboboxControls,
+                'aria-autocomplete': 'list',
+                'aria-activedescendant': activeDescendant,
+                'aria-invalid': questionTooLong,
+                'aria-label': INPUT_LABEL,
+                [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
+                'aria-describedby':
+                  [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
+                    .filter((id) => id !== null)
+                    .join(' ') || undefined,
+              },
+            }}
+            sx={{
+              '& .MuiInputBase-root': {
+                borderRadius: 0,
+                background: 'none',
+                px: 1.5,
+                py: 1,
+                alignItems: 'flex-start',
+                '&::before, &::after': { display: 'none' },
+              },
+              '& textarea': {
+                overflowY: 'auto !important',
+                resize: 'none',
+              },
+              // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
+              '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
+              ...(lab?.kind === 'c' &&
+                speech.active && { '& textarea': { caretColor: 'transparent' } }),
+            }}
+          />
+        )}
+        {uploadsEnabled && !(lab && speech.active && lab.kind !== 'b') && (
           <>
             <input
               ref={fileInputRef}
@@ -542,12 +578,33 @@ export default function ChatInput({
             </IconButton>
           </>
         )}
-        <DictationControl
-          onText={appendDictatedText}
-          onError={setDictationError}
-          onInterimText={setInterimDictation}
-          disabled={disabled}
-        />
+        {!lab && (
+          <DictationControl
+            onText={appendDictatedText}
+            onError={setDictationError}
+            onInterimText={setInterimDictation}
+            disabled={disabled}
+          />
+        )}
+        {lab && !speech.active && <LabMicButton onClick={speech.start} disabled={disabled} />}
+        {lab?.kind === 'b' && speech.active && <LabMicButton onClick={() => {}} disabled />}
+        {lab?.kind === 'a' && speech.active && speech.status !== 'processing' && (
+          <>
+            <LabIconButton label="Aufnahme verwerfen" icon="close" onClick={speech.cancel} />
+            <LabIconButton
+              label="Fertig, Text ins Eingabefeld"
+              icon="check"
+              tone="primary"
+              onClick={() => void speech.stop().then(appendDictatedText)}
+            />
+          </>
+        )}
+        {lab?.kind === 'c' && speech.active && speech.status !== 'processing' && (
+          <>
+            <LabIconButton label="Diktiertes verwerfen" icon="close" onClick={speech.cancel} />
+            <LabRecordingMicButton onClick={() => void speech.stop().then(appendDictatedText)} />
+          </>
+        )}
         {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
         {answerPending && onCancelAnswer && (
           <IconButton
@@ -568,10 +625,16 @@ export default function ChatInput({
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
-          onClick={handleSend}
+          onClick={() => {
+            if (lab && speech.active && lab.kind !== 'b') {
+              void speech.stop().then((text) => handleSend(withDictatedText(value, text)))
+              return
+            }
+            handleSend()
+          }}
           disabled={
             sendLocked ||
-            !value.trim() ||
+            (!value.trim() && !(lab && lab.kind !== 'b' && speech.active)) ||
             questionTooLong ||
             actions.isInserting ||
             attachmentsPending
@@ -715,6 +778,7 @@ export default function ChatInput({
             {scopeNotice}
           </Typography>
         )}
+        {lab?.kind === 'c' && <LabDictationStatus speech={speech} />}
         <AiNotice variant="line" />
         {/* The live text is not yet the input: dimmed, and announced only once it is final. */}
         {interimDictation && (

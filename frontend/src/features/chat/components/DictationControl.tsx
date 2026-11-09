@@ -13,6 +13,7 @@ import type { DictationTransport } from '../hooks/useDictation'
 import { useTranscriptionAvailability } from '../hooks/useTranscriptionAvailability'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
 import { startLiveTranscription } from '../utils/liveTranscription'
+import { mockStartLive, mockStartRecording } from '../mocks/mockSpeech'
 import type { StartLiveTranscription } from '../utils/liveTranscription'
 
 interface DictationControlProps {
@@ -52,13 +53,14 @@ function DictationButtons({
   disabled = false,
   transport,
   startRecording,
-  startLive = startLiveTranscription,
+  startLive = import.meta.env.VITE_ENABLE_MOCKS ? mockStartLive : startLiveTranscription,
   live,
 }: DictationControlProps & { live: boolean }) {
   const dictation = useDictation({
     onFinalText: onText,
     transport,
-    startRecording,
+    startRecording:
+      startRecording ?? (import.meta.env.VITE_ENABLE_MOCKS ? mockStartRecording : undefined),
     startLive: live ? startLive : null,
   })
   const { status, error, elapsedSeconds, interimText } = dictation
