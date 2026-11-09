@@ -153,6 +153,9 @@ const backendPort =
         : isOcr
           ? '18088'
           : '18081')
+// The management port (probes, metrics) sits 100 above the backend port of the same target.
+const backendManagementPort =
+  process.env.OPAA_BACKEND_MANAGEMENT_PORT ?? String(Number(backendPort) + 100)
 const frontendPort =
   process.env.OPAA_FRONTEND_PORT ??
   (isDemo
@@ -290,6 +293,7 @@ const composeEnv = {
   // A copy with this run's AES keys; every stack of the run (one per installation variant) uses it.
   OPAA_ENV_FILE: envFileWithRunKeys(repoRoot, envFile),
   OPAA_BACKEND_PORT: backendPort,
+  OPAA_BACKEND_MANAGEMENT_PORT: backendManagementPort,
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
