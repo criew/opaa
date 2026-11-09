@@ -19,7 +19,8 @@ defaults:
     deletion: >-
       Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
       Monatspartitionen); einzelne Einträge sind nicht löschbar. Mit dem Konto entfällt die
-      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug. Ausnahme: Nennt eine Freigabe der
+      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug; nach „Personenbezug entfernen“
+      zeigt sie auf die namenlose Kontozeile. Ausnahme: Nennt eine Freigabe der
       anlassbezogenen Klärung die Person, bleibt dort ihr Protokollpseudonym bis zur Löschfrist der
       Freigabe; bis dahin lassen sich ihre Protokolleinträge über die Freigabe (mit Begründung und
       Zeitraum) wieder ihr zuordnen
@@ -147,12 +148,15 @@ data:
             erzwingt, hätte den ausgeschlossenen Personeneinstieg
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
-      rule: Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet
+      rule: >-
+        Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet; nach
+        „Personenbezug entfernen“ bleibt die Zuordnung zur namenlosen Kontozeile bestehen
       settings: []
     visibility: [AUDITOR nur innerhalb der anlassbezogenen Klärung]
     accessPaths: [DATABASE]
     deletion: >-
-      Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE); nennt eine
+      Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE), nicht beim
+      Entfernen des Personenbezugs, das die Kontozeile namenlos stehen lässt; nennt eine
       Freigabe der anlassbezogenen Klärung die Person, übernimmt sie vorher deren Pseudonym
     evaluations: keine eigene Auswertung
   - id: audit-incident-scopes

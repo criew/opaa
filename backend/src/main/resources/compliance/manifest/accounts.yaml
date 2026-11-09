@@ -37,8 +37,9 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Ein deaktiviertes Konto, lokal oder eines Identitätsanbieters, verliert durch „Personenbezug
-      entfernen“ der Systemverwaltung Name, Adresse und Kennung beim Anbieter; mit ihm gehen Chats,
-      persönlicher Space, private Bibliotheken, Anmeldedaten und Tokens. Die Zeile bleibt namenlos
+      entfernen“ der Systemverwaltung Name, Adresse, Kennung beim Anbieter und letzte Anmeldung;
+      mit ihm gehen Chats, persönlicher Space, private Bibliotheken, Anmeldedaten und Tokens. Die
+      Zeile bleibt namenlos
       stehen, damit Rechtehistorie und Protokoll gültig bleiben. Ein offener Antrag oder eine noch
       nutzbare Freigabe der anlassbezogenen Klärung und eine laufende oder beantragte Anhaltung der Chat-Löschung
       halten das auf. Ganz gelöscht werden nur lokale Konten, auf die nichts verweist (u. a. kein
