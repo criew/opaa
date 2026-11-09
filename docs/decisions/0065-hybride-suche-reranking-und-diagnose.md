@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0011, ADR-0015 und ADR-0036 Entscheidung 7
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0011, ADR-0015 und ADR-0036 Entscheidung 7
 
 ## Kontext
 

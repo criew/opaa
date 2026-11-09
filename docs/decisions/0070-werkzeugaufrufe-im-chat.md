@@ -9,112 +9,121 @@ Akzeptiert · zuletzt geändert 2026-11-09
 Der Chat ist einschüssig: eine vorgeschaltete Suche, ein Modellaufruf, eine belegte Antwort. Das ist
 für eine Auskunft richtig und bleibt so. Eine Prüfung mit mehreren Anforderungen oder eine Recherche
 lässt sich so nicht leisten. Dafür muss das Modell Werkzeuge aufrufen können, mehrfach, mit Grenzen,
-sichtbar und nachvollziehbar. Epic #1747 baut diese Werkzeugschleife ohne schreibende Aktion; erstes
-Werkzeug ist die eigene Suche. Ein Spike (`io.opaa.query.spike`, Schalter
-`opaa.spike.tool-loop.enabled`) hat die Schleife hinter dem Präfix `@test` erprobt.
+sichtbar und nachvollziehbar. Epic #1747 baut diese Werkzeugschleife ohne schreibende Aktion. Das
+erste Werkzeug ist die eigene Suche.
 
-Auslöser der Schleife ist ein **Agent**. Das hat der Maintainer am 09.11.2026 entschieden. Ein Agent
-ist ein Katalogeintrag mit Anweisung, zugeordneten Bibliotheken und Werkzeugen. Angelegt wird er mit
-dem Anlegerecht `CREATE_AGENT`, gewählt im Chat per `@`. Ein installationsweiter Schalter gibt
-Agenten frei, Vorgabe aus. Im ersten Schnitt gibt es die Werkzeuge `search_knowledge`,
-`read_document`, `list_sources`, `run_code` (Sandbox, #3583) und `ask_user`. Ohne Agent bleibt der
-Chat einschüssig. Wie das Agenten-Asset gebaut ist, regelt dieser ADR nicht (#3670).
+Die Schleife wird von einem **Agenten** ausgelöst. Ein Agent ist ein Katalogeintrag mit Anweisung,
+zugeordneten Bibliotheken und Werkzeugen. Angelegt wird er mit dem Anlegerecht `CREATE_AGENT`,
+gewählt im Chat per `@`. Ein installationsweiter Schalter gibt Agenten frei, Vorgabe aus. Im ersten
+Schnitt gibt es die Werkzeuge `search_knowledge`, `read_document`, `list_sources`, `run_code`
+(Sandbox, #3583) und `ask_user`. Ohne Agent bleibt der Chat einschüssig. Wie das Agenten-Asset
+gebaut ist, regelt dieser ADR nicht (#3670).
 
 Sechs Festlegungen laufen auseinander, wenn man sie einzeln trifft. Sie stehen deshalb vor der
 ersten Zeile Code in einem ADR. Eine davon berührt eine Zusage an die Personalvertretung: die
 Trennung der Bestände. Sie darf nicht als Nebenprodukt der Umsetzung entstehen
-([ADR-0068](0068-mitbestimmungsfaehigkeit.md)).
+([ADR-0068](0068-mitbestimmungsfaehigkeit.md)). OPAA läuft mit einer oder mehreren Instanzen
+([ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md)).
 
 ## Entscheidung
 
-### 1. Bordmittel statt Agenten-Framework
+### 1. Bordmittel statt Agenten-Framework, ein Lauf je Anfrage
 
 Die Schleife läuft mit den Mitteln von Spring AI (`ToolCallback`, `ToolContext`,
-`ToolCallingManager`, `ToolCallingAdvisor`). Ein zusätzliches Agenten-Framework wird nicht
-eingeführt, solange keine Mehrschritt-Planung mit eigenem Zustand über eine Anfrage hinaus gefordert
-ist. Der Planschritt eines Agenten ist ein Modellaufruf in derselben Schleife, kein Planer.
-Begründung: Ein Rahmenwerk ohne Bedarfsnachweis ist eine Bindung ohne Gegenwert. Spring AI ist
-ohnehin im Stapel ([ADR-0002](0002-mvp-technology-stack.md)), und der Spike zeigt, dass seine
-Mittel die Schleife tragen.
+`ToolCallingManager`, `ToolCallingAdvisor`). Ein zusätzliches Agenten-Framework kommt erst, wenn
+Mehrschritt-Planung mit Zustand über eine Anfrage hinaus gefordert ist.
+
+Ein Lauf lebt genau eine Anfrage lang. `ask_user` und die Bestätigung des Planschritts **beenden**
+den Lauf: Die Rückfrage oder der Plan wird Teil der Antwort in (a) (Entscheidung 4). Die Antwort der
+Person startet einen neuen Lauf mit eigener Lauf-Kennung und eigenen Grenzen. Kein Lauf wartet
+geparkt in einer Instanz.
+
+Begründung: Ein Rahmenwerk ohne Bedarfsnachweis ist eine Bindung ohne Gegenwert, und Spring AI ist
+ohnehin im Stapel ([ADR-0002](0002-mvp-technology-stack.md)). Ein wartender Lauf im Speicher ginge
+bei jedem Pod-Tausch verloren (ADR-0053, Entscheidung 10). Ein Lauf ohne Wartezustand braucht weder
+Laufbegriff noch Wiederaufnahme.
 
 ### 2. Ein Werkzeug ist eine Bean, die selbst autorisiert
 
 Jedes Werkzeug ist eine Spring-Bean. Eine Registry sammelt sie nach dem Muster von
 `SourceConnectorRegistry` ([ADR-0038](0038-steckbare-konnektoren.md)). Der Start scheitert, wenn zwei
-Werkzeuge denselben Namen tragen oder eines keine Rechteklasse hat. Jedes Werkzeug trägt genau eine
-Rechteklasse:
+Werkzeuge denselben Namen tragen oder eines keine Rechteklasse hat.
 
-| Klasse | Bedeutung | Werkzeuge im ersten Schnitt |
+| Klasse | Bedeutung | Erster Schnitt |
 |---|---|---|
-| lesend | liest im eigenen Bestand mit den Rechten der aufrufenden Person oder fragt sie im Gespräch zurück; keine Wirkung außerhalb des Laufs | `search_knowledge`, `read_document`, `list_sources`, `ask_user` |
-| isoliert | wirkt nur in einer Ausführungsumgebung ohne Zugriff auf den Bestand und ohne Netz | `run_code` |
-| schreibend | wirkt außerhalb der Schleife: schreibt, sendet oder greift über das Ausgangstor nach außen | keines |
+| lesend | liest im eigenen Bestand mit den Rechten der aufrufenden Person oder fragt sie im Gespräch zurück | `search_knowledge`, `read_document`, `list_sources`, `ask_user` |
+| isoliert | läuft in einer Ausführungsumgebung ohne Zugriff auf den Bestand und ohne Netz; die Eingaben gibt die Anwendung hinein, erzeugte Dateien werden nur Anhang der Antwort und damit Teil von (a) | `run_code` |
+| schreibend | wirkt außerhalb des Laufs: schreibt, sendet oder greift über das Ausgangstor nach außen | keines |
 
-Jedes Werkzeug prüft bei jedem Aufruf selbst die Rechte und verlässt sich nicht darauf, dass die
-Schleife es tut. Den Bestand erreicht es nur über dieselben Domain-Dienste wie `POST /api/v1/query`;
-einen zweiten Zugriffsweg gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein
-späteres schreibendes Werkzeug eine neue Zeile. Kommt sie erst später, muss jedes bestehende
-Werkzeug neu bewertet werden.
+Jedes Werkzeug prüft bei jedem Aufruf selbst die Rechte und verlässt sich nicht auf die Schleife.
+Den Bestand erreicht es nur über dieselben Domain-Dienste wie `POST /api/v1/query`; einen zweiten
+Zugriffsweg gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein späteres
+schreibendes Werkzeug eine neue Zeile. Kommt sie erst später, muss jedes bestehende Werkzeug neu
+bewertet werden.
 
 ### 3. Rechte ausschließlich aus dem Aufrufkontext
 
 Identität, Organisation und Suchbereich erreichen das Werkzeug über den `ToolContext`, an den
 Modellargumenten vorbei. Der Suchbereich ist der Schnitt aus den lesbaren Bibliotheken der
 aufrufenden Person, dem Bereich des Chats und den Bibliotheken des Agenten. Das Modell bestimmt die
-Frage und darf den Bereich fachlich verengen, etwa über Bibliotheks- oder Metadatenfilter. Erweitern
-darf es ihn nie. Ein Bibliotheksbezeichner außerhalb des Bereichs ist kein Eingabefehler: Er wird
-ignoriert und im Schritt als ignoriert vermerkt, ohne seinen Wert. Dasselbe gilt für Text in einem
-abgerufenen Dokument. Begründung: So ist ein Einflüsterungsversuch bei der Suche wirkungslos und
-hängt nicht von der Formulierung des Systemvorspanns ab
+Frage und darf den Bereich verengen, etwa über Bibliotheks- oder Metadatenfilter. Erweitern darf es
+ihn nie. Ein Bibliotheksbezeichner außerhalb des Bereichs ist kein Eingabefehler: Er wird ignoriert
+und im Schritt als ignoriert vermerkt, ohne seinen Wert. Ein Bezeichner, den ein abgerufenes
+Dokument dem Modell eingibt, wird genauso behandelt; Dokumenttext erreicht den Suchbereich auf
+keinem anderen Weg. Begründung: So ist ein Einflüsterungsversuch bei der Suche wirkungslos und hängt
+nicht an der Formulierung des Systemvorspanns
 ([ADR-0065](0065-hybride-suche-reranking-und-diagnose.md), Entscheidung 4).
 
 ### 4. Drei Bestände, nicht zwei
 
-Wer ein Werkzeug benutzt hat, ist etwas anderes als das, was jemand gefragt hat. Daraus folgen drei
-getrennte Bestände:
-
 | | (a) Antwort und Schritte im Chat | (b) Technisches Schrittprotokoll | (c) Revisionsprotokoll |
 |---|---|---|---|
-| **Inhalt** | Endantwort mit allen zitierten Fundstellen aus allen Schritten; die Schritte, für die Person verständlich formuliert, mit Teilfrage und Trefferzahl; Lauf-Kennung | Lauf-Kennung, Kennung des Schritts, Werkzeug, Ergebnisstatus (auch „Argument ignoriert“), Trefferzahl, Dauer, Abbruchgrund | Bei lesenden und isolierten Aufrufen nichts. Ab dem ersten schreibenden Werkzeug: aufrufende Person, Werkzeug, Zielsystem, Zeitpunkt, Entscheidung (bestätigt / abgelehnt / verfallen), Agentenfassung, Lauf-Kennung |
-| **Frist** | reguläre, konfigurierbare Aufbewahrung des Chats; nach dem Lauf nachschlagbar | eigene Frist, Vorgabe 7 Tage, Höchstwert 30 | allgemeine Protokollfrist ([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md), Entscheidung 2) |
-| **Löschung** | mit dem Chat: durch die Person, die Bereinigung des Space oder die Sperre des Kontos ([ADR-0066](0066-chatliste-ablage-suche-und-bereinigung.md)) | automatischer Löschlauf, der abgelaufene Partitionen entfernt; nicht abschaltbar | Entfernen abgelaufener Monatspartitionen ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)) |
-| **Wer hineinsieht** | die Person selbst im Gesprächsverlauf | die Systemverwaltung zur Störungssuche, nur mit genau einer Lauf-Kennung; kein Lesepfad für `AUDITOR` | `AUDITOR` über die bestehenden Wege der Revision |
+| **Inhalt** | Endantwort mit allen zitierten Fundstellen aller Schritte; die Schritte verständlich formuliert, mit Teilfrage und Trefferzahl; Rückfrage oder Plan; erzeugte Dateien; Lauf-Kennung | Lauf-Kennung, Kennung des Schritts, Zeitpunkt nach Datenbankuhr (für Frist und Partition), Organisationskennung (Mandantengrenze des Lesewegs), Werkzeug, Ergebnisstatus (auch „Argument ignoriert“), Trefferzahl, Dauer, Abbruchgrund | jeder Zugriff auf (b); bei lesenden und isolierten Werkzeugaufrufen sonst nichts; ab dem ersten schreibenden Werkzeug dessen Aufrufe (Feldliste unter Offen) |
+| **Frist** | Aufbewahrung des Chats | eigene Frist, Vorgabe 7 Tage, Höchstwert 30 | allgemeine Protokollfrist ([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md), Entscheidung 2) |
+| **Löschung** | mit dem Chat: durch die Person, die Bereinigung des Space oder die Sperre des Kontos ([ADR-0066](0066-chatliste-ablage-suche-und-bereinigung.md), Entscheidungen 7 und 8) | Löschlauf, der abgelaufene Tagespartitionen entfernt; nicht abschaltbar | Entfernen abgelaufener Monatspartitionen ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)) |
+| **Wer hineinsieht** | die Person selbst im Gesprächsverlauf | die Systemverwaltung der eigenen Organisation zur Störungssuche, nur mit genau einer Lauf-Kennung und einem Anlass; kein Lesepfad für `AUDITOR` | `AUDITOR` über die bestehenden Wege der Revision |
 
-**Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche. Es nutzt nur dessen
-Ablage-Infrastruktur mit (`diagnostic_context_log`): eine eigene Tabelle derselben Bauart im Besitz
-von `opaa_audit_owner`, die das Anwendungskonto nur anfügen und lesen kann. Entfernt wird nur über
-eine Löschfunktion für abgelaufene Partitionen. Die Partitionen sind nach Tagen geschnitten, weil
-eine Frist in Tagen mit Monatspartitionen nicht einzuhalten ist. Was das Diagnoseprotokoll sonst
-trägt, gilt für (b) ausdrücklich nicht: die Frist von zwölf Monaten, die Einzelsatzansicht und der
-Lesepfad der Rolle `AUDITOR` (`/api/v1/audit/diagnostic-context-events`). (b) hat keinen Konto-Bezug
-und keinen Suchtext. Die formulierte Teilfrage wird nicht persistiert, weder im Klartext noch
-abgeleitet. Für die Störungssuche genügt die Kennung des Schritts, weil der Chat die Teilfrage in (a)
-trägt. Schrittinhalte stehen auch nicht im Anwendungslog. Braucht die Umsetzung ein weiteres Feld,
-wird es feldweise begründet und erscheint im Auszug für die Personalvertretung. Es gibt keine
+**Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
+(`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von
+`opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird nur über eine Funktion für
+abgelaufene Partitionen. Die Partitionen sind nach Tagen geschnitten, weil eine Frist in Tagen mit
+Monatspartitionen nicht einzuhalten ist. Was das Diagnoseprotokoll sonst trägt, gilt für (b)
+ausdrücklich nicht: zwölf Monate Frist, Einzelsatzansicht und der Lesepfad der Rolle `AUDITOR`.
+(b) hat keinen Konto-Bezug und keinen Suchtext. Die formulierte Teilfrage wird nicht persistiert,
+weder im Klartext noch abgeleitet; für die Störungssuche genügt die Kennung des Schritts, solange
+der Chat die Teilfrage in (a) trägt. Schrittinhalte stehen nicht im Anwendungslog. Ein weiteres Feld
+wird feldweise begründet und erscheint im Auszug für die Personalvertretung. Es gibt keine
 Oberfläche und keine Schnittstelle, die (b) nach Person filtert, gruppiert oder sortiert. Das ist
 nicht abschaltbar, sondern nicht gebaut, und eine automatisierte Prüfung belegt es.
 
-**Zu (c).** Ein lesender Aufruf ist Nutzung und gehört deshalb nicht ins Revisionsprotokoll (ADR-0059,
-Entscheidung 1). In der Menge ergäbe er ein Tätigkeitsprofil. Die Frage „worauf durfte Person X
-zugreifen“ beantwortet die Rechtehistorie. Die Ereignisart für schreibende Werkzeugaufrufe kommt in
-die geschlossene Liste `AuditEventType`, bevor das erste schreibende Werkzeug aufgerufen wird. Die
-Verbindung von (c) zu (b) über die Lauf-Kennung reißt nach der Frist von (b) **absichtlich** ab. Ein
-Eintrag in (c) bleibt danach als Nachweis der Entscheidung, aber ohne technische Schritte.
+**Zugriff auf (b).** Jeder Lesezugriff schreibt `AUDIT_LOG_ACCESSED` mit eigenem `accessPath`, der
+Lauf-Kennung und dem Anlass als Pflichtangabe. Ein abgewiesener Zugriff wird als `DENIED`, ein
+gescheiterter als `FAILURE` erfasst, wie bei `DiagnosticContextLogQueryService`. Eine Lauf-Kennung
+einer fremden Organisation ist von einer unbekannten nicht zu unterscheiden.
 
-**Keine Zusage wird verletzt.** Fragen und Suchbegriffe stehen weder im Revisionsprotokoll noch im
-Anwendungslog (ADR-0068, Entscheidung 1). Kein Bestand hat einen personenbezogenen Auswertungspfad
-(ADR-0068, Entscheidung 2). (b) liegt deutlich kürzer als jede Protokollfrist (ADR-0068,
-Entscheidung 4). Die Liste der Ereignisarten bleibt geschlossen (ADR-0059, Entscheidung 1).
+**Zu (c).** Ein lesender Aufruf ist Nutzung und gehört nicht ins Revisionsprotokoll. In der Menge
+ergäbe er ein Tätigkeitsprofil; die Frage „worauf durfte Person X zugreifen“ beantwortet die
+Rechtehistorie. Die Ereignisart für schreibende Aufrufe kommt in die geschlossene Liste
+`AuditEventType`, bevor das erste schreibende Werkzeug aufgerufen wird. Die Verbindung von (c) zu
+(b) über die Lauf-Kennung reißt nach der Frist von (b) **absichtlich** ab.
 
-**Vorlage.** Diese Festlegung wird der Personalvertretung über den Auszug vorgelegt, der aus dem
-Fakten-Manifest entsteht ([ADR-0052](0052-compliance-manifest.md); ADR-0068, Entscheidung 5). Eine
-Datei im Repository genügt dafür nicht. Der Auszug führt (b) mit Feldliste, Zweck je Feld und Frist.
-Er nennt außerdem die vorhandenen Abfragewege und die ausdrücklich nicht vorhandenen.
+| Zusage | Stand |
+|---|---|
+| Fragen und Suchbegriffe stehen weder im Revisionsprotokoll noch im Anwendungslog (ADR-0068, Entscheidung 1) | gehalten: Teilfragen nur in (a), nie in (b), (c) oder im Log |
+| Nutzung steht nicht im Revisionsprotokoll, Zugriffe auf Protokolldaten schon (ADR-0059, Entscheidung 1) | gehalten: lesende Aufrufe nicht in (c), jeder Zugriff auf (b) schon |
+| Kein personenbezogener Auswertungspfad (ADR-0068, Entscheidung 2) | gehalten: (b) ohne Konto-Bezug, Zugriff nur über eine Lauf-Kennung |
+| Begrenzte Aufbewahrung (ADR-0068, Entscheidung 4) | gehalten: (b) höchstens 30 Tage |
+| Getrennte Zugriffswege von Revision und Verwaltung (ADR-0068, Entscheidung 5) | gehalten, mit neuer Lage: Die Verwaltung liest erstmals ein Protokoll, das die Revision nicht liest. (b) enthält nur technische Zustände ohne Konto-Bezug; die Revision sieht in (c) jeden dieser Zugriffe |
+| Geschlossene Liste der Ereignisarten (ADR-0059, Entscheidung 1) | gehalten: neue Art vor dem ersten schreibenden Aufruf |
 
-Begründung: Fasst man die drei Bestände in einem Satz zusammen, wird eine Vorlage an die
-Personalvertretung angreifbar. Was für einen Bestand zugesagt ist, gilt dann scheinbar für alle.
-Die Frage, auf welcher Grundlage eine Feststellung getroffen wurde, kommt nach Jahren. Beantwortet
-wird sie aus (a), nicht aus technischen Rohdaten.
+Diese Festlegung wird der Personalvertretung über den Auszug vorgelegt, der aus dem Fakten-Manifest
+entsteht ([ADR-0052](0052-compliance-manifest.md)), nicht über eine Datei im Repository. Der Auszug
+führt (b) mit Feldliste, Zweck je Feld, Frist sowie den vorhandenen und den ausdrücklich nicht
+vorhandenen Abfragewegen.
+
+Begründung: In einem Satz zusammengefasst, gälte eine Zusage für einen Bestand scheinbar für alle.
+Die Frage, auf welcher Grundlage eine Feststellung getroffen wurde, wird aus (a) beantwortet, solange
+der Chat besteht, nicht aus technischen Rohdaten.
 
 ### 5. Der Systemvorspann in der Schleife
 
@@ -122,40 +131,44 @@ Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
 
 1. **Feste Regeln** im Systemvorspann: Rolle, Beleg- und Zitierregeln, die Regel, dass gekennzeichnete
    Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe.
-2. **Anweisung des Space** ([ADR-0043](0043-anweisung-je-space.md), Entscheidung 6), wenn vorhanden.
-3. **Anweisung des Agenten** als gekennzeichneter Block. Sie wird angehängt und ersetzt nichts. Sie
-   ist kein Beleg und keine Quelle, und die Belegregeln stehen über ihr.
+2. **Anweisung des Agenten** als gekennzeichneter Block, angehängt, nie als Ersatz. Sie darf Ton,
+   Form und Vorgehen bestimmen, nicht die Antwortsprache. Sie ist kein Beleg und keine Quelle.
+3. **Anweisung des Space** ([ADR-0043](0043-anweisung-je-space.md), Entscheidung 6), wenn vorhanden.
+   Sie geht der Agenten-Anweisung vor und steht deshalb hinter ihr.
 4. **Gesprächsnotiz** ([ADR-0031](0031-gespraechsgedaechtnis.md)), wenn vorhanden.
-5. **Werkzeugbeschreibungen.** Die Anwendung erzeugt sie aus den registrierten Werkzeugen und gibt
-   sie als Werkzeugdefinitionen mit, nicht als Text im Systemvorspann. Ein Agent wählt Werkzeuge
-   aus, formuliert ihre Beschreibungen aber nicht.
+5. **Werkzeugbeschreibungen**, von der Anwendung aus den registrierten Werkzeugen erzeugt. Ein Agent
+   wählt Werkzeuge aus, formuliert ihre Beschreibungen aber nicht. Auf API-Ebene sind sie
+   Werkzeugdefinitionen, kein Text im Systemvorspann; das Template des Modellservers rendert sie
+   oft trotzdem in den Systemteil.
 6. **Gesprächsverlauf und Frage.**
 7. **Schritte:** die Werkzeugaufrufe des Modells und je ein Werkzeugergebnis als Datenblock mit einer
-   Kennung, die je Lauf neu entsteht. Für die Bereinigung gelten dieselben Regeln wie für die
-   Passagen im Chat (`DocumentBlock`, `ContentFence`). Ein Ergebnis steht nie in der Nachricht der
-   Person und nie im Systemvorspann.
-8. **Erinnerung an die verbindlichen Regeln** nach dem letzten Werkzeugergebnis und außerhalb seines
-   Blocks. Das ist dasselbe Muster wie die Sprachvorgabe hinter den Passagen
-   (`AnswerGenerationService.LANGUAGE_REMINDER`).
+   Kennung, die je Lauf neu entsteht, bereinigt wie die Passagen im Chat (`DocumentBlock`,
+   `ContentFence`). Ein Ergebnis steht nie in der Nachricht der Person und nie im Systemvorspann.
+8. **Erinnerung an die verbindlichen Regeln** am Ende jedes Werkzeugergebnisses, hinter dessen
+   Datenblock und außerhalb davon. Damit ist vor jedem Modellaufruf mit Fremdinhalt die Erinnerung
+   das Letzte, was das Modell liest. Mit einer Space-Anweisung gilt deren Sprachfassung
+   (`AnswerGenerationService.SPACE_LANGUAGE_REMINDER`), sonst `LANGUAGE_REMINDER`.
 
-Teile 1 bis 4 sind über alle Schritte eines Laufs zeichengleich. Ein Schritt hängt nur hinter Teil 7
-an. Darauf beruht die Zusage, dass der Systemvorspann nicht über den Chat änderbar ist, auch wenn
-fremd verfasster Text in die Schleife gelangt. Begründung: Ein Werkzeugergebnis an anderer Stelle
-spräche mit der Stimme der Person oder des Systems. Eine Agenten-Anweisung, die den Vorspann ersetzt,
-machte jeden Agenten zum Hebel gegen die Belegregeln.
+Die Teile 1 bis 4 sind über alle Schritte eines Laufs zeichengleich. Ein Schritt hängt nur ein
+weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an. Darauf beruht die Zusage, dass der
+Systemvorspann nicht über den Chat änderbar ist, auch wenn fremd verfasster Text in die Schleife
+gelangt. Begründung: Eine Erinnerung als Nachricht der Person spräche mit deren Stimme. Eine
+Systemnachricht mitten im Verlauf lehnen manche Chat-Templates über den OpenAI-kompatiblen Weg ab
+([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Das
+Werkzeugergebnis erzeugt die Anwendung ohnehin selbst.
 
-### 6. Erzwungen oder gemessen
+### 6. Erzwungen oder gemessen, und was dafür im Betrieb gilt
 
 | Eigenschaft | Art | Woran sie hängt |
 |---|---|---|
-| Suchbereich und Rechtefilter | erzwungen | Aufrufkontext (Entscheidung 3); kein Modellargument und kein Dokumenttext ändert ihn |
-| Grenzen eines Laufs (Aufrufe, Laufzeit, gesammelte Menge) und Platzlimit gleichzeitiger Läufe | erzwungen | Die Schleife zählt und bricht ab; das Modell wird nicht gebeten, sich zu mäßigen |
+| Suchbereich und Rechtefilter | erzwungen | Aufrufkontext (Entscheidung 3) |
+| Grenzen eines Laufs (Aufrufe, Laufzeit, gesammelte Menge) und Platzlimit | erzwungen | Die Schleife zählt und bricht ab, das Modell wird nicht gebeten |
 | Schalter für Agenten und je Werkzeug | erzwungen | wirkt beim nächsten Aufruf, unabhängig vom Modell |
-| Bestätigung vor einem Aufruf mit Wirkung, wenn Fremdinhalt im Kontext steht | erzwungen | Rechteklasse des Werkzeugs (Entscheidung 2), durchgesetzt an der Ausführung, nicht daran, dass das Modell fragt |
+| Bestätigung vor einem Aufruf mit Wirkung, wenn Fremdinhalt im Kontext steht | erzwungen | Rechteklasse (Entscheidung 2), durchgesetzt an der Ausführung |
 | Belegprüfung | erzwungen | läuft nach der Erzeugung gegen die Passagen aller Schritte |
-| Anweisungstreue gegenüber Werkzeugergebnissen | gemessen | Die Reihenfolge aus Entscheidung 5 senkt die Trefferwahrscheinlichkeit einer eingebetteten Anweisung, schließt sie aber nicht aus |
+| Anweisungstreue gegenüber Werkzeugergebnissen | gemessen | Entscheidung 5 senkt die Trefferwahrscheinlichkeit, schließt sie nicht aus |
 | Grenz- und Befugnistreue eines Agenten | gemessen | nur an aufgeschriebenen Fällen |
-| Belegtreue der Formulierung („nicht feststellbar“, wo nichts belegt ist) | gemessen | Modellverhalten; die Belegprüfung fängt das falsche Zitat, nicht die vorschnelle Aussage |
+| Belegtreue der Formulierung | gemessen | Die Belegprüfung fängt das falsche Zitat, nicht die vorschnelle Aussage |
 | Zuverlässigkeit des Werkzeugaufrufs | gemessen | Kombination aus Modell, Laufzeit und Konfiguration |
 
 Eine gemessene Eigenschaft wird mit einer **Zahl** berichtet, nie mit einem Häkchen: an dieser
@@ -163,63 +176,75 @@ Fallbasis, mit dieser Kombination, so oft bestanden. **Keine schreibende Wirkung
 gemessenen Eigenschaft.** Dass ein Modell eine eingebettete Anweisung nicht befolgt, darf nie der
 Grund sein, warum nichts Falsches geschrieben wurde.
 
-Am Modelleintrag ist „gemessen“ von „behauptet“ unterscheidbar. Die Werkzeugfähigkeit führt eine
-**Grundlage**: *gemessen*, mit Datum und Verweis auf den Messlauf, oder *manuell gesetzt*. Eine
-prüfende Stelle, Person oder Gruppe, führt sie nicht. Aussagekräftig ist, wie geprüft wurde, nicht
-wer; wer die Angabe geändert hat, gehört ins Protokoll der Verwaltungsaktion.
+Die Werkzeugfähigkeit am Modelleintrag führt eine **Grundlage**: *gemessen*, mit Datum und Verweis
+auf den Messlauf, oder *manuell gesetzt*. Eine prüfende Person oder Gruppe führt sie nicht. Wer die
+Angabe geändert hat, steht im Protokoll der Verwaltungsaktion.
 
-Für spätere schreibende Werkzeuge ist die **nutzergesteuerte Ausführung** als Bauform vorgesehen. Die
-Anwendung treibt die Schleife dann selbst: Sie nimmt die Aufrufwünsche des Modells entgegen und führt
-sie über `ToolCallingManager` aus, statt sie dem `ToolCallingAdvisor` zu überlassen. Nur so kann sie
-vor einem Aufruf anhalten. Dieser ADR legt das fest, gebaut wird es mit dem ersten schreibenden
-Werkzeug. Begründung: Wer eine gemessene Eigenschaft wie eine erzwungene führt, schwächt die
-erzwungenen und stärkt die gemessenen nicht. Im Prüfgespräch bricht die Aussage dann genau an der
-Frage „woran haben Sie das festgestellt“.
+Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
+
+- **Platzlimit:** eine Reservierung je laufendem Lauf in der Datenbank, mit Ablauf nach Datenbankuhr
+  in Höhe der Laufzeitgrenze. Die Prüfung gegen das Limit und die Reservierung geschehen in einer
+  Anweisung unter Zeilensperre. Ist das Limit erreicht, wird die Anfrage vor dem Lauf abgewiesen. Ist
+  die Datenbank nicht erreichbar, beginnt kein Lauf.
+- **Schalter:** stehen in der Datenbank; jede Instanz hält sie am Invalidierungsbus (ADR-0053,
+  Entscheidung 5).
+- **Nutzergesteuerte Ausführung** für spätere schreibende Werkzeuge: Die Anwendung nimmt die
+  Aufrufwünsche des Modells entgegen und führt sie über `ToolCallingManager` aus, statt sie dem
+  `ToolCallingAdvisor` zu überlassen. Nur so kann sie vor einem Aufruf anhalten. Die wartende
+  Entscheidung liegt in der Datenbank (ADR-0053, Entscheidung 10), nie in einer Instanz. Gebaut wird
+  das mit dem ersten schreibenden Werkzeug.
+
+Begründung: Wer eine gemessene Eigenschaft wie eine erzwungene führt, schwächt die erzwungenen und
+stärkt die gemessenen nicht. Das Platzlimit schützt den Modellendpunkt der ganzen Installation; die
+absolute Zahl ist die Zusage, und ein durch N geteilter Wert wiese bei ungleicher Verteilung ab,
+während andere Instanzen frei sind. Die Reservierung mit Ablauf gibt den Platz auch nach dem Absturz
+einer Instanz zurück, und ein Lauf ist selten genug, dass eine Zeile je Lauf nicht ins Gewicht fällt.
 
 ## Konsequenzen
 
 - **Einfacher:** Neue lesende Werkzeuge sind eine Bean mit Rechteklasse. Der gewöhnliche Chat bleibt
-  unverändert, ohne Werkzeugbeschreibungen und ohne zusätzlichen Modellaufruf. Die Personalvertretung
-  bekommt drei Bestände mit je eigener Antwort statt einer Mischformel.
+  unverändert. Die Personalvertretung bekommt drei Bestände mit je eigener Antwort.
 - **Schwieriger:** Das Schrittprotokoll braucht eine eigene Tabelle mit Tagespartitionen und einen
-  eigenen Löschlauf neben dem Diagnoseprotokoll. Jedes weitere Feld in (b) braucht eine Begründung
-  und eine Änderung des Auszugs. Ein Agent kann den Systemvorspann nicht ersetzen. Wer das will,
-  bekommt einen angehängten Block.
+  eigenen Löschlauf. Jedes weitere Feld in (b) braucht eine Begründung und eine Änderung des Auszugs.
+  Eine Rückfrage kostet einen neuen Lauf mit erneutem Aufbau des Kontexts.
 - **Restrisiko:** Die Lauf-Kennung steht in (a) an der Chat-Nachricht. Wer direkt in der Datenbank
   liest, kann (b) über (a) einer Person zuordnen, solange beide bestehen. Das ist ein Zugriff des
-  Betriebs, kein Weg der Anwendung. Die Anweisungstreue bleibt gemessen. Deshalb hängt nichts
-  Schreibendes daran.
+  Betriebs, kein Weg der Anwendung.
 
 ## Verworfene Alternativen
 
 - Agenten-Framework (etwa LangChain4j oder ein Graph-Orchestrator) neben Spring AI: zweites
   Abstraktionsmodell ohne Bedarf an Mehrschritt-Planung (1).
-- Rechteprüfung zentral in der Schleife statt im Werkzeug: Ein später ergänztes Werkzeug ohne
-  Schleifenprüfung wäre offen (2).
-- Rechteklasse erst mit dem ersten schreibenden Werkzeug: Dann muss jedes bestehende Werkzeug neu
-  bewertet werden (2).
+- Lauf, der auf eine Rückfrage wartet: Zustand über eine Anfrage hinaus, der beim Pod-Tausch
+  verloren ginge oder einen Laufbegriff bräuchte (1).
+- Rechteprüfung zentral in der Schleife: Ein später ergänztes Werkzeug ohne Schleifenprüfung wäre
+  offen (2).
+- Rechteklasse erst mit dem ersten schreibenden Werkzeug: Dann muss jedes Werkzeug neu bewertet
+  werden (2).
 - Suchbereich als Modellargument mit Prüfung gegen die Rechte: Das Modell würde zum Träger der
-  Rechte, und jeder Prüffehler wäre ein Zugriffsfehler (3).
+  Rechte (3).
 - Fremder Bibliotheksbezeichner als Eingabefehler mit Abbruch: Eine eingebettete Anweisung könnte
-  damit jeden Lauf gezielt scheitern lassen (3).
-- Schrittprotokoll im Diagnoseprotokoll der Suche mit dessen Frist und Lesepfad: zwölf Monate,
-  Einzelsatzansicht und Auswertungsrolle widersprechen der kurzen, personenfreien Fassung (4).
-- Eigene Ablage neuer Bauart für das Schrittprotokoll: Sie würde beim nächsten Löschauftrag oder
+  jeden Lauf gezielt scheitern lassen (3).
+- Schrittprotokoll im Diagnoseprotokoll der Suche: zwölf Monate, Einzelsatzansicht und
+  Auswertungsrolle widersprechen der kurzen Fassung ohne Konto-Bezug (4).
+- Ablage neuer Bauart für das Schrittprotokoll: Sie würde beim nächsten Löschauftrag oder
   Rechteumbau vergessen (4).
-- Lesende Werkzeugaufrufe im Revisionsprotokoll: Sie ergäben das Tätigkeitsprofil, das ADR-0068
-  ausschließt (4).
+- Lesende Werkzeugaufrufe im Revisionsprotokoll: Sie ergäben das ausgeschlossene Tätigkeitsprofil (4).
 - Werkzeugergebnisse im Systemvorspann oder in der Nachricht der Person: Eine eingebettete Anweisung
-  spräche dort mit Systemrang oder als Wort der Person (5).
-- Agenten-Anweisung, die den Systemvorspann ersetzt: Belegregeln und Datenkennzeichnung hingen am
-  Wortlaut jedes Agenten (5).
+  spräche mit Systemrang oder als Wort der Person (5).
+- Erinnerung als Systemnachricht vor jedem Aufruf: von manchen Chat-Templates abgelehnt (5).
+- Agenten-Anweisung, die den Systemvorspann ersetzt oder der Space-Anweisung vorgeht: Belegregeln
+  und Vorgaben des Space hingen am Wortlaut jedes Agenten (5).
 - Werkzeugfähigkeit als Ja/Nein mit prüfender Stelle: „nie gesetzt“ und „geprüft, kann es nicht“
-  wären ununterscheidbar, und der Name sagt nichts über die Prüfung (6).
-- Freigabe schreibender Aufrufe, weil das Modell vorher fragt: Das hinge an einer gemessenen
+  wären ununterscheidbar (6).
+- Platzlimit je Instanz, durch N geteilt: wiese bei ungleicher Last zu früh ab (6).
+- Freigabe schreibender Aufrufe, weil das Modell vorher fragt: hinge an einer gemessenen
   Eigenschaft (6).
 
 ## Offen
 
 - Höhe der Grenzen und des Platzlimits, kalibriert an realistischen Fällen vor der ersten
   Vorführung.
-- Wie lange ein Lauf dauern darf, bevor ein Laufbegriff mit Zwischenstand nötig wird.
-- Feldliste der Ereignisart für schreibende Werkzeugaufrufe, mit dem ersten schreibenden Werkzeug.
+- Feldliste der Ereignisart für schreibende Werkzeugaufrufe; vorgesehen sind aufrufende Person,
+  Werkzeug, Zielsystem, Zeitpunkt, Entscheidung (bestätigt / abgelehnt / verfallen), Agentenfassung
+  und Lauf-Kennung.
