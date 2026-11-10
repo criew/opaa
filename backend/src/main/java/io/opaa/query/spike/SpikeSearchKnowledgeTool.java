@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "opaa.spike.tool-loop.enabled", havingValue = "true")
-class SearchKnowledgeTool {
+class SpikeSearchKnowledgeTool {
 
   static final String RUN_STATE_KEY = "opaa.spike.toolLoop.runState";
 
@@ -31,7 +31,7 @@ class SearchKnowledgeTool {
 
   private final KnowledgeRetrieval knowledgeRetrieval;
 
-  SearchKnowledgeTool(KnowledgeRetrieval knowledgeRetrieval) {
+  SpikeSearchKnowledgeTool(KnowledgeRetrieval knowledgeRetrieval) {
     this.knowledgeRetrieval = knowledgeRetrieval;
   }
 

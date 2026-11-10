@@ -36,7 +36,7 @@ prompts:
     purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
     classes:
       - io.opaa.query.spike.SpikeToolLoopQueryHandler
-      - io.opaa.query.spike.SearchKnowledgeTool
+      - io.opaa.query.spike.SpikeSearchKnowledgeTool
       - io.opaa.query.spike.RunCodeTool
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock

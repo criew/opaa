@@ -50,7 +50,7 @@ import org.springframework.stereotype.Service;
  * Handles a chat turn whose question begins with {@code "@test "} while {@code
  * opaa.spike.tool-loop.enabled} is set (#1789) - a throwaway path ahead of epic #1747 that bypasses
  * {@code io.opaa.retrieval.RetrievalPipeline} and {@code AnswerGenerationService} entirely in
- * favour of a model-driven tool-calling loop over the one {@link SearchKnowledgeTool}. {@code
+ * favour of a model-driven tool-calling loop over the one {@link SpikeSearchKnowledgeTool}. {@code
  * io.opaa.query.QueryService#query} calls {@link #handle} after resolving the chat, the space
  * guards, the readable libraries and the search scope, so rights and scope are exactly those of an
  * ordinary turn; every other question reaches this class only to be handed straight back via an
@@ -140,7 +140,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
       """;
 
   private final ActiveChatModelResolver activeChatModelResolver;
-  private final SearchKnowledgeTool searchKnowledgeTool;
+  private final SpikeSearchKnowledgeTool spikeSearchKnowledgeTool;
   private final Optional<RunCodeTool> runCodeTool;
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
@@ -152,7 +152,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
   SpikeToolLoopQueryHandler(
       ActiveChatModelResolver activeChatModelResolver,
-      SearchKnowledgeTool searchKnowledgeTool,
+      SpikeSearchKnowledgeTool spikeSearchKnowledgeTool,
       Optional<RunCodeTool> runCodeTool,
       ChatMemory chatMemory,
       CitationParser citationParser,
@@ -162,7 +162,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
       ChatNoteExtractionService chatNoteExtractionService,
       QueryMetrics metrics) {
     this.activeChatModelResolver = activeChatModelResolver;
-    this.searchKnowledgeTool = searchKnowledgeTool;
+    this.spikeSearchKnowledgeTool = spikeSearchKnowledgeTool;
     this.runCodeTool = runCodeTool;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
@@ -210,7 +210,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     // Code runs only in a persisted chat: its files belong to the chat's space and author.
     Optional<RunCodeTool> codeTool = chat.isPresent() ? runCodeTool : Optional.empty();
     List<Object> tools = new ArrayList<>();
-    tools.add(searchKnowledgeTool);
+    tools.add(spikeSearchKnowledgeTool);
     codeTool.ifPresent(tools::add);
     int maxToolCalls = codeTool.isPresent() ? MAX_TOOL_CALLS_WITH_CODE : MAX_TOOL_CALLS;
     List<Message> messages = new ArrayList<>(chatMemory.get(conversationKey));
@@ -237,7 +237,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
                     + (codeTool.isPresent() ? RUN_CODE_RULES : ""))
             .messages(messages)
             .tools(tools.toArray())
-            .toolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState))
+            .toolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState))
             .advisors(toolCallingAdvisor)
             .call()
             .chatResponse();

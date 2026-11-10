@@ -23,20 +23,21 @@ import org.springframework.ai.document.Document;
 /**
  * #1789 acceptance criterion: the search scope and metadata filter a tool call actually searches
  * with come from the {@link ToolContext} (the caller's own rights) - never from a value the model
- * could supply as an argument, since {@link SearchKnowledgeTool#searchKnowledge} takes no such
+ * could supply as an argument, since {@link SpikeSearchKnowledgeTool#searchKnowledge} takes no such
  * argument at all.
  */
-class SearchKnowledgeToolTest {
+class SpikeSearchKnowledgeToolTest {
 
   private final KnowledgeRetrieval knowledgeRetrieval = mock(KnowledgeRetrieval.class);
-  private final SearchKnowledgeTool tool = new SearchKnowledgeTool(knowledgeRetrieval);
+  private final SpikeSearchKnowledgeTool tool = new SpikeSearchKnowledgeTool(knowledgeRetrieval);
 
   @Test
   void searchKnowledgeSearchesTheScopeAndFilterCarriedByTheRunStateInTheToolContext() {
     Set<UUID> callerReadableScope = Set.of(UUID.randomUUID());
     MetadataFilter callerFilter = MetadataFilter.NONE;
     ToolLoopRunState runState = new ToolLoopRunState(callerReadableScope, callerFilter);
-    ToolContext toolContext = new ToolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState));
+    ToolContext toolContext =
+        new ToolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState));
     Document chunk =
         Document.builder()
             .text("Passage")
@@ -62,7 +63,8 @@ class SearchKnowledgeToolTest {
   @Test
   void searchKnowledgeAccumulatesChunksAndStepsAcrossSeveralCallsOfTheSameRunState() {
     ToolLoopRunState runState = new ToolLoopRunState(Set.of(), MetadataFilter.NONE);
-    ToolContext toolContext = new ToolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState));
+    ToolContext toolContext =
+        new ToolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState));
     Document firstChunk =
         Document.builder()
             .text("Erste Passage")
@@ -103,7 +105,8 @@ class SearchKnowledgeToolTest {
   @Test
   void searchKnowledgeFencesThePassagesSoADocumentCannotBreakOutOrForgeACitation() {
     ToolLoopRunState runState = new ToolLoopRunState(Set.of(), MetadataFilter.NONE);
-    ToolContext toolContext = new ToolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState));
+    ToolContext toolContext =
+        new ToolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState));
     Document hostile =
         Document.builder()
             .text(
@@ -135,7 +138,8 @@ class SearchKnowledgeToolTest {
   @Test
   void searchKnowledgeSaysSoWhenNothingWasFound() {
     ToolLoopRunState runState = new ToolLoopRunState(Set.of(), MetadataFilter.NONE);
-    ToolContext toolContext = new ToolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState));
+    ToolContext toolContext =
+        new ToolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState));
     when(knowledgeRetrieval.retrieve(any(), any(), any(), any(), any()))
         .thenReturn(
             new RetrievalPipelineResult(
