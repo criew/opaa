@@ -177,6 +177,7 @@ class AgentToolLoop implements AgentTurnHandler {
             chat.getId(),
             chat.getSpaceId(),
             scope(spec, chat, turn.readableLibraryIds()),
+            spec.templateIds(),
             turn.metadataFilter(),
             AgentLimits.effective(properties.current(), spec.limits()),
             started);
@@ -438,7 +439,7 @@ class AgentToolLoop implements AgentTurnHandler {
 
   /**
    * The agent's tools that are registered and switched on, in the registry's order, each as it
-   * offers itself to this run.
+   * offers itself to this run; a tool that has nothing to offer this run is left out.
    */
   private List<ToolCallback> callbacks(AgentRunSpec spec, AgentRun run, String reminder) {
     AgentToolSwitches switches = toolSwitches.getIfAvailable();
@@ -450,9 +451,12 @@ class AgentToolLoop implements AgentTurnHandler {
             .find(info.name())
             .ifPresent(
                 tool ->
-                    callbacks.add(
-                        AgentToolCallback.of(
-                            tool, tool.offer(run), reminder, objectMapper, metrics, clock)));
+                    tool.offer(run)
+                        .ifPresent(
+                            offer ->
+                                callbacks.add(
+                                    AgentToolCallback.of(
+                                        tool, offer, reminder, objectMapper, metrics, clock))));
       }
     }
     return callbacks;

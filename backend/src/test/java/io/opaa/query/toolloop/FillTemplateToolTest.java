@@ -72,14 +72,15 @@ class FillTemplateToolTest {
 
   @BeforeEach
   void templateIsReadable() {
-    when(templates.available(run.organizationId(), run.userId())).thenReturn(List.of(bericht));
-    when(templates.forFilling(bericht.id(), run.organizationId(), run.userId()))
+    when(templates.available(run.organizationId(), run.userId(), run.templateIds()))
+        .thenReturn(List.of(bericht));
+    when(templates.forFilling(bericht.id(), run.organizationId(), run.userId(), run.templateIds()))
         .thenReturn(Optional.of(new TemplateToFill(bericht, "bericht.docx", DOCX)));
   }
 
   @Test
   void theOfferNamesTheReadableTemplatesWithTheSchemaOfTheirPlaceholders() {
-    ToolOffer offer = tool().offer(run);
+    ToolOffer offer = tool().offer(run).orElseThrow();
 
     String description = offer.description();
     String beforeBlock = description.substring(0, description.indexOf(run.blockId()));
@@ -103,20 +104,35 @@ class FillTemplateToolTest {
   }
 
   @Test
-  void withoutAnyTemplateTheOfferSaysSoAndAskForAChatAnswer() {
-    when(templates.available(run.organizationId(), run.userId())).thenReturn(List.of());
+  void withoutAnAssignedTemplateTheAskerMayReadTheToolIsNotOffered() {
+    when(templates.available(run.organizationId(), run.userId(), run.templateIds()))
+        .thenReturn(List.of());
 
-    ToolOffer offer = tool().offer(run);
+    assertThat(tool().offer(run)).isEmpty();
+  }
 
-    assertThat(offer.description()).isEqualTo(FillTemplateTool.NONE_AVAILABLE);
-    assertThat(JSON.readTree(offer.inputSchema()).at("/properties/vorlage/enum").isMissingNode())
-        .isTrue();
+  @Test
+  void anAgentWithoutAssignedTemplatesIsNotOfferedTheToolAndNothingIsAsked() {
+    AgentRun withoutTemplates =
+        new AgentRun(
+            run.organizationId(),
+            run.userId(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            Set.of(),
+            Set.of(),
+            null,
+            AgentRuns.LIMITS,
+            START);
+
+    assertThat(tool().offer(withoutTemplates)).isEmpty();
+    verify(templates, never()).available(any(), any(), any());
   }
 
   @Test
   void aTemplateThatIsNotAvailableIsDeniedWithAFallbackAndNoSandbox() {
     UUID other = UUID.randomUUID();
-    when(templates.forFilling(other, run.organizationId(), run.userId()))
+    when(templates.forFilling(other, run.organizationId(), run.userId(), run.templateIds()))
         .thenReturn(Optional.empty());
 
     ToolCallOutcome outcome = tool().call(args(other, JSON.createObjectNode()), run);
@@ -320,8 +336,13 @@ class FillTemplateToolTest {
     FillTemplateTool tool = tool();
     AgentToolCallback callback =
         AgentToolCallback.of(
-            tool, tool.offer(run), "", JSON, metrics, Clock.fixed(START, ZoneOffset.UTC));
-    when(templates.forFilling(any(), any(), any())).thenReturn(Optional.empty());
+            tool,
+            tool.offer(run).orElseThrow(),
+            "",
+            JSON,
+            metrics,
+            Clock.fixed(START, ZoneOffset.UTC));
+    when(templates.forFilling(any(), any(), any(), any())).thenReturn(Optional.empty());
 
     callback.call(
         args(UUID.randomUUID(), data()).toString(),

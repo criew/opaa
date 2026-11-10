@@ -20,7 +20,7 @@ schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Ob
 verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an Formularfeldern oder Felder,
 die Inhalte nachladen. Erlaubt sind Links und einfache
 Felder wie Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eines
-anderen Feldes (etwa in einer WENN-Bedingung).
+anderen Feldes (etwa in einer WENN-Bedingung). Eine Word-Vorlage mit Makros (`.dotm`) lehnt OPAA ebenfalls ab.
 
 ## Platzhalter schreiben
 
@@ -39,11 +39,16 @@ und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokume
 Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
 `{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand eines Tags (`{%- if … -%}`) entfernt Leerraum wie gewohnt. Namen bestehen
 aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar `{# … #}` erscheint nicht im Ergebnis.
+Einen Eintrag einer Liste wählen Sie von vorn ab 0 (`{{ massnahmen[0].titel }}`) oder mit den
+Filtern `first` und `last`; vom Ende her gezählt (`{{ massnahmen[-1] }}`) lehnt OPAA ab.
 
 ## So nutzt ein Agent die Vorlage
 
-Ein Agent mit dem Werkzeug `fill_template` bekommt in jedem Lauf die Vorlagen angeboten, die die
-fragende Person lesen darf, jeweils mit ihren Platzhaltern. Das Modell liefert nur die Werte, etwa
+Eine Vorlage nutzt ein Agent erst, wenn sie ihm zugeordnet ist: auf der Seite des Agenten im
+Reiter „Wissen und Werkzeuge“ unter „Vorlagen“ ([Agent anlegen](agent-anlegen.md)). Dieselbe
+Vorlage kann mehreren Agenten dienen. Ein Agent mit dem Werkzeug „Vorlage ausfüllen“ bekommt in
+jedem Lauf seine Vorlagen angeboten, die die fragende Person lesen darf, jeweils mit ihren
+Platzhaltern; ohne eine solche Vorlage bietet der Lauf das Werkzeug nicht an. Das Modell liefert nur die Werte, etwa
 Aktenzeichen und Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
 [Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
 Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert
@@ -51,8 +56,9 @@ nicht, bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste
 und eine Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert
 das Befüllen.
 
-Sind Vorlagen ausgeschaltet, darf die Person keine Vorlage lesen oder ist die Sandbox nicht
-erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt das dazu.
+Sind Vorlagen ausgeschaltet, darf die Person die Vorlage nicht lesen, gehört sie nicht zum Agenten
+oder ist die Sandbox nicht erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt
+das dazu.
 
 **Rollen an der Vorlage:**
 

@@ -15,6 +15,8 @@ import java.util.UUID;
  * @param builtin {@code true} only for an agent the installation ships; the metric tag {@code
  *     kind}.
  * @param confirmPlan whether the agent asks for confirmation of a plan before it works.
+ * @param templateIds the document templates assigned to the agent; a run offers {@code
+ *     fill_template} only for those among them the caller may read, and not at all without one.
  */
 public record AgentRunSpec(
     UUID agentId,
@@ -24,11 +26,26 @@ public record AgentRunSpec(
     Set<String> toolNames,
     AgentLimits limits,
     boolean confirmPlan,
-    boolean builtin) {
+    boolean builtin,
+    Set<UUID> templateIds) {
+
+  /** A spec without assigned templates. */
+  public AgentRunSpec(
+      UUID agentId,
+      int version,
+      String instruction,
+      Set<UUID> libraryIds,
+      Set<String> toolNames,
+      AgentLimits limits,
+      boolean confirmPlan,
+      boolean builtin) {
+    this(agentId, version, instruction, libraryIds, toolNames, limits, confirmPlan, builtin, null);
+  }
 
   public AgentRunSpec {
     libraryIds = libraryIds == null ? Set.of() : Set.copyOf(libraryIds);
     toolNames = toolNames == null ? Set.of() : Set.copyOf(toolNames);
+    templateIds = templateIds == null ? Set.of() : Set.copyOf(templateIds);
     limits = limits == null ? AgentLimits.SYSTEM : limits;
   }
 }

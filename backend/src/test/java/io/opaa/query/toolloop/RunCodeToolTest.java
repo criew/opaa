@@ -223,6 +223,7 @@ class RunCodeToolTest {
             null,
             null,
             Set.of(),
+            Set.of(),
             null,
             AgentRuns.LIMITS,
             START);

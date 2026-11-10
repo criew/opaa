@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-10
+Akzeptiert · zuletzt geändert 2026-11-11
 
 ## Kontext
 
@@ -82,7 +82,9 @@ eigene VM.
 Ohne Schalter gibt es weder Client noch Werkzeuge als Bean; die Werkzeug-Registry kennt `run_code`
 und `fill_template` dann nicht, und kein Agent kann sie aufrufen. Eingeschaltet entscheiden der
 Werkzeugschalter und die Zuordnung am Agenten (ADR-0070, Entscheidung 6), bei `fill_template`
-zusätzlich der Schalter „Vorlagen“ und die Leserechte der fragenden Person an der Vorlage.
+zusätzlich der Schalter „Vorlagen“, die Zuordnung der Vorlage zum Agenten und die Leserechte der
+fragenden Person an der Vorlage. Ein Lauf ohne solche Vorlage bekommt `fill_template` nicht
+angeboten; die Zuordnung gewährt wie bei Bibliotheken keine Rechte.
 
 ### 7. Sandboxprotokoll als eigener Bestand neben dem Schrittprotokoll
 

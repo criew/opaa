@@ -2,6 +2,7 @@ package io.opaa.template;
 
 import io.opaa.permission.AssetAccessService;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -10,8 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * {@link RunTemplates} as delivered: every template the asker may read by the formula of the asset
- * shell - the template list's rule, without the administration's floor - while the switch
+ * {@link RunTemplates} as delivered: the assigned templates the asker may read by the formula of
+ * the asset shell - the template list's rule, without the administration's floor - while the switch
  * "Vorlagen" is on.
  */
 @Service
@@ -35,13 +36,15 @@ class ReadableRunTemplates implements RunTemplates {
   }
 
   @Override
-  public List<RunTemplate> available(UUID organizationId, UUID userId) {
-    if (!settings.isEnabled()) {
+  public List<RunTemplate> available(UUID organizationId, UUID userId, Set<UUID> assigned) {
+    if (assigned.isEmpty() || !settings.isEnabled()) {
       return List.of();
     }
-    Set<UUID> readable =
-        accessService.readableAssetIds(DocumentTemplate.ASSET_TYPE, userId, organizationId);
-    return repository.findAllById(readable).stream()
+    Set<UUID> fillable =
+        new HashSet<>(
+            accessService.readableAssetIds(DocumentTemplate.ASSET_TYPE, userId, organizationId));
+    fillable.retainAll(assigned);
+    return repository.findAllById(fillable).stream()
         .filter(template -> organizationId.equals(template.getOrganizationId()))
         .sorted(
             Comparator.comparing(DocumentTemplate::getName).thenComparing(DocumentTemplate::getId))
@@ -50,8 +53,9 @@ class ReadableRunTemplates implements RunTemplates {
   }
 
   @Override
-  public Optional<TemplateToFill> forFilling(UUID templateId, UUID organizationId, UUID userId) {
-    if (templateId == null || !settings.isEnabled()) {
+  public Optional<TemplateToFill> forFilling(
+      UUID templateId, UUID organizationId, UUID userId, Set<UUID> assigned) {
+    if (templateId == null || !assigned.contains(templateId) || !settings.isEnabled()) {
       return Optional.empty();
     }
     Set<UUID> readable =

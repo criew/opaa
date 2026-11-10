@@ -25,6 +25,7 @@ final class AgentRuns {
         UUID.randomUUID(),
         UUID.randomUUID(),
         scope,
+        Set.of(UUID.randomUUID()),
         filter,
         limits,
         startedAt);
