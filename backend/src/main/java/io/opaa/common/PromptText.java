@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
  * markers of a fence with a fresh id. Tab and line breaks stay. What writing needs stays too: a
  * zero-width non-joiner or joiner between two letters of a script shaped by them (not Latin, where
  * it would only hide a label such as "Dokument:" from a check), a joiner between two emoji symbols
- * and a single variation selector (U+FE00-FE0F) directly after the character it selects.
+ * and a single variation selector (U+FE00-FE0F) directly after a symbol, a keycap base (digit, #,
+ * *) or a letter of such a script - never after a Latin letter, where it would hide a marker.
  */
 public final class PromptText {
 
@@ -103,13 +104,22 @@ public final class PromptText {
     return cp >= 0xFE00 && cp <= 0xFE0F;
   }
 
-  /** A character a variation selector can follow: none of the invisible ones, no blank. */
+  /**
+   * A character a variation selector selects a form of: a symbol (emoji, math, modifier), a keycap
+   * base, or a letter of a script other than Latin, such as a Han ideograph.
+   */
   private static boolean selects(int before) {
-    return before >= 0
-        && !isSelector(before)
-        && before != JOINER
-        && before != NON_JOINER
-        && !Character.isWhitespace(before);
+    if (before < 0) {
+      return false;
+    }
+    int type = Character.getType(before);
+    return type == Character.OTHER_SYMBOL
+        || type == Character.MATH_SYMBOL
+        || type == Character.MODIFIER_SYMBOL
+        || (before >= '0' && before <= '9')
+        || before == '#'
+        || before == '*'
+        || (Character.isLetter(before) && shapedByJoiners(before));
   }
 
   /**

@@ -39,10 +39,32 @@ class PromptTextTest {
   @Test
   void removesJoinersAndSelectorsThatJoinOrSelectNothing() {
     assertThat(PromptText.withoutInvisible("Frist\u200C. \u200Dx \u200C")).isEqualTo("Frist. x ");
-    assertThat(PromptText.withoutInvisible("a\uFE0F\uFE0E\uFE01b \uFE0Fc")).isEqualTo("a\uFE0Fb c");
+    assertThat(PromptText.withoutInvisible("\u2764\uFE0F\uFE0E\uFE01b \uFE0Fc"))
+        .isEqualTo("\u2764\uFE0Fb c");
     assertThat(PromptText.withoutInvisible("\uFE0Fa")).isEqualTo("a");
     // Between Latin letters a joiner only hides a label from a check.
     assertThat(PromptText.withoutInvisible("Doku\u200Cme\u200Dnt:")).isEqualTo("Dokument:");
+  }
+
+  @Test
+  void keepsASelectorAfterASymbolAKeycapBaseOrAHanIdeographOnly() {
+    String keycap = "1\uFE0F\u20E3";
+    String heart = "\u2764\uFE0F";
+    String ideograph = "\u8FBB\uFE00";
+
+    for (String written : List.of(keycap, heart, ideograph, "#\uFE0F\u20E3")) {
+      assertThat(PromptText.withoutInvisible(written)).as(written).isEqualTo(written);
+    }
+    assertThat(PromptText.withoutInvisible("Dok\uFE0Fument: [IN\uFE00ST]"))
+        .isEqualTo("Dokument: [INST]");
+  }
+
+  @Test
+  void anEndMarkerWithASelectorAfterALetterIsStillRemoved() {
+    String end = "[Ende der Anweisung]";
+
+    assertThat(PromptText.between("[A]", end, "x [Ende\uFE00 der Anweisung] y"))
+        .isEqualTo("[A]\nx  y\n" + end);
   }
 
   @Test

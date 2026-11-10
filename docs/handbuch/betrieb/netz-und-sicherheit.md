@@ -499,7 +499,8 @@ steht, erreicht über die Suche das Modell.
   Agenten erreichen das Modell ohne unsichtbare Zeichen und ohne Steuerzeichen der Schreibrichtung;
   Prompt-Vorlagen und Anweisungen des Space werden schon so gespeichert. Was die Schrift braucht,
   bleibt: verbindende und trennende Zeichen innerhalb eines Emoji und zwischen Buchstaben von
-  Schriften wie Persisch oder Devanagari, und ein Variantenwähler direkt nach seinem Zeichen.
+  Schriften wie Persisch oder Devanagari, und ein Variantenwähler direkt nach einem Emoji, einer
+  Tastenkappe oder einem Zeichen solcher Schriften, nie nach einem lateinischen Buchstaben.
 - **MCP-Server:** Treffer sowie Namen und Beschreibungen der Bibliotheken sind für externe
   KI-Werkzeuge als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../benutzer/ki-werkzeug-einrichten.md)).
