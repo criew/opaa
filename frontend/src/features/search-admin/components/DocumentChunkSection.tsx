@@ -14,7 +14,7 @@ import type { DocumentChunksResponse } from '@/shared/api/types'
 import SectionHead from '@/shared/ui/SectionHead'
 import ChunkContent from './ChunkContent'
 import { plural } from '@/shared/utils/format'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** Lets the diagnosis result open a document here, the one navigation that reaches into this section. */
 export interface DocumentChunkSectionHandle {
@@ -116,7 +116,11 @@ export default function DocumentChunkSection({
         Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein Klick
         auf einen Dokumenttitel in der Diagnose führt hierher.
       </Typography>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ alignItems: 'flex-start', maxWidth: contentWidth.form }}
+      >
         <TextField
           label="Dokument-ID"
           value={documentIdInput}

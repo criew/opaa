@@ -11,7 +11,6 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type {
   CreatedExternalAccessTokenResponse,
@@ -23,6 +22,7 @@ import {
   listOwnExternalAccessTokens,
   revokeOwnExternalAccessToken,
 } from '../api/externalAccessApi'
+import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
@@ -152,24 +152,16 @@ export default function OwnExternalAccessTokensSection() {
       <PageSection
         title="Zugangstokens"
         description="Mit einem Zugangstoken erhält ein externes KI-Werkzeug Zugriff auf Wissensbibliotheken, die Sie mit ihm teilen."
-        action={
-          /* With a closed channel the issuance rejects every request and the selectable set is
-            empty - the button would lead to a refusal instead of a token. */
-          <Tooltip title={channelEnabled === false ? CHANNEL_OFF_HINT : ''}>
-            <Box component="span">
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => setIsCreating(true)}
-                disabled={maxLifetimeDays === null || channelEnabled !== true}
-              >
-                Token erzeugen
-              </Button>
-            </Box>
-          </Tooltip>
-        }
       >
+        {/* With a closed channel the issuance rejects every request and the selectable set is
+           empty - the button would lead to a refusal instead of a token. */}
+        <CreateButton
+          onClick={() => setIsCreating(true)}
+          disabled={maxLifetimeDays === null || channelEnabled !== true}
+          disabledReason={channelEnabled === false ? CHANNEL_OFF_HINT : undefined}
+        >
+          Token erzeugen
+        </CreateButton>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}

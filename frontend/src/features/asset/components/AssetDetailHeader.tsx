@@ -7,10 +7,17 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Link as RouterLink } from 'react-router'
+import { attachActionSlot } from '@/shared/ui/areaHeaderSlots'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
-import { focusRingOffsetPx, focusRingWidthPx, fontSize, iconSize } from '@/shared/theme/tokens'
+import {
+  focusRingOffsetPx,
+  focusRingWidthPx,
+  fontSize,
+  iconSize,
+  readingWidth,
+} from '@/shared/theme/tokens'
 import AssetHeadline, { EditHeadlineDialog, type AssetHeadlineProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
@@ -237,6 +244,12 @@ export default function AssetDetailHeader({
             minHeight: 40,
           }}
         >
+          {/* A `CreateButton` in the content of a tab lands here („Neuer Prompt"). */}
+          <Box
+            component="span"
+            ref={attachActionSlot}
+            sx={{ display: 'inline-flex', '&:empty': { display: 'none' } }}
+          />
           {actions}
           {favorite !== undefined && onFavoriteChange && (
             <FavoriteToggle name={name} favorite={favorite} onChange={onFavoriteChange} />
@@ -253,7 +266,7 @@ export default function AssetDetailHeader({
 
       <Box sx={{ position: 'relative' }}>
         <AssetHeadline name={name} description={description} />
-        {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
+        {note && <Box sx={{ maxWidth: readingWidth }}>{note}</Box>}
       </Box>
       {headline.canEdit && (
         <EditHeadlineDialog

@@ -16,6 +16,7 @@ import type {
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { getDocumentTypeVocabulary } from '@/features/library'
 import { plural, UUID_PATTERN } from '@/shared/utils/format'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 const PERSON_CONTEXT_VALUE = 'USER'
@@ -109,7 +110,7 @@ export default function DiagnosisForm({
   }
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: 720 }}>
+    <Stack spacing={2} sx={{ maxWidth: contentWidth.form }}>
       <TextField
         label="Testfrage"
         required

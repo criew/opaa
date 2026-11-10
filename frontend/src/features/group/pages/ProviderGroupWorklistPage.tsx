@@ -60,7 +60,7 @@ export default function ProviderGroupWorklistPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Arbeitsliste des Anbieters" gutterBottom />
         <Alert severity="info">Für Ihr Konto ist diese Seite nicht freigegeben.</Alert>
       </Box>
@@ -73,13 +73,11 @@ export default function ProviderGroupWorklistPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={ChecklistOutlinedIcon}
           title={`Gruppen von „${provider?.displayName ?? 'Anbieter'}"`}
-          meta={
-            reaching.length === 1 ? '1 verwendete Gruppe' : `${reaching.length} verwendete Gruppen`
-          }
+          count={{ total: reaching.length, unit: ['verwendete Gruppe', 'verwendete Gruppen'] }}
           description="Der Anbieter lässt sich erst löschen, wenn keine dieser Gruppen mehr verwendet wird: Übertragen Sie ihre Rechte an eine andere Gruppe oder entfernen Sie sie an der Bibliothek oder im Space."
         />
 

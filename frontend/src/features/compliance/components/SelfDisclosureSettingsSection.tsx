@@ -14,7 +14,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 const MIN_DAILY_LIMIT = 1
 const MAX_DAILY_LIMIT = 10
@@ -163,7 +163,7 @@ export default function SelfDisclosureSettingsSection() {
               slotProps={{
                 htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
               }}
-              sx={{ maxWidth: 420, flexGrow: 1 }}
+              sx={{ maxWidth: fieldWidth.long, flexGrow: 1 }}
             />
             <BusyButton
               type="submit"

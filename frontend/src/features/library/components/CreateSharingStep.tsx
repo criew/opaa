@@ -11,7 +11,7 @@ import { AssetOwnerFields } from '@/features/asset'
 import { AssetRightsFields } from '@/features/asset'
 import type { PendingGrant } from '@/features/asset'
 import type { useMyGroups } from '@/features/principal'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 interface CreateSharingStepProps {
   ownerType: AssetOwnerType
@@ -44,7 +44,7 @@ export default function CreateSharingStep({
   onPendingGrantsChange,
 }: CreateSharingStepProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: contentWidth.form }}>
       <AssetOwnerFields
         idPrefix="library-create"
         assetType="KNOWLEDGE_LIBRARY"

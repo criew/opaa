@@ -46,7 +46,7 @@ export default function SearchIndexingAdminPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Suche & Indexierung" gutterBottom />
         <Alert severity="info">
           Suche und Indexierung werden von der Systemverwaltung betreut. Für Ihr Konto ist diese
@@ -58,7 +58,7 @@ export default function SearchIndexingAdminPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={ManageSearchOutlinedIcon}
           title="Suche & Indexierung"

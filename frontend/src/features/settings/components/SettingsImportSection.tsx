@@ -25,6 +25,7 @@ import {
   formatSettingValue,
   parseSettingsFile,
 } from '../utils/settingsFile'
+import { readingWidth } from '@/shared/theme/tokens'
 
 interface Checked {
   fileName: string
@@ -127,7 +128,7 @@ export default function SettingsImportSection() {
       description="Übernimmt die Einstellungen aus einer exportierten Datei. Jeder Wert wird geprüft wie in der Verwaltung und gegen die Grenzen des Betriebs; besteht einer die Prüfung nicht, ändert sich nichts."
     >
       <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
-        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 640 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: readingWidth }}>
           Abschnitte, die die Datei nicht enthält, bleiben, wie sie sind. Passwörter und Schlüssel
           dieser Installation bleiben erhalten.
         </Typography>
@@ -148,7 +149,7 @@ export default function SettingsImportSection() {
           />
         </Button>
         {refusal && (
-          <Alert severity="error" role="alert" sx={{ maxWidth: 640 }}>
+          <Alert severity="error" role="alert" sx={{ maxWidth: readingWidth }}>
             {refusal.message}
             {refusal.details.length > 0 && (
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
@@ -160,7 +161,7 @@ export default function SettingsImportSection() {
           </Alert>
         )}
         {checked && checked.changes.length === 0 && (
-          <Alert severity="info" sx={{ maxWidth: 640 }}>
+          <Alert severity="info" sx={{ maxWidth: readingWidth }}>
             „{checked.fileName}“ stimmt mit dieser Installation überein; es gibt nichts zu
             übernehmen.
           </Alert>
@@ -172,7 +173,7 @@ export default function SettingsImportSection() {
               {checked.changes.length === 1 ? 'Angabe' : 'Angaben'}:
             </Typography>
             {securityRelevant(checked.changes) > 0 && (
-              <Alert severity="warning" sx={{ maxWidth: 640 }}>
+              <Alert severity="warning" sx={{ maxWidth: readingWidth }}>
                 {securityRelevant(checked.changes) === 1
                   ? 'Eine Änderung ist sicherheitsrelevant'
                   : `${securityRelevant(checked.changes)} Änderungen sind sicherheitsrelevant`}

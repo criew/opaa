@@ -8,14 +8,14 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { promptVariableTypeLabel } from '../components/promptLabels'
-import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontFamily, fontSize, readingWidth } from '@/shared/theme/tokens'
 import {
   CATALOG_ROUTE,
   FORMER_PROMPT_LIBRARY_TABS,
@@ -103,31 +103,13 @@ function PromptsArea({
   // No heading of its own: the tab „Prompts" already names the area.
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
+      <Typography
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: readingWidth, mb: 2 }}
       >
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: '80ch' }}>
-          Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein
-          Prompt im Chat aufgerufen wird.
-        </Typography>
-        {mayCreate && (
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => setEditing(null)}
-          >
-            Neuer Prompt
-          </Button>
-        )}
-      </Box>
+        Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein Prompt
+        im Chat aufgerufen wird.
+      </Typography>
+      {mayCreate && <CreateButton onClick={() => setEditing(null)}>Neuer Prompt</CreateButton>}
       {actionError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
           {actionError}
@@ -335,7 +317,7 @@ export default function PromptLibraryDetailPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 880 }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="PROMPT_LIBRARY"
           assetId={libraryId}

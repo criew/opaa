@@ -11,6 +11,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import SectionHead from '@/shared/ui/SectionHead'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useMailStore } from '@/features/mail'
@@ -495,10 +496,8 @@ export default function LocalAuthSettingsCard() {
 
       <SmtpStatusLine />
 
-      <Box sx={{ mt: 2.5, pt: 2.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1.5 }}>
-          Regeln und Fristen
-        </Typography>
+      <Box sx={{ mt: 4 }}>
+        <SectionHead component="h3">Regeln und Fristen</SectionHead>
         <Box
           sx={{
             display: 'grid',
@@ -544,12 +543,7 @@ export default function LocalAuthSettingsCard() {
             </Box>
           ))}
         </Box>
-        <Typography
-          component="h3"
-          sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3, mb: 0.5 }}
-        >
-          Sperre nach Fehlversuchen
-        </Typography>
+        <SectionHead component="h3">Sperre nach Fehlversuchen</SectionHead>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
           Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
           der Betrieb fest, abschalten lässt sich die Sperre nicht.

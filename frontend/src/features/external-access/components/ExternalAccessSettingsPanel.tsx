@@ -20,7 +20,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from './tokenLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 export const SWITCH_CONSEQUENCE =
   'Beschäftigte können Zugangstokens für externe KI-Werkzeuge erzeugen. Das Ausschalten wirkt ' +
@@ -357,7 +357,7 @@ function SettingsForm({
               onChange={(event) => update({ tokenMaxLifetimeDays: event.target.value })}
               error={Boolean(fieldMessages.tokenMaxLifetimeDays)}
               helperText={fieldMessages.tokenMaxLifetimeDays ?? 'Zwischen 1 und 365 Tagen.'}
-              sx={{ maxWidth: 340 }}
+              sx={{ maxWidth: fieldWidth.medium }}
             />
             <TextField
               label="Anfragen je Token und Stunde"
@@ -367,7 +367,7 @@ function SettingsForm({
               onChange={(event) => update({ tokenRateLimitPerHour: event.target.value })}
               error={Boolean(fieldMessages.tokenRateLimitPerHour)}
               helperText={fieldMessages.tokenRateLimitPerHour}
-              sx={{ maxWidth: 340 }}
+              sx={{ maxWidth: fieldWidth.medium }}
             />
             <TextField
               label="Abflussalarm ab (Abrufe je Stunde)"
@@ -380,7 +380,7 @@ function SettingsForm({
                 fieldMessages.massRetrievalAlertThreshold ??
                 'Die Überschreitung meldet sich der Systemverwaltung; ein Nachweisprotokoll entsteht daraus nicht.'
               }
-              sx={{ maxWidth: 340 }}
+              sx={{ maxWidth: fieldWidth.medium }}
             />
             <TextField
               label="Netzbereiche"
@@ -424,7 +424,7 @@ function SettingsForm({
                   ? `Gespeichert, wirkt aber nur als ${daysLabel(settings.maxReleaseReminderLeadDays)}: einen Tag unter der längsten Befristung.`
                   : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
             }
-            sx={{ maxWidth: 340 }}
+            sx={{ maxWidth: fieldWidth.medium }}
           />
           {draft.releaseReminderLeadDays !== null && (
             <Button size="small" sx={{ mt: 1 }} onClick={() => void resetReminderLead()}>

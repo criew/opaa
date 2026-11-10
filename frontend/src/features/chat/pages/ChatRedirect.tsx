@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router'
 import { useSpaceStore } from '@/features/space'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { lastUsedSpace } from '@/features/space'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 /**
  * Resolves the global `/chat` entry point: it always lands on an empty, not-yet-persisted chat
@@ -57,7 +58,10 @@ export default function ChatRedirect() {
   if (!defaultSpace) {
     return (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center', maxWidth: 400 }}>
+        <Stack
+          spacing={2}
+          sx={{ alignItems: 'center', textAlign: 'center', maxWidth: fieldWidth.medium }}
+        >
           {spacesError ? (
             <Alert severity="error">{spacesError}</Alert>
           ) : (

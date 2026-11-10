@@ -2,7 +2,10 @@ import type { ElementType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from './a11y/PageHeading'
-import { controlHeight, fontSize, iconSize } from '../theme/tokens'
+import { formatAreaCount, type AreaCountValue } from './areaCount'
+import { attachActionSlot, attachCountSlot } from './areaHeaderSlots'
+import { AREA_PAGE_HEADER_MARK } from './sectionGap'
+import { controlHeight, fontSize, iconSize, readingWidth } from '../theme/tokens'
 
 interface AreaPageHeaderProps {
   /** The page's single <h1>. */
@@ -10,13 +13,21 @@ interface AreaPageHeaderProps {
   /** Overrides the document title when it should be more specific than the heading. */
   documentTitle?: string
   /**
-   * The sentence under the title: what this page governs and for whom. Every page of an area
-   * carries one - a title alone leaves the reader to guess the scope.
+   * The sentence under the title: what this page governs and for whom, in at most two lines.
+   * Every page of an area carries one - a title alone leaves the reader to guess the scope.
    */
   description: ReactNode
-  /** A short fact next to the title, typically a count („7 Konten"). */
+  /**
+   * The count of the page's list next to the title: „40 Konten", filtered „12 von 40 Konten". A
+   * list further down the page, or in a tab, sets it with `AreaPageCount` instead.
+   */
+  count?: AreaCountValue
+  /** A short fact next to the title that is no count. */
   meta?: ReactNode
-  /** The page's one primary action, pushed to the trailing edge of the title row. */
+  /**
+   * The page's one primary action, pushed to the trailing edge of the title row. A
+   * `CreateButton` further down the page, or in a tab, lands in the same place.
+   */
   action?: ReactNode
   /**
    * The area's own mark, left of title and description - an outline icon from
@@ -25,29 +36,29 @@ interface AreaPageHeaderProps {
   icon: ElementType
 }
 
+/** A slot stays out of the row's layout until `AreaPageCount` or `CreateButton` fills it. */
+const EMPTY_SLOT_SX = { '&:empty': { display: 'none' } } as const
+
 /**
- * The header of an area page: title, next to it a short detail and the one primary
- * action, below it the sentence that names the scope.
- *
- * A building block of its own, because the same arrangement used to be written four different
- * ways on seven pages — with `gutterBottom` or without, with a flex row or without, the
- * description sometimes as `GlobalScopeNote` (12.5 px) and sometimes as `body2` (14 px). This
- * showed as titles that jump a few pixels when switching between two menu items.
+ * The header every area page begins with (guidelines 4.6): title, next to it the count of the
+ * page's list, at the right edge the one primary action, below it the sentence that names the
+ * scope. Count and action are also slots: `AreaPageCount` and `CreateButton` rendered anywhere
+ * below - in the content of a tab - appear here, so both follow the selected tab.
  *
  * The spacing is here and only here: the title row without padding of its own, below it a
- * fixed gap to the description and from it to the content. The negative top margin with which
- * `GlobalScopeNote` used to pull itself under a `gutterBottom` is thus gone.
+ * fixed gap to the description and from it to the content.
  */
 export default function AreaPageHeader({
   title,
   documentTitle,
   description,
+  count,
   meta,
   action,
   icon: Icon,
 }: AreaPageHeaderProps) {
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 3 }} {...AREA_PAGE_HEADER_MARK}>
       {/* A flex box, not a Stack: MUI's Stack sets its spacing as `margin-left` on the
          siblings and thereby overrides the `ml: auto` that moves the action to the right
          edge. The minimum height is that of a button - without it the
@@ -92,15 +103,27 @@ export default function AreaPageHeader({
           </Box>
           <PageHeading title={title} documentTitle={documentTitle} />
         </Box>
+        {count && (
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            {formatAreaCount(count)}
+          </Typography>
+        )}
+        <Box component="span" ref={attachCountSlot} sx={EMPTY_SLOT_SX} />
         {meta && (
           <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {meta}
           </Typography>
         )}
+        {/* Of the two, whichever is present takes the auto margin that pushes it to the trailing
+           edge; a page writes its action in one of the two ways. */}
         {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
+        <Box
+          ref={attachActionSlot}
+          sx={{ ml: 'auto', flex: 'none', alignSelf: 'center', ...EMPTY_SLOT_SX }}
+        />
       </Box>
       <Typography
-        sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, maxWidth: readingWidth }}
       >
         {description}
       </Typography>

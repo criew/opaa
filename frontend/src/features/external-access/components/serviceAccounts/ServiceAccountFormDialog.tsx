@@ -15,7 +15,7 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccount, updateServiceAccount } from '../../api/serviceAccountApi'
 import { useErrorTitle } from './serviceAccountHooks'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 type Field = 'name' | 'responsibleUserId' | 'rateLimitPerHour'
 
@@ -200,7 +200,7 @@ function FormDialog({
                   : undefined)
               }
               size="small"
-              sx={{ maxWidth: 360 }}
+              sx={{ maxWidth: fieldWidth.medium }}
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
             />
           </Stack>

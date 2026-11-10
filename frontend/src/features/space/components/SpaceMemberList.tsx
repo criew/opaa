@@ -21,7 +21,7 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
 import { memberLabelOf } from './memberLabel'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -150,7 +150,7 @@ export default function SpaceMemberList({
           onChange={(event) => setFilter(event.target.value)}
           placeholder="Name suchen …"
           slotProps={{ htmlInput: { 'aria-label': 'Mitglieder filtern' } }}
-          sx={{ maxWidth: 360 }}
+          sx={{ maxWidth: fieldWidth.medium }}
         />
       )}
       {showFilter && visible.length === 0 && (

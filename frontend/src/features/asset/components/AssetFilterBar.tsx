@@ -11,7 +11,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { AssetType } from '@/shared/api/types'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
-import { iconSize } from '@/shared/theme/tokens'
+import { fieldWidth, iconSize } from '@/shared/theme/tokens'
 
 const ALL_TYPES = 'all'
 
@@ -72,7 +72,7 @@ export default function AssetFilterBar({
         placeholder="Name oder Beschreibung …"
         sx={{
           flex: '1 1 240px',
-          maxWidth: 420,
+          maxWidth: fieldWidth.long,
           '& input::-webkit-search-cancel-button': { display: 'none' },
         }}
         slotProps={{

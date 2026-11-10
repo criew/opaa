@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
-import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { connectionsAdminRoute } from '@/shared/routes'
 import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
@@ -222,7 +222,7 @@ function TokenDialog({
               error={Boolean(errors.expiry)}
               helperText={errors.expiry ?? `höchstens ${maxDays} Tage`}
               size="small"
-              sx={{ maxWidth: 240 }}
+              sx={{ maxWidth: fieldWidth.short }}
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: {

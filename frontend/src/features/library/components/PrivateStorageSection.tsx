@@ -22,13 +22,14 @@ import {
   getPrivateStorageSummary,
   updatePrivateStorageQuota,
 } from '../api/privateStorageApi'
+import SectionHead from '@/shared/ui/SectionHead'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 /** A size in words; 0 is unlimited. */
@@ -159,7 +160,7 @@ function QuotaForm({
           error={!valid}
           helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 240 }}
+          sx={{ maxWidth: fieldWidth.short }}
         />
         <FormControlLabel
           control={
@@ -206,9 +207,7 @@ function QuotaForm({
 function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
   return (
     <Box data-testid="private-storage-summary" sx={{ mt: 3 }}>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
-        Übersicht (nur Summen, ohne Namen)
-      </Typography>
+      <SectionHead component="h3">Übersicht (nur Summen, ohne Namen)</SectionHead>
       <Stack spacing={0.5} sx={{ mb: 2 }}>
         <Typography variant="body2">
           Besitzerinnen privater Bibliotheken:{' '}
@@ -221,7 +220,11 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
       </Stack>
 
       {summary.profiles.length > 0 && (
-        <Table size="small" aria-label="Belegter Speicher je Zugang" sx={{ mb: 2, maxWidth: 560 }}>
+        <Table
+          size="small"
+          aria-label="Belegter Speicher je Zugang"
+          sx={{ mb: 2, maxWidth: contentWidth.form }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Zugang</TableCell>
@@ -243,7 +246,7 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
         <Table
           size="small"
           aria-label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
-          sx={{ mb: 2, maxWidth: 560 }}
+          sx={{ mb: 2, maxWidth: contentWidth.form }}
         >
           <TableHead>
             <TableRow>

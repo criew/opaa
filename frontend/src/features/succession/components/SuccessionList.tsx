@@ -6,9 +6,10 @@ import Typography from '@mui/material/Typography'
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
 import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 const PAGE_SIZE = 50
 
@@ -35,14 +36,7 @@ function EmptyState({ text }: { text: SuccessionTabText }) {
  * acting person** (Personalrat E1/Z7) - the API deliberately offers none, and the interface does
  * not rebuild it on the client.
  */
-export default function SuccessionList({
-  text,
-  onChanged,
-}: {
-  text: SuccessionTabText
-  /** After a transfer or a note - the page refreshes its counts. */
-  onChanged: () => void
-}) {
+export default function SuccessionList({ text }: { text: SuccessionTabText }) {
   const [page, setPage] = useState(0)
   const [data, setData] = useState<SuccessionListResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -78,10 +72,10 @@ export default function SuccessionList({
 
   return (
     <Box>
-      <Typography sx={{ fontSize: fontSize.text, maxWidth: 760 }}>{text.intro}</Typography>
+      <Typography sx={{ fontSize: fontSize.text, maxWidth: readingWidth }}>{text.intro}</Typography>
+      <AreaPageCount total={data.totalElements} unit={['Eintrag', 'Einträge']} />
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, mb: 1.5 }}>
-        {data.totalElements === 1 ? '1 Eintrag' : `${data.totalElements} Einträge`}, die ältesten
-        zuerst.
+        Die ältesten zuerst.
       </Typography>
 
       {/* An empty follow-up page is no „all in order": between two runs a page can empty, and
@@ -107,10 +101,7 @@ export default function SuccessionList({
               key={`${entry.objectType}-${entry.objectId}`}
               kind={text.kind}
               entry={entry}
-              onChanged={() => {
-                void load()
-                onChanged()
-              }}
+              onChanged={() => void load()}
             />
           ))}
         </Box>

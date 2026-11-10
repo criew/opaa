@@ -16,7 +16,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -229,7 +229,11 @@ export default function FullSyncRhythmSection() {
           Vollabgleich-Rhythmus wird geladen …
         </Typography>
       ) : (
-        <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
+        <Table
+          size="small"
+          aria-label="Vollabgleich-Rhythmus je Quellart"
+          sx={{ maxWidth: contentWidth.form }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Quellart</TableCell>

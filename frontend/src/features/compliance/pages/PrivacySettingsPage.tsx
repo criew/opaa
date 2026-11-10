@@ -20,7 +20,7 @@ export default function PrivacySettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Datenschutz" gutterBottom />
         <Alert severity="info">
           Die Einstellungen zum Datenschutz pflegt die Systemverwaltung. Für Ihr Konto ist diese
@@ -32,7 +32,7 @@ export default function PrivacySettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={PrivacyTipOutlinedIcon}
           title="Datenschutz"

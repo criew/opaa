@@ -44,7 +44,7 @@ export default function MailSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="E-Mail" gutterBottom />
         <Alert severity="info">
           Die E-Mail-Einstellungen werden von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -56,7 +56,7 @@ export default function MailSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={MailOutlinedIcon}
           title="E-Mail"

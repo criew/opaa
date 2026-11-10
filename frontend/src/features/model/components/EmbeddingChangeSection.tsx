@@ -20,6 +20,7 @@ import type {
   EmbeddingModelProbeResponse,
   EmbeddingReindexStatusResponse,
 } from '@/shared/api/types'
+import SectionHead from '@/shared/ui/SectionHead'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -36,7 +37,7 @@ import {
   formatTokens,
   sameEndpoint,
 } from './embeddingChange'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 type KeyChoice = 'keep' | 'new' | 'none'
@@ -80,7 +81,7 @@ interface EmbeddingChangeSectionProps {
 export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingChangeSectionProps) {
   if (!info.model) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
+      <Box sx={{ maxWidth: readingWidth }}>
         <EmbeddingDraftForm info={info} mode="initial" onDone={onChanged} />
       </Box>
     )
@@ -90,7 +91,7 @@ export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingCha
     return <ChangeUnderWay info={info} index={index} onChanged={onChanged} />
   }
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: readingWidth }}>
       {index?.lastRun?.kind === 'REFILL' && index.running && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Nach dem Verwerfen werden {formatCount(index.withoutCurrentVector ?? 0)} Abschnitte mit
@@ -147,7 +148,7 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
   }
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: readingWidth }}>
       <Alert severity="warning" sx={{ mb: 2 }}>
         Die Vektorsuche ist ausgesetzt, bis die Neueinbettung abgeschlossen ist. Suche und Chat
         finden bis dahin nur über die Volltextsuche.
@@ -380,13 +381,13 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
 
   return (
     <Box>
-      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
+      <SectionHead component="h3">
         {mode === 'change'
           ? 'Modell wechseln oder Endpunkt ändern'
           : mode === 'initial'
             ? 'Embedding-Modell festlegen'
             : 'Ersatz-Endpunkt'}
-      </Typography>
+      </SectionHead>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
@@ -485,7 +486,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             'Leer für 2048, die Grenze eines unverändert gezogenen Ollama-Modells.'
           }
           size="small"
-          sx={{ maxWidth: 260 }}
+          sx={{ maxWidth: fieldWidth.short }}
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
         />
         {error && <Alert severity="error">{error}</Alert>}

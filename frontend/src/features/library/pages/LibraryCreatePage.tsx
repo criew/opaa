@@ -82,7 +82,7 @@ import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -677,7 +677,9 @@ export default function LibraryCreatePage() {
         )}
 
         {currentStep === STEP_NAME && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
+          <Box
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: contentWidth.form }}
+          >
             {uploadLibrary && (
               <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder

@@ -26,7 +26,7 @@ import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { ALL_SCOPE_HINT, credentialsKept } from '../../sourceCore/common'
 import { browseSource } from '../../../api/libraryApi'
 import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../../sourceKit/selectionSources'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 export function S3ConnectionFields({
   values,
@@ -39,7 +39,7 @@ export function S3ConnectionFields({
   const [advanced, setAdvanced] = useState(false)
   return (
     <Stack spacing={2}>
-      <Box sx={{ maxWidth: 320 }}>
+      <Box sx={{ maxWidth: fieldWidth.medium }}>
         <FieldLabel id={`${fieldId('provider')}-label`}>Anbieter</FieldLabel>
         <Select
           id={fieldId('provider')}

@@ -330,19 +330,28 @@ export const letterSpacing = {
 export const spacingGridPx = 4
 
 /**
- * Widths of the area pages. The pages behind an area navigation form a
- * set: if the content of one runs to the window edge and that of the other only to 960 px, the
- * right edge jumps when switching between two menu items. That is why the width is here and not
- * in every page.
- *
- * `areaContent` is the width of the account list, the widest of these pages - it carries seven
- * columns and thus sets the measure. `notice` is the narrower area of the pages that show only a
- * hint instead of content (no access): a sentence at reading width, not stretched across half the
- * window width.
+ * The three content widths in px (guidelines 4.6). A page takes the width of its kind, so the
+ * right edge stays put between two pages of the same kind: `form` for forms, wizards and pages
+ * that carry only running text (a refusal, a hint), `detail` for detail pages, `list` for area
+ * pages with a table. No theme writes a width as a number.
  */
 export const contentWidth = {
-  areaContent: 1180,
-  notice: 720,
+  form: 720,
+  detail: 880,
+  list: 1180,
+} as const
+
+/** Longest line of an explaining text (guidelines 4.6), also above a wide table. */
+export const readingWidth = '72ch'
+
+/**
+ * Widths in px of a single control or small block that must not stretch across its container: a
+ * field with a short value, a search field, a narrow form group.
+ */
+export const fieldWidth = {
+  short: 240,
+  medium: 360,
+  long: 480,
 } as const
 
 /** Radii (guidelines 4.2). `md` is the 10px default for cards, inputs, buttons, dialogs. */

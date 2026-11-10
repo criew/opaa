@@ -11,7 +11,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { updateLinkTargets } from '../api/linkTargetsApi'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /**
  * The allowed link targets of answers: links to the application's own address and to these origins
@@ -97,7 +97,7 @@ export default function LinkTargetsSection() {
           Erlaubte Linkziele werden geladen …
         </Typography>
       ) : (
-        <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <Stack spacing={2} sx={{ maxWidth: contentWidth.form }}>
           {origins.length === 0 ? (
             <Typography variant="body2" data-testid="link-targets-empty">
               Es ist kein Linkziel eingetragen; klickbar sind nur Links zur eigenen Adresse.

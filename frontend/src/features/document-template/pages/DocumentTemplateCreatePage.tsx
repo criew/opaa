@@ -21,7 +21,7 @@ import { CATALOG_ROUTE, documentTemplateRoute } from '@/shared/routes'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { createDocumentTemplate } from '../api/documentTemplateApi'
 import TemplateFilePicker from '../components/TemplateFilePicker'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Wem gehört die Vorlage?', 'Rechte'] as const
@@ -97,7 +97,7 @@ export default function DocumentTemplateCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 720 }}>
+      <Box sx={{ maxWidth: contentWidth.form }}>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neue Vorlage
         </Typography>
@@ -122,7 +122,9 @@ export default function DocumentTemplateCreatePage() {
           </Alert>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
+        <Box
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: contentWidth.form }}
+        >
           {activeStep === 0 && (
             <>
               <AssetNameFields

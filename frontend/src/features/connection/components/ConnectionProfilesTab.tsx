@@ -3,13 +3,13 @@ import { useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import AddIcon from '@mui/icons-material/Add'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
+import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSourceTypes } from './useSourceTypes'
@@ -276,15 +276,12 @@ export default function ConnectionProfilesTab() {
             />
           )}
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
+        <CreateButton
           disabled={!anyTypeAdmitsProfiles}
           onClick={() => setForm({ open: true, profile: null })}
-          sx={{ flex: 'none' }}
         >
           Neuer Zugang
-        </Button>
+        </CreateButton>
       </Box>
 
       {sourceTypesLoaded && !anyTypeAdmitsProfiles && (

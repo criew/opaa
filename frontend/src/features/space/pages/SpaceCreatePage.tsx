@@ -36,7 +36,7 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { getChatAutoCleanupPeriods } from '../api/spaceApi'
 import { capabilityMissingMessage, spaceRoleLabel } from '@/shared/utils/labels'
 import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '@/shared/api/types'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const
 
@@ -221,7 +221,7 @@ export default function SpaceCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 640 }}>
+      <Box sx={{ maxWidth: contentWidth.form }}>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neuer Space
         </Typography>

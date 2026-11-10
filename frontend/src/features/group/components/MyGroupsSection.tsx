@@ -11,9 +11,9 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CreateGroupDialog from './CreateGroupDialog'
+import CreateButton from '@/shared/ui/CreateButton'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -32,7 +32,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -312,30 +312,21 @@ export default function MyGroupsSection() {
 
   return (
     <Box>
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={1}
-        sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', mb: 2 }}
-      >
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+      <CreateButton disabled={missingCapability} onClick={() => setCreateDialogOpen(true)}>
+        Gruppe anlegen
+      </CreateButton>
+      <Stack spacing={1.5} sx={{ alignItems: 'flex-start', mb: 2 }}>
+        <Typography
+          sx={{ fontSize: fontSize.text, color: 'text.secondary', maxWidth: readingWidth }}
+        >
           Gruppen, für die Sie verantwortlich sind. Sie pflegen deren Mitglieder, geben sie zur
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>
-        <Stack direction="row" spacing={1}>
-          {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
-             automatism, but a visible way out on a change of duties. */}
-          <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
-            Verantwortung und Eigentum abgeben
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            disabled={missingCapability}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Gruppe anlegen
-          </Button>
-        </Stack>
+        {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
+           automatism, but a visible way out on a change of duties. */}
+        <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
+          Verantwortung und Eigentum abgeben
+        </Button>
       </Stack>
 
       {missingCapability && (

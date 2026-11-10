@@ -12,7 +12,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 
 const MIN_RETENTION_MONTHS = 6
@@ -141,7 +141,7 @@ export default function ConnectionLogRetentionSection() {
               slotProps={{
                 htmlInput: { min: MIN_RETENTION_MONTHS, max: MAX_RETENTION_MONTHS, step: 1 },
               }}
-              sx={{ maxWidth: 280 }}
+              sx={{ maxWidth: fieldWidth.short }}
             />
             <BusyButton
               type="submit"

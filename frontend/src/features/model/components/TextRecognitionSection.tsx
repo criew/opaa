@@ -40,7 +40,7 @@ import {
   type TestStageState,
   type TextRecognitionTestView,
 } from './textRecognitionStages'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
@@ -195,7 +195,7 @@ export default function TextRecognitionSection() {
 
   if (!settings.textRecognitionAvailable) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
+      <Box sx={{ maxWidth: readingWidth }}>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           {INTRO}
         </Typography>
@@ -211,7 +211,7 @@ export default function TextRecognitionSection() {
   const type = CONNECTION_TYPES[connectionType]
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: readingWidth }}>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {INTRO}
       </Typography>

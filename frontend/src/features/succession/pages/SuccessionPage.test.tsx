@@ -62,19 +62,23 @@ describe('SuccessionPage', () => {
     expect(within(row).getByRole('button', { name: 'Nachfolge bestimmen' })).toBeInTheDocument()
   })
 
-  it('shows how many entries each tab holds', async () => {
+  // Prüfliste P2 and guidelines 4.6: tabs carry no counter, the count of the shown list stands
+  // next to the page title.
+  it('shows the count of the selected tab next to the title and none in the tabs', async () => {
     renderPage()
 
-    const tabs = await screen.findByRole('tablist', { name: 'Bereiche der Liste' })
-    await waitFor(() =>
-      expect(
-        within(tabs).getByRole('tab', { name: 'Inhalte ohne Verantwortliche 2' }),
-      ).toBeInTheDocument(),
-    )
+    const titleRow = screen.getByRole('heading', { level: 1, name: 'Ohne Zuständigkeit' })
+      .parentElement!.parentElement!
+    expect(await within(titleRow).findByText('2 Einträge')).toBeInTheDocument()
+
+    const tabs = screen.getByRole('tablist', { name: 'Bereiche der Liste' })
     expect(
-      within(tabs).getByRole('tab', { name: 'Gruppen ohne aktive Mitglieder 1' }),
+      within(tabs).getByRole('tab', { name: 'Inhalte ohne Verantwortliche' }),
     ).toBeInTheDocument()
-    expect(within(tabs).getByRole('tab', { name: 'Leere Gruppen 1' })).toBeInTheDocument()
+    expect(
+      within(tabs).getByRole('tab', { name: 'Gruppen ohne aktive Mitglieder' }),
+    ).toBeInTheDocument()
+    expect(within(tabs).getByRole('tab', { name: 'Leere Gruppen' })).toBeInTheDocument()
   })
 
   it('links a prompt library to its own page', async () => {
@@ -271,7 +275,7 @@ describe('SuccessionPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('reads the figures of all tabs with one request and never as a list', async () => {
+  it('asks for the shown tab only and for no figures of the others', async () => {
     const counts: string[] = []
     const listSizes: string[] = []
     server.use(
@@ -296,14 +300,9 @@ describe('SuccessionPage', () => {
     )
     renderPage()
 
-    expect(
-      await screen.findByRole('tab', { name: /Inhalte ohne Verantwortliche.*4/ }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('tab', { name: /Gruppen ohne aktive Mitglieder.*1/ }),
-    ).toBeInTheDocument()
-    expect(counts).toHaveLength(1)
-    expect(listSizes).not.toContain('1')
+    expect(await screen.findByText('Zurzeit ist hier nichts offen.')).toBeInTheDocument()
+    expect(counts).toHaveLength(0)
+    expect(listSizes).toEqual(['50'])
   })
 
   it('explains the page to an account without the system role and asks the server nothing', async () => {

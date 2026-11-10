@@ -21,7 +21,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, readingWidth } from '@/shared/theme/tokens'
 import ExternalAccessSettingsPanel, {
   SAVED_MESSAGE,
   SWITCH_CONSEQUENCE,
@@ -255,7 +255,9 @@ export default function ExternalToolsTab() {
 
   return (
     <>
-      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
+      <Typography
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
+      >
         Externe KI-Werkzeuge, etwa ein Entwicklungsassistent oder ein eigenes Skript, lesen über
         diesen Weg Fundstellen aus freigegebenen Bibliotheken - mit den Rechten der Person, der das
         Zugangstoken gehört.
@@ -306,10 +308,8 @@ export default function ExternalToolsTab() {
                   Ausschalten
                 </BusyButton>
               )}
-              <Button
-                variant={settings.enabled ? 'text' : 'contained'}
-                onClick={() => setPanel(true)}
-              >
+              {/* It only opens the panel, so it is never the primary surface. */}
+              <Button variant="outlined" onClick={() => setPanel(true)}>
                 Einstellungen
               </Button>
             </Stack>

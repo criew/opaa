@@ -17,6 +17,7 @@ import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
 import { formatDate } from '@/shared/utils/formatDate'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 interface LibraryExternalAccessSectionProps {
   libraryId: string
@@ -181,7 +182,7 @@ export default function LibraryExternalAccessSection({
                 htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
               }}
               size="small"
-              sx={{ maxWidth: 220 }}
+              sx={{ maxWidth: fieldWidth.short }}
               helperText={`höchstens ${access.maxReleaseDays} Tage`}
             />
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>

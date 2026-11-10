@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import AddIcon from '@mui/icons-material/Add'
 import FingerprintOutlinedIcon from '@mui/icons-material/FingerprintOutlined'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -15,6 +13,7 @@ import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { contentWidth, fontSize, radius } from '@/shared/theme/tokens'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import CreateButton from '@/shared/ui/CreateButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import ProviderList from '../components/ProviderList'
 import OidcProviderFormDialog from '../components/OidcProviderFormDialog'
@@ -55,7 +54,7 @@ export default function OidcProviderManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Identitätsanbieter" gutterBottom />
         <Alert severity="info">
           Die Anbieterverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -69,17 +68,13 @@ export default function OidcProviderManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={FingerprintOutlinedIcon}
           title="Identitätsanbieter"
-          meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
+          count={{ total: providers.length, unit: ['Anbieter', 'Anbieter'] }}
           description="Anbieter in der Reihenfolge der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten stehen unter Administration → Benutzer."
-          action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
-              Neuer Anbieter
-            </Button>
-          }
+          action={<CreateButton onClick={openCreateDialog}>Neuer Anbieter</CreateButton>}
         />
 
         {mode === 'dev' && (
@@ -131,15 +126,9 @@ export default function OidcProviderManagementPage() {
                 Ohne Anbieter gibt es keine Anmeldeseite. Legen Sie zuerst den Anbieter Ihrer
                 Organisation an – er wird automatisch zum Standard.
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={openCreateDialog}
-                sx={{ mt: 2 }}
-              >
+              <CreateButton placement="empty" onClick={openCreateDialog} sx={{ mt: 2 }}>
                 Neuer Anbieter
-              </Button>
+              </CreateButton>
             </Box>
           ) : (
             <ProviderList

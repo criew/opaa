@@ -12,7 +12,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** One entry per line; blank lines drop out. */
 function entriesOf(text: string): string[] {
@@ -136,7 +136,7 @@ export default function OutboundProxySection() {
               ? `Ausgehende Verbindungen gehen über ${current.proxyUrl}.`
               : 'Es ist kein Ausgangsproxy eingetragen; alle Verbindungen gehen direkt hinaus.'}
           </Typography>
-          <Stack spacing={2} sx={{ maxWidth: 560 }}>
+          <Stack spacing={2} sx={{ maxWidth: contentWidth.form }}>
             <TextField
               label="Proxy-Adresse"
               size="small"

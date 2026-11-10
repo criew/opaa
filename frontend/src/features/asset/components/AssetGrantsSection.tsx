@@ -46,7 +46,7 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from './assetLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
@@ -386,7 +386,7 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
         onChange={(e) => setExpiryInput(e.target.value)}
         slotProps={{ inputLabel: { shrink: true } }}
         size="small"
-        sx={{ maxWidth: 220 }}
+        sx={{ maxWidth: fieldWidth.short }}
       />
 
       <Stack direction="row" spacing={1}>

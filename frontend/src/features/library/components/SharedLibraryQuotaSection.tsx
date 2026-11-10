@@ -13,7 +13,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 /** The limit in force in words; 0 is none. */
@@ -142,7 +142,7 @@ function QuotaForm({
                 : 'Der Betrieb hat keine Obergrenze gesetzt.'
           }
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 260 }}
+          sx={{ maxWidth: fieldWidth.short }}
         />
         <BusyButton
           type="submit"

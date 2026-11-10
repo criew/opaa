@@ -11,6 +11,7 @@ import type {
   SearchModelRoleState,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
+import SectionHead from '@/shared/ui/SectionHead'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   isVocabularyTooLong,
@@ -41,7 +42,7 @@ import {
 import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
 import RoleApiKeyField from './RoleApiKeyField'
 import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 export type { ModelRoleKind }
 
@@ -322,7 +323,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const prefix = `model-role-${kind}`
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: readingWidth }}>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {texts.intro}
       </Typography>
@@ -400,7 +401,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
             error={Boolean(errors.language)}
             helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
             size="small"
-            sx={{ maxWidth: 240 }}
+            sx={{ maxWidth: fieldWidth.short }}
           />
         )}
         {kind === 'transcription' && (
@@ -428,13 +429,9 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
         </Box>
         {kind === 'transcription' && (
           <Box component="section" aria-labelledby={`${prefix}-live-heading`}>
-            <Typography
-              id={`${prefix}-live-heading`}
-              component="h3"
-              sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
-            >
+            <SectionHead id={`${prefix}-live-heading`} component="h3">
               {REALTIME_TEXTS.sectionLabel}
-            </Typography>
+            </SectionHead>
             <Typography role="status" sx={{ fontSize: fontSize.text, mb: 1.5 }}>
               Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
             </Typography>
@@ -474,7 +471,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
                   'Für die ganze Installation, 1 bis 100. Wer darüber diktiert, bekommt den Text nach dem Ende der Aufnahme. Ein eigener Server mit 16 GB GPU-Speicher trägt etwa eine Sitzung.'
                 }
                 size="small"
-                sx={{ maxWidth: 320 }}
+                sx={{ maxWidth: fieldWidth.medium }}
                 slotProps={{ htmlInput: { min: 1, max: 100 } }}
               />
               {liveTestResult && (

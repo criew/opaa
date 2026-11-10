@@ -13,7 +13,7 @@ import {
   type RetentionToggle,
   type RetentionValues,
 } from '../utils/retentionPeriod'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 interface RetentionFormProps {
   fields: RetentionField[]
@@ -112,7 +112,7 @@ export default function RetentionForm({
               error={parsed[field.key] === null}
               helperText={`Erlaubt sind ${periodLabel(field.min, field.unit)} bis ${periodLabel(field.max, field.unit)}.`}
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-              sx={{ maxWidth: 280 }}
+              sx={{ maxWidth: fieldWidth.short }}
             />
           ))}
         </Stack>

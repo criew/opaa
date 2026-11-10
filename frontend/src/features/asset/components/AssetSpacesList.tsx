@@ -17,7 +17,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 
 /** From this many spaces the list gets a search. */
@@ -145,7 +145,7 @@ export default function AssetSpacesList({
       {links === null ? (
         // Loading without a layout jump (guidelines 5.7) - one skeleton row where the first
         // association will land.
-        <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
+        <Skeleton variant="rounded" height={32} sx={{ maxWidth: fieldWidth.medium }} />
       ) : links.items.length === 0 && hiddenCount === 0 ? (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Noch keinem Space zugeordnet.
