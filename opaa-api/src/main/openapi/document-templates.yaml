@@ -356,6 +356,7 @@ components:
           fileName,
           sizeBytes,
           placeholders,
+          revision,
           createdAt,
           updatedAt,
         ]
@@ -399,6 +400,12 @@ components:
           description: The placeholders read from the file, in the order they first appear.
           items:
             $ref: "#/components/schemas/DocumentTemplatePlaceholder"
+        revision:
+          type: integer
+          minimum: 1
+          description: >
+            Counts up with every replacement of the file (the "Fassung"); an agent answer names
+            the revision it filled.
         succession:
           description: >
             Set while the template has no capable owner (ADR-0036, Entscheidung 6) - state and
