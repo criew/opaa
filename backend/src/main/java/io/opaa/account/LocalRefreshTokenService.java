@@ -47,7 +47,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>Concurrency: losing the atomic rotation to a concurrent refresh with the same cookie is judged
  * like a presentation of the then rotated token, once; losing the renewal within the grace period
- * to a concurrent one is a replay, so two renewals of the same token never both win.
+ * to a concurrent one is a replay, so two renewals of the same token never both win. A rotation and
+ * {@link #issueForSession} write under a share lock on the account's session generation, so no
+ * token they write outlives a concurrent act that ends every session. Every act that revokes
+ * refresh tokens and ends sessions, the replay handling included, writes or locks the account's
+ * credentials row before it touches a token row; that one order rules out a deadlock with a
+ * rotation and lets the act see the successor of a rotation it waited for.
  *
  * <p>Transactions: successor insert and the conditional updates form one transaction that is rolled
  * back when the rotation was lost, so the loser leaves no active successor behind; the replay
@@ -119,6 +124,25 @@ public class LocalRefreshTokenService {
   }
 
   /**
+   * {@link #issue} for a sign-in whose credentials were read at {@code sessionGeneration}, under a
+   * share lock on the account's session generation: an act that ends every session either ended
+   * them before - the generation moved, nothing is issued - or waits and then revokes the new
+   * family with all others. Empty when the generation moved or the credentials are gone.
+   */
+  public Optional<IssuedRefreshToken> issueForSession(User user, long sessionGeneration) {
+    return Optional.ofNullable(
+        transactions.execute(
+            status -> {
+              Optional<Long> current = lockSessionGeneration(user.getId());
+              if (current.isEmpty() || current.get() != sessionGeneration) {
+                status.setRollbackOnly();
+                return null;
+              }
+              return issue(user);
+            }));
+  }
+
+  /**
    * Rotates a presented raw token; see the class Javadoc for the replay semantics. {@code
    * clientAddress} is the resolved client address: a local {@code SYSTEM_ADMIN} renews only from
    * the networks of {@link LocalAdminNetworkPolicy}, otherwise the token is refused like an unknown
@@ -148,9 +172,14 @@ public class LocalRefreshTokenService {
     if (!permitsNetwork(user, clientAddress)) {
       return new RotationResult.Unknown();
     }
-    IssuedRefreshToken successor =
+    Successor successor =
         transactions.execute(
             status -> {
+              Optional<Long> generation = lockSessionGeneration(user.getId());
+              if (generation.isEmpty()) {
+                status.setRollbackOnly();
+                return Successor.NONE;
+              }
               IssuedRefreshToken issued = insertSuccessor(presented, user, now);
               int rotated =
                   repository.rotateIfActive(
@@ -159,10 +188,13 @@ public class LocalRefreshTokenService {
                 status.setRollbackOnly();
                 return null;
               }
-              return issued;
+              return new Successor(issued, generation.get());
             });
+    if (successor == Successor.NONE) {
+      return new RotationResult.Unknown();
+    }
     if (successor != null) {
-      return new RotationResult.Rotated(user, successor);
+      return new RotationResult.Rotated(user, successor.token(), successor.sessionGeneration());
     }
     LocalRefreshToken current = repository.findById(presented.getId()).orElse(null);
     if (current != null && current.getRevocationReason() == RevocationReason.ROTATED) {
@@ -185,9 +217,14 @@ public class LocalRefreshTokenService {
       return new RotationResult.Unknown();
     }
     if (user != null) {
-      IssuedRefreshToken renewed =
+      Successor renewed =
           transactions.execute(
               status -> {
+                Optional<Long> generation = lockSessionGeneration(user.getId());
+                if (generation.isEmpty()) {
+                  status.setRollbackOnly();
+                  return Successor.NONE;
+                }
                 IssuedRefreshToken issued = insertSuccessor(presented, user, now);
                 if (repository.rotateIfActive(
                             unusedSuccessor.getId(), issued.id(), RevocationReason.ROTATED, now)
@@ -198,14 +235,17 @@ public class LocalRefreshTokenService {
                   status.setRollbackOnly();
                   return null;
                 }
-                return issued;
+                return new Successor(issued, generation.get());
               });
+      if (renewed == Successor.NONE) {
+        return new RotationResult.Unknown();
+      }
       if (renewed != null) {
         log.debug(
             "Rotated refresh token of local account {} presented again within the grace period;"
                 + " its unused successor was replaced",
             presented.getUserId());
-        return new RotationResult.Rotated(user, renewed);
+        return new RotationResult.Rotated(user, renewed.token(), renewed.sessionGeneration());
       }
     }
     handleReuse(presented, now);
@@ -255,17 +295,30 @@ public class LocalRefreshTokenService {
     return user;
   }
 
+  /**
+   * The successor's limits follow the account's role at this rotation: a family opened under a
+   * longer-lived role ends at most the role's absolute lifetime from now, so a promotion to {@code
+   * SYSTEM_ADMIN} never keeps the regular session length.
+   */
   private IssuedRefreshToken insertSuccessor(LocalRefreshToken presented, User user, Instant now) {
-    Instant expiresAt = now.plus(limitsFor(user).idle());
-    if (expiresAt.isAfter(presented.getFamilyExpiresAt())) {
-      expiresAt = presented.getFamilyExpiresAt();
-    }
-    return insert(
-        presented.getFamilyId(),
-        presented.getUserId(),
-        now,
-        expiresAt,
-        presented.getFamilyExpiresAt());
+    Limits limits = limitsFor(user);
+    Instant familyExpiresAt =
+        earlier(presented.getFamilyExpiresAt(), now.plus(limits.sessionMaxLifetime()));
+    Instant expiresAt = earlier(now.plus(limits.idle()), familyExpiresAt);
+    return insert(presented.getFamilyId(), presented.getUserId(), now, expiresAt, familyExpiresAt);
+  }
+
+  private static Instant earlier(Instant first, Instant second) {
+    return first.isBefore(second) ? first : second;
+  }
+
+  /**
+   * The account's session generation under a share lock held to the end of the transaction; every
+   * act that ends all sessions writes it before it revokes the refresh tokens, so it waits for a
+   * family written here or has already revoked what it found.
+   */
+  private Optional<Long> lockSessionGeneration(UUID userId) {
+    return credentials.lockSessionGeneration(userId).stream().findFirst();
   }
 
   /** Revokes the family behind a presented raw token; {@code false} when none matched. */
@@ -295,13 +348,17 @@ public class LocalRefreshTokenService {
    * The replay response, in one transaction of its own: revoke the family, end every session of the
    * account and what a session could have created ({@link LocalAccountSessionsEndedEvent}), audit
    * and warn - but only when the family still had an active member; a second replay of an already
-   * dead family changes no state and writes no event.
+   * dead family changes no state and writes no event, so a stale token cannot end the sessions of
+   * the account again and again. The account's credentials row is locked first, like every other
+   * act that ends sessions: a rotation of the family in flight commits before, and its successor is
+   * then counted and revoked here.
    */
   private void handleReuse(LocalRefreshToken presented, Instant now) {
     UUID userId = presented.getUserId();
     Integer revoked =
         transactions.execute(
             status -> {
+              credentials.findForUpdate(userId);
               int rows =
                   repository.revokeFamily(
                       presented.getFamilyId(), RevocationReason.REUSE_DETECTED, now);
@@ -374,6 +431,12 @@ public class LocalRefreshTokenService {
 
   private record Limits(Duration idle, Duration sessionMaxLifetime) {}
 
+  /** A written successor and the session generation locked while it was written. */
+  private record Successor(IssuedRefreshToken token, long sessionGeneration) {
+    /** The account has no credentials any more: nothing was written. */
+    static final Successor NONE = new Successor(null, -1);
+  }
+
   /** A freshly issued refresh token: the raw value for the cookie and its limits. */
   public record IssuedRefreshToken(
       String value, UUID id, UUID familyId, Instant expiresAt, Duration maxAge) {}
@@ -381,8 +444,12 @@ public class LocalRefreshTokenService {
   /** Outcome of {@link #rotate}. */
   public sealed interface RotationResult {
 
-    /** Rotated; the caller mints a new access token for {@code user}. */
-    record Rotated(User user, IssuedRefreshToken token) implements RotationResult {}
+    /**
+     * Rotated; the caller mints a new access token for {@code user}, and only while the account's
+     * session generation is still {@code sessionGeneration}, the one locked during the rotation.
+     */
+    record Rotated(User user, IssuedRefreshToken token, long sessionGeneration)
+        implements RotationResult {}
 
     /** A replay: every session of the account is revoked. */
     record Reused(UUID userId) implements RotationResult {}

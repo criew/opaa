@@ -19,7 +19,9 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { importSettings, previewSettingsImport } from '../api/settingsApi'
+import { SETTINGS_IMPORT_CONFIRM_PURPOSE } from './settingsRecentLogin'
 import {
   MAX_SETTINGS_FILE_BYTES,
   formatSettingValue,
@@ -57,6 +59,7 @@ export default function SettingsImportSection() {
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [checking, setChecking] = useState(false)
   const [applying, setApplying] = useState(false)
+  const gate = useRecentLoginGate(SETTINGS_IMPORT_CONFIRM_PURPOSE)
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null
@@ -99,9 +102,15 @@ export default function SettingsImportSection() {
       tone: 'caution',
     })
     if (!confirmed) return
+    await apply(checked.document)
+  }
+
+  async function apply(document: SettingsDocument, afterConfirmation = false) {
+    setRefusal(null)
     setApplying(true)
     try {
-      const result = await importSettings(checked.document)
+      const result = await importSettings(document)
+      gate.settled()
       setChecked(null)
       if (result.changes.some((change) => change.section === 'branding')) {
         void useBrandingStore.getState().loadBranding()
@@ -115,7 +124,12 @@ export default function SettingsImportSection() {
         'success',
       )
     } catch (err: unknown) {
-      setRefusal(refusalOf(err, 'Die Einstellungen konnten nicht übernommen werden.'))
+      const refused = gate.refusal(err, () => void apply(document, true), afterConfirmation)
+      if (refused === null) {
+        setRefusal(refusalOf(err, 'Die Einstellungen konnten nicht übernommen werden.'))
+      } else if (refused) {
+        setRefusal({ message: refused, details: [] })
+      }
     } finally {
       setApplying(false)
     }
@@ -227,6 +241,7 @@ export default function SettingsImportSection() {
           </Stack>
         )}
       </Stack>
+      {gate.dialog}
     </PageSection>
   )
 }
