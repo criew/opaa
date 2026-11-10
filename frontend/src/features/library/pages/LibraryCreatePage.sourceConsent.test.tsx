@@ -52,8 +52,7 @@ const DRAFT: WizardDraft = {
   },
   schedule: scheduleValuesFrom(null),
   startFirstRun: false,
-  name: '',
-  nameTouched: false,
+  name: 'Bauamt',
   description: '',
   ownerType: 'USER',
   selectedGroup: null,
@@ -84,9 +83,11 @@ function next(user: User) {
   return user.click(screen.getByRole('button', { name: 'Weiter' }))
 }
 
-/** Chooses Nextcloud, goes on to „Quelle einrichten" and picks the profile named `name`. */
+/** Chooses Nextcloud, names it, goes on to „Quelle“ and picks the profile named `name`. */
 async function chooseProfile(user: User, name: RegExp) {
   await user.click(await screen.findByRole('radio', { name: /Nextcloud/ }))
+  await next(user)
+  await user.type(screen.getByLabelText(/^Name/), 'Bauamt')
   await next(user)
   await user.click(await screen.findByRole('radio', { name }))
 }
@@ -233,9 +234,7 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     const user = userEvent.setup()
     renderWizard()
 
-    const heading = await screen.findByRole('heading', {
-      name: 'Quelle einrichten',
-    })
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Quelle' })
     await waitFor(() => expect(heading).toHaveFocus())
     expect(await screen.findByText(/Verbunden als „svc@bauamt\.example“/)).toBeVisible()
     // the line names until when the library has to be created
@@ -265,17 +264,16 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     await screen.findByText(/Verbunden als/)
 
     await next(user)
-    expect(await screen.findByLabelText(/^Name/)).toHaveValue('Bauamt')
+    expect(await screen.findByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
     expect(tested).toHaveLength(1)
     expect(tested[0]).toMatchObject({
       connectionProfileId: DROPBOX.id,
       pendingConnectionId: PENDING.id,
     })
     expect(tested[0].sourceCredentials).toBeUndefined()
-    await next(user)
     expect(screen.getByText(/Für die Verbindung der Quelle sind Sie verantwortlich/)).toBeVisible()
     await next(user)
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() =>
       expect(screen.getByTestId('address')).toHaveTextContent(
@@ -303,15 +301,14 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     renderWizard()
     await screen.findByText(/Verbunden als/)
     await next(user)
-    await screen.findByLabelText(/^Name/)
-    await next(user)
+    await screen.findByRole('heading', { level: 2, name: 'Freigaben' })
 
     const choice = screen.getByRole('radiogroup', {
       name: 'Verantwortlich für die Verbindung der Quelle',
     })
     await user.click(within(choice).getByRole('radio', { name: `Gruppe „${group.name}“` }))
     await next(user)
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
     expect(created[0]).toMatchObject({
@@ -343,17 +340,16 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     renderWizard()
     await screen.findByText(/Verbunden als/)
     await next(user)
-    await screen.findByLabelText(/^Name/)
+    await screen.findByRole('heading', { level: 2, name: 'Freigaben' })
     await next(user)
-    await next(user)
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(
       await screen.findByText(
         'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.',
       ),
     ).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Quelle einrichten' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
     expect(screen.queryByText(/Verbunden als/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Quelle verbinden' })).toBeInTheDocument()
   }, 20000)

@@ -42,11 +42,6 @@ export const s3Source: SourceRegistration = {
       sourceCredentials: s3CredentialsOf(values),
       sourceSettings: s3SettingsOf(values),
     }),
-    nameFromSource: (values: S3SourceValues) => {
-      if (values.allBuckets) return ''
-      const first = values.scopes.find((scope) => scope.bucket.trim() !== '')
-      return first ? first.bucket.trim() : ''
-    },
     scopeNoteId: 's3-sharing-consequence',
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.',

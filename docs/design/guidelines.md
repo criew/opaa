@@ -391,8 +391,8 @@ zuordnen"), bleibt die Aktion dieses Hinweises.
 „Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
 Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
 
-- „Vormerken" im Assistenten (Space, Wissens- und Prompt-Bibliothek): Gespeichert wird erst mit dem
-  Anlegen.
+- „Vormerken" im Assistenten (Space, Wissensbibliothek, Prompt-Bibliothek, Vorlage, Agent; 5.15):
+  Gespeichert wird erst mit dem Anlegen.
 - „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
   und Befristung, keine Mitgliedschaft.
 - „Als verantwortlich benennen" bei internen Gruppen: Verantwortliche werden nicht Mitglied.
@@ -981,6 +981,46 @@ aktiv und führt auf `/chat`, nicht auf die Space-Übersicht: Das öffnet einen 
 genutzten nicht archivierten Space, ohne einen solchen im privaten Bereich. Die Übersicht erreicht
 man in der Spalte über die Lupe im Kopf „Spaces", in der Schublade über „Alle Spaces anzeigen" im
 Space-Menü.
+
+### 5.15 Assistenten
+
+Ein Assistent legt ein Objekt in mehreren Schritten an: Space, Wissensbibliothek,
+Prompt-Bibliothek, Vorlage, Agent. Alle rendern denselben Rahmen `WizardLayout`
+(`frontend/src/shared/ui/wizard/WizardLayout.tsx`); kein Thema baut Kopf, Schrittleiste oder
+Fußzeile selbst nach.
+
+- **Kopf.** Über dem Titel steht als Dachzeile das Objekt („Neuer Space", „Neue Vorlage"), sie ist
+  die Seitenüberschrift. Der Titel ist der Name des aktuellen Schritts, darunter die Schrittleiste.
+  Der Inhalt ist 720 px breit, die Felder nutzen die volle Breite.
+- **Schrittnamen** bestehen aus einem Wort. Der erste Schritt heißt „Stammdaten" (Name und
+  Beschreibung), der letzte „Prüfen". Davor darf eine Typwahl stehen („Quellart"). „Grunddaten",
+  „Name" und „Zusammenfassung" gibt es nicht. Wo Eigentum und Freigaben abgefragt werden, heißt
+  der Schritt „Freigaben", die Quelle einer Bibliothek „Quelle". Der Typ `WizardSteps`
+  (`wizardSteps.ts`) lässt nur Schrittlisten zu, die so beginnen und enden.
+- **Fußzeile.** Links „Abbrechen" (still), rechts „Zurück" (sekundär, ab dem zweiten Schritt) und
+  „Weiter" (primär); im letzten Schritt heißt die Handlung „Anlegen". Beschriftungen wie „Weiter zu
+  Rechten", „Zur Prüfung" oder „Space anlegen" entfallen. Eine Zählung wie „2 Freigaben
+  vorgemerkt" steht still links neben den Knöpfen.
+- **„Weiter" und „Anlegen" sind immer aktiv.** Fehlt eine Eingabe, steht der Fehler am Feld, und
+  der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Der
+  Fehlertext ist ein kurzer Satz in einer Form: „<Feld> fehlt" („Name fehlt", „Gruppe fehlt",
+  „Word-Datei fehlt"). Lehnt der Server ein Feld ab, führt der Assistent zu dessen Schritt, setzt
+  die Meldung des Servers an das Feld und den Fokus hinein, auch wenn ein Schritt mehrere Felder
+  zugleich meldet. Einzige Ausnahme ist der Schritt „Quelle" einer Wissensbibliothek: Seine Zeilen
+  und der Verbindungstest melden über eine Fehlerzusammenfassung über dem Schritt (P29).
+  Fehlt das Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den
+  Fokus dorthin, statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
+- **Prüfen.** Ein Assistent hat mindestens drei Schritte und endet mit „Prüfen": jede Antwort in
+  einer Zeile Titel | Inhalt | „Ändern" (`WizardReview`). „Ändern" führt zum Schritt der Antwort,
+  „Weiter" von dort zurück zu „Prüfen". Was mit weniger Schritten auskommt, ist ein Dialog (5.6).
+- **Navigation.** Der Assistent erscheint in der Navigation des Bereichs, in dem das Objekt danach
+  liegt: der Space-Assistent neben der Seitenleiste des Space (5.13), die Assistenten der
+  Arbeitsmittel im Rahmen des Katalogs, nie neben einer fremden Seitenleiste.
+- **Nach dem Anlegen** öffnet sich die Detailseite des neuen Objekts, und ein Popup (5.9) nennt
+  es beim Namen, etwa: „Bauamt" wurde angelegt.
+
+Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
+Zählbudget `disabledSubmits`).
 
 ---
 

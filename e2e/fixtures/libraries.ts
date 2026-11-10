@@ -12,7 +12,7 @@ import { expect, test } from './auth'
  */
 export const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
-/** Reads the library id LibraryCreatePage navigated to after a successful "Bibliothek anlegen". */
+/** Reads the library id LibraryCreatePage navigated to after a successful "Anlegen". */
 export function libraryIdFromCurrentUrl(page: Page): string {
   const match = page.url().match(/\/libraries\/([^/?#]+)(?:[?#].*)?$/)
   if (!match) {
