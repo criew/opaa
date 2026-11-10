@@ -283,6 +283,13 @@ export default function LlmModelFormDialog({
     }
   }
 
+  // The statement was made for the stored combination; the backend resets it on save.
+  const resetsToolCapability =
+    model !== null &&
+    model.toolCapability.value !== 'UNVERIFIED' &&
+    (draft.baseUrl.trim() !== model.baseUrl ||
+      draft.modelIdentifier.trim() !== model.modelIdentifier)
+
   const idleHint =
     draft.baseUrl.trim() === ''
       ? null
@@ -299,6 +306,12 @@ export default function LlmModelFormDialog({
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
+          </Alert>
+        )}
+        {resetsToolCapability && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Basis-Adresse oder Modell-Kennung geändert: Die Werkzeugfähigkeit ist nach dem Speichern
+            wieder ungeprüft.
           </Alert>
         )}
         <Stack spacing={3.5} sx={{ mt: 1 }}>

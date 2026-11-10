@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import io.opaa.api.types.ToolCapability;
 import io.opaa.compliance.DataFlow;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
@@ -112,6 +113,27 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
    */
   public ChatClient resolveChatClient() {
     return resolve().chatClient();
+  }
+
+  /**
+   * The same client as {@link #resolveChatClient()}, for a call that hands the model tools - only
+   * while the active model is recorded as {@link ToolCapability#CAPABLE}. The capability is read
+   * from {@code llm_models} on every call, so a changed statement applies to the next turn. The
+   * ordinary chat never calls this method and works with any capability. Capability and client are
+   * read separately: until the cache is invalidated after a committed edit, the cached client may
+   * still serve the previous combination while the capability already belongs to the new one - a
+   * short window that this check accepts rather than locking the row on every turn.
+   *
+   * @throws NoActiveChatModelException when {@code llm_models} has no active row
+   * @throws ToolCallingNotCapableException when the active model is {@link
+   *     ToolCapability#UNVERIFIED} or {@link ToolCapability#NOT_CAPABLE}
+   */
+  public ChatClient resolveToolCallingChatClient() {
+    ToolCapability capability = activeModel().getToolCapability();
+    if (capability != ToolCapability.CAPABLE) {
+      throw new ToolCallingNotCapableException(capability);
+    }
+    return resolveChatClient();
   }
 
   /**
