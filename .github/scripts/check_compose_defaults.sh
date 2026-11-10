@@ -8,10 +8,13 @@
 #   published through OPAA_FRONTEND_BIND_ADDRESS without handing the same address to the backend
 #   as OPAA_AUTH_DEV_PUBLISHED_ADDRESS (the input of the dev profile's start refusal),
 # - publishes any port of a service that UNPUBLISHED_SERVICES names, even on loopback,
+# - leaves out read_only: true, cap_drop: [ALL] or security_opt no-new-privileges on a service that
+#   HARDENED_SERVICES names, or undoes them there with privileged: true, any cap_add, an unconfined
+#   seccomp or AppArmor profile, or pid, ipc or network_mode: host (lists in block or flow style),
 # - carries a fixed secret: a key ending in SECRET, PASSWORD, PASSWD, TOKEN, API_KEY, SECRET_KEY,
 #   SECRET_ACCESS_KEY, ENCRYPTION_KEY or PRIVATE_KEY with a literal value or a ${VAR:-default}
 #   default, unless SECRET_EXCEPTIONS names file, service and key with a reason.
-# An exception or unpublished service that matches nothing any more fails as well. The rules are
+# An exception, unpublished or hardened service that matches nothing any more fails as well. The rules are
 # listed for operators in docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels".
 # Line-based: ports: and environment: in flow style are refused rather than read.
 set -euo pipefail
@@ -42,6 +45,15 @@ UNPUBLISHED_SERVICES=(
   "docker-compose.monitoring.yml|prometheus|Prometheus of the monitoring overlay: only Grafana reads it, over the Compose network"
 )
 
+# file|service|reason - services that keep a read-only root file system, drop every capability and
+# set no-new-privileges; the rule holds the hardening once a service has been shown to run with it.
+HARDENED_SERVICES=(
+  "docker-compose.yml|frontend|The same restrictions the Helm chart applies to the frontend image"
+  "docker-compose.ocr.yml|opaa-ocr|Converts foreign documents; writes only to its tmpfs"
+  "docker-compose.monitoring.yml|prometheus|Writes only to its data volume"
+  "docker-compose.sandbox.yml|opensandbox-server|Holds the host's Docker socket and is reachable from sandbox code"
+)
+
 SECRET_KEY='(SECRET|PASSWORD|PASSWD|TOKEN|API_KEY|SECRET_KEY|SECRET_ACCESS_KEY|ENCRYPTION_KEY|PRIVATE_KEY)'
 LOOPBACK='^(127\.0\.0\.1|::1|\[::1\]|localhost)$'
 
@@ -61,6 +73,28 @@ error() {
 
 declare -A used_exceptions=()
 declare -A seen_services=()
+# "file|service|setting" for every hardening setting found: read_only, cap_drop, no_new_privileges.
+declare -A hardening=()
+# "file|service" -> the settings that undo the hardening (privileges, capabilities, host namespaces).
+declare -A loosened=()
+loosen() {
+  loosened["$1|$2"]+=" line $3: $4;"
+}
+# One list item of a service key: cap_drop ALL and no-new-privileges harden, an added capability
+# or an unconfined seccomp or AppArmor profile loosens.
+hardening_item() {
+  local file="$1" scope="$2" number="$3" key="$4" value="$5"
+  [[ -n "$value" ]] || return 0
+  case "$key" in
+  cap_drop) [[ "$value" == ALL ]] && hardening["$file|$scope|cap_drop"]=1 ;;
+  cap_add) loosen "$file" "$scope" "$number" "cap_add: $value" ;;
+  security_opt)
+    [[ "$value" =~ ^no-new-privileges([:=]true)?$ ]] && hardening["$file|$scope|no_new_privileges"]=1
+    [[ "$value" =~ ^(seccomp|apparmor)[:=]unconfined$ ]] && loosen "$file" "$scope" "$number" "security_opt: $value"
+    ;;
+  esac
+  return 0
+}
 unpublished() {
   local entry
   for entry in "${UNPUBLISHED_SERVICES[@]}"; do
@@ -143,7 +177,8 @@ check_env_file() {
 
 check_compose_file() {
   local file="$1" number=0 line indent ports_indent=-1 item="" item_line=0 item_indent=-1
-  local frontend_bind=0 published_address=0 top="" scope="" host_ip
+  local frontend_bind=0 published_address=0 top="" scope="" host_ip service_key="" setting flow_item
+  local -a flow_items
   # Ends a long-syntax ports item: it must name host_ip 127.0.0.1.
   finish_item() {
     if [[ -n "$item" ]]; then
@@ -188,6 +223,31 @@ check_compose_file() {
     elif ((indent == 2)) && [[ "$top" == services && "$line" =~ ^[[:space:]]+([A-Za-z0-9_.-]+): ]]; then
       scope="${BASH_REMATCH[1]}"
       seen_services["$file|$scope"]=1
+      service_key=""
+    fi
+    # The hardening settings of a service: keys at its first level, their list items in block or
+    # flow style.
+    if [[ "$top" == services ]] && ((indent >= 4)); then
+      if ((indent == 4)) && [[ "$line" =~ ^[[:space:]]+([a-z_]+):[[:space:]]*(.*)$ ]]; then
+        service_key="${BASH_REMATCH[1]}"
+        setting="$(scalar "${BASH_REMATCH[2]}")"
+        case "$service_key" in
+        read_only) [[ "$setting" == true ]] && hardening["$file|$scope|read_only"]=1 ;;
+        privileged) [[ "${setting,,}" == true ]] && loosen "$file" "$scope" "$number" "privileged: true" ;;
+        pid | ipc | network_mode)
+          [[ "$setting" == host ]] && loosen "$file" "$scope" "$number" "$service_key: host" ;;
+        esac
+        if [[ "$setting" =~ ^\[(.*)\]$ ]]; then
+          IFS=',' read -ra flow_items <<<"${BASH_REMATCH[1]}"
+          for flow_item in "${flow_items[@]}"; do
+            hardening_item "$file" "$scope" "$number" "$service_key" "$(scalar "$flow_item")"
+          done
+        elif [[ "$service_key" == cap_add && -n "$setting" && "$setting" != '[]' ]]; then
+          loosen "$file" "$scope" "$number" "cap_add"
+        fi
+      elif [[ "$line" =~ ^[[:space:]]*-[[:space:]]+(.*)$ ]]; then
+        hardening_item "$file" "$scope" "$number" "$service_key" "$(scalar "${BASH_REMATCH[1]}")"
+      fi
     fi
     if [[ "$line" =~ ^[[:space:]]*ports:[[:space:]]*(.*)$ ]]; then
       rest="$(scalar "${BASH_REMATCH[1]}")"
@@ -250,6 +310,22 @@ for entry in "${UNPUBLISHED_SERVICES[@]}"; do
   fi
 done
 
+for entry in "${HARDENED_SERVICES[@]}"; do
+  IFS='|' read -r h_file h_service _ <<<"$entry"
+  if [[ ! -v seen_services["$h_file|$h_service"] ]]; then
+    error "$h_file" 1 "HARDENED_SERVICES names the service $h_service of $h_file, which is not there any more; remove the entry."
+    continue
+  fi
+  for setting in "read_only:read_only: true" "cap_drop:cap_drop: [ALL]" \
+    "no_new_privileges:security_opt: [no-new-privileges:true]"; do
+    [[ -v hardening["$h_file|$h_service|${setting%%:*}"] ]] ||
+      error "$h_file" 1 "$h_service lacks ${setting#*:}; HARDENED_SERVICES in .github/scripts/check_compose_defaults.sh keeps its hardening."
+  done
+  if [[ -v loosened["$h_file|$h_service"] ]]; then
+    error "$h_file" 1 "$h_service undoes its hardening:${loosened["$h_file|$h_service"]} HARDENED_SERVICES in .github/scripts/check_compose_defaults.sh refuses privileged, cap_add, unconfined profiles and host namespaces."
+  fi
+done
+
 if ((${#files[@]} == 0)); then
   echo "::error::No Compose template found - the check would pass without checking anything."
   exit 1
@@ -258,4 +334,4 @@ if ((errors > 0)); then
   echo "::error::$errors finding(s) in the Compose templates (${#files[@]} files checked)."
   exit 1
 fi
-echo "Compose templates: ${#files[@]} files, ports on loopback, unpublished services without ports, no anonymous administration, no unlisted fixed secret."
+echo "Compose templates: ${#files[@]} files, ports on loopback, unpublished services without ports, hardened services hardened, no anonymous administration, no unlisted fixed secret."

@@ -21,7 +21,7 @@ level = "INFO"
 
 [runtime]
 type = "docker"
-execd_image = "opensandbox/execd:release-1.1.1"
+execd_image = "opensandbox/execd:release-1.1.1@sha256:cda2bc35409bbf57561599b316cafb899598f7dce671332e7ceda14eb1cfeded"
 
 [docker]
 # Sandboxes join only this internal network (no gateway, so no internet egress). The name must
@@ -29,7 +29,9 @@ execd_image = "opensandbox/execd:release-1.1.1"
 network_mode = "opaa-sandboxes"
 # Docker skips port publishing on internal networks; the address keeps any published port on loopback.
 publish_host = "127.0.0.1"
-drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+# execd runs as root and needs only CHOWN, DAC_OVERRIDE, FOWNER (script upload), SETUID, SETGID
+# (start the script as uid 1000) and KILL (stop it at its time limit); everything else is dropped.
+drop_capabilities = ["AUDIT_WRITE", "FSETID", "MKNOD", "NET_ADMIN", "NET_BIND_SERVICE", "NET_RAW", "SETFCAP", "SETPCAP", "SYS_ADMIN", "SYS_CHROOT", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
 no_new_privileges = true
 pids_limit = 4096
 

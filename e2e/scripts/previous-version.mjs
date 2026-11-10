@@ -9,7 +9,9 @@
 //      for a pull request the main it branched from, on main its own head), but never older than
 //      FLOOR, the first state keeping the embedding model in the database: an installation
 //      from before it is not taken over (ADR-0060, Entscheidung 10), nor one migrated by Liquibase
-//      (ADR-0056, Entscheidung 2), so no rolling update crosses that line.
+//      (ADR-0056, Entscheidung 2), so no rolling update crosses that line; nor older than the last
+//      state that rewrote a baseline (backend/docs/migrationen.md, "Baselines"), whose checksums no
+//      earlier history matches. A state that rewrites one is its own previous version.
 //
 // Prints the full commit hash. Needs the history of main (fetch-depth 0 in CI).
 import { spawnSync } from 'node:child_process'
@@ -20,6 +22,7 @@ import { fileURLToPath } from 'node:url'
 /** The first state with the embedding model in the database; after the switch to Flyway (ADR-0056). */
 export const FLOOR = '8ce3fc9224275cf3cea82c90eb132ee01b89491f'
 export const LOOKBACK_HOURS = 24
+const BASELINES = 'backend/src/main/resources/db/migration/*/V1.*'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -29,6 +32,16 @@ function git(args, { allowFailure = false } = {}) {
     throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`)
   }
   return result.status === 0 ? result.stdout.trim() : ''
+}
+
+function isAncestor(older, newer) {
+  return spawnSync('git', ['merge-base', '--is-ancestor', older, newer], { cwd: repoRoot }).status === 0
+}
+
+/** FLOOR, or the last state up to HEAD that rewrote a baseline when that is newer. */
+function floor() {
+  const rewrite = git(['log', '--first-parent', '-1', '--format=%H', 'HEAD', '--', BASELINES])
+  return rewrite && isAncestor(FLOOR, rewrite) ? rewrite : FLOOR
 }
 
 function declaredOldestCompatible() {
@@ -53,12 +66,11 @@ export function previousVersionRef() {
   const baseTime = Number(git(['show', '-s', '--format=%ct', base]))
   const before = baseTime - LOOKBACK_HOURS * 3600
   const candidate = git(['rev-list', '-1', '--first-parent', `--before=${before}`, base])
+  const lowest = floor()
   if (!candidate) {
-    return FLOOR
+    return lowest
   }
-  const floorIsAncestor =
-    spawnSync('git', ['merge-base', '--is-ancestor', FLOOR, candidate], { cwd: repoRoot }).status === 0
-  return floorIsAncestor ? candidate : FLOOR
+  return isAncestor(lowest, candidate) ? candidate : lowest
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

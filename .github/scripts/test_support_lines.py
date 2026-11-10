@@ -436,7 +436,8 @@ const github = {
   paginate: async () => state.issues,
   rest: { issues: {
     listForRepo: null,
-    createComment: async a => calls.push(['comment', a.issue_number]),
+    createComment: async a => calls.push(state.bodies ? ['comment', a.issue_number, a.body]
+      : ['comment', a.issue_number]),
     update: async a => calls.push(['update', a.issue_number, a.state]),
     create: async () => calls.push(['create']),
   } },
@@ -478,7 +479,8 @@ OPEN_ALARM = {"number": 7, "state": "open", "body": "<!-- cve-critical-alert -->
 
 
 def run_alarm(tmp_path: Path, reports: dict[str, dict], legs: list[str], issues: list[dict],
-              ref: str = "refs/heads/main") -> list[list]:
+              ref: str = "refs/heads/main", built: list[str] | None = None,
+              bodies: bool = False) -> list[list]:
     node = shutil.which("node")
     assert node, "the check needs Node.js"
     (tmp_path / "critical").mkdir()
@@ -489,10 +491,11 @@ def run_alarm(tmp_path: Path, reports: dict[str, dict], legs: list[str], issues:
     harness = tmp_path / "harness.js"
     harness.write_text(ALARM_HARNESS, encoding="utf-8")
     state = tmp_path / "state.json"
-    state.write_text(json.dumps({"issues": issues, "ref": ref}), encoding="utf-8")
+    state.write_text(json.dumps({"issues": issues, "ref": ref, "bodies": bodies}), encoding="utf-8")
     result = subprocess.run(
         [node, harness.as_posix(), script.as_posix(), state.as_posix()], cwd=tmp_path,
-        capture_output=True, text=True, env={**os.environ, "EXPECTED_LEGS": json.dumps(legs)},
+        capture_output=True, text=True,
+        env={**os.environ, "EXPECTED_LEGS": json.dumps(legs), "BUILT_LEGS": json.dumps(built or [])},
     )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
@@ -516,3 +519,19 @@ def test_alarm_reports_findings_of_the_scanned_legs_despite_a_missing_one(tmp_pa
 
     assert ["comment", 7] in calls
     assert not [c for c in calls if c[0] == "update"]
+
+
+@pytest.mark.parametrize(
+    ("ref", "label"),
+    [("refs/heads/main", "**sandbox (main)**"),
+     ("refs/heads/feature/x", "**sandbox (gebaut aus refs/heads/feature/x)**")],
+)
+def test_alarm_names_the_ref_of_an_image_built_from_the_checkout(
+    tmp_path: Path, ref: str, label: str
+) -> None:
+    # The sandbox image is built from the run's checkout; only on main is that the state of main.
+    calls = run_alarm(tmp_path, {"sandbox": CRITICAL, "backend": REPORT}, ["sandbox", "backend"],
+                      [OPEN_ALARM], ref=ref, built=["sandbox"], bodies=True)
+
+    comments = [call for call in calls if call[0] == "comment"]
+    assert len(comments) == 1 and label in comments[0][2], comments

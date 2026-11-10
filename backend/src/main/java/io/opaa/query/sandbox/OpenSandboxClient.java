@@ -53,8 +53,19 @@ class OpenSandboxClient implements Sandboxes {
 
   static final String API_KEY_HEADER = "OPEN-SANDBOX-API-KEY";
   static final String EXECD_TOKEN_HEADER = "X-EXECD-ACCESS-TOKEN";
+
+  /** The variable execd reads its token from; execd hands its environment on to what it runs. */
+  static final String EXECD_TOKEN_VARIABLE = "EXECD_ACCESS_TOKEN";
+
   static final int EXECD_PORT = 44772;
   static final String SCRIPT_PATH = "/workspace/main.py";
+
+  /**
+   * Starts the script without execd's token in its environment: with it the script could call execd
+   * on the sandbox's loopback and run commands as root.
+   */
+  static final List<String> SCRIPT_COMMAND =
+      List.of("env", "-u", EXECD_TOKEN_VARIABLE, "python3", SCRIPT_PATH);
 
   /** Bounds of what comes back from the sandbox; anything beyond is dropped, never buffered. */
   static final int MAX_FILES = MAX_OUTPUT_FILES;
@@ -201,7 +212,7 @@ class OpenSandboxClient implements Sandboxes {
     // The TTL removes a sandbox this process could not delete.
     body.put("timeout", ttlSeconds);
     body.put("resourceLimits", Map.of("cpu", cpu, "memory", memory));
-    body.put("env", Map.of("EXECD_ACCESS_TOKEN", token));
+    body.put("env", Map.of(EXECD_TOKEN_VARIABLE, token));
     body.put("metadata", Map.of("purpose", "run_code"));
     HttpResponse<String> response =
         send(
@@ -285,7 +296,7 @@ class OpenSandboxClient implements Sandboxes {
    */
   private ScriptRun execute(String execd, String token, Duration runTimeout) {
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("argv", List.of("python3", SCRIPT_PATH));
+    body.put("argv", SCRIPT_COMMAND);
     body.put("cwd", "/workspace");
     body.put("timeout", runTimeout.toMillis());
     body.put("uid", SANDBOX_UID);
