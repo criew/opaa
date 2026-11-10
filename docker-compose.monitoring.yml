@@ -1,8 +1,9 @@
 # Optional monitoring of the Compose stack: Prometheus scrapes the backend's management port over the
 # Compose network (also backend-a and backend-b of docker-compose.multi.yml) and evaluates the chart's
-# alerts, Grafana shows the dashboards on a port of its own. Grafana must not share the origin of
-# OPAA: a page there could read the OPAA session. A reverse proxy on the host serves it under a
-# subdomain of its own; the port binds loopback unless OPAA_GRAFANA_BIND_ADDRESS opens it.
+# alerts, Grafana shows the dashboards on a port of its own. Grafana must not share the host name
+# of OPAA, not even on another port, since cookies ignore ports: a page there could use the OPAA
+# session. A reverse proxy on the host serves it under a subdomain of its own; the port binds
+# loopback unless OPAA_GRAFANA_BIND_ADDRESS opens it.
 # Prometheus publishes no port, and there is no Alertmanager: alerts show in Grafana and
 # Prometheus but reach nobody. Start together with the main file:
 #   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d

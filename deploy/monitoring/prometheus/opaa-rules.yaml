@@ -228,8 +228,8 @@ groups:
           severity: critical
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt
-          description: In einer Stunde scheitern so viele Fragen an opaa-backend, dass das 14,4-Fache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt schnell
+          description: In einer Stunde scheitern so viele Fragen an opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das 14,4-Fache des Anteils verbraucht wird, der auf diese Zeit entfällt.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaChatSloBurn
         expr: >-
@@ -250,8 +250,8 @@ groups:
           severity: warning
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt
-          description: In sechs Stunden scheitern so viele Fragen an opaa-backend, dass das Sechsfache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt anhaltend
+          description: In sechs Stunden scheitern so viele Fragen an opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das Sechsfache des Anteils verbraucht wird, der auf diese Zeit entfällt.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaChatSloBurn
         expr: >-
@@ -272,8 +272,8 @@ groups:
           severity: info
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt
-          description: In drei Tagen scheitern so viele Fragen an opaa-backend, dass mehr als der Anteil, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt schleichend
+          description: In drei Tagen scheitern so viele Fragen an opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage mehr als der Anteil verbraucht wird, der auf diese Zeit entfällt.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaTimeToFirstTokenHigh
         expr: >-

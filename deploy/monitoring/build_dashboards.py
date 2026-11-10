@@ -28,6 +28,22 @@ KSEL = 'namespace=~"$namespace"'
 # Light-scheme status colours of the design guidelines; white text reaches at least 4.5:1 on each.
 OK, WARN, CRIT, GREY = "#11774F", "#8F5A00", "#CE2C31", "#5A6270"
 NAVY, BLUE = "#012142", "#0B6FBC"
+# Marker of the rule groups behind a tile, read by templates/grafana-dashboards.yaml.
+GROUP_MARK = "# opaa-alert-groups: "
+# Rule groups (metrics.prometheusRule.groups) whose alerts alone colour a tile; tiles with a
+# measurement of their own (backend, database, platform) stay out.
+TILE_ALERT_GROUPS = {
+    "frontend": ("platform",),
+    "idp": ("directory", "platform"),
+    "chat": ("chat",),
+    "search": ("chat", "model"),
+    "models": ("model",),
+    "indexing": ("background", "indexing", "model"),
+    "background": ("background", "directory", "platform"),
+    "evidence": ("audit", "security"),
+    "security": ("audit", "model", "security"),
+}
+
 STATUS_MAP = [{"type": "value", "options": {
     "-2": {"text": "nicht gemessen", "color": GREY, "index": 4},
     "-1": {"text": "nicht eingerichtet", "color": GREY, "index": 0},
@@ -301,6 +317,10 @@ class Builder:
         s["alerts"] = (f'max(2 * (ALERTS{{alertstate="firing", namespace=~"$namespace", alertname=~"Opaa.*", severity="critical"}} == bool 1)'
                        f' or (ALERTS{{alertstate="firing", namespace=~"$namespace", alertname=~"Opaa.*", severity="warning"}} == bool 1)) or vector(0)')
         s["security"] = self.worst(s["evidence"], A('component="security"'))
+        # The tiles that only alerts colour carry the rule groups of those alerts in a trailing
+        # comment; the chart shows such a tile as "nicht gemessen" once all its groups are off.
+        for key, groups in TILE_ALERT_GROUPS.items():
+            s[key] = f"{s[key]} {GROUP_MARK}{','.join(groups)}"
         return s, b
 
     # ------------------------------------------------------------ shared panels

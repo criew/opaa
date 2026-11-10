@@ -213,11 +213,13 @@ Bereich; sie zeigen nichts je Person, keine aktiven Personen und keine Chats je 
 (Entscheidung 1), und wie sich die Nutzung zusammensetzt nur als Anteil, nie als absolute Zahl über
 die Zeit. Eine Ampel liest den Zustand der Alarme ihres Bereichs (`ALERTS`), so steuert eine
 geänderte Schwelle Alarm und Ampel zugleich; der Chart legt die Dashboards deshalb nur mit den
-Alarmen an. Chart und Compose-Overlay liefern dieselben Dateien aus, die Compose-Regeln sind aus dem
+Alarmen an, und eine Ampel, deren Alarmgruppen alle abgeschaltet sind, zeigt „nicht gemessen“ statt
+dauerhaft Grün. Chart und Compose-Overlay liefern dieselben Dateien aus, die Compose-Regeln sind aus dem
 Chart gerendert, nicht nachgeschrieben. Ein eigener Grafana oder Alertmanager kommt nicht in den
 Chart: Ein Cluster hat seine Überwachung, und Compose ohne Alertmanager zeigt Alarme, stellt sie
-aber nicht zu. Grafana läuft nie auf der Origin von OPAA, sondern auf eigener Adresse: Auf derselben
-Origin könnte ein Skript in Grafana die Sitzung von OPAA lesen und in ihrem Namen handeln.
+aber nicht zu. Grafana läuft nie unter dem Hostnamen von OPAA, sondern unter einem eigenen: Auf
+derselben Origin könnte ein Skript in Grafana die Sitzung von OPAA lesen und in ihrem Namen handeln,
+und ein anderer Port genügt nicht, weil Cookies keine Ports unterscheiden.
 
 ## Konsequenzen
 

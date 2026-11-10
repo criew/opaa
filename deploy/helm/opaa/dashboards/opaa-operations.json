@@ -208,7 +208,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((0 * max(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) or on() vector(-2)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((0 * max(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) or on() vector(-2)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: platform",
           "legendFormat": "Frontend",
           "range": false,
           "instant": true,
@@ -232,7 +232,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: directory,platform",
           "legendFormat": "Anmeldedienst",
           "range": false,
           "instant": true,

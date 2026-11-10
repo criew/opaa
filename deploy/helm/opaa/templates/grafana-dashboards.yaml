@@ -6,6 +6,13 @@
 {{- $dashboards := .Values.metrics.grafanaDashboards }}
 {{- /* The files carry the default runbook address; an own runbookBaseUrl replaces it. */}}
 {{- $defaultRunbook := "https://opaa.io/handbuch/betrieb/alarme.html" | quote }}
+{{- /* A tile that only alerts colour names their rule groups in a trailing comment of its query;
+  once all of them are switched off, it shows "nicht gemessen" (-2) instead of a lasting green. */}}
+{{- $off := list }}
+{{- range $group, $on := .Values.metrics.prometheusRule.groups }}
+{{- if not $on }}{{ $off = append $off $group }}{{ end }}
+{{- end }}
+{{- $offTile := printf `"expr": "(?:[^"\\]|\\.)* # opaa-alert-groups: (?:(?:%s),?)+"` (join "|" $off) }}
 {{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
 ---
 apiVersion: v1
@@ -29,6 +36,10 @@ metadata:
   {{- end }}
 data:
   {{ base $path }}: |-
-{{ $.Files.Get $path | replace $defaultRunbook ($.Values.metrics.runbookBaseUrl | quote) | indent 4 }}
+{{- $content := $.Files.Get $path | replace $defaultRunbook ($.Values.metrics.runbookBaseUrl | quote) }}
+{{- if $off }}
+{{- $content = regexReplaceAll $offTile $content `"expr": "vector(-2)"` }}
+{{- end }}
+{{ $content | indent 4 }}
 {{- end }}
 {{- end }}

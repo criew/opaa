@@ -76,6 +76,17 @@ for file in "${dashboard_files[@]}"; do
     exit 1
   fi
 done
+# A switched-off rule group turns the tiles only its alerts colour into "nicht gemessen" (-2);
+# the chat tile goes, the platform tile with measurements of its own stays.
+helm template opaa "$CHART_DIR" --namespace opaa --values "$CHART_DIR/ci/full-values.yaml" \
+  --set metrics.prometheusRule.groups.chat=false --show-only templates/grafana-dashboards.yaml |
+  yq 'select(.data["opaa-start.json"] != null) | .data["opaa-start.json"]' >"$work_dir/start-chat-off.json"
+off_tiles="$(jq -r '[.panels[] | select(.targets[0].expr == "vector(-2)") | .title] | join(",")' \
+  "$work_dir/start-chat-off.json")"
+if [ "$off_tiles" != "Chat" ]; then
+  echo "With the chat rule group off, the start page shows \"$off_tiles\" as not measured, not Chat." >&2
+  exit 1
+fi
 if grep -q 'grafana_dashboard' "$work_dir/minimal.yaml"; then
   echo "The minimal value set renders dashboard ConfigMaps, though metrics.grafanaDashboards is off." >&2
   exit 1

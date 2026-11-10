@@ -590,16 +590,16 @@ tests:
               severity: "critical"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In einer Stunde scheitern so viele Fragen an r-opaa-backend, dass das 14,4-Fache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt schnell"
+              description: "In einer Stunde scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das 14,4-Fache des Anteils verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
           - exp_labels:
               namespace: "opaa"
               severity: "warning"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In sechs Stunden scheitern so viele Fragen an r-opaa-backend, dass das Sechsfache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt anhaltend"
+              description: "In sechs Stunden scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das Sechsfache des Anteils verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - eval_time: 90m
         alertname: OpaaChatSloBurn
@@ -609,24 +609,24 @@ tests:
               severity: "critical"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In einer Stunde scheitern so viele Fragen an r-opaa-backend, dass das 14,4-Fache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt schnell"
+              description: "In einer Stunde scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das 14,4-Fache des Anteils verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
           - exp_labels:
               namespace: "opaa"
               severity: "warning"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In sechs Stunden scheitern so viele Fragen an r-opaa-backend, dass das Sechsfache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt anhaltend"
+              description: "In sechs Stunden scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage das Sechsfache des Anteils verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
           - exp_labels:
               namespace: "opaa"
               severity: "info"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In drei Tagen scheitern so viele Fragen an r-opaa-backend, dass mehr als der Anteil, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt schleichend"
+              description: "In drei Tagen scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage mehr als der Anteil verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
   # 1 % of the questions fail: only the slow burn of three days.
   - interval: 1m
@@ -644,8 +644,8 @@ tests:
               severity: "info"
               component: "chat"
             exp_annotations:
-              summary: "Fehlerbudget der Chat-Fragen verbrennt"
-              description: "In drei Tagen scheitern so viele Fragen an r-opaa-backend, dass mehr als der Anteil, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird."
+              summary: "Fehlerbudget der Chat-Fragen verbrennt schleichend"
+              description: "In drei Tagen scheitern so viele Fragen an r-opaa-backend, dass vom Fehlerbudget von 0,5 % für 30 Tage mehr als der Anteil verbraucht wird, der auf diese Zeit entfällt."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
   # Half of ten questions an hour fail, and many rejected questions besides: below the volume, and
   # rejected questions do not count, so no alert.

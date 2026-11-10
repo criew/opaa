@@ -20,7 +20,7 @@ Die Farben der Kacheln:
 | grün | nichts zu tun |
 | gelb | prüfen, Ticket für den nächsten Arbeitstag |
 | rot | gestört, sofort handeln |
-| grau | nicht eingerichtet, zu wenig Verkehr für eine Aussage oder nicht gemessen (das Frontend unter Compose) |
+| grau | nicht eingerichtet, zu wenig Verkehr für eine Aussage oder nicht gemessen (das Frontend unter Compose, eine Kachel, deren Alarmgruppen abgeschaltet sind) |
 
 Jede Kachel öffnet ihren Bereich:
 
@@ -70,11 +70,13 @@ metrics:
   [Alarme im Chart](kubernetes.md#alarme).
 - **Dashboards:** `metrics.grafanaDashboards.enabled` legt je Dashboard eine ConfigMap mit dem Label
   `grafana_dashboard: "1"` und dem Ordner `OPAA` an. Weil die Kacheln die Alarme lesen, verlangt der
-  Chart dafür `metrics.prometheusRule.enabled`. Der Sidecar des Grafana aus
+  Chart dafür `metrics.prometheusRule.enabled`. Sind alle Alarmgruppen abgeschaltet, aus denen eine
+  Kachel ihren Zustand liest (`metrics.prometheusRule.groups`), zeigt sie „nicht gemessen“ statt
+  dauerhaft Grün; das gilt etwa für „Chat“ ohne die Gruppe `chat`. Der Sidecar des Grafana aus
   kube-prometheus-stack liest sie ohne weiteres Zutun; ein anders eingestellter Sidecar bekommt Label
   und Ordner über die Werte unter `metrics.grafanaDashboards`.
-- **Eigene Adresse:** Grafana gehört auf eine eigene Subdomain, nicht unter einen Pfad der Adresse
-  von OPAA; warum, steht unter [Compose](#compose).
+- **Eigener Hostname:** Grafana gehört auf eine eigene Subdomain, weder unter einen Pfad noch auf
+  einen anderen Port des Hostnamens von OPAA; warum, steht unter [Compose](#compose).
 - **Zustellung:** Den Weg zur Bereitschaft legt der Alertmanager des Clusters fest. Eine Route auf
   `severity="critical"` weckt, `warning` geht als Ticket, `info` nirgendwohin; das Label `component`
   verteilt nach Zuständigkeit. Das Rezept gegen Folgealarme steht unter
@@ -98,11 +100,14 @@ Grafana öffnet sich danach unter `http://localhost:3001/` mit der Startseite �
 weitere Befehl für diesen Stapel nennt beide Dateien; mit mehreren Instanzen kommt
 `docker-compose.multi.yml` dazu, Prometheus findet `backend-a` und `backend-b` von selbst.
 
-- **Eigene Subdomain:** Grafana bekommt eine eigene Adresse, etwa `https://grafana.example.org/`,
-  die der Reverse-Proxy des Hosts auf den Port von Grafana leitet. Unter derselben Adresse wie OPAA,
+- **Eigene Subdomain:** Grafana bekommt einen eigenen Hostnamen, etwa `https://grafana.example.org/`,
+  den der Reverse-Proxy des Hosts auf den Port von Grafana leitet. Unter derselben Adresse wie OPAA,
   etwa als Pfad `/grafana/`, teilten beide Origin: Ein Skript in Grafana, ob aus einem Plugin oder
-  einer Lücke, könnte die Sitzung von OPAA lesen und in ihrem Namen handeln. `OPAA_GRAFANA_ROOT_URL`
-  nennt die Adresse, die der Browser sieht; Grafana braucht sie für Weiterleitungen und Links.
+  einer Lücke, könnte die Sitzung von OPAA lesen und in ihrem Namen handeln. Auch ein anderer Port
+  unter dem Hostnamen von OPAA, etwa `https://opaa.example.org:3001/`, reicht nicht: Cookies
+  unterscheiden keine Ports, ein Skript in Grafana sähe und setzte die Cookies von OPAA.
+  `OPAA_GRAFANA_ROOT_URL` nennt die Adresse, die der Browser sieht; Grafana braucht sie für
+  Weiterleitungen und Links.
 - **Netz:** Grafana veröffentlicht `OPAA_GRAFANA_PORT` (Vorgabe `3001`) an `127.0.0.1`; erst
   `OPAA_GRAFANA_BIND_ADDRESS` öffnet ihn darüber hinaus, was nur ohne Reverse-Proxy auf demselben
   Host nötig ist. Prometheus veröffentlicht keinen Port und fragt den Management-Port des Backends

@@ -381,7 +381,7 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
 
 Das Overlay `docker-compose.monitoring.yml` startet Prometheus mit den Alarmen und Grafana mit den
 Dashboards auf einem eigenen Port an `127.0.0.1`, für eine eigene Subdomain hinter dem
-Reverse-Proxy, nie unter der Adresse von OPAA. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
+Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
 Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder `.env`. Einrichtung und
 Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
 [Dashboards und Alarme](dashboards-und-alarme.md#compose).

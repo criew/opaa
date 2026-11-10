@@ -2,9 +2,10 @@
 case list below: gen_rule_tests.py RULES_JSON OUT. deploy/helm/ci/rule-test.sh runs it and fails
 when the checked-in file differs; a new or changed case goes here, never into the YAML.
 
-Expected annotations and static labels are taken from the rendered rules (RULES_JSON, JSON of
-.spec) with labels and the value filled in, so a case states only the labels its alert adds; the
-expressions are what the cases test. Every series carries the labels the ServiceMonitor gives it,
+The expected summary of each alert is written out below (SUMMARY), so a summary that renders
+wrong or empty fails. Description and runbook URL, and the static labels, are taken from the
+rendered rules (RULES_JSON, JSON of .spec) with labels and the value filled in, so a case states
+only the labels its alert adds; the expressions are what the cases test. Every series carries the labels the ServiceMonitor gives it,
 the scrape job included, so a rule that groups by a label Prometheus sets itself shows up.
 """
 import json
@@ -38,6 +39,56 @@ def fill(text, labels, value):
     return text
 
 
+# Expected summary per alert, or per alert and severity; {label} is filled from the alert's labels.
+SUMMARY = {
+    "OpaaBackendNotReady": {"critical": "Kein Pod des OPAA-Backends bereit",
+                            "warning": "Nicht alle Pods des OPAA-Backends bereit"},
+    "OpaaBackendMetricsMissing": "Keine Metriken vom OPAA-Backend",
+    "OpaaFrontendNotReady": {"critical": "Kein Pod des OPAA-Frontends bereit",
+                             "warning": "Nicht alle Pods des OPAA-Frontends bereit"},
+    "OpaaHeapUsageHigh": "Heap des OPAA-Backends nach der Speicherbereinigung fast voll",
+    "OpaaDatabasePoolTimeouts": "Anfragen bekommen keine Datenbankverbindung",
+    "OpaaInstanceHeartbeatStale": "Herzschlag einer OPAA-Instanz veraltet",
+    "OpaaInvalidationBusDisconnected": "OPAA-Instanz hört keine Cache-Meldungen",
+    "OpaaVersionMix": "Mehrere OPAA-Versionen laufen nebeneinander",
+    "OpaaMetricUnreadable": "OPAA kann einen Betriebswert nicht aus der Datenbank lesen",
+    "OpaaIdentityProviderRejected": "Anmeldung über den Identitätsanbieter gestört",
+    "OpaaHighErrorRate": {"warning": "Viele Fehlerantworten des OPAA-Backends",
+                          "critical": "Sehr viele Fehlerantworten des OPAA-Backends"},
+    "OpaaChatSloBurn": {"critical": "Fehlerbudget der Chat-Fragen verbrennt schnell",
+                        "warning": "Fehlerbudget der Chat-Fragen verbrennt anhaltend",
+                        "info": "Fehlerbudget der Chat-Fragen verbrennt schleichend"},
+    "OpaaTimeToFirstTokenHigh": "Chat antwortet langsam",
+    "OpaaRetrievalMostlyEmpty": "Suche findet fast nichts mehr",
+    "OpaaModelRoleDown": "Modellrolle {role} nicht erreichbar",
+    "OpaaOutboundAuthFailing": "Ausgehende Aufrufe scheitern an Anmeldung oder Zertifikat",
+    "OpaaTokenBudgetForecast": "Token-Verbrauch übersteigt das Monatsbudget",
+    "OpaaOutboundThrottled":"Anbieter drosselt Aufrufe, auf die jemand wartet",
+    "OpaaIndexingStalled": "Indexierung ohne Fortschritt",
+    "OpaaLibrariesOverdue": "Bibliotheken verpassen ihren Zeitplan",
+    "OpaaIndexingRunsFailing": "Viele Indexierungsläufe scheitern",
+    "OpaaDirectorySyncStale": "Verzeichnisabgleich veraltet",
+    "OpaaDirectorySyncPlanPending": "Abgleichplan wartet auf Bestätigung",
+    "OpaaScheduledJobOverdue": "Geplanter Lauf überfällig",
+    "OpaaQueueBacklog": "Warteschlange {queue} staut sich",
+    "OpaaMailDeliveryFailing": "Mails werden nicht zugestellt",
+    "OpaaAuditRetentionOverdue": "Löschlauf des Revisionsprotokolls ausgeblieben",
+    "OpaaAuditPayloadDropped": "Revisionsprotokoll ohne nicht gelistete Angaben geschrieben",
+    "OpaaAuditChainStalled": "Prüfsummenkette des Revisionsprotokolls steht",
+    "OpaaAuditChainUnsealed": "Protokollmonat ohne Siegel",
+    "OpaaAuditLogHorizon": {"warning": "Revisionsprotokoll bald ohne angelegten Monat",
+                            "critical": "Revisionsprotokoll kann bald nicht mehr schreiben"},
+    "OpaaMalwareScanFailing": "Virenprüfung scheitert",
+    "OpaaMalwareDetected": "Virenfund",
+    "OpaaMalwareSignaturesOutdated": "Virensignaturen veraltet",
+    "OpaaGlobalRateLimitHit": "Globale Grenze {limit} erreicht",
+    "OpaaLoginFailureSpike": "Ungewöhnlich viele abgewiesene Anmeldungen",
+    "OpaaTargetValidationTableFull": "Zielprüfung lehnt neue Ziele ab",
+    "OpaaSiemExportLagging": "Ausleitung an das Sicherheitsmonitoring im Rückstand",
+    "OpaaInstallationPending": "Installation nicht abgeschlossen",
+}
+
+
 def alert(name, severity, labels=None, value=None):
     """Expected alert: picks the rule of that name and severity (and labels like queue)."""
     labels = dict(labels or {})
@@ -51,6 +102,10 @@ def alert(name, severity, labels=None, value=None):
     all_labels = dict(r["labels"])
     all_labels.update(labels)
     ann = {k: fill(v, all_labels, value) for k, v in r["annotations"].items()}
+    summary = SUMMARY[name]
+    if isinstance(summary, dict):
+        summary = summary[severity]
+    ann["summary"] = summary.format(**all_labels)
     return all_labels, ann
 
 

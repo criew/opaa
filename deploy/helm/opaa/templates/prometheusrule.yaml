@@ -245,7 +245,7 @@ spec:
         # Burn rate of the error budget of chat questions, success / (success + error); rejected
         # questions say nothing about the service and stay out. Long and short window must both
         # burn, the long one with a minimum of questions.
-        {{- range $burn := list (dict "severity" "critical" "factor" 14.4 "long" "1h" "short" "5m" "for" "2m" "window" "einer Stunde" "spend" "das 14,4-Fache des Anteils, der auf diese Zeit entfällt,") (dict "severity" "warning" "factor" 6.0 "long" "6h" "short" "30m" "for" "15m" "window" "sechs Stunden" "spend" "das Sechsfache des Anteils, der auf diese Zeit entfällt,") (dict "severity" "info" "factor" 1.0 "long" "3d" "short" "6h" "for" "1h" "window" "drei Tagen" "spend" "mehr als der Anteil, der auf diese Zeit entfällt,") }}
+        {{- range $burn := list (dict "severity" "critical" "factor" 14.4 "long" "1h" "short" "5m" "for" "2m" "text" "schnell" "window" "einer Stunde" "spend" "das 14,4-Fache des Anteils") (dict "severity" "warning" "factor" 6.0 "long" "6h" "short" "30m" "for" "15m" "text" "anhaltend" "window" "sechs Stunden" "spend" "das Sechsfache des Anteils") (dict "severity" "info" "factor" 1.0 "long" "3d" "short" "6h" "for" "1h" "text" "schleichend" "window" "drei Tagen" "spend" "mehr als der Anteil") }}
         - alert: OpaaChatSloBurn
           expr: >-
             (
@@ -266,7 +266,7 @@ spec:
             component: chat
           annotations:
             summary: Fehlerbudget der Chat-Fragen verbrennt {{ $burn.text }}
-            description: In {{ $burn.window }} scheitern so viele Fragen an {{ $deployment }}, dass {{ $burn.spend }} des Fehlerbudgets von {{ printf "%g" (round (mulf $budget 100) 4) | replace "." "," }} % für 30 Tage verbraucht wird.
+            description: In {{ $burn.window }} scheitern so viele Fragen an {{ $deployment }}, dass vom Fehlerbudget von {{ printf "%g" (round (mulf $budget 100) 4) | replace "." "," }} % für 30 Tage {{ $burn.spend }} verbraucht wird, der auf diese Zeit entfällt.
             runbook_url: "{{ $rb }}#OpaaChatSloBurn"
         {{- end }}
         - alert: OpaaTimeToFirstTokenHigh

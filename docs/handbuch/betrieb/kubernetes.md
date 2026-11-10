@@ -1777,7 +1777,7 @@ Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBac
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
-| `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell |
+| `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“ |
 | `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
 | `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
 | `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |

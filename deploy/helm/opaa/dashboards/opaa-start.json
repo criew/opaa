@@ -212,7 +212,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"warning\"} == bool 1) or 1 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"info\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"warning\"} == bool 1) or 1 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"info\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: chat",
           "legendFormat": "Chat",
           "range": false,
           "instant": true,
@@ -329,7 +329,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: chat,model",
           "legendFormat": "Suche & Quellen",
           "range": false,
           "instant": true,
@@ -446,7 +446,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: model",
           "legendFormat": "KI-Modelle",
           "range": false,
           "instant": true,
@@ -563,7 +563,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: background,indexing,model",
           "legendFormat": "Indexierung",
           "range": false,
           "instant": true,
@@ -680,7 +680,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: background,directory,platform",
           "legendFormat": "Hintergrund",
           "range": false,
           "instant": true,
@@ -914,7 +914,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: audit,security",
           "legendFormat": "Nachweis",
           "range": false,
           "instant": true,
