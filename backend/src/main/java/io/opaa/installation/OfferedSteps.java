@@ -2,7 +2,7 @@ package io.opaa.installation;
 
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
-import io.opaa.llm.TextRecognitionModelRole;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;

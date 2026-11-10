@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
  * credentials. Only that mode reads the address, for the chat model it installs itself with; every
  * other mode gets its models from the installation, so the guard is not even registered there. The
  * embedding model's address is checked by the probe embedding of {@code
- * io.opaa.llm.EmbeddingModelService}.
+ * io.opaa.llm.embedding.EmbeddingModelService}.
  *
  * <p>{@code ${VAR:default}} only falls back to its default when {@code VAR} is unset: an {@code
  * OPAA_OPENAI_BASE_URL} set but empty overrides the local default with an empty string, which would

@@ -250,6 +250,35 @@ public final class ModularArchitecture {
           "connection.oauth");
 
   /**
+   * The root package of the models: the chat model, the endpoint rules and the scaffold every
+   * optional model role builds on. It names none of its subpackages.
+   */
+  static final String LLM = "llm";
+
+  /**
+   * The model roles below {@link #LLM}, one package each. A role depends only on itself and on the
+   * scaffold in {@link #LLM}, never on another role.
+   */
+  static final List<String> LLM_ROLES =
+      List.of("llm.embedding", "llm.rerank", "llm.transcription", "llm.textrecognition");
+
+  /**
+   * The packages below {@link #LLM} that span several roles (administration of the stored roles,
+   * disclosure of all models); they may use the scaffold and every role, no role uses them.
+   */
+  static final List<String> LLM_ACROSS_ROLES = List.of("llm.administration");
+
+  /** The stored row of an optional model role, relative to the root. */
+  static final String OPTIONAL_ROLE_SETTINGS = "llm.OptionalRoleSettings";
+
+  /** The methods that change the row of an optional model role. */
+  static final Set<String> ROLE_ROW_WRITERS =
+      Set.of("replaceEndpoint", "replaceOwn", "replaceRealtime");
+
+  /** The only package that creates or changes the row of an optional model role. */
+  static final String ROLE_ROW_ADMINISTRATION = "llm.administration";
+
+  /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036,
    * Entscheidung 5): only rights, which stores the scope, and connections, which decides it, name
    * it.
@@ -989,6 +1018,114 @@ public final class ModularArchitecture {
                                     + " package it uses")));
               }
             })
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Inside {@link #LLM} the scaffold names no subpackage, a role of {@link #LLM_ROLES} names only
+   * the scaffold, and a package of {@link #LLM_ACROSS_ROLES} names no package that spans roles but
+   * itself. A subpackage in neither list, other than the web package, is reported.
+   */
+  ArchRule llmRolesDependOnlyOnTheScaffold() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>("depend inside llm only on the scaffold or the own role") {
+              private final Set<String> unlisted = new TreeSet<>();
+
+              @Override
+              public void check(JavaClass origin, ConditionEvents events) {
+                String from = relative(origin.getBaseComponentType().getPackageName());
+                if (from == null || !isLlmPackage(from) || isWebPackage(from)) {
+                  return;
+                }
+                boolean role = LLM_ROLES.contains(from);
+                if (!from.equals(LLM) && !role && !LLM_ACROSS_ROLES.contains(from)) {
+                  unlisted.add(from);
+                  return;
+                }
+                for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
+                  String to =
+                      relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
+                  if (to == null
+                      || !isLlmPackage(to)
+                      || isWebPackage(to)
+                      || to.equals(from)
+                      || (!from.equals(LLM) && to.equals(LLM))
+                      || (LLM_ACROSS_ROLES.contains(from) && LLM_ROLES.contains(to))) {
+                    continue;
+                  }
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          dependency,
+                          from
+                              + " -> "
+                              + to
+                              + (from.equals(LLM)
+                                  ? " lets the llm scaffold name a package below it"
+                                  : role
+                                      ? " lets a model role name a package other than the llm"
+                                          + " scaffold"
+                                      : " lets a package spanning the roles name another one")
+                              + ": "
+                              + dependency.getDescription()));
+                }
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                unlisted.forEach(
+                    name ->
+                        events.add(
+                            SimpleConditionEvent.violated(
+                                name,
+                                root
+                                    + "."
+                                    + name
+                                    + " is not assigned: add it to ModularArchitecture.LLM_ROLES or"
+                                    + " ModularArchitecture.LLM_ACROSS_ROLES")));
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  private static boolean isLlmPackage(String relative) {
+    return relative.equals(LLM) || relative.startsWith(LLM + ".");
+  }
+
+  /** A row class of an optional model role: a subtype of {@code rowType} below {@link #LLM}. */
+  private boolean isRowClassInLlm(JavaClass javaClass, String rowType) {
+    String relative = relative(javaClass.getPackageName());
+    return relative != null && isLlmPackage(relative) && javaClass.isAssignableTo(rowType);
+  }
+
+  /**
+   * Creating a row of {@link #OPTIONAL_ROLE_SETTINGS} with a timestamp, or calling one of {@link
+   * #ROLE_ROW_WRITERS} on it, also by reference, only in {@link #ROLE_ROW_ADMINISTRATION} and in
+   * the row classes below {@link #LLM} themselves; a subclass elsewhere is no exception.
+   */
+  ArchRule onlyTheAdministrationWritesTheRoleRows() {
+    String rowType = root + "." + OPTIONAL_ROLE_SETTINGS;
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + ROLE_ROW_ADMINISTRATION + " and the row classes in llm",
+                javaClass ->
+                    !ROLE_ROW_ADMINISTRATION.equals(relative(javaClass.getPackageName()))
+                        && !isRowClassInLlm(topLevel(javaClass), rowType)))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "create or change the row of an optional model role",
+                access ->
+                    access.getTargetOwner().isAssignableTo(rowType)
+                        && (ROLE_ROW_WRITERS.contains(access.getName())
+                            || (access.getName().equals("<init>")
+                                && access.getTarget() instanceof CodeUnitAccessTarget target
+                                && !target.getRawParameterTypes().isEmpty()))))
+        .because(
+            "the administration writes every role row, with its audit entry and the cache it drops"
+                + " (ModelRoleAdministration)")
         .allowEmptyShould(true);
   }
 
@@ -2020,6 +2157,7 @@ public final class ModularArchitecture {
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
+        onlyTheAdministrationWritesTheRoleRows(),
         onlyTheManifestDeltaStartsProcesses(),
         transactionCallbacksGoThroughTheHelper(),
         onlyTheRunRemovesThroughTheCleanupService(),
@@ -2033,6 +2171,7 @@ public final class ModularArchitecture {
         theIndexingCoreDependsOnlyDownward(),
         everyIndexingPackageIsInTheCore(),
         theConnectionPackagesDependOnlyDownward(),
+        llmRolesDependOnlyOnTheScaffold(),
         theFileSyncKnowsNoProvider(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),

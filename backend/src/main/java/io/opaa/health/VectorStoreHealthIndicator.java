@@ -2,8 +2,8 @@ package io.opaa.health;
 
 import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
-import io.opaa.llm.EmbeddingInfoService;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import java.time.Clock;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.pgvector.PGvector;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingClients;
+import io.opaa.llm.embedding.EmbeddingClients;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.QueryProperties;

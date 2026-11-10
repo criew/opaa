@@ -106,7 +106,8 @@ final class SecurityInvariants {
           "io.opaa.security.SettingsEncryptor", Set.of("decrypt"),
           "io.opaa.security.CredentialsEncryptor", Set.of("decrypt"),
           "io.opaa.security.EncryptedCredentials", Set.of("read"),
-          "io.opaa.security.AesGcmCipher", Set.of("open"));
+          "io.opaa.security.AesGcmCipher", Set.of("open"),
+          "io.opaa.llm.OptionalRoleEndpoints", Set.of("decrypt"));
 
   /**
    * The building blocks that hand a stored secret only to the target it was stored for: a model key

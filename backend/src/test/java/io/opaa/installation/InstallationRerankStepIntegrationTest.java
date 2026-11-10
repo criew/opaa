@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.llm.ModelRoleAdministration;
-import io.opaa.llm.ModelRoleEndpoints;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.rerank.RerankEndpoints;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import java.util.List;
@@ -41,7 +41,7 @@ class InstallationRerankStepIntegrationTest {
   @Autowired private DatabaseInstallationStatus status;
   @Autowired private LocalAccountFixturesFactory accountsFactory;
   @Autowired private ModelRoleAdministration modelRoles;
-  @Autowired private ModelRoleEndpoints endpoints;
+  @Autowired private RerankEndpoints endpoints;
 
   private InstallationFixture fixture;
 
@@ -113,8 +113,8 @@ class InstallationRerankStepIntegrationTest {
     mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
 
     // No manual invalidation: the completion itself drops this instance's role cache.
-    assertThat(endpoints.rerank().enabled()).isTrue();
-    assertThat(endpoints.rerank().model()).isEqualTo("bge-reranker-v2-m3");
+    assertThat(endpoints.current().enabled()).isTrue();
+    assertThat(endpoints.current().model()).isEqualTo("bge-reranker-v2-m3");
     ModelRoleAdministration.RerankModelView view = modelRoles.rerank();
     assertThat(view.enabled()).isTrue();
     assertThat(view.baseUrl()).isEqualTo(fixture.chatBaseUrl());

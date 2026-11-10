@@ -69,7 +69,7 @@ public final class ModelEndpointUri {
    * @throws IllegalArgumentException when the base URL carries credentials.
    * @throws URISyntaxException when the result is not a valid URI.
    */
-  static URI append(String baseUrl, String path) throws URISyntaxException {
+  public static URI append(String baseUrl, String path) throws URISyntaxException {
     if (containsCredentials(baseUrl)) {
       throw new IllegalArgumentException("base URL must not carry credentials");
     }

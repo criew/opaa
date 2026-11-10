@@ -1,8 +1,8 @@
 package io.opaa.eval;
 
 import io.opaa.llm.LlmEncryptedColumns;
-import io.opaa.llm.ModelRoleEndpoints;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankEndpoints;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.security.SettingsEncryptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -26,7 +26,7 @@ final class EvalRerankModel {
   static void installIfRequested(
       JdbcTemplate jdbcTemplate,
       SettingsEncryptor settingsEncryptor,
-      ModelRoleEndpoints endpoints,
+      RerankEndpoints endpoints,
       RerankModelRole role) {
     String baseUrl = System.getProperty(BASE_URL_PROPERTY);
     String model = System.getProperty(MODEL_PROPERTY);
