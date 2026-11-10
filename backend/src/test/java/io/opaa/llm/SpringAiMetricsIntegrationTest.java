@@ -32,6 +32,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,7 +66,12 @@ class SpringAiMetricsIntegrationTest {
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private Environment environment;
   @Autowired private ActiveChatModelResolver resolver;
-  @Autowired private EmbeddingClientFactory embeddingClients;
+
+  /** The production factory itself: the test beans put a fake factory first. */
+  @Autowired
+  @Qualifier("openAiEmbeddingClientFactory")
+  private EmbeddingClientFactory embeddingClients;
+
   @Autowired private LlmModelService llmModelService;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
