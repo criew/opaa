@@ -72,9 +72,12 @@ für jeden Betrieb mit Sandbox:
 
 **Härtung des Dienstes:** Der Sandbox-Dienst läuft mit Read-only Filesystem, ohne Capabilities und
 mit `no-new-privileges`. Schreiben darf er nur unter `/tmp` und in sein Volume
-`opensandbox-state` mit seinem eigenen Zustand. Sein Image und das Basis-Image von
-`opaa/sandbox-python` sind auf Version und Prüfsumme festgelegt; ein Update kommt als Änderung am
-Repository und wird vor der Übernahme mit dem Stapel geprüft.
+`opensandbox-state` mit seinem eigenen Zustand. Die Images des Dienstes und seines
+Ausführungsagenten, das Basis-Image von `opaa/sandbox-python` und dessen Python-Pakete sind auf
+Version und Prüfsumme festgelegt; ein `docker compose pull` holt deshalb nie still einen anderen
+Stand. Neue Fassungen kommen mit einem OPAA-Update. Danach den Stapel mit `up -d --build` neu
+starten, damit auch das Sandbox-Image neu gebaut wird, und `run_code` einmal von einem Agenten
+ausführen lassen.
 
 ## Kubernetes
 

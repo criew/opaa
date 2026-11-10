@@ -23,7 +23,7 @@ jederzeit auch lokal ausführen (unten).
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Basis-Image des OCR-Images (`ocr/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `dockerfile` | `ci` |
-| Images der Sandbox: Sandbox-Dienst (`docker-compose.sandbox.yml`), execd (`sandbox/config.toml`, eigener Regex-Manager) und Basis-Image (`sandbox/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [Sandbox-Images](#sandbox-images)) | `docker-compose`, `custom.regex`, `dockerfile` | `ci` |
+| Images der Sandbox: Sandbox-Dienst (`docker-compose.sandbox.yml`), execd (`sandbox/config.toml`, eigener Regex-Manager) und Basis-Image (`sandbox/Dockerfile`), Version und Digest gemeinsam, dazu die Python-Pakete des Images mit Hashes (`sandbox/requirements.txt`), ohne Auto-Merge (siehe [Sandbox-Images](#sandbox-images)) | `docker-compose`, `custom.regex`, `dockerfile`, `pip_requirements` | `ci` |
 | Python-Pakete, die das OCR-Image im Basis-Image ersetzt (`ocr/requirements-overrides.txt`), mit Hashes, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `pip_requirements` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
@@ -116,8 +116,16 @@ die Tags `release-X.Y.Z`, keine Vorabversionen, `staging-…`-Builds oder die al
 
 `sandbox/config.toml` liest kein regulärer Manager, sondern ein eigener Regex-Manager. Sein
 Ausdruck lässt den Digest offen und seine Ersetzungsvorlage schreibt ihn mit; fehlt der Digest in
-der Datei, schlägt Renovate ihn deshalb selbst als Pin-PR vor. `.github/scripts/test_sandbox_image_pins.py`
-prüft, dass Compose-Datei, Dockerfile und Regeln zusammenpassen und der Ausdruck die Zeile trifft.
+der Datei, schlägt Renovate ihn deshalb selbst als Pin-PR vor.
+
+Die Python-Pakete des Sandbox-Images stehen samt allen Abhängigkeiten in `sandbox/requirements.txt`,
+jedes mit dem sha256 jedes Wheels, das CPython 3.13 auf `linux/amd64` und `linux/arm64` (glibc)
+installiert; das Dockerfile installiert mit `--require-hashes` und nur aus Wheels. Dieselbe Regel
+gilt (drei Tage, kein Auto-Merge). Hebt ein Update eine Abhängigkeit an, die ein anderes Paket
+anders verlangt, scheitert der Bau des Images im Scan des PRs.
+
+`.github/scripts/test_sandbox_image_pins.py` prüft, dass Compose-Datei, Dockerfile,
+`requirements.txt` und Regeln zusammenpassen und der Ausdruck die execd-Zeile trifft.
 
 Vor dem Merge eines Updates den Stapel mit dem Overlay starten und einmal `run_code` ausführen
 lassen ([Sandbox für Agenten](handbuch/betrieb/sandbox.md)). Das Sandbox-Image baut und scannt

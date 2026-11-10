@@ -577,8 +577,10 @@
     },
     // Dritte Ausnahme: Die Images der Sandbox tragen Version und Digest. Der Sandbox-Dienst
     // (docker-compose.sandbox.yml) hält den Docker-Socket des Hosts, execd (sandbox/config.toml)
-    // und das Basis-Image (sandbox/Dockerfile) laufen mit fremdem Code. Keine Pflichtprüfung
-    // startet den Stapel; ein Update kommt deshalb erst nach drei Tagen und mergt nie automatisch.
+    // und das Basis-Image (sandbox/Dockerfile) laufen mit fremdem Code, ebenso die Python-Pakete
+    // des Images mit ihren Hashes (sandbox/requirements.txt, Manager pip_requirements). Keine
+    // Pflichtprüfung startet den Stapel; ein Update kommt deshalb erst nach drei Tagen und mergt nie
+    // automatisch.
     {
       matchFileNames: ['docker-compose.sandbox.yml', 'sandbox/**'],
       pinDigests: true,

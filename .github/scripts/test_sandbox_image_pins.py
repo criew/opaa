@@ -55,6 +55,22 @@ def test_the_base_image_of_the_sandbox_carries_version_and_digest() -> None:
     assert re.fullmatch(r"FROM python:\d+\.\d+\.\d+-slim-[a-z]+" + DIGEST, lines[0]), lines[0]
 
 
+def test_the_python_packages_are_installed_with_hashes_only() -> None:
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+    installs = [line for line in dockerfile.replace("\\\n", " ").splitlines() if "pip install" in line]
+    requirements = (ROOT / "sandbox" / "requirements.txt").read_text(encoding="utf-8")
+    entries = [entry for entry in requirements.replace("\\\n", " ").splitlines()
+               if entry.strip() and not entry.startswith("#")]
+
+    assert len(installs) == 1, installs
+    for option in ("--require-hashes", "--only-binary=:all:", "-r /tmp/requirements.txt"):
+        assert option in installs[0], installs[0]
+    assert entries
+    for entry in entries:
+        assert re.match(r"^[A-Za-z0-9._-]+==[^\s]+ ", entry), entry
+        assert re.search(r"--hash=sha256:[0-9a-f]{64}", entry), entry
+
+
 def test_renovate_pins_and_never_merges_the_sandbox_images_alone() -> None:
     rule = only_block(SANDBOX_FILES, "pinDigests: true")
     digest = only_block(SANDBOX_FILES, "matchUpdateTypes: ['digest']")

@@ -169,7 +169,8 @@ jobs:
             # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
             # suppressions, the ZAP image pin and its wiring. Every Dockerfile and the sandbox
             # configuration belong here because test_image_scan_coverage.py checks that cve-scan.yml
-            # scans each image and test_sandbox_image_pins.py reads the execd pin.
+            # scans each image and test_sandbox_image_pins.py reads the execd pin and the hashed
+            # packages of the sandbox image.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -203,6 +204,7 @@ jobs:
               - '**/Containerfile'
               - '**/Containerfile.*'
               - 'sandbox/config.toml'
+              - 'sandbox/requirements.txt'
             # Filter of the action pin guard in the `changes` job.
             workflows:
               - '.github/workflows/**'
