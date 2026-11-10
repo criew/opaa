@@ -1,0 +1,65 @@
+# Optional monitoring of the Compose stack: Prometheus scrapes the backend's management port over the
+# Compose network (also backend-a and backend-b of docker-compose.multi.yml) and evaluates the chart's
+# alerts, Grafana shows the dashboards under /grafana/ behind the frontend's nginx. Neither publishes a port, and there is no Alertmanager: alerts show
+# in Grafana and Prometheus but reach nobody. Start together with the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# Setup: docs/handbuch/betrieb/dashboards-und-alarme.md, section "Compose".
+services:
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${OPAA_PROMETHEUS_RETENTION:-30d}
+    volumes:
+      - ./deploy/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # The chart's alerts, rendered for this stack by deploy/monitoring/render.sh.
+      - ./deploy/monitoring/prometheus/opaa-rules.yaml:/etc/prometheus/rules/opaa-rules.yaml:ro
+      - opaa-prometheus-data:/prometheus
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    restart: unless-stopped
+    environment:
+      # Served from /grafana/ itself, behind the frontend's nginx; the root URL is the address the
+      # browser sees and appears in Grafana's redirects and links.
+      GF_SERVER_ROOT_URL: ${OPAA_GRAFANA_ROOT_URL:-http://localhost:3000/grafana/}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: ${OPAA_GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${OPAA_GRAFANA_ADMIN_PASSWORD:?set OPAA_GRAFANA_ADMIN_PASSWORD for the Grafana admin account}
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # No calls home: no usage statistics, update checks or news feed.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/opaa/opaa-start.json
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      # The same files the Helm chart ships as ConfigMaps.
+      - ./deploy/helm/opaa/dashboards:/var/lib/grafana/dashboards/opaa:ro
+      - opaa-grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    volumes:
+      # Adds the location /grafana/ to the frontend's nginx; without this file the image has none.
+      - ./deploy/monitoring/nginx/grafana.conf:/etc/nginx/opaa-locations.d/grafana.conf:ro
+
+volumes:
+  opaa-prometheus-data:
+  opaa-grafana-data:
