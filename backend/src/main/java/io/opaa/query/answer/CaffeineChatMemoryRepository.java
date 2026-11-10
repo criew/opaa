@@ -4,10 +4,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.PrivateLibraryErased;
-import io.opaa.observability.MeteredCaches;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -22,16 +20,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL, bounding the
- * number of concurrent conversations against unbounded memory growth. Only its hits and misses are
- * measured; how many conversations it holds is not published (ADR-0071).
+ * number of concurrent conversations against unbounded memory growth. Not measured: its size and
+ * its misses would show conversations held and begun (ADR-0071, Entscheidung 10).
  *
  * <p>The two-/three-arg constructors are package-visible for tests that need non-default limits or
  * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository()} is the one Spring calls,
  * marked {@link Autowired} because more than one constructor exists.
  */
 @Service
-public class CaffeineChatMemoryRepository
-    implements ChatMemoryRepository, InvalidationSubscriber, MeteredCaches {
+public class CaffeineChatMemoryRepository implements ChatMemoryRepository, InvalidationSubscriber {
 
   /**
    * The topic {@link ChatMemoryErasureAnnouncement} sends when a private library was erased on any
@@ -78,7 +75,6 @@ public class CaffeineChatMemoryRepository
         Caffeine.newBuilder()
             .maximumSize(maxConversations)
             .expireAfterAccess(ttlMinutes, TimeUnit.MINUTES)
-            .recordStats()
             .evictionListener(
                 (key, value, cause) ->
                     log.debug("Evicted conversation '{}' due to {}", key, cause));
@@ -157,15 +153,5 @@ public class CaffeineChatMemoryRepository
   /** Forces pending evictions to run synchronously. Intended for testing. */
   void cleanUp() {
     cache.cleanUp();
-  }
-
-  @Override
-  public Map<String, Cache<?, ?>> meteredCaches() {
-    return Map.of("chat_memory", cache);
-  }
-
-  @Override
-  public Set<String> sizeWithheld() {
-    return Set.of("chat_memory");
   }
 }

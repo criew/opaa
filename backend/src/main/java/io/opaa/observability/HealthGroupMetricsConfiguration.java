@@ -5,10 +5,12 @@ import io.micrometer.core.instrument.Tags;
 import java.time.Duration;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.DoubleSupplier;
@@ -43,16 +45,23 @@ public class HealthGroupMetricsConfiguration {
   static final Duration PASSIVE_MAX_AGE = INTERVAL.multipliedBy(2);
 
   /**
-   * The thread of the reads; a daemon and no bean, so it neither holds back the shutdown nor
-   * displaces the application's task executor.
+   * The thread of the reads, without a queue: a read arriving while one still runs is refused, so a
+   * hanging group never piles up reads behind it. A daemon and no bean, so it neither holds back
+   * the shutdown nor displaces the application's task executor.
    */
   private static final ExecutorService READS =
-      Executors.newSingleThreadExecutor(
+      new ThreadPoolExecutor(
+          1,
+          1,
+          0L,
+          TimeUnit.MILLISECONDS,
+          new SynchronousQueue<>(),
           runnable -> {
             Thread thread = new Thread(runnable, "health-group-metrics");
             thread.setDaemon(true);
             return thread;
-          });
+          },
+          new ThreadPoolExecutor.AbortPolicy());
 
   @Bean
   PolledGauges healthGroupGauges(
@@ -84,19 +93,29 @@ public class HealthGroupMetricsConfiguration {
                       .lastStatus(PASSIVE_MAX_AGE)
                       .map(HealthGroupMetricsConfiguration::value)
                       .orElse(-1.0)
-              : () -> withinLimit(READS, () -> value(endpoint.getObject().healthForPath(group))));
+              : () ->
+                  withinLimit(
+                      READS, TIME_LIMIT, () -> value(endpoint.getObject().healthForPath(group))));
     }
     return gauges;
   }
 
-  /** {@code read} on the own thread; a read beyond {@link #TIME_LIMIT} fails. */
-  static double withinLimit(ExecutorService executor, DoubleSupplier read) {
-    CompletableFuture<Double> future = CompletableFuture.supplyAsync(read::getAsDouble, executor);
+  /**
+   * {@code read} on the own thread; a read beyond {@code limit} is interrupted and fails, one
+   * refused because the thread is still busy fails at once.
+   */
+  static double withinLimit(ExecutorService executor, Duration limit, DoubleSupplier read) {
+    Future<Double> future;
     try {
-      return future.get(TIME_LIMIT.toMillis(), TimeUnit.MILLISECONDS);
+      future = executor.submit(read::getAsDouble);
+    } catch (RejectedExecutionException e) {
+      throw new IllegalStateException("an earlier health group read is still running", e);
+    }
+    try {
+      return future.get(limit.toMillis(), TimeUnit.MILLISECONDS);
     } catch (TimeoutException e) {
       future.cancel(true);
-      throw new IllegalStateException("health group not read within " + TIME_LIMIT, e);
+      throw new IllegalStateException("health group not read within " + limit, e);
     } catch (ExecutionException e) {
       throw new IllegalStateException("health group could not be read", e.getCause());
     } catch (InterruptedException e) {

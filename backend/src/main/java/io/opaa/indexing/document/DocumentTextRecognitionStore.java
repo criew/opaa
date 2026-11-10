@@ -19,10 +19,16 @@ public class DocumentTextRecognitionStore {
   /** The content type of the documents text recognition reads. */
   static final String PDF_CONTENT_TYPE = "application/pdf";
 
+  /** Bounds the metric read of {@link #uploadBacklog}, so a lock never holds its thread long. */
+  static final int BACKLOG_QUERY_TIMEOUT_SECONDS = 10;
+
   private final JdbcTemplate jdbcTemplate;
+  private final JdbcTemplate backlogReads;
 
   public DocumentTextRecognitionStore(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
+    this.backlogReads = new JdbcTemplate(jdbcTemplate.getDataSource());
+    this.backlogReads.setQueryTimeout(BACKLOG_QUERY_TIMEOUT_SECONDS);
   }
 
   /**
@@ -230,10 +236,11 @@ public class DocumentTextRecognitionStore {
 
   /**
    * How many uploaded scans of every library wait for text recognition, and the seconds since the
-   * oldest of them was uploaded ({@code 0} without one), by the database clock.
+   * oldest of them was uploaded ({@code 0} without one), by the database clock; gives up after
+   * {@value #BACKLOG_QUERY_TIMEOUT_SECONDS} seconds.
    */
   public UploadBacklog uploadBacklog(int pipelineVersion, String configurationId) {
-    return jdbcTemplate.queryForObject(
+    return backlogReads.queryForObject(
         "SELECT count(*) AS waiting,"
             + " coalesce(extract(epoch FROM clock_timestamp() - min(d.created_at)), 0) AS age"
             + " FROM documents d WHERE d.source_type = 'UPLOAD' AND "

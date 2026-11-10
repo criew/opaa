@@ -14,8 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * The background and platform metrics of the running application (ADR-0071): the polled gauges read
  * real values from the schema, every measured cache reports hits and misses under its fixed name
- * and none whose figures would trace persons is measured, the invalidation bus and its dispatch
- * thread are measured, and every health group has a status.
+ * and no cache whose figures follow active persons has a series, the invalidation bus and its
+ * dispatch thread are measured, and every health group has a status.
  */
 @OpaaIntegrationTest
 class BackgroundMetricsIntegrationTest {
@@ -23,17 +23,20 @@ class BackgroundMetricsIntegrationTest {
   /** Every measured cache; a new one joins {@link MeteredCaches} and this list. */
   private static final Set<String> CACHES =
       Set.of(
-          "chat_memory",
-          "external_access_quota",
-          "rerank_endpoint",
-          "transcription_endpoint",
-          "text_recognition_endpoint",
-          "metadata_filter_options",
-          "asset_grants");
+          "rerank_endpoint", "transcription_endpoint", "text_recognition_endpoint", "asset_grants");
 
-  /** Caches whose hits, misses or size would trace persons; none of them is measured. */
+  /**
+   * Caches keyed by person, token or conversation: their hits, misses or size follow active
+   * persons, so none of them is measured.
+   */
   private static final Set<String> UNMEASURED_CACHES =
-      Set.of("revoked_tokens", "personal_space_provisioned", "group_memberships");
+      Set.of(
+          "revoked_tokens",
+          "personal_space_provisioned",
+          "group_memberships",
+          "metadata_filter_options",
+          "external_access_quota",
+          "chat_memory");
 
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private List<PolledGauges> polledGauges;
@@ -77,10 +80,14 @@ class BackgroundMetricsIntegrationTest {
             .filter(id -> "hit".equals(id.getTag("result")))
             .map(id -> id.getTag("cache"))
             .collect(Collectors.toSet());
+    Set<String> anySeries =
+        meterRegistry.getMeters().stream()
+            .map(meter -> meter.getId().getTag("cache"))
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
 
-    assertThat(measured).containsAll(CACHES).doesNotContainAnyElementsOf(UNMEASURED_CACHES);
-    assertThat(meterRegistry.find("cache.size").tag("cache", "chat_memory").meter()).isNull();
-    assertThat(meterRegistry.find("cache.evictions").tag("cache", "chat_memory").meter()).isNull();
+    assertThat(measured).containsAll(CACHES);
+    assertThat(anySeries).doesNotContainAnyElementsOf(UNMEASURED_CACHES);
     assertThat(meterRegistry.find("opaa.conversations.active").meter()).isNull();
   }
 

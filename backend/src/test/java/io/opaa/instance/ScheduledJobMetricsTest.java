@@ -21,7 +21,7 @@ import org.springframework.scheduling.support.ScheduledMethodRunnable;
  * {@link ScheduledJobMetrics} on the observation Spring opens around a scheduled run: a failing run
  * counts a failure and leaves the last success alone, a successful one sets it, and a locked run
  * whose lock this instance did not get leaves both alone. Until a run succeeds its last success is
- * the start of the instance.
+ * the start of the instance. A failure a run reports itself counts for that run alone.
  */
 class ScheduledJobMetricsTest {
 
@@ -88,6 +88,18 @@ class ScheduledJobMetricsTest {
   }
 
   @Test
+  void aReportedFailureCountsForItsRunOnlyNotForTheNextOnTheSameThread() throws Exception {
+    clock.advance(Duration.between(STARTED, NOW));
+    jobs.report = true;
+    run("catchesItsFailure");
+    jobs.report = false;
+    run("catchesItsFailure");
+
+    assertThat(failures("jobs.catches-its-failure")).isEqualTo(1.0);
+    assertThat(lastSuccess("jobs.catches-its-failure")).isEqualTo(NOW.getEpochSecond());
+  }
+
+  @Test
   void aJobIsNamedByItsLockOrByClassAndMethod() throws Exception {
     assertThat(ScheduledJobMetrics.jobName(Jobs.class.getMethod("locked")))
         .isEqualTo("nightly-test-run");
@@ -110,6 +122,7 @@ class ScheduledJobMetricsTest {
   /** Stands in for scheduled beans; the locked run asks the lock provider like ShedLock does. */
   public static class Jobs {
     boolean fail;
+    boolean report;
     boolean lockGranted;
 
     private final LockProvider provider =
@@ -119,6 +132,12 @@ class ScheduledJobMetricsTest {
     public void succeedsThenFails() {
       if (fail) {
         throw new IllegalStateException("run failed");
+      }
+    }
+
+    public void catchesItsFailure() {
+      if (report) {
+        ScheduledRunFailures.report();
       }
     }
 

@@ -144,9 +144,11 @@ Zahlen über private Bibliotheken unterliegen derselben Mindestgruppengröße wi
 
 Was dem Verhalten einzelner Personen folgt, wird nicht gemessen: erfolgreiche Anmeldungen bei keiner
 Methode, auch nicht bei lokalen Konten, denn über die Zeit gezählt zeichnen sie die
-Arbeitszeitkurve der Belegschaft; gezählt werden nur abgewiesene nach Grund. Ebenso wenig die Zwischenspeicher, deren Treffer oder Größe dem An- und
-Abmelden einzelner Personen folgen (gesperrte Anmeldungen, Gruppenmitgliedschaften, angelegte
-persönliche Bereiche), und nicht die Zahl offener Gespräche. Eine Health-Gruppe, deren Prüfung ein
+Arbeitszeitkurve der Belegschaft; gezählt werden nur abgewiesene nach Grund. Ebenso wenig ein
+Zwischenspeicher, dessen Schlüssel eine Person, ein Token oder ein Gespräch ist (gesperrte
+Anmeldungen, Gruppenmitgliedschaften, persönliche Bereiche, Filterwerte, Kontingente externer
+Zugänge, Gesprächsgedächtnis): Treffer, Fehlgriffe und Größe zeigten aktive Personen und
+Gesprächsanfänge. Eine Health-Gruppe, deren Prüfung ein
 Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis einer Prüfung von außen.
 
 ## Konsequenzen
