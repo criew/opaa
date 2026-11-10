@@ -241,6 +241,52 @@ class SecurityInvariantsTest {
               "io.opaa.format.file.markdown.MarkdownDocumentFormat#toEvents",
               "splits on one plain character: String's fast path, no pattern"));
 
+  /**
+   * Code units that build a prompt in a class without {@link
+   * SecurityInvariants#PROMPT_TEXT_BLOCKS}, each with where the text it hands the model was cleaned
+   * or why it holds none from outside.
+   */
+  static final Map<String, String> PROMPTS_PAST_THE_BLOCKS =
+      Map.ofEntries(
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#call",
+              "the system text holds passages from DocumentBlock and the space instruction from"
+                  + " SpaceInstructionBlock, both cleaned and fenced there"),
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#stream",
+              "the system text holds passages from DocumentBlock and the space instruction from"
+                  + " SpaceInstructionBlock, both cleaned and fenced there"),
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#streamAnswer",
+              "the user message is the question QueryService#query cleaned with PromptText"),
+          Map.entry(
+              "io.opaa.query.toolloop.AgentToolLoop#call",
+              "the system text is AgentPrompt's, which sets both instructions with"
+                  + " PromptText#between; tool results are fenced by DocumentBlock"),
+          Map.entry(
+              "io.opaa.query.toolloop.AgentToolLoop#runAndKeep",
+              "the user message is the question QueryService#query cleaned with PromptText; the"
+                  + " history is the conversation window, whose entrances in"
+                  + " ConversationWindowMessages clean every message"),
+          Map.entry(
+              "io.opaa.chat.ChatService#historyAsSpringAiMessages",
+              "the persisted history enters the conversation window only through"
+                  + " ConversationWindowMessages#reloaded, which cleans every message"),
+          Map.entry(
+              "io.opaa.query.spike.SpikeToolLoopQueryHandler#handle",
+              "the user message is the question QueryService#query cleaned with PromptText"),
+          Map.entry(
+              "io.opaa.retrieval.search.QueryDecompositionService#requestDecomposition",
+              "question and window come as messages of DecompositionContext, cleaned there"),
+          Map.entry(
+              "io.opaa.retrieval.search.DecompositionContext#promptMessages",
+              "question and window texts go through DecompositionContext#material, which cleans"
+                  + " them with PromptText"),
+          Map.entry(
+              "io.opaa.metadata.ModelMetadataExtractor#askModel",
+              "the prompt is ModelExtractionPrompt's, which fences title and text with"
+                  + " ContentFence"));
+
   /** The allowlist of operations without a session and without a handler check. */
   static final String OPERATION_ALLOWLIST = "/security/anonymous-allowlist.yaml";
 
@@ -297,6 +343,18 @@ class SecurityInvariantsTest {
   }
 
   @Test
+  void foreignTextEntersAPromptOnlyThroughPromptText() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.promptBuildingUnits(MainClasses.get()), PROMPTS_PAST_THE_BLOCKS))
+        .as(
+            "prompts built past PromptText and ContentFence: clean foreign text with them, or name"
+                + " in PROMPTS_PAST_THE_BLOCKS where the text was cleaned or why none comes from"
+                + " outside")
+        .isEmpty();
+  }
+
+  @Test
   void everyExceptionStillBreaksItsRule() {
     var classes = MainClasses.get();
 
@@ -329,6 +387,12 @@ class SecurityInvariantsTest {
                 PER_CALL_REGEX_IN_FORMAT.keySet(),
                 SecurityInvariants.perCallRegex(classes, "io.opaa.format").keySet()))
         .as("PER_CALL_REGEX_IN_FORMAT entries that no longer call a per-call member")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                PROMPTS_PAST_THE_BLOCKS.keySet(),
+                SecurityInvariants.promptBuildingUnits(classes).keySet()))
+        .as("PROMPTS_PAST_THE_BLOCKS entries that no longer build a prompt past the blocks")
         .isEmpty();
   }
 

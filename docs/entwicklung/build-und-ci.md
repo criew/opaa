@@ -497,7 +497,16 @@ die Tests von `LibraryDocumentService` ab.
 - `io.opaa.format` kompiliert kein Muster je Aufruf oder je Objekt (`String.matches`, `replaceAll`,
   `replaceFirst`, `split`, `Pattern.matches`, `Pattern.compile` außerhalb des statischen
   Initialisierers, auch in Konstruktoren); ein `split` an einem einzelnen Zeichen und der
-  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste.
+  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste;
+- Text, den eine Person, ein Dokument oder eine frühere Antwort bestimmt, kommt nur über
+  `PromptText` (unsichtbare Zeichen und Marker bis zum Fixpunkt entfernen, zwischen Marker setzen)
+  oder `ContentFence` (Zaun mit Kennung je Aufruf) in einen Prompt. Als Prompt-Bau zählen
+  `UserMessage`, `SystemMessage` und `Prompt` (Konstruktor und Builder) sowie `system` und `user`
+  einer `ChatClient`-Anfrage; gemeldet wird eine Methode (samt ihrer Lambdas), die selbst keinen
+  der beiden Bausteine aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
+  (`PROMPTS_PAST_THE_BLOCKS`) nennt je Methode, wo ihr Text bereinigt wurde, eine neue Stelle muss
+  diese Entscheidung ausdrücklich treffen. Grenze: Ruft eine Methode einen Baustein auf, prüft die
+  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet.
 
 Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
 wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat

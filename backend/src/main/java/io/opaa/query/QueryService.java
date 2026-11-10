@@ -18,6 +18,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.PromptText;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
@@ -281,9 +282,11 @@ public class QueryService {
    * runs through the {@link AgentTurnHandler} instead of the ordinary path (ADR-0070): it needs a
    * persisted chat of the caller and takes no new attachments (400 otherwise), and it is not
    * streamed. Without an agent nothing changes - one search, one model call, no tool definitions.
+   * The question is answered and stored without invisible characters ({@link PromptText}); one with
+   * no visible character left is a 400.
    */
   public QueryResult query(
-      String question,
+      String askedQuestion,
       UUID chatId,
       CurrentUser caller,
       boolean useKnowledge,
@@ -293,6 +296,10 @@ public class QueryService {
       AnswerStreamListener answerListener,
       List<UUID> attachmentIds,
       UUID agentId) {
+    String question = PromptText.withoutInvisible(askedQuestion);
+    if (question == null || question.isBlank()) {
+      throw new ValidationException("Die Frage enthält keinen sichtbaren Text.");
+    }
     UUID currentUserId = caller.id();
     List<UUID> requestedAttachments = attachmentIds == null ? List.of() : attachmentIds;
     QueryClock clock = new QueryClock();

@@ -25,7 +25,7 @@ import {
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { fontFamily, fontSize, motion } from '../../theme/tokens'
 import { useLinkTargetsStore } from '../../linkTargets/linkTargetsStore'
-import { isAllowedLinkTarget } from './linkPolicy'
+import { blockedImageText, isAllowedLinkTarget } from './linkPolicy'
 import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
@@ -312,7 +312,7 @@ function makeComponents(
     // address could carry data out.
     img: ({ src, alt }) => (
       <Box component="span" data-testid="blocked-image">
-        {`[Bild: ${alt?.trim() || 'ohne Beschreibung'}]`}
+        {blockedImageText(alt)}
         {typeof src === 'string' && src !== '' ? ` (${src})` : null}
       </Box>
     ),
