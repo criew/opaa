@@ -1,6 +1,6 @@
 package io.opaa.metadata;
 
-import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingInfoService;
 import java.util.List;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;

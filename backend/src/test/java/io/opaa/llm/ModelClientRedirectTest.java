@@ -34,15 +34,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 /**
- * The runtime clients of the chat and embedding roles, built exactly as {@link
- * ActiveChatModelResolver} and {@link OpenAiEmbeddingClientFactory} build them, follow no redirect:
- * the redirect target is never contacted, with or without an access key and for the client with a
- * request timeout. Proxy and timeout behaviour stay intact. OPAA's chat model does not stream.
+ * The runtime client of the chat role, built exactly as {@link ActiveChatModelResolver} builds it,
+ * follows no redirect: the redirect target is never contacted, with or without an access key and
+ * for the client with a request timeout. Proxy and timeout behaviour stay intact. OPAA's chat model
+ * does not stream. The embedding client's counterpart is {@code
+ * io.opaa.llm.embedding.EmbeddingClientRedirectTest}.
  */
 class ModelClientRedirectTest {
 
@@ -53,13 +53,6 @@ class ModelClientRedirectTest {
        "choices": [{"index": 0, "message": {"role": "assistant", "content": "Vom Ziel"},
                     "finish_reason": "stop"}],
        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
-      """;
-
-  private static final String EMBEDDING =
-      """
-      {"object": "list", "model": "bge-m3",
-       "data": [{"object": "embedding", "index": 0, "embedding": [0.1, 0.2, 0.3]}],
-       "usage": {"prompt_tokens": 1, "total_tokens": 1}}
       """;
 
   private final ExecutorService serverThreads = Executors.newCachedThreadPool();
@@ -81,8 +74,7 @@ class ModelClientRedirectTest {
         exchange -> {
           targetRequests.incrementAndGet();
           exchange.getRequestBody().readAllBytes();
-          String path = exchange.getRequestURI().getPath();
-          send(exchange, 200, path.endsWith("/embeddings") ? EMBEDDING : CHAT_COMPLETION);
+          send(exchange, 200, CHAT_COMPLETION);
         });
     target.start();
   }
@@ -93,35 +85,6 @@ class ModelClientRedirectTest {
     origin.stop(0);
     target.stop(0);
     serverThreads.shutdownNow();
-  }
-
-  // regression guard for the embedding role: a 3xx never reaches an address the target check never
-  // saw
-  @ParameterizedTest
-  @ValueSource(ints = {301, 302, 303, 307, 308})
-  void theEmbeddingClientFollowsNoRedirect(int status) {
-    redirectEverything(status);
-    EmbeddingModel client =
-        embeddingClientFactory()
-            .create(new EmbeddingEndpoint(originBaseUrl(), "bge-m3", "sk-geheim", 2048));
-
-    assertThatThrownBy(() -> client.embed("vertraulicher Text"))
-        .satisfies(e -> assertRefusedWithStatus(e, status));
-
-    assertThat(targetRequests).hasValue(0);
-    assertThat(originRequests).hasValue(1);
-  }
-
-  @Test
-  void theEmbeddingClientWithoutKeyFollowsNoRedirect() {
-    redirectEverything(307);
-    EmbeddingModel client =
-        embeddingClientFactory()
-            .create(new EmbeddingEndpoint(originBaseUrl(), "bge-m3", null, 2048));
-
-    assertThatThrownBy(() -> client.embed("vertraulicher Text")).isNotNull();
-
-    assertThat(targetRequests).hasValue(0);
   }
 
   // regression guard for the chat role: a 3xx never reaches an address the target check never saw
@@ -157,36 +120,6 @@ class ModelClientRedirectTest {
     assertThatThrownBy(() -> client.prompt("vertraulicher Prompt").call().content()).isNotNull();
 
     assertThat(targetRequests).hasValue(0);
-  }
-
-  @Test
-  void aRelativeRedirectOnTheSameServerIsNotFollowedEither() {
-    AtomicInteger elsewhereRequests = new AtomicInteger();
-    origin.createContext(
-        "/elsewhere",
-        exchange -> {
-          elsewhereRequests.incrementAndGet();
-          exchange.getRequestBody().readAllBytes();
-          send(exchange, 200, EMBEDDING);
-        });
-    origin.createContext(
-        "/v1",
-        exchange -> {
-          originRequests.incrementAndGet();
-          exchange.getRequestBody().readAllBytes();
-          exchange.getResponseHeaders().add("Location", "/elsewhere/embeddings");
-          exchange.sendResponseHeaders(307, -1);
-          exchange.close();
-        });
-    EmbeddingModel client =
-        embeddingClientFactory()
-            .create(new EmbeddingEndpoint(originBaseUrl(), "bge-m3", "sk-geheim", 2048));
-
-    assertThatThrownBy(() -> client.embed("vertraulicher Text"))
-        .satisfies(e -> assertRefusedWithStatus(e, 307));
-
-    assertThat(elsewhereRequests).hasValue(0);
-    assertThat(originRequests).hasValue(1);
   }
 
   @Test
@@ -276,11 +209,6 @@ class ModelClientRedirectTest {
 
   private String originBaseUrl() {
     return "http://127.0.0.1:" + origin.getAddress().getPort() + "/v1";
-  }
-
-  private static OpenAiEmbeddingClientFactory embeddingClientFactory() {
-    return new OpenAiEmbeddingClientFactory(
-        Duration.ofSeconds(30), provider(ObservationRegistry.class));
   }
 
   private static ActiveChatModelResolver chatResolver(String baseUrl, String apiKeyCiphertext) {

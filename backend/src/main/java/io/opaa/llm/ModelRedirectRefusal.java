@@ -25,9 +25,9 @@ import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
  * ends by its own copy of the timeouts or when its body is closed. A refusal is logged at WARN once
  * per endpoint and instance, then at DEBUG (ADR-0053, je Instanz).
  */
-final class ModelRedirectRefusal implements OpenAiHttpClientBuilderCustomizer {
+public final class ModelRedirectRefusal implements OpenAiHttpClientBuilderCustomizer {
 
-  static final ModelRedirectRefusal INSTANCE = new ModelRedirectRefusal();
+  public static final ModelRedirectRefusal INSTANCE = new ModelRedirectRefusal();
 
   private static final Logger log = LoggerFactory.getLogger(ModelRedirectRefusal.class);
 

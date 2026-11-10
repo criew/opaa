@@ -6,7 +6,7 @@ import io.opaa.account.LocalAdminReset;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;

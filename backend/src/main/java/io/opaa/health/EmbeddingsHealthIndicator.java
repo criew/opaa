@@ -1,8 +1,8 @@
 package io.opaa.health;
 
 import io.opaa.compliance.DataFlow;
-import io.opaa.llm.EmbeddingModelNotInstalledException;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelNotInstalledException;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import java.time.Clock;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

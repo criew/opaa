@@ -355,6 +355,16 @@ io.opaa.api.types.TextRecognitionConnectionType:
   assessment: STATE
   readable: [DOCLING_SERVE, OPENAI_VISION]
   pending: []
+io.opaa.api.types.ToolCapability:
+  attributes: [LlmModel.toolCapability]
+  assessment: STATE
+  readable: [CAPABLE, NOT_CAPABLE, UNVERIFIED]
+  pending: []
+io.opaa.api.types.ToolCapabilityBasis:
+  attributes: [LlmModel.toolCapabilityBasis]
+  assessment: STATE
+  readable: [MANUAL, MEASURED]
+  pending: []
 io.opaa.asset.AssetVisibilityHistoryCause:
   attributes: [AssetVisibilityHistory.cause]
   assessment: AUDIT

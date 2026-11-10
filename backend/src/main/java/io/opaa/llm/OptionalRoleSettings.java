@@ -7,9 +7,9 @@ import java.time.Instant;
 
 /**
  * The columns every optional model role stores in its single row (ADR-0060, Entscheidung 10),
- * written only by {@link ModelRoleAdministration}. Without the row the factory default applies. The
- * key is encrypted with {@code SettingsEncryptor} and leaves {@link ModelRoleEndpoints} decrypted
- * only for the client.
+ * written only by {@code ModelRoleAdministration}. Without the row the factory default applies. The
+ * key is encrypted with {@code SettingsEncryptor} and leaves {@link OptionalRoleEndpoints}
+ * decrypted only for the client.
  */
 @MappedSuperclass
 public abstract class OptionalRoleSettings {
@@ -41,7 +41,7 @@ public abstract class OptionalRoleSettings {
   }
 
   /** Replaces the columns of every role; a role replaces its own columns alongside. */
-  void replaceEndpoint(
+  public void replaceEndpoint(
       boolean enabled,
       String baseUrl,
       String modelIdentifier,
@@ -66,7 +66,7 @@ public abstract class OptionalRoleSettings {
     return modelIdentifier;
   }
 
-  String getApiKeyCiphertext() {
+  public String getApiKeyCiphertext() {
     return apiKeyCiphertext;
   }
 

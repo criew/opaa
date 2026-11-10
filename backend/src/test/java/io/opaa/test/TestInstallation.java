@@ -2,8 +2,8 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.installation.InstallationService;
-import io.opaa.llm.EmbeddingEndpoint;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingEndpoint;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.test.context.TestConfiguration;
 

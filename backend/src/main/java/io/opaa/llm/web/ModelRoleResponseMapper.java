@@ -6,13 +6,13 @@ import io.opaa.api.dto.TextRecognitionTestResponse;
 import io.opaa.api.dto.TranscriptionModelSettingsResponse;
 import io.opaa.api.dto.TranscriptionRealtimeSettingsResponse;
 import io.opaa.api.types.ModelRoleCondition;
-import io.opaa.llm.ModelRoleAdministration.RealtimeView;
-import io.opaa.llm.ModelRoleAdministration.RerankModelView;
-import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
-import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
-import io.opaa.llm.ModelRoleAdministration.TranscriptionModelView;
 import io.opaa.llm.OptionalRoleState;
-import io.opaa.llm.TextRecognitionClient;
+import io.opaa.llm.administration.ModelRoleAdministration.RealtimeView;
+import io.opaa.llm.administration.ModelRoleAdministration.RerankModelView;
+import io.opaa.llm.administration.ModelRoleAdministration.TextRecognitionModelView;
+import io.opaa.llm.administration.ModelRoleAdministration.TextRecognitionTestOutcome;
+import io.opaa.llm.administration.ModelRoleAdministration.TranscriptionModelView;
+import io.opaa.llm.textrecognition.TextRecognitionClient;
 
 /** Maps the views of the rerank, transcription and text recognition roles; never a key. */
 final class ModelRoleResponseMapper {

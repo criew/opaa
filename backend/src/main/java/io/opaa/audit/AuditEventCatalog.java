@@ -407,7 +407,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_CREATED,
         LLM_MODEL_CHANGED);
     put(
@@ -419,7 +423,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_DELETED);
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
@@ -429,7 +437,19 @@ public final class AuditEventCatalog {
     put(
         keys,
         Set.of(
-            "apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model", "vocabulary"),
+            "apiKeyChange",
+            "apiKeySet",
+            "baseUrl",
+            "enabled",
+            "language",
+            "model",
+            "realtimeApiKeyChange",
+            "realtimeApiKeySet",
+            "realtimeMaxSessions",
+            "realtimeModel",
+            "realtimeProtocol",
+            "realtimeUrl",
+            "vocabulary"),
         TRANSCRIPTION_MODEL_CHANGED);
     put(
         keys,
@@ -496,6 +516,10 @@ public final class AuditEventCatalog {
             "port",
             "primaryColor",
             "productName",
+            "realtimeApiKeySet",
+            "realtimeModel",
+            "realtimeProtocol",
+            "realtimeUrl",
             "signInMode",
             "step",
             "timeoutSeconds",

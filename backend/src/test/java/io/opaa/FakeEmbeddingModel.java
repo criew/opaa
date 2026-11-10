@@ -1,6 +1,6 @@
 package io.opaa;
 
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.ai.embedding.Embedding;

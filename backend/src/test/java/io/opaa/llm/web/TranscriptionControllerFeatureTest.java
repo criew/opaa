@@ -3,9 +3,9 @@ package io.opaa.llm.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
-import io.opaa.llm.RealtimeTranscriptionRole;
-import io.opaa.llm.TranscriptionModelRole;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole;
+import io.opaa.llm.transcription.TranscriptionModelRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 

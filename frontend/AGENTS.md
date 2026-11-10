@@ -67,7 +67,7 @@ Die Angaben folgen dem Code, nicht der Erinnerung: Beim Ändern von `ALLOWED`, `
 
 ## Keine Ausnahmen
 
-Für die Grenzregel gibt es keine Ausnahmen, weder als Liste noch per Kommentar. Der CI-Schritt „Themengrenzen prüfen“ im Job `frontend` (`node scripts/check-theme-boundaries.mjs`) scheitert,
+Für die Grenzregel gibt es keine Ausnahmen, weder als Liste noch per Kommentar. Der CI-Schritt „Themengrenzen prüfen“ im Job `frontend-check` (`node scripts/check-theme-boundaries.mjs`) scheitert,
 
 - wenn `eslint-suppressions.json` existiert: ESLint wendet [Bulk Suppressions](https://eslint.org/docs/latest/use/suppressions) aus dieser Datei stillschweigend an;
 - wenn ein Skript in `package.json` `--suppress-all`, `--suppress-rule` oder `--suppressions-location` an ESLint übergibt;

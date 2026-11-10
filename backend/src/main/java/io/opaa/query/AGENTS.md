@@ -26,14 +26,14 @@ Betriebssicht auf das Retrieval (`searchadmin`), Prompt-Bibliothek (`prompt`) un
 - **Ein Chat gehört seinem Autor.** Weder Raum- noch Systemverwaltung sieht ihn. Neue Fragen
   verlangen weiter die Raummitgliedschaft (`requireStillSpaceMember`).
 - **Chats gesperrter Konten** löscht `LockedAccountChatCleanupService` nach Sperre durch Verwaltung oder Verzeichnis.
-- **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt außer dem
-  Entity-Mapping keine Abfrage.
+- **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt nur das Entity-Mapping.
 - **`template` rendert nichts:** Platzhalter per Regex lesen, füllen nur in der Sandbox (`NoTemplateEngineTest`).
 - **`prompt` baut auf der Asset-Schale auf** und fragt `io.opaa.permission` nur nach Rollen. Es
   kennt `io.opaa.library` nicht, und kein Fachpaket kennt es (`PermissionPackageBoundaryTest`).
   Das gilt auch für `prompt.web`: Die Prompts eines Space holt `PromptService` über den Port
   `SpaceAssetDirectory`.
-- **Zyklen:** keine zwischen Unterpaketen; `query.spike` hängt an `query` (nur `ToolLoopQueryHandler`).
+- **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
+  `QueryService` kennt nur `ToolLoopQueryHandler`, für `query.toolloop` nur `AgentTurnHandler` (ADR-0070).
 
 ## Maßgebliche ADRs
 

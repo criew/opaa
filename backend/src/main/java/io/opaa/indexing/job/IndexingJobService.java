@@ -6,7 +6,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -90,8 +90,8 @@ public class IndexingJobService {
    * declaration. Only one running job is allowed per library ({@code
    * uk_indexing_jobs_library_running}): a concurrent second start fails with a 409 here.
    *
-   * @throws io.opaa.llm.EmbeddingModelNotInstalledException before an embedding model is installed;
-   *     nothing is written then
+   * @throws io.opaa.llm.embedding.EmbeddingModelNotInstalledException before an embedding model is
+   *     installed; nothing is written then
    */
   @Transactional
   public IndexingJob startJob(
