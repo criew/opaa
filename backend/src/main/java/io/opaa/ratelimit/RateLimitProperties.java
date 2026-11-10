@@ -47,6 +47,12 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     /api/v1/chat-attachments/{attachmentId}/library-copy}), one budget for all of them: every
  *     upload takes a place in a processing pool of the instance; {@code null} takes {@link
  *     #DEFAULT_DOCUMENT_UPLOAD}
+ * @param transcriptionStream per-endpoint limits for opening a live dictation (the WebSocket
+ *     upgrade {@code GET /api/v1/transcriptions/stream}): every session opens an upstream session
+ *     of the transcription model; {@code null} takes {@link #DEFAULT_TRANSCRIPTION_STREAM}
+ * @param write the budget of every writing call ({@code POST}, {@code PUT}, {@code PATCH}, {@code
+ *     DELETE}) under {@code /api/v1} that no rule before it covers; {@code null} takes {@link
+ *     #DEFAULT_WRITE}
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
@@ -65,6 +71,8 @@ public record RateLimitProperties(
     EndpointLimit search,
     EndpointLimit transcription,
     EndpointLimit documentUpload,
+    EndpointLimit transcriptionStream,
+    WriteLimit write,
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
@@ -76,15 +84,56 @@ public record RateLimitProperties(
   /** The shipped upload limits, as in {@code application.yml}. */
   public static final EndpointLimit DEFAULT_DOCUMENT_UPLOAD = new EndpointLimit(120, 60, 600, 60);
 
+  /** The shipped limits of opening a live dictation, as in {@code application.yml}. */
+  public static final EndpointLimit DEFAULT_TRANSCRIPTION_STREAM =
+      new EndpointLimit(10, 60, 100, 10);
+
+  /** The shipped budget of the writing calls, as in {@code application.yml}. */
+  public static final WriteLimit DEFAULT_WRITE = new WriteLimit(600, 60, 120);
+
   @ConstructorBinding
   public RateLimitProperties {
     trustedProxyCidrs = normalizeTrustedProxies(trustedProxyCidrs);
     transcription = transcription != null ? transcription : DEFAULT_TRANSCRIPTION;
     documentUpload = documentUpload != null ? documentUpload : DEFAULT_DOCUMENT_UPLOAD;
+    transcriptionStream =
+        transcriptionStream != null ? transcriptionStream : DEFAULT_TRANSCRIPTION_STREAM;
+    write = write != null ? write : DEFAULT_WRITE;
     localAuth =
         localAuth != null
             ? localAuth
             : new LocalAuthLimits(null, null, null, null, null, null, null, null);
+  }
+
+  /** Without the limits of the live dictation and the writing calls: their shipped values. */
+  public RateLimitProperties(
+      boolean enabled,
+      List<String> trustedProxyCidrs,
+      EndpointLimit query,
+      EndpointLimit indexing,
+      EndpointLimit sourceTest,
+      EndpointLimit documentContent,
+      EndpointLimit webhook,
+      EndpointLimit chatSearch,
+      EndpointLimit search,
+      EndpointLimit transcription,
+      EndpointLimit documentUpload,
+      LocalAuthLimits localAuth) {
+    this(
+        enabled,
+        trustedProxyCidrs,
+        query,
+        indexing,
+        sourceTest,
+        documentContent,
+        webhook,
+        chatSearch,
+        search,
+        transcription,
+        documentUpload,
+        null,
+        null,
+        localAuth);
   }
 
   /** Without the transcription and upload limits, which then take their shipped values. */
@@ -204,6 +253,33 @@ public record RateLimitProperties(
 
     public boolean hasAccountLimit() {
       return maxRequestsPerAccount > 0;
+    }
+  }
+
+  /**
+   * The budget of the writing calls no other rule covers: per client and per signed-in account,
+   * without a ceiling for the installation - a write is cheap on its own, and one shared ceiling
+   * over all of them would let a few accounts lock everyone out of every change.
+   *
+   * @param maxRequests maximum writing requests per client address within the window
+   * @param windowSeconds sliding window duration in seconds
+   * @param maxRequestsPerAccount maximum writing requests per signed-in account within the window,
+   *     whatever address they come from; at least 1
+   */
+  public record WriteLimit(int maxRequests, int windowSeconds, int maxRequestsPerAccount) {
+
+    public WriteLimit {
+      if (maxRequests < 1) {
+        throw new IllegalArgumentException("maxRequests must be at least 1, got " + maxRequests);
+      }
+      if (windowSeconds < 1) {
+        throw new IllegalArgumentException(
+            "windowSeconds must be at least 1, got " + windowSeconds);
+      }
+      if (maxRequestsPerAccount < 1) {
+        throw new IllegalArgumentException(
+            "maxRequestsPerAccount must be at least 1, got " + maxRequestsPerAccount);
+      }
     }
   }
 

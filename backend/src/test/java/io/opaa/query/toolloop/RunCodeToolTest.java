@@ -14,6 +14,7 @@ import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.chat.ChatAttachmentView;
 import io.opaa.common.ValidationException;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.query.runlog.AgentRunLogWriter;
 import io.opaa.query.runlog.AgentSandboxLogEntry;
 import io.opaa.query.sandbox.SandboxException;
@@ -23,6 +24,8 @@ import io.opaa.query.sandbox.SandboxSession.OutputEntry;
 import io.opaa.query.sandbox.SandboxSession.OutputFile;
 import io.opaa.query.sandbox.SandboxSession.ScriptRun;
 import io.opaa.query.sandbox.Sandboxes;
+import io.opaa.template.DocxActiveContent;
+import io.opaa.template.TestDocx;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,7 +35,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -75,6 +80,26 @@ class RunCodeToolTest {
     assertThat(entry.getValue().fileBytes()).isEqualTo(3);
     assertThat(entry.getValue().status()).isEqualTo("COMPLETED");
     assertThat(entry.getValue().toString()).doesNotContain("geheim");
+  }
+
+  @Test
+  void aDocxWithActiveContentIsNotAttachedButAPlainOneIs() throws IOException {
+    AgentRun run = run();
+    tool(START).call(args("print(1)"), run);
+    ChatAttachment attachment = mock(ChatAttachment.class);
+    when(attachments.uploadGenerated(any(), any(), anyInt(), any(), any(), any()))
+        .thenReturn(new ChatAttachmentView(attachment, null, null, null));
+    byte[] plain = TestDocx.withParagraphs("Text");
+    sandboxes.files =
+        List.of(
+            new OutputFile("aktiv.docx", TestDocx.withFieldCode(" INCLUDEPICTURE x ")),
+            new OutputFile("kaputt.docx", new byte[] {1, 2, 3}),
+            new OutputFile("bericht.docx", plain));
+
+    List<ChatAttachment> attached = run.resources().getFirst().finish();
+
+    assertThat(attached).hasSize(1);
+    verify(attachments).uploadGenerated(any(), any(), eq(0), eq("bericht.docx"), eq(plain), any());
   }
 
   @Test
@@ -129,8 +154,12 @@ class RunCodeToolTest {
         attachments,
         ProductionDocumentFormats.supportedFormats(),
         RUN_LOG,
+        DOCX_CHECK,
         clock);
   }
+
+  /** The production check for active content in a DOCX. */
+  static final DocxActiveContent DOCX_CHECK = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
 
   @Test
   void callsOfOneRunShareOneSandboxAndItsFilesAreTakenAtTheEnd() {
@@ -363,6 +392,12 @@ class RunCodeToolTest {
     int opened;
     int closed;
     final List<String> scripts = new ArrayList<>();
+    final Map<String, byte[]> uploads = new LinkedHashMap<>();
+    final List<String> listedDirectories = new ArrayList<>();
+    List<OutputEntry> listed = List.of();
+    final Map<String, byte[]> readable = new LinkedHashMap<>();
+    final List<List<String>> installedRuns = new ArrayList<>();
+    RuntimeException runFailure;
     final List<Duration> timeouts = new ArrayList<>();
     final List<Duration> readyWithin = new ArrayList<>();
     ScriptRun next = new ScriptRun(0, "", "", false);
@@ -391,6 +426,35 @@ class RunCodeToolTest {
         }
 
         @Override
+        public void upload(String path, byte[] content) {
+          uploads.put(path, content);
+        }
+
+        @Override
+        public ScriptRun runInstalled(String scriptPath, List<String> arguments, Duration timeout) {
+          if (runFailure != null) {
+            throw runFailure;
+          }
+          List<String> command = new ArrayList<>();
+          command.add(scriptPath);
+          command.addAll(arguments);
+          installedRuns.add(command);
+          timeouts.add(timeout);
+          return next;
+        }
+
+        @Override
+        public List<OutputEntry> listFiles(String directory) {
+          listedDirectories.add(directory);
+          return listed;
+        }
+
+        @Override
+        public byte[] readFile(String directory, String name) {
+          return readable.get(name);
+        }
+
+        @Override
         public List<OutputEntry> outputEntries() {
           return entries;
         }
@@ -400,7 +464,7 @@ class RunCodeToolTest {
           if (collectFailure != null) {
             throw collectFailure;
           }
-          return files;
+          return files.stream().filter(file -> accepted.test(file.name())).toList();
         }
 
         @Override

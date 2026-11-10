@@ -181,7 +181,7 @@ describe('DocumentMetadataPanel', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Titel von dienstanweisung.pdf löschen' }),
     )
-    await answerConfirm(user, 'Titel von "dienstanweisung.pdf" löschen?', 'Löschen')
+    await answerConfirm(user, 'Titel von „dienstanweisung.pdf“ löschen?', 'Löschen')
 
     await waitFor(() =>
       expect(mockDeleteDocumentMetadataValue).toHaveBeenCalledWith(

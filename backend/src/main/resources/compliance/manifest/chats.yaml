@@ -23,7 +23,8 @@ data:
             Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
             ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt), auch nicht die
             Zitate und der Abschnittspfad des gespeicherten Fundstellen-Ankers; agent_run nennt je
-            Werkzeugschritt die Unterfrage und bei run_code die Namen der erzeugten Dateien
+            Werkzeugschritt die Unterfrage, bei run_code die Namen der erzeugten Dateien und bei
+            fill_template den Namen der Vorlage mit den Namen der erzeugten Dateien
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -76,9 +77,10 @@ data:
     purpose: >-
       Dokumente, die die Person einer Chatfrage anhängt, damit die Antwort ihren Inhalt nutzt; Text
       und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek. Das Agentenwerkzeug
-      run_code (nur mit eingeschalteter Sandbox) legt die Dateien, die ein Skript im Lauf erzeugt,
-      ohne eigene Handlung der Person als ihre Anhänge an, durch dieselben Prüfungen wie ein
-      Hochladen, und bindet sie an die Antwortnachricht
+      run_code und fill_template (nur mit eingeschalteter Sandbox) legen die Dateien, die ein Skript
+      im Lauf erzeugt oder die eine befüllte Dokumentvorlage ergibt, ohne eigene Handlung der Person
+      als ihre Anhänge an, durch dieselben Prüfungen wie ein Hochladen, und binden sie an die
+      Antwortnachricht
     personalReference: EMPLOYEE
     tables:
       - name: chat_attachments
@@ -282,6 +284,22 @@ nonPersonalTables:
     [id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
+  agents:
+    - id
+    - asset_type
+    - organization_id
+    - instruction
+    - plan_step
+    - max_tool_calls
+    - max_search_calls
+    - max_duration_seconds
+    - max_collected_chars
+    - revision
+    - seed_key
+  agent_libraries: [agent_id, library_id]
+  agent_tools: [agent_id, tool_name]
+  agent_settings_tools: [settings_id, tool_name]
+  agent_seeds: [organization_id, seed_key, created_at]
   document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
   document_template_files: [template_id, content]
   prompts:

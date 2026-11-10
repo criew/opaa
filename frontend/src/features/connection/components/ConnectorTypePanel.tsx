@@ -90,7 +90,7 @@ function PanelContent({
       !lock && lockedProfiles > 0
         ? `${lockedProfiles === 1 ? 'Ein Zugang' : `${lockedProfiles} Zugänge`} dieser Quellart ${lockedProfiles === 1 ? 'ist' : 'sind'} selbst gesperrt und ${lockedProfiles === 1 ? 'bleibt' : 'bleiben'} es; ${lockedProfiles === 1 ? 'seine' : 'ihre'} Bibliotheken laufen erst nach dem Entsperren ${lockedProfiles === 1 ? 'des Zugangs' : 'der Zugänge'} weiter. Die übrigen laufen ohne Neueinrichtung weiter.`
         : undefined
-    if (!(await confirmLock(`die Quellart „${state.displayName}“`, lock, remaining))) return
+    if (!(await confirmLock(state.displayName, lock, remaining))) return
     try {
       await lockConnectorType(state.sourceType, lock)
       notify(
@@ -109,7 +109,7 @@ function PanelContent({
     const confirmed = await confirmAction({
       question: `„Nur über Zugänge“ für die Quellart „${state.displayName}“ ausschalten?`,
       consequence:
-        'Neue Bibliotheken dürfen dann wieder eine eigene Adresse nutzen, und eine Bibliothek lässt sich wieder von ihrem Zugang lösen. Wegen der Pflicht gesperrte Bibliotheken laufen ohne Neueinrichtung weiter. Das Ausschalten wird als Governance-Ereignis protokolliert.',
+        'Neue Bibliotheken dürfen dann wieder eine eigene Adresse nutzen, und die Zuordnung einer Bibliothek zu ihrem Zugang lässt sich wieder entfernen. Wegen der Pflicht gesperrte Bibliotheken laufen ohne Neueinrichtung weiter. Das Ausschalten wird als Governance-Ereignis protokolliert.',
       confirmLabel: 'Ausschalten',
       tone: 'caution',
     })

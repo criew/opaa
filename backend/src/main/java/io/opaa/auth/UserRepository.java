@@ -222,6 +222,25 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getConnectedAccounts();
   }
 
+  /**
+   * Writes the time of the last sign-in and nothing else, so role, directory lock and erasure
+   * written concurrently stay as written.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("update User u set u.lastLoginAt = :at where u.id = :id")
+  int recordLastLogin(@Param("id") UUID id, @Param("at") Instant at);
+
+  /**
+   * Writes the address and display name a provider's token names, nothing else and never on an
+   * erased account.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update User u set u.email = :email, u.displayName = :displayName"
+          + " where u.id = :id and u.erasedAt is null")
+  int recordProviderClaims(
+      @Param("id") UUID id, @Param("email") String email, @Param("displayName") String displayName);
+
   /** Writes {@code role} only while the stored role is still {@code expected}. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("update User u set u.systemRole = :role where u.id = :id and u.systemRole = :expected")

@@ -194,7 +194,7 @@ function SettingsForm({
       consequence: shorter
         ? `Die Erinnerung kommt dann erst ${daysLabel(factory)} statt ${daysLabel(current)} vor Ablauf einer Freigabe. Gilt nach dem Speichern.`
         : 'Gilt nach dem Speichern.',
-      confirmLabel: 'Werkseinstellung übernehmen',
+      confirmLabel: 'Zurücksetzen',
       tone: shorter ? 'danger' : 'caution',
     })
     if (confirmed) update({ releaseReminderLeadDays: null })
@@ -216,13 +216,13 @@ function SettingsForm({
       !(await confirmAction({
         question:
           lead === 0
-            ? 'Erinnerung vor Ablauf einer Freigabe abschalten?'
-            : `Erinnerung erst ${daysLabel(lead)} vor Ablauf einer Freigabe?`,
+            ? 'Erinnerung vor Ablauf einer Freigabe ausschalten?'
+            : `Erinnerung auf ${daysLabel(lead)} vor Ablauf einer Freigabe ändern?`,
         consequence:
           lead === 0
             ? 'Freigaben erlöschen dann unangekündigt. Die Änderung steht im Revisionsprotokoll.'
             : `Bisher kommt sie ${daysLabel(settings.releaseReminderLeadDays)} vorher. Die Änderung steht im Revisionsprotokoll.`,
-        confirmLabel: 'Speichern',
+        confirmLabel: lead === 0 ? 'Ausschalten' : 'Ändern',
         tone: 'danger',
       }))
     ) {

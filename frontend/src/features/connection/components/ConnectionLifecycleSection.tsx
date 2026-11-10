@@ -116,7 +116,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf ${value} ändern?`,
       consequence: `${endsPause}${earlierErasure(value)}${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
-      confirmLabel: 'Wert ändern',
+      confirmLabel: 'Ändern',
       tone: paused || earlierErasure(value) ? 'danger' : 'caution',
     })
     if (!confirmed) return
@@ -128,7 +128,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf ${entry.value} festlegen?`,
       consequence: `${endsPause}Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Wert festlegen',
+      confirmLabel: 'Festlegen',
       tone: 'danger',
     })
     if (!confirmed) return
@@ -140,7 +140,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf die Werkseinstellung von ${entry.defaultValue} zurücksetzen?`,
       consequence: `${earlierErasure(entry.defaultValue)}${text.effect} Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: earlierErasure(entry.defaultValue) ? 'danger' : 'caution',
     })
     if (!confirmed) return

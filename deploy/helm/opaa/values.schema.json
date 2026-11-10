@@ -718,7 +718,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Offers the agent tool run_code (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
+          "description": "Offers the agent tools run_code and fill_template (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
         },
         "baseUrl": {
           "type": "string",
@@ -1754,6 +1754,13 @@
               "OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS",

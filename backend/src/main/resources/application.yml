@@ -280,10 +280,10 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
-  # The isolated execution environment behind the agent tool run_code (ADR-0073): an OpenSandbox
-  # server that starts one sandbox without network per agent run. Off by default; switched on, the
-  # start fails without base-url and api-key. max-lifetime must not exceed the server's
-  # max_sandbox_timeout_seconds.
+  # The isolated execution environment behind the agent tools run_code and fill_template
+  # (ADR-0073): an OpenSandbox server that starts one sandbox without network per agent run. Off by
+  # default; switched on, the start fails without base-url and api-key. max-lifetime must not
+  # exceed the server's max_sandbox_timeout_seconds.
   sandbox:
     enabled: ${OPAA_SANDBOX_ENABLED:false}
     base-url: ${OPAA_SANDBOX_BASE_URL:http://opensandbox-server:8090}
@@ -687,6 +687,9 @@ opaa:
     # Days the last sign-in of an account of an identity provider may lie back for its access tokens
     # to work; deactivation and groups at the provider reach OPAA only with a sign-in.
     provider-sign-in-max-age-days: ${OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS:30}
+    # Personal access tokens one account may hold at once; every token has its own hour quota, all
+    # tokens of one person share a second window of the same size.
+    max-active-tokens-per-account: ${OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT:10}
   documents:
     # The synchronous remote-content proxy path (GET /api/v1/documents/{documentId}/content for an
     # HTTP_DIRECTORY/RSS_FEED document) has its own, smaller bound, a short timeout per hop and a
@@ -714,12 +717,15 @@ opaa:
     # query to document-upload: max-requests per client, global-max-requests across all clients;
     # past either the answer is 429. Both count only requests the security chain authenticated (the
     # push intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
-    # max-requests-per-account (query, chat-search, search, transcription, document-upload) counts
-    # per signed-in account, per access token and per person over all her access tokens, whatever
-    # address they use; checked behind the security chain, 0 switches it off, an empty value fails
-    # the start. An access token gives back its address token; any 429 of a later limit that
-    # refuses before the actual work (the token quota, the busy answer of the attachment
-    # extraction) gives back the global token.
+    # max-requests-per-account counts per signed-in account, per access token and per person over
+    # all her access tokens, whatever address they use; checked behind the security chain, 0
+    # switches it off (not for write, where it must be at least 1), an empty value fails the start.
+    # Every shipped global ceiling has one below it (the push intake and the sign-in excepted: no
+    # account there), so one account alone never spends a ceiling. An access token gives back its
+    # address token; any 429 of a later limit that refuses before the actual work (the token quota,
+    # the busy answer of the attachment extraction) and a refusal of the operation's rights or
+    # existence checks before its work (RefusedBeforeWork) give back the global token - the budgets
+    # per client and per account stay spent.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -729,6 +735,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
       window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS:5}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT:3}
     # The source connection test is a synchronous probe with its own outbound connections - looser
     # than the indexing trigger (a caller is expected to test a few configurations while filling out
     # the create dialog) but still capped, so it cannot be used to tie up worker threads or as a
@@ -737,6 +744,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS:30}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS_PER_ACCOUNT:10}
     # GET /api/v1/documents/{documentId}/content is, for a HTTP_DIRECTORY/ RSS_FEED document, a
     # synchronous proxy fetch with its own outbound connection - the same reason source-test above
     # is limited, except this one is reachable by any VIEWER on routine "Im Dokument öffnen" clicks
@@ -746,6 +754,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS_PER_ACCOUNT:20}
     # The push intake is reachable without a session; the limiter bounds the secret checks an
     # unauthenticated caller can cause. Per library (capture group, a well-formed library id only),
     # generous enough for a busy source - an author saving every few seconds - and the intake
@@ -789,6 +798,22 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS:600}
       max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT:60}
+    # Opening a live dictation (the WebSocket upgrade GET /api/v1/transcriptions/stream): every
+    # session opens an upstream session of the transcription model. The session itself is bounded
+    # in length, in audio and in pace (TranscriptionStreamHandler).
+    transcription-stream:
+      max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS:10}
+      window-seconds: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS_PER_ACCOUNT:10}
+    # Every POST, PUT, PATCH and DELETE under /api/v1 that none of the rules above covers, one
+    # budget for all of them: it bounds how fast one account can change things and fill the audit
+    # trail. No global ceiling - a shared one over every write would let a few accounts block all
+    # changes of the installation.
+    write:
+      max-requests: ${OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS:600}
+      window-seconds: ${OPAA_RATE_LIMIT_WRITE_WINDOW_SECONDS:60}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT:120}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email (the confirm-registration endpoint)
     # are keyed by client address in RateLimitFilter; change-password by the authenticated

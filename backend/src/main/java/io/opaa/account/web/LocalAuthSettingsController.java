@@ -6,6 +6,7 @@ import io.opaa.api.dto.LocalAuthSettingsResponse;
 import io.opaa.api.dto.LocalAuthSettingsUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +35,9 @@ public class LocalAuthSettingsController {
     return LocalUserResponseMapper.toSettings(settingsService.current(), null);
   }
 
+  /** Demands a recent sign-in: the values decide who may register and reset a password. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @RequiresRecentLogin
   @PutMapping
   public LocalAuthSettingsResponse updateLocalAuthSettings(
       @Valid @RequestBody LocalAuthSettingsUpdateRequest request, @Caller CurrentUser caller) {

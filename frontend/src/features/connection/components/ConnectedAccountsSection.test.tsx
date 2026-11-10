@@ -543,7 +543,7 @@ describe('ConnectedAccountsSection', () => {
     })
     expect(dialog).toHaveTextContent('zur Anmeldung beim Anbieter weitergeleitet')
     expect(dialog).toHaveTextContent('unter einem Pseudonym')
-    await answerConfirm(user, /Konto bei „Zugang Dropbox“ verbinden/, 'Weiter zum Anbieter')
+    await answerConfirm(user, /Konto bei „Zugang Dropbox“ verbinden/, 'Verbinden')
 
     await waitFor(() =>
       expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=s'),
@@ -571,7 +571,7 @@ describe('ConnectedAccountsSection', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Konto beim Anbieter verbinden: Zugang Dropbox' }),
     )
-    await answerConfirm(user, /verbinden\?/, 'Weiter zum Anbieter')
+    await answerConfirm(user, /verbinden\?/, /^(Neu v|V)erbinden$/)
 
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(leaveFor).not.toHaveBeenCalled()
@@ -628,7 +628,7 @@ describe('ConnectedAccountsSection', () => {
         name: 'Konto beim Anbieter neu verbinden: Zugang Dropbox',
       }),
     )
-    await answerConfirm(user, /neu verbinden\?/, 'Weiter zum Anbieter')
+    await answerConfirm(user, /neu verbinden\?/, 'Neu verbinden')
     await waitFor(() =>
       expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=r'),
     )

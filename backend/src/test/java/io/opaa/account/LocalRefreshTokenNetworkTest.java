@@ -74,6 +74,7 @@ class LocalRefreshTokenNetworkTest {
     row.setPasswordHash("{bcrypt}$2a$12$stored", NOW.minusSeconds(60));
     row.markEmailVerified(NOW.minusSeconds(60));
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(row));
+    when(credentials.lockSessionGeneration(admin.getId())).thenReturn(List.of(0L));
 
     presented =
         new LocalRefreshToken(

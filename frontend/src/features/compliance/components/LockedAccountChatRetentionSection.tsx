@@ -39,8 +39,8 @@ export default function LockedAccountChatRetentionSection() {
     const earlier = enabled && current.enabled && days < current.deleteAfterDays
     const confirmed = await confirmAction({
       question: enabled
-        ? `Chats gesperrter Konten ${periodLabel(days, 'days')} nach der Sperre löschen?`
-        : 'Löschung der Chats gesperrter Konten abschalten?',
+        ? `Löschfrist für Chats gesperrter Konten auf ${periodLabel(days, 'days')} nach der Sperre ändern?`
+        : 'Löschung der Chats gesperrter Konten ausschalten?',
       consequence: enabled
         ? earlier
           ? 'Der nächste nächtliche Lauf löscht die Chats gesperrter Konten früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
@@ -48,7 +48,7 @@ export default function LockedAccountChatRetentionSection() {
             ? 'Die Frist gilt ab dem nächsten nächtlichen Lauf. Die Änderung steht im Revisionsprotokoll.'
             : 'Jede Frist beginnt mit dem nächsten nächtlichen Lauf neu. Die Änderung steht im Revisionsprotokoll.'
         : 'Alle Chats bleiben erhalten; nach dem Wiedereinschalten beginnt jede Frist neu. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Ändern',
+      confirmLabel: enabled ? 'Ändern' : 'Ausschalten',
       tone: earlier ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -65,11 +65,11 @@ export default function LockedAccountChatRetentionSection() {
       current.defaultEnabled &&
       current.defaultDeleteAfterDays < current.deleteAfterDays
     const confirmed = await confirmAction({
-      question: `Löschung der Chats gesperrter Konten auf die Werkseinstellung zurücksetzen (${current.defaultEnabled ? 'eingeschaltet' : 'abgeschaltet'}, ${periodLabel(current.defaultDeleteAfterDays, 'days')})?`,
+      question: `Löschung der Chats gesperrter Konten auf die Werkseinstellung zurücksetzen (${current.defaultEnabled ? 'eingeschaltet' : 'ausgeschaltet'}, ${periodLabel(current.defaultDeleteAfterDays, 'days')})?`,
       consequence: earlier
         ? 'Der nächste nächtliche Lauf löscht die Chats gesperrter Konten früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
         : 'Gilt ab dem nächsten nächtlichen Lauf. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: earlier ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -79,10 +79,10 @@ export default function LockedAccountChatRetentionSection() {
   async function handleConfirmShown() {
     if (!current) return
     const confirmed = await confirmAction({
-      question: `Löschung der Chats gesperrter Konten (${current.enabled ? 'eingeschaltet' : 'abgeschaltet'}, ${periodLabel(current.deleteAfterDays, 'days')}) festlegen?`,
+      question: `Löschung der Chats gesperrter Konten (${current.enabled ? 'eingeschaltet' : 'ausgeschaltet'}, ${periodLabel(current.deleteAfterDays, 'days')}) festlegen?`,
       consequence:
         'Danach gilt der angezeigte Wert als eigener Wert der Verwaltung, und der nächste nächtliche Lauf löscht nach ihm, sobald seine Frist erreicht ist. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werte festlegen',
+      confirmLabel: 'Festlegen',
       tone: 'danger',
     })
     if (!confirmed) return

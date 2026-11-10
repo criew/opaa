@@ -233,16 +233,16 @@ describe('ExternalToolsTab', () => {
     await answerConfirm(
       user,
       'Erinnerung auf die Werkseinstellung von 14 Tage zurücksetzen?',
-      'Werkseinstellung übernehmen',
+      'Zurücksetzen',
     )
     expect(within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')).toHaveValue(14)
     await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
-    const shorter = 'Erinnerung erst 14 Tage vor Ablauf einer Freigabe?'
+    const shorter = 'Erinnerung auf 14 Tage vor Ablauf einer Freigabe ändern?'
     expect(await screen.findByRole('dialog', { name: shorter })).toHaveTextContent(
       'Bisher kommt sie 21 Tage vorher.',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
-    await answerConfirm(user, shorter, 'Speichern')
+    await answerConfirm(user, shorter, 'Ändern')
 
     await waitForDialogClosed()
     expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)

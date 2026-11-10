@@ -79,7 +79,7 @@ describe('ChatList', () => {
 
     await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
     await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
+    await answerConfirm(user, '„Architektur des Projekts“ löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
@@ -93,7 +93,7 @@ describe('ChatList', () => {
 
     await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
     await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Abbrechen')
+    await answerConfirm(user, '„Architektur des Projekts“ löschen?', 'Abbrechen')
 
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
@@ -111,7 +111,7 @@ describe('ChatList', () => {
 
     await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
     await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
+    await answerConfirm(user, '„Architektur des Projekts“ löschen?', 'Löschen')
 
     expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()

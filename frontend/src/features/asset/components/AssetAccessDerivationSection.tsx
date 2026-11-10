@@ -4,7 +4,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
 import AccessDerivation from './AccessDerivation'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetThisDative } from '../../../shared/assetTypes'
 
 /**
  * ADR-0036, Entscheidung 9: flat and shown as flat - every person sees their own way to this asset,
@@ -32,7 +32,7 @@ export default function AssetAccessDerivationSection({
   return (
     <ValueRow
       title="Herleitung"
-      value={`Ihr Weg zu dieser ${assetTypeLabel(assetType)}`}
+      value={`Ihr Weg zu ${assetThisDative(assetType)}`}
       action={
         <TextAction
           onClick={() => {

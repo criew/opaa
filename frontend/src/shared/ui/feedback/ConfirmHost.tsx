@@ -33,7 +33,7 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
  *
  * - **The consequence is the main content.** The question is the title above, the consequence
  *   below it at reading width — not both as one wall.
- * - **The button carries the verb.** „Löschen", „Abschalten", „Verwerfen": whoever reads only it
+ * - **The button carries the verb.** „Löschen", „Ausschalten", „Verwerfen": whoever reads only it
  *   still knows what they agree to.
  * - **For an irreversible action focus is on „Abbrechen".** An Enter out of
  *   reflex then cancels instead of deleting.
