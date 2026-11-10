@@ -8,10 +8,12 @@ import io.opaa.retrieval.context.ChunkPosition;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.ai.document.Document;
 
 /**
@@ -36,6 +38,7 @@ public final class AgentRun {
   private final List<Document> passages = new ArrayList<>();
   private final List<AgentRunRecord.Step> steps = new ArrayList<>();
   private final Map<String, Integer> callsPerTool = new HashMap<>();
+  private final Map<Class<?>, RunResource> resources = new LinkedHashMap<>();
   private int toolCalls;
   private long collectedChars;
   private EndState limitReached;
@@ -182,6 +185,25 @@ public final class AgentRun {
                 ChunkPosition.of(passage)
                     .map(position -> position.documentId().equals(documentId))
                     .orElse(false));
+  }
+
+  /**
+   * The run's resource of {@code type}, opened with {@code open} on first use and kept until the
+   * run ends; a later call of the same tool gets the same one.
+   */
+  synchronized <T extends RunResource> T resource(Class<T> type, Supplier<T> open) {
+    RunResource existing = resources.get(type);
+    if (existing != null) {
+      return type.cast(existing);
+    }
+    T opened = open.get();
+    resources.put(type, opened);
+    return opened;
+  }
+
+  /** Every resource the run's tools opened, in the order they were opened. */
+  synchronized List<RunResource> resources() {
+    return List.copyOf(resources.values());
   }
 
   synchronized EndState limitReached() {

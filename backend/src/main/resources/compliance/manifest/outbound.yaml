@@ -408,13 +408,15 @@ dataFlows:
     group: SECURITY
     viaOutboundProxy: false
     target: >-
-      Erprobung, nur Entwicklung: ein OpenSandbox-Server neben dem Backend, der je Lauf einen
-      Container ohne Netz startet
+      Der Sandbox-Dienst des Betriebs (OpenSandbox-Server) neben dem Backend, der je Agentenlauf
+      einen Container ohne Netz startet und am Ende des Laufs löscht
     data: >-
-      Das Python-Skript, das das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
-      es aus den gefundenen Textstellen übernimmt; zurück kommen Ausgaben und erzeugte Dateien
-    trigger: Ein Werkzeugaufruf run_code in einer Frage mit Präfix „@test “
-    switchOff: Abschaltbar, Voreinstellung aus; braucht zusätzlich opaa.spike.tool-loop.enabled
+      Die Python-Skripte, die das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
+      es aus den gefundenen Textstellen übernimmt; zurück kommen Ausgaben und die erzeugten Dateien,
+      die als Anhang der fragenden Person an die Antwort gehen. Keine Kontokennung, kein Zugriff
+      auf Index, Datenbank oder Dateiablage
+    trigger: Ein Werkzeugaufruf run_code eines Agenten, dem das Werkzeug zugeordnet und eingeschaltet ist
+    switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse oder Schlüssel bricht der Start ab
     settings: [opaa.sandbox.enabled, opaa.sandbox.base-url]
   - id: trace-export
     group: OPERATIONS
