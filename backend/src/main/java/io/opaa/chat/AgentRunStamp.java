@@ -3,6 +3,7 @@ package io.opaa.chat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +28,13 @@ public record AgentRunStamp(
   /** The draft notice an answer and a result file carry. */
   public static final String DRAFT_NOTICE = "Entwurf, nicht geprüft";
 
+  /**
+   * Control and format characters and the Unicode line and paragraph breaks: in a name they would
+   * break the XML of a result file or, as direction controls, reorder the draft notice.
+   */
+  private static final Pattern INVISIBLE_IN_NAME =
+      Pattern.compile("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]");
+
   public AgentRunStamp {
     libraries = libraries == null ? List.of() : List.copyOf(libraries);
     templates = templates == null ? List.of() : List.copyOf(templates);
@@ -50,31 +58,37 @@ public record AgentRunStamp(
   /**
    * The stamp as one line for a result file, led by the draft notice: written into its footers and
    * document properties, so it travels with the file. {@code filled} is the template of this file,
-   * {@code null} for none.
+   * {@code null} for none. Names and model carry no control, format or break characters.
    */
   public String documentText(String agentName, TemplateRef filled) {
     StringBuilder text = new StringBuilder(DRAFT_NOTICE).append(agentText(agentName));
     if (filled != null) {
       text.append(" · Vorlage „")
-          .append(filled.name())
+          .append(plain(filled.name()))
           .append("“, Fassung ")
           .append(filled.revision());
     }
     if (!libraries.isEmpty()) {
       text.append(" · Bibliotheken: ")
           .append(
-              libraries.stream().map(SearchedLibraryRef::name).collect(Collectors.joining(", ")));
+              libraries.stream()
+                  .map(library -> plain(library.name()))
+                  .collect(Collectors.joining(", ")));
     }
     if (model != null && !model.isBlank()) {
-      text.append(" · Modell ").append(model);
+      text.append(" · Modell ").append(plain(model));
     }
     return text.toString();
   }
 
   private String agentText(String agentName) {
-    String agent =
-        agentName == null || agentName.isBlank() ? " · Agent" : " · Agent „" + agentName + "“";
+    String name = plain(agentName);
+    String agent = name.isEmpty() ? " · Agent" : " · Agent „" + name + "“";
     return agent + ", Fassung " + agentRevision;
+  }
+
+  private static String plain(String text) {
+    return text == null ? "" : INVISIBLE_IN_NAME.matcher(text).replaceAll(" ").trim();
   }
 
   /** A filled template by id, name at the time and the revision filled. */

@@ -287,6 +287,16 @@ class FillTemplateTest(unittest.TestCase):
         self.assertEqual(0, code, result)
         self.assertIn("{{ 7*7 }}", footer_text(self.result_docx()))
 
+    def test_a_stamp_xml_cannot_hold_is_reported_not_raised(self):
+        make_template(self.template, ["{{ x }}"])
+
+        code, result = fill_template.fill(self.job({"x": "1"}, stamp="Entwurf \u0001 Fassung 3"))
+
+        self.assertEqual(2, code)
+        self.assertEqual(["Der Fassungsstempel ließ sich nicht in die Datei schreiben."],
+                         result["errors"])
+        self.assertFalse(os.path.exists(self.out))
+
     def test_the_output_name_is_plain_and_the_output_directory_must_be_new(self):
         make_template(self.template, ["{{ x }}"])
 

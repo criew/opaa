@@ -51,6 +51,12 @@ nicht, bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste
 und eine Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert
 das Befüllen.
 
+Word-Datei und PDF tragen in jeder Fußzeile und in den Dokumenteigenschaften den Fassungsstempel,
+etwa: Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bescheid“, Fassung 2 ·
+Bibliotheken: Erlasse, Satzungen · Modell (Kennung des Modells). Er wandert mit, wenn Sie die
+Datei weitergeben, die Namen der durchsuchten Bibliotheken eingeschlossen
+([Agentenergebnis prüfen](agentenergebnis-pruefen.md)).
+
 Sind Vorlagen ausgeschaltet, darf die Person keine Vorlage lesen oder ist die Sandbox nicht
 erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt das dazu.
 

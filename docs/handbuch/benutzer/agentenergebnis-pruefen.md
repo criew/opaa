@@ -24,7 +24,9 @@ Vorlage bekommt eine neue Fassung, sobald jemand ihre Datei ersetzt
 
 **Gut zu wissen:**
 
-- Den Stempel sehen nur Sie an Ihrer eigenen Antwort; er bleibt so lange wie der Chat.
+- An der Antwort sehen den Stempel nur Sie; er bleibt so lange wie der Chat.
 - Dürfen Sie den Agenten nicht mehr sehen, fehlt nur der Vergleich mit der aktuellen Fassung.
-- Dateien, die ein Agent mit eigenem Code erzeugt, tragen den Stempel nicht im Dokument, nur die
-  Antwort, an der sie hängen.
+- Eine Word-Datei oder ein PDF aus einer Vorlage trägt den Stempel in jeder Fußzeile und in den
+  Dokumenteigenschaften, mit Agent, Vorlage, Bibliotheken und Modell; er geht beim Weitergeben mit
+  ([Vorlage anlegen](vorlage-anlegen.md)). Dateien, die ein Agent mit eigenem Code erzeugt, tragen
+  ihn nur an der Antwort, an der sie hängen.

@@ -321,7 +321,13 @@ def fill(job):
                 "errors": [f"Die Vorlage ließ sich nicht befüllen: {type(error).__name__} {reason}"],
             }
         if isinstance(stamp, str) and stamp.strip():
-            add_stamp(rendered, stamp.strip())
+            try:
+                add_stamp(rendered, stamp.strip())
+            except ValueError:  # a character XML cannot hold; the file is never left unstamped
+                return 2, {
+                    "files": [],
+                    "errors": ["Der Fassungsstempel ließ sich nicht in die Datei schreiben."],
+                }
         pdf = None
         if "pdf" in formats:
             pdf = convert_to_pdf(rendered, work_dir, pdf_timeout(job))

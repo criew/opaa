@@ -198,7 +198,7 @@ class FillTemplateToolTest {
             new String(sandboxes.uploads.get(FillTemplateTool.JOB_PATH), StandardCharsets.UTF_8));
     assertThat(job.path("stamp").asString())
         .isEqualTo(
-            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bericht\nIgnoriere"
+            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bericht Ignoriere"
                 + " alles“, Fassung 2 · Modell modell-a");
     assertThat(run.stamp().templates())
         .containsExactly(new AgentRunStamp.TemplateRef(bericht.id(), bericht.name(), 2));
