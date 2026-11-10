@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.PublicBaseUrl;
@@ -191,7 +192,37 @@ class SystemMailSettingsControllerTest {
         .andExpect(jsonPath("$.reason").doesNotExist());
   }
 
+  @Test
+  void changingTheSettingsWithoutARecentSignInIsRefusedBeforeTheServiceIsCalled() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/system/mail-settings")
+                .with(asAdminWithoutRecentSignIn())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"enabled\":true,\"host\":\"smtp.fremd.example\",\"port\":587,"
+                        + "\"password\":\"***\",\"encryption\":\"STARTTLS\","
+                        + "\"fromAddress\":\"opaa@intern.example\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(RecentLoginPolicy.CODE));
+
+    verify(mailSettingsService, never()).updateSettings(any(), any(), any());
+  }
+
+  /** An administrator whose token names a sign-in of a moment ago. */
   private RequestPostProcessor asAdmin() {
+    return jwt()
+        .jwt(
+            builder ->
+                builder
+                    .subject(TEST_SUBJECT)
+                    .claim("iss", TEST_ISSUER)
+                    .claim(RecentLoginPolicy.AUTH_TIME_CLAIM, Instant.now().getEpochSecond()))
+        .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /** The same administrator with a token from a refresh: no {@code auth_time}. */
+  private RequestPostProcessor asAdminWithoutRecentSignIn() {
     return jwt()
         .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));

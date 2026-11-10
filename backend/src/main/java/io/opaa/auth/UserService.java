@@ -29,7 +29,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class UserService {
@@ -57,8 +59,10 @@ public class UserService {
   private final AuditorRoles auditorRoles;
   private final AuditorRoleRequestRepository auditorRoleRequests;
   private final AuditorCredentialRenewal credentialRenewal;
+  private final PromotionSessionEnd promotionSessionEnd;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final TransactionTemplate columnWrites;
   private final Clock clock;
 
   public UserService(
@@ -72,8 +76,10 @@ public class UserService {
       AuditorRoles auditorRoles,
       AuditorRoleRequestRepository auditorRoleRequests,
       AuditorCredentialRenewal credentialRenewal,
+      PromotionSessionEnd promotionSessionEnd,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
+      PlatformTransactionManager transactionManager,
       Clock clock) {
     this.userRepository = userRepository;
     this.initialAdminPolicy = initialAdminPolicy;
@@ -85,8 +91,10 @@ public class UserService {
     this.auditorRoles = auditorRoles;
     this.auditorRoleRequests = auditorRoleRequests;
     this.credentialRenewal = credentialRenewal;
+    this.promotionSessionEnd = promotionSessionEnd;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.columnWrites = new TransactionTemplate(transactionManager);
     this.clock = clock;
   }
 
@@ -168,34 +176,38 @@ public class UserService {
   /**
    * {@code lastLoginAt} is refreshed only after {@link #LAST_LOGIN_UPDATE_THRESHOLD}; {@code
    * email}/{@code displayName} (identity-provider claims) are written immediately whenever they
-   * differ from the stored value. No {@link UserRepository#save} call when none of the three
-   * changed.
+   * differ from the stored value. Only those columns are written, never the whole row read before:
+   * a role, directory lock or erasure written meanwhile stays. Nothing is written when none of the
+   * three changed.
    */
   private User updateExistingUser(User existing, String email, String displayName) {
-    Instant now = clock.instant();
-    boolean changed = false;
-    if (lastLoginDue(existing, now)) {
-      existing.setLastLoginAt(now);
-      changed = true;
-    }
+    touchLastLogin(existing);
+    boolean claimsChanged = false;
     if (email != null && !email.equals(existing.getEmail())) {
       existing.setEmail(email);
-      changed = true;
+      claimsChanged = true;
     }
     if (displayName != null && !displayName.equals(existing.getDisplayName())) {
       existing.setDisplayName(displayName);
-      changed = true;
+      claimsChanged = true;
     }
-    return changed ? userRepository.save(existing) : existing;
+    if (claimsChanged) {
+      columnWrites.executeWithoutResult(
+          status ->
+              userRepository.recordProviderClaims(
+                  existing.getId(), existing.getEmail(), existing.getDisplayName()));
+    }
+    return existing;
   }
 
   private User touchLastLogin(User existing) {
     Instant now = clock.instant();
-    if (!lastLoginDue(existing, now)) {
-      return existing;
+    if (lastLoginDue(existing, now)) {
+      existing.setLastLoginAt(now);
+      columnWrites.executeWithoutResult(
+          status -> userRepository.recordLastLogin(existing.getId(), now));
     }
-    existing.setLastLoginAt(now);
-    return userRepository.save(existing);
+    return existing;
   }
 
   private static boolean lastLoginDue(User existing, Instant now) {
@@ -488,6 +500,8 @@ public class UserService {
             AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED,
             previousRole,
             role);
+        // sessions opened under a regular account's lifetimes end with the promotion
+        promotionSessionEnd.endSessionsOfPromoted(saved, actorUserId);
       } else if (role == SystemRole.AUDITOR) {
         recordRoleChange(
             saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);

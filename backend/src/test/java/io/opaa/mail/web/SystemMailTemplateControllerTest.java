@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ValidationException;
@@ -24,6 +25,7 @@ import io.opaa.mail.MailTemplateView;
 import io.opaa.mail.MailTestService;
 import io.opaa.mail.RenderedMail;
 import io.opaa.mail.SendResult;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -229,7 +231,34 @@ class SystemMailTemplateControllerTest {
         null);
   }
 
+  @Test
+  void changingATemplateWithoutARecentSignInIsRefusedBeforeTheServiceIsCalled() throws Exception {
+    mockMvc
+        .perform(
+            put(TEMPLATE_PATH)
+                .with(asAdminWithoutRecentSignIn())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"subject\":\"Betreff\",\"bodyPlain\":\"{{actionUrl}}\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(RecentLoginPolicy.CODE));
+
+    verify(templateService, never()).update(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  /** An administrator whose token names a sign-in of a moment ago. */
   private RequestPostProcessor asAdmin() {
+    return jwt()
+        .jwt(
+            builder ->
+                builder
+                    .subject(TEST_SUBJECT)
+                    .claim("iss", TEST_ISSUER)
+                    .claim(RecentLoginPolicy.AUTH_TIME_CLAIM, Instant.now().getEpochSecond()))
+        .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /** The same administrator with a token from a refresh: no {@code auth_time}. */
+  private RequestPostProcessor asAdminWithoutRecentSignIn() {
     return jwt()
         .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));

@@ -30,6 +30,10 @@ paths:
         "***" as password leaves the stored one untouched, an empty string clears it. No address
         check is made on host - an internal mail server is the normal case and this endpoint is
         SYSTEM_ADMIN only, the same trade-off the managed model endpoints make.
+      description: >
+        Requires a recent sign-in: without one the call is refused with 403 and code
+        RECENT_LOGIN_REQUIRED (see the response RecentLoginRequired) before anything is checked or
+        written - the server chosen here carries every reset and invitation link.
       requestBody:
         required: true
         content:
@@ -119,6 +123,10 @@ paths:
       summary: >
         Store an override for one template (SYSTEM_ADMIN only). A placeholder the template does not
         declare is rejected with 400 naming the field and the accepted names.
+      description: >
+        Requires a recent sign-in: without one the call is refused with 403 and code
+        RECENT_LOGIN_REQUIRED (see the response RecentLoginRequired) before anything is checked or
+        written - a template decides where the link of a mail points.
       requestBody:
         required: true
         content:
