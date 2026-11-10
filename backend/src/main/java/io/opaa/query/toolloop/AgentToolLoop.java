@@ -384,7 +384,8 @@ class AgentToolLoop implements AgentTurnHandler {
                 searchQueries,
                 Map.of(),
                 completeness);
-    AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
+    AgentRunRecord record =
+        new AgentRunRecord(run.runId(), endState, run.steps(), spec.agentId(), spec.name());
 
     signal(turn, AnswerStreamListener::beforeKeeping);
     List<ChatAttachment> generatedFiles = finishResources(run);

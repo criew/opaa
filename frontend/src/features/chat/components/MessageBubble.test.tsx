@@ -145,6 +145,22 @@ describe('MessageBubble', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
+  it('names the agent a question was sent to', () => {
+    render(
+      <MessageBubble
+        message={{
+          id: '1',
+          role: 'user',
+          content: 'Welche Frist gilt?',
+          agentName: 'Recherche',
+          timestamp: new Date(),
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('question-agent')).toHaveTextContent('Agent: Recherche')
+  })
+
   // The stored mark stays, but a switched-off installation does not name prompts.
   it('names no prompt while prompt libraries are switched off', () => {
     useAuthStore.setState({ features: { promptLibraries: false } })
