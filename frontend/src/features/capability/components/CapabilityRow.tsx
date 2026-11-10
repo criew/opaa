@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, radius } from '@/shared/theme/tokens'
 import AccessBadge from './AccessBadge'
 import {
   accessBadgeLabel,
@@ -33,7 +33,12 @@ function ScopeBuckets({ title, buckets }: { title: string; buckets: AccessBucket
     <Box>
       <Typography
         component="h4"
-        sx={{ fontSize: 11.5, fontWeight: 600, color: 'text.secondary', letterSpacing: 0.4 }}
+        sx={{
+          fontSize: fontSize.meta,
+          fontWeight: 600,
+          color: 'text.secondary',
+          letterSpacing: 0.4,
+        }}
       >
         {title}
       </Typography>
@@ -69,11 +74,11 @@ function ScopeBuckets({ title, buckets }: { title: string; buckets: AccessBucket
               />
             </Box>
             <Box>
-              <Typography component="span" sx={{ fontSize: 13.5 }}>
+              <Typography component="span" sx={{ fontSize: fontSize.text }}>
                 {bucket.entries.map(scopeShortLabel).join(' · ')}
               </Typography>
               {bucket.level === 'SELECTED' && (
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                   Freigegeben für {bucket.label}
                 </Typography>
               )}
@@ -134,14 +139,18 @@ export default function CapabilityRow({ entries, onEdit }: CapabilityRowProps) {
           bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
         }}
       >
-        <Icon sx={{ fontSize: 22 }} />
+        <Icon sx={{ fontSize: iconSize.lg }} />
       </Box>
 
       <Box sx={{ minWidth: 0 }}>
-        <Typography id={headingId} component="h3" sx={{ fontSize: 15.5, fontWeight: 600 }}>
+        <Typography
+          id={headingId}
+          component="h3"
+          sx={{ fontSize: fontSize.title, fontWeight: 600 }}
+        >
           {title}
         </Typography>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.25 }}>
           {description}
         </Typography>
         {!scoped && (
@@ -150,11 +159,11 @@ export default function CapabilityRow({ entries, onEdit }: CapabilityRowProps) {
           >
             <AccessBadge tone={access.level} label={accessBadgeLabel(access)} />
             {names && access.level === 'SELECTED' && (
-              <Typography sx={{ fontSize: 13.5 }}>{names}</Typography>
+              <Typography sx={{ fontSize: fontSize.text }}>{names}</Typography>
             )}
             {names && access.level === 'ALL' && (
               // Named grants next to all accounts take no effect until the right is restricted.
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 Zusätzlich eingetragen: {names}
               </Typography>
             )}

@@ -1,4 +1,5 @@
 import type { ExternalAccessTokenStatus } from '@/shared/api/types'
+import { formatDate as formatDateShared } from '@/shared/utils/formatDate'
 
 /** A token's state in words - the same four as in the backend (ADR-0035). */
 export const TOKEN_STATUS_LABEL: Record<ExternalAccessTokenStatus, string> = {
@@ -59,11 +60,8 @@ export const BLOCK_ALL_CONSEQUENCE =
   'ausscheidendes Konto. Bereits abgelaufene oder widerrufene Tokens bleiben, wie sie sind.'
 
 /** A point in time as a date - this channel never shows a time of day. */
-export function formatDate(value: string | undefined | null): string {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+export function formatDate(value: string | Date | undefined | null): string {
+  return formatDateShared(value)
 }
 
 /** Whole days from today until the expiry; negative when it has passed. */

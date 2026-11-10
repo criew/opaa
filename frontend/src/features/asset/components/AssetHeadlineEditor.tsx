@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface AssetHeadlineProps {
   /** Prefix of the field ids, unique per page. */
@@ -58,7 +59,7 @@ export default function AssetHeadline({
               overflow: 'hidden',
               hyphens: 'auto',
               overflowWrap: 'break-word',
-              fontSize: { xs: 17, sm: 20 },
+              fontSize: { xs: fontSize.title, sm: fontSize.detailTitle },
               lineHeight: { xs: '22px', sm: '28px' },
               display: { xs: 'block', sm: '-webkit-box' },
               WebkitBoxOrient: 'vertical',
@@ -71,7 +72,7 @@ export default function AssetHeadline({
       <Typography
         noWrap
         title={description ?? undefined}
-        sx={{ fontSize: 13.5, lineHeight: '20px', minHeight: 20, color: 'text.secondary' }}
+        sx={{ fontSize: fontSize.text, lineHeight: '20px', minHeight: 20, color: 'text.secondary' }}
       >
         {description}
       </Typography>

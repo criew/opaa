@@ -82,6 +82,7 @@ import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -562,7 +563,7 @@ export default function LibraryCreatePage() {
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: CONTENT_WIDTH }}>
         <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
-        <Typography aria-hidden sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}>
+        <Typography aria-hidden sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}>
           Neue Wissensbibliothek
         </Typography>
         {/* one page title for the whole wizard; the step heading takes the focus after „Weiter“ */}
@@ -587,7 +588,7 @@ export default function LibraryCreatePage() {
         </Box>
 
         {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Quellarten werden geladen …
           </Typography>
         )}
@@ -621,7 +622,7 @@ export default function LibraryCreatePage() {
                 value: type,
                 label: displayNameOf(type),
                 description: documentSourceTypeDescription(type),
-                icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+                icon: <SourceTypeIcon sourceType={type} fontSize={iconSize.lg} />,
                 disabledReason: missingFor(type),
               }))}
             />
@@ -678,7 +679,7 @@ export default function LibraryCreatePage() {
         {currentStep === STEP_NAME && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
             {uploadLibrary && (
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
                 gebündelt.
               </Typography>

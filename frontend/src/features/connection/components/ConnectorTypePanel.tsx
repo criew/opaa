@@ -33,6 +33,7 @@ import {
 import ProfileRequirementDialog from './ProfileRequirementDialog'
 import { confirmLock } from './connectorLock'
 import { stockLabel } from './connectorTypeState'
+import { fontSize } from '@/shared/theme/tokens'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -156,7 +157,7 @@ function PanelContent({
         <Typography
           id="connector-type-panel-heading"
           component="h2"
-          sx={{ flex: 1, fontSize: 18, fontWeight: 600, overflowWrap: 'anywhere' }}
+          sx={{ flex: 1, fontSize: fontSize.title, fontWeight: 600, overflowWrap: 'anywhere' }}
         >
           {state.displayName}
         </Typography>
@@ -194,13 +195,13 @@ function PanelContent({
 
         <PanelSection title="Zugänge">
           {state.profileSupport === 'FORBIDDEN' ? (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Für diese Quellart sind in dieser Version keine Zugänge möglich.
             </Typography>
           ) : (
             <>
               {state.profileSupport === 'REQUIRED' ? (
-                <Typography sx={{ fontSize: 13 }}>
+                <Typography sx={{ fontSize: fontSize.text }}>
                   Immer über Zugänge – das gibt die Quellart vor.
                 </Typography>
               ) : (
@@ -219,7 +220,7 @@ function PanelContent({
                     }
                     label="Nur über Zugänge"
                   />
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {state.profileRequired
                       ? stockLabel(state.ownAddressStock)
                       : 'Bibliotheken dürfen einen Zugang wählen oder eine eigene Adresse eintragen.'}
@@ -238,7 +239,13 @@ function PanelContent({
               )}
               <Typography
                 component="h4"
-                sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mt: 2, mb: 0.75 }}
+                sx={{
+                  fontSize: fontSize.meta,
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  mt: 2,
+                  mb: 0.75,
+                }}
               >
                 {own === null
                   ? 'Die Zugänge dieser Quellart konnten nicht geladen werden'
@@ -258,7 +265,7 @@ function PanelContent({
                       {profile.locked && (
                         <Typography
                           component="span"
-                          sx={{ fontSize: 12.5, color: 'text.secondary' }}
+                          sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
                         >
                           {' '}
                           · gesperrt
@@ -275,7 +282,7 @@ function PanelContent({
         {ownAddressEntry && ownAccess && (
           <PanelSection title="Wer darf Bibliotheken mit eigener Adresse anlegen?">
             <AccessBadge tone={ownAccess.level} label={accessBadgeLabel(ownAccess)} />
-            <Typography sx={{ fontSize: 13, mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.text, mt: 1 }}>
               {resultSentence(ownAccess, objectPhrase(ownAddressEntry))}
             </Typography>
             <TextLink to="/admin/capabilities">Unter Anlegerechte ändern</TextLink>

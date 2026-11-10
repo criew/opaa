@@ -31,6 +31,7 @@ import {
   STAGE_LABELS,
   STAGE_STATUS_LABELS,
 } from '../utils/searchAdminLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The two navigations every diagnosis row offers: open one chunk, or jump to its document. */
 export interface ChunkNavigation {
@@ -115,14 +116,14 @@ export default function StagePanel({
     <Accordion slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
             {STAGE_LABELS[stage.stage]}
           </Typography>
           <StateDot
             tone={stage.status === 'EXECUTED' ? 'neutral' : 'warning'}
             label={STAGE_STATUS_LABELS[stage.status]}
           />
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {stage.incomingCount} → {stage.outgoingCount} Kandidaten
             {duration && ` · ${duration}`}
           </Typography>

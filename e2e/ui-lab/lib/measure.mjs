@@ -13,6 +13,7 @@ export const BUDGETS = {
   helpTextsPerForm: 3,
   helpTextLines: 1,
   uiWords: 150,
+  fontSizes: 6,
 }
 const WORD_BUDGET_SCENARIOS = ['small', 'default']
 
@@ -143,6 +144,7 @@ export function budgetViolations(metrics, width, scenario) {
   if (metrics.helpTextsPerForm > BUDGETS.helpTextsPerForm) over.push('helpTextsPerForm')
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
+  if (metrics.fontSizes > BUDGETS.fontSizes) over.push('fontSizes')
   return over
 }
 

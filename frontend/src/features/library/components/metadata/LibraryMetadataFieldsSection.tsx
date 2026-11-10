@@ -33,6 +33,7 @@ import CreateFieldDialog from './CreateFieldDialog'
 import EditFieldDialog from './EditFieldDialog'
 import RemapValueDialog from './RemapValueDialog'
 import DeleteFieldDialog from './DeleteFieldDialog'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface Props {
   libraryId: string
@@ -475,8 +476,10 @@ function FieldRow({
     <Box component="li" sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{label}</Typography>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{detail}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>{label}</Typography>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+            {detail}
+          </Typography>
         </Box>
         {actions && (
           <Stack direction="row" spacing={2} sx={{ flex: 'none' }}>
@@ -548,7 +551,7 @@ function ValueList({
         {editable && addButton}
       </Stack>
       {editable && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.75 }}>
           Wertelisten sieht jede Person, die die Bibliothek nutzt.
         </Typography>
       )}

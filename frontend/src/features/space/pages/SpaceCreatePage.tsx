@@ -36,6 +36,7 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { getChatAutoCleanupPeriods } from '../api/spaceApi'
 import { capabilityMissingMessage, spaceRoleLabel } from '@/shared/utils/labels'
 import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '@/shared/api/types'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const
 
@@ -61,11 +62,17 @@ function SummaryRow({ label, children }: { label: string; children: ReactNode })
     <Box sx={{ display: 'flex', gap: 2 }}>
       <Typography
         component="span"
-        sx={{ fontSize: 12.5, color: 'text.secondary', width: 120, flex: 'none', pt: 0.25 }}
+        sx={{
+          fontSize: fontSize.meta,
+          color: 'text.secondary',
+          width: 120,
+          flex: 'none',
+          pt: 0.25,
+        }}
       >
         {label}
       </Typography>
-      <Box sx={{ fontSize: 13.5, minWidth: 0 }}>{children}</Box>
+      <Box sx={{ fontSize: fontSize.text, minWidth: 0 }}>{children}</Box>
     </Box>
   )
 }
@@ -77,7 +84,7 @@ function SummaryItem({ icon, children }: { icon: ReactNode; children: ReactNode 
       <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'text.secondary' }}>
         {icon}
       </Box>
-      <Typography component="span" sx={{ fontSize: 13.5 }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text }}>
         {children}
       </Typography>
     </Box>
@@ -215,11 +222,15 @@ export default function SpaceCreatePage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 640 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neuer Space
         </Typography>
         <PageHeading title="Neuer Space" visuallyHidden />
-        <Typography component="div" sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} aria-hidden>
+        <Typography
+          component="div"
+          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
+          aria-hidden
+        >
           {STEPS[activeStep]}
         </Typography>
         <WizardStepBar steps={STEPS} active={activeStep} />
@@ -273,7 +284,7 @@ export default function SpaceCreatePage() {
 
         {activeStep === 1 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
               Schritt ist optional.
             </Typography>
@@ -331,11 +342,11 @@ export default function SpaceCreatePage() {
                     ) : (
                       <PersonOutlineIcon fontSize="small" color="action" aria-hidden />
                     )}
-                    <Typography sx={{ fontSize: 13.5, flex: 1 }} noWrap>
+                    <Typography sx={{ fontSize: fontSize.text, flex: 1 }} noWrap>
                       {member.label}
                       {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
                     </Typography>
-                    <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                       {spaceRoleLabel(member.role)}
                     </Typography>
                     <IconButton
@@ -347,7 +358,7 @@ export default function SpaceCreatePage() {
                         )
                       }
                     >
-                      <DeleteIcon sx={{ fontSize: 16 }} />
+                      <DeleteIcon sx={{ fontSize: iconSize.sm }} />
                     </IconButton>
                   </Box>
                 ))}
@@ -358,7 +369,7 @@ export default function SpaceCreatePage() {
 
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen; die Zuordnung gewährt
               keinen zusätzlichen Zugriff. Dieser Schritt ist optional.
             </Typography>
@@ -390,9 +401,9 @@ export default function SpaceCreatePage() {
                       key={pendingKey(member)}
                       icon={
                         member.subjectType === 'GROUP' ? (
-                          <GroupsOutlinedIcon sx={{ fontSize: 16 }} />
+                          <GroupsOutlinedIcon sx={{ fontSize: iconSize.sm }} />
                         ) : (
-                          <PersonOutlineIcon sx={{ fontSize: 16 }} />
+                          <PersonOutlineIcon sx={{ fontSize: iconSize.sm }} />
                         )
                       }
                     >
@@ -415,7 +426,7 @@ export default function SpaceCreatePage() {
                     return (
                       <SummaryItem
                         key={`${pick.assetType}:${pick.assetId}`}
-                        icon={TypeIcon ? <TypeIcon sx={{ fontSize: 16 }} /> : null}
+                        icon={TypeIcon ? <TypeIcon sx={{ fontSize: iconSize.sm }} /> : null}
                       >
                         {pick.name}
                         {definition ? ` · ${definition.title}` : ''}
@@ -462,7 +473,7 @@ export default function SpaceCreatePage() {
             // below 600 px the counter takes a line of its own above the buttons
             <Typography
               sx={{
-                fontSize: 12,
+                fontSize: fontSize.meta,
                 color: 'text.secondary',
                 order: { xs: -1, sm: 0 },
                 flexBasis: { xs: '100%', sm: 'auto' },

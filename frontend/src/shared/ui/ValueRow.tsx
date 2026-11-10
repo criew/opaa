@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '../theme/tokens'
 
 /** The grid of the rows of the Reiter „Quelle“: title | content | action. */
 const ROW_GRID = {
@@ -41,7 +42,7 @@ export default function ValueRow({
         <Typography
           id={id}
           component={headingLevel}
-          sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary', gridColumn: '1' }}
+          sx={{ fontSize: fontSize.title, fontWeight: 600, color: 'text.primary', gridColumn: '1' }}
         >
           {title}
         </Typography>
@@ -49,7 +50,7 @@ export default function ValueRow({
           sx={{
             gridColumn: { xs: '1 / -1', sm: '2' },
             gridRow: { xs: '2', sm: '1' },
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             minWidth: 0,
           }}
         >

@@ -5,6 +5,7 @@ import type { ChunkAnchor } from '@/shared/api/types'
 import RecognizedTextNotice from '@/shared/ui/RecognizedTextNotice'
 import { getDocumentText } from '../api/libraryApi'
 import { comparableText } from '../utils/textPassage'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RecognizedTextPanelProps {
   id: string
@@ -70,14 +71,16 @@ export default function RecognizedTextPanel({
         pt: { xs: 1, sm: 0 },
       }}
     >
-      <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600, mb: 0.25 }}>
+      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.25 }}>
         Erkannter Text
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1 }}>
         {[pageLabel(anchor), section].filter(Boolean).join(' · ')}
       </Typography>
       {pending ? (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>Text wird geladen …</Typography>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Text wird geladen …
+        </Typography>
       ) : (
         <Typography
           component="blockquote"
@@ -87,7 +90,7 @@ export default function RecognizedTextPanel({
             pl: 1.25,
             borderLeft: 3,
             borderColor: 'divider',
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             whiteSpace: 'pre-wrap',
             overflowWrap: 'anywhere',
           }}
@@ -96,7 +99,7 @@ export default function RecognizedTextPanel({
         </Typography>
       )}
       <Box sx={{ mt: 1.5 }}>
-        <RecognizedTextNotice fontSize={12} />
+        <RecognizedTextNotice size="meta" />
       </Box>
     </Box>
   )

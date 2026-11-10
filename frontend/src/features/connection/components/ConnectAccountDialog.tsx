@@ -17,6 +17,7 @@ import {
   secretFieldLabel,
   secretFormLabel,
 } from './connectedAccountLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface ConnectTarget {
   profileId: string
@@ -96,12 +97,12 @@ export default function ConnectAccountDialog({
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Geben Sie Ihre eigenen Zugangsdaten für diesen Zugang ein (
               {secretFormLabel(target.secretForm)}). OPAA prüft die Anmeldung beim Anbieter, bevor
               es sie verschlüsselt speichert.
             </Typography>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Wer was sieht: Kontonamen und Inhalte Ihrer privaten Bibliotheken sehen nur Sie. Die
               Systemverwaltung sieht nur gerundete Anzahlen; Verbinden und Trennen stehen unter
               einem Pseudonym im Verbindungsprotokoll der Revision.

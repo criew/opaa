@@ -1,4 +1,5 @@
 import type { AssetRole } from '@/shared/api/types'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 export function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -15,8 +16,7 @@ export function canManageDocuments(role: AssetRole | undefined): boolean {
 }
 
 export function formatIndexedAt(indexedAt: string | null | undefined): string {
-  if (!indexedAt) return '—'
-  return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(indexedAt)
 }
 
 /** The page's areas; the active one is shareable via the "tab" search param (URL as state). */

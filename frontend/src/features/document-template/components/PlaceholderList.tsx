@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { DocumentTemplatePlaceholder } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 
 const KIND_LABELS: Record<DocumentTemplatePlaceholder['kind'], string> = {
   FIELD: 'Feld',
@@ -39,7 +39,7 @@ export default function PlaceholderList({
       sx={{
         width: '100%',
         borderCollapse: 'collapse',
-        fontSize: 13.5,
+        fontSize: fontSize.text,
         '& th, & td': {
           textAlign: 'left',
           py: 1,
@@ -48,7 +48,7 @@ export default function PlaceholderList({
           borderColor: 'divider',
           verticalAlign: 'top',
         },
-        '& th': { fontSize: 12, fontWeight: 600, color: 'text.secondary' },
+        '& th': { fontSize: fontSize.meta, fontWeight: 600, color: 'text.secondary' },
       }}
     >
       <caption style={{ position: 'absolute', left: -10000 }}>Platzhalter der Vorlage</caption>
@@ -68,7 +68,11 @@ export default function PlaceholderList({
               </Box>
               <Box
                 component="div"
-                sx={{ fontFamily: fontFamily.mono, fontSize: 12, color: 'text.secondary' }}
+                sx={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize.meta,
+                  color: 'text.secondary',
+                }}
               >
                 {syntaxOf(placeholder)}
               </Box>

@@ -12,12 +12,14 @@ import type { NotificationResponse } from '@/shared/api/types'
 import { notificationTarget } from './notificationTarget'
 import { getNotifications, markNotificationRead } from '../api/notificationApi'
 import { useAuthStore } from '@/shared/session/authStore'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** Highest count the badge spells out; beyond it, it shows "99+". */
 const BADGE_MAX = 99
 
 function formatCreatedAt(value: string): string {
-  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(value)
 }
 
 /**
@@ -122,7 +124,9 @@ export default function NotificationBell() {
               sx={{ whiteSpace: 'normal', alignItems: 'flex-start' }}
             >
               <Box sx={{ py: 0.5 }}>
-                <Typography sx={{ fontWeight: notification.readAt ? 400 : 600, fontSize: 13.5 }}>
+                <Typography
+                  sx={{ fontWeight: notification.readAt ? 400 : 600, fontSize: fontSize.text }}
+                >
                   {notification.title}
                 </Typography>
                 {notification.body && (

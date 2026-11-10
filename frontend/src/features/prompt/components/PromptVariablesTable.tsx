@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Fragment, useState } from 'react'
 import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { promptVariableTypeLabel, promptVariableTypes } from './promptLabels'
 import PromptVariableInput from './PromptVariableInput'
 
@@ -80,7 +80,7 @@ function OptionsField({
 export default function PromptVariablesTable({ variables, onChange }: PromptVariablesTableProps) {
   if (variables.length === 0) {
     return (
-      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         Der Text verwendet keine eigenen Variablen. Eine Variable entsteht, sobald der Text einen
         Platzhalter wie {'{{aktenzeichen}}'} enthält.
       </Typography>
@@ -102,7 +102,7 @@ export default function PromptVariablesTable({ variables, onChange }: PromptVari
           {variables.map((variable) => (
             <Fragment key={variable.name}>
               <TableRow>
-                <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: 12.5 }}>
+                <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta }}>
                   {`{{${variable.name}}}`}
                 </TableCell>
                 <TableCell sx={{ minWidth: 160 }}>

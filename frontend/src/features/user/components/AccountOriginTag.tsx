@@ -5,6 +5,7 @@ import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
 import type { AccountResponse } from '@/shared/api/types'
 import { accountOriginLabel, isLocalAccount } from './accountLabels'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * An account's origin: key and „Lokal" for an account of this installation,
@@ -25,12 +26,16 @@ export default function AccountOriginTag({ account }: { account: AccountResponse
     >
       <Icon
         aria-hidden="true"
-        sx={{ fontSize: 15, flex: 'none', color: local ? 'primary.main' : 'text.secondary' }}
+        sx={{
+          fontSize: iconSize.sm,
+          flex: 'none',
+          color: local ? 'primary.main' : 'text.secondary',
+        }}
       />
       <Typography
         component="span"
         sx={{
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           fontWeight: local ? 600 : 500,
           color: local ? 'text.primary' : 'text.secondary',
           minWidth: 0,

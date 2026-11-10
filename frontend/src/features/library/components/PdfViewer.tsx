@@ -15,7 +15,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
 import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
-import { markHighlight } from '@/shared/theme/tokens'
+import { fontSize, markHighlight } from '@/shared/theme/tokens'
 import { isRecognizedText, RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
@@ -270,7 +270,7 @@ export default function PdfViewer({
             </IconButton>
           </Tooltip>
         )}
-        <Typography component="span" sx={{ fontSize: 14, mx: 1 }}>
+        <Typography component="span" sx={{ fontSize: fontSize.text, mx: 1 }}>
           {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
         </Typography>
         {recognized && (
@@ -308,9 +308,9 @@ export default function PdfViewer({
         role="status"
         sx={
           changed || markState === 'not-found'
-            ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
+            ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
             : markState === 'no-anchor' || markState === 'framed' || markState === 'page-only'
-              ? { fontSize: 13, color: 'text.secondary' }
+              ? { fontSize: fontSize.text, color: 'text.secondary' }
               : visuallyHidden
         }
       >

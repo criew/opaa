@@ -3,6 +3,7 @@ import Tooltip from '@mui/material/Tooltip'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { useClipboardCopy } from './useClipboardCopy'
+import { iconSize } from '@/shared/theme/tokens'
 
 /** Class the question row uses to reveal the button on hover and keyboard focus. */
 export const QUESTION_COPY_CLASS = 'question-copy'
@@ -23,9 +24,9 @@ export default function CopyQuestionButton({ text }: { text: string }) {
         sx={{ color: copied ? 'primary.main' : 'text.secondary', p: 0.5 }}
       >
         {copied ? (
-          <CheckIcon aria-hidden sx={{ fontSize: 16 }} />
+          <CheckIcon aria-hidden sx={{ fontSize: iconSize.sm }} />
         ) : (
-          <ContentCopyOutlinedIcon aria-hidden sx={{ fontSize: 16 }} />
+          <ContentCopyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.sm }} />
         )}
       </IconButton>
     </Tooltip>

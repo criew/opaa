@@ -16,6 +16,7 @@ import { spendSilentSignIn } from '@/shared/session/silentSignIn'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The sign-in of the local system administrators (ADR-0033, Entscheidung 4 and 5). It is
@@ -74,14 +75,17 @@ export default function SystemLoginPage() {
 
       <Divider sx={{ my: 3 }} />
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', color: 'text.secondary' }}>
-        <LockOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
-        <Typography sx={{ fontSize: 12, lineHeight: 1.5 }}>
+        <LockOutlinedIcon
+          aria-hidden="true"
+          sx={{ fontSize: iconSize.sm, mt: '1px', flex: 'none' }}
+        />
+        <Typography sx={{ fontSize: fontSize.meta, lineHeight: 1.5 }}>
           Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren
           Prüfwert.
         </Typography>
       </Stack>
 
-      <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
+      <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
         <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Zur regulären Anmeldung
         </Link>

@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { passwordStrength } from '@/shared/session/passwordStrength'
+import { fontSize } from '@/shared/theme/tokens'
 
 // Four steps, the rating's own colour. "schwach" is the one that may use the danger role: it says
 // the entry is below the rule shown above it, which the backend will refuse.
@@ -49,7 +50,7 @@ export default function PasswordStrengthMeter({ password, minLength }: PasswordS
       </Box>
       <Typography
         aria-live="polite"
-        sx={{ fontSize: 11.5, fontWeight: 500, color: 'text.secondary', minWidth: 78 }}
+        sx={{ fontSize: fontSize.meta, fontWeight: 500, color: 'text.secondary', minWidth: 78 }}
       >
         {`Stärke: ${label}`}
       </Typography>

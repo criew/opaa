@@ -11,6 +11,8 @@ import Typography from '@mui/material/Typography'
 import { visuallyHidden } from '@mui/utils'
 import type { GroupMemberResponse } from '@/shared/api/types'
 import { adminTableSx } from '@/shared/ui/list/adminListStyles'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 
 /**
  * Fixed row geometry, so the frame height follows from the member count alone. The values hold
@@ -39,7 +41,7 @@ function nameOf(member: GroupMemberResponse): string {
 }
 
 function formatSince(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+  return formatDate(value)
 }
 
 interface GroupMembersTableProps {
@@ -124,7 +126,9 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
                   sx={{
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    ...(member.displayName ? {} : { fontFamily: 'monospace', fontSize: 12 }),
+                    ...(member.displayName
+                      ? {}
+                      : { fontFamily: 'monospace', fontSize: fontSize.meta }),
                   }}
                   title={nameOf(member)}
                 >
@@ -153,7 +157,7 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           // exactly one row high, so the empty frame does not scroll
           <Typography
             sx={{
-              fontSize: 13,
+              fontSize: fontSize.text,
               color: 'text.secondary',
               px: 2,
               height: rowHeight,
@@ -172,7 +176,7 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
       {members.length > 0 && (
         <Typography
           aria-live="polite"
-          sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75, minHeight: '1.5em' }}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.75, minHeight: '1.5em' }}
         >
           {needle ? `${shown.length} von ${members.length} Mitgliedern` : ''}
         </Typography>

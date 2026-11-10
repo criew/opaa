@@ -12,6 +12,8 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 
 const MIN_RETENTION_MONTHS = 6
 const MAX_RETENTION_MONTHS = 24
@@ -111,7 +113,7 @@ export default function ConnectionLogRetentionSection() {
           {loadError}
         </Alert>
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Aufbewahrungsfrist wird geladen …
         </Typography>
       ) : (
@@ -158,9 +160,8 @@ export default function ConnectionLogRetentionSection() {
             </Alert>
           )}
           {current.lastCutoff && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-              Gelöscht ist bisher alles vor dem{' '}
-              {new Date(current.lastCutoff).toLocaleDateString('de-DE', { dateStyle: 'medium' })}.
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+              Gelöscht ist bisher alles vor dem {formatDate(current.lastCutoff)}.
             </Typography>
           )}
         </Box>

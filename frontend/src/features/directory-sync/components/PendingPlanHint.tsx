@@ -8,6 +8,7 @@ import type { DirectorySyncStatusResponse } from '@/shared/api/types'
 import { getDirectorySyncStatus } from '../api/directorySyncApi'
 import { ageSinceLabel, countLabel } from '@/features/principal'
 import HintLink from '@/shared/ui/list/HintLink'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * A pending directory plan is a loud state (ADR-0036, Entscheidung 3): its age
@@ -36,7 +37,7 @@ export default function PendingPlanHint() {
     <HintLink text={text} title="Verzeichnisabgleich wartet auf Ihre Entscheidung" tone="warning">
       {(close) => (
         <>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
             Ein Abgleich würde mehr Mitgliedschaften entziehen oder mehr Konten sperren, als OPAA
             ohne Rückfrage anwendet. Bis Sie den Plan bestätigen oder verwerfen, bleibt der
             bisherige Stand in Kraft.
@@ -47,10 +48,10 @@ export default function PendingPlanHint() {
               const removed = plan.membershipsRemoved
               return (
                 <Box key={status.providerId}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                     {status.providerDisplayName}
                   </Typography>
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     wartet seit {ageSinceLabel(plan.createdAt)} ·{' '}
                     {countLabel(removed, 'Mitgliedschaft', 'Mitgliedschaften')}{' '}
                     {removed === 1 ? 'würde' : 'würden'} entzogen ·{' '}

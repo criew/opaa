@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { splitPromptText, type PromptTextSegment } from '../utils/promptTemplate'
 
 type MarkedKind = Exclude<PromptTextSegment['kind'], 'text'>
@@ -43,7 +43,7 @@ export default function PromptTextHighlight({ text, label }: { text: string; lab
         aria-label={label}
         sx={{
           fontFamily: fontFamily.mono,
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           lineHeight: 1.7,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
@@ -79,7 +79,7 @@ export default function PromptTextHighlight({ text, label }: { text: string; lab
         })}
       </Box>
       {kinds.length > 0 && (
-        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
           Hervorgehoben: {kinds.map((kind) => MARKS[kind].legend).join(' · ')}
         </Typography>
       )}

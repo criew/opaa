@@ -22,6 +22,7 @@ import type {
   AccessBasis,
 } from '@/shared/api/types'
 import { contentWidth } from '@/shared/theme/tokens'
+import { formatProtocolTime } from '@/shared/utils/formatDate'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
   DIRECT_GRANT: 'Direkte Freigabe',
@@ -41,7 +42,7 @@ const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
 
 function formatInstant(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback
-  return new Date(value).toLocaleString('de-DE')
+  return formatProtocolTime(value)
 }
 
 function toInstant(localValue: string): string {

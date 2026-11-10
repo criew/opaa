@@ -18,15 +18,8 @@ import ChatRowMenu from './ChatRowMenu'
 import type { ChatRowActions } from './ChatRowMenu'
 import { chatTitle } from './chatListSections'
 import { deletionDueLabel } from './deletionDueLabel'
-
-const dateTimeFormat = new Intl.DateTimeFormat('de-DE', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatDateTime(iso: string | null | undefined): string {
-  return iso ? dateTimeFormat.format(new Date(iso)) : '–'
-}
+import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 interface ChatTableProps extends ChatRowActions {
   spaceId: string
@@ -65,7 +58,7 @@ function TitleCell({
         title={title}
         sx={{
           display: 'block',
-          fontSize: 13.5,
+          fontSize: fontSize.text,
           fontWeight: 500,
           color: 'text.primary',
           overflow: 'hidden',
@@ -77,8 +70,11 @@ function TitleCell({
       </Link>
       {chat.pinnedAt && (
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
-          <PushPinOutlinedIcon aria-hidden sx={{ fontSize: 13, color: 'text.secondary' }} />
-          <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
+          <PushPinOutlinedIcon
+            aria-hidden
+            sx={{ fontSize: iconSize.xs, color: 'text.secondary' }}
+          />
+          <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             angeheftet
           </Typography>
         </Stack>
@@ -133,12 +129,12 @@ export default function ChatTable({
               </Box>
               <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                 <TitleCell chat={chat} spaceId={spaceId} onOpen={onOpen} />
-                <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                   {archived && `Archiviert ${formatDateTime(chat.archivedAt)} · `}
                   Zuletzt {formatDateTime(chat.updatedAt)}
                 </Typography>
                 {archived && chat.deletionDueAt && (
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {deletionDueLabel(chat.deletionDueAt)}
                   </Typography>
                 )}
@@ -185,7 +181,7 @@ export default function ChatTable({
               <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {formatDateTime(chat.archivedAt)}
                 {chat.deletionDueAt && (
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {deletionDueLabel(chat.deletionDueAt)}
                   </Typography>
                 )}

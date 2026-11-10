@@ -2,6 +2,7 @@ import type { ElementType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from './a11y/PageHeading'
+import { fontSize, iconSize } from '../theme/tokens'
 
 interface AreaPageHeaderProps {
   /** The page's single <h1>. */
@@ -87,18 +88,20 @@ export default function AreaPageHeader({
           >
             {/* About one and a half times the title's cap height: enough to work as the area's
                icon, little enough not to outvoice the title. */}
-            <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
+            <Icon sx={{ fontSize: { xs: iconSize.lg, sm: iconSize.lg } }} />
           </Box>
           <PageHeading title={title} documentTitle={documentTitle} />
         </Box>
         {meta && (
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {meta}
           </Typography>
         )}
         {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
       </Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}>
+      <Typography
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}
+      >
         {description}
       </Typography>
     </Box>

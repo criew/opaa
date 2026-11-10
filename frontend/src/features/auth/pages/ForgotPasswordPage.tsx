@@ -25,7 +25,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Passwort vergessen'
 /** The one field this form can show an error at. */
@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
         sx={{ mt: 3 }}
       >
         <SectionEyebrow id="forgot-password-title">Link anfordern</SectionEyebrow>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Geben Sie die E-Mail-Adresse Ihres Kontos an. Wir schicken Ihnen einen Link, mit dem Sie
           ein neues Passwort festlegen können.
         </Typography>
@@ -159,7 +159,7 @@ export default function ForgotPasswordPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
+      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
         <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Zurück zur Anmeldung
         </Link>
