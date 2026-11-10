@@ -459,6 +459,23 @@ die ihn auslöst, als Probe in den Generator. Jazzer ist bewusst nicht eingebund
 bringt einen nativen Agenten und eine eigene JUnit-Anbindung mit, und die bekannten
 Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
 
+## Löschvollständigkeit (Sentinel-Tests)
+
+`DocumentDeletionSentinelIntegrationTest` und `ChatDeletionSentinelIntegrationTest` laufen mit den
+Integrationstests (Docker). Sie schreiben einen eindeutigen Markertext überall hin, wo ein Dokument
+bzw. ein Chat abgeleitete Daten hinterlässt (Dateiname, Inhalt, Vektor- und Volltext-Chunks,
+Metadatenwert, Schlagwort und verworfener Modellvorschlag; Frage, Antwort, erzeugter Titel,
+Notiz und gelesener Anhang mit seinem Text), prüfen vorab, dass der Marker in diesen Spalten
+angekommen ist, löschen das Objekt über den Dienst der Anwendung und durchsuchen danach mit
+`io.opaa.test.SentinelScan` jede Text-, JSON-, Array-, `tsvector`- und `bytea`-Spalte jeder
+Tabelle des Schemas, Partitionen über ihre Elterntabelle. Die Spalten kommen aus
+`information_schema`; eine neue Tabelle oder Spalte ist ohne Pflege erfasst. Was den Marker nach
+dem Löschen behalten darf, steht mit Begründung in der Liste `RETAINED` des Tests (heute nur das
+Revisionsprotokoll); ein neuer Treffer ist eine Löschlücke und wird behoben, nicht in die Liste
+eingetragen. Geprüft wird nur die Datenbank: Die Ablage der Originale (Dateisystem oder S3) und
+der Gesprächsspeicher im Prozess liegen außerhalb des Scans; das Löschen des Originals sichern
+die Tests von `LibraryDocumentService` ab.
+
 ## Sicherheitsinvarianten als Architekturtests
 
 `io.opaa.architecture.SecurityInvariantsTest` läuft in jedem Build und prüft mit ArchUnit:

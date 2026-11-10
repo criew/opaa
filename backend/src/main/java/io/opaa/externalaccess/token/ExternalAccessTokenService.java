@@ -16,6 +16,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.library.ExternalAccessProperties;
+import io.opaa.permission.ReadableAssetNames;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.time.Clock;
@@ -24,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -237,11 +239,22 @@ public class ExternalAccessTokenService {
   public record EligibleLibrary(
       UUID id, String name, String description, Instant releaseExpiresAt, boolean favorite) {}
 
-  /** The caller's own tokens, newest first, each with the names of its selected libraries. */
+  /**
+   * The caller's own tokens, newest first, each with the names of its selected libraries - a name
+   * only while the caller may still read the library, otherwise {@link
+   * ReadableAssetNames#UNREADABLE}.
+   */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenView> listOwn(UUID ownerId) {
     List<ExternalAccessToken> own = tokens.findByUserIdOrderByCreatedAtDesc(ownerId);
-    Map<UUID, String> names = namesOf(allSelected(own));
+    Set<UUID> selected = allSelected(own);
+    Map<UUID, String> names = new HashMap<>();
+    selected.forEach(id -> names.put(id, ReadableAssetNames.UNREADABLE));
+    if (!selected.isEmpty()) {
+      libraries.findAllById(selected).stream()
+          .filter(library -> libraryAccess.canRead(library, ownerId, false))
+          .forEach(library -> names.put(library.getId(), library.getName()));
+    }
     return own.stream().map(token -> new ExternalAccessTokenView(token, names)).toList();
   }
 

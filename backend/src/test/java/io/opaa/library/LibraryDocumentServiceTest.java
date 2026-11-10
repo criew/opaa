@@ -1159,6 +1159,35 @@ class LibraryDocumentServiceTest {
     assertThat(Files.exists(storedFile)).isFalse();
   }
 
+  /**
+   * A failed chunk delete fails the deletion itself, so its transaction rolls back and keeps the
+   * row: chunks never outlive their document and stay findable by the search.
+   */
+  @Test
+  void aFailedChunkDeleteFailsTheDeletionAndKeepsTheStoredFile() throws IOException {
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve("kept.pdf");
+    Files.writeString(storedFile, "content");
+    Document doc =
+        new Document(
+            "kept.pdf", storedFile.toString(), "application/pdf", 7L, SourceTypes.FILESYSTEM);
+    doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
+    doc.setSourceType(SourceType.UPLOAD);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+    doThrow(new IllegalStateException("vector store unavailable"))
+        .when(vectorStoreWriter)
+        .deleteChunksOfDocument(doc.getId());
+
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(Files.exists(storedFile)).isTrue();
+  }
+
   @Test
   void bulkDeleteRemovesEveryValidIdAndNamesTheOnesItCouldNot() throws IOException {
     // A stale id in the selection (deleted meanwhile, or from another library) must cost only
@@ -1382,40 +1411,6 @@ class LibraryDocumentServiceTest {
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(grandchildAttachment.getId());
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(innerMail.getId());
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(outerMail.getId());
-  }
-
-  @Test
-  void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
-      throws IOException {
-    // By the time this afterCommit callback runs, the row deletion has already committed - the
-    // caller's request has already succeeded. A vectorStore.delete failure here must neither turn
-    // that success into a 500 the caller never asked for, nor skip the file deletion for a reason
-    // that has nothing to do with the file.
-    grantEditor();
-    UUID documentId = UUID.randomUUID();
-    Path libraryDir =
-        Files.createDirectories(
-            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
-    Path storedFile = libraryDir.resolve("stored.pdf");
-    Files.writeString(storedFile, "content");
-
-    Document doc =
-        new Document(
-            "report.pdf", storedFile.toString(), "application/pdf", 7L, SourceTypes.FILESYSTEM);
-    doc.setLibraryId(libraryId);
-    doc.setOrganizationId(organizationId);
-    doc.setSourceType(SourceType.UPLOAD);
-    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
-    doThrow(new RuntimeException("pgvector unavailable"))
-        .when(vectorStoreWriter)
-        .deleteChunksOfDocument(doc.getId());
-
-    service.deleteDocument(libraryId, documentId, caller);
-
-    verify(documentRepository).delete(doc);
-    assertThat(Files.exists(storedFile))
-        .as("The file must still be deleted even though the vector store cleanup failed")
-        .isFalse();
   }
 
   @Test

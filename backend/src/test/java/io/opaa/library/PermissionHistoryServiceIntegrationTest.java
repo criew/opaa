@@ -1063,11 +1063,14 @@ class PermissionHistoryServiceIntegrationTest {
    * exists in the caller's organization; it writes no grant or membership. {@code
    * GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}: it switches a
    * group off or on and cuts its membership intervals, and is covered by {@link
-   * #readabilityWritePaths} through that method.
+   * #readabilityWritePaths} through that method. {@code ReadableAssetNames} only reads the formula,
+   * the group memberships and the group selection rule to decide whether a self-disclosure or an
+   * own list may show the name of an asset or group today; it writes nothing.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
+          "ReadableAssetNames",
           "AssetAuthorization",
           "AssetCatalogService",
           "AssetFavoriteService",
