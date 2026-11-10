@@ -8,18 +8,20 @@ prompts:
     classes:
       - io.opaa.query.answer.AnswerGenerationService
       - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "2a7890445e70d562619d646fe0246e07ee8803f036eedaed3965a2608271cc1b"
+    sha256: "dbf919ce859565b5fa25f7b0dc2bd488ce341a1dfd8d1092af34446dfa952347"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
       - io.opaa.retrieval.search.QueryDecompositionService
       - io.opaa.retrieval.search.DecompositionContext
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "11aae7c367b2f10f4333a97c8dcfc54aa09c358cd37331e13fca72e16f87ba3e"
+      - io.opaa.common.PromptText
+    sha256: "b47065caac068e5ba48e3ebc2364db72d07277c677a99c8f3eefa5e7e17cfd4f"
   - id: chat-title
     purpose: Erzeugt aus erster Frage und Antwort einen Titel für den Chat
     classes: [io.opaa.chat.ChatTitleGenerationService]
@@ -30,8 +32,11 @@ prompts:
     sha256: "b642eb44720453f950ce49d422dc2356c30d8df21460e7f00f4b5c8b3c930abb"
   - id: metadata-extraction
     purpose: Ordnet einem Dokument Metadatencodes und freie Schlagworte zu
-    classes: [io.opaa.metadata.ModelExtractionPrompt]
-    sha256: "e2b44a307f70ff0f67b0b695b594001c648e95d91858f23e073a2005e86699df"
+    classes:
+      - io.opaa.metadata.ModelExtractionPrompt
+      - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
+    sha256: "7b03e6261c4de2ba7a77c5d20cc7af2afcfb4c155393ab081fe9e51af4d849b2"
   - id: tool-loop-spike
     purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
     classes:
@@ -41,6 +46,7 @@ prompts:
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
     sha256: "620c4ed66f306836a4c999366404af4ef0b85b7471b7b62ae8c70abecfad9402"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet

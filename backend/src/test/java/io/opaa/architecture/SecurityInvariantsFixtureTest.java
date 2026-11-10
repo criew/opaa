@@ -81,6 +81,17 @@ class SecurityInvariantsFixtureTest {
   }
 
   @Test
+  void aPromptBuiltPastPromptTextIsReportedByItsCodeUnit() {
+    Map<String, String> prompts = SecurityInvariants.promptBuildingUnits(CLASSES);
+
+    assertThat(prompts)
+        .containsOnlyKeys(FIXTURE + ".RawPromptWriter#message", FIXTURE + ".RawPromptWriter#ask");
+    assertThat(prompts.get(FIXTURE + ".RawPromptWriter#ask"))
+        .startsWith(
+            "calls org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec#system");
+  }
+
+  @Test
   void anEntryWhoseCodeUnitNoLongerBreaksTheRuleIsStale() {
     assertThat(
             SecurityInvariants.stale(

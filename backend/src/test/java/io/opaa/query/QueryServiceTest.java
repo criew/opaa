@@ -321,6 +321,28 @@ class QueryServiceTest {
         .generateAnswer(eq("@test Frage"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
   }
 
+  /** Tag, zero-width and direction characters hidden in a question never reach the model. */
+  @Test
+  void queryHandsTheQuestionOnWithoutInvisibleCharacters() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(chatResponse);
+
+    queryService.query("Frist?󠁉󠁇​‮", null, caller, true, List.of());
+
+    verify(answerGenerationService)
+        .generateAnswer(eq("Frist?"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+  }
+
+  @Test
+  void aQuestionOfInvisibleCharactersAloneIsRefused() {
+    assertThatThrownBy(() -> queryService.query("󠁉​", null, caller, true, List.of()))
+        .isInstanceOf(ValidationException.class);
+  }
+
   /**
    * Once the switch is on (the handler bean present), a question the handler declines (no {@code
    * "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code

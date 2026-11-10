@@ -479,9 +479,9 @@ steht, erreicht über die Suche das Modell.
 **Was unabhängig vom Modell wirkt:**
 
 - **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
-  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
-  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
-  Anweisung folgt.
+  die Antwort nie, auch nicht in Kopie und Export
+  ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss über einen
+  präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der Anweisung folgt.
 - **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
   Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
 
@@ -495,7 +495,12 @@ steht, erreicht über die Suche das Modell.
   Laufprotokoll und in einer Metrik
   ([Wissensbibliotheken, Parsen und Chunken](../referenz/wie-indexierung-arbeitet.md#was-mit-jedem-dokument-passiert)
   und [Ergebnis je Dokument](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)).
-- **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+- **Unsichtbare Zeichen in eigenen Texten:** Frage, Prompt-Vorlage, Anweisung des Space und eines
+  Agenten erreichen das Modell ohne unsichtbare Zeichen und ohne Steuerzeichen der Schreibrichtung;
+  Prompt-Vorlagen und Anweisungen des Space werden schon so gespeichert. Ein verbindendes Zeichen
+  innerhalb eines Emoji bleibt.
+- **MCP-Server:** Treffer sowie Namen und Beschreibungen der Bibliotheken sind für externe
+  KI-Werkzeuge als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../benutzer/ki-werkzeug-einrichten.md)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).
