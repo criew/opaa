@@ -1,6 +1,7 @@
 package io.opaa.query.toolloop;
 
 import io.opaa.chat.AgentRunRecord;
+import java.util.function.Supplier;
 
 /**
  * What a run tells the person while it works (ADR-0070, Bestand a): the steps in the words they are
@@ -16,6 +17,19 @@ interface AgentRunEvents {
    * stops. Asked before every tool call and every model call.
    */
   default void checkpoint() {}
+
+  /**
+   * The checkpoint before the run is kept: after it the stop of the instance no longer ends the
+   * run, so that a turn that is kept is never reported as lost.
+   */
+  default void lastCheckpoint() {
+    checkpoint();
+  }
+
+  /** Runs the model call {@code call}; the stop of the instance may interrupt it. */
+  default <T> T modelCall(Supplier<T> call) {
+    return call.get();
+  }
 
   /** The tool call at {@code index} is about to run. */
   default void stepStarted(int index, String tool, String detail) {}

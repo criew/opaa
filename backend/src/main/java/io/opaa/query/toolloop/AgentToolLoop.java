@@ -213,7 +213,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 turn.stream(), run.runId(), workspace, activeAnswerStreams, pinger, heartbeat);
         run.listen(stream);
         String cancelToken = UUID.randomUUID().toString();
-        workspace.armCancel(run.runId(), cancelToken);
+        workspace.armCancel(run.runId(), turn.userId(), cancelToken);
         signal(turn, reader -> reader.runStarted(run.runId(), cancelToken));
       }
       QueryResult result = runAndKeep(turn, spec, run, client);
@@ -368,7 +368,9 @@ class AgentToolLoop implements AgentTurnHandler {
       run.checkpoint();
       signal(turn, AnswerStreamListener::idle);
       // The closing call offers no tools: the model answers with what the steps collected.
-      response = call(client, system, history, closing ? List.of() : callbacks, toolContext);
+      List<ToolCallback> offered = closing ? List.of() : callbacks;
+      List<Message> asked = history;
+      response = run.modelCall(() -> call(client, system, asked, offered, toolContext));
       tokens += ChatResponses.totalTokens(response);
       if (closing || callbacks.isEmpty() || !response.hasToolCalls()) {
         break;
@@ -432,7 +434,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 completeness);
     AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
 
-    run.checkpoint();
+    run.lastCheckpoint();
     signal(turn, AnswerStreamListener::beforeKeeping);
     List<ChatAttachment> generatedFiles = finishResources(run);
     Chat chat = turn.chat();

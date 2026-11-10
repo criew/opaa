@@ -786,7 +786,7 @@ class QueryControllerTest {
                 .content("{\"cancelToken\": \"geheim\"}"))
         .andExpect(status().isNoContent());
 
-    verify(cancellation).cancel("geheim");
+    verify(cancellation).cancel(eq("geheim"), any());
   }
 
   @Test

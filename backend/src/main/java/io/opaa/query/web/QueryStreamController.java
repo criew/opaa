@@ -94,6 +94,6 @@ public class QueryStreamController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void cancelQueryStream(
       @Valid @RequestBody QueryStreamCancelRequest request, @Caller CurrentUser caller) {
-    cancellation.cancel(request.getCancelToken());
+    cancellation.cancel(request.getCancelToken(), caller.id());
   }
 }

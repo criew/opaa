@@ -23,6 +23,14 @@ public interface AnswerStreamListener {
   void idle() throws IOException;
 
   /**
+   * A keep-alive from another thread while the turn works. Never waits for a write under way - that
+   * write keeps the connection alive itself - and does nothing once the turn has closed.
+   */
+  default void ping() throws IOException {
+    idle();
+  }
+
+  /**
    * The answer is complete and the turn is about to be kept - the last chance to notice that the
    * reader went away, so that a turn it never receives is not kept either.
    */

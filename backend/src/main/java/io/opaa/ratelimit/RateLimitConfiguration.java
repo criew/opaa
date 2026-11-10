@@ -63,6 +63,8 @@ public class RateLimitConfiguration {
   static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
 
   /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
+  static final String QUERY_CANCEL_PATTERN = "^/api/v1/query/stream/cancel$";
+
   static final String CHAT_SEARCH_PATTERN = "^/api/v1/spaces/[^/]+/chats/search$";
 
   /**
@@ -153,12 +155,15 @@ public class RateLimitConfiguration {
     // that authenticated keep their token of the global ceiling.
     List<Rule> rules = new ArrayList<>();
     // The stop button of a streamed agent run spends no question: a person whose budget is used up
-    // must still be able to stop the run that used it.
+    // must still be able to stop the run that used it. It counts in a budget of its own as large as
+    // that of the questions - at most one stop per question - with its own installation ceiling.
+    rules.add(
+        rule(counters, "query", "^/api/v1/query(?!/stream/cancel$)", properties.query(), AUTHENTICATED));
     rules.add(
         rule(
             counters,
-            "query",
-            "^/api/v1/query(?!/stream/cancel$)",
+            "query-cancel",
+            QUERY_CANCEL_PATTERN,
             properties.query(),
             AUTHENTICATED));
     rules.add(

@@ -79,13 +79,17 @@ class AgentWorkspaceIntegrationTest {
     UUID neighbour = UUID.randomUUID();
     running.tryReserve(run);
     running.tryReserve(neighbour);
-    running.armCancel(run, "token-of-the-run");
-    running.armCancel(neighbour, "token-of-the-neighbour");
+    UUID person = UUID.randomUUID();
+    running.armCancel(run, person, "token-of-the-run");
+    running.armCancel(neighbour, UUID.randomUUID(), "token-of-the-neighbour");
     assertThat(running.cancelRequested(run)).isFalse();
 
-    other.cancel("unknown-token");
+    other.cancel("unknown-token", person);
     assertThat(running.cancelRequested(run)).isFalse();
-    other.cancel("token-of-the-run");
+    // a token that leaked to another account stops nothing
+    other.cancel("token-of-the-run", UUID.randomUUID());
+    assertThat(running.cancelRequested(run)).isFalse();
+    other.cancel("token-of-the-run", person);
 
     assertThat(running.cancelRequested(run)).isTrue();
     assertThat(running.cancelRequested(neighbour)).isFalse();

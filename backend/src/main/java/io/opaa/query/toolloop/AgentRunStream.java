@@ -10,15 +10,19 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * The stream of one agent run (ADR-0070, ADR-0053): it tells the reader the steps, keeps the
  * connection alive with a ping every {@code heartbeat} also while the model or a tool works, and
  * decides at each {@link #checkpoint} whether the run must end. A run ends when the person stopped
  * it - the mark lies in the database, set by any instance -, when a write to the reader failed, or
- * when the instance stops; the stop also interrupts the request thread, so a waiting model call
- * returns at once. A closed connection is noticed only at a later write, which is why the stop mark
- * and not the failed write is what keeps a tool from running.
+ * when the instance stops. A closed connection is noticed only at a later write, which is why the
+ * stop mark and not the failed write is what keeps a tool from running.
+ *
+ * <p>The stop of the instance interrupts the request thread only while it waits for the model, so
+ * that the call returns at once; after the {@link #lastCheckpoint} the run is kept and the stop is
+ * ignored, and after {@link #close} the thread - a pooled web server worker - is never interrupted.
  */
 final class AgentRunStream implements AgentRunEvents, AutoCloseable {
 
@@ -28,8 +32,13 @@ final class AgentRunStream implements AgentRunEvents, AutoCloseable {
   private final Thread requestThread = Thread.currentThread();
   private final ActiveAnswerStreams.Registration registration;
   private final ScheduledFuture<?> heartbeat;
+  private final Object stopLock = new Object();
   private volatile boolean readerGone;
   private volatile boolean shuttingDown;
+  // guarded by stopLock
+  private boolean inModelCall;
+  private boolean keeping;
+  private boolean closed;
 
   AgentRunStream(
       AnswerStreamListener reader,
@@ -48,8 +57,15 @@ final class AgentRunStream implements AgentRunEvents, AutoCloseable {
   }
 
   private void shutDown() {
-    shuttingDown = true;
-    requestThread.interrupt();
+    synchronized (stopLock) {
+      if (keeping || closed) {
+        return;
+      }
+      shuttingDown = true;
+      if (inModelCall) {
+        requestThread.interrupt();
+      }
+    }
   }
 
   private void ping() {
@@ -57,7 +73,7 @@ final class AgentRunStream implements AgentRunEvents, AutoCloseable {
       return;
     }
     try {
-      reader.idle();
+      reader.ping();
     } catch (IOException | RuntimeException e) {
       readerGone = true;
     }
@@ -78,6 +94,35 @@ final class AgentRunStream implements AgentRunEvents, AutoCloseable {
     }
     if (workspace.cancelRequested(runId)) {
       throw new AnswerReaderGoneException(new IOException("the person stopped the run"));
+    }
+  }
+
+  @Override
+  public void lastCheckpoint() {
+    synchronized (stopLock) {
+      checkpoint();
+      keeping = true;
+    }
+  }
+
+  @Override
+  public <T> T modelCall(Supplier<T> call) {
+    synchronized (stopLock) {
+      if (shuttingDown) {
+        throw ActiveAnswerStreams.shuttingDown();
+      }
+      inModelCall = true;
+    }
+    try {
+      return call.get();
+    } finally {
+      synchronized (stopLock) {
+        inModelCall = false;
+        // an interrupt that came as the call returned must not reach the next blocking step
+        if (shuttingDown) {
+          Thread.interrupted();
+        }
+      }
     }
   }
 
@@ -110,13 +155,16 @@ final class AgentRunStream implements AgentRunEvents, AutoCloseable {
     void run() throws IOException;
   }
 
-  /** Stops the pings and the shutdown hook; clears an interrupt the stop left on the thread. */
+  /** Stops the pings and the shutdown hook; no interrupt reaches the thread after this. */
   @Override
   public void close() {
     heartbeat.cancel(false);
     registration.close();
-    if (shuttingDown) {
-      Thread.interrupted();
+    synchronized (stopLock) {
+      closed = true;
+      if (shuttingDown) {
+        Thread.interrupted();
+      }
     }
   }
 }

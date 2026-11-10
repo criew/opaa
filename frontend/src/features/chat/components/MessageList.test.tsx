@@ -309,7 +309,7 @@ describe('MessageList', () => {
       expect(screen.getByText(AGENT_PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(
         status,
       )
-      expect(AGENT_PROVISIONAL_ANSWER_LABEL).toContain('Belege noch nicht geprüft')
+      expect(AGENT_PROVISIONAL_ANSWER_LABEL).toBe('Belege werden geprüft … Vorläufig.')
       expect(screen.queryByRole('list', { name: 'Schritte' })).not.toBeInTheDocument()
       const provisional = screen.getByTestId('provisional-answer')
       const text = within(provisional).getByText(

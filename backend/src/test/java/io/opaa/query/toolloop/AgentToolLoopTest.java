@@ -386,7 +386,7 @@ class AgentToolLoopTest {
 
     ArgumentCaptor<String> token = ArgumentCaptor.captor();
     verify(stream).runStarted(eq(result.agentRun().runId()), token.capture());
-    verify(workspace).armCancel(result.agentRun().runId(), token.getValue());
+    verify(workspace).armCancel(eq(result.agentRun().runId()), any(), eq(token.getValue()));
     assertThat(token.getValue()).hasSizeGreaterThanOrEqualTo(32);
   }
 
@@ -404,14 +404,15 @@ class AgentToolLoopTest {
 
     pinging.handle(turn(stream));
 
-    // one ping before the model call, the rest from the clock while the model works
-    verify(stream, org.mockito.Mockito.atLeast(4)).idle();
+    // one sign of life before the model call, the pings from the clock while the model works
+    verify(stream).idle();
+    verify(stream, org.mockito.Mockito.atLeast(3)).ping();
   }
 
   @Test
   void aPingThatFindsTheReaderGoneEndsTheRunBeforeTheTool() throws Exception {
     AnswerStreamListener stream = mock(AnswerStreamListener.class);
-    org.mockito.Mockito.doNothing().doThrow(new java.io.IOException("gone")).when(stream).idle();
+    org.mockito.Mockito.doThrow(new java.io.IOException("gone")).when(stream).ping();
     when(chatModel.call(any(Prompt.class)))
         .thenAnswer(
             call -> {
@@ -469,6 +470,65 @@ class AgentToolLoopTest {
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
     verify(workspace).release(any());
     assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theStopOfTheInstanceDuringAToolInterruptsNothingAndEndsTheRunBeforeTheNextModelCall() {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.atomic.AtomicBoolean interruptedInTool =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    when(retrieval.retrieveAsGiven(eq("Regeln"), anySet(), any()))
+        .thenAnswer(
+            call -> {
+              activeStreams.stop();
+              interruptedInTool.set(Thread.currentThread().isInterrupted());
+              return result(passageOne);
+            });
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer("Nie."));
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOfSatisfying(
+            ServiceUnavailableException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ActiveAnswerStreams.SHUTTING_DOWN));
+
+    assertThat(interruptedInTool).isFalse();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    verify(chatModel, times(1)).call(any(Prompt.class));
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aTurnKeptWhileTheInstanceStopsIsReportedKeptAndItsThreadIsNotInterrupted() {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+    when(chatService.appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              // the stop arrives after the last checkpoint, while the turn is being kept
+              activeStreams.stop();
+              return "Titel";
+            });
+
+    QueryResult result = loop().handle(turn(stream));
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    assertThat(runs("custom", "aborted")).isZero();
+  }
+
+  @Test
+  void aStopAfterTheRunEndedNeverReachesItsThread() {
+    activeStreams.start();
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+    loop().handle(turn(mock(AnswerStreamListener.class)));
+
+    activeStreams.stop();
+
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
   }
 
   @Test

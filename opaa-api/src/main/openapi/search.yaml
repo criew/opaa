@@ -164,10 +164,11 @@ paths:
         The stop button of the chat. A closed connection is noticed only at the next write to it,
         which may succeed once more; this call ends the run for certain. Possession of the
         cancelToken of the run_started event is the authorization: it reached only the reader of
-        that stream. The mark lies in the database, so the run ends whichever instance runs it
-        and whichever instance receives this call. The run makes no further tool call and no
-        further model call, and nothing of the turn is persisted. An unknown, expired or already
-        used token is answered alike, so a token is never confirmed.
+        that stream, and it stops only a run the caller started. The mark lies in the database, so
+        the run ends whichever instance runs it and whichever instance receives this call. The run
+        makes no further tool call and no further model call, and nothing of the turn is persisted.
+        An unknown, expired, already used or foreign token is answered alike, so a token is never
+        confirmed. The call has its own rate limit and spends nothing of the caller's questions.
       requestBody:
         required: true
         content:
@@ -179,6 +180,12 @@ paths:
           description: The run, if one holds the token, ends before its next tool call.
         "400":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          description: The rate limit of the stop was reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/search/metadata-filter-options:
     get:

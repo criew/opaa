@@ -114,6 +114,16 @@ public final class AgentRun {
     events.checkpoint();
   }
 
+  /** The {@link #checkpoint} before the run is kept; see {@link AgentRunEvents#lastCheckpoint}. */
+  void lastCheckpoint() {
+    events.lastCheckpoint();
+  }
+
+  /** Runs the model call {@code call} as the listener allows it. */
+  <T> T modelCall(Supplier<T> call) {
+    return events.modelCall(call);
+  }
+
   /**
    * Announces the tool call about to run as the next step, after the {@link #checkpoint}; a
    * listener that throws keeps the call from running.

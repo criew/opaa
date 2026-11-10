@@ -78,20 +78,28 @@ class AgentWorkspace implements AgentRunCancellation {
         .update();
   }
 
-  /** Lets {@code cancelToken} stop the run of {@code runId}; only its hash is stored. */
-  void armCancel(UUID runId, String cancelToken) {
-    jdbc.sql("UPDATE agent_run_reservations SET cancel_token_hash = :hash WHERE run_id = :runId")
+  /**
+   * Lets {@code cancelToken} stop the run of {@code runId}, in the hand of {@code userId} who
+   * started it; only the token's hash is stored.
+   */
+  void armCancel(UUID runId, UUID userId, String cancelToken) {
+    jdbc.sql(
+            "UPDATE agent_run_reservations SET cancel_token_hash = :hash, user_id = :userId"
+                + " WHERE run_id = :runId")
         .param("hash", hash(cancelToken))
+        .param("userId", userId)
         .param("runId", runId)
         .update();
   }
 
   @Override
-  public void cancel(String cancelToken) {
+  public void cancel(String cancelToken, UUID callerId) {
     jdbc.sql(
             "UPDATE agent_run_reservations SET cancel_requested_at = clock_timestamp()"
-                + " WHERE cancel_token_hash = :hash AND cancel_requested_at IS NULL")
+                + " WHERE cancel_token_hash = :hash AND user_id = :callerId"
+                + " AND cancel_requested_at IS NULL")
         .param("hash", hash(cancelToken))
+        .param("callerId", callerId)
         .update();
   }
 
