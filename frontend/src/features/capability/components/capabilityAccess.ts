@@ -197,6 +197,7 @@ const OBJECT_PHRASES: Partial<Record<CapabilityOverviewResponse['capability'], s
   CREATE_CONNECTOR_LIBRARY: 'Bibliotheken mit Inhalten aus anderen Systemen anlegen',
   CREATE_INTERNAL_GROUP: 'interne Gruppen anlegen',
   CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
+  CREATE_TEMPLATE: 'Vorlagen anlegen',
 }
 
 /** What the right allows, as the end of a sentence: "… dürfen Spaces anlegen". */

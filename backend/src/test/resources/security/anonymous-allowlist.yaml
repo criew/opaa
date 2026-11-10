@@ -91,6 +91,10 @@ anonymous:
       Version und Build des Backends für Betrieb und Image-Rauchtest; enthält keine Konfiguration.
 missingHeaders: []
 withoutHandlerCheck:
+  - operation: GET /api/v1/document-templates/availability
+    reason: >-
+      Nur, ob der Installationsschalter „Vorlagen“ an ist; die Oberfläche blendet danach Katalog
+      und Anlegen ein. Keine Vorlage, keine personenbezogenen Daten.
   - operation: GET /api/v1/external-access/settings
     reason: >-
       Jede angemeldete Person sieht nur, ob der Kanal offen ist und wie lange ein Token gilt; keine

@@ -19,7 +19,8 @@ class AuditLogObjectTypeServiceAccountMigrationTest extends AbstractBaselineTest
 
   @Override
   protected List<String> baseFixtureMigrations() {
-    return Migrations.except(SCRIPT);
+    // Later scripts that keep SERVICE_ACCOUNT in the list refuse to run before this one.
+    return Migrations.before(SCRIPT);
   }
 
   @Test
