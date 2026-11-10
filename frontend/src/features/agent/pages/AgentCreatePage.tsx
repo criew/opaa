@@ -58,6 +58,7 @@ export default function AgentCreatePage() {
     if (isDirty) {
       const confirmed = await confirmAction({
         question: 'Eingaben verwerfen?',
+        consequence: 'Der Agent wird nicht angelegt; Ihre Eingaben gehen verloren.',
         confirmLabel: 'Verwerfen',
         tone: 'caution',
       })

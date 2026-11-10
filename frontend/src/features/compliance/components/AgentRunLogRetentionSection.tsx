@@ -37,7 +37,7 @@ export default function AgentRunLogRetentionSection() {
       consequence: shorter
         ? 'Ältere Einträge löscht der nächste tägliche Lauf endgültig. Die Änderung steht im Revisionsprotokoll.'
         : 'Die längeren Fristen gelten ab dem nächsten täglichen Lauf. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Fristen ändern',
+      confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return false
