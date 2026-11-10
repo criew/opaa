@@ -69,12 +69,16 @@ const FILES = PRODUCTION.map(([path, text]) => ({
 }))
 const BY_PATH = new Map(FILES.map(({ path, file }) => [path, file]))
 
-/** The constants a file declares, under their name; inner scopes included. */
-function declarations(file: ts.SourceFile): Map<string, ts.Expression> {
-  const found = new Map<string, ts.Expression>()
+/**
+ * The constants a file declares, under their name; inner scopes included. A name declared twice in
+ * one file stays unresolved, so its call counts in {@link UNRESOLVED_PER_FILE}.
+ */
+function declarations(file: ts.SourceFile): Map<string, ts.Expression | undefined> {
+  const found = new Map<string, ts.Expression | undefined>()
   ts.forEachChild(file, function visit(node) {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      found.set(node.name.text, node.initializer)
+      const name = node.name.text
+      found.set(name, found.has(name) ? undefined : node.initializer)
     }
     ts.forEachChild(node, visit)
   })
@@ -92,8 +96,8 @@ function resolveModule(from: string, specifier: string): string | undefined {
 
 /** A name in `path`: declared there, or imported by name from another source file. */
 function lookup(path: string, name: string, depth: number): ts.Expression | undefined {
-  const own = DECLARATIONS.get(path)?.get(name)
-  if (own || depth > 4) return own
+  const declared = DECLARATIONS.get(path)
+  if (declared?.has(name) || depth > 4) return declared?.get(name)
   const file = BY_PATH.get(path)
   for (const statement of file?.statements ?? []) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))

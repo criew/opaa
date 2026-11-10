@@ -84,7 +84,8 @@ export function useLibraryDeletion({
     // ADR-0018, Entscheidung 5: deleting a connector library also removes its
     // entire indexed content - a stronger effect than for an UPLOAD library, whose
     // deletion stays blocked as long as it still contains documents.
-    const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
+    const sourceType = details?.sourceType ?? library.sourceType
+    const isConnectorLibrary = sourceType != null && sourceType !== 'UPLOAD'
     const confirmed = await confirmAction({
       question: `„${library.name}“ löschen?`,
       consequence: isConnectorLibrary
