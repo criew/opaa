@@ -68,16 +68,7 @@ public class KnowledgeRetrieval {
    */
   public RetrievalPipelineResult retrieveAsGiven(
       String searchQuery, Set<UUID> searchScope, MetadataFilter metadataFilter) {
-    RetrievalContext context =
-        retrievalContextFactory.contextFor(searchQuery, List.of(), searchScope, metadataFilter);
     return retrievalPipeline.run(
-        new RetrievalContext(
-            context.question(),
-            context.conversationHistory(),
-            context.conversationNote(),
-            context.searchScope(),
-            context.metadataFilter(),
-            context.queryProperties().withoutDecomposition(),
-            context.rerankAvailability()));
+        retrievalContextFactory.contextAsGiven(searchQuery, searchScope, metadataFilter));
   }
 }
