@@ -1039,6 +1039,11 @@ logging:
     org.springframework.web.method.HandlerMethod: INFO
     org.hibernate.validator.internal.engine.resolver.JPATraversableResolver: INFO
     org.postgresql.core.v3.QueryExecutorImpl: INFO
+    # Tomcat prints every received request head and the start of its body at DEBUG - the
+    # Authorization header with a bearer token, a password in a sign-in body. Pinned so raising
+    # org.apache or the root logger for diagnosis never prints one; guarded by
+    # McpServerIntegrationTest#noBearerValueReachesALogLine.
+    org.apache.coyote.http11.Http11InputBuffer: INFO
 
 ---
 spring:
