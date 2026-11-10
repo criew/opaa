@@ -22,7 +22,7 @@ import {
   listAuditorRoleRequests,
 } from '../api/auditorRoleRequestApi'
 import AuditorSetupLinkDialog, { type AuditorSetupLink } from '../components/AuditorSetupLinkDialog'
-import { formatDate, formatProtocolTime } from '@/shared/utils/formatDate'
+import { formatDate, formatDateTime } from '@/shared/utils/formatDate'
 
 function personOf(request: AuditorRoleRequestResponse): string {
   return request.displayName ?? request.email ?? 'Unbenanntes Konto'
@@ -157,7 +157,7 @@ export default function AuditorRoleRequestsPage() {
                     )}
                   </TableCell>
                   <TableCell>{request.requestedByDisplayName ?? 'Gelöschtes Konto'}</TableCell>
-                  <TableCell>{formatProtocolTime(request.requestedAt)}</TableCell>
+                  <TableCell>{formatDateTime(request.requestedAt)}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
                       <Button

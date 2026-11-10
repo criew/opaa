@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SecretField from './SecretField'
 import SetupTextField from './SetupTextField'
-import { fontSize } from '@/shared/theme/tokens'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 interface Part {
   id: string
@@ -40,7 +40,9 @@ export default function CredentialFields({ account, secret, stored }: Credential
     return (
       <Box>
         <FieldLabel id={`${secret.id}-label`}>Zugangsdaten</FieldLabel>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
+        >
           <Typography sx={{ fontSize: fontSize.text }}>gesetzt</Typography>
           <Button
             size="small"

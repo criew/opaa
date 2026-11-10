@@ -2,7 +2,7 @@ import type { ElementType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from './a11y/PageHeading'
-import { fontSize, iconSize } from '../theme/tokens'
+import { controlHeight, fontSize, iconSize } from '../theme/tokens'
 
 interface AreaPageHeaderProps {
   /** The page's single <h1>. */
@@ -60,7 +60,7 @@ export default function AreaPageHeader({
           gap: 2,
           rowGap: 1,
           flexWrap: 'wrap',
-          minHeight: 36.5,
+          minHeight: controlHeight.regular,
         }}
       >
         {/* Icon and title form a group with its own, narrower spacing and thus stay together

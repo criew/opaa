@@ -329,7 +329,7 @@ function makeComponents(
             px: 0.5,
             py: 0.25,
             borderRadius: 0.5,
-            fontSize: reading ? fontSize.text : fontSize.meta,
+            fontSize: 'inherit',
             fontFamily: 'monospace',
           }}
         >

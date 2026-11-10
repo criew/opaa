@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { fontSize } from '@/shared/theme/tokens'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 interface SecretFieldProps {
   id: string
@@ -46,7 +46,9 @@ export default function SecretField({
     return (
       <Box>
         <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
+        >
           <Typography sx={{ fontSize: fontSize.text }} aria-describedby={`${id}-label`}>
             gesetzt
           </Typography>

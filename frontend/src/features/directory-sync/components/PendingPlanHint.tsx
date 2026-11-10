@@ -9,6 +9,7 @@ import { getDirectorySyncStatus } from '../api/directorySyncApi'
 import { ageSinceLabel, countLabel } from '@/features/principal'
 import HintLink from '@/shared/ui/list/HintLink'
 import { fontSize } from '@/shared/theme/tokens'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /**
  * A pending directory plan is a loud state (ADR-0036, Entscheidung 3): its age
@@ -52,8 +53,10 @@ export default function PendingPlanHint() {
                     {status.providerDisplayName}
                   </Typography>
                   <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                    wartet seit {ageSinceLabel(plan.createdAt)} ·{' '}
-                    {countLabel(removed, 'Mitgliedschaft', 'Mitgliedschaften')}{' '}
+                    <span title={formatDateTime(plan.createdAt)}>
+                      wartet seit {ageSinceLabel(plan.createdAt)}
+                    </span>{' '}
+                    · {countLabel(removed, 'Mitgliedschaft', 'Mitgliedschaften')}{' '}
                     {removed === 1 ? 'würde' : 'würden'} entzogen ·{' '}
                     {countLabel(plan.accountsLocked ?? 0, 'Konto', 'Konten')} gesperrt
                   </Typography>

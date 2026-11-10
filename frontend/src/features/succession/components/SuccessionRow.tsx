@@ -17,6 +17,7 @@ import StateDot from '@/shared/ui/StateDot'
 import PermissionTransferDialog from './PermissionTransferDialog'
 import { assetTypeDefinition, assetTypeLabel } from '../../../shared/assetTypes'
 import { addresseeOf, nextStepOf, problemOf, sinceLabel } from './successionPresentation'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 function objectHref(entry: SuccessionEntryResponse): string | null {
   switch (entry.objectType) {
@@ -127,7 +128,11 @@ export default function SuccessionRow({
           spacing={1}
           sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.5, rowGap: 0.5 }}
         >
-          <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+          <Typography
+            component="span"
+            title={entry.firstSeenAt ? formatDateTime(entry.firstSeenAt) : undefined}
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+          >
             {sinceLabel(entry)}
           </Typography>
           {entry.highlighted && <StateDot tone="warning" label="lange offen" />}

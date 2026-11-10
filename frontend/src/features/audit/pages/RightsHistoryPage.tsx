@@ -22,7 +22,7 @@ import type {
   AccessBasis,
 } from '@/shared/api/types'
 import { contentWidth } from '@/shared/theme/tokens'
-import { formatProtocolTime } from '@/shared/utils/formatDate'
+import { formatProtocolTime, MISSING_VALUE } from '@/shared/utils/formatDate'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
   DIRECT_GRANT: 'Direkte Freigabe',
@@ -205,7 +205,7 @@ export default function RightsHistoryPage() {
                         {entry.groupName ?? (entry.groupId ? 'Gelöschte Gruppe' : '—')}
                       </TableCell>
                       <TableCell>{entry.assetRole ?? entry.spaceRole ?? '—'}</TableCell>
-                      <TableCell>{formatInstant(entry.validFrom, '—')}</TableCell>
+                      <TableCell>{formatInstant(entry.validFrom, MISSING_VALUE)}</TableCell>
                       <TableCell>{formatInstant(entry.validTo, 'noch wirksam')}</TableCell>
                     </TableRow>
                   ))}

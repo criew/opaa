@@ -188,15 +188,10 @@ export function EditHeadlineDialog({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button size="small" onClick={handleClose} disabled={saving}>
+          <Button onClick={handleClose} disabled={saving}>
             Abbrechen
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            size="small"
-            disabled={saving || !draft.name.trim()}
-          >
+          <Button type="submit" variant="contained" disabled={saving || !draft.name.trim()}>
             {saving ? 'Wird gespeichert …' : 'Speichern'}
           </Button>
         </DialogActions>

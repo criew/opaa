@@ -15,7 +15,7 @@ import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { ALL_SCOPE_HINT } from '../../sourceCore/common'
 import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
-import { fontSize } from '@/shared/theme/tokens'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 export function GoogleDriveConnectionFields({
   values,
@@ -61,7 +61,7 @@ export function GoogleDriveConnectionFields({
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: 1.5,
-              minHeight: 40,
+              minHeight: controlHeight.regular,
             }}
           >
             <Typography sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}>

@@ -132,7 +132,7 @@ export function intervalLabel(minutes: number): string {
   return `alle ${minutes} Minuten`
 }
 
-/** A coming time on the clock: „heute, 15:00" or „21.09., 06:05". */
+/** A coming time on the clock: „heute, 15:00" or „21.09.2026, 06:05". */
 export function clockLabel(at: Date, now: Date = new Date()): string {
   const time = formatTime(at)
   if (at.toDateString() === now.toDateString()) return `heute, ${time}`

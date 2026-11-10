@@ -17,14 +17,19 @@ const NO_SIGNAL_CHIP = {
 }
 
 const LOCALE_FORMAT_MESSAGE =
-  'Dates, moments and numbers come from @/shared/utils/formatDate (guidelines 6).'
+  'Dates, moments and numbers come from @/shared/utils/formatDate (formatDate, formatDateTime, formatNumber; guidelines 6).'
 const NO_LOCALE_FORMAT = [
   {
     selector: 'CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]',
     message: LOCALE_FORMAT_MESSAGE,
   },
   {
-    selector: "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat']",
+    selector: 'CallExpression[callee.property.value=/^toLocale(Date|Time)?String$/]',
+    message: LOCALE_FORMAT_MESSAGE,
+  },
+  {
+    selector:
+      ":matches(NewExpression, CallExpression)[callee.object.name='Intl'][callee.property.name=/^(DateTimeFormat|NumberFormat|RelativeTimeFormat)$/]",
     message: LOCALE_FORMAT_MESSAGE,
   },
 ]
@@ -32,16 +37,28 @@ const NO_LOCALE_FORMAT = [
 const FONT_SIZE_MESSAGE =
   'Font sizes are type steps: fontSize.label|meta|text|title|detailTitle|wizardTitle, icons iconSize.* (guidelines 3.2).'
 // The value of `fontSize`, also as either branch of a condition or a breakpoint object.
+const FONT_SIZE_KEY = "Property:matches([key.name='fontSize'], [key.value='fontSize'])"
 const FONT_SIZE_VALUE = [
-  "Property[key.name='fontSize'] > Literal",
-  "Property[key.name='fontSize'] > ConditionalExpression > Literal",
-  "Property[key.name='fontSize'] > ObjectExpression > Property > Literal",
+  `${FONT_SIZE_KEY} > Literal`,
+  `${FONT_SIZE_KEY} > ConditionalExpression > Literal`,
+  `${FONT_SIZE_KEY} > ObjectExpression > Property > Literal`,
+  `${FONT_SIZE_KEY} > ArrayExpression > Literal`,
   "JSXAttribute[name.name='fontSize'] > JSXExpressionContainer > Literal",
 ]
-const NO_FONT_SIZE_NUMBER = FONT_SIZE_VALUE.flatMap((value) => [
-  { selector: `${value}[raw=/^[0-9.]+$/]`, message: FONT_SIZE_MESSAGE },
-  { selector: `${value}[value=/^[0-9.]+(px|rem)$/]`, message: FONT_SIZE_MESSAGE },
-])
+const NO_FONT_SIZE_NUMBER = [
+  ...FONT_SIZE_VALUE.flatMap((value) => [
+    { selector: `${value}[raw=/^[0-9.]+$/]`, message: FONT_SIZE_MESSAGE },
+    { selector: `${value}[value=/^[0-9.]+(px|rem)$/]`, message: FONT_SIZE_MESSAGE },
+  ]),
+  { selector: `${FONT_SIZE_KEY} > TemplateLiteral`, message: FONT_SIZE_MESSAGE },
+]
+
+// Guidelines 5.1: a compact button never stands in a dialog's footer.
+const NO_COMPACT_DIALOG_ACTION = {
+  selector:
+    "JSXElement[openingElement.name.name='DialogActions'] JSXOpeningElement[name.name=/Button$/] > JSXAttribute[name.name='size'][value.value='small']",
+  message: 'Buttons in a dialog footer have the regular size (guidelines 5.1).',
+}
 
 export default defineConfig([
   globalIgnores(['dist', 'dist-prototype', 'public/mockServiceWorker.js']),

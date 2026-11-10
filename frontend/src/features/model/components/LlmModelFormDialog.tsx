@@ -26,7 +26,7 @@ import {
   type EndpointPreset,
 } from '@/shared/ui/modelDiscovery/modelDiscovery'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
-import { fontSize } from '@/shared/theme/tokens'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -339,7 +339,7 @@ export default function LlmModelFormDialog({
                 busyAnnouncement=""
                 disabled={draft.baseUrl.trim() === ''}
                 onClick={() => runDiscovery()}
-                sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
+                sx={{ flexShrink: 0, height: controlHeight.regular, whiteSpace: 'nowrap' }}
               >
                 Modelle abrufen
               </BusyButton>
