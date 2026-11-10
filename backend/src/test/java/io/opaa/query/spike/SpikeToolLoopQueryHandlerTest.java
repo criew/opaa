@@ -3,9 +3,9 @@ package io.opaa.query.spike;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -22,6 +22,7 @@ import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.QueryResult;
 import io.opaa.query.answer.PassageRules;
@@ -189,6 +190,7 @@ class SpikeToolLoopQueryHandlerTest {
             eq(searchScope),
             eq(metadataFilter));
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.AGENT), any(), notNull());
   }
 
   /**
@@ -323,8 +325,8 @@ class SpikeToolLoopQueryHandlerTest {
 
   /**
    * A tool failure must abort the turn like any other production error - never be swallowed into a
-   * tool-response message that lets the loop continue and {@code QueryMetrics#recordSuccess} fire
-   * regardless.
+   * tool-response message that lets the loop continue and {@code QueryMetrics#recordFinishReason}
+   * count an answer regardless.
    */
   @Test
   void handlePropagatesAToolFailureRatherThanCountingItAsSuccess() {
@@ -360,7 +362,7 @@ class SpikeToolLoopQueryHandlerTest {
                     null))
         .isInstanceOf(RuntimeException.class);
 
-    verify(metrics, never()).recordSuccess(anyInt());
+    verify(metrics, never()).recordFinishReason(any());
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 

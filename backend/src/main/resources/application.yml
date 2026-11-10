@@ -962,6 +962,7 @@ management:
       slo:
         "[http.server.requests]": ${OPAA_METRICS_SLO_HTTP:100ms,250ms,500ms,1s,2500ms,5s,10s,30s}
         "[opaa.query.duration]": ${OPAA_METRICS_SLO_QUERY:1s,2500ms,5s,10s,20s,30s,60s,120s}
+        "[opaa.query.time_to_first_token]": ${OPAA_METRICS_SLO_TTFT:500ms,1s,2s,3s,5s,10s,20s,30s}
         "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
         "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
         "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
