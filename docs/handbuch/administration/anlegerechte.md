@@ -16,6 +16,7 @@ es an eine Person, eine Gruppe oder an „Alle Konten“.
 | Konnektorbibliotheken anlegen | je Quellart und je Zugang: Dateisystem, Webverzeichnis, RSS-Feed, Confluence und S3 für Alle Konten; jede weitere Quellart und jeder neue Zugang nur die Systemverwaltung |
 | Interne Gruppen anlegen | niemand außer der Systemverwaltung |
 | Prompt-Bibliotheken anlegen | Alle Konten |
+| Agenten anlegen | niemand außer der Systemverwaltung; nur sichtbar, wenn [Agenten eingeschaltet](agenten.md) sind |
 | Vorlagen anlegen | ab Werk niemand außer der Systemverwaltung; nur sichtbar, solange [Vorlagen](vorlagen.md) eingeschaltet sind |
 
 1. In der Zeile des Rechts „Ändern“.

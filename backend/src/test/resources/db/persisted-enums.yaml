@@ -29,6 +29,11 @@ io.opaa.api.types.AssetGrantSubjectType:
   assessment: SECURITY
   readable: [ALL_ACCOUNTS, GROUP, USER]
   pending: []
+io.opaa.api.types.AgentPlanStep:
+  attributes: [Agent.planStep]
+  assessment: STATE
+  readable: [CONFIRM, "OFF"]
+  pending: []
 io.opaa.api.types.AssetOrigin:
   attributes: [Asset.origin]
   assessment: STATE
@@ -48,8 +53,9 @@ io.opaa.api.types.AuditEventType:
   attributes: [AuditLogEntry.eventType]
   assessment: AUDIT
   readable: [
-    ACCOUNT_DEACTIVATED, ACCOUNT_ERASED, ACCOUNT_REAUTHENTICATION_FORCED,
-    AGENT_RUN_LOG_RETENTION_CHANGED, API_TOKEN_EXPIRED,
+    ACCOUNT_DEACTIVATED, ACCOUNT_ERASED, ACCOUNT_REAUTHENTICATION_FORCED, AGENT_CHANGED,
+    AGENT_CREATED, AGENT_DELETED, AGENT_RUN_LOG_RETENTION_CHANGED, AGENT_SETTINGS_CHANGED,
+    API_TOKEN_EXPIRED,
     API_TOKEN_ISSUED,
     API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED,
     ASSET_EXTERNAL_ACCESS_EXPIRED, ASSET_GRANT_CHANGED, ASSET_GRANT_EXPIRED, ASSET_GRANT_GRANTED,
@@ -135,7 +141,7 @@ io.opaa.api.types.AuditObjectType:
   attributes: [AuditLogEntry.objectType, Notification.objectType]
   assessment: AUDIT
   readable: [
-    API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, DOCUMENT_TEMPLATE, GROUP,
+    AGENT, API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, DOCUMENT_TEMPLATE, GROUP,
     KNOWLEDGE_LIBRARY, PROMPT,
     PROMPT_LIBRARY, SERVICE_ACCOUNT, SPACE, SYSTEM_SETTING, USER_ACCOUNT
   ]
@@ -154,8 +160,8 @@ io.opaa.api.types.Capability:
   attributes: [CapabilityGrant.capability, CapabilityGrantHistory.capability]
   assessment: SECURITY
   readable: [
-    CREATE_CONNECTOR_LIBRARY, CREATE_INTERNAL_GROUP, CREATE_LIBRARY, CREATE_PROMPT_LIBRARY,
-    CREATE_SPACE, CREATE_TEMPLATE
+    CREATE_AGENT, CREATE_CONNECTOR_LIBRARY, CREATE_INTERNAL_GROUP, CREATE_LIBRARY,
+    CREATE_PROMPT_LIBRARY, CREATE_SPACE, CREATE_TEMPLATE
   ]
   pending: []
 io.opaa.api.types.CapabilitySubjectType:
