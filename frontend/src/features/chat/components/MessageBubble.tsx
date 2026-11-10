@@ -17,6 +17,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import AgentRunSteps from './AgentRunSteps'
+import AgentRunStampLine from './AgentRunStampLine'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -250,6 +251,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           )}
 
           {!isUser && message.agentRun && <AgentRunSteps run={message.agentRun} />}
+          {!isUser && message.agentRun && <AgentRunStampLine run={message.agentRun} />}
           {!isUser && (
             <EvidenceFooter
               citations={citations}
