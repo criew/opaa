@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link NeighborChunkLookup} against a real Postgres: it loads exactly the requested positions,
- * and never one whose library lies outside the scope it is given.
+ * {@link NeighborChunkLookup} against a real Postgres: it loads exactly the requested positions or
+ * range, and never one whose library lies outside the scope it is given.
  */
 @OpaaIntegrationTest
 class NeighborChunkLookupIntegrationTest {
@@ -71,12 +71,48 @@ class NeighborChunkLookupIntegrationTest {
     assertThat(lookup.find(List.of(new ChunkPosition(document, 1)), Set.of(library))).isEmpty();
   }
 
+  @Test
+  void readsARangeOfOneDocumentInIndexOrderWithinTheScope() {
+    insert(document, 3, library, "Abschnitt 3");
+    insert(document, 1, library, "Abschnitt 1");
+    insert(document, 2, library, "Abschnitt 2");
+    insert(document, 9, library, "Abschnitt 9");
+    insert(otherDocument, 2, library, "anderes Dokument");
+
+    assertThat(lookup.findRange(document, 1, 3, Set.of(library)))
+        .extracting(Document::getText)
+        .containsExactly("Abschnitt 1", "Abschnitt 2", "Abschnitt 3");
+  }
+
+  @Test
+  void ordersARangeNumericallyAndSkipsARowWithoutAnIntegralIndex() {
+    insert(document, 10, library, "Abschnitt 10");
+    insert(document, 9, library, "Abschnitt 9");
+    insertRaw(document, "\"x\"", library, "ohne Zahl");
+
+    assertThat(lookup.findRange(document, 8, 11, Set.of(library)))
+        .extracting(Document::getText)
+        .containsExactly("Abschnitt 9", "Abschnitt 10");
+  }
+
+  @Test
+  void neverReadsARangeWhoseLibraryIsOutsideTheScope() {
+    insert(document, 0, foreignLibrary, "fremde Bibliothek");
+
+    assertThat(lookup.findRange(document, 0, 10, Set.of(library))).isEmpty();
+    assertThat(lookup.findRange(document, 0, 10, Set.of())).isEmpty();
+  }
+
   private void insert(String documentId, int chunkIndex, UUID libraryId, String content) {
+    insertRaw(documentId, String.valueOf(chunkIndex), libraryId, content);
+  }
+
+  private void insertRaw(String documentId, String chunkIndexJson, UUID libraryId, String content) {
     UUID id = UUID.randomUUID();
     chunkIds.add(id);
     String metadata =
-        "{\"document_id\":\"%s\",\"chunk_index\":%d,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\"}"
-            .formatted(documentId, chunkIndex, libraryId);
+        "{\"document_id\":\"%s\",\"chunk_index\":%s,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\"}"
+            .formatted(documentId, chunkIndexJson, libraryId);
     jdbcTemplate.update(
         "INSERT INTO vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
         id,

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.llm.ActiveChatModelResolver;
 import java.util.List;
 import java.util.UUID;
@@ -58,7 +57,7 @@ class ConversationWindowRestartInvarianceTest {
         .thenReturn(ChatClient.builder(chatModel).build());
     chatMemory =
         MessageWindowChatMemory.builder()
-            .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+            .chatMemoryRepository(new CaffeineChatMemoryRepository())
             .maxMessages(20)
             .build();
     answerGenerationService =

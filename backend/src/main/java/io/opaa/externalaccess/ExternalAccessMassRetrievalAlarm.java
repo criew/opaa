@@ -1,5 +1,7 @@
 package io.opaa.externalaccess;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SystemRole;
@@ -61,12 +63,16 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
   /** The one counter of the channel; it names no token and no person. */
   static final String COUNTER_KEY = "external-access:retrievals";
 
+  /** Every raised alert, installation-wide and without the token it names (ADR-0071). */
+  static final String ALARMS_METRIC = "opaa.external_access.alarms";
+
   private final ExternalAccessSettingsService settings;
   private final UserRepository users;
   private final NotificationService notifications;
   private final InstallationCounters counters;
   private final ServiceAccountTokens serviceAccounts;
   private final Clock clock;
+  private final Counter alarms;
 
   public ExternalAccessMassRetrievalAlarm(
       ExternalAccessSettingsService settings,
@@ -74,13 +80,18 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
       NotificationService notifications,
       InstallationCounters counters,
       ServiceAccountTokens serviceAccounts,
-      Clock clock) {
+      Clock clock,
+      MeterRegistry meterRegistry) {
     this.settings = settings;
     this.users = users;
     this.notifications = notifications;
     this.counters = counters;
     this.serviceAccounts = serviceAccounts;
     this.clock = clock;
+    this.alarms =
+        Counter.builder(ALARMS_METRIC)
+            .description("Mass-retrieval alerts of the external-access channel, without token")
+            .register(meterRegistry);
   }
 
   /**
@@ -110,6 +121,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
 
   private void raise(
       UUID organizationId, UUID accessTokenId, int threshold, long measured, Instant at) {
+    alarms.increment();
     log.warn(
         "External access mass-retrieval threshold exceeded: {} retrievals within {} minutes,"
             + " threshold {}, access token {}",

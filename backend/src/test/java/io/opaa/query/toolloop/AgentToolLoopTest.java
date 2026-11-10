@@ -24,6 +24,7 @@ import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ToolCallingNotCapableException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
@@ -39,6 +40,7 @@ import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
+import io.opaa.retrieval.context.NeighborChunkLookup;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -87,6 +89,7 @@ class AgentToolLoopTest {
   private final ChatMemory chatMemory = mock(ChatMemory.class);
   private final ChatSourceAssembler sourceAssembler = mock(ChatSourceAssembler.class);
   private final ChatModel chatModel = mock(ChatModel.class);
+  private final NeighborChunkLookup chunkLookup = mock(NeighborChunkLookup.class);
 
   private final UUID agentId = UUID.randomUUID();
   private final UUID spaceLibrary = UUID.randomUUID();
@@ -133,7 +136,11 @@ class AgentToolLoopTest {
 
   private AgentToolLoop loop() {
     ToolRegistry registry =
-        new ToolRegistry(List.of(new SearchKnowledgeTool(retrieval, expansion, validator)));
+        new ToolRegistry(
+            List.of(
+                new SearchKnowledgeTool(retrieval, expansion, validator),
+                new ReadDocumentTool(chunkLookup),
+                new AskUserTool()));
     return new AgentToolLoop(
         provider(resolverPresent ? (id, org, user, space, readable) -> Optional.of(spec) : null),
         provider((AgentToolSwitches) () -> switchedOn),
@@ -396,6 +403,126 @@ class AgentToolLoopTest {
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
   }
 
+  @Test
+  void aQuestionBackEndsTheRunWithTheQuestionAsAnswerAndGivesThePlaceBack() {
+    withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", ToolNames.ASK_USER, "{\"frage\":\"Für welches Jahr?\"}"),
+            answer("Darf nie erreicht werden."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.answer()).isEqualTo("Für welches Jahr?");
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.ASK_USER);
+    assertThat(result.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.COMPLETE);
+    assertThat(result.evidence()).isNull();
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::tool)
+        .containsExactly(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
+    verify(chatModel, times(2)).call(any(Prompt.class));
+    verify(workspace).release(result.agentRun().runId());
+    verify(chatMemory, org.mockito.Mockito.atLeastOnce()).add(eq("key"), any(Message.class));
+    assertThat(runs("custom", "ask_user")).isEqualTo(1.0);
+    assertThat(toolCalls(ToolNames.ASK_USER, "success")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theReplyToAQuestionStartsANewRunThatKnowsTheHistory() {
+    withTools(ToolNames.ASK_USER);
+    List<Message> history =
+        List.of(
+            new org.springframework.ai.chat.messages.UserMessage("Wie lauten Regel und Frist?"),
+            new AssistantMessage("Für welches Jahr?"));
+    when(chatMemory.get(any())).thenReturn(history);
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Für 2026 gilt nichts."));
+
+    QueryResult result = loop().handle(turn());
+
+    ArgumentCaptor<Prompt> prompt = ArgumentCaptor.captor();
+    verify(chatModel).call(prompt.capture());
+    assertThat(prompt.getValue().getInstructions())
+        .extracting(Message::getText)
+        .contains("Für welches Jahr?", "Wie lauten Regel und Frist?");
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+  }
+
+  @Test
+  void passagesReadFromADocumentAreCitableLikeThoseOfASearch() {
+    withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.READ_DOCUMENT);
+    Document neighbour =
+        Document.builder()
+            .text("Die Frist beträgt einen Monat.")
+            .metadata(Map.of("file_name", "regeln.pdf", "document_id", "doc-1", "chunk_index", 1))
+            .build();
+    when(chunkLookup.findRange(eq("doc-1"), eq(0), eq(2), anySet()))
+        .thenReturn(List.of(passageOne, neighbour));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall(
+                "call-2",
+                ToolNames.READ_DOCUMENT,
+                "{\"dokument\":\"doc-1\",\"abschnitt\":0,\"umfang\":\"umgebung\"}"),
+            answer("Die Frist ist ein Monat 【source: doc-1#1 | regeln.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    ArgumentCaptor<List<CitationValidator.ValidatedCitation>> citations = ArgumentCaptor.captor();
+    verify(sourceAssembler).assemble(anyList(), citations.capture(), any());
+    assertThat(citations.getValue())
+        .singleElement()
+        .matches(CitationValidator.ValidatedCitation::valid);
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::status)
+        .containsExactly(StepStatus.DONE, StepStatus.DONE);
+  }
+
+  @Test
+  void aToolSwitchAppliesToTheNextRunWithoutRestart() {
+    withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
+    AgentToolLoop sameLoop = loop();
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Eins."), answer("Zwei."));
+
+    sameLoop.handle(turn());
+    switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE);
+    sameLoop.handle(turn());
+
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(2)).call(prompts.capture());
+    assertThat(toolNamesOf(prompts.getAllValues().get(0)))
+        .containsExactlyInAnyOrder(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
+    assertThat(toolNamesOf(prompts.getAllValues().get(1)))
+        .containsExactly(ToolNames.SEARCH_KNOWLEDGE);
+  }
+
+  private void withTools(String... tools) {
+    spec =
+        new AgentRunSpec(
+            agentId,
+            3,
+            "Antworte in Stichpunkten.",
+            Set.of(),
+            Set.of(tools),
+            AgentLimits.SYSTEM,
+            false,
+            false);
+    switchedOn = Set.of(tools);
+  }
+
+  private static List<String> toolNamesOf(Prompt prompt) {
+    return toolsOf(prompt).stream()
+        .map(tool -> ((org.springframework.ai.tool.ToolCallback) tool).getToolDefinition().name())
+        .toList();
+  }
+
+  private double toolCalls(String tool, String result) {
+    var counter =
+        meters.find(AgentMetrics.TOOL_CALLS).tag("tool", tool).tag("result", result).counter();
+    return counter == null ? 0.0 : counter.count();
+  }
+
   private AgentTurn turn() {
     return turn(null);
   }
@@ -435,14 +562,16 @@ class AgentToolLoopTest {
   }
 
   private static ChatResponse toolCall(String id, String arguments) {
+    return toolCall(id, ToolNames.SEARCH_KNOWLEDGE, arguments);
+  }
+
+  private static ChatResponse toolCall(String id, String tool, String arguments) {
     return new ChatResponse(
         List.of(
             new Generation(
                 AssistantMessage.builder()
                     .toolCalls(
-                        List.of(
-                            new AssistantMessage.ToolCall(
-                                id, "function", ToolNames.SEARCH_KNOWLEDGE, arguments)))
+                        List.of(new AssistantMessage.ToolCall(id, "function", tool, arguments)))
                     .build())));
   }
 

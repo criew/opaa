@@ -21,7 +21,7 @@ public class RerankEndpoints extends OptionalRoleEndpoints<RerankEndpoint> {
       RerankModelSettingsRepository rows,
       SettingsEncryptor settingsEncryptor,
       InvalidationBus bus) {
-    super(TOPIC, settingsEncryptor, bus);
+    super(TOPIC, "rerank_endpoint", settingsEncryptor, bus);
     this.rows = rows;
   }
 

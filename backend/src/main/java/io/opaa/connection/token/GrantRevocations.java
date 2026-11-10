@@ -1,6 +1,7 @@
 package io.opaa.connection.token;
 
 import io.opaa.common.TransactionCallbacks;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.EncryptedColumn;
 import jakarta.annotation.PreDestroy;
@@ -162,6 +163,7 @@ public class GrantRevocations {
       log.warn(
           "OAuth revocation run stopped with {}; the remaining revocations wait for the next run",
           e.getClass().getSimpleName());
+      ScheduledRunFailures.report();
     } finally {
       running.decrementAndGet();
     }

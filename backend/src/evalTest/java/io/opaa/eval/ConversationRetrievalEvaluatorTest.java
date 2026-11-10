@@ -2,7 +2,6 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteList;
@@ -38,7 +37,7 @@ class ConversationRetrievalEvaluatorTest {
 
   private static ChatMemory chatMemory(int maxMessages) {
     return MessageWindowChatMemory.builder()
-        .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+        .chatMemoryRepository(new CaffeineChatMemoryRepository())
         .maxMessages(maxMessages)
         .build();
   }

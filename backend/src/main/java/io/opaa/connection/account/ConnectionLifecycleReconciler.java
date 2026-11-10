@@ -10,6 +10,7 @@ import io.opaa.connection.account.ConnectedAccountService.Ended;
 import io.opaa.connection.log.ConnectionLogActor;
 import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.instance.ScheduledRunLocks;
 import java.time.Clock;
 import java.time.Instant;
@@ -110,7 +111,11 @@ public class ConnectionLifecycleReconciler {
       lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
       lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void daily() {
-    logged("daily", reconciledAll());
+    Outcome outcome = reconciledAll();
+    logged("daily", outcome);
+    if (outcome.failed() > 0) {
+      ScheduledRunFailures.report();
+    }
   }
 
   /** After a restored backup: secrets of deactivated accounts go, expired ones are counted. */

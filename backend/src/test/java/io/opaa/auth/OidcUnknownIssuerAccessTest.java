@@ -19,9 +19,11 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.account.LocalAccountSelfDisclosure;
 import io.opaa.account.OidcSecurityConfig;
 import io.opaa.auth.web.UserInfoController;
+import io.opaa.observability.AuthMetrics;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.TestInvalidationBus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -105,7 +107,8 @@ class OidcUnknownIssuerAccessTest {
               decoderFactory,
               new OidcAddressPolicy(TargetAddressValidator.disabled()),
               Clock.systemUTC(),
-              TestInvalidationBus.listening());
+              TestInvalidationBus.listening(),
+              new AuthMetrics(new SimpleMeterRegistry()));
       return new JwtIssuerAuthenticationManagerResolver(registry);
     }
   }

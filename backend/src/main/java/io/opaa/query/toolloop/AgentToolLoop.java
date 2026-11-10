@@ -66,7 +66,8 @@ import tools.jackson.databind.ObjectMapper;
  * AgentWorkspace} before the first model call - a full workspace refuses the request, no run, no
  * partial result -, lets the model call the agent's switched-on tools until it answers or a limit
  * of the run is reached, and gives the place back at the end. A run ended at a limit answers with
- * what it has and a set-off end state, never with an error.
+ * what it has and a set-off end state, never with an error; a run that asks the person back ends
+ * with the question as its answer.
  *
  * <p>The application executes the model's tool calls itself through a {@link ToolCallingManager}
  * rather than leaving them to a {@code ToolCallingAdvisor}: so it counts every call against the
@@ -302,11 +303,18 @@ class AgentToolLoop implements AgentTurnHandler {
                       .build()),
               response);
       history = new ArrayList<>(executed.conversationHistory());
+      if (run.question() != null) {
+        // A question back to the person ends the run; the reply starts a new one.
+        break;
+      }
     }
 
-    EndState endState = run.limitReached() == null ? EndState.COMPLETED : run.limitReached();
+    EndState endState =
+        run.question() != null
+            ? EndState.ASK_USER
+            : run.limitReached() == null ? EndState.COMPLETED : run.limitReached();
     List<Document> passages = distinct(run.passages());
-    String text = ChatResponses.text(response);
+    String text = endState == EndState.ASK_USER ? run.question() : ChatResponses.text(response);
     if (text.isBlank() && endState != EndState.COMPLETED) {
       text = NO_ANSWER_AT_LIMIT;
     }
@@ -317,7 +325,10 @@ class AgentToolLoop implements AgentTurnHandler {
         spec.builtin(), (int) citations.stream().filter(c -> !c.valid()).count());
     List<ChatSource> sources =
         chatSourceAssembler.assemble(passages, citations, turn.metadataFilter());
-    AnswerCompleteness completeness = ChatResponses.completeness(response);
+    // A question back is complete as asked and states nothing that needs a citation.
+    boolean asked = endState == EndState.ASK_USER;
+    AnswerCompleteness completeness =
+        asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
     List<String> searchQueries =
         run.steps().stream()
             .filter(step -> ToolNames.SEARCH_KNOWLEDGE.equals(step.tool()))
@@ -325,14 +336,16 @@ class AgentToolLoop implements AgentTurnHandler {
             .filter(detail -> detail != null)
             .toList();
     AnswerEvidence evidence =
-        AnswerEvidenceAssessor.assess(
-            citations,
-            !run.searchScope().isEmpty(),
-            !passages.isEmpty(),
-            true,
-            searchQueries,
-            Map.of(),
-            completeness);
+        asked
+            ? null
+            : AnswerEvidenceAssessor.assess(
+                citations,
+                !run.searchScope().isEmpty(),
+                !passages.isEmpty(),
+                true,
+                searchQueries,
+                Map.of(),
+                completeness);
     AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
 
     signal(turn, AnswerStreamListener::beforeKeeping);

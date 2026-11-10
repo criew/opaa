@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SystemRole;
@@ -38,6 +39,7 @@ class ExternalAccessMassRetrievalAlarmTest {
   private UserRepository users;
   private NotificationService notifications;
   private MovableClock clock;
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private InMemoryInstallationCounters counters;
   private ExternalAccessMassRetrievalAlarm alarm;
   private UUID administratorId;
@@ -56,7 +58,7 @@ class ExternalAccessMassRetrievalAlarmTest {
     counters = new InMemoryInstallationCounters(clock);
     alarm =
         new ExternalAccessMassRetrievalAlarm(
-            settings, users, notifications, counters, tokenId -> Optional.empty(), clock);
+            settings, users, notifications, counters, tokenId -> Optional.empty(), clock, meters);
   }
 
   private void threshold(int value) {
@@ -91,6 +93,11 @@ class ExternalAccessMassRetrievalAlarmTest {
         .contains(token.toString())
         .contains(String.valueOf(ExternalAccessAlertRetention.RETENTION.toDays()))
         .doesNotContain("4 Abrufe");
+    assertThat(meters.get(ExternalAccessMassRetrievalAlarm.ALARMS_METRIC).counter().count())
+        .isEqualTo(1.0);
+    assertThat(
+            meters.get(ExternalAccessMassRetrievalAlarm.ALARMS_METRIC).counter().getId().getTags())
+        .isEmpty();
   }
 
   @Test
@@ -106,7 +113,8 @@ class ExternalAccessMassRetrievalAlarmTest {
                 Optional.of(
                     new ServiceAccountTokens.ServiceAccountOfToken(
                         UUID.randomUUID(), "Bauantrag-Portal", null)),
-            clock);
+            clock,
+            meters);
 
     for (int i = 0; i < 4; i++) {
       named.record(ORGANIZATION_ID, token);
@@ -201,7 +209,7 @@ class ExternalAccessMassRetrievalAlarmTest {
   void twoInstancesCountIntoOneWindowAndOnlyOneRaisesTheAlert() {
     var secondInstance =
         new ExternalAccessMassRetrievalAlarm(
-            settings, users, notifications, counters, tokenId -> Optional.empty(), clock);
+            settings, users, notifications, counters, tokenId -> Optional.empty(), clock, meters);
     UUID token = UUID.randomUUID();
 
     for (int i = 0; i < 2; i++) {

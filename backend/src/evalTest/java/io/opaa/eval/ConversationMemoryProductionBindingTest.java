@@ -10,7 +10,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.ActiveAnswerStreams;
@@ -185,7 +184,7 @@ class ConversationMemoryProductionBindingTest {
 
   private static ChatMemory productionShapedChatMemory() {
     return MessageWindowChatMemory.builder()
-        .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+        .chatMemoryRepository(new CaffeineChatMemoryRepository())
         .maxMessages(20)
         .build();
   }

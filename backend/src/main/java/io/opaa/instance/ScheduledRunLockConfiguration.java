@@ -31,14 +31,15 @@ public class ScheduledRunLockConfiguration {
   @Bean
   LockProvider scheduledRunLockProvider(
       DataSource dataSource, PlatformTransactionManager transactionManager) {
-    return new JdbcTemplateLockProvider(
-        JdbcTemplateLockProvider.Configuration.builder()
-            .withJdbcTemplate(new JdbcTemplate(dataSource))
-            .withTransactionManager(transactionManager)
-            .withTableName(TABLE)
-            .withLockedByValue(lockedBy())
-            .usingDbTime()
-            .build());
+    return ScheduledRunLockAcquisitions.recording(
+        new JdbcTemplateLockProvider(
+            JdbcTemplateLockProvider.Configuration.builder()
+                .withJdbcTemplate(new JdbcTemplate(dataSource))
+                .withTransactionManager(transactionManager)
+                .withTableName(TABLE)
+                .withLockedByValue(lockedBy())
+                .usingDbTime()
+                .build()));
   }
 
   /**

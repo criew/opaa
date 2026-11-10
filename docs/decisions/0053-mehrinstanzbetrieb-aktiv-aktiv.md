@@ -329,7 +329,7 @@ die übersprungenen Dokumente der Wartungsläufe (`library_maintenance_skips`), 
 Mail und der Durchsatz der Kostenvorschau (`embedding_rate_measurements`, je Embedding-Modell
 summiert über alle Instanzen). Je Instanz und in der Oberfläche so gekennzeichnet bleibt der Status
 eines Anmeldeanbieters, weil jede Instanz ihren Token-Decoder selbst baut; Micrometer-Metriken wie
-`opaa.conversations.active` gelten je Pod und tragen den Host als Label (ADR-0071, Entscheidung 4). Umsetzung: #2950.
+`opaa.audit.payload.dropped` gelten je Pod und tragen den Host als Label (ADR-0071, Entscheidung 4). Umsetzung: #2950.
 
 Zählerzeilen nur, wo die absolute Zahl die Zusage ist (Kostendeckel, Frühwarnung gegen
 Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Die Zeile je Person der

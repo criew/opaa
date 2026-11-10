@@ -4,6 +4,7 @@ import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.retrieval.context.ChunkPosition;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ public final class AgentRun {
   private int toolCalls;
   private long collectedChars;
   private EndState limitReached;
+  private String question;
 
   AgentRun(
       UUID organizationId,
@@ -147,6 +149,39 @@ public final class AgentRun {
     if (limitReached == null) {
       limitReached = limit;
     }
+  }
+
+  /**
+   * Ends the run with a question back to the person (ADR-0070, Entscheidung 1); the first question
+   * stays. The loop makes no further model call, and the person's reply starts a new run.
+   */
+  synchronized void askUser(String text) {
+    if (question == null) {
+      question = text;
+    }
+  }
+
+  /** The question back to the person, or {@code null} while the run has none. */
+  synchronized String question() {
+    return question;
+  }
+
+  /** The characters the run may still collect before it reaches its volume limit. */
+  synchronized long remainingChars() {
+    return Math.max(0, limits.maxCollectedChars() - collectedChars);
+  }
+
+  /**
+   * Whether a step of this run handed the model a passage of {@code documentId}: only such a
+   * document - found in the run's scope under its filter - may be read further.
+   */
+  synchronized boolean found(String documentId) {
+    return passages.stream()
+        .anyMatch(
+            passage ->
+                ChunkPosition.of(passage)
+                    .map(position -> position.documentId().equals(documentId))
+                    .orElse(false));
   }
 
   synchronized EndState limitReached() {
