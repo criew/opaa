@@ -38,11 +38,6 @@ export const confluenceSource: SourceRegistration = {
           : values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
       },
     }),
-    nameFromSource: (values: ConfluenceSourceValues) => {
-      const first = values.spaces[0]
-      if (values.allSpaces || !first) return ''
-      return values.spaces.length === 1 ? (first.name ?? first.key) : ''
-    },
     scopeNoteId: 'confluence-sharing-consequence',
     fullSyncRhythm: true,
     firstRunHint:

@@ -38,7 +38,6 @@ export interface WizardDraft {
   schedule: LibraryScheduleValues
   startFirstRun: boolean
   name: string
-  nameTouched: boolean
   description: string
   ownerType: AssetOwnerType
   selectedGroup: GroupListResponse | null

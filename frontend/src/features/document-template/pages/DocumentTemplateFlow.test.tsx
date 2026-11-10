@@ -39,18 +39,30 @@ describe('Dokumentvorlagen', () => {
     mockDocumentTemplateState.settings = { enabled: true, updatedAt: null, updatedBy: null }
   })
 
-  it('explains a missing Anlegerecht and does not offer to create', async () => {
+  it('explains a missing Anlegerecht and leads „Anlegen“ to it instead of creating', async () => {
     holdCapabilities(['CREATE_SPACE'])
+    let posted = false
+    server.use(
+      http.post('/api/v1/document-templates', () => {
+        posted = true
+        return HttpResponse.json({}, { status: 500 })
+      }),
+    )
     const user = userEvent.setup()
     renderTemplates('/templates/new')
 
     await user.type(screen.getByRole('textbox', { name: /Name/ }), 'Vermerk')
     await user.upload(screen.getByLabelText('Word-Datei auswählen'), docx())
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(await screen.findByText(/Ihnen fehlt das Anlegerecht „Vorlagen anlegen“/)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Vorlage anlegen' })).toBeDisabled()
+    const hint = await screen.findByText(/Ihnen fehlt das Anlegerecht „Vorlagen anlegen“/)
+    expect(hint).toBeVisible()
+    const create = screen.getByRole('button', { name: 'Anlegen' })
+    expect(create).toBeEnabled()
+    await user.click(create)
+    expect(hint.closest('[role="alert"]')).toHaveFocus()
+    expect(posted).toBe(false)
   })
 
   it('creates a template from a Word file and shows its placeholders', async () => {
@@ -71,13 +83,21 @@ describe('Dokumentvorlagen', () => {
     const user = userEvent.setup()
     renderTemplates('/templates/new')
 
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+    // „Weiter“ stays active and names both missing answers at their fields
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('textbox', { name: /Name/ })).toHaveFocus()
+    expect(screen.getByText('Name fehlt')).toBeVisible()
+    expect(screen.getByText('Word-Datei fehlt')).toBeVisible()
+
     await user.type(screen.getByRole('textbox', { name: /Name/ }), 'Vermerk Referat 12')
     await user.upload(screen.getByLabelText('Word-Datei auswählen'), docx())
     expect(screen.getByText('vermerk.docx')).toBeVisible()
+    expect(screen.queryByText('Word-Datei fehlt')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
-    await user.click(screen.getByRole('button', { name: 'Vorlage anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+    expect(screen.getAllByText('vermerk.docx').length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(await screen.findByRole('cell', { name: /betreff/ })).toBeVisible()
     expect(

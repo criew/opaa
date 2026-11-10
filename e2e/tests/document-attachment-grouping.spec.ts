@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/auth'
 import type { Page, Response } from '@playwright/test'
-import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, nameNewLibrary, openNewLibraryWizard } from '../fixtures/chat'
 
 // The mail fixture is mounted into the backend container by e2e/docker-compose.e2e.yml
 // (demo/seed/e2e-data/filesystem-library/ -> /data/e2e-mail-bibliothek, on the dev profile's
@@ -24,10 +24,9 @@ async function createFilesystemLibrary(page: Page, name: string): Promise<string
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /Dateisystem/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await nameNewLibrary(page, name)
   await page.getByLabel('Verzeichnis', { exact: true }).fill(SOURCE_PATH)
   // „Weiter“ tests the connection before it leaves the step
-  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()

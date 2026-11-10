@@ -204,9 +204,17 @@ export function creatableAssetTypes(
   )
 }
 
-/** The catalog and the pages of every asset type - the rail's "Katalog" scope. */
+/**
+ * The catalog and the pages of every asset type - the rail's "Katalog" scope and the global frame.
+ * Runtime switches are read after the sign-in and do not re-render the shell, so they do not
+ * narrow the scope: a type's pages stay in the catalog's frame whether or not its switch is read.
+ */
 export function catalogScopePrefixes(): string[] {
-  return [CATALOG_ROUTE, ...activeAssetTypes().map((definition) => definition.routePrefix)]
+  const types = activeIn(useAuthStore.getState().features, {
+    documentTemplates: true,
+    agents: true,
+  })
+  return [CATALOG_ROUTE, ...types.map((definition) => definition.routePrefix)]
 }
 
 /** The catalog, narrowed to one type when given. */

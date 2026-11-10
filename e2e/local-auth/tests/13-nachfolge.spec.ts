@@ -56,7 +56,7 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     }
     await Promise.all([
       owner.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
-      owner.getByRole("button", { name: "Space anlegen" }).click(),
+      owner.getByRole("button", { name: "Anlegen", exact: true }).click(),
     ]);
     await leavingContext.close();
 

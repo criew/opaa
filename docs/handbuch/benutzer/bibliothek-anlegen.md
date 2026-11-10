@@ -9,10 +9,11 @@ Zeitplan selbst aktuell.
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“ wählen, dann „Wissen“.
 2. **Quellart** wählen, etwa „Upload“ oder „Confluence“. Angeboten wird, was Sie anlegen dürfen.
-3. Bei einer Quelle Verbindung, Umfang und Zeitplan angeben. OPAA testet die Verbindung und sagt,
-   woran es hakt.
-4. **Name**, **Freigaben** und „Bibliothek anlegen“.
-5. Bei Upload: im Reiter „Dokumente“ Dateien hineinziehen.
+3. **Stammdaten:** Name und Beschreibung.
+4. **Quelle:** bei einer Quelle Verbindung, Umfang und Zeitplan angeben. OPAA testet die
+   Verbindung und sagt, woran es hakt. Eine Upload-Bibliothek hat diesen Schritt nicht.
+5. **Freigaben** vormerken, dann unter **Prüfen** die Angaben durchsehen und „Anlegen“ wählen.
+6. Bei Upload: im Reiter „Dokumente“ Dateien hineinziehen.
 
 Danach die Bibliothek einem Space zuordnen; erst dann sucht der Chat darin
 ([Katalog nutzen](katalog.md#in-einem-space-verwenden)). Was jede Quelle voraussetzt, steht bei den

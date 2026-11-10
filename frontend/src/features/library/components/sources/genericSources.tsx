@@ -32,13 +32,6 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
     fromLibrary: storedGenericSourceValues,
     isDirty: (values) => values.sourcePath !== '' || values.sourceUrl !== '',
     toPayload: (values) => genericSourcePayload('url', values),
-    nameFromSource: (values) => {
-      try {
-        return new URL(values.sourceUrl).hostname
-      } catch {
-        return ''
-      }
-    },
     setup: urlSetup,
     firstRunHint: FIRST_RUN_HINT,
   }
@@ -52,10 +45,6 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
     fromLibrary: storedFilesystemValues,
     isDirty: (values) => values.sourcePath !== '' || values.excludePatterns.trim() !== '',
     toPayload: filesystemPayload,
-    nameFromSource: (values) => {
-      const segments = values.sourcePath.split(/[\\/]+/).filter(Boolean)
-      return segments.length > 0 ? segments[segments.length - 1] : ''
-    },
     setup: filesystemSetup,
     firstRunHint: FIRST_RUN_HINT,
   }

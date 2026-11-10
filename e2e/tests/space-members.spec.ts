@@ -14,7 +14,7 @@ let spacePath = "";
  * Gruppe ist Vorbedingung, nicht Gegenstand, und entsteht deshalb über die API.
  */
 test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
-  test("Assistent: Person und Gruppe aufnehmen, Zusammenfassung prüfen, Space anlegen", async ({
+  test("Assistent: Person und Gruppe aufnehmen, prüfen, Space anlegen", async ({
     authenticatedPage: page,
   }) => {
     await createReleasedGroupViaApi(GROUP_NAME, "Dev Outsider");
@@ -64,12 +64,12 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
     ).toBeVisible();
     await expectNoSeriousA11yViolations(
       page,
-      "Space-Assistent: Zusammenfassung",
+      "Space-Assistent: Prüfen",
     );
 
     await Promise.all([
       page.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
-      page.getByRole("button", { name: "Space anlegen" }).click(),
+      page.getByRole("button", { name: "Anlegen", exact: true }).click(),
     ]);
     await expect(page.getByRole("heading", { name: SPACE_NAME })).toBeVisible();
     spacePath = new URL(page.url()).pathname;

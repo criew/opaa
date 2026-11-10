@@ -14,6 +14,7 @@ export const BUDGETS = {
   helpTextLines: 1,
   uiWords: 150,
   fontSizes: 6,
+  disabledSubmits: 0,
 }
 const WORD_BUDGET_SCENARIOS = ['small', 'default']
 
@@ -145,6 +146,7 @@ export function budgetViolations(metrics, width, scenario) {
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
   if (metrics.fontSizes > BUDGETS.fontSizes) over.push('fontSizes')
+  if (metrics.disabledSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
   return over
 }
 
