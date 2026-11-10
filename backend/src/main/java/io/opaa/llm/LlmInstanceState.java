@@ -29,6 +29,7 @@ class LlmInstanceState implements InstanceStateSource {
   private final TranscriptionRoleStatusProvider transcription;
   private final RerankModelSettingsRepository rerankRows;
   private final TranscriptionModelSettingsRepository transcriptionRows;
+  private final RealtimeTranscriptionRole realtime;
   private final TextRecognitionRoleStatusProvider textRecognition;
   private final TextRecognitionModelSettingsRepository textRecognitionRows;
 
@@ -40,12 +41,14 @@ class LlmInstanceState implements InstanceStateSource {
       TranscriptionRoleStatusProvider transcription,
       RerankModelSettingsRepository rerankRows,
       TranscriptionModelSettingsRepository transcriptionRows,
+      RealtimeTranscriptionRole realtime,
       TextRecognitionRoleStatusProvider textRecognition,
       TextRecognitionModelSettingsRepository textRecognitionRows) {
     this.textRecognition = textRecognition;
     this.textRecognitionRows = textRecognitionRows;
     this.rerankRows = rerankRows;
     this.transcriptionRows = transcriptionRows;
+    this.realtime = realtime;
     this.models = models;
     this.embedding = embedding;
     this.embeddingModels = embeddingModels;
@@ -94,15 +97,20 @@ class LlmInstanceState implements InstanceStateSource {
     transcriptionRows
         .findStored()
         .ifPresentOrElse(
-            row ->
-                putRole(
-                    settings,
-                    "transcription_model",
-                    row.isEnabled(),
-                    row.getBaseUrl(),
-                    row.getModelIdentifier(),
-                    row.getUpdatedAt()),
-            () -> putRole(settings, "transcription_model", false, null, null, null));
+            row -> {
+              putRole(
+                  settings,
+                  "transcription_model",
+                  row.isEnabled(),
+                  row.getBaseUrl(),
+                  row.getModelIdentifier(),
+                  row.getUpdatedAt());
+              putRealtime(settings, row, row.getUpdatedAt());
+            },
+            () -> {
+              putRole(settings, "transcription_model", false, null, null, null);
+              putRealtime(settings, null, null);
+            });
     textRecognitionRows
         .findStored()
         .ifPresentOrElse(
@@ -127,6 +135,28 @@ class LlmInstanceState implements InstanceStateSource {
     return Map.copyOf(settings);
   }
 
+  /** The live upstream of the transcription role; empty while none is configured. */
+  private static void putRealtime(
+      Map<String, StoredValue> stored, TranscriptionModelSettings row, Instant changedAt) {
+    String protocol =
+        row == null || row.getRealtimeProtocol() == null ? "" : row.getRealtimeProtocol().name();
+    String url =
+        row == null || row.getRealtimeUrl() == null
+            ? ""
+            : ModelEndpointUri.withoutSecrets(row.getRealtimeUrl());
+    String model = row == null || row.getRealtimeModel() == null ? "" : row.getRealtimeModel();
+    int maxSessions =
+        row == null || row.getRealtimeMaxSessions() == null
+            ? RealtimeTranscriptionEndpoint.DEFAULT_MAX_SESSIONS
+            : row.getRealtimeMaxSessions();
+    stored.put("transcription_model.realtime_protocol", new StoredValue(protocol, changedAt));
+    stored.put("transcription_model.realtime_url", new StoredValue(url, changedAt));
+    stored.put("transcription_model.realtime_model", new StoredValue(model, changedAt));
+    stored.put(
+        "transcription_model.realtime_max_sessions",
+        new StoredValue(String.valueOf(maxSessions), changedAt));
+  }
+
   private static void putRole(
       Map<String, StoredValue> stored,
       String table,
@@ -149,6 +179,7 @@ class LlmInstanceState implements InstanceStateSource {
         "embedding-model", embedding.getEmbeddingInfo().installed(),
         "rerank-model", rerank.currentStatus().state().sends(),
         "transcription-model", transcription.currentStatus().state().sends(),
+        "transcription-realtime", realtime.status().state().sends(),
         "text-recognition-model", textRecognition.currentStatus().state().sends());
   }
 

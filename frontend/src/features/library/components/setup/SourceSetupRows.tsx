@@ -13,15 +13,15 @@ import {
   type ConfluenceFullSyncRhythm,
   type LibraryScheduleValues,
 } from '../../utils/librarySchedule'
-import LibraryScheduleForm from '../LibraryScheduleForm'
-import { connectionFields } from '../sources/sourceConnection'
-import type { SourceFormContext } from '../sources/types'
+import LibraryScheduleForm from '../schedule/LibraryScheduleForm'
+import { connectionFields } from '../sourceCore/sourceConnection'
+import type { SourceFormContext } from '../sourceCore/types'
 import ConnectionCheckView from './ConnectionCheckView'
 import { useConnectionCheck } from './connectionCheck'
-import { plainMessage } from '../sourceKit/plainMessage'
+import { plainMessage } from '../sourceCore/plainMessage'
 import ErrorSummary, { type SummaryEntry } from '@/shared/ui/feedback/ErrorSummary'
 import { scheduleSummary } from './scheduleSummary'
-import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from './setupTypes'
+import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from '../sourceCore/setupTypes'
 import SummaryRow from './SummaryRow'
 
 const ROW_TITLES: Record<SetupRowId, string> = {

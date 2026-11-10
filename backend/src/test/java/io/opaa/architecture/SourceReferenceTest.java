@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,7 +26,8 @@ import org.junit.jupiter.api.Test;
  * a compiled dependency, so an upward Javadoc reference is written as a {@code code} tag. Not
  * checked are a name in a package without a class of its own, an inlinable constant the code reads
  * fully qualified without an import, and the parameter types in a link of the form {@code
- * X#m(io.opaa.Type)}.
+ * X#m(io.opaa.Type)}. The imports also join the compiled dependencies in the check that no two
+ * packages below one top-level package form a cycle.
  */
 class SourceReferenceTest {
 
@@ -53,6 +56,33 @@ class SourceReferenceTest {
             "common/Low.java:3: common -> observability points upward in ModularArchitecture.LAYERS",
             "common/Low.java:7: common -> observability points upward in ModularArchitecture.LAYERS",
             "common/Low.java:9: common -> observability points upward in ModularArchitecture.LAYERS");
+  }
+
+  @Test
+  void theMainSourcesFormNoCycleBetweenSubpackages() throws IOException {
+    JavaClasses classes = MainClasses.get();
+    assertThat(
+            new ModularArchitecture("io.opaa")
+                .subpackageCycleEdges(
+                    classes, namedPackages(Path.of("src/main/java"), "io.opaa", classes)))
+        .isEmpty();
+  }
+
+  /** An import used only in Javadoc and an inlined constant leave no trace in the bytecode. */
+  @Test
+  void aCycleOnlyTheSourcesShowIsReported() throws IOException {
+    String root = "io.opaa.architecture.fixture.sourcecycle";
+    JavaClasses classes = new ClassFileImporter().importPackages(root);
+    ModularArchitecture architecture = new ModularArchitecture(root);
+
+    assertThat(architecture.subpackagesAreFreeOfCycles().evaluate(classes))
+        .matches(result -> !result.hasViolation(), "has no violation");
+    assertThat(
+            architecture.subpackageCycleEdges(
+                classes, namedPackages(Path.of("src/test/java"), root, classes)))
+        .containsExactly(
+            Map.entry("common.a -> common.b", "common/a/Alpha.java:3"),
+            Map.entry("common.b -> common.a", "common/b/Beta.java:3"));
   }
 
   /** Every name below {@code root} in the sources of {@code root} that breaks a rule. */
@@ -88,6 +118,35 @@ class SourceReferenceTest {
       }
     }
     return violations;
+  }
+
+  /**
+   * The packages below {@code root} each package imports in its sources, both fully qualified, with
+   * the first importing file and line as evidence. A fully qualified Javadoc link is no edge here.
+   */
+  private static Map<String, Map<String, String>> namedPackages(
+      Path sources, String root, JavaClasses classes) throws IOException {
+    Set<String> packages =
+        classes.stream().map(JavaClass::getPackageName).collect(Collectors.toSet());
+    Path rootDirectory = sources.resolve(root.replace('.', '/'));
+    Map<String, Map<String, String>> named = new TreeMap<>();
+    try (Stream<Path> files = Files.walk(rootDirectory)) {
+      for (Path file : files.filter(path -> path.toString().endsWith(".java")).sorted().toList()) {
+        String source = Files.readString(file);
+        String origin = sources.relativize(file.getParent()).toString().replace('/', '.');
+        Matcher reference = REFERENCE.matcher(source);
+        while (packages.contains(origin) && reference.find()) {
+          String target = reference.group(1) == null ? null : packageOf(reference.group(1));
+          if (packages.contains(target)) {
+            long line = source.substring(0, reference.start(1)).lines().count();
+            named
+                .computeIfAbsent(origin, key -> new TreeMap<>())
+                .putIfAbsent(target, rootDirectory.relativize(file) + ":" + line);
+          }
+        }
+      }
+    }
+    return named;
   }
 
   /** The leading lowercase segments of a qualified name: its package. */

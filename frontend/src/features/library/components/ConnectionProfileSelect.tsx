@@ -8,7 +8,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { hostOf } from './setup/connectors/common'
+import { hostOf } from './sourceCore/common'
 import type { SourceTypeDescriptor } from '@/shared/api/types'
 import {
   PROFILES_FORBIDDEN_NOTICE,
@@ -22,7 +22,7 @@ import {
   privateConnection,
   profileChoices,
 } from './connectionChoice'
-import { ownAddressAllowed } from './sources/sourceConnection'
+import { ownAddressAllowed } from './sourceCore/sourceConnection'
 
 interface ConnectionProfileSelectProps {
   descriptor: SourceTypeDescriptor

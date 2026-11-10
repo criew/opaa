@@ -1,8 +1,10 @@
 package io.opaa.installation;
 
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.llm.RealtimeTranscriptionEndpoint;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,9 @@ class StoredTargetWarmup {
           + " UNION SELECT base_url FROM rerank_model"
           + " UNION SELECT base_url FROM transcription_model"
           + " UNION SELECT base_url FROM text_recognition_model";
+
+  private static final String STORED_LIVE_ENDPOINTS =
+      "SELECT realtime_url FROM transcription_model WHERE realtime_url IS NOT NULL";
 
   private final JdbcTemplate jdbc;
   private final ModelAddressPolicy modelAddresses;
@@ -71,9 +76,17 @@ class StoredTargetWarmup {
     }
   }
 
-  /** The stored base URLs of every model role, without duplicates; {@code null} where unset. */
+  /**
+   * The stored base URLs of every model role and the live address of speech input as its {@code
+   * http}/{@code https} equivalent, which the address check reads; {@code null} where unset.
+   */
   List<String> storedModelEndpoints() {
-    return jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class);
+    List<String> endpoints =
+        new ArrayList<>(jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class));
+    jdbc.queryForList(STORED_LIVE_ENDPOINTS, String.class).stream()
+        .map(RealtimeTranscriptionEndpoint::httpEquivalent)
+        .forEach(endpoints::add);
+    return endpoints;
   }
 
   private void warmUpModels() {

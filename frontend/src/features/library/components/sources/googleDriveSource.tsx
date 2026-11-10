@@ -8,7 +8,7 @@ import {
 } from '../../utils/googleDriveSource'
 import { googleDriveSetup } from '../setup/connectors/googleDriveSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const googleDriveSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.GOOGLE_DRIVE,

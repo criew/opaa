@@ -19,6 +19,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.FeatureFlags;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.llm.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.RealtimeTranscriptionRole;
 import io.opaa.llm.TranscriptionClient;
 import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.llm.TranscriptionModelRole;
@@ -88,6 +89,7 @@ class TranscriptionControllerTest {
 
   private final PersonalTranscriptionVocabularyService vocabularies =
       Mockito.mock(PersonalTranscriptionVocabularyService.class);
+  private final RealtimeTranscriptionRole realtime = Mockito.mock(RealtimeTranscriptionRole.class);
 
   private HttpServer upstream;
   private final AtomicInteger upstreamStatus = new AtomicInteger(200);
@@ -162,7 +164,7 @@ class TranscriptionControllerTest {
 
   private TranscriptionController controller(boolean enabled, Duration timeout) {
     role = role(enabled, timeout);
-    return new TranscriptionController(role, vocabularies);
+    return new TranscriptionController(role, realtime, vocabularies);
   }
 
   private TranscriptionModelRole role(boolean enabled, Duration timeout) {
@@ -184,15 +186,22 @@ class TranscriptionControllerTest {
   }
 
   @Test
-  void availabilityFollowsTheRoleAndNeverOffersLiveText() throws Exception {
+  void availabilityFollowsTheRoleAndOffersLiveTextOnlyWhenTheLiveUpstreamIsUsable()
+      throws Exception {
     mockMvc(true)
         .perform(get("/api/v1/transcriptions/availability"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.available").value(true))
         .andExpect(jsonPath("$.realtimeAvailable").value(false));
+
+    Mockito.when(realtime.available()).thenReturn(true);
+    mockMvc(true)
+        .perform(get("/api/v1/transcriptions/availability"))
+        .andExpect(jsonPath("$.realtimeAvailable").value(true));
     mockMvc(false)
         .perform(get("/api/v1/transcriptions/availability"))
-        .andExpect(jsonPath("$.available").value(false));
+        .andExpect(jsonPath("$.available").value(false))
+        .andExpect(jsonPath("$.realtimeAvailable").value(false));
   }
 
   @Test

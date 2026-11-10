@@ -14,8 +14,10 @@ import {
 } from '../api/chatApi'
 import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
-import { RECENT_PAGE_SIZE } from '../components/chatListSections'
 import { registerSessionStore } from '@/shared/session/resettableStores'
+
+/** How many recent chats the list shows at once, and how many each "… weitere" adds. */
+export const RECENT_PAGE_SIZE = 15
 
 /** Page size of the chat archive and of the active table on the "Chats" page - the same 25 rows
  *  per page as the administration lists. */

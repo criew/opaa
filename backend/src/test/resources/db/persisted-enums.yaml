@@ -328,6 +328,11 @@ io.opaa.api.types.ProviderType:
   assessment: SECURITY
   readable: [LOCAL, OIDC]
   pending: []
+io.opaa.api.types.RealtimeTranscriptionProtocol:
+  attributes: [TranscriptionModelSettings.realtimeProtocol]
+  assessment: STATE
+  readable: [MISTRAL, OPENAI, VLLM]
+  pending: []
 io.opaa.api.types.SpaceRole:
   attributes: [SpaceMembership.role, SpaceMembershipHistory.role]
   assessment: SECURITY

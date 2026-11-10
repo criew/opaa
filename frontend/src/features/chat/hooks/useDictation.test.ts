@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_DICTATION_MS, useDictation } from './useDictation'
 import type { DictationTransport } from './useDictation'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
+import type { LiveTranscriptionOptions } from '../utils/liveTranscription'
 
 interface FakeRecording extends Recording {
   stopped: boolean
@@ -307,5 +308,148 @@ describe('batchTransport', () => {
 
     await expect(transport.transcribe(new Blob(['a']))).rejects.toThrow(/nicht verfügbar/)
     expect(transcribe).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useDictation with live', () => {
+  function liveMicrophone() {
+    const stream = {} as MediaStream
+    const microphone = fakeMicrophone()
+    const startRecording = vi.fn(async (options: RecordingOptions) => ({
+      ...(await microphone.startRecording(options)),
+      stream,
+    }))
+    return { startRecording, stream, recordings: microphone.recordings }
+  }
+
+  function fakeLive(final: () => Promise<string>) {
+    const handle = {
+      options: null as LiveTranscriptionOptions | null,
+      cancelled: false,
+      finish: vi.fn(final),
+      cancel: vi.fn(() => {
+        handle.cancelled = true
+      }),
+    }
+    const startLive = vi.fn((options: LiveTranscriptionOptions) => {
+      handle.options = options
+      return handle
+    })
+    return { startLive, handle }
+  }
+
+  it('shows the live text while speaking and takes the final live text without the recording', async () => {
+    const microphone = liveMicrophone()
+    const transport = transportAnswering('aus der Aufnahme')
+    const live = fakeLive(async () => 'Guten Tag.')
+    const onFinalText = vi.fn()
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText,
+        transport,
+        startRecording: microphone.startRecording,
+        startLive: live.startLive,
+      }),
+    )
+
+    expect(result.current.mode).toBe('realtime')
+    await act(() => result.current.start())
+    expect(live.handle.options?.stream).toBe(microphone.stream)
+    act(() => live.handle.options?.onText('Guten'))
+    expect(result.current.interimText).toBe('Guten')
+
+    await act(() => result.current.stop())
+
+    expect(live.handle.finish).toHaveBeenCalledTimes(1)
+    expect(microphone.recordings[0].stopped).toBe(true)
+    expect(transport.calls).toHaveLength(0)
+    expect(onFinalText).toHaveBeenCalledWith('Guten Tag.')
+    expect(result.current.interimText).toBe('')
+  })
+
+  it('falls back to the recording when live breaks mid-recording', async () => {
+    const microphone = liveMicrophone()
+    const transport = transportAnswering('aus der Aufnahme')
+    const live = fakeLive(async () => {
+      throw new Error('live transcription ended')
+    })
+    const onFinalText = vi.fn()
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText,
+        transport,
+        startRecording: microphone.startRecording,
+        startLive: live.startLive,
+      }),
+    )
+    await act(() => result.current.start())
+    act(() => live.handle.options?.onText('Guten'))
+
+    act(() => live.handle.options?.onBroken())
+    expect(result.current.interimText).toBe('')
+    expect(result.current.status).toBe('recording')
+    await act(() => result.current.stop())
+
+    expect(transport.calls).toHaveLength(1)
+    expect(onFinalText).toHaveBeenCalledWith('aus der Aufnahme')
+    expect(result.current.error).toBeNull()
+  })
+
+  it('falls back to the recording when live brings no final text', async () => {
+    const microphone = liveMicrophone()
+    const transport = transportAnswering('aus der Aufnahme')
+    const live = fakeLive(async () => '  ')
+    const onFinalText = vi.fn()
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText,
+        transport,
+        startRecording: microphone.startRecording,
+        startLive: live.startLive,
+      }),
+    )
+    await act(() => result.current.start())
+    await act(() => result.current.stop())
+
+    expect(transport.calls).toHaveLength(1)
+    expect(onFinalText).toHaveBeenCalledWith('aus der Aufnahme')
+  })
+
+  it('ends live together with a discarded recording', async () => {
+    const microphone = liveMicrophone()
+    const transport = transportAnswering('x')
+    const live = fakeLive(async () => 'x')
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText: vi.fn(),
+        transport,
+        startRecording: microphone.startRecording,
+        startLive: live.startLive,
+      }),
+    )
+    await act(() => result.current.start())
+
+    act(() => result.current.cancel())
+
+    expect(live.handle.cancelled).toBe(true)
+    expect(live.handle.finish).not.toHaveBeenCalled()
+    expect(transport.calls).toHaveLength(0)
+  })
+
+  it('stays with the recording alone without live', async () => {
+    const microphone = liveMicrophone()
+    const transport = transportAnswering('Hallo')
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText: vi.fn(),
+        transport,
+        startRecording: microphone.startRecording,
+        startLive: null,
+      }),
+    )
+    expect(result.current.mode).toBe('batch')
+    await act(() => result.current.start())
+    await act(() => result.current.stop())
+    expect(transport.calls).toHaveLength(1)
   })
 })

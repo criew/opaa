@@ -804,7 +804,18 @@ public class InstallationService {
         model.baseUrl(),
         model.model(),
         rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, step.getSecret()),
-        model.language());
+        model.language(),
+        model.realtime() == null
+            ? null
+            : ModelRoleAdministration.RealtimeChange.installed(
+                model.realtime().protocol(),
+                model.realtime().url(),
+                model.realtime().model(),
+                model.realtime().apiKeyCiphertext() == null
+                    ? null
+                    : rules.apiKey(
+                        InstallationStep.TRANSCRIPTION_MODEL,
+                        model.realtime().apiKeyCiphertext())));
   }
 
   /**
@@ -944,6 +955,12 @@ public class InstallationService {
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());
         summary.put("language", model.language());
+        if (model.realtime() != null) {
+          summary.put("realtimeProtocol", model.realtime().protocol().name());
+          summary.put("realtimeUrl", ModelEndpointUri.withoutSecrets(model.realtime().url()));
+          summary.put("realtimeModel", model.realtime().model());
+          summary.put("realtimeApiKeySet", model.realtime().apiKeySet());
+        }
       }
       case InstallationOverview.TextRecognitionModel model -> {
         summary.put("connectionType", model.connectionType().name());

@@ -17,7 +17,7 @@ import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
 import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { SpaceListContext } from '@/features/asset'
-import { loadSpaceList } from '../themeSeams'
+import { loadSpaceList } from './themeSeams'
 import PageLoading from './PageLoading'
 
 export default function AppShell() {

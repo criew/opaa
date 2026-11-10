@@ -12,7 +12,7 @@ import { ARRIVAL_FOCUS_ATTRIBUTE, KEEP_FOCUS_STATE } from '@/shared/ui/a11y/rout
 import { SPACE_SEARCH_HANDOVER } from '@/features/space'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
-import { loadSpaceList } from '../themeSeams'
+import { loadSpaceList } from './themeSeams'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
 

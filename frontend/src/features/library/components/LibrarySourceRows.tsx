@@ -14,13 +14,13 @@ import {
   sourceConnectionOfRef,
   withConnection,
   withoutFixed,
-} from './sources/sourceConnection'
-import type { SourceFormContext } from './sources/types'
+} from './sourceCore/sourceConnection'
+import type { SourceFormContext } from './sourceCore/types'
 import SourceSetupRows, {
   type SourceSetupHandle,
   type SourceSetupRowsMarks as SourceSetupRowsProps,
 } from './setup/SourceSetupRows'
-import type { SetupRowId } from './setup/setupTypes'
+import type { SetupRowId } from './sourceCore/setupTypes'
 
 export interface SourceRowsLibrary {
   name: string

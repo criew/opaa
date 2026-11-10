@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { openDocumentContent, opensAsTextVersion } from '../utils/documentContent'
-import type { PdfPreviewResult, TextPreviewResult } from '../utils/documentContent'
+import type {
+  PdfPreviewResult,
+  TextPreviewResult,
+  TextVersionPreview,
+} from '../utils/documentContent'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
 import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
-import type { TextVersionPreview } from '../components/DocumentTextVersionDialog'
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -

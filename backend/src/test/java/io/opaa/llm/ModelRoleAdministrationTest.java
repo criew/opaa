@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -44,6 +45,8 @@ class ModelRoleAdministrationTest {
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
   private final RerankClient rerankClient = mock(RerankClient.class);
   private final TranscriptionClient transcriptionClient = mock(TranscriptionClient.class);
+  private final RealtimeTranscriptionClient realtimeClient =
+      mock(RealtimeTranscriptionClient.class);
   private final TextRecognitionModelSettingsRepository textRecognitionRows =
       mock(TextRecognitionModelSettingsRepository.class);
   private final TextRecognitionClient textRecognitionClient = mock(TextRecognitionClient.class);
@@ -64,6 +67,7 @@ class ModelRoleAdministrationTest {
                     "whisper",
                     null,
                     "de",
+                    null,
                     null))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(
@@ -88,6 +92,7 @@ class ModelRoleAdministrationTest {
             "whisper",
             null,
             "",
+            null,
             null);
 
     assertThat(view.speechInputAvailable()).isFalse();
@@ -110,7 +115,8 @@ class ModelRoleAdministrationTest {
             "whisper",
             null,
             "de",
-            "  AO, BZSt ");
+            "  AO, BZSt ",
+            null);
 
     assertThat(view.vocabulary()).isEqualTo("AO, BZSt");
     verify(audit).recordUserAction(event.capture());
@@ -131,7 +137,8 @@ class ModelRoleAdministrationTest {
                     "whisper",
                     null,
                     "de",
-                    "x".repeat(TranscriptionVocabulary.MAX_LENGTH + 1)))
+                    "x".repeat(TranscriptionVocabulary.MAX_LENGTH + 1),
+                    null))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(
             e ->
@@ -155,7 +162,8 @@ class ModelRoleAdministrationTest {
             " http://8.8.8.8/v1 ",
             " whisper ",
             "sk-stt",
-            " EN ");
+            " EN ",
+            null);
 
     verify(transcriptionRows).save(row.capture());
     assertThat(row.getValue().isEnabled()).isTrue();
@@ -185,7 +193,13 @@ class ModelRoleAdministrationTest {
     assertThatThrownBy(
             () ->
                 administration.installTranscription(
-                    UUID.randomUUID(), "installation", "ftp://stt/v1", "whisper", null, "deu"))
+                    UUID.randomUUID(),
+                    "installation",
+                    "ftp://stt/v1",
+                    "whisper",
+                    null,
+                    "deu",
+                    null))
         .isInstanceOfSatisfying(
             FieldValidationException.class,
             e ->
@@ -287,6 +301,7 @@ class ModelRoleAdministrationTest {
         "whisper",
         null,
         "de",
+        null,
         null);
 
     ArgumentCaptor<AuditEvent> rerank = ArgumentCaptor.forClass(AuditEvent.class);
@@ -610,6 +625,234 @@ class ModelRoleAdministrationTest {
         .contains("nicht rechtzeitig");
   }
 
+  @Test
+  void aLiveUpstreamIsStoredWithItsOwnEncryptedKeyAndAudited() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<TranscriptionModelSettings> row =
+        ArgumentCaptor.forClass(TranscriptionModelSettings.class);
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+
+    ModelRoleAdministration.TranscriptionModelView view =
+        administration.changeTranscription(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            true,
+            "https://api.openai.com/v1",
+            "whisper-1",
+            "sk-batch",
+            "de",
+            null,
+            new ModelRoleAdministration.RealtimeChange(
+                true,
+                RealtimeTranscriptionProtocol.OPENAI,
+                " wss://api.openai.com/v1/realtime?intent=transcription ",
+                " gpt-live-transcribe ",
+                "sk-live",
+                2));
+
+    verify(transcriptionRows).save(row.capture());
+    assertThat(row.getValue().getRealtimeProtocol())
+        .isEqualTo(RealtimeTranscriptionProtocol.OPENAI);
+    assertThat(row.getValue().getRealtimeUrl())
+        .isEqualTo("wss://api.openai.com/v1/realtime?intent=transcription");
+    assertThat(row.getValue().getRealtimeModel()).isEqualTo("gpt-live-transcribe");
+    assertThat(row.getValue().getRealtimeApiKeyCiphertext()).isEqualTo("enc:sk-live");
+    assertThat(row.getValue().getRealtimeMaxSessions()).isEqualTo(2);
+    assertThat(view.realtime().enabled()).isTrue();
+    assertThat(view.realtime().apiKeySet()).isTrue();
+    verify(audit).recordUserAction(event.capture());
+    assertThat(event.getValue().after())
+        .containsEntry("realtimeProtocol", "OPENAI")
+        .containsEntry("realtimeUrl", "wss://api.openai.com/v1/realtime")
+        .containsEntry("realtimeApiKeySet", true)
+        .containsEntry("realtimeApiKeyChange", "SET")
+        .doesNotContainValue("sk-live");
+  }
+
+  @Test
+  void anOpenAiLiveUpstreamOnAnotherHostThanTheBatchNeedsAKeyOfItsOwn() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTranscription(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    true,
+                    "http://speaches:8000/v1",
+                    "whisper",
+                    "",
+                    "de",
+                    null,
+                    new ModelRoleAdministration.RealtimeChange(
+                        true,
+                        RealtimeTranscriptionProtocol.OPENAI,
+                        "wss://api.openai.com/v1/realtime?intent=transcription",
+                        "gpt-live-transcribe",
+                        null,
+                        null)))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcription.realtime.apiKey"));
+    verify(transcriptionRows, never()).save(any());
+
+    administration.changeTranscription(
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        true,
+        "http://speaches:8000/v1",
+        "whisper",
+        "",
+        "de",
+        null,
+        new ModelRoleAdministration.RealtimeChange(
+            true,
+            RealtimeTranscriptionProtocol.VLLM,
+            "ws://speaches:8000/v1/realtime",
+            "voxtral",
+            null,
+            null));
+    verify(transcriptionRows).save(any());
+  }
+
+  @Test
+  void aLiveAddressMustBeAWebSocketAddressWithProtocolAndModel() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTranscription(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    false,
+                    "",
+                    "",
+                    null,
+                    "de",
+                    null,
+                    new ModelRoleAdministration.RealtimeChange(
+                        true, null, "https://api.mistral.ai/v1", "", null, 0)))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly(
+                        "transcription.realtime.protocol",
+                        "transcription.realtime.url",
+                        "transcription.realtime.model",
+                        "transcription.realtime.maxSessions"));
+    verify(transcriptionRows, never()).save(any());
+  }
+
+  @Test
+  void switchingLiveOffRemovesTheLiveUpstreamWithItsKey() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    TranscriptionModelSettings stored = new TranscriptionModelSettings(java.time.Instant.EPOCH);
+    stored.replaceRealtime(
+        RealtimeTranscriptionProtocol.VLLM, "ws://vllm:8000/v1/realtime", "voxtral", "enc:k", 1);
+    when(transcriptionRows.findStored()).thenReturn(Optional.of(stored));
+
+    ModelRoleAdministration.TranscriptionModelView view =
+        administration.changeTranscription(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            false,
+            "",
+            "",
+            null,
+            null,
+            null,
+            new ModelRoleAdministration.RealtimeChange(false, null, null, null, null, null));
+
+    assertThat(stored.getRealtimeProtocol()).isNull();
+    assertThat(stored.getRealtimeUrl()).isNull();
+    assertThat(stored.getRealtimeApiKeyCiphertext()).isNull();
+    assertThat(view.realtime().enabled()).isFalse();
+  }
+
+  @Test
+  void aChangedLiveAddressNeedsTheLiveKeyAgain() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    TranscriptionModelSettings stored = new TranscriptionModelSettings(java.time.Instant.EPOCH);
+    stored.replaceRealtime(
+        RealtimeTranscriptionProtocol.MISTRAL,
+        "wss://api.mistral.ai/v1/audio/transcriptions/realtime",
+        "voxtral-mini-transcribe-realtime-3",
+        "enc:k",
+        1);
+    when(transcriptionRows.findStored()).thenReturn(Optional.of(stored));
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTranscription(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    false,
+                    "",
+                    "",
+                    null,
+                    null,
+                    null,
+                    new ModelRoleAdministration.RealtimeChange(
+                        true,
+                        RealtimeTranscriptionProtocol.MISTRAL,
+                        "wss://elsewhere.example/v1/realtime",
+                        "voxtral-mini-transcribe-realtime-3",
+                        null,
+                        null)))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcription.realtime.apiKey"));
+  }
+
+  @Test
+  void theLiveTestSendsTheBatchKeyWhileNoLiveKeyOfItsOwnIsStored() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    TranscriptionModelSettings stored = new TranscriptionModelSettings(java.time.Instant.EPOCH);
+    stored.replaceEndpoint(true, "https://api.openai.com/v1", "whisper-1", "enc:sk-batch", null);
+    when(transcriptionRows.findStored()).thenReturn(Optional.of(stored));
+    ArgumentCaptor<RealtimeTranscriptionEndpoint> probed =
+        ArgumentCaptor.forClass(RealtimeTranscriptionEndpoint.class);
+    when(realtimeClient.probe(probed.capture(), any())).thenReturn(null);
+
+    ModelRoleAdministration.TestOutcome outcome =
+        administration.testTranscriptionRealtime(
+            RealtimeTranscriptionProtocol.OPENAI,
+            "wss://api.openai.com/v1/realtime?intent=transcription",
+            "gpt-live-transcribe",
+            null);
+
+    assertThat(outcome.success()).isTrue();
+    assertThat(probed.getValue().apiKey()).isEqualTo("sk-batch");
+    assertThat(probed.getValue().protocol()).isEqualTo(RealtimeTranscriptionProtocol.OPENAI);
+  }
+
+  @Test
+  void theBatchKeyNeverGoesToALiveAddressOfAnotherOrigin() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    TranscriptionModelSettings stored = new TranscriptionModelSettings(java.time.Instant.EPOCH);
+    stored.replaceEndpoint(true, "https://api.openai.com/v1", "whisper-1", "enc:sk-batch", null);
+    when(transcriptionRows.findStored()).thenReturn(Optional.of(stored));
+    ArgumentCaptor<RealtimeTranscriptionEndpoint> probed =
+        ArgumentCaptor.forClass(RealtimeTranscriptionEndpoint.class);
+    when(realtimeClient.probe(probed.capture(), any())).thenReturn(null);
+
+    administration.testTranscriptionRealtime(
+        RealtimeTranscriptionProtocol.MISTRAL,
+        "wss://api.mistral.ai/v1/audio/transcriptions/realtime",
+        "voxtral-mini-transcribe-realtime-3",
+        null);
+
+    assertThat(probed.getValue().apiKey()).isEmpty();
+  }
+
   private ModelRoleAdministration administration(boolean speechInput, MockEnvironment environment) {
     when(rerankRows.findStored()).thenReturn(Optional.empty());
     when(transcriptionRows.findStored()).thenReturn(Optional.empty());
@@ -638,6 +881,7 @@ class ModelRoleAdministrationTest {
         endpoints,
         rerankRole,
         transcriptionRole,
+        endpoint -> OptionalRoleStatus.disabled(),
         new TextRecognitionModelRole(
             textRecognitionProperties,
             () -> TextRecognitionEndpoint.FACTORY_DEFAULT,
@@ -645,6 +889,7 @@ class ModelRoleAdministrationTest {
         features,
         rerankClient,
         transcriptionClient,
+        realtimeClient,
         textRecognitionClient,
         prefixingEncryptor(),
         ModelAddressPolicy.disabled(),
@@ -661,6 +906,8 @@ class ModelRoleAdministrationTest {
     SettingsEncryptor encryptor = mock(SettingsEncryptor.class);
     when(encryptor.encrypt(anyString(), any()))
         .thenAnswer(call -> "enc:" + call.getArgument(0, String.class));
+    when(encryptor.decrypt(anyString(), any()))
+        .thenAnswer(call -> call.getArgument(0, String.class).substring("enc:".length()));
     return encryptor;
   }
 }

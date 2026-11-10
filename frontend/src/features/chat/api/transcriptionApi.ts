@@ -4,6 +4,31 @@ import type {
   TranscriptionVocabulary,
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
+import { useAuthStore } from '@/shared/session/authStore'
+import { getDevUser } from '@/shared/session/devAuth'
+
+/** The subprotocol of OPAA's live dictation; the credentials travel as further subprotocols. */
+export const TRANSCRIPTION_STREAM_PROTOCOL = 'opaa-transcription.v1'
+
+/**
+ * Opens the live dictation's WebSocket on the page's own origin. A browser cannot set headers on a
+ * WebSocket, so the access token and, in dev mode, the dev user go as subprotocols; the backend
+ * turns them back into headers before its security chain and answers only the plain subprotocol.
+ */
+export async function openTranscriptionStream(): Promise<WebSocket> {
+  const token = await useAuthStore.getState().getAccessToken()
+  const devUser = getDevUser()
+  const protocols = [TRANSCRIPTION_STREAM_PROTOCOL]
+  if (token) protocols.push(`opaa-bearer.${token}`)
+  if (devUser) protocols.push(`opaa-dev-user.${devUser}`)
+  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  const socket = new WebSocket(
+    `${scheme}://${window.location.host}/api/v1/transcriptions/stream`,
+    protocols,
+  )
+  socket.binaryType = 'arraybuffer'
+  return socket
+}
 
 /** Whether dictation works right now; answered from the role's last known state. */
 export async function getTranscriptionAvailability(): Promise<TranscriptionAvailabilityResponse> {

@@ -124,7 +124,7 @@ export default function ModelEndpointFields({
   const keyId = `${id}-api-key`
   const providerLabelId = `${id}-provider`
   const [provider, setProvider] = useState<ProviderKey | null>(() =>
-    providerOf(stored?.baseUrl ?? '', purpose),
+    providerOf(baseUrl || stored?.baseUrl || '', purpose),
   )
   const [keyOrigin, setKeyOrigin] = useState<string | null>(null)
   const discovery = useModelDiscovery(discover)

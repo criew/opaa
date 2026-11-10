@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { SummaryValue } from './setup/SummaryRow'
 import { ROW_GRID } from './setup/rowStyles'
-import type { RowSummary } from './setup/setupTypes'
+import type { RowSummary } from './sourceCore/setupTypes'
 
 export interface ReviewEntry {
   label: string

@@ -4,7 +4,7 @@ import { EMPTY_CONFLUENCE_VALUES } from '../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../utils/s3Source'
 import { SOURCE_TYPE_DIRECTORY, sourceTypeEntry } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from './registry'
-import type { SourceConfiguration } from './types'
+import type { SourceConfiguration } from '../sourceCore/types'
 
 const generic = {
   sourcePath: ' /data/dokumente ',

@@ -92,7 +92,8 @@ class InstallationServiceSpeechInputTest {
             "http://speaches:8000/v1",
             "whisper",
             "sk-stt",
-            "en");
+            "en",
+            null);
   }
 
   @Test
@@ -103,7 +104,7 @@ class InstallationServiceSpeechInputTest {
     service(true).complete(CompletionSource.INSTALLATION_API);
 
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
     verify(audit, org.mockito.Mockito.atLeastOnce()).recordSystemProcessAction(events.capture());
     assertThat(events.getAllValues().getLast().after().get("skippedSteps").toString())
         .contains("TRANSCRIPTION_MODEL");
@@ -131,7 +132,7 @@ class InstallationServiceSpeechInputTest {
     service.complete(CompletionSource.INSTALLATION_API);
 
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
     verify(audit, org.mockito.Mockito.atLeastOnce()).recordSystemProcessAction(events.capture());
     assertThat(events.getAllValues().getLast().after().get("skippedSteps").toString())
         .doesNotContain("TRANSCRIPTION_MODEL");
@@ -196,7 +197,7 @@ class InstallationServiceSpeechInputTest {
     verify(checks, never()).check(eq(InstallationStep.TRANSCRIPTION_MODEL), any(), any(), any());
     verify(rules, never()).toStored(any(StepInput.TranscriptionModel.class), any(), any());
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
   }
 
   private InstallationService service(boolean speechInput) {

@@ -4,8 +4,8 @@ import {
   nextcloudFoldersOf,
   type NextcloudSourceValues,
 } from '../../../utils/nextcloudSource'
-import { connectionFields } from '../../sources/sourceConnection'
-import type { SourceSetupSpec } from '../setupTypes'
+import { connectionFields } from '../../sourceCore/sourceConnection'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
 import {
   addressIssue,
   credentialsKept,
@@ -14,7 +14,7 @@ import {
   issueList,
   joinSummary,
   pairIssues,
-} from './common'
+} from '../../sourceCore/common'
 import { folderSummary } from './folderNodes'
 import { NextcloudConnectionFields, NextcloudScopeFields } from './NextcloudSetupFields'
 

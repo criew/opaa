@@ -5,8 +5,8 @@ import {
   confluenceEditionLabel,
   type ConfluenceSourceValues,
 } from '../../../utils/confluenceSource'
-import { connectionFields } from '../../sources/sourceConnection'
-import type { SourceSetupSpec } from '../setupTypes'
+import { connectionFields } from '../../sourceCore/sourceConnection'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
 import {
   addressIssue,
   credentialsKept,
@@ -14,7 +14,7 @@ import {
   issueList,
   joinSummary,
   listSummary,
-} from './common'
+} from '../../sourceCore/common'
 import { ConfluenceConnectionFields, ConfluenceScopeFields } from './ConfluenceSetupFields'
 
 export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
