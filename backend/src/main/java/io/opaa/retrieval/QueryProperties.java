@@ -5,7 +5,6 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
-import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -26,7 +25,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     score is {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}.
  *     Default {@code 1.0}, where the diversity term vanishes and {@link
  *     RetrievalStageName#MMR_SELECTION} does not run (protocol: {@code DISABLED}), so neither the
- *     reordering nor the {@link ChunkEmbeddingLookup} round trip happens. Bound via
+ *     reordering nor the {@code ChunkEmbeddingLookup} round trip happens. Bound via
  *     {@code @DefaultValue} so an explicit {@code 0.0} is honoured rather than raised.
  * @param similarityThreshold minimum cosine similarity a chunk must reach in the vector path.
  *     Applied inside {@code similaritySearch} itself, so a chunk below it never becomes an MMR

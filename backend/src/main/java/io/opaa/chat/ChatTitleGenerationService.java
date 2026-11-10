@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.observability.ModelCallPurpose;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,6 +108,7 @@ public class ChatTitleGenerationService {
     String prompt = TITLE_PROMPT_TEMPLATE.formatted(question, answer);
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
+    activeChatModelResolver.recordUsage(ModelCallPurpose.AUXILIARY, chatClient, response);
     if (response == null
         || response.getResult() == null
         || response.getResult().getOutput() == null) {

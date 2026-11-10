@@ -2,6 +2,8 @@ package io.opaa.retrieval.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,6 +16,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ReasoningTextStrippingChatModel;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.retrieval.ConversationNoteBlock;
 import java.io.IOException;
@@ -701,5 +704,15 @@ class QueryDecompositionServiceTest {
         .map(Message::getText)
         .findFirst()
         .orElseThrow();
+  }
+
+  /** The decomposition's tokens count under {@code purpose=decompose}. */
+  @Test
+  void theDecompositionCountsItsTokensAsDecompose() {
+    stubChatModelResponse("Was kostet ein Personalausweis?");
+
+    service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
+
+    verify(activeChatModelResolver).recordUsage(eq(ModelCallPurpose.DECOMPOSE), any(), notNull());
   }
 }

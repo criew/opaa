@@ -12,16 +12,21 @@ import { useDictation } from '../hooks/useDictation'
 import type { DictationTransport } from '../hooks/useDictation'
 import { useTranscriptionAvailability } from '../hooks/useTranscriptionAvailability'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
+import { startLiveTranscription } from '../utils/liveTranscription'
+import type { StartLiveTranscription } from '../utils/liveTranscription'
 
 interface DictationControlProps {
   /** Receives the recognised text; the input decides where it goes. Never sends. */
   onText: (text: string) => void
   /** Reports a failure in words, or `null` once it no longer applies. */
   onError: (message: string | null) => void
+  /** The live text while speaking, not yet final; empty when there is none. */
+  onInterimText?: (text: string) => void
   disabled?: boolean
   /** Replaceable for tests. */
   transport?: DictationTransport
   startRecording?: (options: RecordingOptions) => Promise<Recording>
+  startLive?: StartLiveTranscription
 }
 
 function formatDuration(seconds: number): string {
@@ -35,24 +40,38 @@ function formatDuration(seconds: number): string {
  * explain. Dictating is optional; typing stays equivalent.
  */
 export default function DictationControl(props: DictationControlProps) {
-  const available = useTranscriptionAvailability()
-  if (!available) return null
-  return <DictationButtons {...props} />
+  const offer = useTranscriptionAvailability()
+  if (!offer.available) return null
+  return <DictationButtons {...props} live={offer.realtimeAvailable} />
 }
 
 function DictationButtons({
   onText,
   onError,
+  onInterimText,
   disabled = false,
   transport,
   startRecording,
-}: DictationControlProps) {
-  const dictation = useDictation({ onFinalText: onText, transport, startRecording })
-  const { status, error, elapsedSeconds } = dictation
+  startLive = startLiveTranscription,
+  live,
+}: DictationControlProps & { live: boolean }) {
+  const dictation = useDictation({
+    onFinalText: onText,
+    transport,
+    startRecording,
+    startLive: live ? startLive : null,
+  })
+  const { status, error, elapsedSeconds, interimText } = dictation
 
   useEffect(() => {
     onError(error)
   }, [error, onError])
+
+  useEffect(() => {
+    onInterimText?.(interimText)
+  }, [interimText, onInterimText])
+
+  useEffect(() => () => onInterimText?.(''), [onInterimText])
 
   const announcement =
     status === 'recording'

@@ -1,5 +1,5 @@
 import type { ConnectionProfileOption, SourceTypeDescriptor } from '@/shared/api/types'
-import { ownAddressAllowed } from './sources/sourceConnection'
+import { ownAddressAllowed } from './sourceCore/sourceConnection'
 
 /** The choice of a library with its own address instead of a profile. */
 export const OWN_ADDRESS = 'own-address'

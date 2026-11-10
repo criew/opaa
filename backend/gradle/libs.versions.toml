@@ -145,6 +145,7 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
+spring-boot-starter-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 # Spring Boot 4 splits the test slices into dedicated starters (@WebMvcTest)
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
@@ -202,6 +203,13 @@ spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-st
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+# Optional OpenTelemetry tracing over OTLP, off unless OPAA_TRACING_ENABLED (ADR-0071). The
+# exporter's OkHttp sender is excluded in build.gradle.kts: it needs okhttp-jvm 5 beside the okhttp
+# 4 pinned above, so the JDK HttpClient sender takes its place. Versions from the Spring Boot BOM.
+spring-boot-micrometer-tracing-opentelemetry = { module = "org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry" }
+micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
+opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp" }
+opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk" }
 postgresql = { module = "org.postgresql:postgresql" }
 shedlock-spring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }
 shedlock-provider-jdbc-template = { module = "net.javacrumbs.shedlock:shedlock-provider-jdbc-template", version.ref = "shedlock" }
@@ -247,6 +255,7 @@ spring-boot = [
     "spring-boot-starter-security",
     "spring-boot-starter-oauth2-resource-server",
     "spring-boot-starter-mail",
+    "spring-boot-starter-websocket",
 ]
 spring-ai = [
     "spring-ai-vector-store-advisor",
@@ -257,6 +266,12 @@ spring-ai = [
     "spring-ai-starter-mcp-server-webmvc",
 ]
 runtime = ["micrometer-registry-prometheus"]
+tracing = [
+    "spring-boot-micrometer-tracing-opentelemetry",
+    "micrometer-tracing-bridge-otel",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-exporter-sender-jdk",
+]
 aws-sdk = ["aws-sdk-s3", "aws-sdk-apache5-client"]
 shedlock = ["shedlock-spring", "shedlock-provider-jdbc-template"]
 test-deps = [

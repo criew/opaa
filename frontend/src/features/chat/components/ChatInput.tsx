@@ -314,6 +314,7 @@ export default function ChatInput({
 
   // Dictation only ever fills the input; sending stays the person's own action.
   const [dictationError, setDictationError] = useState<string | null>(null)
+  const [interimDictation, setInterimDictation] = useState('')
   const appendDictatedText = useCallback((text: string) => {
     setValue((draft) => withDictatedText(draft, text))
     requestAnimationFrame(() => {
@@ -544,6 +545,7 @@ export default function ChatInput({
         <DictationControl
           onText={appendDictatedText}
           onError={setDictationError}
+          onInterimText={setInterimDictation}
           disabled={disabled}
         />
         {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
@@ -714,6 +716,16 @@ export default function ChatInput({
           </Typography>
         )}
         <AiNotice variant="line" />
+        {/* The live text is not yet the input: dimmed, and announced only once it is final. */}
+        {interimDictation && (
+          <Typography
+            component="div"
+            data-testid="dictation-interim"
+            sx={{ fontSize: 13, color: 'text.secondary', fontStyle: 'italic' }}
+          >
+            {interimDictation}
+          </Typography>
+        )}
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
             {dictationError}

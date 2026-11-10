@@ -1,6 +1,16 @@
 import type { ChunkAnchor } from '@/shared/api/types'
 import { getDocumentContent } from '../api/libraryApi'
 
+/** A document whose Textfassung „Dokument öffnen“ shows, and the cited passage in it. */
+export interface TextVersionPreview {
+  documentId: string
+  fileName: string
+  /** The cited passage; without one the Textfassung opens at its beginning. */
+  chunkIndex?: number | null
+  /** The cited passage's anchor as the citation recorded it. */
+  anchor?: ChunkAnchor | null
+}
+
 // Shared between the library document list's "Original öffnen" action, the
 // citation deep link and the Belegfenster's "Dokument öffnen" action - all three need to
 // turn a documentId into a rendered/downloaded/previewed file, and neither can use a plain

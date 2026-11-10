@@ -8,12 +8,12 @@ import {
   type ConfluenceSourceValues,
 } from '../../../utils/confluenceSource'
 import CredentialFields from '../CredentialFields'
-import { plainMessage } from '../../sourceKit/plainMessage'
+import { plainMessage } from '../../sourceCore/plainMessage'
 import { spaceItem, spaceOfItem, spaceSelectionSource } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { ALL_SCOPE_HINT, addressIssue, credentialsKept } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { ALL_SCOPE_HINT, addressIssue, credentialsKept } from '../../sourceCore/common'
 
 /**
  * Address and credentials of a Confluence instance. The edition is detected from the address

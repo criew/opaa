@@ -10,8 +10,8 @@ import {
 } from './dropboxSource'
 import { dropboxSetup } from '../components/setup/connectors/dropboxSetup'
 import { dropboxSource } from '../components/sources/dropboxSource'
-import type { SourceConnection } from '../components/sources/sourceConnection'
-import type { SourceFormContext } from '../components/sources/types'
+import type { SourceConnection } from '../components/sourceCore/sourceConnection'
+import type { SourceFormContext } from '../components/sourceCore/types'
 
 const TEAM_APP: SourceConnection = {
   profileId: 'profile-team',

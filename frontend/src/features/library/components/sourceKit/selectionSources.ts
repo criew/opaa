@@ -25,7 +25,7 @@ import {
   dropboxTeamFolderLabel,
   type DropboxTeamFolder,
 } from '../../utils/dropboxSource'
-import type { ConnectionFields } from '../sources/sourceConnection'
+import type { ConnectionFields } from '../sourceCore/sourceConnection'
 import type { BrowseResult, Crumb, SelectionItem, SelectionSource } from './selection'
 
 type Probe = Pick<ConnectionFields, 'probeRequest'>

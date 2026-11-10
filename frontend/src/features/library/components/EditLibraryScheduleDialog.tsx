@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import type { LibrarySchedule } from '@/shared/api/types'
 import { useLibraryStore } from '../stores/libraryStore'
-import LibraryScheduleForm from './LibraryScheduleForm'
+import LibraryScheduleForm from './schedule/LibraryScheduleForm'
 import {
   scheduleUpdateFrom,
   scheduleValuesFrom,

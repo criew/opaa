@@ -159,6 +159,9 @@ dependencies {
     }
     implementation(libs.smbj)
     implementation(libs.bundles.shedlock)
+    implementation(libs.bundles.tracing) {
+        exclude(group = "io.opentelemetry", module = "opentelemetry-exporter-sender-okhttp")
+    }
     runtimeOnly(libs.bundles.runtime)
     "configurationProcessor"(libs.spring.boot.configuration.processor)
     "configMetadataImplementation"(libs.bundles.spring.boot)

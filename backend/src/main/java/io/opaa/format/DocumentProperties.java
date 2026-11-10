@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.format.shared.DocumentHeadText;
 import io.opaa.format.shared.DocumentTitleLine;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -68,12 +69,8 @@ public record DocumentProperties(
    */
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
-  /**
-   * Upper bound of {@link #headText}, in characters: enough for the opening and the closing
-   * provisions of an ordinary administrative document, and small enough that no pipeline pays for
-   * the rest of a long one.
-   */
-  public static final int MAX_HEAD_TEXT_LENGTH = 4_000;
+  /** Upper bound of {@link #headText}, in characters; see {@link DocumentHeadText#MAX_LENGTH}. */
+  public static final int MAX_HEAD_TEXT_LENGTH = DocumentHeadText.MAX_LENGTH;
 
   public static final DocumentProperties EMPTY =
       new DocumentProperties(

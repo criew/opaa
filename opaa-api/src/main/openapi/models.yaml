@@ -554,6 +554,36 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/models/transcription/realtime/test:
+    post:
+      operationId: testTranscriptionRealtimeModel
+      tags: [model]
+      summary: Probe a live transcription upstream, saved or not yet saved (system admin only)
+      description: >
+        Opens the WebSocket of the draft with the dialect of its protocol, starts a session and
+        closes it again without sending audio. apiKey omitted uses the stored live key, only for
+        the stored live address (otherwise 400), and, when no live key is stored, the key of the
+        batch endpoint, only to the origin (scheme, host, port) of the batch address; an empty
+        string sends none. An address other than the stored one is checked
+        against the address check of models right before the connection (400 with code BLOCKED).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptionRealtimeTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; success carries the outcome.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/models/text-recognition:
     get:
       operationId: getTextRecognitionModelSettings
@@ -1071,7 +1101,16 @@ components:
     TranscriptionModelSettingsResponse:
       type: object
       required:
-        [enabled, apiKeySet, language, vocabulary, state, speechInputAvailable, retiredVariables]
+        [
+          enabled,
+          apiKeySet,
+          language,
+          vocabulary,
+          state,
+          speechInputAvailable,
+          retiredVariables,
+          realtime,
+        ]
       properties:
         enabled:
           type: boolean
@@ -1099,6 +1138,8 @@ components:
             The installation's vocabulary list, sent as prompt with every transcription ahead of
             the person's own list; empty when none is stored.
           example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
+        realtime:
+          $ref: "#/components/schemas/TranscriptionRealtimeSettingsResponse"
         state:
           $ref: "#/components/schemas/SearchModelRoleState"
         speechInputAvailable:
@@ -1161,6 +1202,120 @@ components:
             Terms and abbreviations the model should recognise, comma-separated or as an example
             sentence; an empty string removes the list, omitted (null) keeps the stored one.
           example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
+        realtime:
+          $ref: "#/components/schemas/TranscriptionRealtimeSettingsRequest"
+
+    RealtimeTranscriptionProtocol:
+      type: string
+      description: >
+        The dialect of the live transcription upstream. OPENAI is the OpenAI Realtime API in
+        transcription mode (PCM16 at 24 kHz), VLLM the /v1/realtime endpoint of vLLM, e.g. with
+        Voxtral Realtime (16 kHz), MISTRAL the realtime transcription API of Mistral (16 kHz).
+      enum: [OPENAI, VLLM, MISTRAL]
+      example: OPENAI
+
+    TranscriptionRealtimeSettingsResponse:
+      type: object
+      description: >
+        The live transcription of the role: text appears while the person speaks. Optional on top
+        of the batch endpoint, which stays the fallback.
+      required: [enabled, apiKeySet, maxSessions, state]
+      properties:
+        enabled:
+          type: boolean
+          description: Whether a live upstream is stored; false means dictation by recording only.
+        protocol:
+          allOf:
+            - $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+          nullable: true
+        url:
+          type: string
+          nullable: true
+          description: The WebSocket address of the upstream (ws:// or wss://).
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          nullable: true
+          example: gpt-live-transcribe
+        apiKeySet:
+          type: boolean
+          description: >
+            Whether a key of its own is stored for the live upstream - never the key itself.
+            Without one, the key of the batch endpoint is sent, but only when the live address has
+            the origin (scheme, host, port) of the batch address.
+        maxSessions:
+          type: integer
+          minimum: 1
+          description: How many live sessions the whole installation holds at the same time.
+          example: 1
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+
+    TranscriptionRealtimeSettingsRequest:
+      type: object
+      description: >
+        The live transcription of the role. Omitted (null) keeps what is stored; enabled false
+        removes the live upstream together with its key.
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        protocol:
+          allOf:
+            - $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+          nullable: true
+          description: Required while enabled.
+        url:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: ws:// or wss://, without userinfo. Required while enabled.
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled.
+          example: gpt-live-transcribe
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored live key for an unchanged address; an empty
+            string removes it, so the key of the batch endpoint is sent to the same origin only; any
+            other value replaces it. OPENAI and MISTRAL need a key: this one, or the batch key on the
+            same origin; without either the change is refused (400, field
+            transcription.realtime.apiKey).
+        maxSessions:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 100
+          description: Omitted (null) keeps the stored number; 1 is the factory default.
+          example: 1
+
+    TranscriptionRealtimeTestRequest:
+      type: object
+      required: [protocol, url, model]
+      properties:
+        protocol:
+          $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+        url:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: gpt-live-transcribe
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Plaintext key for this test only, never stored.
 
     ModelRoleTestRequest:
       type: object

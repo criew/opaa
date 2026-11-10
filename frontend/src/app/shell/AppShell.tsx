@@ -16,7 +16,7 @@ import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
 import { SpaceListContext } from '@/features/asset'
-import { loadSpaceList } from '../themeSeams'
+import { loadSpaceList } from './themeSeams'
 import PageLoading from './PageLoading'
 
 export default function AppShell() {

@@ -23,7 +23,8 @@ class SecurityCorsConfigTest {
   private static final String ALLOWED_ORIGIN = "https://opaa.example.org";
 
   private final CorsConfigurationSource source =
-      new SecurityCorsConfig().corsConfigurationSource(ALLOWED_ORIGIN);
+      new SecurityCorsConfig()
+          .corsConfigurationSource(new CorsProperties(java.util.List.of(ALLOWED_ORIGIN)));
 
   @Test
   void actualCrossOriginPatchRequestIsAccepted() throws IOException {

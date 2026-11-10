@@ -12,6 +12,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -226,9 +228,9 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
     ToolCallingAdvisor toolCallingAdvisor =
         ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager).build();
 
+    ChatClient chatClient = activeChatModelResolver.resolveToolCallingChatClient();
     ChatResponse response =
-        activeChatModelResolver
-            .resolveToolCallingChatClient()
+        chatClient
             .prompt()
             .system(
                 SYSTEM_PROMPT.formatted(runState.blockId())
@@ -239,6 +241,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
             .advisors(toolCallingAdvisor)
             .call()
             .chatResponse();
+    activeChatModelResolver.recordUsage(ModelCallPurpose.AGENT, chatClient, response);
 
     // The breach text (either the library's own English sentence or the last raw tool response,
     // see ToolCallLimitExceededException#buildGeneration) is never fit for a persisted or
@@ -297,7 +300,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
     long durationMs = System.currentTimeMillis() - startTime;
     int tokenCount = ChatResponses.totalTokens(response);
-    metrics.recordSuccess(tokenCount);
+    metrics.recordFinishReason(ChatResponses.finishReason(response));
 
     QueryOutcome metadata =
         new QueryOutcome(

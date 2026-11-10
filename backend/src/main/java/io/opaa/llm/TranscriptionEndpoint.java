@@ -6,8 +6,9 @@ import java.util.regex.Pattern;
 /**
  * The transcription model role as the administration stored it (ADR-0060, Entscheidung 10), built
  * like {@link RerankEndpoint}, with the language passed to the model: an ISO-639-1 code, empty to
- * let the model detect it, and the installation's vocabulary list, empty for none. {@link
- * #toString()} never names the key or userinfo of the address, nor the vocabulary.
+ * let the model detect it, the installation's vocabulary list, empty for none, and the optional
+ * live upstream ({@link RealtimeTranscriptionEndpoint#NONE} for none). {@link #toString()} never
+ * names the key or userinfo of the address, nor the vocabulary.
  */
 public record TranscriptionEndpoint(
     boolean enabled,
@@ -15,7 +16,8 @@ public record TranscriptionEndpoint(
     String model,
     String apiKey,
     String language,
-    String vocabulary)
+    String vocabulary,
+    RealtimeTranscriptionEndpoint realtime)
     implements OptionalRoleEndpoint {
 
   /** The language of the factory default. */
@@ -23,7 +25,7 @@ public record TranscriptionEndpoint(
 
   /** The factory default: off, unbound, German. */
   public static final TranscriptionEndpoint FACTORY_DEFAULT =
-      new TranscriptionEndpoint(false, "", "", "", DEFAULT_LANGUAGE, "");
+      new TranscriptionEndpoint(false, "", "", "", DEFAULT_LANGUAGE, "", null);
 
   /** The message of a language {@link #isValidLanguage} refuses. */
   public static final String LANGUAGE_RULE =
@@ -50,12 +52,24 @@ public record TranscriptionEndpoint(
     apiKey = apiKey == null ? "" : apiKey.strip();
     language = language == null ? "" : language.strip();
     vocabulary = vocabulary == null ? "" : vocabulary.strip();
+    realtime = realtime == null ? RealtimeTranscriptionEndpoint.NONE : realtime;
+  }
+
+  /** An endpoint without a live upstream. */
+  public TranscriptionEndpoint(
+      boolean enabled,
+      String baseUrl,
+      String model,
+      String apiKey,
+      String language,
+      String vocabulary) {
+    this(enabled, baseUrl, model, apiKey, language, vocabulary, null);
   }
 
   /** An endpoint without an installation-wide vocabulary list. */
   public TranscriptionEndpoint(
       boolean enabled, String baseUrl, String model, String apiKey, String language) {
-    this(enabled, baseUrl, model, apiKey, language, "");
+    this(enabled, baseUrl, model, apiKey, language, "", null);
   }
 
   /** Whether both endpoint fields are present. */
@@ -87,6 +101,8 @@ public record TranscriptionEndpoint(
         + model
         + ", apiKey=***, language="
         + language
+        + ", realtime="
+        + realtime
         + "]";
   }
 }

@@ -13,7 +13,7 @@ import {
   dropboxTeamFoldersOfItems,
 } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
-import type { SetupFieldsProps } from '../setupTypes'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import FolderScope from './FolderScope'
 
 export function DropboxConnectionFields({
