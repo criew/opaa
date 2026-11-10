@@ -112,11 +112,19 @@ class ScheduledJobMetricsTest {
   }
 
   private double lastSuccess(String job) {
-    return meters.get(ScheduledJobMetrics.LAST_SUCCESS).tag("job", job).gauge().value();
+    return meters
+        .get(ScheduledJobMetrics.LAST_SUCCESS)
+        .tag(ScheduledJobMetrics.TAG, job)
+        .gauge()
+        .value();
   }
 
   private double failures(String job) {
-    return meters.get(ScheduledJobMetrics.FAILURES).tag("job", job).counter().count();
+    return meters
+        .get(ScheduledJobMetrics.FAILURES)
+        .tag(ScheduledJobMetrics.TAG, job)
+        .counter()
+        .count();
   }
 
   /** Stands in for scheduled beans; the locked run asks the lock provider like ShedLock does. */

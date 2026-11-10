@@ -180,13 +180,13 @@ class MailOutboxWorkerTest {
 
     assertThat(
             runs.get(ScheduledJobMetrics.FAILURES)
-                .tag("job", "mail-outbox-worker.poll")
+                .tag(ScheduledJobMetrics.TAG, "mail-outbox-worker.poll")
                 .counter()
                 .count())
         .isEqualTo(1.0);
     assertThat(
             runs.get(ScheduledJobMetrics.LAST_SUCCESS)
-                .tag("job", "mail-outbox-worker.poll")
+                .tag(ScheduledJobMetrics.TAG, "mail-outbox-worker.poll")
                 .gauge()
                 .value())
         .isLessThanOrEqualTo(started);
