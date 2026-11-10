@@ -24,10 +24,8 @@ USER root
 # image was built, so the image is not frozen on the base image's build date.
 # The generated server config moves from /etc/nginx/conf.d to /tmp/nginx/conf.d, so a read-only
 # root filesystem only needs /tmp to be writable; the grep fails the build if the base image's
-# include line ever changes and the sed silently misses it. /etc/nginx/opaa-locations.d stays empty
-# in the image; nginx.conf includes what an operator mounts there.
+# include line ever changes and the sed silently misses it.
 RUN apk upgrade --no-cache \
-    && mkdir /etc/nginx/opaa-locations.d \
     && rm /etc/nginx/conf.d/default.conf \
     && sed -i 's#include /etc/nginx/conf.d/\*\.conf;#include /tmp/nginx/conf.d/*.conf;#' /etc/nginx/nginx.conf \
     && grep -q 'include /tmp/nginx/conf.d/\*\.conf;' /etc/nginx/nginx.conf
