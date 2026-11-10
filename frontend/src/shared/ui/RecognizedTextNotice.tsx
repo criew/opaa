@@ -2,10 +2,11 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import DocumentScannerOutlinedIcon from '@mui/icons-material/DocumentScannerOutlined'
 import { RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
+import { fontSize, iconSize } from '../theme/tokens'
 
 interface RecognizedTextNoticeProps {
-  /** Font size of the line; the icon follows it. */
-  fontSize?: number
+  /** Type step of the line; the icon follows it. */
+  size?: 'meta' | 'text'
 }
 
 /**
@@ -13,7 +14,7 @@ interface RecognizedTextNoticeProps {
  * `fg-2`. The sentence carries the meaning, so screen readers read it as plain text and the icon
  * stays hidden from them.
  */
-export default function RecognizedTextNotice({ fontSize = 11.5 }: RecognizedTextNoticeProps) {
+export default function RecognizedTextNotice({ size = 'meta' }: RecognizedTextNoticeProps) {
   return (
     <Box
       component="span"
@@ -22,9 +23,13 @@ export default function RecognizedTextNotice({ fontSize = 11.5 }: RecognizedText
     >
       <DocumentScannerOutlinedIcon
         aria-hidden
-        sx={{ fontSize: fontSize + 1.5, color: 'text.secondary', flex: 'none' }}
+        sx={{
+          fontSize: size === 'meta' ? iconSize.xs : iconSize.sm,
+          color: 'text.secondary',
+          flex: 'none',
+        }}
       />
-      <Typography component="span" sx={{ fontSize, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize[size], color: 'text.secondary' }}>
         {RECOGNIZED_TEXT_NOTICE}
       </Typography>
     </Box>

@@ -25,7 +25,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Konto registrieren'
 /** The fields this form can show an error at, in the order the focus walks them. */
@@ -111,7 +111,7 @@ export default function RegisterPage() {
             {/* A second registration of an address that is still unconfirmed sends the
                 verification link again - so "no mail arrived" has a way out that needs no
                 administrator. */}
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Keine E-Mail erhalten?{' '}
               <Link component="button" type="button" onClick={() => setDone(false)}>
                 Registrierung erneut absenden
@@ -139,7 +139,7 @@ export default function RegisterPage() {
         sx={{ mt: 3 }}
       >
         <SectionEyebrow id="register-title">Neues Konto</SectionEyebrow>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Ihr Haus lässt die Registrierung für bestimmte E-Mail-Domänen zu. Nach der Registrierung
           schicken wir Ihnen einen Link; darüber bestätigen Sie Ihre Adresse und legen Ihren Namen
           und Ihr Passwort fest.
@@ -173,12 +173,12 @@ export default function RegisterPage() {
       </Box>
       {/* The installation's own privacy notice is not a page of this product yet - naming
           where it is would be a promise the application cannot keep. */}
-      <Typography sx={{ mt: 3, fontSize: 12, color: 'text.secondary' }}>
+      <Typography sx={{ mt: 3, fontSize: fontSize.meta, color: 'text.secondary' }}>
         Mit der Registrierung wird Ihre E-Mail-Adresse in dieser Installation gespeichert, mit der
         Bestätigung auch Ihr Name. Den Datenschutzhinweis Ihres Hauses erhalten Sie von Ihrer
         Systemverwaltung.
       </Typography>
-      <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
+      <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
         <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Sie haben schon ein Konto? Zur Anmeldung
         </Link>

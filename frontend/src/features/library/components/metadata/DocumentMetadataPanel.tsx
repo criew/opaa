@@ -14,6 +14,7 @@ import { deleteDocumentMetadataValue, getDocumentMetadata } from '../../api/libr
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { metadataOriginLabel } from './metadataLabels'
 import EditMetadataValueDialog from './EditMetadataValueDialog'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 interface DocumentMetadataPanelProps {
   libraryId: string
@@ -28,7 +29,7 @@ interface DocumentMetadataPanelProps {
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) return ''
-  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(value)
 }
 
 /** The tooltip explaining a value's provenance - actor and time for a manual value. */
@@ -106,7 +107,7 @@ export default function DocumentMetadataPanel({
 
   async function handleDelete(field: DocumentMetadataFieldResponse) {
     const confirmed = await confirmAction({
-      question: `${field.label} von "${fileName}" löschen?`,
+      question: `${field.label} von „${fileName}“ löschen?`,
       consequence:
         'Das Feld ist danach leer; die nächste automatische Extraktion darf es wieder befüllen.',
       confirmLabel: 'Löschen',

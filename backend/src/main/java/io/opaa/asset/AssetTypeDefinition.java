@@ -25,8 +25,63 @@ public interface AssetTypeDefinition {
   /** The audit event the creation of an asset of this type writes. */
   AuditEventType createdAuditEventType();
 
-  /** The singular noun, feminine or neuter with "die"/"diese" ("Bibliothek"). */
+  /** The singular noun in the nominative ("Bibliothek", "Agent"). */
   String singular();
+
+  /**
+   * Whether the noun is masculine ("der Agent"); the phrases below then take its oblique form.
+   * Every other type is feminine ("die Bibliothek").
+   */
+  default boolean masculine() {
+    return false;
+  }
+
+  /** The singular noun outside the nominative ("Agenten"); the nominative for a feminine noun. */
+  default String oblique() {
+    return singular();
+  }
+
+  /** "diese Bibliothek" / "dieser Agent", the subject of a sentence. */
+  default String thisNominative() {
+    return (masculine() ? "dieser " : "diese ") + singular();
+  }
+
+  /** "diese Bibliothek" / "diesen Agenten", after "auf" or "für". */
+  default String thisAccusative() {
+    return (masculine() ? "diesen " : "diese ") + oblique();
+  }
+
+  /** "eine Bibliothek" / "einen Agenten", the object of "anlegen". */
+  default String aAccusative() {
+    return (masculine() ? "einen " : "eine ") + oblique();
+  }
+
+  /** "einer Bibliothek" / "eines Agenten". */
+  default String aGenitive() {
+    return (masculine() ? "eines " : "einer ") + oblique();
+  }
+
+  /** "der Bibliothek" / "des Agenten". */
+  default String theGenitive() {
+    return (masculine() ? "des " : "der ") + oblique();
+  }
+
+  /** "die Bibliothek" / "der Agent", the subject of a sentence. */
+  default String theNominative() {
+    return (masculine() ? "der " : "die ") + singular();
+  }
+
+  /** "Ihre Bibliothek" / "Ihr Agent", the subject of a sentence. */
+  default String yourNominative() {
+    return (masculine() ? "Ihr " : "Ihre ") + singular();
+  }
+
+  /** The phrase with its first letter in upper case, for the start of a sentence. */
+  static String capitalized(String phrase) {
+    return phrase.isEmpty()
+        ? phrase
+        : Character.toUpperCase(phrase.charAt(0)) + phrase.substring(1);
+  }
 
   /** The plural noun ("Bibliotheken"). */
   String plural();

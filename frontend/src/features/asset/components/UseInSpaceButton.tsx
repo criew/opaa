@@ -14,6 +14,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { successionAwareMessage } from '@/features/succession'
 import type { SpaceCreateLocationState } from './assetPick'
 import { useSpaceListLoader } from './spaceListContext'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface UseInSpaceInlineProps {
   assetType: AssetType
@@ -104,7 +105,7 @@ export function UseInSpaceInline({
   if (spaces === null) {
     return (
       <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
           Spaces werden geladen …
         </Typography>
       </Box>
@@ -117,7 +118,7 @@ export function UseInSpaceInline({
         {error && <Alert severity="error">{error}</Alert>}
         {reachFrozen ? (
           // Never dimmed: it holds the text contrast (2.4) and says why nothing can be chosen.
-          <Typography sx={{ color: 'warning.main', fontSize: 13.5 }}>
+          <Typography sx={{ color: 'warning.main', fontSize: fontSize.text }}>
             Solange die Nachfolge offen ist, lässt sich „{name}“ nicht neu zuordnen.
           </Typography>
         ) : (

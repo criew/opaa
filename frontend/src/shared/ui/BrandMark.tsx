@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useBrandingStore } from '../branding/brandingStore'
 import { deriveAccentSurface } from '../utils/contrast'
+import { fontSize } from '../theme/tokens'
 
 interface BrandMarkProps {
   /** Rendered height of the logo in pixels; the width follows the image's own aspect ratio. */
@@ -118,7 +119,7 @@ export default function BrandMark({
           <Typography
             variant={variant}
             component="span"
-            sx={{ fontWeight: 700, ...(vertical && { fontSize: 24 }) }}
+            sx={{ fontWeight: 700, ...(vertical && { fontSize: fontSize.wizardTitle }) }}
           >
             {branding.productName}
           </Typography>
@@ -129,7 +130,7 @@ export default function BrandMark({
           variant="caption"
           sx={{
             color: 'text.secondary',
-            ...(vertical ? { display: 'block', fontSize: 12.5, mt: 0.5 } : {}),
+            ...(vertical ? { display: 'block', fontSize: fontSize.meta, mt: 0.5 } : {}),
           }}
         >
           {branding.claim}

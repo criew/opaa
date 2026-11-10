@@ -1,4 +1,5 @@
 import type { MailSendResultResponse, MailSettingsResponse } from '@/shared/api/types'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 export type MailStatusKind = 'UNCONFIGURED' | 'DISABLED' | 'UNTESTED' | 'SUCCESS' | 'FAILURE'
 
@@ -11,7 +12,7 @@ export interface MailStatus {
 /** German date and time of a backend timestamp, or `null` for one that was never set. */
 export function formatMailTimestamp(value: string | null | undefined): string | null {
   if (!value) return null
-  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(value)
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { DirectorySyncOutcome } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 const outcomeLabels: Record<DirectorySyncOutcome, string> = {
   APPLIED: 'Angewendet',
@@ -56,11 +57,4 @@ export function formatFraction(value: number | null | undefined): string {
   return `${Math.round(value * 100)} %`
 }
 
-export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '—'
-  const date = new Date(value)
-  return `${date.toLocaleDateString('de-DE', { dateStyle: 'medium' })}, ${date.toLocaleTimeString(
-    'de-DE',
-    { hour: '2-digit', minute: '2-digit' },
-  )}`
-}
+export { formatDateTime }

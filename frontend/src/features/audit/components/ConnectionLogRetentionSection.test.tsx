@@ -62,7 +62,7 @@ describe('ConnectionLogRetentionSection', () => {
 
     const question = `Aufbewahrungsfrist des Verbindungsprotokolls auf ${value} Monate ändern?`
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(effect)
-    await answerConfirm(user, question, 'Frist ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual({ retentionMonths: Number(value) }))
     expect(
@@ -83,7 +83,7 @@ describe('ConnectionLogRetentionSection', () => {
     renderWithProviders(<ConnectionLogRetentionSection />)
     await setMonths(user, '18')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    await answerConfirm(user, /auf 18 Monate ändern\?/, 'Frist ändern')
+    await answerConfirm(user, /auf 18 Monate ändern\?/, 'Ändern')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Die Frist wurde nicht angenommen: Sie muss zwischen 6 und 24 Monaten liegen.',

@@ -83,7 +83,7 @@ describe('DirectorySyncThresholdSection', () => {
       'Läufe, die mehr als 30 % statt mehr als 60 % entfernen oder sperren würden, warten dann auf Bestätigung',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
-    await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')
+    await answerConfirm(user, question, 'Zurücksetzen')
 
     await waitFor(() => expect(sent).toEqual([{ changeThresholdPercent: null }]))
   })

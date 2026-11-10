@@ -199,6 +199,8 @@ class TransportStatusCodeSpecificationTest {
     String description = (String) map(spec, "info").get("description");
 
     assertThat(description).contains("401").contains("403").contains("404");
+    // the shared budget of the writing calls is infrastructure, so its 429 is described here
+    assertThat(description).contains("429").contains("writing call");
     for (String status : CROSS_CUTTING) {
       assertThat(description).as("info.description covers %s", status).contains(status);
     }

@@ -660,7 +660,7 @@ describe('LibraryDetailPage', () => {
 
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, 'Bibliothek "Rechtsquellen Soziales" löschen?', 'Löschen')
+    await answerConfirm(user, '„Rechtsquellen Soziales“ löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
@@ -680,7 +680,7 @@ describe('LibraryDetailPage', () => {
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
 
-    const question = 'Bibliothek "Rechtsquellen Soziales" löschen?'
+    const question = '„Rechtsquellen Soziales“ löschen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /indizierten dokumente/i,
     )
@@ -1326,7 +1326,7 @@ describe('LibraryDetailPage', () => {
       screen.getByRole('button', { name: 'Weitere Aktionen für „dienstanweisung-2024.pdf“' }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, 'Dokument "dienstanweisung-2024.pdf" löschen?', 'Löschen')
+    await answerConfirm(user, '„dienstanweisung-2024.pdf“ löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibraryDocument).toHaveBeenCalledWith('library-team', 'document-1')
@@ -3748,7 +3748,7 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      await answerConfirm(user, 'Ordner "Protokolle" und 7 Dokumente löschen?', 'Löschen')
+      await answerConfirm(user, '„Protokolle“ löschen?', 'Löschen')
 
       await waitFor(() => {
         expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle')
@@ -3780,7 +3780,7 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      await answerConfirm(user, 'Ordner "Protokolle" und 3 Dokumente löschen?', 'Abbrechen')
+      await answerConfirm(user, '„Protokolle“ löschen?', 'Abbrechen')
 
       expect(mockDeleteLibraryFolder).not.toHaveBeenCalled()
     })

@@ -8,6 +8,7 @@ import PasswordField from './PasswordField'
 import PasswordStrengthMeter from './PasswordStrengthMeter'
 import { copyToClipboard } from '@/shared/utils/clipboard'
 import { generateStrongPassword } from '@/shared/session/passwordStrength'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface NewPasswordFieldProps {
   id: string
@@ -75,7 +76,7 @@ export default function NewPasswordField({
           startIcon={<AutoFixHighOutlinedIcon />}
           onClick={generate}
           disabled={disabled}
-          sx={{ fontSize: 12.5 }}
+          sx={{ fontSize: fontSize.meta }}
         >
           Sicheres Passwort erzeugen
         </Button>
@@ -86,7 +87,7 @@ export default function NewPasswordField({
             startIcon={<ContentCopyOutlinedIcon />}
             onClick={() => void copyToClipboard(value, 'Passwort')}
             disabled={disabled}
-            sx={{ fontSize: 12.5 }}
+            sx={{ fontSize: fontSize.meta }}
           >
             Kopieren
           </Button>

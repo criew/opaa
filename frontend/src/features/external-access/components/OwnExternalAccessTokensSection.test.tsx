@@ -498,10 +498,10 @@ describe('OwnExternalAccessTokensSection', () => {
       await screen.findByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
     )
     const confirmation = await screen.findByRole('dialog', {
-      name: 'Token „Claude Code (Dienst-PC)“ widerrufen?',
+      name: '„Claude Code (Dienst-PC)“ widerrufen?',
     })
     expect(within(confirmation).getByText(/verliert sofort den Zugriff/)).toBeInTheDocument()
-    await answerConfirm(user, 'Token „Claude Code (Dienst-PC)“ widerrufen?', 'Widerrufen')
+    await answerConfirm(user, '„Claude Code (Dienst-PC)“ widerrufen?', 'Widerrufen')
 
     await waitFor(() => expect(screen.getByText('widerrufen')).toBeInTheDocument())
   })

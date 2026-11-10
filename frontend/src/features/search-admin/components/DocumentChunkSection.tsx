@@ -14,6 +14,7 @@ import type { DocumentChunksResponse } from '@/shared/api/types'
 import SectionHead from '@/shared/ui/SectionHead'
 import ChunkContent from './ChunkContent'
 import { plural } from '@/shared/utils/format'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Lets the diagnosis result open a document here, the one navigation that reaches into this section. */
 export interface DocumentChunkSectionHandle {
@@ -24,7 +25,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
   const stored = document.chunks.length
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         {document.documentTitle ?? document.documentId}
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
@@ -54,14 +55,14 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
                     spacing={1.5}
                     sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
                   >
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                       Chunk {chunk.chunkIndex ?? '?'}
                     </Typography>
-                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                       {plural(chunk.content.length, 'Zeichen', 'Zeichen')}
                     </Typography>
                     {typeof location === 'string' && location !== '' && (
-                      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                         Fundort: {location}
                       </Typography>
                     )}

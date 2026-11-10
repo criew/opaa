@@ -2,6 +2,7 @@ import type { Ref } from 'react'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface SummaryEntry {
   /** Row and field label, e.g. „Verbindung: Adresse fehlt“. */
@@ -16,17 +17,21 @@ export interface SummaryEntry {
 export default function ErrorSummary({
   entries,
   ref,
+  idPrefix = 'setup',
 }: {
   entries: SummaryEntry[]
   ref?: Ref<HTMLDivElement>
+  /** Prefix of the title's id; unique per page. */
+  idPrefix?: string
 }) {
   if (entries.length === 0) return null
+  const titleId = `${idPrefix}-error-summary-title`
   return (
     <Box
       ref={ref}
       tabIndex={-1}
       role="alert"
-      aria-labelledby="setup-error-summary-title"
+      aria-labelledby={titleId}
       sx={{
         borderLeft: 3,
         borderColor: 'error.main',
@@ -35,11 +40,7 @@ export default function ErrorSummary({
         mb: 3,
       }}
     >
-      <Typography
-        id="setup-error-summary-title"
-        component="h3"
-        sx={{ fontSize: 14, fontWeight: 600 }}
-      >
+      <Typography id={titleId} component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         {entries.length === 1
           ? 'Fehler: 1 Angabe prüfen'
           : `Fehler: ${entries.length} Angaben prüfen`}
@@ -51,7 +52,7 @@ export default function ErrorSummary({
               component="button"
               type="button"
               onClick={entry.onJump}
-              sx={{ fontSize: 13.5, textAlign: 'left', minHeight: 24, py: 0.25 }}
+              sx={{ fontSize: fontSize.text, textAlign: 'left', minHeight: 24, py: 0.25 }}
             >
               {entry.text}
             </Link>

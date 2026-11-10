@@ -52,6 +52,9 @@ namespaces:
   - number: 231
     purpose: registration in the instance register
     owners: [java/io/opaa/instance/InstanceRegistry.java]
+  - number: 232
+    purpose: issuance of personal access tokens of one account against the bound of active tokens
+    owners: [java/io/opaa/externalaccess/token/ExternalAccessTokenRepository.java]
 
 reserved: []
 

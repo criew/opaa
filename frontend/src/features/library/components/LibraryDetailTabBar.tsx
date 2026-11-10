@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import type { LibraryDetailTab } from './libraryDetailAccess'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface LibraryDetailTabBarProps {
   activeTab: LibraryDetailTab
@@ -81,7 +82,7 @@ export default function LibraryDetailTabBar({
           minHeight: 42,
           '& .MuiTab-root': {
             textTransform: 'none',
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             fontWeight: 500,
             minHeight: 42,
             px: 2,

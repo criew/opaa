@@ -19,9 +19,9 @@ export const STEP_RHYTHM = {
   actionsDivider: 2,
 } as const
 
-/** The step's title (h2), scale step xl with the heading line height and tracking (guidelines 3). */
+/** The step's title (h2), type step wizardTitle with the heading line height and tracking (guidelines 3). */
 export const STEP_TITLE_SX = {
-  fontSize: fontSize.xl,
+  fontSize: fontSize.wizardTitle,
   fontWeight: fontWeight.semibold,
   lineHeight: lineHeight.snug,
   letterSpacing: letterSpacing.tight,

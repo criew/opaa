@@ -5,6 +5,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import { fontSize } from '@/shared/theme/tokens'
 
 const RELEASE_HELP = 'Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar.'
 
@@ -94,7 +95,7 @@ export default function GroupFormFields({
             />
             <Typography
               id={`${idPrefix}-release-help`}
-              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
             >
               {RELEASE_HELP}
             </Typography>
@@ -115,7 +116,7 @@ export default function GroupFormFields({
           />
           <Typography
             id={`${idPrefix}-protection-help`}
-            sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
           >
             {PROTECTION_HELP}
           </Typography>

@@ -10,6 +10,7 @@ import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import { outlinedBadgeSx } from '@/shared/ui/badgeStyles'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
+import { iconSize } from '@/shared/theme/tokens'
 
 /**
  * Only an asset released to all accounts carries the globe; a restricted one carries nothing.
@@ -22,7 +23,7 @@ export function PublicMark() {
       <PublicIcon
         titleAccess={label}
         aria-label={label}
-        sx={{ position: 'relative', zIndex: 1, fontSize: 16, color: 'text.secondary' }}
+        sx={{ position: 'relative', zIndex: 1, fontSize: iconSize.sm, color: 'text.secondary' }}
       />
     </Tooltip>
   )
@@ -45,7 +46,7 @@ export function PrivateMark() {
         py: 0.25,
       }}
     >
-      <LockOutlinedIcon aria-hidden sx={{ fontSize: 13 }} />
+      <LockOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
       Privat
     </Typography>
   )
@@ -71,7 +72,7 @@ export function ErasingMark() {
         py: 0.25,
       }}
     >
-      <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 13, color: 'error.main' }} />
+      <DeleteOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs, color: 'error.main' }} />
       Wird gelöscht
     </Typography>
   )
@@ -93,7 +94,7 @@ export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
         py: 0.25,
       }}
     >
-      <Icon aria-hidden sx={{ fontSize: 13 }} />
+      <Icon aria-hidden sx={{ fontSize: iconSize.xs }} />
       {definition.title}
     </Typography>
   )
@@ -142,9 +143,9 @@ export function FavoriteToggle({
       sx={sx}
     >
       {favorite ? (
-        <StarIcon sx={{ fontSize: 20, color: 'primary.main' }} />
+        <StarIcon sx={{ fontSize: iconSize.md, color: 'primary.main' }} />
       ) : (
-        <StarBorderIcon sx={{ fontSize: 20 }} />
+        <StarBorderIcon sx={{ fontSize: iconSize.md }} />
       )}
     </IconButton>
   )

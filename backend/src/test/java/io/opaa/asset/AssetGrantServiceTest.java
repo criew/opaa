@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -76,7 +77,7 @@ class AssetGrantServiceTest {
     groupMemberships = mock(GroupMembershipResolver.class);
     stewardships = mock(GroupStewardshipDirectory.class);
     accessService = mock(AssetAuthorization.class);
-    libraryType = mock(AssetTypeDefinition.class);
+    libraryType = mock(AssetTypeDefinition.class, CALLS_REAL_METHODS);
     when(libraryType.assetType()).thenReturn(KnowledgeLibrary.ASSET_TYPE);
     when(libraryType.singular()).thenReturn("Bibliothek");
     when(libraryType.auditObjectType()).thenReturn(AuditObjectType.KNOWLEDGE_LIBRARY);

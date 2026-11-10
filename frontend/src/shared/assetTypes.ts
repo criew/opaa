@@ -1,9 +1,15 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { useMemo } from 'react'
-import { CATALOG_ROUTE, documentTemplateRoute, promptLibraryRoute } from '@/shared/routes'
+import {
+  CATALOG_ROUTE,
+  agentRoute,
+  documentTemplateRoute,
+  promptLibraryRoute,
+} from '@/shared/routes'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { AssetType, Capability } from '@/shared/api/types'
 import type { FeatureFlags } from '@/shared/session/types'
@@ -21,6 +27,8 @@ export interface AssetTypeDefinition {
   title: string
   /** The singular noun as a sentence names it ("diese Bibliothek"). */
   noun: string
+  /** Set for a masculine noun ("der Agent"): its form outside the nominative ("Agenten"). */
+  masculineOblique?: string
   /** One sentence under the label in the type choice. */
   description: string
   Icon: SvgIconComponent
@@ -76,6 +84,21 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     extentLabel: (count) => (count === 1 ? '1 Prompt' : `${count} Prompts`),
   },
   {
+    type: 'AGENT',
+    slug: 'agents',
+    label: 'Agenten',
+    title: 'Agent',
+    noun: 'Agent',
+    masculineOblique: 'Agenten',
+    description: 'Arbeitet eine Frage in mehreren Schritten mit Werkzeugen ab, im Chat per „@“.',
+    Icon: SmartToyOutlinedIcon,
+    routePrefix: '/agents',
+    detailRoute: (assetId) => agentRoute(assetId),
+    createRoute: '/agents/new',
+    createCapabilities: ['CREATE_AGENT'],
+    extentLabel: (count) => (count === 1 ? '1 Werkzeug' : `${count} Werkzeuge`),
+  },
+  {
     type: 'DOCUMENT_TEMPLATE',
     slug: 'templates',
     label: 'Vorlagen',
@@ -92,10 +115,14 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
 ]
 
 /**
- * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) is on; a type behind
- * a switched-off feature is offered nowhere - no filter, tile, "Neuer Katalogeintrag" option, picker or page.
+ * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) and runtime switch
+ * are on; a type behind a switched-off one is offered nowhere - no filter, tile, "Neuer
+ * Katalogeintrag" option, picker or page.
  */
-function activeIn(features: FeatureFlags, switches?: RuntimeSwitches): AssetTypeDefinition[] {
+function activeIn(
+  features: FeatureFlags,
+  switches?: Partial<RuntimeSwitches>,
+): AssetTypeDefinition[] {
   return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features, switches))
 }
 
@@ -108,7 +135,11 @@ export function activeAssetTypes(): AssetTypeDefinition[] {
 export function useActiveAssetTypes(): AssetTypeDefinition[] {
   const features = useAuthStore((state) => state.features)
   const documentTemplates = useRuntimeSwitchStore((state) => state.documentTemplates)
-  return useMemo(() => activeIn(features, { documentTemplates }), [features, documentTemplates])
+  const agents = useRuntimeSwitchStore((state) => state.agents)
+  return useMemo(
+    () => activeIn(features, { documentTemplates, agents }),
+    [features, documentTemplates, agents],
+  )
 }
 
 /** The definition of an offered type; a type behind a switched-off feature has none. */
@@ -121,6 +152,39 @@ export function assetTypeDefinition(
 /** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
 export function assetTypeLabel(assetType: AssetType | string | null | undefined): string {
   return assetTypeDefinition(assetType)?.noun ?? assetType ?? ''
+}
+
+/** "diese Bibliothek" / "diesen Agenten", the object of a sentence. */
+export function assetThisAccusative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `diesen ${definition.masculineOblique}`
+  return `diese ${assetTypeLabel(assetType)}`
+}
+
+/** "dieser Bibliothek" / "dieses Agenten". */
+export function assetThisGenitive(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `dieses ${definition.masculineOblique}`
+  return `dieser ${assetTypeLabel(assetType)}`
+}
+
+/** "dieser Bibliothek" / "diesem Agenten", after "zu". */
+export function assetThisDative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `diesem ${definition.masculineOblique}`
+  return `dieser ${assetTypeLabel(assetType)}`
+}
+
+/** "Die Bibliothek" / "Der Agent", at the start of a sentence. */
+export function assetTheNominative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  return `${definition?.masculineOblique ? 'Der' : 'Die'} ${assetTypeLabel(assetType)}`
+}
+
+/** "Eine Bibliothek" / "Ein Agent", at the start of a sentence. */
+export function assetANominative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  return `${definition?.masculineOblique ? 'Ein' : 'Eine'} ${assetTypeLabel(assetType)}`
 }
 
 /** The name of an asset type, as the type marker of a mixed list shows it. */

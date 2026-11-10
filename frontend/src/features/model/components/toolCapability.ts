@@ -1,4 +1,5 @@
 import type { LlmModelToolCapability, ToolCapability } from '@/shared/api/types'
+import { formatDate } from '@/shared/utils/formatDate'
 
 export const TOOL_CAPABILITY_LABELS: Record<ToolCapability, string> = {
   UNVERIFIED: 'Ungeprüft',
@@ -14,7 +15,7 @@ export const TOOL_CAPABILITY_HINTS: Record<ToolCapability, string> = {
 }
 
 function formatDay(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+  return formatDate(value)
 }
 
 /**

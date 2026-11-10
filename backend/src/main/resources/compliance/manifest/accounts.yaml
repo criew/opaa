@@ -287,6 +287,11 @@ data:
           - version
         person:
           columns: [updated_by]
+      - name: agent_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, updated_at, version]
+        person:
+          columns: [updated_by]
       - name: document_template_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, updated_at]
@@ -678,6 +683,8 @@ capabilities:
   - id: CREATE_INTERNAL_GROUP
     seesAboutOthers: Anzeigenamen der Personen, die in die eigene Gruppe aufgenommen werden
   - id: CREATE_PROMPT_LIBRARY
+    seesAboutOthers: Nichts über andere Personen
+  - id: CREATE_AGENT
     seesAboutOthers: Nichts über andere Personen
   - id: CREATE_TEMPLATE
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage

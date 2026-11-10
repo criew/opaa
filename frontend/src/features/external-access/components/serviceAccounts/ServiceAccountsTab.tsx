@@ -20,6 +20,7 @@ import { AccountState, DetailFrame } from './ServiceAccountParts'
 import { confirmDeactivate, useServiceAccountDetail } from './serviceAccountHooks'
 import { MISSING_PERSON, formatDate, soonLabel, tokenCountLabel } from './serviceAccountLabels'
 import { useServiceAccounts } from './useServiceAccounts'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The query parameter that opens one account in the tab, so that the detail has an address. */
 const ACCOUNT_PARAM = 'account'
@@ -82,10 +83,10 @@ function AccountRow({ account, href }: { account: ServiceAccountResponse; href: 
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
             {account.name}
           </Typography>
-          <Typography component="div" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             <RowFacts account={account} />
           </Typography>
         </Box>
@@ -112,7 +113,12 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
           <>
             <Typography
               component="h2"
-              sx={{ fontSize: 22, fontWeight: 600, mb: 2, overflowWrap: 'anywhere' }}
+              sx={{
+                fontSize: fontSize.detailTitle,
+                fontWeight: 600,
+                mb: 2,
+                overflowWrap: 'anywhere',
+              }}
             >
               {account.name}
             </Typography>
@@ -121,7 +127,12 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
             {account.active && (
               <DetailSection title="Deaktivieren" headingLevel="h3">
                 <Typography
-                  sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5, maxWidth: '70ch' }}
+                  sx={{
+                    fontSize: fontSize.text,
+                    color: 'text.secondary',
+                    mb: 1.5,
+                    maxWidth: '70ch',
+                  }}
                 >
                   Widerruft alle Tokens sofort; das Dienstkonto bleibt zur Nachvollziehbarkeit
                   erhalten.
@@ -191,7 +202,12 @@ export default function ServiceAccountsTab() {
         }}
       >
         <Typography
-          sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640, flex: '1 1 320px' }}
+          sx={{
+            fontSize: fontSize.text,
+            color: 'text.secondary',
+            maxWidth: 640,
+            flex: '1 1 320px',
+          }}
         >
           Eigene, lesende Zugänge für Verfahren, unabhängig von einzelnen Beschäftigten. Welche
           Bibliotheken ein Dienstkonto sieht, entscheidet die Verwaltung der Bibliothek.
@@ -250,7 +266,7 @@ export default function ServiceAccountsTab() {
           )}
           {shown.length === 0 ? (
             <Box sx={{ py: 1.5 }}>
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 0.5 }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 0.5 }}>
                 {needle ? `Keine Treffer für „${query.trim()}“.` : 'Kein aktives Dienstkonto.'}
               </Typography>
               {needle && <TextAction onClick={() => setQuery('')}>Suche zurücksetzen</TextAction>}

@@ -247,9 +247,33 @@ class TranscriptionStreamHandlerTest {
 
     for (long seconds = 0; seconds < TranscriptionStreamHandler.HARD_LIMIT.toSeconds(); seconds++) {
       handler.handleBinaryMessage(socket, new BinaryMessage(second));
+      clock.advance(Duration.ofSeconds(1));
     }
     assertThat(closed.get()).isNull();
     handler.handleBinaryMessage(socket, new BinaryMessage(new byte[] {1, 2}));
+
+    assertThat(sent).last().isEqualTo("{\"type\":\"error\",\"reason\":\"limit\"}");
+    assertThat(slotFreed).isTrue();
+  }
+
+  @Test
+  void audioRunningFarAheadOfRealTimeEndsTheSessionWithLimit() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    byte[] second = new byte[24_000 * 2];
+    long allowance = TranscriptionStreamHandler.PACE_ALLOWANCE.toSeconds();
+
+    // a burst up to the allowance passes, as frames the network held back would
+    for (long seconds = 0; seconds < allowance; seconds++) {
+      handler.handleBinaryMessage(socket, new BinaryMessage(second));
+    }
+    assertThat(closed.get()).isNull();
+    // one second later the pace admits two more seconds of audio, not three
+    clock.advance(Duration.ofSeconds(1));
+    handler.handleBinaryMessage(socket, new BinaryMessage(second));
+    handler.handleBinaryMessage(socket, new BinaryMessage(second));
+    assertThat(closed.get()).isNull();
+    handler.handleBinaryMessage(socket, new BinaryMessage(second));
 
     assertThat(sent).last().isEqualTo("{\"type\":\"error\",\"reason\":\"limit\"}");
     assertThat(slotFreed).isTrue();

@@ -12,7 +12,7 @@ import type { S3ScopeRef } from '../utils/s3Source'
 import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 
 interface S3EventSectionProps {
   libraryId: string
@@ -181,7 +181,12 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           </Typography>
           <Typography
             component="pre"
-            sx={{ fontFamily: fontFamily.mono, fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
+            sx={{
+              fontFamily: fontFamily.mono,
+              fontSize: fontSize.meta,
+              whiteSpace: 'pre-wrap',
+              mb: 2,
+            }}
           >
             {[
               `mc admin config set ALIAS notify_webhook:opaa endpoint="${revealed?.url ?? ''}" auth_token="${revealed?.token ?? ''}"`,
@@ -196,7 +201,12 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           </Typography>
           <Typography
             component="pre"
-            sx={{ fontFamily: fontFamily.mono, fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
+            sx={{
+              fontFamily: fontFamily.mono,
+              fontSize: fontSize.meta,
+              whiteSpace: 'pre-wrap',
+              mb: 2,
+            }}
           >
             {`push-endpoint=${(revealed?.url ?? '').replace('://', `://opaa:${revealed?.token ?? ''}@`)}`}
           </Typography>

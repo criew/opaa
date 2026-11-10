@@ -1,6 +1,7 @@
 import type { ExternalAccessSettingsResponse } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { formatDate } from './tokenLabels'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 /** From how many days before its end a release is marked as running out. */
 export const RELEASE_ENDING_DAYS = 30
@@ -16,7 +17,7 @@ function changedLine(settings: ExternalAccessSettingsResponse): string {
 }
 
 function count(value: number, one: string, many: string): string {
-  return value === 1 ? `1 ${one}` : `${value.toLocaleString('de-DE')} ${many}`
+  return value === 1 ? `1 ${one}` : `${formatNumber(value)} ${many}`
 }
 
 /**

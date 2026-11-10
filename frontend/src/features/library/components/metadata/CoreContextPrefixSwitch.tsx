@@ -7,6 +7,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import ChangeImpactNotice from './ChangeImpactNotice'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * One switchable core field. The Folgekosten of the planned switch stand in a confirmation dialog
@@ -40,7 +41,7 @@ export default function CoreContextPrefixSwitch({
           />
         }
         label={label}
-        slotProps={{ typography: { sx: { fontSize: 13.5 } } }}
+        slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
       />
       <Dialog open={pending != null} onClose={() => setPending(null)} fullWidth maxWidth="sm">
         <DialogTitle>{`${label} im Kontextpräfix ${pending ? 'einschalten' : 'ausschalten'}`}</DialogTitle>

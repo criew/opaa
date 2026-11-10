@@ -16,6 +16,7 @@ es an eine Person, eine Gruppe oder an „Alle Konten“.
 | Konnektorbibliotheken anlegen | je Quellart und je Zugang: Dateisystem, Webverzeichnis, RSS-Feed, Confluence und S3 für Alle Konten; jede weitere Quellart und jeder neue Zugang nur die Systemverwaltung |
 | Interne Gruppen anlegen | niemand außer der Systemverwaltung |
 | Prompt-Bibliotheken anlegen | Alle Konten |
+| Agenten anlegen | niemand außer der Systemverwaltung; nur sichtbar, wenn [Agenten eingeschaltet](agenten.md) sind |
 | Vorlagen anlegen | ab Werk niemand außer der Systemverwaltung; nur sichtbar, solange [Vorlagen](vorlagen.md) eingeschaltet sind |
 
 1. In der Zeile des Rechts „Ändern“.
@@ -31,7 +32,7 @@ vorher und nachher. Ein Entzug wirkt sofort; bestehende Spaces und Bibliotheken 
 **Konnektorbibliotheken** sind der erste Kandidat für eine Einschränkung: Sie erreichen Server und
 hinterlegte Zugangsdaten. Die Freigabe eines Zugangs öffnet keinen zweiten derselben Quellart, und
 die Freigabe einer Quellart keinen ihrer Zugänge. Gebraucht wird sie für alles, was ein neues Ziel
-öffnet: anlegen, einem anderen Zugang zuordnen, vom Zugang lösen, die Adresse auf einen anderen
+öffnet: anlegen, einem anderen Zugang zuordnen, die Zuordnung zum Zugang entfernen, die Adresse auf einen anderen
 Server stellen. Läufe stoppt sie nicht; das tut nur die Sperre ([Zugänge einrichten](zugaenge.md)).
 
 **Freigabe an „Alle Konten“.** Wer eine Bibliothek anlegt, darf sie auch an „Alle Konten“

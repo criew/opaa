@@ -30,16 +30,17 @@ import { chatTitle, splitChats } from './chatListSections'
 import { RECENT_PAGE_SIZE } from '../stores/chatListStore'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
   minHeight: 0,
   px: 0.75,
   py: 0.25,
-  fontSize: 11.5,
+  fontSize: fontSize.meta,
   whiteSpace: 'nowrap',
   '& .MuiButton-endIcon': { ml: 0.25 },
-  '& .MuiButton-endIcon > svg': { fontSize: 16 },
+  '& .MuiButton-endIcon > svg': { fontSize: iconSize.sm },
 } as const
 
 /**
@@ -292,8 +293,8 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
   async function handleDelete(chat: ChatSummary) {
     const confirmed = await confirmAction({
-      question: `„${chatTitle(chat)}“ wirklich löschen?`,
-      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${chatTitle(chat)}“ löschen?`,
+      consequence: 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })
@@ -417,7 +418,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     const headingId = `${groupIdPrefix}-${key}`
     // The pin stands once at the head of its group, never on each row; the label states it.
     const icon = key === 'pinned' && (
-      <PushPinIcon aria-hidden sx={{ fontSize: 12, flexShrink: 0, opacity: 0.7 }} />
+      <PushPinIcon aria-hidden sx={{ fontSize: iconSize.xs, flexShrink: 0, opacity: 0.7 }} />
     )
     if (collapsibleGroups) {
       const collapsed = key === 'pinned' ? pinnedCollapsed : recentCollapsed
@@ -552,7 +553,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
                 disabled={Boolean(isArchived)}
                 sx={{ p: 0.5, borderRadius: '4px' }}
               >
-                <AddIcon sx={{ fontSize: 16 }} />
+                <AddIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -570,7 +571,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
               }}
               sx={{ p: 0.5, borderRadius: '4px' }}
             >
-              <SearchIcon sx={{ fontSize: 16 }} />
+              <SearchIcon sx={{ fontSize: iconSize.sm }} />
             </IconButton>
           </Tooltip>
         </Box>

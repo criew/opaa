@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface AuthNoticeProps {
   /** The page's one h1 - it stays the same whether the outcome was success or failure. */
@@ -35,9 +36,11 @@ export default function AuthNotice({
         {message}
       </Alert>
       {detail && (
-        <Typography sx={{ mt: 2, fontSize: 13.5, color: 'text.secondary' }}>{detail}</Typography>
+        <Typography sx={{ mt: 2, fontSize: fontSize.text, color: 'text.secondary' }}>
+          {detail}
+        </Typography>
       )}
-      {children && <Box sx={{ mt: 3, fontSize: 13 }}>{children}</Box>}
+      {children && <Box sx={{ mt: 3, fontSize: fontSize.text }}>{children}</Box>}
     </>
   )
 }

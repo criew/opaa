@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -204,11 +204,21 @@ Konten").
   (`change-password`);
   Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
   „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten. Hinter der Anmeldung
-  zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (`max-requests-per-account`,
-  geprüft hinter der Sicherheitskette; ein Zugangstoken je Token und zugleich je Person über alle
-  ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
-  seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit abweist
-  (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), gibt die globale zurück.
+  zählen die teuren Endpunkte je Client-Adresse, je Konto (`max-requests-per-account`, geprüft
+  hinter der Sicherheitskette; ein Zugangstoken je Token und zugleich je Person über alle ihre
+  Tokens) und global. **Jede globale Grenze hat eine Kontogrenze darunter**, damit ein einzelnes
+  Konto sie nicht für alle ausschöpft; ausgenommen sind der Push-Eingang (kein Konto, Budget je
+  Bibliothek) und die Anmeldung selbst. Eine Abweisung je Konto gibt die übrigen Marken zurück, ein
+  Zugangstoken seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit
+  abweist (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), und jede Abweisung durch die
+  Rechte- oder Existenzprüfung der Operation vor der Arbeit (`RefusedBeforeWork`: Indexierungsanstoß,
+  Verbindungstest, Originalabruf) geben die globale zurück. Entscheidend ist die ausdrückliche
+  Markierung, nicht der Statuscode: Ein `404` nach einem fehlgeschlagenen ausgehenden Abruf hat die
+  Arbeit getan und behält seine Marke; Adress- und Kontomarke bleiben in jedem Fall verbraucht, so
+  wird das Ausprobieren fremder Kennungen weder billiger noch aufschlussreicher. Alle übrigen
+  schreibenden Aufrufe (`write`) teilen ein Budget je Client-Adresse und je Konto, **bewusst ohne
+  globale Grenze**: Eine gemeinsame Grenze über alle Änderungen ließe wenige Konten alle anderen von
+  jeder Änderung aussperren, und jeder Schreibaufruf zählte zusätzlich in der Datenbank.
 - **Kontosperre** nach Fehlversuchen für eine feste Dauer, Werkseinstellung 5 Fehlversuche und 15
   Minuten, von der Systemverwaltung innerhalb der Grenzen des Betriebs einstellbar (ADR-0060,
   Entscheidung 17), auditiert

@@ -37,7 +37,7 @@ describe('asset marks', () => {
       const style = getComputedStyle(mark)
       expect(style.borderRadius).toBe(`${radius.pill}px`)
       expect(style.fontWeight).toBe('500')
-      expect(style.fontSize).toBe(`${fontSize.xs}px`)
+      expect(style.fontSize).toBe(`${fontSize.meta}px`)
     }
   })
 

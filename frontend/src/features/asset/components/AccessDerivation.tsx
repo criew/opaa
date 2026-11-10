@@ -12,7 +12,9 @@ import type {
 import { getAssetAccessDerivation } from '../api/assetApi'
 import { accessBasisLabel } from './assetLabels'
 import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetThisAccusative, assetThisGenitive } from '../../../shared/assetTypes'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 
 type AssetTarget = { kind: 'asset'; assetType: AssetType; assetId: string }
 type SpaceTarget = { kind: 'space'; spaceId: string; userId?: string }
@@ -89,14 +91,14 @@ function pathRoleLabel(path: AccessPathResponse): string | null {
 }
 
 function sinceTitle(path: AccessPathResponse): string | undefined {
-  return path.since ? `Seit ${new Date(path.since).toLocaleDateString('de-DE')}` : undefined
+  return path.since ? `Seit ${formatDate(path.since)}` : undefined
 }
 
-const assetRolePhrases: Record<AssetRole, (noun: string) => [string, string]> = {
-  VIEWER: (noun) => ['darf', `diese ${noun} lesen`],
-  EDITOR: (noun) => ['darf', `diese ${noun} bearbeiten`],
-  MANAGER: (noun) => ['darf', `diese ${noun} verwalten`],
-  OWNER: (noun) => ['ist', `Eigentümer dieser ${noun}`],
+const assetRolePhrases: Record<AssetRole, (type: string) => [string, string]> = {
+  VIEWER: (type) => ['darf', `${assetThisAccusative(type)} lesen`],
+  EDITOR: (type) => ['darf', `${assetThisAccusative(type)} bearbeiten`],
+  MANAGER: (type) => ['darf', `${assetThisAccusative(type)} verwalten`],
+  OWNER: (type) => ['ist', `Eigentümer ${assetThisGenitive(type)}`],
 }
 
 const pluralVerbs: Record<string, string> = { darf: 'dürfen', ist: 'sind', hat: 'haben' }
@@ -112,9 +114,9 @@ function headline(
       ? role
         ? ['ist', `${spaceRoleLabel(role)} in diesem Space`]
         : ['hat', 'Zugriff auf diesen Space']
-      : (assetRolePhrases[role as AssetRole]?.(assetTypeLabel(target.assetType)) ?? [
+      : (assetRolePhrases[role as AssetRole]?.(target.assetType) ?? [
           'hat',
-          `Zugriff auf diese ${assetTypeLabel(target.assetType)}`,
+          `Zugriff auf ${assetThisAccusative(target.assetType)}`,
         ])
   return subjectName ? `${subjectName} ${verb} ${rest}` : `Sie ${pluralVerbs[verb]} ${rest}`
 }
@@ -137,7 +139,7 @@ function administrationSentence(
 ): string {
   const subject = subjectName ? `${subjectName} verwaltet` : 'Sie verwalten'
   const also = besideOtherWays ? ' zudem' : ''
-  return `${subject} diese ${assetTypeLabel(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
+  return `${subject} ${assetThisAccusative(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
 }
 
 /**
@@ -205,7 +207,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
   const role = administration ? highestAssetRole(paths) : answer.role
   const administrationLine =
     administration && target.kind === 'asset' ? (
-      <Typography sx={{ fontSize: 13.5 }}>
+      <Typography sx={{ fontSize: fontSize.text }}>
         {administrationSentence(target.assetType, subjectName, paths.length > 0 || withheld)}
       </Typography>
     ) : null
@@ -223,7 +225,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
   if (wayCount === 1 && paths.length === 1) {
     return (
       <Stack spacing={0.25}>
-        <Typography sx={{ fontSize: 13.5 }} title={sinceTitle(paths[0])}>
+        <Typography sx={{ fontSize: fontSize.text }} title={sinceTitle(paths[0])}>
           {`${first} – ${originOf(paths[0])}.`}
         </Typography>
         {administrationLine}
@@ -233,7 +235,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
 
   return (
     <Stack spacing={0.25}>
-      <Typography sx={{ fontSize: 13.5 }}>{`${first}.`}</Typography>
+      <Typography sx={{ fontSize: fontSize.text }}>{`${first}.`}</Typography>
       {paths.map((path, index) => {
         const pathRole = pathRoleLabel(path)
         const origin = capitalized(originOf(path))
@@ -241,18 +243,20 @@ export default function AccessDerivation(props: AccessDerivationProps) {
           <Typography
             key={`${path.basis}-${path.group?.id ?? index}`}
             title={sinceTitle(path)}
-            sx={{ fontSize: 13, pl: 2 }}
+            sx={{ fontSize: fontSize.text, pl: 2 }}
           >
             {pathRole ? `${origin}: ${pathRole}` : origin}
           </Typography>
         )
       })}
       {withheld && (
-        <Typography sx={{ fontSize: 13, pl: 2, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, pl: 2, color: 'text.secondary' }}>
           Ein Weg führt über eine geschützte Gruppe und wird hier nicht benannt.
         </Typography>
       )}
-      {wayCount > 1 && <Typography sx={{ fontSize: 13 }}>Es gilt die höhere Rolle.</Typography>}
+      {wayCount > 1 && (
+        <Typography sx={{ fontSize: fontSize.text }}>Es gilt die höhere Rolle.</Typography>
+      )}
       {administrationLine}
     </Stack>
   )

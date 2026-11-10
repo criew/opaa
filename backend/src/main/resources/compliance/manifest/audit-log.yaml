@@ -436,6 +436,16 @@ auditEvents:
   - id: PROMPT_LIBRARY_DELETED
     trigger: Eine Prompt-Bibliothek wird mit ihren Prompts gelöscht
     payloadKeys: [name, promptsRemoved]
+  - id: AGENT_CREATED
+    trigger: Ein Agent wird angelegt, auch der mitgelieferte Agent „Recherche“ beim Einschalten der Agenten
+    payloadKeys: [name]
+  - id: AGENT_CHANGED
+    trigger: Name, Zweck, Anweisung, Bibliotheken, Werkzeuge, Planschritt oder Grenzen eines Agenten ändern sich
+    details: Nur die Namen der geänderten Felder, nie die Anweisung oder andere Werte
+    payloadKeys: [changedFields]
+  - id: AGENT_DELETED
+    trigger: Ein Agent wird gelöscht
+    payloadKeys: [name]
   - id: DOCUMENT_TEMPLATE_CREATED
     trigger: Eine Dokumentvorlage wird angelegt
     payloadKeys: [name]
@@ -1245,6 +1255,10 @@ auditEvents:
       - revokedSessions
       - spaceMemberships
       - systemRole
+  - id: AGENT_SETTINGS_CHANGED
+    trigger: Die Systemverwaltung schaltet Agenten oder einzelne Werkzeuge ein oder aus
+    details: Vorher/Nachher der geänderten Schlüssel
+    payloadKeys: [enabled, enabledTools]
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: >-

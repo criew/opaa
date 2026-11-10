@@ -29,6 +29,7 @@ import { compact, isBlank } from '../../utils/validation'
 import ApiKeyField, { type StoredSecretWording } from '../ApiKeyField'
 import FormField from '../FormField'
 import StepFrame from '../StepFrame'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const MAIL_FIELDS = [
   'host',
@@ -207,7 +208,7 @@ export default function MailStep({
       <Box>
         <Typography
           id={encryptionLabelId}
-          sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: '5px' }}
         >
           {SMTP_LABELS.encryption}
         </Typography>
@@ -224,8 +225,10 @@ export default function MailStep({
               sx={{ alignItems: 'flex-start', mb: 1, '& .MuiRadio-root': { mt: -0.5 } }}
               label={
                 <Box>
-                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{option.label}</Typography>
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                    {option.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                     {option.hint}
                   </Typography>
                 </Box>
@@ -286,8 +289,11 @@ export default function MailStep({
         hint="Nur für diese Prüfung; die Adresse wird nicht gespeichert."
       />
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-        <InfoOutlined aria-hidden sx={{ fontSize: 18, color: 'text.secondary', mt: '1px' }} />
-        <Typography id={checkHintId} sx={{ fontSize: 14 }}>
+        <InfoOutlined
+          aria-hidden
+          sx={{ fontSize: iconSize.md, color: 'text.secondary', mt: '1px' }}
+        />
+        <Typography id={checkHintId} sx={{ fontSize: fontSize.text }}>
           {checkHint()}
         </Typography>
       </Box>

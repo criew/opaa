@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import { blue } from '@/shared/theme/tokens'
+import { blue, fontSize, iconSize } from '@/shared/theme/tokens'
 import { catalogStatusLabel } from './assetLabels'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
@@ -55,14 +55,14 @@ function StateDotLine({ id, status }: { id?: string; status: AssetTileStatus }) 
     <Box
       id={id}
       component="span"
-      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 11.5 }}
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: fontSize.meta }}
     >
       <Box
         component="span"
         aria-hidden
         sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: STATUS_DOT[status] }}
       />
-      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         {catalogStatusLabel(status)}
       </Typography>
     </Box>
@@ -71,7 +71,7 @@ function StateDotLine({ id, status }: { id?: string; status: AssetTileStatus }) 
 
 function MetaLine({ id, children }: { id?: string; children: ReactNode }) {
   return (
-    <Typography id={id} component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+    <Typography id={id} component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
       {children}
     </Typography>
   )
@@ -124,7 +124,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
     .join(' ')
 
   const title = (
-    <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
+    <Typography component="span" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
       {tile.name}
     </Typography>
   )
@@ -156,9 +156,12 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
             never of colour alone (guidelines 5.11); the tile's frame stays the same. */}
         {selecting &&
           (selected ? (
-            <CheckCircleIcon aria-hidden sx={{ fontSize: 20, color: 'primary.main' }} />
+            <CheckCircleIcon aria-hidden sx={{ fontSize: iconSize.md, color: 'primary.main' }} />
           ) : (
-            <RadioButtonUncheckedIcon aria-hidden sx={{ fontSize: 20, color: 'text.secondary' }} />
+            <RadioButtonUncheckedIcon
+              aria-hidden
+              sx={{ fontSize: iconSize.md, color: 'text.secondary' }}
+            />
           ))}
         {definition && <TypeBadge definition={definition} />}
         {tile.privateLibrary && <PrivateMark />}
@@ -217,7 +220,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           id={descriptionId}
           component="p"
           sx={{
-            fontSize: 12.5,
+            fontSize: fontSize.meta,
             color: 'text.secondary',
             m: 0,
             display: '-webkit-box',
@@ -240,7 +243,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           id={reasonId}
           component="span"
           data-tile-reason=""
-          sx={{ fontSize: 11.5, color: 'warning.main' }}
+          sx={{ fontSize: fontSize.meta, color: 'warning.main' }}
         >
           {blockedReason}
         </Typography>
