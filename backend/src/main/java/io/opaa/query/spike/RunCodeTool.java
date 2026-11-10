@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * until {@link SpikeToolLoopQueryHandler} binds them to the answer's message. A failing script is
  * reported back to the model so it can correct it; only an unreachable sandbox fails the turn.
  */
-@Component
+@Component("spikeRunCodeTool")
 @ConditionalOnProperty(
     name = {"opaa.spike.tool-loop.enabled", "opaa.sandbox.enabled"},
     havingValue = "true")

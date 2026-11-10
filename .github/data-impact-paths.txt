@@ -112,6 +112,7 @@ backend/src/main/java/io/opaa/metadata/ModelMetadataExtractor.java
 backend/src/main/java/io/opaa/chat/ChatTitleGenerationService.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtraction.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtractionService.java
+backend/src/main/java/io/opaa/query/sandbox/**/*.java
 backend/src/main/java/io/opaa/query/spike/**/*.java
 backend/src/main/java/io/opaa/query/toolloop/**/*.java
 

@@ -1,0 +1,35 @@
+{{- if .Values.sandbox.enabled }}
+{{- $sandbox := .Values.sandbox }}
+{{- if not $sandbox.serverNamespaceSelector }}
+{{- fail "sandbox.serverNamespaceSelector is required with sandbox.enabled" }}
+{{- end }}
+{{- if not $sandbox.serverPodSelector }}
+{{- fail "sandbox.serverPodSelector is required with sandbox.enabled" }}
+{{- end }}
+{{- if eq (toString $sandbox.namespace) .Release.Namespace }}
+{{- fail "sandbox.namespace must differ from the release namespace: the policy closes the network of every pod there" }}
+{{- end }}
+# The sandbox pods run code nobody has checked (ADR-0073): no egress at all, so they reach neither
+# the backend, the database nor the internet, and ingress only from the sandbox server, which
+# proxies the backend's calls to execd in the pod. Rendered whenever the sandbox is on, regardless
+# of networkPolicy.*: without it a sandbox would have the cluster's open network.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.fullname" . }}-sandboxes
+  namespace: {{ required "sandbox.namespace is required with sandbox.enabled" $sandbox.namespace }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "sandbox") | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            {{- toYaml $sandbox.serverNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml $sandbox.serverPodSelector | nindent 12 }}
+  egress: []
+{{- end }}

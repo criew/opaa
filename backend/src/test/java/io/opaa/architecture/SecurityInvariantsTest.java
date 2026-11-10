@@ -69,10 +69,9 @@ class SecurityInvariantsTest {
                   + " the decorator only measures"),
           Map.entry("io.opaa.llm.embedding.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
-              "io.opaa.query.spike.OpenSandboxClient#send",
-              "development-only spike: reaches only the sandbox server the operator configured in"
-                  + " opaa.sandbox.base-url, never an address from the model or a person; follows"
-                  + " no redirect"),
+              "io.opaa.query.sandbox.OpenSandboxClient#send",
+              "reaches only the sandbox server the operator configured in opaa.sandbox.base-url,"
+                  + " never an address from the model or a person; follows no redirect"),
           Map.entry("io.opaa.llm.LlmModelConnectionTester#probe", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.LlmModelDiscoverer#send", MODEL_ADDRESS_CHECKED),
           Map.entry(

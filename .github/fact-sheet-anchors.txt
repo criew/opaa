@@ -373,6 +373,8 @@ voreinstellungen#opaa-indexing-dropbox-token-endpoint
 voreinstellungen#opaa-indexing-filesystem-allowlist
 voreinstellungen#opaa-ocr-enabled
 voreinstellungen#opaa-permission-minimum-group-size
+voreinstellungen#opaa-sandbox-base-url
+voreinstellungen#opaa-sandbox-enabled
 voreinstellungen#opaa-siem-export-enabled
 voreinstellungen#opaa-siem-export-host
 voreinstellungen#opaa-siem-export-include-labels
