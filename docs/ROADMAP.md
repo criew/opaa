@@ -88,7 +88,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Werkzeugschleife mit der Suche als erstem Werkzeug, Belegprüfung über alle Schritte, sichtbare
   Zwischenschritte, Werkzeug-Audit. Der gewöhnliche Chat bleibt einschüssig; die Schleife läuft nur in
   einem Agenten, den man im Chat mit `@` wählt, und nur, wenn die Installation Agenten freischaltet.
-  Heute Spike hinter Schalter. _(Epic #1747; #1752)_
+  Schleife, Wahl mit `@` und sichtbare Schritte gebaut. _(Epic #1747)_
 - **Skills als Objektart** — teilbare Fähigkeit mit lesbarem Paketformat, später mit Werkzeugen (Schritt
   3). _(Epic #1727 (geparkt))_
 - **Agent als teilbares Paket** — Katalogeintrag mit Verhalten, zugeordneten Bibliotheken und Werkzeugen,
@@ -104,7 +104,8 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Tabelle, Textdokument, Foliensatz (siehe K).
 - **Isolierte Ausführungsumgebung je Sitzung** — Dateiverarbeitung, Tabellenauswertung, OCR, Transkription
   mit Sprechererkennung, Diagramme und Foliensätze; Sandbox lebt je Sitzung und Person, Korrekturen
-  arbeiten im selben Ordner; Umgang mit Abbrüchen offen. Spike mit `run_code` gebaut. _(Epic #3583)_
+  arbeiten im selben Ordner; Umgang mit Abbrüchen offen. `run_code` und `fill_template` als Werkzeuge
+  der Agenten gebaut. _(Epic #3583)_
 - **Ausgangstor (Egress-Kontrollpunkt)** — Genehmigungsfähigkeit klären (TLS-Aufbruch, Protokollumfang,
   Verhältnis zu Proxy und Zielprüfung) vor dem Bau fremder Werkzeuge. ⚑
 - **MCP-Client mit Zulassungsliste** — fremde MCP-Server als Werkzeuge, Liste der Systemverwaltung mit

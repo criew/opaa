@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../../fixtures/a11y";
-import { createFromReview, openNewLibraryWizard } from "../../fixtures/chat";
+import { createFromReview, nameNewLibrary, openNewLibraryWizard } from "../../fixtures/chat";
 import {
   bootstrapAdmin,
   enableLocalAccounts,
@@ -276,6 +276,7 @@ test.describe.serial("Revision und Nachweis", () => {
     await openNewLibraryWizard(page);
     await page.getByRole("radio", { name: /Dropbox/ }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await nameNewLibrary(page, libraryName);
     const consent = page.getByTestId("source-consent");
     await consent
       .getByRole("checkbox", { name: "Ich verbinde ein Dienstkonto, kein persönliches Konto" })
@@ -291,8 +292,6 @@ test.describe.serial("Revision und Nachweis", () => {
       .check();
     await page.getByRole("button", { name: "Ändern Zeitplan" }).click();
     await page.getByRole("switch", { name: "Erste Indizierung sofort nach dem Anlegen" }).uncheck();
-    await page.getByRole("button", { name: "Weiter", exact: true }).click();
-    await page.getByLabel("Name", { exact: true }).fill(libraryName);
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await createFromReview(page);
     const libraryId = new URL(page.url()).pathname.split("/").pop()!;

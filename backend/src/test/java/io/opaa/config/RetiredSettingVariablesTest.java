@@ -180,6 +180,27 @@ class RetiredSettingVariablesTest {
     assertThat(RetiredSettingVariables.foundIn(environment)).isEmpty();
   }
 
+  /**
+   * The agent spike and its switch are gone; a switch still set, under either name, is named once
+   * with the way to an agent now.
+   */
+  @Test
+  void theRetiredSpikeSwitchIsNamedWithTheWayToAnAgent() {
+    String message =
+        "OPAA_SPIKE_TOOL_LOOP_ENABLED (opaa.spike.tool-loop.enabled) is no longer read; set the"
+            + " switch for agents under Administration > Agenten and choose an agent with @ in the"
+            + " chat - the prefix \"@test \" is gone";
+
+    assertThat(
+            RetiredSettingVariables.foundIn(
+                new MockEnvironment().withProperty("OPAA_SPIKE_TOOL_LOOP_ENABLED", "true")))
+        .containsExactly(message);
+    assertThat(
+            RetiredSettingVariables.foundIn(
+                new MockEnvironment().withProperty("opaa.spike.tool-loop.enabled", "true")))
+        .containsExactly(message);
+  }
+
   @Test
   void theRetiredVariablesAreKnown() {
     assertThat(RetiredSettingVariables.RETIRED)
@@ -189,6 +210,7 @@ class RetiredSettingVariablesTest {
             "OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL",
             "OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL",
             "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES",
+            "OPAA_SPIKE_TOOL_LOOP_ENABLED",
             "OPAA_INITIAL_ADMIN_EMAIL",
             "OPAA_INITIAL_ADMIN_PASSWORD",
             "OPAA_OIDC_ISSUER_URI",
@@ -218,7 +240,8 @@ class RetiredSettingVariablesTest {
         .containsOnlyKeys(
             "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS",
             "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
-            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD");
+            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
+            "OPAA_SPIKE_TOOL_LOOP_ENABLED");
   }
 
   /** A property file or a system property naming the old key is found as well. */

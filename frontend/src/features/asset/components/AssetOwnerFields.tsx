@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import FormControl from '@mui/material/FormControl'
@@ -18,6 +19,10 @@ interface AssetOwnerFieldsProps {
   myGroups: MyGroupsState
   selectedGroup: GroupListResponse | null
   onSelectedGroupChange: (group: GroupListResponse | null) => void
+  /** A missing group, said at the field (guidelines 5.15). */
+  groupError?: string | null
+  /** Takes the focus when the group is missing. */
+  groupInputRef?: Ref<HTMLInputElement>
 }
 
 /**
@@ -33,6 +38,8 @@ export default function AssetOwnerFields({
   myGroups,
   selectedGroup,
   onSelectedGroupChange,
+  groupError = null,
+  groupInputRef,
 }: AssetOwnerFieldsProps) {
   const { groups, error, loaded } = myGroups
   return (
@@ -72,6 +79,9 @@ export default function AssetOwnerFields({
             renderInput={(params) => (
               <TextField
                 {...params}
+                inputRef={groupInputRef}
+                error={groupError !== null}
+                helperText={groupError ?? undefined}
                 placeholder="Gruppe auswählen …"
                 slotProps={{
                   ...params.slotProps,

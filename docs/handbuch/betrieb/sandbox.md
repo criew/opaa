@@ -138,7 +138,8 @@ seine Laufzeitklasse fest, nicht OPAA:
 ## Einschalten für Agenten
 
 Die Sandbox ist nur die Voraussetzung. Ein Agent nutzt `run_code` oder `fill_template` erst, wenn
-das Werkzeug in den Agenten-Einstellungen eingeschaltet und dem Agenten zugeordnet ist;
+die Systemverwaltung Agenten eingeschaltet und das Werkzeug zugelassen hat
+([Agenten einschalten](../administration/agenten.md)) und das Werkzeug dem Agenten zugeordnet ist;
 `fill_template` zusätzlich nur, solange die Systemverwaltung Vorlagen eingeschaltet hat.
 
 ## Protokolle

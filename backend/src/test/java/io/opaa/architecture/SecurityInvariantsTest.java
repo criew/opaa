@@ -568,9 +568,6 @@ class SecurityInvariantsTest {
               "the persisted history enters the conversation window only through"
                   + " ConversationWindowMessages#reloaded, which cleans every message"),
           Map.entry(
-              "io.opaa.query.spike.SpikeToolLoopQueryHandler#handle",
-              "the user message is the question QueryService#query cleaned with PromptText"),
-          Map.entry(
               "io.opaa.retrieval.search.QueryDecompositionService#requestDecomposition",
               "question and window come as messages of DecompositionContext, cleaned there"),
           Map.entry(

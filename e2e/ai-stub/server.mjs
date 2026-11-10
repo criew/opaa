@@ -291,7 +291,7 @@ function triggeredFragments(messages) {
   return fragments.length > 0 ? `\n\n${fragments.join('\n\n')}` : ''
 }
 
-// --- Agent loop (sandbox spike) ----------------------------------------------------------------
+// --- Agent loop (sandbox) -----------------------------------------------------------------------
 //
 // A request that offers the tool run_code is a turn of the agent loop. The stub plays a fixed
 // script per turn: search_knowledge with the question, then run_code with a Python script that
@@ -393,7 +393,7 @@ function agentStep(messages) {
   if (!run) {
     return {
       message: toolCallMessage(RUN_CODE_TOOL, {
-        code: pdfScript(question, search.content),
+        skript: pdfScript(question, search.content),
       }),
       finish: 'tool_calls',
     }

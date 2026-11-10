@@ -50,9 +50,11 @@ function reviewOf(label: string) {
   return screen.getByText(label, { selector: 'li > span' }).closest('li')!
 }
 
-/** Chooses OneDrive and goes on to „Quelle einrichten“. */
-async function chooseOneDrive(user: User) {
+/** Chooses OneDrive, names the library in „Stammdaten“ and goes on to „Quelle“. */
+async function chooseOneDrive(user: User, name = 'OneDrive') {
   await user.click(await screen.findByRole('radio', { name: /^OneDrive/ }))
+  await next(user)
+  await user.type(screen.getByLabelText(/^Name/), name)
   await next(user)
 }
 
@@ -168,13 +170,11 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
       privateLibrary: true,
       sourceSettings: { drive: { driveId: 'b!onedriveMaier', name: 'OneDrive' } },
     })
-    const name = await screen.findByLabelText(/^Name/)
-    expect(name).toHaveValue('OneDrive')
     expect(screen.queryByText(/· Freigaben/)).not.toBeInTheDocument()
-    await next(user)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
     expect(reviewOf('Verbindung')).toHaveTextContent('OneDrive')
     expect(reviewOf('Umfang')).toHaveTextContent('Alle Ordner')
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
     expect(created[0]).toMatchObject({
@@ -191,7 +191,7 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
   it('narrows the OneDrive to folders in place and through the shared selection dialog', async () => {
     const user = userEvent.setup()
     renderWizard()
-    await chooseOneDrive(user)
+    await chooseOneDrive(user, 'Meine Vorlagen')
     await awaitPrivate()
     await openScope(user)
 
@@ -214,12 +214,10 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
       ]),
     )
     await next(user)
-    expect(await screen.findByLabelText(/^Name/)).toHaveValue('')
-    await user.type(screen.getByLabelText(/^Name/), 'Meine Vorlagen')
-    await next(user)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
     expect(reviewOf('Umfang')).toHaveTextContent('2 Ordner')
     expect(reviewOf('Umfang')).toHaveTextContent('Projekte / 2026')
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
     expect(created[0].sourceSettings).toEqual({

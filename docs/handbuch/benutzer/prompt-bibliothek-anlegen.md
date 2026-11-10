@@ -5,10 +5,11 @@
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Prompts“ und „Weiter“.
 2. **Stammdaten:** Name und Beschreibung.
-3. **Eigentümer:** „Mein Konto“ oder „Eine Gruppe“. Für Prompts, die ein Referat gemeinsam pflegt,
-   ist die Gruppe die haltbarere Wahl.
-4. **Rechte:** auf Wunsch Rollen für Personen und Gruppen vormerken.
-5. Anlegen. Danach im Reiter „Prompts“ „Neuer Prompt“ wählen.
+3. **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“; für Prompts, die ein Referat
+   gemeinsam pflegt, ist die Gruppe die haltbarere Wahl. Auf Wunsch Rollen für Personen und Gruppen
+   vormerken.
+4. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
+5. Die neue Bibliothek öffnet; im Reiter „Prompts“ „Neuer Prompt“ wählen.
 
 ## Prompt schreiben
 
