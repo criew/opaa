@@ -63,12 +63,29 @@ final class AgentToolCallback implements ToolCallback {
       ObjectMapper objectMapper,
       AgentMetrics metrics,
       Clock clock) {
+    return of(
+        tool,
+        new ToolOffer(tool.description(), tool.inputSchema()),
+        reminder,
+        objectMapper,
+        metrics,
+        clock);
+  }
+
+  /** The tool with the description and schema {@code offer} gives this run. */
+  static AgentToolCallback of(
+      AgentTool tool,
+      ToolOffer offer,
+      String reminder,
+      ObjectMapper objectMapper,
+      AgentMetrics metrics,
+      Clock clock) {
     return new AgentToolCallback(
         tool,
         ToolDefinition.builder()
             .name(tool.name())
-            .description(tool.description())
-            .inputSchema(tool.inputSchema())
+            .description(offer.description())
+            .inputSchema(offer.inputSchema())
             .build(),
         reminder,
         objectMapper,

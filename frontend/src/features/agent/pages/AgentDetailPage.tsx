@@ -114,9 +114,8 @@ export default function AgentDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Agent „${current.name}“ löschen?`,
-      consequence:
-        'Das entfernt auch seine Rechte und Space-Zuordnungen. Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${current.name}“ löschen?`,
+      consequence: 'Der Agent, seine Rechte und seine Space-Zuordnungen werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

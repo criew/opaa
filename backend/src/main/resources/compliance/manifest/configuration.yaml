@@ -153,9 +153,10 @@ settings:
   - key: opaa.sandbox.enabled
     defaultValue: "false"
     effect: >-
-      Ob Agenten das Werkzeug run_code angeboten bekommt: Skripte des Chat-Modells laufen dann je
-      Agentenlauf in einer Sandbox ohne Netz beim Sandbox-Dienst; erzeugte Dateien werden Anhang der
-      Antwort. Ausgeschaltet gibt es weder Client noch Werkzeug
+      Ob Agenten die Werkzeuge run_code und fill_template angeboten bekommen: Skripte des
+      Chat-Modells und das Befüllen von Dokumentvorlagen laufen dann je Agentenlauf in einer Sandbox
+      ohne Netz beim Sandbox-Dienst; erzeugte Dateien werden Anhang der Antwort. Ausgeschaltet gibt
+      es weder Client noch Werkzeuge
     bearings: [DATA_FLOW]
     notes:
       - >-

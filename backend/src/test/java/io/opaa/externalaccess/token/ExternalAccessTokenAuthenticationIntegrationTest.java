@@ -21,6 +21,7 @@ import io.opaa.account.LocalUserService.ResetLinkIssued;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.LockReason;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.LocalCredentials;
@@ -30,6 +31,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.externalaccess.ExternalAccessSettings;
@@ -107,6 +109,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LocalUserService localUsers;
+  @Autowired private UserService userService;
   @Autowired private LocalPasswordService passwords;
   @Autowired private LocalRefreshTokenService refreshTokens;
   @Autowired private LocalAccountFixturesFactory localAccountFixtures;
@@ -480,6 +483,28 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             administrator.getSystemRole(),
             "Systemverwaltung"),
         person.id());
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  /**
+   * A token issued before the promotion would otherwise keep working with the rights of a system
+   * administrator; the promotion ends every session of the account and its tokens with them.
+   */
+  @Test
+  void aPromotionToSystemAdminEndsTheTokensOfTheAccount() {
+    LocalAccount person =
+        fixtures.activeUser("befoerdert-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    userService.updateRole(
+        person.id(),
+        SystemRole.SYSTEM_ADMIN,
+        CurrentUser.of(
+            administrator.getId(),
+            administrator.getOrganizationId(),
+            administrator.getSystemRole(),
+            "Systemverwaltung"));
 
     assertEndedWithTheAccount(personsToken);
   }
