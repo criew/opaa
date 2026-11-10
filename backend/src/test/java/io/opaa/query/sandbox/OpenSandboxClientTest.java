@@ -1,4 +1,4 @@
-package io.opaa.query.spike;
+package io.opaa.query.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,7 +27,7 @@ class OpenSandboxClientTest {
 
   @Test
   void aCompletedRunHasExitCodeZeroAndItsOutput() throws IOException {
-    CodeSandbox.Run run =
+    SandboxSession.ScriptRun run =
         OpenSandboxClient.readEvents(
             stream(
                 """
@@ -47,7 +47,7 @@ class OpenSandboxClientTest {
 
   @Test
   void anErrorEventCarriesTheExitCodeAndAnUnreadableOneCountsAsOne() throws IOException {
-    CodeSandbox.Run failed =
+    SandboxSession.ScriptRun failed =
         OpenSandboxClient.readEvents(
             stream(
                 """
@@ -55,7 +55,7 @@ class OpenSandboxClientTest {
                 {"type":"error","error":{"ename":"CommandExecError","evalue":"3"}}
                 """),
             objectMapper);
-    CodeSandbox.Run unreadable =
+    SandboxSession.ScriptRun unreadable =
         OpenSandboxClient.readEvents(
             stream("{\"type\":\"error\",\"error\":{\"evalue\":\"kaputt\"}}\n"), objectMapper);
 
@@ -68,16 +68,16 @@ class OpenSandboxClientTest {
   void aStreamWithoutResultOrWithAnOverlongLineFails() {
     assertThatThrownBy(
             () -> OpenSandboxClient.readEvents(stream("{\"type\":\"ping\"}\n"), objectMapper))
-        .isInstanceOf(OpenSandboxClient.SandboxException.class);
+        .isInstanceOf(SandboxException.class);
     String overlong = "x".repeat(OpenSandboxClient.MAX_EVENT_CHARS + 1);
     assertThatThrownBy(() -> OpenSandboxClient.readEvents(stream(overlong), objectMapper))
-        .isInstanceOf(OpenSandboxClient.SandboxException.class);
+        .isInstanceOf(SandboxException.class);
   }
 
   @Test
   void outputBeyondItsLimitIsDropped() throws IOException {
     String chunk = "{\"type\":\"stdout\",\"text\":\"" + "a".repeat(40_000) + "\"}\n";
-    CodeSandbox.Run run =
+    SandboxSession.ScriptRun run =
         OpenSandboxClient.readEvents(
             stream(chunk + chunk + "{\"type\":\"execution_complete\"}\n"), objectMapper);
 
@@ -100,7 +100,7 @@ class OpenSandboxClientTest {
         ]
         """;
 
-    List<CodeSandbox.OutputFile> files =
+    List<SandboxSession.OutputFile> files =
         OpenSandboxClient.outputFiles(
             objectMapper.readTree(listing),
             path -> {
@@ -108,7 +108,7 @@ class OpenSandboxClientTest {
               return path.endsWith("geschummelt.pdf") ? null : new byte[] {1};
             });
 
-    assertThat(files).extracting(CodeSandbox.OutputFile::name).containsExactly("bericht.pdf");
+    assertThat(files).extracting(SandboxSession.OutputFile::name).containsExactly("bericht.pdf");
     assertThat(fetched)
         .containsExactly("/workspace/out/bericht.pdf", "/workspace/out/geschummelt.pdf");
   }
@@ -125,7 +125,7 @@ class OpenSandboxClientTest {
     }
     listing.append(']');
 
-    List<CodeSandbox.OutputFile> files =
+    List<SandboxSession.OutputFile> files =
         OpenSandboxClient.outputFiles(
             objectMapper.readTree(listing.toString()), path -> new byte[] {1});
 
@@ -133,7 +133,7 @@ class OpenSandboxClientTest {
   }
 
   @Test
-  void theSandboxIsDeletedWhenTheRunFails() throws IOException {
+  void theSandboxIsDeletedWhenItsSessionIsClosedAfterAFailedScript() throws IOException {
     List<String> calls = new CopyOnWriteArrayList<>();
     HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext(
@@ -161,23 +161,128 @@ class OpenSandboxClientTest {
     try {
       OpenSandboxClient client =
           new OpenSandboxClient(
-              new SandboxProperties(
-                  true,
-                  "http://127.0.0.1:" + server.getAddress().getPort(),
-                  "key",
-                  "opaa/sandbox-python:1",
-                  Duration.ofSeconds(10),
-                  "1",
-                  "1Gi"),
-              objectMapper);
+              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
 
-      assertThatThrownBy(() -> client.run("print(1)"))
-          .isInstanceOf(OpenSandboxClient.SandboxException.class)
-          .hasMessageContaining("502");
+      try (SandboxSession session = client.open(Duration.ofMinutes(5))) {
+        assertThatThrownBy(() -> session.run("print(1)", Duration.ofSeconds(10)))
+            .isInstanceOf(SandboxException.class)
+            .hasMessageContaining("502");
+      }
       assertThat(calls).last().isEqualTo("DELETE /v1/sandboxes/sbx-1");
       client.close();
     } finally {
       server.stop(0);
     }
+  }
+
+  @Test
+  void aSessionKeepsItsSandboxAcrossScriptsAndCapsTheLifetime() throws IOException {
+    List<String> calls = new CopyOnWriteArrayList<>();
+    List<String> createBodies = new CopyOnWriteArrayList<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/",
+        exchange -> {
+          String call = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+          calls.add(call);
+          String body = "";
+          int status = 200;
+          if (call.equals("POST /v1/sandboxes")) {
+            createBodies.add(
+                new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            body = "{\"id\":\"sbx-2\"}";
+            status = 202;
+          } else if (call.endsWith("/command")) {
+            body = "{\"type\":\"execution_complete\"}\n";
+          } else if (call.endsWith("/directories/list")) {
+            body = "[{\"path\":\"/workspace/out/a.csv\",\"type\":\"file\",\"size\":3}]";
+          } else if (call.startsWith("DELETE")) {
+            status = 204;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(status, status == 204 ? -1 : bytes.length);
+          if (status != 204) {
+            exchange.getResponseBody().write(bytes);
+          }
+          exchange.close();
+        });
+    server.start();
+    try {
+      OpenSandboxClient client =
+          new OpenSandboxClient(
+              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
+      SandboxSession session = client.open(Duration.ofHours(3));
+
+      assertThat(session.run("print(1)", Duration.ofSeconds(5)).exitCode()).isZero();
+      assertThat(session.run("print(2)", Duration.ofSeconds(5)).exitCode()).isZero();
+      assertThat(session.outputEntries())
+          .containsExactly(new SandboxSession.OutputEntry("a.csv", 3));
+      session.close();
+      session.close();
+
+      assertThat(calls).filteredOn(call -> call.equals("POST /v1/sandboxes")).hasSize(1);
+      assertThat(calls).filteredOn(call -> call.endsWith("/command")).hasSize(2);
+      assertThat(calls).filteredOn(call -> call.startsWith("DELETE")).hasSize(1);
+      // The lifetime is capped by opaa.sandbox.max-lifetime (15 minutes).
+      assertThat(objectMapper.readTree(createBodies.getFirst()).path("timeout").asLong())
+          .isEqualTo(900);
+      assertThatThrownBy(() -> session.run("print(3)", Duration.ofSeconds(5)))
+          .isInstanceOf(IllegalStateException.class);
+      client.close();
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void listedEntriesAreOnlyPlainFilesDirectlyInTheOutputDirectory() {
+    List<SandboxSession.OutputEntry> entries =
+        OpenSandboxClient.entries(
+            objectMapper.readTree(
+                """
+                [
+                  {"path":"/workspace/out/bericht.pdf","type":"file","size":10},
+                  {"path":"/workspace/out/sub","type":"directory","size":0},
+                  {"path":"/workspace/out/../main.py","type":"file","size":10},
+                  {"path":"/workspace/out/x.csv","type":"file","size":-4}
+                ]
+                """));
+
+    assertThat(entries)
+        .containsExactly(
+            new SandboxSession.OutputEntry("bericht.pdf", 10),
+            new SandboxSession.OutputEntry("x.csv", 0));
+  }
+
+  @Test
+  void switchedOnWithoutAddressOrKeyTheStartFails() {
+    assertThatThrownBy(() -> properties(" "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("base-url");
+    assertThatThrownBy(
+            () ->
+                new SandboxProperties(
+                    true,
+                    "http://sandbox:8090",
+                    "",
+                    "img",
+                    Duration.ofSeconds(10),
+                    Duration.ofMinutes(15),
+                    "1",
+                    "1Gi"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("api-key");
+  }
+
+  private static SandboxProperties properties(String baseUrl) {
+    return new SandboxProperties(
+        true,
+        baseUrl,
+        "key",
+        "opaa/sandbox-python:1",
+        Duration.ofSeconds(10),
+        Duration.ofMinutes(15),
+        "1",
+        "1Gi");
   }
 }

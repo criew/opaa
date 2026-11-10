@@ -3,6 +3,7 @@ package io.opaa.query.toolloop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,6 +20,9 @@ import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
 import io.opaa.chat.AgentRunRecord.StepStatus;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachment;
+import io.opaa.chat.ChatAttachmentService;
+import io.opaa.chat.ChatAttachmentView;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
@@ -36,6 +40,9 @@ import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
+import io.opaa.query.sandbox.SandboxProperties;
+import io.opaa.query.sandbox.SandboxSession.OutputEntry;
+import io.opaa.query.sandbox.SandboxSession.OutputFile;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.retrieval.RetrievalPipelineResult;
@@ -111,6 +118,7 @@ class AgentToolLoopTest {
           false);
   private Set<String> switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE);
   private boolean resolverPresent = true;
+  private List<AgentTool> extraTools = List.of();
   private AgentToolLoop loop;
 
   @BeforeEach
@@ -135,12 +143,14 @@ class AgentToolLoopTest {
   }
 
   private AgentToolLoop loop() {
-    ToolRegistry registry =
-        new ToolRegistry(
+    List<AgentTool> tools =
+        new ArrayList<>(
             List.of(
                 new SearchKnowledgeTool(retrieval, expansion, validator),
                 new ReadDocumentTool(chunkLookup),
                 new AskUserTool()));
+    tools.addAll(extraTools);
+    ToolRegistry registry = new ToolRegistry(tools);
     return new AgentToolLoop(
         provider(resolverPresent ? (id, org, user, space, readable) -> Optional.of(spec) : null),
         provider((AgentToolSwitches) () -> switchedOn),
@@ -495,6 +505,67 @@ class AgentToolLoopTest {
         .containsExactlyInAnyOrder(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
     assertThat(toolNamesOf(prompts.getAllValues().get(1)))
         .containsExactly(ToolNames.SEARCH_KNOWLEDGE);
+  }
+
+  @Test
+  void filesOfTheRunsSandboxAreBoundToTheAnswerAndTheSandboxIsDeleted() {
+    RunCodeToolTest.FakeSandboxes sandboxes = new RunCodeToolTest.FakeSandboxes();
+    sandboxes.entries = List.of(new OutputEntry("a.csv", 1));
+    sandboxes.files = List.of(new OutputFile("a.csv", new byte[] {1}));
+    ChatAttachmentService attachmentService = mock(ChatAttachmentService.class);
+    ChatAttachment attachment = mock(ChatAttachment.class);
+    UUID attachmentId = UUID.randomUUID();
+    when(attachment.getId()).thenReturn(attachmentId);
+    when(attachmentService.uploadGenerated(any(), any(), anyInt(), any(), any(), any()))
+        .thenReturn(new ChatAttachmentView(attachment, null, null, null));
+    extraTools = List.of(runCodeTool(sandboxes, attachmentService));
+    withTools(ToolNames.RUN_CODE);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", ToolNames.RUN_CODE, "{\"skript\":\"print(1)\"}"),
+            toolCall("call-2", ToolNames.RUN_CODE, "{\"skript\":\"print(2)\"}"),
+            answer("Die Tabelle hängt an."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.generatedFiles()).containsExactly(attachment);
+    verify(chatService)
+        .appendTurn(
+            any(), any(), any(), any(), any(), any(), any(), eq(List.of(attachmentId)), any());
+    assertThat(sandboxes.opened).isEqualTo(1);
+    assertThat(sandboxes.closed).isEqualTo(1);
+  }
+
+  @Test
+  void theSandboxIsDeletedWhenTheRunFails() {
+    RunCodeToolTest.FakeSandboxes sandboxes = new RunCodeToolTest.FakeSandboxes();
+    extraTools = List.of(runCodeTool(sandboxes, mock(ChatAttachmentService.class)));
+    withTools(ToolNames.RUN_CODE);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", ToolNames.RUN_CODE, "{\"skript\":\"print(1)\"}"))
+        .thenThrow(new IllegalStateException("model gone"));
+
+    AgentToolLoop failing = loop();
+    assertThatThrownBy(() -> failing.handle(turn())).isInstanceOf(IllegalStateException.class);
+    assertThat(sandboxes.closed).isEqualTo(1);
+  }
+
+  private static RunCodeTool runCodeTool(
+      RunCodeToolTest.FakeSandboxes sandboxes, ChatAttachmentService attachmentService) {
+    return new RunCodeTool(
+        sandboxes,
+        new SandboxProperties(
+            true,
+            "http://sandbox:8090",
+            "key",
+            "img",
+            Duration.ofSeconds(60),
+            Duration.ofMinutes(15),
+            "1",
+            "1Gi"),
+        AgentToolCallbackTest.properties(),
+        attachmentService,
+        Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   private void withTools(String... tools) {

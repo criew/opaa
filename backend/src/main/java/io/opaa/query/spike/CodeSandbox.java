@@ -1,5 +1,6 @@
 package io.opaa.query.spike;
 
+import io.opaa.query.sandbox.Sandboxes;
 import java.util.List;
 
 /**
@@ -10,7 +11,7 @@ import java.util.List;
 interface CodeSandbox {
 
   /** The directory a script writes its result files to; the only one read back. */
-  String OUTPUT_DIR = "/workspace/out";
+  String OUTPUT_DIR = Sandboxes.OUTPUT_DIR;
 
   /**
    * Runs {@code code}; a failing script is a result with a non-zero exit code, not an exception.

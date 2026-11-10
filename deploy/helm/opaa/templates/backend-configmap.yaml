@@ -81,6 +81,25 @@ data:
   {{- with .Values.transcription.maxConcurrent }}
   OPAA_TRANSCRIPTION_MAX_CONCURRENT: {{ . | quote }}
   {{- end }}
+  {{- if .Values.sandbox.enabled }}
+  OPAA_SANDBOX_ENABLED: "true"
+  OPAA_SANDBOX_BASE_URL: {{ required "sandbox.baseUrl is required with sandbox.enabled" .Values.sandbox.baseUrl | quote }}
+  {{- end }}
+  {{- with .Values.sandbox.image }}
+  OPAA_SANDBOX_IMAGE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.sandbox.runTimeout }}
+  OPAA_SANDBOX_RUN_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.sandbox.maxLifetime }}
+  OPAA_SANDBOX_MAX_LIFETIME: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.sandbox.cpu }}
+  OPAA_SANDBOX_CPU: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.sandbox.memory }}
+  OPAA_SANDBOX_MEMORY: {{ . | quote }}
+  {{- end }}
   {{- if .Values.ocr.enabled }}
   OPAA_OCR_ENABLED: "true"
   {{- end }}

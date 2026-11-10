@@ -320,9 +320,11 @@ const composeEnv = {
         : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
   // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run;
-  // its API key is random per run, since sandbox code can reach the server.
+  // its API key is random per run, since sandbox code can reach the server. The specs drive
+  // run_code through the agent spike's "@test " prefix, so its switch is on here.
   ...(isSandbox
     ? {
+        OPAA_SPIKE_TOOL_LOOP_ENABLED: 'true',
         OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092',
         OPAA_SANDBOX_API_KEY: process.env.OPAA_SANDBOX_API_KEY ?? randomBytes(24).toString('hex'),
       }

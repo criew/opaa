@@ -5,6 +5,7 @@ import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatService;
@@ -73,7 +74,8 @@ import tools.jackson.databind.ObjectMapper;
  * rather than leaving them to a {@code ToolCallingAdvisor}: so it counts every call against the
  * run's limits before it runs. Citations are validated against the passages of all steps together:
  * a passage of step two stays citable in step four, an invented one is marked. The run never reads
- * the bestand except through the tools.
+ * the bestand except through the tools. What a tool opened for the run ({@link RunResource}, e.g. a
+ * sandbox) hands its files over before the answer is kept and is closed when the run ends.
  */
 @DataFlow("chat-model")
 @Service
@@ -193,8 +195,29 @@ class AgentToolLoop implements AgentTurnHandler {
           Duration.between(started, clock.instant()));
       throw e;
     } finally {
+      closeResources(run);
       release(run);
     }
+  }
+
+  /** Closes what the run's tools opened, e.g. its sandbox; a failure is logged, never thrown. */
+  private static void closeResources(AgentRun run) {
+    for (RunResource resource : run.resources()) {
+      try {
+        resource.close();
+      } catch (RuntimeException e) {
+        log.warn("Could not close a resource of agent run {}", run.runId(), e);
+      }
+    }
+  }
+
+  /** The files the run's tools produced, taken as unbound attachments of the asker. */
+  private static List<ChatAttachment> finishResources(AgentRun run) {
+    List<ChatAttachment> files = new ArrayList<>();
+    for (RunResource resource : run.resources()) {
+      files.addAll(resource.finish());
+    }
+    return files;
   }
 
   /**
@@ -349,6 +372,7 @@ class AgentToolLoop implements AgentTurnHandler {
     AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
 
     signal(turn, AnswerStreamListener::beforeKeeping);
+    List<ChatAttachment> generatedFiles = finishResources(run);
     Chat chat = turn.chat();
     String chatTitle =
         chatService.appendTurn(
@@ -359,7 +383,7 @@ class AgentToolLoop implements AgentTurnHandler {
             sources,
             evidence,
             List.of(),
-            List.of(),
+            generatedFiles.stream().map(ChatAttachment::getId).toList(),
             record);
     chatMemory.add(turn.conversationKey(), new UserMessage(turn.question()));
     ConversationWindowMessages.answer(answer)
@@ -393,7 +417,7 @@ class AgentToolLoop implements AgentTurnHandler {
         chatTitle,
         turn.notePoints(),
         evidence,
-        List.of(),
+        generatedFiles,
         record);
   }
 
