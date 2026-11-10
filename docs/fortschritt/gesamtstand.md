@@ -145,11 +145,12 @@ der Suche (ADR-0039). Reichweite ist eine Freigabe an „Alle Konten“ (ADR-003
 *Bestätigt: 20261031*
 
 **Prompt-Bibliotheken** als Asset-Typ: Prompts mit Variablen anlegen, freigeben und im Chat per
-Slash-Befehl einsetzen. Der MCP-Server ist als Profilart von Zugängen angelegt. Eine
-Werkzeugschleife existiert als Spike hinter Schalter.
+Slash-Befehl einsetzen. Der MCP-Server ist als Profilart von Zugängen angelegt. **Agenten** sind
+Katalogeintrag mit Anlegerecht hinter dem Installationsschalter „Agenten“: Im Chat wählt man einen
+Agenten mit `@`, seine Werkzeugschleife zeigt die Schritte im Antwortstrom; `run_code` und
+`fill_template` laufen in der Sandbox.
 
-**Nicht gebaut:** Werkzeugaufrufe im Chat (Epic #1747 geparkt), Skills als Objektart (Epic #1727
-geparkt), Agenten.
+**Nicht gebaut:** Skills als Objektart (Epic #1727 geparkt).
 
 ### E · Modelle & zentrale Steuerung
 

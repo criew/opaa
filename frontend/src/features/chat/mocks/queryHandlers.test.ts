@@ -38,4 +38,29 @@ describe('mock answer stream', () => {
 
     expect(await millisecondsToFirstDelta()).toBeGreaterThanOrEqual(1900)
   })
+
+  it("streams an agent's steps before its answer", async () => {
+    const response = await fetch('/api/v1/query/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: 'Was regelt die Dienstvereinbarung?',
+        agentId: '00000000-0000-4000-8000-00000000a9e1',
+      }),
+    })
+    const events = [...(await response.text()).matchAll(/^event: (\S+)$/gm)].map((m) => m[1])
+
+    expect(events).toEqual([
+      'started',
+      'run_started',
+      'step_started',
+      'step_finished',
+      'step_started',
+      'step_finished',
+      'step_started',
+      'step_finished',
+      'run_finished',
+      'final',
+    ])
+  })
 })

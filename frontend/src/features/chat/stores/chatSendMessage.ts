@@ -214,6 +214,11 @@ export async function sendChatMessage(
             set({ streamingAnswer: text })
           }
         },
+        onAgentRun: (run) => {
+          if (!isStaleSessionEpoch(sessionEpoch) && isSendingViewShown()) {
+            set({ streamingRun: run })
+          }
+        },
       },
     )
     // The query answer arriving after a logout must not resurrect messages/chatId into the
@@ -247,7 +252,7 @@ export async function sendChatMessage(
         void useChatListStore.getState().chatReturnedFromArchive(spaceId)
       }
     }
-    if (isSendingViewShown()) set({ streamingAnswer: null })
+    if (isSendingViewShown()) set({ streamingAnswer: null, streamingRun: null })
     if (!isSendingViewShown() || send.persisted) {
       // Another chat shown now keeps its own state. The own chat, reloaded in the meantime, may
       // lack this turn in its snapshot - or already show it - and is read again instead of
@@ -295,7 +300,7 @@ export async function sendChatMessage(
     if (isStaleSessionEpoch(sessionEpoch)) return
     inFlightSends.delete(send)
     const isLoading = isViewAwaitingAnswer(get().chatId)
-    if (isSendingViewShown()) set({ streamingAnswer: null })
+    if (isSendingViewShown()) set({ streamingAnswer: null, streamingRun: null })
     // Cancelled by the person: the server kept nothing, the question goes back to the input. A
     // turn that the server completed just before the cancellation shows up on the reload.
     if (answerAbort.signal.aborted) {

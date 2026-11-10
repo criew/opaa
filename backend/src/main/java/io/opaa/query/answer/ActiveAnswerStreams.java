@@ -30,7 +30,7 @@ public class ActiveAnswerStreams implements SmartLifecycle {
    *
    * @throws ServiceUnavailableException with {@link #SHUTTING_DOWN} once the instance stops
    */
-  Registration register(Runnable onShutdown) {
+  public Registration register(Runnable onShutdown) {
     Registration registration = new Registration(onShutdown);
     streams.add(registration);
     if (closed) {
@@ -40,7 +40,7 @@ public class ActiveAnswerStreams implements SmartLifecycle {
     return registration;
   }
 
-  static ServiceUnavailableException shuttingDown() {
+  public static ServiceUnavailableException shuttingDown() {
     return new ServiceUnavailableException(SHUTTING_DOWN_MESSAGE, SHUTTING_DOWN);
   }
 
@@ -82,7 +82,7 @@ public class ActiveAnswerStreams implements SmartLifecycle {
   }
 
   /** One open stream; closed when the stream ends, however it ends. */
-  final class Registration implements AutoCloseable {
+  public final class Registration implements AutoCloseable {
 
     private final Runnable onShutdown;
 

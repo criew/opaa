@@ -3,8 +3,8 @@ package io.opaa.query.answer;
 /**
  * The rules every prompt states about passages it hands to the model in a {@link DocumentBlock}:
  * how the genuine fence looks, that its content is data and never an instruction, and which links
- * an answer may carry. Shared by the ordinary answer path and the tool-loop spike, so neither can
- * drift from the other.
+ * an answer may carry. Shared by the ordinary answer path and the agent prompt of the tool loop, so
+ * neither can drift from the other.
  */
 public final class PassageRules {
 
