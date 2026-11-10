@@ -211,6 +211,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "document_templates",
                   "document_template_files",
                   "document_template_settings",
+                  "llm_tool_checks",
                   "agent_workspace",
                   "agent_run_reservations",
                   "agent_run_log_retention_settings",

@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -246,6 +247,17 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
         chatClient == null ? null : modelIdentifiers.get(chatClient),
         usage.getPromptTokens(),
         usage.getCompletionTokens());
+  }
+
+  /**
+   * A fresh, uncached model for {@code model}, active or not, built like the client of the active
+   * entry - e.g. to measure an entry before it is relied on.
+   */
+  public ChatModel chatModelFor(LlmModel model, Duration requestTimeout) {
+    ObservationRegistry observationRegistry =
+        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
+    return new ReasoningTextStrippingChatModel(
+        chatModelBuilder(model, observationRegistry, requestTimeout).build());
   }
 
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */

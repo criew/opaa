@@ -1,7 +1,5 @@
 package io.opaa.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import io.opaa.llm.ChatResponses;
 import io.opaa.query.toolcheck.ToolCallingCaseBase;
 import io.opaa.query.toolcheck.ToolCallingMeasurement;
@@ -22,7 +20,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 /**
  * Measures the tool-calling case base ({@code eval/corpus/tool-calling/SOURCE.md}) against one
  * OpenAI-compatible endpoint, offering the mock tool or, with {@code
- * -Dopaa.eval.toolCalling.tool=production}, the agent loop's {@code search_knowledge}, and writes {@code build/eval-reports/tool-calling.{json,md}}.
+ * -Dopaa.eval.toolCalling.tool=production}, the agent loop's {@code search_knowledge}, and writes
+ * {@code build/eval-reports/tool-calling.{json,md}}.
  *
  * <p>The model address is mandatory: {@code -Dopaa.eval.chatBaseUrl} and {@code
  * -Dopaa.eval.chatModel}, the key only from {@code OPAA_EVAL_CHAT_API_KEY}. Without them the run

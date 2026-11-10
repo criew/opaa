@@ -6,9 +6,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * One case of the tool-calling case base ({@code cases.json} of {@link ToolCallingCaseBase}): a user
- * message, the fixed results the mock tool returns call by call, the call limit the system prompt
- * names and the category-specific expectations its verdict is judged by ({@link ToolCallingJudge}).
+ * One case of the tool-calling case base ({@code cases.json} of {@link ToolCallingCaseBase}): a
+ * user message, the fixed results the mock tool returns call by call, the call limit the system
+ * prompt names and the category-specific expectations its verdict is judged by ({@link
+ * ToolCallingJudge}).
  *
  * @param toolResults the mock tool's answer to the first, second, ... valid call; a call beyond the
  *     list receives the last entry

@@ -66,6 +66,7 @@ class SpecEnumParityTest {
         Arguments.of("AssetOrigin", AssetOrigin.values()),
         Arguments.of("ToolCapability", ToolCapability.values()),
         Arguments.of("ToolCapabilityBasis", ToolCapabilityBasis.values()),
+        Arguments.of("ToolCheckStatus", ToolCheckStatus.values()),
         Arguments.of("ExternalAccessState", ExternalAccessState.values()),
         Arguments.of("DocumentStatus", DocumentStatus.values()),
         Arguments.of("CatalogVisibility", CatalogVisibility.values()),

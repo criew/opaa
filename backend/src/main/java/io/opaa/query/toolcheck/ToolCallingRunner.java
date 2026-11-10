@@ -124,8 +124,8 @@ public final class ToolCallingRunner {
   }
 
   /**
-   * The model's own default options plus the tool: a provider model accepts only its own
-   * options type per call, so the tool goes onto a copy of those rather than onto generic ones.
+   * The model's own default options plus the tool: a provider model accepts only its own options
+   * type per call, so the tool goes onto a copy of those rather than onto generic ones.
    */
   private ToolCallingChatOptions optionsWithTool(ChatModel model) {
     List<ToolCallback> callbacks = List.of(tool.callback());

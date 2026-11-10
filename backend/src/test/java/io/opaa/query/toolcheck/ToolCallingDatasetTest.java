@@ -101,24 +101,21 @@ class ToolCallingDatasetTest {
     assertThat(tool.check("{\"query\":\"Hundesteuer\"}").valid()).isTrue();
     assertThat(tool.check("{\"query\":\"x\",\"max_results\":10}").valid()).isTrue();
     assertThat(tool.check("{\"query\":\"x\",\"max_results\":11}").valid()).isFalse();
-    assertThat(tool.check("{\"query\":\"x\",\"max_results\":\"3\"}").valid())
-        .isFalse();
-    assertThat(tool.check("{\"query\":\"x\",\"max_results\":null}").valid())
-        .isFalse();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":\"3\"}").valid()).isFalse();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":null}").valid()).isFalse();
     assertThat(tool.check("{\"query\":\" \"}").valid()).isFalse();
     assertThat(tool.check("{}").valid()).isFalse();
     assertThat(tool.check("query=Hund").valid()).isFalse();
     assertThat(tool.check("[\"Hund\"]").valid()).isFalse();
-    ToolCallingTool.ArgumentCheck invented =
-        tool.check("{\"query\":\"Baum\",\"year\":2024}");
+    ToolCallingTool.ArgumentCheck invented = tool.check("{\"query\":\"Baum\",\"year\":2024}");
     assertThat(invented.valid()).isFalse();
     assertThat(invented.unknownParameters()).containsExactly("year");
     assertThat(invented.query()).isEqualTo("Baum");
   }
 
   /**
-   * The production definition: the question is {@code frage}, undeclared properties stay valid
-   * (the tool ignores them) but count as invented, and there is no hit limit to check.
+   * The production definition: the question is {@code frage}, undeclared properties stay valid (the
+   * tool ignores them) but count as invented, and there is no hit limit to check.
    */
   @Test
   void theProductionDefinitionIsTheAgentLoopsSearch() {

@@ -366,6 +366,11 @@ io.opaa.api.types.ToolCapabilityBasis:
   assessment: STATE
   readable: [MANUAL, MEASURED]
   pending: []
+io.opaa.api.types.ToolCheckStatus:
+  attributes: [ToolCheck.status]
+  assessment: STATE
+  readable: [ABORTED, COMPLETED, FAILED, RUNNING]
+  pending: []
 io.opaa.asset.AssetVisibilityHistoryCause:
   attributes: [AssetVisibilityHistory.cause]
   assessment: AUDIT

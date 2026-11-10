@@ -187,6 +187,109 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/admin/models/{modelId}/tool-checks:
+    post:
+      operationId: startLlmModelToolCheck
+      tags: [model]
+      summary: Measure whether a chat model calls tools reliably (system admin only)
+      description: >
+        Starts a run of the tool-calling case base against this model entry, with its address,
+        key, model identifier, length limit and temperature, offering the agent loop's own
+        search_knowledge definition. The run takes minutes; poll getLatestLlmModelToolCheck. It
+        measures only: the tool capability stays as it is until the administration records it via
+        setLlmModelToolCapability. Only offered while agents are switched on; otherwise 404, as for
+        an unknown model. At most one check runs per installation at a time (409).
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelToolCheckRequest"
+      responses:
+        "202":
+          description: Check started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelToolCheckResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/{modelId}/tool-checks/latest:
+    get:
+      operationId: getLatestLlmModelToolCheck
+      tags: [model]
+      summary: The latest tool check of a chat model (system admin only)
+      description: >
+        The most recent check of this model, running or finished. 404 when there is none or while
+        agents are switched off.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Latest check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelToolCheckResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/models/{modelId}/tool-checks/{checkId}/report:
+    get:
+      operationId: getLlmModelToolCheckReport
+      tags: [model]
+      summary: The full report of a completed tool check as Markdown (system admin only)
+      description: >
+        Combination, result per case category, capability floor, durations and every run with
+        its tool calls and answer, to file with the operating records. The cases are fictional;
+        the report holds no personal data. 404 while the check runs, after it failed, when it
+        does not belong to the model or while agents are switched off.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: checkId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/models/test:
     post:
       operationId: testLlmModel
@@ -844,6 +947,130 @@ components:
           minLength: 1
           maxLength: 300
           example: "Lauf 2026-11-09, qwen2.5:14b auf Ollama 0.6, num_ctx 16384"
+
+    LlmModelToolCheckRequest:
+      type: object
+      required: [repetitions]
+      properties:
+        repetitions:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: >
+            Runs per case. 1 is a quick check; 3 smooths out chance and is what the published
+            measurements use.
+          example: 1
+
+    ToolCheckStatus:
+      type: string
+      description: >
+        RUNNING while cases are measured; COMPLETED with a result; FAILED when the endpoint did not
+        answer at all; ABORTED when the instance running it stopped before the end.
+      enum: [RUNNING, COMPLETED, FAILED, ABORTED]
+
+    LlmModelToolCheckCategory:
+      type: object
+      required: [category, summary, runs, passed, failed, notReached, followed, notFollowed,
+        truncated, errors]
+      properties:
+        category:
+          type: string
+          description: Case category, e.g. calls_when_needed.
+          example: calls_when_needed
+        summary:
+          type: string
+          example: 4 von 4 Läufen bestanden
+        runs:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        notReached:
+          type: integer
+        followed:
+          type: integer
+          description: Only ignores_injected_instruction counts the runs where the instruction took effect.
+        notFollowed:
+          type: integer
+        truncated:
+          type: integer
+        errors:
+          type: integer
+
+    LlmModelToolCheckResponse:
+      type: object
+      required: [id, status, baseUrl, modelIdentifier, currentCombination, repetitions, startedAt,
+        finishedAt, completedRuns, totalRuns, runId, failure, categories, floorMet, floorStatement,
+        medianModelCallMillis, totalSeconds, measurementRun]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ToolCheckStatus"
+        baseUrl:
+          type: string
+          description: The address the check measured, without credentials.
+        modelIdentifier:
+          type: string
+        currentCombination:
+          type: boolean
+          description: >
+            Whether the model still has the address and model identifier the check measured; a
+            result for another combination must not be recorded as its capability.
+        repetitions:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedRuns:
+          type: integer
+        totalRuns:
+          type: integer
+        runId:
+          type: string
+          nullable: true
+          description: Identifier of the measurement run, set once completed.
+          example: tc-20261110T201500Z-qwen2-5-7b-instruct
+        failure:
+          type: string
+          nullable: true
+          description: Why a FAILED check failed, in German.
+        categories:
+          type: array
+          description: Result per case category; empty until completed.
+          items:
+            $ref: "#/components/schemas/LlmModelToolCheckCategory"
+        floorMet:
+          type: boolean
+          nullable: true
+          description: >
+            Whether every run of calls_when_needed, valid_arguments and respects_limit passed - the
+            precondition for recording CAPABLE on basis MEASURED, never a decision by itself. Null
+            until completed.
+        floorStatement:
+          type: string
+          nullable: true
+        medianModelCallMillis:
+          type: integer
+          format: int64
+          nullable: true
+        totalSeconds:
+          type: number
+          format: double
+          nullable: true
+        measurementRun:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: >
+            The text to record as measurementRun with setLlmModelToolCapability: run identifier,
+            date and combination. Null until completed.
 
     LlmModelTestRequest:
       type: object
