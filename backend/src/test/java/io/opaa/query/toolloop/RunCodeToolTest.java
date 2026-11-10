@@ -363,6 +363,9 @@ class RunCodeToolTest {
     int opened;
     int closed;
     final List<String> scripts = new ArrayList<>();
+    final java.util.Map<String, byte[]> uploads = new java.util.LinkedHashMap<>();
+    final List<List<String>> installedRuns = new ArrayList<>();
+    RuntimeException runFailure;
     final List<Duration> timeouts = new ArrayList<>();
     final List<Duration> readyWithin = new ArrayList<>();
     ScriptRun next = new ScriptRun(0, "", "", false);
@@ -391,6 +394,24 @@ class RunCodeToolTest {
         }
 
         @Override
+        public void upload(String path, byte[] content) {
+          uploads.put(path, content);
+        }
+
+        @Override
+        public ScriptRun runInstalled(String scriptPath, List<String> arguments, Duration timeout) {
+          if (runFailure != null) {
+            throw runFailure;
+          }
+          List<String> command = new ArrayList<>();
+          command.add(scriptPath);
+          command.addAll(arguments);
+          installedRuns.add(command);
+          timeouts.add(timeout);
+          return next;
+        }
+
+        @Override
         public List<OutputEntry> outputEntries() {
           return entries;
         }
@@ -400,7 +421,7 @@ class RunCodeToolTest {
           if (collectFailure != null) {
             throw collectFailure;
           }
-          return files;
+          return files.stream().filter(file -> accepted.test(file.name())).toList();
         }
 
         @Override

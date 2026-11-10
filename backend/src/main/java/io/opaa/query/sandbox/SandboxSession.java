@@ -23,6 +23,21 @@ public interface SandboxSession extends AutoCloseable {
   ScriptRun run(String code, Duration timeout);
 
   /**
+   * Writes {@code content} to {@code path} in the working directory, readable by the scripts; an
+   * existing file is replaced.
+   *
+   * @param path {@link Sandboxes#WORKSPACE_DIR}, a slash and a plain file name.
+   */
+  void upload(String path, byte[] content);
+
+  /**
+   * Runs a script that the sandbox image brings along under {@link Sandboxes#INSTALLED_DIR}, never
+   * one written by the model, isolated from the working directory's Python files; otherwise as
+   * {@link #run}.
+   */
+  ScriptRun runInstalled(String scriptPath, List<String> arguments, Duration timeout);
+
+  /**
    * The files directly in {@link Sandboxes#OUTPUT_DIR} with the size the sandbox reports, without
    * reading them; bounded in number.
    */

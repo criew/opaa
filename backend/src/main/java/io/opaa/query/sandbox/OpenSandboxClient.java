@@ -11,6 +11,7 @@ import io.opaa.query.sandbox.SandboxSession.OutputFile;
 import io.opaa.query.sandbox.SandboxSession.ScriptRun;
 import jakarta.annotation.PreDestroy;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -66,6 +68,14 @@ class OpenSandboxClient implements Sandboxes {
    */
   static final List<String> SCRIPT_COMMAND =
       List.of("env", "-u", EXECD_TOKEN_VARIABLE, "python3", SCRIPT_PATH);
+
+  /** A file the backend uploads: directly in the working directory, with a plain name. */
+  private static final Pattern UPLOAD_PATH =
+      Pattern.compile(Pattern.quote(WORKSPACE_DIR + "/") + "[A-Za-z0-9_][A-Za-z0-9._-]*");
+
+  /** A script of the image: directly in {@link #INSTALLED_DIR}, with a plain name. */
+  private static final Pattern INSTALLED_SCRIPT =
+      Pattern.compile(Pattern.quote(INSTALLED_DIR + "/") + "[A-Za-z0-9_][A-Za-z0-9._-]*\\.py");
 
   /** Bounds of what comes back from the sandbox; anything beyond is dropped, never buffered. */
   static final int MAX_FILES = MAX_OUTPUT_FILES;
@@ -168,8 +178,24 @@ class OpenSandboxClient implements Sandboxes {
     @Override
     public synchronized ScriptRun run(String code, Duration timeout) {
       requireOpen();
-      upload(execd, token, code);
-      return execute(execd, token, timeout);
+      uploadFile(execd, token, SCRIPT_PATH, code.getBytes(StandardCharsets.UTF_8));
+      return execute(execd, token, SCRIPT_COMMAND, timeout);
+    }
+
+    @Override
+    public synchronized void upload(String path, byte[] content) {
+      requireOpen();
+      if (!UPLOAD_PATH.matcher(path).matches()) {
+        throw new IllegalArgumentException("Not a plain file in the working directory: " + path);
+      }
+      uploadFile(execd, token, path, content);
+    }
+
+    @Override
+    public synchronized ScriptRun runInstalled(
+        String scriptPath, List<String> arguments, Duration timeout) {
+      requireOpen();
+      return execute(execd, token, installedCommand(scriptPath, arguments), timeout);
     }
 
     @Override
@@ -253,29 +279,48 @@ class OpenSandboxClient implements Sandboxes {
     }
   }
 
-  private void upload(String execd, String token, String code) {
+  /**
+   * The command for a script of the image: without execd's token, and with {@code -I}, so neither
+   * the working directory nor a variable of the environment puts a module in front of the image's.
+   */
+  static List<String> installedCommand(String scriptPath, List<String> arguments) {
+    if (!INSTALLED_SCRIPT.matcher(scriptPath).matches()) {
+      throw new IllegalArgumentException("Not a script of the sandbox image: " + scriptPath);
+    }
+    List<String> command = new ArrayList<>();
+    command.addAll(List.of("env", "-u", EXECD_TOKEN_VARIABLE, "python3", "-I", scriptPath));
+    command.addAll(arguments);
+    return List.copyOf(command);
+  }
+
+  private void uploadFile(String execd, String token, String path, byte[] content) {
     String boundary = "opaa-" + HexFormat.of().formatHex(randomBytes());
     String metadata =
         objectMapper.writeValueAsString(
-            Map.of("path", SCRIPT_PATH, "owner", "sandbox", "group", "sandbox", "mode", 644));
-    String multipart =
-        part(boundary, "metadata", "metadata.json", "application/json", metadata)
-            + part(boundary, "file", "main.py", "application/octet-stream", code)
-            + "--"
-            + boundary
-            + "--\r\n";
+            Map.of("path", path, "owner", "sandbox", "group", "sandbox", "mode", 644));
+    String fileName = path.substring(path.lastIndexOf('/') + 1);
+    ByteArrayOutputStream multipart = new ByteArrayOutputStream(content.length + 1024);
+    multipart.writeBytes(
+        partHead(boundary, "metadata", "metadata.json", "application/json")
+            .getBytes(StandardCharsets.UTF_8));
+    multipart.writeBytes(metadata.getBytes(StandardCharsets.UTF_8));
+    multipart.writeBytes(
+        ("\r\n" + partHead(boundary, "file", fileName, "application/octet-stream"))
+            .getBytes(StandardCharsets.UTF_8));
+    multipart.writeBytes(content);
+    multipart.writeBytes(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
     HttpResponse<String> response =
         send(
             HttpRequest.newBuilder(URI.create(execd + "/files/upload"))
                 .header(EXECD_TOKEN_HEADER, token)
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .POST(HttpRequest.BodyPublishers.ofString(multipart, StandardCharsets.UTF_8)),
+                .POST(HttpRequest.BodyPublishers.ofByteArray(multipart.toByteArray())),
             HttpResponse.BodyHandlers.ofString());
-    requireSuccess(response, "upload script");
+    requireSuccess(response, "upload file");
   }
 
-  private static String part(
-      String boundary, String name, String fileName, String contentType, String content) {
+  private static String partHead(
+      String boundary, String name, String fileName, String contentType) {
     return "--"
         + boundary
         + "\r\nContent-Disposition: form-data; name=\""
@@ -284,9 +329,7 @@ class OpenSandboxClient implements Sandboxes {
         + fileName
         + "\"\r\nContent-Type: "
         + contentType
-        + "\r\n\r\n"
-        + content
-        + "\r\n";
+        + "\r\n\r\n";
   }
 
   /**
@@ -294,9 +337,9 @@ class OpenSandboxClient implements Sandboxes {
    * stream ends with {@code execution_complete} (exit code 0) or an {@code error} whose {@code
    * evalue} is the exit code, {@code -1} when the process was killed.
    */
-  private ScriptRun execute(String execd, String token, Duration runTimeout) {
+  private ScriptRun execute(String execd, String token, List<String> command, Duration runTimeout) {
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("argv", SCRIPT_COMMAND);
+    body.put("argv", command);
     body.put("cwd", "/workspace");
     body.put("timeout", runTimeout.toMillis());
     body.put("uid", SANDBOX_UID);

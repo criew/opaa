@@ -408,6 +408,79 @@ class OpenSandboxClientTest {
   }
 
   @Test
+  void anInstalledScriptRunsIsolatedWithoutTheTokenAndOnlyFromTheImagesDirectory() {
+    assertThat(
+            OpenSandboxClient.installedCommand(
+                "/opt/opaa/fill_template.py", List.of("/workspace/fill_template.json")))
+        .containsExactly(
+            "env",
+            "-u",
+            OpenSandboxClient.EXECD_TOKEN_VARIABLE,
+            "python3",
+            "-I",
+            "/opt/opaa/fill_template.py",
+            "/workspace/fill_template.json");
+    for (String path :
+        List.of("/workspace/main.py", "/opt/opaa/../../workspace/main.py", "/opt/opaa/x.sh")) {
+      assertThatThrownBy(() -> OpenSandboxClient.installedCommand(path, List.of()))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+  }
+
+  @Test
+  void anUploadedFileKeepsItsBytesAndStaysDirectlyInTheWorkingDirectory() throws IOException {
+    List<byte[]> uploads = new CopyOnWriteArrayList<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/",
+        exchange -> {
+          String call = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+          byte[] request = exchange.getRequestBody().readAllBytes();
+          String body = "";
+          int status = 200;
+          if (call.equals("POST /v1/sandboxes")) {
+            body = "{\"id\":\"sbx-4\"}";
+            status = 202;
+          } else if (call.endsWith("/files/upload")) {
+            uploads.add(request);
+          } else if (call.startsWith("DELETE")) {
+            status = 204;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(status, status == 204 ? -1 : bytes.length);
+          if (status != 204) {
+            exchange.getResponseBody().write(bytes);
+          }
+          exchange.close();
+        });
+    server.start();
+    try {
+      OpenSandboxClient client =
+          new OpenSandboxClient(
+              properties("http://127.0.0.1:" + server.getAddress().getPort()),
+              objectMapper,
+              new SimpleMeterRegistry());
+      byte[] docx = {'P', 'K', 3, 4, (byte) 0xff, 0, (byte) 0x80};
+      try (SandboxSession session = client.open(Duration.ofMinutes(5), Duration.ofSeconds(10))) {
+        session.upload("/workspace/fill_template.docx", docx);
+        for (String path : List.of("/workspace/out/x.docx", "/etc/hosts", "/workspace/../x")) {
+          assertThatThrownBy(() -> session.upload(path, docx))
+              .isInstanceOf(IllegalArgumentException.class);
+        }
+      }
+
+      assertThat(uploads).hasSize(1);
+      String multipart = new String(uploads.getFirst(), StandardCharsets.ISO_8859_1);
+      assertThat(multipart)
+          .contains("\"path\":\"/workspace/fill_template.docx\"")
+          .contains(new String(docx, StandardCharsets.ISO_8859_1));
+      client.close();
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
   void listedEntriesAreOnlyPlainFilesDirectlyInTheOutputDirectory() {
     List<SandboxSession.OutputEntry> entries =
         OpenSandboxClient.entries(
