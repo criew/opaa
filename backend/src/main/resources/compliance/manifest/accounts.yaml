@@ -290,6 +290,8 @@ data:
       - name: agent_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, updated_at, version]
+        person:
+          columns: [updated_by]
       - name: document_template_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, updated_at]
