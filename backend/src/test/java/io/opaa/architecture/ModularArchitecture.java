@@ -1093,20 +1093,26 @@ public final class ModularArchitecture {
     return relative.equals(LLM) || relative.startsWith(LLM + ".");
   }
 
+  /** A row class of an optional model role: a subtype of {@code rowType} below {@link #LLM}. */
+  private boolean isRowClassInLlm(JavaClass javaClass, String rowType) {
+    String relative = relative(javaClass.getPackageName());
+    return relative != null && isLlmPackage(relative) && javaClass.isAssignableTo(rowType);
+  }
+
   /**
    * Creating a row of {@link #OPTIONAL_ROLE_SETTINGS} with a timestamp, or calling one of {@link
    * #ROLE_ROW_WRITERS} on it, also by reference, only in {@link #ROLE_ROW_ADMINISTRATION} and in
-   * the row classes themselves; the row is public for that package, not for the roles.
+   * the row classes below {@link #LLM} themselves; a subclass elsewhere is no exception.
    */
   ArchRule onlyTheAdministrationWritesTheRoleRows() {
     String rowType = root + "." + OPTIONAL_ROLE_SETTINGS;
     return noClasses()
         .that(
             DescribedPredicate.describe(
-                "are outside " + ROLE_ROW_ADMINISTRATION + " and the row classes",
+                "are outside " + ROLE_ROW_ADMINISTRATION + " and the row classes in llm",
                 javaClass ->
                     !ROLE_ROW_ADMINISTRATION.equals(relative(javaClass.getPackageName()))
-                        && !topLevel(javaClass).isAssignableTo(rowType)))
+                        && !isRowClassInLlm(topLevel(javaClass), rowType)))
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(

@@ -207,22 +207,32 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * A role and the installation create or change a role row past the administration; the
-   * administration, also by constructor reference, and the row class itself pass.
+   * A role, the installation and a row subclass outside llm create or change a role row past the
+   * administration; the administration, also by constructor reference, and the row class in llm
+   * pass.
    */
   @Test
   void aRoleRowWrittenPastTheAdministrationIsReported() {
     Scenario scenario = new Scenario("rolerows");
+    String rowClass = FIXTURES + ".rolerows.llm.rerank.RerankModelSettings";
 
     assertThat(scenario.violations(ModularArchitecture::onlyTheAdministrationWritesTheRoleRows))
-        .hasSize(2)
+        .hasSize(4)
         .anySatisfy(
             violation ->
                 assertThat(violation).contains("rerank.RerankRole.reset", "replaceEndpoint"))
         .anySatisfy(
             violation -> assertThat(violation).contains("installation.Installer.install", "<init>"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("installation.SneakyRow.overwrite", "replaceEndpoint"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith("Constructor <" + FIXTURES + ".rolerows.installation.SneakyRow"))
         .noneSatisfy(violation -> assertThat(violation).contains("RoleAdministration"))
-        .noneSatisfy(violation -> assertThat(violation).contains("Constructor <"));
+        .noneSatisfy(violation -> assertThat(violation).startsWith("Constructor <" + rowClass));
   }
 
   /**
