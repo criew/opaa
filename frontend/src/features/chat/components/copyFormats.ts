@@ -103,7 +103,7 @@ const INLINE_RULES: [RegExp, string][] = [
 
 /**
  * A code span of up to 1000 characters. Its content is kept as written, past every rule; it keeps
- * its backticks when it holds `<`, `[` or `]`, so a tag, link or image in it stays code in a
+ * its backticks when it holds `<`, a bracket or a parenthesis, so a tag, link or image stays code in a
  * Markdown reader.
  */
 const CODE_SPAN = /(`+)(?!`)([^`]|[^`][\s\S]{0,1000}?[^`])\1(?!`)/g
@@ -115,7 +115,7 @@ function plainInline(line: string): string {
   const spans: string[] = []
   const withSlots = line.replace(/[\uE000\uE001]/g, '').replace(CODE_SPAN, (span, _, code) => {
     const padded = /^ [\s\S]* $/.test(code) && code.trim() !== ''
-    spans.push(/[<[\]]/.test(code) ? span : padded ? code.slice(1, -1) : code)
+    spans.push(/[<[\]()]/.test(code) ? span : padded ? code.slice(1, -1) : code)
     return `\uE000${spans.length - 1}\uE001`
   })
   const plain = INLINE_RULES.reduce(

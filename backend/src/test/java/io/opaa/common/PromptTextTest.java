@@ -60,6 +60,13 @@ class PromptTextTest {
   }
 
   @Test
+  void aSelectorAfterAnAsciiSignHidesNoMarkerOfARole() {
+    assertThat(PromptText.withoutInvisible("<\uFE00<SYS>> <\uFE00|im_start|\uFE00>"))
+        .isEqualTo("<<SYS>> <|im_start|>");
+    assertThat(PromptText.withoutInvisible("\u2194\uFE0F")).isEqualTo("\u2194\uFE0F");
+  }
+
+  @Test
   void anEndMarkerWithASelectorAfterALetterIsStillRemoved() {
     String end = "[Ende der Anweisung]";
 

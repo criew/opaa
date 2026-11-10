@@ -106,7 +106,8 @@ public final class PromptText {
 
   /**
    * A character a variation selector selects a form of: a symbol (emoji, math, modifier), a keycap
-   * base, or a letter of a script other than Latin, such as a Han ideograph.
+   * base, or a letter of a script other than Latin, such as a Han ideograph. An ASCII sign such as
+   * {@code <} or {@code |} takes none: it would only hide the marker of a role.
    */
   private static boolean selects(int before) {
     if (before < 0) {
@@ -114,7 +115,7 @@ public final class PromptText {
     }
     int type = Character.getType(before);
     return type == Character.OTHER_SYMBOL
-        || type == Character.MATH_SYMBOL
+        || (type == Character.MATH_SYMBOL && before > 0x7F)
         || type == Character.MODIFIER_SYMBOL
         || (before >= '0' && before <= '9')
         || before == '#'

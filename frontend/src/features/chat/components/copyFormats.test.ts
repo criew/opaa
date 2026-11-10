@@ -210,6 +210,13 @@ describe('answerAsPlainText', () => {
       answerAsPlainText('Code `<img src=x>` und `a\\*b`, ``` a`b ```, `[l](https://x.example)`'),
     ).toBe('Code `<img src=x>` und a\\*b, a`b, `[l](https://x.example)`')
   })
+
+  test.each([
+    ['![x]`(https://evil.example/p.png)`', '![x]`(https://evil.example/p.png)`'],
+    ['[x]`(https://evil.example/a)`', '[x]`(https://evil.example/a)`'],
+  ])('lets a code span in brackets complete no image and no link: %s', (answer, expected) => {
+    expect(answerAsPlainText(answer)).toBe(expected)
+  })
 })
 
 describe('copy note', () => {
