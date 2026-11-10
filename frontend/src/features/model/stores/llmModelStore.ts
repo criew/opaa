@@ -1,11 +1,17 @@
 import { create } from 'zustand'
-import type { EmbeddingInfoResponse, LlmModelRequest, LlmModelResponse } from '@/shared/api/types'
+import type {
+  EmbeddingInfoResponse,
+  LlmModelRequest,
+  LlmModelResponse,
+  LlmModelToolCapabilityRequest,
+} from '@/shared/api/types'
 import {
   activateLlmModel,
   createLlmModel,
   deleteLlmModel,
   getEmbeddingInfo,
   getLlmModels,
+  setLlmModelToolCapability,
   updateLlmModel,
 } from '../api/modelApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
@@ -23,6 +29,7 @@ interface LlmModelState {
   updateExistingModel: (modelId: string, request: LlmModelRequest) => Promise<LlmModelResponse>
   deleteExistingModel: (modelId: string) => Promise<void>
   activateExistingModel: (modelId: string) => Promise<void>
+  setToolCapability: (modelId: string, request: LlmModelToolCapabilityRequest) => Promise<void>
 }
 
 function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
@@ -104,6 +111,11 @@ export const useLlmModelStore = create<LlmModelState>((set, get) => ({
     set({
       models: get().models.map((m) => (m.id === modelId ? activated : { ...m, active: false })),
     })
+  },
+
+  setToolCapability: async (modelId, request) => {
+    const updated = await setLlmModelToolCapability(modelId, request)
+    set({ models: get().models.map((m) => (m.id === modelId ? updated : m)) })
   },
 }))
 

@@ -394,6 +394,10 @@ export type BrandingUpdateRequest = components['schemas']['BrandingUpdateRequest
 
 export type LlmModelResponse = components['schemas']['LlmModelResponse']
 export type LlmModelRequest = components['schemas']['LlmModelRequest']
+export type LlmModelToolCapability = components['schemas']['LlmModelToolCapability']
+export type LlmModelToolCapabilityRequest = components['schemas']['LlmModelToolCapabilityRequest']
+export type ToolCapability = components['schemas']['ToolCapability']
+export type ToolCapabilityBasis = components['schemas']['ToolCapabilityBasis']
 export type LlmModelTestRequest = components['schemas']['LlmModelTestRequest']
 export type LlmModelTestResponse = components['schemas']['LlmModelTestResponse']
 export type LlmModelDiscoveryRequest = components['schemas']['LlmModelDiscoveryRequest']

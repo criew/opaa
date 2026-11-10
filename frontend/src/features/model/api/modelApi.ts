@@ -10,6 +10,7 @@ import type {
   LlmModelResponse,
   LlmModelTestRequest,
   LlmModelTestResponse,
+  LlmModelToolCapabilityRequest,
   ModelRoleTestRequest,
   RerankModelSettingsRequest,
   RerankModelSettingsResponse,
@@ -67,6 +68,22 @@ export async function deleteLlmModel(modelId: string): Promise<void> {
 export async function activateLlmModel(modelId: string): Promise<LlmModelResponse> {
   try {
     const { data } = await client.post<LlmModelResponse>(`/v1/admin/models/${modelId}/activate`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Records whether the model calls tools reliably; UNVERIFIED resets the statement. */
+export async function setLlmModelToolCapability(
+  modelId: string,
+  request: LlmModelToolCapabilityRequest,
+): Promise<LlmModelResponse> {
+  try {
+    const { data } = await client.put<LlmModelResponse>(
+      `/v1/admin/models/${modelId}/tool-capability`,
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)
