@@ -163,6 +163,29 @@ class OpenSandboxClientTest {
   }
 
   @Test
+  void aFailedDownloadLeavesOnlyThatFileOut() {
+    List<SandboxSession.OutputEntry> entries =
+        List.of(
+            new SandboxSession.OutputEntry("a.csv", 1),
+            new SandboxSession.OutputEntry("b.csv", 1),
+            new SandboxSession.OutputEntry("c.csv", 1));
+
+    List<SandboxSession.OutputFile> files =
+        OpenSandboxClient.outputFiles(
+            entries,
+            name -> true,
+            () -> false,
+            path -> {
+              if (path.endsWith("b.csv")) {
+                throw new SandboxException("download answered 500");
+              }
+              return new byte[] {1};
+            });
+
+    assertThat(files).extracting(SandboxSession.OutputFile::name).containsExactly("a.csv", "c.csv");
+  }
+
+  @Test
   void aSandboxThatIsNotReadyInTimeIsDeleted() throws IOException {
     List<String> calls = new CopyOnWriteArrayList<>();
     HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

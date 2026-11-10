@@ -234,7 +234,7 @@ class RunCodeTool implements AgentTool {
         result.timedOut()
             ? "Abgebrochen: Zeitlimit überschritten."
             : "Exit-Code: " + result.exitCode();
-    return head + "\n" + DocumentBlock.renderLines(blockId, lines);
+    return head + "\n" + DocumentBlock.renderIndentedLines(blockId, lines);
   }
 
   private static String note(Verdict verdict) {

@@ -416,7 +416,13 @@ class OpenSandboxClient implements Sandboxes {
         log.info("Sandbox output file skipped: time to collect is up");
         continue;
       }
-      byte[] content = download.apply(OUTPUT_DIR + "/" + name);
+      byte[] content;
+      try {
+        content = download.apply(OUTPUT_DIR + "/" + name);
+      } catch (SandboxException e) {
+        log.info("Sandbox output file skipped: download failed", e);
+        continue;
+      }
       if (content == null) {
         log.info("Sandbox output file skipped: larger than announced");
         continue;

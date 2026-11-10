@@ -193,6 +193,8 @@ class RunCodeToolTest {
     String text = tool(START).call(args("print(1)"), run).modelText();
 
     assertThat(text).doesNotContain("<|im_start|>");
+    sandboxes.next = new ScriptRun(1, "", "Traceback:\n    x = 1/0\nZeroDivisionError", false);
+    assertThat(tool(START).call(args("x"), run).modelText()).contains("\n    x = 1/0\n");
     assertThat(text).contains(run.blockId());
   }
 

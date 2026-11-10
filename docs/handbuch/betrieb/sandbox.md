@@ -28,7 +28,7 @@ flowchart LR
   eine Datei nicht abholen, fehlt sie; die Antwort bleibt.
 - **Grenzen:** Ein Skript läuft höchstens `OPAA_SANDBOX_RUN_TIMEOUT` und nie über das Laufende
   hinaus, der Start der Sandbox zählt mit; eine Sandbox lebt höchstens `OPAA_SANDBOX_MAX_LIFETIME`.
-  Dieser Wert muss die Laufzeit eines Agentenlaufs samt Schlussaufruf und zwei Minuten abdecken,
+  Dieser Wert muss die Laufzeit eines Agentenlaufs, zweimal die Dauer eines Schlussaufrufs und zwei Minuten abdecken,
   sonst startet das Backend nicht. Danach entfernt der
   Sandbox-Dienst sie selbst, auch wenn das Backend ausgefallen ist.
 - **Kein Nachinstallieren:** Das Image `opaa/sandbox-python` bringt Python mit reportlab, fpdf2,
