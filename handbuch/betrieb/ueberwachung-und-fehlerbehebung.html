@@ -4501,7 +4501,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_health_group_status</code></td>
-<td>Zustand jeder Health-Gruppe nach <code>health_group</code>, alle fünf Minuten gelesen (<code>NaN</code>, wenn eine Gruppe nicht binnen zehn Sekunden antwortet): <code>1</code> bereit, <code>0</code> gestört oder außer Betrieb, <code>-1</code> unbekannt. <code>embedding-model</code> und <code>vector-store</code> kosten bei jeder Prüfung einen Modellaufruf; für sie prüft die Metrik nicht selbst, sondern zeigt das Ergebnis der letzten Prüfung von außen aus den letzten zehn Minuten, ohne eine solche <code>-1</code></td>
+<td>Zustand jeder Health-Gruppe nach <code>health_group</code>, alle 30 Sekunden gelesen, Gruppen mit Anfragen an einen fremden Dienst wie <code>upload-store</code> nur alle fünf Minuten (<code>NaN</code>, wenn eine Gruppe nicht binnen zehn Sekunden antwortet): <code>1</code> bereit, <code>0</code> gestört oder außer Betrieb, <code>-1</code> unbekannt. <code>embedding-model</code> und <code>vector-store</code> kosten bei jeder Prüfung einen Modellaufruf; für sie prüft die Metrik nicht selbst, sondern zeigt das Ergebnis der letzten Prüfung von außen aus den letzten zehn Minuten, ohne eine solche <code>-1</code></td>
 </tr>
 <tr>
 <td><code>tasks_scheduled_execution_seconds_*</code></td>
