@@ -35,6 +35,14 @@ components:
             Optional qualifier of code - for PASSWORD_CHANGE_REQUIRED the PasswordChangeReason
             (INITIAL, ADMIN_RESET, SECURITY) the client shows as a plain sentence.
           example: INITIAL
+        requestId:
+          type: string
+          description: >
+            The request id of the call that failed - the one of its X-Request-Id response header,
+            in the backend log and in the access log of the frontend container. Absent where the
+            error arises outside a request. Lets an administrator find the log lines of the
+            failure the person reports.
+          example: 4bf92f3577b34da6a3ce929d0e0e4736
         fieldErrors:
           type: array
           nullable: true

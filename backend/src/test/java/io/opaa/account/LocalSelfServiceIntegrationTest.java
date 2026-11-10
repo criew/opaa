@@ -968,7 +968,8 @@ class LocalSelfServiceIntegrationTest {
   }
 
   private static String withoutTimestamp(String json) {
-    return json.replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"…\"");
+    return json.replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"…\"")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "\"requestId\":\"…\"");
   }
 
   private static String bearer(MvcResult result) throws Exception {

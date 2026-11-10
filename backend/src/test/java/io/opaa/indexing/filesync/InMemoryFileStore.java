@@ -55,6 +55,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean swallowExpiry;
   private boolean recordChanges;
   private Runnable beforeNextRead;
+  private Runnable onFetch = () -> {};
   private boolean reportAsLogged;
   private final Set<String> textExports = new HashSet<>();
   private final Map<String, Long> listedSizes = new HashMap<>();
@@ -109,6 +110,12 @@ public final class InMemoryFileStore implements FileStore {
             Integer::sum);
       }
     }
+  }
+
+  /** Runs {@code hook} on the fetching thread at the start of every fetch. */
+  public InMemoryFileStore onFetch(Runnable hook) {
+    onFetch = hook;
+    return this;
   }
 
   public InMemoryFileStore denyListing(String container) {
@@ -672,6 +679,7 @@ public final class InMemoryFileStore implements FileStore {
   @Override
   public FetchedFile fetch(FileEntry entry, long maxBytes) throws FileAccessException {
     call("fetch " + entry.container().key() + "/" + entry.id());
+    onFetch.run();
     if (unreadable.contains(entry.container().key())) {
       throw new FileAccessException.Unreadable("„" + entry.id() + "“ darf nicht gelesen werden.");
     }
