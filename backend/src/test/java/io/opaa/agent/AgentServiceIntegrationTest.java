@@ -305,6 +305,21 @@ class AgentServiceIntegrationTest {
     grantCreateAgent(creator);
     UUID agent = agentOf(callerOf(creator), "Fassungshilfe");
     agentService.update(agent, withLibraries(Set.of()), creator());
+    assertThat(agentService.get(agent, creator()).agent().getRevision())
+        .as("a new name alone is no new revision")
+        .isEqualTo(1);
+    agentService.update(
+        agent,
+        new AgentUpdate(
+            "Recherchehilfe",
+            null,
+            new AgentConfiguration(
+                "Antworte knapp.",
+                Set.of(),
+                AgentTools.DEFAULT,
+                AgentPlanStep.OFF,
+                AgentLimits.INSTALLATION)),
+        creator());
     int revision = agentService.get(agent, creator()).agent().getRevision();
 
     assertThat(revision).isEqualTo(2);

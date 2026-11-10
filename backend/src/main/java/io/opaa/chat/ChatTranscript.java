@@ -51,10 +51,17 @@ record ChatTranscript(
    * @param text the turn's text, Markdown as stored, with markers replaced by footnotes
    * @param sources one line per cited source: {@code [n] fileName, location} for the footnotes,
    *     then the cited sources the text never marks, without a number
+   * @param draftNote for an agent answer the draft notice with agent and revision, so the mark
+   *     travels with the export; {@code null} for every other turn
    */
-  record Entry(ChatRole role, Instant createdAt, String text, List<String> sources) {
+  record Entry(
+      ChatRole role, Instant createdAt, String text, List<String> sources, String draftNote) {
     Entry {
       sources = List.copyOf(sources);
+    }
+
+    Entry(ChatRole role, Instant createdAt, String text, List<String> sources) {
+      this(role, createdAt, text, sources, null);
     }
   }
 
@@ -126,7 +133,17 @@ record ChatTranscript(
         lines.add(safe(source.getFileName()));
       }
     }
-    return new Entry(turn.getRole(), turn.getCreatedAt(), body.toString().strip(), lines);
+    return new Entry(
+        turn.getRole(), turn.getCreatedAt(), body.toString().strip(), lines, draftNote(turn));
+  }
+
+  /** The draft notice of an agent answer with its agent and revision, {@code null} otherwise. */
+  private static String draftNote(ChatTurn turn) {
+    AgentRunRecord run = turn.getAgentRun();
+    if (run == null) {
+      return null;
+    }
+    return run.stamp() == null ? AgentRunStamp.DRAFT_NOTICE : safe(run.stamp().shortText());
   }
 
   private static ChatSource resolve(List<ChatSource> sources, CitationMarker marker) {

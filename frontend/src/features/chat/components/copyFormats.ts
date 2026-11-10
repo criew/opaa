@@ -1,3 +1,4 @@
+import type { AgentRun } from '@/shared/api/types'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   CLAIMED_MARKER_RE,
@@ -173,6 +174,23 @@ function isDroppedFromNote(code: number): boolean {
     (code >= 0x2066 && code <= 0x2069) ||
     (code >= 0xe0000 && code <= 0xe007f)
   )
+}
+
+/**
+ * The draft notice of an agent answer with agent and revision, so the mark travels with a copied
+ * or exported answer; `null` for an answer without an agent run.
+ */
+export function agentDraftNote(run: AgentRun | undefined): string | null {
+  if (!run) return null
+  const notice = 'Entwurf, nicht geprüft'
+  if (!run.stamp) return notice
+  return `${notice} · Agent „${plainNoteText(run.stamp.agentName)}“, Fassung ${run.stamp.agentRevision}`
+}
+
+/** The copy note led by the draft notice of an agent answer, the note alone otherwise. */
+export function noteWithDraft(note: string, run: AgentRun | undefined): string {
+  const draft = agentDraftNote(run)
+  return draft ? `${draft} · ${note}` : note
 }
 
 /** Markdown followed by a rule and the note as its own paragraph. */

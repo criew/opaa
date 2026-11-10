@@ -332,6 +332,29 @@ class FillTemplateTest(unittest.TestCase):
         with open(os.path.join(self.out, "Bericht.pdf"), "rb") as pdf:
             self.assertEqual(b"%PDF-", pdf.read(5))
 
+    def test_docx_and_pdf_both_carry_the_stamp_with_the_draft_notice(self):
+        import docx
+
+        require_soffice(self)
+        make_template(self.template, ["Betreff: {{ betreff }}"])
+        stamp = ("Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3"
+                 " · Vorlage „Bericht“, Fassung 2")
+
+        code, result = fill_template.fill(
+            self.job({"betreff": "Test"}, formats=["docx", "pdf"], pdf_deadline_seconds=60,
+                     stamp=stamp))
+
+        self.assertEqual(0, code, result)
+        docx_path = os.path.join(self.out, "Bericht.docx")
+        self.assertIn(stamp, footer_text(docx_path))
+        properties = docx.Document(docx_path).core_properties
+        self.assertEqual(stamp, properties.comments)
+        self.assertEqual(stamp, properties.subject)
+        with open(os.path.join(self.out, "Bericht.pdf"), "rb") as pdf:
+            content = pdf.read().decode("latin-1").upper()
+        # The PDF's document information holds the subject as UTF-16BE hex.
+        self.assertIn("/SUBJECT<FEFF" + stamp.encode("utf-16-be").hex().upper(), content)
+
     def test_a_conversion_beyond_its_time_keeps_the_docx_and_leaves_no_process(self):
         make_template(self.template, ["{{ x }}"])
         hanging = os.path.join(self.dir, "soffice")

@@ -14,7 +14,6 @@ import io.opaa.chat.ChatSource;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.compliance.DataFlow;
-import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
@@ -187,7 +186,7 @@ class AgentToolLoop implements AgentTurnHandler {
       throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
     }
     try {
-      run.stampWith(stamp(spec, run));
+      run.stampWith(stamp(spec, run, client));
       signal(turn, AnswerStreamListener::started);
       QueryResult result = runAndKeep(turn, spec, run, client);
       metrics.recordRun(
@@ -215,17 +214,17 @@ class AgentToolLoop implements AgentTurnHandler {
 
   /**
    * The version stamp as the run starts: the agent and its revision, the run's scope by the names
-   * the libraries have now and the active model's identifier. Templates join as tools fill them.
+   * the libraries have now and the identifier of the model the run's client talks to. Templates
+   * join as tools fill them.
    */
-  private AgentRunStamp stamp(AgentRunSpec spec, AgentRun run) {
-    ActiveChatModelDescription model = chatModelResolver.resolveDescription();
+  private AgentRunStamp stamp(AgentRunSpec spec, AgentRun run, ChatClient client) {
     return new AgentRunStamp(
         spec.agentId(),
         spec.name() == null ? "" : spec.name(),
         spec.version(),
         chatSourceAssembler.searchedLibraries(run.searchScope()),
         List.of(),
-        model == null ? null : model.modelIdentifier());
+        chatModelResolver.modelIdentifierOf(client));
   }
 
   /** Closes what the run's tools opened, e.g. its sandbox; a failure is logged, never thrown. */
@@ -440,7 +439,9 @@ class AgentToolLoop implements AgentTurnHandler {
             false,
             false,
             false,
-            chatSourceAssembler.searchedLibraries(run.searchScope()),
+            run.stamp() == null
+                ? chatSourceAssembler.searchedLibraries(run.searchScope())
+                : run.stamp().libraries(),
             completeness);
     return new QueryResult(
         answer,

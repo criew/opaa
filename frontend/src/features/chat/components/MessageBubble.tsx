@@ -264,6 +264,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                     content={message.content}
                     citations={citations}
                     answeredAt={message.timestamp}
+                    agentRun={message.agentRun}
                   />
                 </Box>
               }

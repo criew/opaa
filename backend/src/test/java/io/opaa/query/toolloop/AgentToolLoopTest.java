@@ -29,7 +29,6 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
-import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ToolCallingNotCapableException;
@@ -181,8 +180,7 @@ class AgentToolLoopTest {
 
   @Test
   void everyAnswerCarriesTheStampOfTheAgentRevisionItRanWith() {
-    when(modelResolver.resolveDescription())
-        .thenReturn(new ActiveChatModelDescription("http://modell", "modell-a"));
+    when(modelResolver.modelIdentifierOf(any(ChatClient.class))).thenReturn("modell-a");
     when(sourceAssembler.searchedLibraries(Set.of(spaceLibrary, agentLibrary)))
         .thenReturn(
             List.of(
@@ -217,6 +215,8 @@ class AgentToolLoopTest {
     assertThat(first.templates()).isEmpty();
     assertThat(first.model()).isEqualTo("modell-a");
     assertThat(second.agentRevision()).isEqualTo(4);
+    // one lookup of the library names per run, shared by the stamp and the searched libraries
+    verify(sourceAssembler, times(2)).searchedLibraries(anySet());
     ArgumentCaptor<AgentRunRecord> kept = ArgumentCaptor.captor();
     verify(chatService, times(2))
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), kept.capture());

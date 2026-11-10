@@ -23,9 +23,10 @@ import java.util.UUID;
  * An agent: a catalog entry that runs the tool loop (ADR-0070) with its own instruction, libraries,
  * tools, plan step and limits. Name, description, owner and reach are the shell's.
  *
- * <p>{@link #revision} counts every saved change of what a run uses (the "Fassung"); the shell's
- * {@code updatedAt} moves with it. The libraries are ids only: a library that is deleted or no
- * longer readable stays assigned, and the agent says so instead of losing it silently.
+ * <p>{@link #revision} counts every saved change of what a run uses (the "Fassung"): instruction,
+ * libraries, tools, plan step and limits, not a new name or purpose; the shell's {@code updatedAt}
+ * moves with every change. The libraries are ids only: a library that is deleted or no longer
+ * readable stays assigned, and the agent says so instead of losing it silently.
  */
 @Entity
 @Table(name = "agents")
@@ -120,7 +121,7 @@ public class Agent extends Asset {
     touch();
   }
 
-  /** A new revision: something a run uses or the agent's name or purpose changed. */
+  /** A new revision: something a run uses changed; a new name or purpose alone is none. */
   void countRevision() {
     this.revision++;
     touch();

@@ -16,9 +16,10 @@
 geprüftes Arbeitsergebnis. Prüfen Sie Inhalt und [Belege](belege-pruefen.md), bevor Sie sie
 weitergeben. Eine gewöhnliche Antwort ohne Agent trägt weder Stempel noch Entwurfskennzeichnung.
 
-Ein Agent bekommt eine neue Fassung, sobald jemand Name, Zweck, Auftrag, Wissen, Werkzeuge, Ablauf
-oder Grenzen speichert ([Agent anlegen](agent-anlegen.md)). Eine Vorlage bekommt eine neue Fassung,
-sobald jemand ihre Datei ersetzt ([Vorlage anlegen](vorlage-anlegen.md)).
+Ein Agent bekommt eine neue Fassung, sobald jemand Auftrag, Wissen, Werkzeuge, Ablauf oder Grenzen
+ändert ([Agent anlegen](agent-anlegen.md)); ein neuer Name oder Zweck allein ist keine. Eine
+Vorlage bekommt eine neue Fassung, sobald jemand ihre Datei ersetzt
+([Vorlage anlegen](vorlage-anlegen.md)).
 
 **Gut zu wissen:**
 

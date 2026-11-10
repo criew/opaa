@@ -4,8 +4,10 @@ import {
   answerAsMarkdown,
   answerAsPlainText,
   answerWithSources,
+  agentDraftNote,
   copyNote,
   markdownWithNote,
+  noteWithDraft,
   plainTextWithNote,
 } from './copyFormats'
 import type { SourceReference } from '@/shared/api/types'
@@ -192,5 +194,28 @@ describe('copy note', () => {
 
     expect(markdownWithNote('Antwort', note)).toBe('Antwort\n\n---\n\nHinweis. – OPAA, 05.03.2026')
     expect(plainTextWithNote('Antwort', note)).toBe('Antwort\n\nHinweis. – OPAA, 05.03.2026')
+  })
+
+  test('leads the note of an agent answer with its draft notice, agent and revision', () => {
+    const note = copyNote('Hinweis.', 'OPAA', answeredAt)
+    const run = {
+      runId: 'run-1',
+      endState: 'COMPLETED' as const,
+      steps: [],
+      stamp: {
+        agentId: 'agent-1',
+        agentName: 'Prüfhilfe',
+        agentRevision: 3,
+        libraries: [],
+        templates: [],
+      },
+    }
+
+    expect(noteWithDraft(note, run)).toBe(
+      'Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Hinweis. – OPAA, 05.03.2026',
+    )
+    expect(agentDraftNote({ ...run, stamp: null })).toBe('Entwurf, nicht geprüft')
+    // regression guard: an ordinary answer keeps the note unchanged
+    expect(noteWithDraft(note, undefined)).toBe(note)
   })
 })

@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { AgentRun } from '@/shared/api/types'
+import { renderWithProviders } from '@/test/test-utils'
 import AgentRunStampLine from './AgentRunStampLine'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../types/chat'
@@ -26,7 +27,7 @@ const RUN: AgentRun = {
 
 describe('AgentRunStampLine', () => {
   it('marks the answer as a draft and names agent and revision, details on demand', async () => {
-    render(<AgentRunStampLine run={RUN} />)
+    renderWithProviders(<AgentRunStampLine run={RUN} />)
 
     expect(screen.getByRole('img', { name: 'Entwurf, nicht geprüft' })).toHaveTextContent('Entwurf')
     const toggle = screen.getByRole('button', { name: /Agent „Prüfhilfe“ · Fassung 3/ })
@@ -41,7 +42,7 @@ describe('AgentRunStampLine', () => {
   })
 
   it('says with which revision the answer was made once the agent has changed', () => {
-    render(
+    renderWithProviders(
       <AgentRunStampLine run={{ ...RUN, stamp: { ...RUN.stamp!, currentAgentRevision: 5 } }} />,
     )
     expect(
@@ -50,7 +51,7 @@ describe('AgentRunStampLine', () => {
   })
 
   it('shows the draft mark alone for a run kept without a stamp', () => {
-    render(<AgentRunStampLine run={{ ...RUN, stamp: null }} />)
+    renderWithProviders(<AgentRunStampLine run={{ ...RUN, stamp: null }} />)
     expect(screen.getByRole('img', { name: 'Entwurf, nicht geprüft' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -62,7 +63,7 @@ describe('AgentRunStampLine', () => {
       content: 'Gewöhnliche Antwort.',
       timestamp: new Date('2026-11-10T08:00:00Z'),
     }
-    render(<MessageBubble message={message} />)
+    renderWithProviders(<MessageBubble message={message} />)
     expect(screen.queryByTestId('agent-stamp')).not.toBeInTheDocument()
     expect(screen.queryByText('Entwurf')).not.toBeInTheDocument()
   })

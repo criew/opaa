@@ -201,6 +201,30 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .doesNotHaveDuplicates();
   }
 
+  /** An agent answer leaves with its steps and one line for its version stamp. */
+  @Test
+  void anAgentRunLeavesWithItsStepsAndItsStamp() {
+    String run =
+        "{\"runId\":\"00000000-0000-0000-0000-000000000001\",\"endState\":\"COMPLETED\","
+            + "\"steps\":[{\"tool\":\"search_knowledge\",\"detail\":\"Fristen\",\"hits\":2,"
+            + "\"status\":\"DONE\"}],\"stamp\":{\"agentId\":"
+            + "\"00000000-0000-0000-0000-0000000000a1\",\"agentName\":\"Prüfhilfe\","
+            + "\"agentRevision\":3,\"libraries\":[{\"id\":\"00000000-0000-0000-0000-0000000000b1\","
+            + "\"name\":\"Erlasse\"}],\"templates\":[{\"id\":"
+            + "\"00000000-0000-0000-0000-0000000000c1\",\"name\":\"Bescheid\",\"revision\":2}],"
+            + "\"model\":\"modell-a\"}}";
+
+    assertThat(ChatSelfDisclosureExporter.agentRunOf(run))
+        .containsExactly(
+            "search_knowledge: Fristen (2 Treffer)",
+            "Fassungsstempel: Agent „Prüfhilfe“, Fassung 3; Bibliotheken: Erlasse;"
+                + " Vorlagen: „Bescheid“, Fassung 2; Modell: modell-a");
+    assertThat(
+            ChatSelfDisclosureExporter.agentRunOf(
+                "{\"runId\":\"00000000-0000-0000-0000-000000000001\",\"steps\":[]}"))
+        .isEmpty();
+  }
+
   /** Only numbered positions leave a location; headings, sheet names and slide titles stay. */
   @Test
   void aLocationKeepsOnlyItsNumberedPositions() {

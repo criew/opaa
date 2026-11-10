@@ -42,6 +42,11 @@ public record AgentRunStamp(
     return new AgentRunStamp(agentId, agentName, agentRevision, libraries, more, model);
   }
 
+  /** The draft notice with agent and revision, for a copied or exported answer. */
+  public String shortText() {
+    return DRAFT_NOTICE + " · Agent „" + agentName + "“, Fassung " + agentRevision;
+  }
+
   /**
    * The stamp as one line for a result file, led by the draft notice: written into its footers and
    * document properties, so it travels with the file. {@code filled} is the template of this file,

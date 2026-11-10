@@ -182,7 +182,11 @@ def render(template_path, data, target):
 
 
 def add_stamp(path, stamp):
-    """Appends stamp to every footer definition and writes it to the document properties."""
+    """Appends stamp to every footer definition and writes it to the document properties.
+
+    Comments keep it in the DOCX; the subject is what the PDF export carries into its own
+    document information, so a PDF shows the stamp in its footer and its properties alike.
+    """
     import docx
 
     document = docx.Document(path)
@@ -198,6 +202,7 @@ def add_stamp(path, stamp):
             if index == 0 or not footer.is_linked_to_previous:
                 footer.add_paragraph(stamp)
     document.core_properties.comments = stamp
+    document.core_properties.subject = stamp
     document.save(path)
 
 

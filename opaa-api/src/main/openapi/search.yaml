@@ -825,7 +825,7 @@ components:
             means the agent was changed since the answer.
         libraries:
           type: array
-          description: The libraries the run could search, by id and name at the time, by name.
+          description: The libraries the run could search, with their name at the time, sorted by name.
           items:
             $ref: "#/components/schemas/SearchedLibrary"
         templates:

@@ -54,6 +54,46 @@ class ChatTranscriptTest {
   }
 
   @Test
+  void anAgentAnswerCarriesTheDraftNoticeWithAgentAndRevisionAndAnOrdinaryAnswerNone() {
+    ChatTurn agentAnswer =
+        new ChatTurn(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            ChatRole.ASSISTANT,
+            "Ein Monat.",
+            List.of(),
+            null,
+            ANSWERED,
+            null,
+            new AgentRunRecord(
+                UUID.randomUUID(),
+                AgentRunRecord.EndState.COMPLETED,
+                List.of(),
+                new AgentRunStamp(UUID.randomUUID(), "Prüfhilfe", 3, List.of(), List.of(), null)));
+    ChatTurn unstamped =
+        new ChatTurn(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            ChatRole.ASSISTANT,
+            "Zwei Wochen.",
+            List.of(),
+            null,
+            ANSWERED,
+            null,
+            new AgentRunRecord(UUID.randomUUID(), AgentRunRecord.EndState.COMPLETED, List.of()));
+
+    ChatTranscript transcript =
+        ChatTranscript.of(chat("Frist", agentAnswer, unstamped, answer("Gewöhnlich.")));
+
+    assertThat(transcript.entries())
+        .extracting(ChatTranscript.Entry::draftNote)
+        .containsExactly(
+            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3",
+            "Entwurf, nicht geprüft",
+            null);
+  }
+
+  @Test
   void aChatWithoutTitleIsNamedLikeInTheChatList() {
     assertThat(ChatTranscript.of(chat(null)).title()).isEqualTo("Unbenannter Chat");
     assertThat(ChatTranscript.of(chat("   ")).title()).isEqualTo("Unbenannter Chat");

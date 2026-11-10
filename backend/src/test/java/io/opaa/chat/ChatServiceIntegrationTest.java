@@ -65,6 +65,8 @@ import tools.jackson.databind.ObjectMapper;
 @OpaaMockedDocumentServiceIntegrationTest
 class ChatServiceIntegrationTest {
 
+  private static final UUID TEMPLATE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
+
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
   @Autowired private ChatExportService chatExportService;
@@ -1087,7 +1089,7 @@ class ChatServiceIntegrationTest {
       assertThat(first.libraries())
           .containsExactly(new SearchedLibraryRef(library, "Testbibliothek"));
       assertThat(first.templates())
-          .containsExactly(new AgentRunStamp.TemplateRef(agent, "Bescheid", 3));
+          .containsExactly(new AgentRunStamp.TemplateRef(TEMPLATE_ID, "Bescheid", 3));
       assertThat(first.model()).isEqualTo("modell-a");
       assertThat(answers.get(0).getCurrentAgentRevision()).isEqualTo(2);
       assertThat(answers.get(1).getAgentRun().stamp().agentRevision()).isEqualTo(2);
@@ -1114,7 +1116,7 @@ class ChatServiceIntegrationTest {
             "Prüfhilfe",
             revision,
             List.of(new SearchedLibraryRef(library, "Testbibliothek")),
-            List.of(new AgentRunStamp.TemplateRef(agent, "Bescheid", 3)),
+            List.of(new AgentRunStamp.TemplateRef(TEMPLATE_ID, "Bescheid", 3)),
             "modell-a"));
   }
 

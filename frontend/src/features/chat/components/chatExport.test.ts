@@ -181,6 +181,35 @@ describe('chatAsMarkdown', () => {
     }
   })
 
+  it('marks an agent answer as a draft with agent and revision, an ordinary one not', () => {
+    const agentAnswer = {
+      ...answer('Ein Monat.', []),
+      agentRun: {
+        runId: 'run-1',
+        endState: 'COMPLETED' as const,
+        steps: [],
+        stamp: {
+          agentId: 'agent-1',
+          agentName: 'Prüfhilfe',
+          agentRevision: 3,
+          libraries: [],
+          templates: [],
+        },
+      },
+    }
+
+    const markdown = chatAsMarkdown(
+      chat([message({ content: 'Frage' }), agentAnswer, answer('Gewöhnlich.', [])]),
+      NOTE,
+      EXPORTED,
+    )
+
+    expect(markdown).toContain(
+      'Ein Monat.\n\n_Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3_',
+    )
+    expect(markdown.match(/Entwurf, nicht geprüft/g)).toHaveLength(1)
+  })
+
   it('ends with the note under a rule', () => {
     const markdown = chatAsMarkdown(chat([message({ content: 'Frage' })]), NOTE, EXPORTED)
 

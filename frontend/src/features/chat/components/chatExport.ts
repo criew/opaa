@@ -2,7 +2,7 @@ import type { ChatDetail } from '@/shared/api/types'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { toChatMessage } from '../stores/chatDetail'
 import { chatTitle } from './chatListSections'
-import { answerWithSources, markdownWithNote } from './copyFormats'
+import { agentDraftNote, answerWithSources, markdownWithNote } from './copyFormats'
 import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** Date and time as the export prints them, in the browser's zone: "05.03.2026, 10:15 Uhr". */
@@ -15,7 +15,8 @@ export function exportTimestamp(date: Date): string {
  * its timestamp. An answer keeps its Markdown and carries its sources as footnotes, the numbers
  * the chat shows; labels are prefixed per answer (`[^2-1]`), because footnote labels are global
  * in a document. Cited sources without a marker follow as a list. The Gesprächsnotiz, when it has
- * points, stands between the title and the first question. The note closes the document.
+ * points, stands between the title and the first question. An agent answer carries its draft
+ * notice with agent and revision under its text. The note closes the document.
  */
 export function chatAsMarkdown(chat: ChatDetail, note: string, exportedAt: Date): string {
   const parts = [
@@ -37,6 +38,8 @@ export function chatAsMarkdown(chat: ChatDetail, note: string, exportedAt: Date)
     const citations = buildCitationIndex(message.content, message.sources)
     const body = answerWithSources(message.content, citations, `${answerNumber}-`)
     parts.push(`## Antwort · ${at}`, body)
+    const draft = agentDraftNote(message.agentRun)
+    if (draft) parts.push(`_${draft}_`)
     const unmarked = citations.docs.filter((doc) => doc.numbers.length === 0)
     if (unmarked.length > 0) {
       parts.push(
