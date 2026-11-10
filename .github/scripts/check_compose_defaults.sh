@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # Variables that may open a published port; each is documented as such in the handbook chapter.
-BIND_VARIABLES=(OPAA_FRONTEND_BIND_ADDRESS OPAA_KEYCLOAK_BIND_ADDRESS)
+BIND_VARIABLES=(OPAA_FRONTEND_BIND_ADDRESS OPAA_KEYCLOAK_BIND_ADDRESS OPAA_GRAFANA_BIND_ADDRESS)
 
 # file|service|key|reason - fixed secrets of loopback-only development and test services. The
 # service is the Compose service (or other top-level key) the key stands under, "-" in an
@@ -39,6 +39,7 @@ SECRET_EXCEPTIONS=(
 # the host.
 UNPUBLISHED_SERVICES=(
   "docker-compose.ocr.yml|opaa-ocr|Text recognition service: only the backend reaches it, over the internal network ocr"
+  "docker-compose.monitoring.yml|prometheus|Prometheus of the monitoring overlay: only Grafana reads it, over the Compose network"
 )
 
 SECRET_KEY='(SECRET|PASSWORD|PASSWD|TOKEN|API_KEY|SECRET_KEY|SECRET_ACCESS_KEY|ENCRYPTION_KEY|PRIVATE_KEY)'

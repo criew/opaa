@@ -32,20 +32,26 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Last success, failures and expected interval of every {@code @Scheduled} run as {@code
- * opaa.scheduled.*} with the tag {@code job} (ADR-0071): the name of its run lock, or for a run
- * without one {@code <class>.<method>} in kebab case. Hooks into the observation Spring opens
+ * opaa.scheduled.*} with the tag {@code scheduled_job} (ADR-0071): the name of its run lock, or for
+ * a run without one {@code <class>.<method>} in kebab case. Hooks into the observation Spring opens
  * around every run, so no run needs code of its own. A run fails when it throws, or when it catches
  * a failure itself and says so through {@link ScheduledRunFailures#report()}.
  *
  * <p>Only a scheduled run has series: a job whose bean a property or feature flag leaves out, or
  * whose cron is {@code "-"}, has none. A locked run whose lock another instance holds neither
  * succeeds nor fails here. Per instance (ADR-0053): under the lock one instance runs each due time,
- * so a dashboard takes {@code max by (job)} of the last success over the pods. Until a run succeeds
- * here its last success is the start of this instance, so a run that never succeeds since the start
- * becomes overdue like one that stopped succeeding.
+ * so a dashboard takes {@code max by (scheduled_job)} of the last success over the pods. Until a
+ * run succeeds here its last success is the start of this instance, so a run that never succeeds
+ * since the start becomes overdue like one that stopped succeeding.
  */
 @Component
 public class ScheduledJobMetrics implements ObservationHandler<ScheduledTaskObservationContext> {
+
+  /**
+   * Tag naming the run; not {@code job}, which Prometheus reserves for the scrape job and would
+   * rename to {@code exported_job}.
+   */
+  public static final String TAG = "scheduled_job";
 
   public static final String LAST_SUCCESS = "opaa.scheduled.last_success";
   public static final String FAILURES = "opaa.scheduled.failures";
@@ -89,7 +95,7 @@ public class ScheduledJobMetrics implements ObservationHandler<ScheduledTaskObse
         .ifPresent(
             interval ->
                 Gauge.builder(EXPECTED_INTERVAL, () -> interval.toMillis() / 1000.0)
-                    .tag("job", job.name)
+                    .tag(TAG, job.name)
                     .baseUnit("seconds")
                     .description("Interval between two due times of the scheduled run")
                     .register(registry));
@@ -193,13 +199,13 @@ public class ScheduledJobMetrics implements ObservationHandler<ScheduledTaskObse
       this.lastSuccess = new AtomicReference<>(started);
       this.lockName = lockName(method);
       Gauge.builder(LAST_SUCCESS, lastSuccess, AtomicReference::get)
-          .tag("job", name)
+          .tag(TAG, name)
           .description(
               "Unix time of the last successful run on this instance, at the earliest its start")
           .register(registry);
       this.failures =
           Counter.builder(FAILURES)
-              .tag("job", name)
+              .tag(TAG, name)
               .description("Runs that ended with an exception")
               .register(registry);
     }

@@ -1,0 +1,28 @@
+# Prometheus of the Compose monitoring (docker-compose.monitoring.yml). Scrapes the backend's
+# management port over the Compose network; namespace and service are the labels the chart's
+# ServiceMonitor gives the series, so the rendered alerts of the chart select them unchanged, and
+# pod names the Compose service as under Kubernetes. The DNS lookup finds the single backend as well
+# as backend-a and backend-b of docker-compose.multi.yml; names that do not exist yield no target.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/rules/opaa-rules.yaml
+
+scrape_configs:
+  - job_name: opaa-backend
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names: [backend, backend-a, backend-b]
+        type: A
+        port: 8081
+        refresh_interval: 30s
+    relabel_configs:
+      - target_label: namespace
+        replacement: opaa
+      - target_label: service
+        replacement: opaa-backend
+      - source_labels: [__meta_dns_name]
+        target_label: pod

@@ -377,6 +377,15 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
   `docker-compose.multi.yml` gehören `backend-a` und `backend-b` in einer eigenen Override-Datei
   ebenfalls in die Netze `default` und `ocr`, mit denselben beiden Variablen.
 
+## Monitoring im Compose-Stapel
+
+Das Overlay `docker-compose.monitoring.yml` startet Prometheus mit den Alarmen und Grafana mit den
+Dashboards auf einem eigenen Port an `127.0.0.1`, für eine eigene Subdomain hinter dem
+Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
+Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder `.env`. Einrichtung und
+Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
+[Dashboards und Alarme](dashboards-und-alarme.md#compose).
+
 ## Mehrere Backend-Instanzen
 
 `docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
@@ -618,10 +627,12 @@ des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung
 durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
 gehören nicht dazu.
 
-- **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend` und
-  `keycloak` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` öffnen,
-  beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt
-  nicht vor. Der Texterkennungsdienst veröffentlicht gar keinen Port, auch nicht an Loopback.
+- **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend`,
+  `keycloak` und `grafana` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS`,
+  `OPAA_KEYCLOAK_BIND_ADDRESS` bzw. `OPAA_GRAFANA_BIND_ADDRESS` öffnen, alle mit Loopback als
+  Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt nicht vor. Der
+  Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar keinen Port, auch
+  nicht an Loopback.
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.

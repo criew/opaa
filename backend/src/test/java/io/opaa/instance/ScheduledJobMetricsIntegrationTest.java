@@ -51,7 +51,7 @@ class ScheduledJobMetricsIntegrationTest {
     assertThat(
             meterRegistry
                 .get(ScheduledJobMetrics.EXPECTED_INTERVAL)
-                .tag("job", "audit-chain")
+                .tag(ScheduledJobMetrics.TAG, "audit-chain")
                 .gauge()
                 .value())
         .isEqualTo(600.0);
@@ -95,13 +95,17 @@ class ScheduledJobMetricsIntegrationTest {
   }
 
   private double lastSuccess(String job) {
-    return meterRegistry.get(ScheduledJobMetrics.LAST_SUCCESS).tag("job", job).gauge().value();
+    return meterRegistry
+        .get(ScheduledJobMetrics.LAST_SUCCESS)
+        .tag(ScheduledJobMetrics.TAG, job)
+        .gauge()
+        .value();
   }
 
   private Set<String> jobsOf(String meter) {
     return meterRegistry.find(meter).meters().stream()
         .map(Meter::getId)
-        .map(id -> id.getTag("job"))
+        .map(id -> id.getTag(ScheduledJobMetrics.TAG))
         .collect(Collectors.toSet());
   }
 

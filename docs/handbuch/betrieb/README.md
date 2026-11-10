@@ -41,7 +41,7 @@ beim Identitätsanbieter.
 | Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](../benutzer/konnektoren/README.md) |
 | Ausgangsproxy | der eine Weg des Backends ins Netz, wenn das Haus einen verlangt | nein | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |
 | Externe KI-Werkzeuge | greifen über MCP oder API mit persönlichen Zugangstokens zu | nein, eigener Schalter | [Externe KI-Werkzeuge](../administration/externe-ki-werkzeuge.md) |
-| Monitoring | Prometheus liest Metriken, ein Log-Sammler die Standardausgabe | nein | [Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken) |
+| Monitoring | Prometheus liest Metriken, Grafana zeigt die Dashboards, ein Log-Sammler die Standardausgabe | nein | [Dashboards und Alarme](dashboards-und-alarme.md) |
 | Sicherheitsmonitoring (SIEM) | empfängt das Revisionsprotokoll ohne Pseudonyme als Syslog | nein, eigener Schalter | [Ausleitung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring) |
 
 Gesichert wird nur, was Zustand hält: Datenbank, Originalablage und Geheimnisse
@@ -98,5 +98,6 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | sichern, zurückspielen, Wiederherstellungsprobe | [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) |
 | auf eine neue Version gehen | [Aktualisierung](aktualisierung.md) |
 | Logs, Metriken, Störungen | [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md) |
+| Dashboards und Alarme einrichten, auf einen Alarm reagieren | [Dashboards und Alarme](dashboards-und-alarme.md), [Alarme](alarme.md) |
 | mehrere Instanzen planen | [Mehrere Backend-Instanzen](mehrere-instanzen.md) |
 | Datenbank, Originalablage, Mailserver einrichten | [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](../administration/e-mail.md) |

@@ -199,8 +199,11 @@ Variable das Budget der ganzen Installation und setzt jedem Pod seinen Teil. Das
 ## Betriebsüberwachung
 
 Proben und Metriken laufen über den Management-Port (`backend.managementPort`), getrennt von der API.
-`metrics.serviceMonitor` legt einen ServiceMonitor an, `metrics.prometheusRule` Grundalarme, und
-`backend.logFormat` schaltet JSON-Protokolle ein. Mit kube-prometheus-stack:
+`metrics.serviceMonitor` legt einen ServiceMonitor an, `metrics.prometheusRule` die Alarme mit
+Schweregrad, Bereich und Runbook-Link, `metrics.grafanaDashboards` die Dashboards als ConfigMaps
+für den Sidecar eines vorhandenen Grafana (nur zusammen mit den Alarmen, deren Zustand die Kacheln
+zeigen), und `backend.logFormat` schaltet JSON-Protokolle ein. Mit
+kube-prometheus-stack:
 
 ```yaml
 metrics:
@@ -212,9 +215,14 @@ metrics:
     enabled: true
     labels:
       release: kube-prometheus-stack
+  grafanaDashboards:
+    enabled: true
 ```
 
-Metriken und Alarme beschreibt das Handbuch im Kapitel „Kubernetes“.
+Metriken, Alarme und Dashboards beschreibt das Handbuch in den Kapiteln „Kubernetes“, „Dashboards
+und Alarme“ und „Alarme“. Die Dashboards erzeugt `deploy/monitoring/render.sh` aus den Vorgaben der
+Schwellen in [`values.yaml`](values.yaml); geändert wird dort und im Generator, nicht in den
+JSON-Dateien.
 
 ## Prüfen
 
