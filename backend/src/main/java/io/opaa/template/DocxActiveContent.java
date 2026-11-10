@@ -31,8 +31,9 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * Whether a Word package carries content Word may load or run: macros, ActiveX controls, embedded
- * objects, relationships to content outside the file but hyperlinks, and any field but those of
+ * Whether a Word package carries content Word may load or run: macros, also as entry or exit macro
+ * of a form field, ActiveX controls, embedded objects, relationships to content outside the file
+ * but hyperlinks, mail merge settings with their data source and query, and any field but those of
  * {@link #PASSIVE_FIELDS}. A field is passive only when the first word of its code is on that list
  * and no other field stands inside its code, as Word would evaluate such an inner field (QUOTE, a
  * nested field name) to build the outer one. Field codes are read with an XML parser, so neither a
@@ -106,7 +107,14 @@ public class DocxActiveContent {
           "CITATION");
 
   /** The first word of a field code: the field's name. */
-  private static final Pattern FIELD_NAME = Pattern.compile("^[\\s\\u00A0]*([^\\s\\u00A0\\\\]*)");
+  private static final Pattern FIELD_NAME =
+      Pattern.compile("^\\s*([^\\s\\\\]*)", Pattern.UNICODE_CHARACTER_CLASS);
+
+  /**
+   * Elements that make Word run a macro or open a data source: the entry and exit macro of a legacy
+   * form field and the mail merge settings with connection string and query.
+   */
+  private static final Set<String> ACTIVE_ELEMENTS = Set.of("entryMacro", "exitMacro", "mailMerge");
 
   /** Field names that load or run content, also searched across all codes of a part. */
   private static final Pattern ACTIVE_FIELD =
@@ -301,6 +309,9 @@ public class DocxActiveContent {
     public void startElement(String uri, String localName, String qName, Attributes attributes) {
       if ("instrText".equals(localName) || "delInstrText".equals(localName)) {
         instrTextDepth++;
+      }
+      if (ACTIVE_ELEMENTS.contains(localName)) {
+        active = true;
       }
       if ("fldChar".equals(localName)) {
         fieldChar(attribute(attributes, "fldCharType"));

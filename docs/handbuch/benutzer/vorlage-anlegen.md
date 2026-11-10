@@ -17,7 +17,8 @@
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht
 schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Objekte, eine
-verknüpfte Dokumentvorlage oder Felder, die Inhalte nachladen. Erlaubt sind Links und einfache
+verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an Formularfeldern oder Felder,
+die Inhalte nachladen. Erlaubt sind Links und einfache
 Felder wie Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eines
 anderen Feldes (etwa in einer WENN-Bedingung).
 
@@ -29,8 +30,8 @@ anderen Feldes (etwa in einer WENN-Bedingung).
 | Liste | `{% for e in name %}` … `{% endfor %}` | `{% for m in massnahmen %}{{ m.titel }} bis {{ m.frist }}{% endfor %}` |
 | Bedingung | `{% if name %}` … `{% endif %}` | `{% if vertraulich %}VS – NUR FÜR DEN DIENSTGEBRAUCH{% endif %}` |
 
-Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (`{% if betrag > 0 %}`), `~`
-zum Verketten und die Filter `default`, `upper`, `lower`, `title`, `capitalize`, `trim`, `round`,
+Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (`{% if betrag > 0 %}`), `+`
+und `-`, `~` zum Verketten und die Filter `default`, `upper`, `lower`, `title`, `capitalize`, `trim`, `round`,
 `int`, `float`, `abs`, `join`, `length`, `count`, `first` und `last` mit festen Werten als
 Argument, etwa `{{ name|default('unbekannt') }}`. Funktionsaufrufe, `set`, `macro`, andere Filter
 und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.

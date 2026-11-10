@@ -1,14 +1,23 @@
 package io.opaa.template;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 class TemplateTagScannerTest {
+
+  /** Shared with the tests of the filling script, so upload and script refuse the same. */
+  private static final Path SHARED_CASES = Path.of("../sandbox/tests/template_cases.json");
 
   @Test
   void readsFieldsListsAndConditionsInOrderOfAppearance() {
@@ -31,45 +40,21 @@ class TemplateTagScannerTest {
   }
 
   @Test
-  void anythingBeyondFieldsListsConditionsAndTheAllowedFiltersIsRefused() {
-    for (String template :
-        List.of(
-            "{{ (('%c'|format(60)) ~ 'w:fldSimple w:instr=\"INCLUDEPICTURE x\"/' ~ "
-                + "('%c'|format(62)))|safe }}",
-            "{{ ('X/w:tYXw:fldSimple w:instr=QINCLUDEPICTURE xQ/YXw:tY'|e)"
-                + ".translate({88: 60, 89: 62, 81: 34, 90: 92}) }}",
-            "{{ (x|e).translate(t) }}",
-            "{{ x|forceescape }}",
-            "{{ x|tojson }}",
-            "{{ x | safe }}",
-            "{% set y %}{{ x }}{% endset %}",
-            "{% set y = x %}",
-            "{% macro m() %}X{% endmacro %}",
-            "{% call m() %}{% endcall %}",
-            "{% with y = x %}{{ y }}{% endwith %}",
-            "{% include 'a' %}",
-            "{% filter safe %}{{ x }}{% endfilter %}",
-            "{%- autoescape false -%}{{ x }}{% endautoescape %}",
-            "{{ [x]|map('safe')|join }}",
-            "{{ x|join(attribute='a') }}",
-            "{{ x|default(y) }}",
-            "{{ x|urlize }}",
-            "{{ d|xmlattr }}",
-            "{{ lipsum(1, true) }}",
-            "{% for i in range(anzahl) %}{{ i }}{% endfor %}",
-            "{{ x.upper() }}",
-            "{{ x[::-1] }}",
-            "{{ x[k] }}",
-            "{{ x['__class__'] }}",
-            "{{ x.__class__ }}",
-            "{{ {'a': x} }}",
-            "{{ self }}",
-            "{% if x is sameas y %}{% endif %}")) {
+  void anythingBeyondFieldsListsConditionsAndTheAllowedFiltersIsRefused() throws IOException {
+    JsonNode cases = JsonMapper.builder().build().readTree(Files.readString(SHARED_CASES));
+    for (JsonNode refused : cases.path("refused")) {
+      String template = refused.asString();
       assertThatThrownBy(() -> TemplateTagScanner.scan(template))
           .as(template)
           .isInstanceOf(ValidationException.class)
           .hasMessageContaining("nur als Text");
     }
+    for (JsonNode allowed : cases.path("allowed")) {
+      assertThatCode(() -> TemplateTagScanner.scan(allowed.asString()))
+          .as(allowed.asString())
+          .doesNotThrowAnyException();
+    }
+    assertThat(cases.path("refused").size()).isGreaterThan(30);
     assertThat(TemplateTagScanner.scan("{{ safety }}{# |safe #}{% raw %}{{ x|safe }}{% endraw %}"))
         .extracting(TemplatePlaceholder::name)
         .containsExactly("safety");

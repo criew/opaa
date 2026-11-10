@@ -21,9 +21,9 @@ import java.util.regex.Pattern;
  * <p>Checks that every {@code for} and {@code if} is closed in order, and that a tag uses only what
  * fields, lists and conditions need: the statements of {@link #STATEMENTS}, the filters of {@link
  * #FILTERS} and the tests of {@link #TESTS} with constant arguments, no call of a function or
- * method, no assignment, no slice, no dict and no name, attribute or key that starts with an
- * underscore. The filling script checks the same on Jinja's syntax tree; refusing here tells the
- * author at upload.
+ * method, no assignment, no recursive loop, no multiplication, division or modulo, no slice, no
+ * dict and no name, attribute or key that starts with an underscore. The filling script checks the
+ * same on Jinja's syntax tree; refusing here tells the author at upload.
  */
 final class TemplateTagScanner {
 
@@ -101,6 +101,18 @@ final class TemplateTagScanner {
 
   private static final Set<String> CONSTANT_WORDS =
       Set.of("true", "false", "none", "True", "False", "None");
+
+  /**
+   * Operators a template may not use: dicts, slices, assignment, and multiplying, dividing and
+   * modulo, which no field, list or condition needs.
+   */
+  private static final Set<String> FORBIDDEN_OPERATORS =
+      Set.of("{", "}", ":", "=", "*", "**", "/", "//", "%");
+
+  /** Words after which a test takes no argument without parentheses, as Jinja reads it. */
+  private static final Set<String> NO_TEST_ARGUMENT = Set.of("else", "or", "and");
+
+  private static final Pattern RECURSIVE = Pattern.compile("\\brecursive\\s*$");
 
   private static final Set<String> FORBIDDEN_NAMES = Set.of("self", "caller", "varargs", "kwargs");
 
@@ -210,7 +222,7 @@ final class TemplateTagScanner {
           if (!TESTS.contains(token.text())) {
             throw notAllowed("den Test " + token.text());
           }
-          i = constantArguments(tokens, i);
+          i = testArgument(tokens, i);
         } else if (token.text().startsWith("_")
             || (!is(before, ".") && FORBIDDEN_NAMES.contains(token.text()))) {
           throw notAllowed(token.text());
@@ -226,11 +238,39 @@ final class TemplateTagScanner {
           throw notAllowed("einen Schlüssel, der kein fester Wert ist");
         }
         i += 2;
-      } else if (Set.of("{", "}", ":", "=", "**").contains(token.text())
-          && token.kind().equals("op")) {
+      } else if (FORBIDDEN_OPERATORS.contains(token.text()) && token.kind().equals("op")) {
         throw notAllowed(token.text());
       }
     }
+  }
+
+  /**
+   * The index of the last token of a test's argument: in parentheses, or as Jinja reads one without
+   * them ({@code x is divisibleby 3}); a constant either way.
+   */
+  private static int testArgument(List<Token> tokens, int name) {
+    Token next = at(tokens, name + 1);
+    if (next == null || is(next, "(")) {
+      return constantArguments(tokens, name);
+    }
+    boolean argument =
+        (next.name() && !NO_TEST_ARGUMENT.contains(next.text()))
+            || next.kind().equals("string")
+            || next.kind().equals("number")
+            || is(next, "[")
+            || is(next, "{");
+    if (!argument) {
+      return name;
+    }
+    boolean constant =
+        next.kind().equals("number")
+            || (next.kind().equals("string") && !next.text().substring(1).startsWith("_"))
+            || (next.name() && CONSTANT_WORDS.contains(next.text()));
+    if (!constant) {
+      throw notAllowed(
+          "ein Argument von " + tokens.get(name).text() + ", das kein fester Wert ist");
+    }
+    return name + 1;
   }
 
   /** The index of the closing parenthesis of a filter's or test's arguments, all constants. */
@@ -334,6 +374,9 @@ final class TemplateTagScanner {
         if (!loop.matches()) {
           throw new ValidationException(
               "Die Vorlage enthält eine ungültige Schleife: „{% " + body + " %}“.");
+        }
+        if (RECURSIVE.matcher(loop.group(3)).find()) {
+          throw notAllowed("recursive");
         }
         String[] source = loop.group(3).split("\\s+if\\s+", 2);
         String listName = collector.references(source[0], PlaceholderKind.LIST, blocks);

@@ -198,6 +198,55 @@ class DocxTemplateInspectorTest {
         .isTrue();
   }
 
+  @Test
+  void aMailMergeDataSourceOrAFormFieldMacroIsRefused() throws IOException {
+    byte[] mailMerge =
+        withPart(
+            TestDocx.withParagraphs("{{ a }}"),
+            "word/settings.xml",
+            "<w:settings",
+            "<w:mailMerge><w:mainDocumentType w:val=\"formLetters\"/>"
+                + "<w:connectString w:val=\"Provider=x\"/><w:query w:val=\"SELECT * FROM x\"/>"
+                + "</w:mailMerge>");
+    byte[] macro =
+        withBodyStart(
+            TestDocx.withParagraphs("{{ a }}"),
+            "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"><w:ffData><w:name w:val=\"T\"/>"
+                + "<w:exitMacro w:val=\"AutoOpen\"/></w:ffData></w:fldChar></w:r>"
+                + instr(" FORMTEXT ")
+                + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>");
+    for (byte[] docx : List.of(mailMerge, macro)) {
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .isInstanceOf(ValidationException.class);
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx)).isFalse();
+    }
+  }
+
+  /** {@code docx} with {@code xml} inserted right after the opening tag starting {@code tag}. */
+  private static byte[] withPart(byte[] docx, String name, String tag, String xml)
+      throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(docx));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        byte[] content = in.readAllBytes();
+        if (entry.getName().equals(name)) {
+          String text = new String(content, StandardCharsets.UTF_8);
+          int open = text.indexOf('>', text.indexOf(tag)) + 1;
+          content =
+              (text.substring(0, open) + xml + text.substring(open))
+                  .getBytes(StandardCharsets.UTF_8);
+        }
+        zip.write(content);
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
   private static String instr(String code) {
     return "<w:r><w:instrText xml:space=\"preserve\">" + code + "</w:instrText></w:r>";
   }

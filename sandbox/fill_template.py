@@ -19,11 +19,12 @@ Job file (JSON, written by the backend):
 The data are inserted as text: Jinja evaluates only the tags of the template, never a value, and
 autoescape turns every value into escaped XML text. A template may use only what fields, lists and
 conditions need (ALLOWED_NODES, ALLOWED_FILTERS, ALLOWED_TESTS): no call of any function or method,
-no assignment, macro, block, filter block or autoescape block, no slice and no name or key that
-starts with an underscore. Everything else is refused before rendering, so no template can produce
-text Jinja treats as markup. The tags run in Jinja's immutable sandbox without globals, and a string
-exposes no attribute. A missing value renders empty; a template that computes with one (round, +)
-fails and says so.
+no assignment, macro, block, filter block or autoescape block, no recursive loop, no
+multiplication, division or modulo, no slice and no name or key that starts with an underscore.
+Everything else is refused before rendering, so no template can produce text Jinja treats as
+markup. The tags run in Jinja's immutable sandbox without globals; a.b and a['b'] read only the
+data or the loop variable's attributes, anything else is undefined. A missing value renders empty;
+a template that computes with one (round, +) fails and says so.
 
 Prints exactly one JSON line on stdout: {"files": [...], "errors": [...]}, the files as names in
 output_dir. Exit code 0 when at least one file was written, 2 when the template could not be
@@ -49,12 +50,19 @@ FORMATS = ("docx", "pdf")
 STARTED = time.monotonic()
 
 # The node types a template may contain: text, output, names, parts of the data, loops,
-# conditions, comparisons, arithmetic and concatenation. docxtpl's own tags ({%p %}, {%tr %},
-# {%tc %}, {%r %}, vm, hm, colspan, cellbg) become exactly these before Jinja parses the template.
+# conditions, comparisons, adding and subtracting, and concatenation. docxtpl's own tags ({%p %},
+# {%tr %}, {%tc %}, {%r %}, vm, colspan, cellbg) become exactly these before Jinja parses the
+# template; its hm becomes "<digits> * loop.length", the one multiplication allowed (DOCXTPL_SPAN).
 ALLOWED_NODES = (
     "Template", "Output", "TemplateData", "Const", "Name", "Getattr", "Getitem", "For", "If",
-    "CondExpr", "Compare", "Operand", "And", "Or", "Not", "Neg", "Pos", "Add", "Sub", "Mul", "Div",
-    "FloorDiv", "Mod", "Concat", "Filter", "Test", "Tuple", "List",
+    "CondExpr", "Compare", "Operand", "And", "Or", "Not", "Neg", "Pos", "Add", "Sub", "Concat",
+    "Filter", "Test", "Tuple", "List",
+)
+
+# The attributes of the loop variable a template may read; its methods (cycle, changed) are not.
+LOOP_ATTRIBUTES = (
+    "index", "index0", "revindex", "revindex0", "first", "last", "length", "depth", "depth0",
+    "previtem", "nextitem",
 )
 
 # Filters that give text, a number or a list of values and never mark anything as markup.
@@ -84,9 +92,15 @@ def check_template(tree, name=None, filename=None):
     def plain(value):
         return not isinstance(value, str) or not value.startswith("_")
 
+    def docxtpl_span(node):
+        return (isinstance(node, nodes.Mul) and isinstance(node.left, nodes.Const)
+                and type(node.left.value) is int and isinstance(node.right, nodes.Getattr)
+                and isinstance(node.right.node, nodes.Name) and node.right.node.name == "loop"
+                and node.right.attr == "length")
+
     for node in [tree, *tree.find_all(nodes.Node)]:
         kind = type(node).__name__
-        if kind not in ALLOWED_NODES:
+        if kind not in ALLOWED_NODES and not docxtpl_span(node):
             refuse(node, kind)
         if isinstance(node, nodes.Name) and (node.name.startswith("_")
                                              or node.name in FORBIDDEN_NAMES):
@@ -112,6 +126,7 @@ def check_template(tree, name=None, filename=None):
 def template_environment():
     """Jinja's immutable sandbox with autoescape and without globals; templates are checked."""
     from jinja2 import ChainableUndefined
+    from jinja2.runtime import LoopContext
     from jinja2.sandbox import ImmutableSandboxedEnvironment
 
     class TemplateEnvironment(ImmutableSandboxedEnvironment):
@@ -122,16 +137,27 @@ def template_environment():
             return tree
 
         def is_safe_attribute(self, obj, attr, value):
-            # A string (and Markup) exposes nothing: no method, no format, no translate.
-            if isinstance(obj, str):
-                return False
-            return super().is_safe_attribute(obj, attr, value)
+            # Only the loop variable's plain attributes; a string or Markup exposes nothing.
+            return isinstance(obj, LoopContext) and attr in LOOP_ATTRIBUTES
 
         def getattr(self, obj, attribute):
-            # The data are JSON objects: a.b is the member b, never a method of dict.
+            # a.b of the data is the member b or undefined, never a method of dict or list; of
+            # the loop variable only LOOP_ATTRIBUTES; of anything else undefined.
             if isinstance(obj, dict):
                 return self.getitem(obj, attribute)
-            return super().getattr(obj, attribute)
+            if isinstance(obj, LoopContext) and attribute in LOOP_ATTRIBUTES:
+                return getattr(obj, attribute)
+            return self.undefined(obj=obj, name=attribute)
+
+        def getitem(self, obj, argument):
+            # a['b'] and a[0] read the data only, never fall back to an attribute.
+            if isinstance(obj, dict):
+                if isinstance(argument, str) and argument in obj:
+                    return obj[argument]
+            elif (isinstance(obj, (list, tuple, str)) and type(argument) is int
+                  and -len(obj) <= argument < len(obj)):
+                return obj[argument]
+            return self.undefined(obj=obj, name=argument)
 
     environment = TemplateEnvironment(autoescape=True, undefined=ChainableUndefined)
     environment.globals.clear()
@@ -176,7 +202,11 @@ def add_stamp(path, stamp):
 
 
 def descendants(pid):
-    """The ids of all processes below pid, read from /proc."""
+    """The ids of all processes below pid, read from /proc.
+
+    The script and LibreOffice run as the same user in a sandbox of the run alone, so /proc shows
+    every helper the converter started and no process of another run or person.
+    """
     children = {}
     for entry in os.listdir("/proc"):
         if not entry.isdigit():

@@ -22,6 +22,11 @@ SCRIPT = os.environ.get(
 )
 REQUIRE_SOFFICE = os.environ.get("OPAA_REQUIRE_SOFFICE") == "1"
 
+# Shared with the upload check of the backend (TemplateTagScannerTest), so both refuse the same.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "template_cases.json"),
+          encoding="utf-8") as cases:
+    CASES = json.load(cases)
+
 spec = importlib.util.spec_from_file_location("fill_template", SCRIPT)
 fill_template = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fill_template)
@@ -138,43 +143,47 @@ class FillTemplateTest(unittest.TestCase):
 
     def test_no_template_can_insert_raw_markup(self):
         field = ("{{ (('%c'|format(60)) ~ 'w:fldSimple w:instr=\"INCLUDEPICTURE x\"/' ~ "
-                 "('%c'|format(62)))FILTER }}")
-        translate = "{{ (SOURCE|e).translate({88: 60, 89: 62, 81: 34, 90: 92}) }}"
-        probe = "'X/w:tYXw:fldSimple w:instr=QINCLUDEPICTURE xQ/YXw:tY'"
-        templates = [
-            field.replace("FILTER", "|safe"),
-            field.replace("FILTER", ""),
-            translate.replace("SOURCE", probe),
-            translate.replace("SOURCE", "x"),
-            "{{ (x|forceescape).translate({88: 60}) }}",
-            "{{ x|tojson }}",
-            "{% set y %}{{ x }}{% endset %}{{ y.translate({88: 60}) }}",
-            "{% set y = x %}{{ y }}",
-            "{% macro m() %}X{% endmacro %}{{ m().translate({88: 60}) }}",
-            "{% filter safe %}{{ x }}{% endfilter %}",
-            "{% autoescape false %}{{ x }}{% endautoescape %}",
-            "{% with y = x %}{{ y }}{% endwith %}",
-            "{{ [x]|map('safe')|join }}",
-            "{{ x|join(attribute='__class__') }}",
-            "{{ x[::-1] }}",
-            "{{ x['__class__'] }}",
-            "{{ x|urlize }}",
-            "{{ {'a': x}|xmlattr }}",
-            "{{ lipsum(1, true) }}",
-            "{{ range(3) }}",
-            "{{ x.upper() }}",
-            "{% include 'vorlage.docx' %}",
-        ]
-        for template in templates:
+                 "('%c'|format(62))) }}")
+        for template in CASES["refused"] + [field]:
             with self.subTest(template=template):
                 shutil.rmtree(self.out, ignore_errors=True)
                 make_template(self.template, [template])
 
-                code, result = fill_template.fill(self.job({"x": "XY<w:br/>"}))
+                code, result = fill_template.fill(self.job(CASES["data"]))
 
                 self.assertEqual(2, code, result)
                 self.assertEqual([], result["files"])
                 self.assertIn("ließ sich nicht befüllen", result["errors"][0])
+
+    def test_the_shared_allowed_cases_fill(self):
+        for template in CASES["allowed"]:
+            with self.subTest(template=template):
+                shutil.rmtree(self.out, ignore_errors=True)
+                make_template(self.template, [template])
+
+                code, result = fill_template.fill(self.job(CASES["data"]))
+
+                self.assertEqual(0, code, result)
+
+    def test_a_name_reads_only_the_data_or_the_loop_never_a_method(self):
+        make_template(self.template, [
+            "[{{ k.items }}][{{ k['keys'] }}][{{ liste.index }}][{{ liste['count'] }}]",
+            "[{% for e in liste %}{{ loop.cycle }}{{ loop.changed }}{% endfor %}][{{ s.upper }}]",
+        ])
+
+        code, result = fill_template.fill(self.job({"k": {"a": 1}, "liste": ["x"], "s": "t"}))
+
+        self.assertEqual(0, code, result)
+        text = document_text(self.result_docx())
+        self.assertIn("[][][][]", text)
+        self.assertIn("[][]", text)
+        self.assertNotIn("built-in", text)
+        self.assertNotIn("method", text)
+
+    def test_the_docxtpl_column_span_is_the_one_multiplication(self):
+        tree = fill_template.template_environment().parse(
+            "{% for c in cols %}{{ 2 * loop.length }}{% endfor %}")
+        self.assertIsNotNone(tree)
 
     def test_allowed_filters_tests_and_operators_still_work(self):
         make_template(self.template, [

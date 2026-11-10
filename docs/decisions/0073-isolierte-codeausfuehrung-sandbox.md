@@ -106,25 +106,28 @@ immer als Text eingesetzt wird, und erzeugt das PDF mit LibreOffice ohne Oberfl�
 Frist ab Skriptstart, die das Backend aus dem Zeitlimit des Aufrufs ableitet; LibreOffice endet
 spätestens mit dem Skript. Eine Vorlage darf nur, was Feld, Liste und Bedingung brauchen, nach einer
 Zulassungsliste statt einer Sperrliste: Text, Ausgabe, Namen, Teile der Daten über Attribut oder
-festen Schlüssel, `for` und `if`, Vergleiche, Rechnen, Verketten und eine kleine Liste von Filtern,
-die nur Text, Zahlen oder Listen liefern (`default`, `upper`, `lower`, `title`, `capitalize`,
-`trim`, `round`, `int`, `float`, `abs`, `join`, `length`, `count`, `first`, `last`) mit festen
-Argumenten. Kein Aufruf einer Funktion oder Methode, keine Zuweisung, kein Makro, Block,
-Filterblock, `autoescape`, Ausschnitt oder Name mit Unterstrich am Anfang; die Umgebung hat keine
-globalen Funktionen, und eine Zeichenkette gibt kein Attribut heraus. So entsteht in einer Vorlage
-kein Wert, den Jinja als Markup ungeschützt einsetzt. Das Skript prüft das am Syntaxbaum vor dem
-Füllen, das Backend dieselben Regeln schon beim Hochladen. Zusätzlich prüft das Backend jedes DOCX
-aus der Sandbox wie eine hochgeladene Vorlage auf aktive Inhalte, bevor es Anhang wird, auch eines
-aus `run_code`: Makros, eingebettete Objekte, externe Verknüpfungen und jedes Feld, das nicht auf
-einer Liste harmloser Felder steht (Seitenzahl, Datum, Verweis, Verzeichnis u. a.) oder ein anderes
-Feld in seinem Code trägt. Fehlt ein Wert oder ist er `null`, setzt das Backend eine Liste leer,
-eine Bedingung auf nein und einen leeren Listeneintrag als leeren Text; ein Text bleibt leer, und
-ein `default` der Vorlage greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer,
-entsteht kein Image. Im Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im
-Prozess mit allen Daten. Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt
-als Parameter vom Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht
-erreichbar, bekommt das Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem
-Fehler.
+festen Schlüssel, `for` und `if`, Vergleiche, Addieren und Subtrahieren, Verketten und eine kleine
+Liste von Filtern, die nur Text, Zahlen oder Listen liefern (`default`, `upper`, `lower`, `title`,
+`capitalize`, `trim`, `round`, `int`, `float`, `abs`, `join`, `length`, `count`, `first`, `last`)
+mit festen Argumenten. Kein Aufruf einer Funktion oder Methode, keine Zuweisung, kein Makro, Block,
+Filterblock, `autoescape`, keine rekursive Schleife, kein Multiplizieren, Teilen oder Modulo (außer
+der Spaltenbreite, die docxtpl selbst erzeugt), kein Ausschnitt und kein Name mit Unterstrich am
+Anfang; die Umgebung hat keine globalen Funktionen, `a.b` und `a['b']` lesen nur die Daten oder die
+Zähler der Schleife, alles andere ist undefiniert. Skript und Upload-Prüfung laden dieselbe
+Fallliste in ihren Tests. So entsteht in einer Vorlage kein Wert, den Jinja als Markup ungeschützt
+einsetzt. Das Skript prüft das am Syntaxbaum vor dem Füllen, das Backend dieselben Regeln schon beim
+Hochladen. Zusätzlich prüft das Backend jedes DOCX aus der Sandbox wie eine hochgeladene Vorlage auf
+aktive Inhalte, bevor es Anhang wird, auch eines aus `run_code`: Makros, auch als Ein- oder
+Austrittsmakro eines Formularfelds, eingebettete Objekte, externe Verknüpfungen,
+Seriendruck-Einstellungen mit Datenquelle und jedes Feld, das nicht auf einer Liste harmloser Felder
+steht (Seitenzahl, Datum, Verweis, Verzeichnis u. a.) oder ein anderes Feld in seinem Code trägt.
+Fehlt ein Wert oder ist er `null`, setzt das Backend eine Liste leer, eine Bedingung auf nein und
+einen leeren Listeneintrag als leeren Text; ein Text bleibt leer, und ein `default` der Vorlage
+greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer, entsteht kein Image. Im
+Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im Prozess mit allen Daten.
+Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt als Parameter vom
+Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht erreichbar, bekommt das
+Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler.
 
 ## Konsequenzen
 
