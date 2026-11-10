@@ -28,9 +28,10 @@ import org.springframework.context.annotation.Configuration;
  * The status of every health group as {@code opaa.health.group.status} with {@code health_group}
  * (ADR-0071): {@code 1} up, {@code 0} down or out of service, {@code -1} unknown. An alert can
  * watch a group without a probe from outside. Read every {@link #INTERVAL} on a thread of its own,
- * each group within {@link #TIME_LIMIT}, else {@code NaN}. A {@link PassiveHealthGroup}, whose
- * probe calls a model, is not probed: it shows the last result of at most {@link #PASSIVE_MAX_AGE},
- * else {@code -1}. The tag is not {@code group}, which names a group of persons ({@code
+ * each group within {@link #TIME_LIMIT}, else {@code NaN}; the interval is short because the first
+ * read falls into the start, before readiness is up. A {@link PassiveHealthGroup}, whose probe
+ * calls a model, is not probed: it shows the last result of at most {@link #PASSIVE_MAX_AGE}, else
+ * {@code -1}. The tag is not {@code group}, which names a group of persons ({@code
  * ForbiddenMetricTags}).
  */
 @Configuration(proxyBeanMethods = false)
@@ -38,11 +39,13 @@ public class HealthGroupMetricsConfiguration {
 
   static final String STATUS = "opaa.health.group.status";
 
-  static final Duration INTERVAL = Duration.ofMinutes(5);
+  /** About the period of a readiness probe; no probed group calls a model, so a read is cheap. */
+  static final Duration INTERVAL = Duration.ofSeconds(30);
 
   static final Duration TIME_LIMIT = Duration.ofSeconds(10);
 
-  static final Duration PASSIVE_MAX_AGE = INTERVAL.multipliedBy(2);
+  /** How old the last outside probe of a passive group may be; independent of {@link #INTERVAL}. */
+  static final Duration PASSIVE_MAX_AGE = Duration.ofMinutes(10);
 
   /**
    * The thread of the reads, without a queue: a read arriving while one still runs is refused, so a
