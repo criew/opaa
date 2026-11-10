@@ -30,7 +30,7 @@ export default function IncidentScopeRetentionSection() {
       consequence: shorter
         ? 'Der nächste tägliche Lauf löscht Anträge und Freigaben früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
         : 'Die längere Frist gilt ab dem nächsten täglichen Lauf; sie gehört in die Dienstvereinbarung. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Frist ändern',
+      confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -45,7 +45,7 @@ export default function IncidentScopeRetentionSection() {
     const confirmed = await confirmAction({
       question: `Löschfrist der anlassbezogenen Klärungen auf die Werkseinstellung von ${periodLabel(current.defaultRetentionYears, 'years')} zurücksetzen?`,
       consequence: 'Gilt ab dem nächsten täglichen Lauf. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: current.defaultRetentionYears < current.retentionYears ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -58,7 +58,7 @@ export default function IncidentScopeRetentionSection() {
       question: `Löschfrist der anlassbezogenen Klärungen von ${periodLabel(current.retentionYears, 'years')} festlegen?`,
       consequence:
         'Danach gilt der angezeigte Wert als eigener Wert der Verwaltung, und der nächste nächtliche Lauf löscht nach ihm, sobald seine Frist erreicht ist. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Wert festlegen',
+      confirmLabel: 'Festlegen',
       tone: 'danger',
     })
     if (!confirmed) return

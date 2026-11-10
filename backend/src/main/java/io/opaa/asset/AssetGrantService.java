@@ -453,8 +453,8 @@ public class AssetGrantService {
       throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
-              + "-Berechtigung einer "
-              + definition.singular()
+              + "-Berechtigung "
+              + definition.aGenitive()
               + " kann nicht entfernt werden");
     }
 
@@ -539,8 +539,8 @@ public class AssetGrantService {
       throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
-              + "-Berechtigung einer "
-              + definition.singular()
+              + "-Berechtigung "
+              + definition.aGenitive()
               + " kann nicht herabgestuft werden");
     }
   }
@@ -578,8 +578,8 @@ public class AssetGrantService {
     }
     if (!groupMemberships.groupIdsForUser(caller.id()).contains(group.id())) {
       throw new AccessDeniedException(
-          "Nur Mitglieder der Gruppe können eine "
-              + assetTypes.require(assetType).singular()
+          "Nur Mitglieder der Gruppe können "
+              + assetTypes.require(assetType).aAccusative()
               + " in ihrem Namen anlegen");
     }
     requireGrantableGroup(group.id(), caller.organizationId(), caller);

@@ -19,7 +19,7 @@ Einstellungen des Space nachholen.
 | Rolle | Darf |
 |---|---|
 | Mitglied | Chats führen, die bereitgestellten Arbeitsmittel nutzen, soweit es sie lesen darf |
-| Kurator | zusätzlich Arbeitsmittel zuordnen und lösen |
+| Kurator | zusätzlich Arbeitsmittel zuordnen und entfernen |
 | Administrator | zusätzlich Mitglieder, Rollen und Einstellungen verwalten |
 
 Sie werden **Eigentümer** des Space. Nur der Eigentümer und die Systemverwaltung dürfen ihn löschen.

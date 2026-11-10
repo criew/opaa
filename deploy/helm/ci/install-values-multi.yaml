@@ -70,6 +70,7 @@ backend:
     - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS, value: "200" }
     - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS, value: "50" }
     - { name: OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS, value: "100" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT, value: "50" }
 # A Prometheus in the cluster may scrape every backend pod (alerts per pod, ADR-0053).
 metrics:
   podAnnotations: true

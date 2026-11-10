@@ -377,7 +377,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       await screen.findByRole('button', { name: 'Weitere Aktionen für „Vorlagen Personalrat“' }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, 'Prompt-Bibliothek „Vorlagen Personalrat“ löschen?', 'Löschen')
+    await answerConfirm(user, '„Vorlagen Personalrat“ löschen?', 'Löschen')
 
     expect(await screen.findByText('Katalogseite')).toBeInTheDocument()
   })

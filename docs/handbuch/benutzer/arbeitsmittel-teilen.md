@@ -8,7 +8,7 @@
 
 1. Die Detailseite öffnen, Reiter „Freigaben“, „Freigeben“.
 2. Person, Gruppe oder „Alle Konten“ suchen und eine Rolle wählen.
-3. „Freigeben“. Entziehen geht über das Menü „⋯“ der Zeile.
+3. „Freigeben“. Widerrufen geht über „Widerrufen“ im Menü „⋯“ der Zeile.
 
 | Rolle | Darf zusätzlich |
 |---|---|

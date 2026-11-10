@@ -297,8 +297,8 @@ public class SpaceAssetAssociationService {
       // the bar of SpaceAccessPolicy#requireMember: a non-member learns nothing about the space
       accessPolicy.requireMember(space, caller);
       throw new AccessDeniedException(
-          "Nur Kuratoren dieses Space oder Verwaltende der "
-              + definition.singular()
+          "Nur Kuratoren dieses Space oder Verwaltende "
+              + definition.theGenitive()
               + " können die Zuordnung lösen");
     }
 
@@ -449,9 +449,8 @@ public class SpaceAssetAssociationService {
           NotificationType.ASSET_ASSOCIATED_TO_MIXED_SPACE,
           definition.auditObjectType(),
           asset.getId(),
-          "Ihre " + definition.singular() + " wurde in einem Space bereitgestellt",
-          "Die "
-              + definition.singular()
+          definition.yourNominative() + " wurde in einem Space bereitgestellt",
+          AssetTypeDefinition.capitalized(definition.theNominative())
               + " \""
               + asset.getName()
               + "\" wurde im Space \""

@@ -498,7 +498,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.click(await screen.findByRole('option', { name: /Referat 50/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
 
-    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    const question = /^Für „.*“ freigeben\?$/
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Verzeichnis Partner/,
     )
@@ -1831,7 +1831,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await next(user)
     await user.type(screen.getByLabelText(/^Name/), 'R')
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
-    await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
+    await answerConfirm(user, 'Eingaben verwerfen?', 'Abbrechen')
 
     expect(mockNavigate).not.toHaveBeenCalled()
   }, 15000)

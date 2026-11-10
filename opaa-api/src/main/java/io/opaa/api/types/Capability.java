@@ -39,6 +39,13 @@ public enum Capability {
   CREATE_PROMPT_LIBRARY,
 
   /**
+   * Creating an agent. Delivered to nobody: an agent runs the tool loop for whoever calls it, so
+   * the system administration names who may build one. Offered only while the installation switch
+   * for agents is on.
+   */
+  CREATE_AGENT,
+
+  /**
    * Creating a document template. Delivered to nobody: a template shapes what agents hand out as
    * files, so who may add one is a deliberate decision of the installation.
    */
