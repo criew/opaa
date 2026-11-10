@@ -1,13 +1,13 @@
 # Modul assistant
 
-Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt, agent. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Von der Frage zur belegten Antwort: die Abfragefassade mit Antwort und Zitaten (`query`), Chats
 samt Suchbereich eines Turns (`chat`), der Leseweg ohne Generierung (`search`), die lesende
-Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zweiter Asset-Typ
-(`prompt`). Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`).
+Betriebssicht auf das Retrieval (`searchadmin`), Prompt-Bibliothek (`prompt`) und Agent (`agent`)
+als Asset-Typen. Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`).
 
 ## Invarianten und Stolpersteine
 

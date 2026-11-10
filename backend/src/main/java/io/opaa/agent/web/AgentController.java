@@ -54,7 +54,7 @@ public class AgentController {
   }
 
   @GetMapping("/availability")
-  public AgentAvailabilityResponse getAgentAvailability() {
+  public AgentAvailabilityResponse getAgentAvailability(@Caller CurrentUser caller) {
     return new AgentAvailabilityResponse(agentSwitch.isEnabled());
   }
 
