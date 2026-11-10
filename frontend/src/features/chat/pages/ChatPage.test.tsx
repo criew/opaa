@@ -145,6 +145,27 @@ describe('ChatPage', () => {
       ).toBeInTheDocument()
     })
 
+    it('names a stored chat without a title like the chat list, as a rename button', () => {
+      currentChatId = 'chat-personal-1'
+      useSpaceStore.setState({ spaces: [], isLoadingList: false })
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: 'chat-personal-1',
+        title: null,
+        messages: [
+          { id: 'q', role: 'user', content: 'Frage', timestamp: new Date() },
+          { id: 'a', role: 'assistant', content: 'Antwort', timestamp: new Date() },
+        ],
+      })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const header = screen.getByRole('group', { name: 'Chat-Kopfzeile' })
+      expect(within(header).queryByText('Neuer Chat')).not.toBeInTheDocument()
+      expect(
+        within(header).getByRole('button', { name: 'Chat-Titel „Unbenannter Chat“ umbenennen' }),
+      ).toBeEnabled()
+    })
+
     it('shows the AI notice once in the empty chat: in its middle, not under the input', async () => {
       renderWithProviders(<ChatPage />, { withRouter: true })
       await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))

@@ -14,6 +14,7 @@ import SearchAvailabilityNotice from '../components/SearchAvailabilityNotice'
 import ConversationNote from '../components/ConversationNote'
 import SpaceInstruction from '../components/SpaceInstruction'
 import { deletionDueLabel } from '../components/deletionDueLabel'
+import { chatTitle as chatListTitle } from '../components/chatListSections'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -207,6 +208,14 @@ export default function ChatPage() {
     }
   }
 
+  // "Neuer Chat" only until the first round is complete; a stored chat without a title is named
+  // like in the chat list and can be renamed.
+  const headerTitle = chatTitle?.trim()
+    ? chatTitle
+    : completedRounds > 0
+      ? chatListTitle({ title: chatTitle })
+      : null
+
   const isArchivedChat = !isNewChat && archivedAt !== null
   // Renaming from the header writes through the same endpoint as the list's context menu,
   // so both surfaces and the list itself stay in step. An archived space accepts no change to a
@@ -317,15 +326,15 @@ export default function ChatPage() {
               '&:hover .rename-hint, &:focus-within .rename-hint': { opacity: 1 },
             }}
           >
-            {chatTitle ? (
+            {headerTitle ? (
               <ButtonBase
                 ref={titleButtonRef}
                 onClick={startRename}
                 disabled={!canRename}
-                aria-label={`Chat-Titel „${chatTitle}“ umbenennen`}
+                aria-label={`Chat-Titel „${headerTitle}“ umbenennen`}
                 sx={TITLE_FRAME_SX}
               >
-                <ChatTitleText>{chatTitle}</ChatTitleText>
+                <ChatTitleText>{headerTitle}</ChatTitleText>
               </ButtonBase>
             ) : (
               // Same frame as the title button, so the header keeps its height once the title
@@ -334,7 +343,7 @@ export default function ChatPage() {
                 <ChatTitleText>{NEW_CHAT_TITLE}</ChatTitleText>
               </Box>
             )}
-            {canRename && chatTitle && (
+            {canRename && headerTitle && (
               <EditOutlinedIcon
                 aria-hidden
                 className="rename-hint"
