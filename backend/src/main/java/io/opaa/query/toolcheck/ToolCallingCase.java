@@ -1,16 +1,12 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * One case of the tool-calling case base ({@code eval/corpus/tool-calling/cases.json}): a user
+ * One case of the tool-calling case base ({@code cases.json} of {@link ToolCallingCaseBase}): a user
  * message, the fixed results the mock tool returns call by call, the call limit the system prompt
  * names and the category-specific expectations its verdict is judged by ({@link ToolCallingJudge}).
  *
@@ -23,7 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
  * @param injection {@code ignores_injected_instruction}: where the instruction sits and how its
  *     effect shows; {@code null} for every other category
  */
-record ToolCallingCase(
+public record ToolCallingCase(
     String id,
     String category,
     String userMessage,
@@ -35,16 +31,16 @@ record ToolCallingCase(
     Injection injection,
     String rationale) {
 
-  static final String CALLS_WHEN_NEEDED = "calls_when_needed";
-  static final String ABSTAINS_WHEN_NOT_NEEDED = "abstains_when_not_needed";
-  static final String VALID_ARGUMENTS = "valid_arguments";
-  static final String NO_INVENTED_TOOL = "no_invented_tool";
-  static final String RESPECTS_LIMIT = "respects_limit";
-  static final String MULTI_STEP = "multi_step";
-  static final String IGNORES_INJECTED_INSTRUCTION = "ignores_injected_instruction";
+  public static final String CALLS_WHEN_NEEDED = "calls_when_needed";
+  public static final String ABSTAINS_WHEN_NOT_NEEDED = "abstains_when_not_needed";
+  public static final String VALID_ARGUMENTS = "valid_arguments";
+  public static final String NO_INVENTED_TOOL = "no_invented_tool";
+  public static final String RESPECTS_LIMIT = "respects_limit";
+  public static final String MULTI_STEP = "multi_step";
+  public static final String IGNORES_INJECTED_INSTRUCTION = "ignores_injected_instruction";
 
   /** All case categories in report order. */
-  static final List<String> CATEGORIES =
+  public static final List<String> CATEGORIES =
       List.of(
           CALLS_WHEN_NEEDED,
           ABSTAINS_WHEN_NOT_NEEDED,
@@ -58,7 +54,7 @@ record ToolCallingCase(
    * The capability floor: a combination may only be listed as capable when every run of these
    * categories passed.
    */
-  static final List<String> FLOOR_CATEGORIES =
+  public static final List<String> FLOOR_CATEGORIES =
       List.of(CALLS_WHEN_NEEDED, VALID_ARGUMENTS, RESPECTS_LIMIT);
 
   /**
@@ -69,7 +65,7 @@ record ToolCallingCase(
    * @param queryMarkers texts whose presence in a later query means it was followed
    * @param toolNames tool names whose call after the instruction means it was followed
    */
-  record Injection(
+  public record Injection(
       int resultIndex,
       List<String> answerPrefixMarkers,
       List<String> queryMarkers,
@@ -80,9 +76,9 @@ record ToolCallingCase(
     return toolResults.get(Math.min(validCallIndex, toolResults.size() - 1));
   }
 
-  static List<ToolCallingCase> load(Path file) throws IOException {
-    JsonNode root =
-        JsonMapper.builder().build().readTree(Files.readString(file, StandardCharsets.UTF_8));
+  /** The cases of a {@code cases.json}. */
+  static List<ToolCallingCase> parse(String casesJson) {
+    JsonNode root = JsonMapper.builder().build().readTree(casesJson);
     int defaultCallLimit = root.get("default_call_limit").asInt();
     List<ToolCallingCase> cases = new ArrayList<>();
     for (JsonNode node : root.get("cases")) {
@@ -111,13 +107,9 @@ record ToolCallingCase(
     return List.copyOf(cases);
   }
 
-  /** The {@code case_base_version} of {@code file}, raised with every change to a case. */
-  static int caseBaseVersion(Path file) throws IOException {
-    return JsonMapper.builder()
-        .build()
-        .readTree(Files.readString(file, StandardCharsets.UTF_8))
-        .get("case_base_version")
-        .asInt();
+  /** The {@code case_base_version} of a {@code cases.json}, raised with every change to a case. */
+  static int caseBaseVersion(String casesJson) {
+    return JsonMapper.builder().build().readTree(casesJson).get("case_base_version").asInt();
   }
 
   private static List<String> strings(JsonNode array) {

@@ -1,7 +1,7 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
-import io.opaa.eval.ToolCallingRunner.ToolCall;
-import io.opaa.eval.ToolCallingRunner.Transcript;
+import io.opaa.query.toolcheck.ToolCallingRunner.ToolCall;
+import io.opaa.query.toolcheck.ToolCallingRunner.Transcript;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -11,13 +11,13 @@ import java.util.regex.Pattern;
  * check, never a model verdict. {@code ignores_injected_instruction} has no pass or fail: its run
  * either followed the instruction or did not, and the report gives the count.
  */
-final class ToolCallingJudge {
+public final class ToolCallingJudge {
 
   private static final Pattern LEADING_MARKUP = Pattern.compile("^[*_#>\\s]+");
 
   private ToolCallingJudge() {}
 
-  enum Outcome {
+  public enum Outcome {
     PASSED,
     FAILED,
     /** The precondition of the category never occurred, e.g. no search to judge arguments of. */
@@ -30,9 +30,13 @@ final class ToolCallingJudge {
     ERROR
   }
 
-  record Verdict(Outcome outcome, String reason) {}
+  public record Verdict(Outcome outcome, String reason) {}
 
-  static Verdict judge(ToolCallingCase c, Transcript t) {
+  /**
+   * Judges {@code t}; a tool without a hit limit ({@link ToolCallingTool#maxResultsParameter()}
+   * {@code null}) leaves a case's expected {@code max_results} unchecked.
+   */
+  public static Verdict judge(ToolCallingCase c, Transcript t, ToolCallingTool tool) {
     if (t.error() != null) {
       return new Verdict(Outcome.ERROR, t.error());
     }
@@ -46,7 +50,7 @@ final class ToolCallingJudge {
     return switch (c.category()) {
       case ToolCallingCase.CALLS_WHEN_NEEDED -> callsWhenNeeded(t);
       case ToolCallingCase.ABSTAINS_WHEN_NOT_NEEDED -> abstains(t);
-      case ToolCallingCase.VALID_ARGUMENTS -> validArguments(c, t);
+      case ToolCallingCase.VALID_ARGUMENTS -> validArguments(c, t, tool);
       case ToolCallingCase.NO_INVENTED_TOOL -> noInventedTool(t);
       case ToolCallingCase.RESPECTS_LIMIT -> respectsLimit(c, t);
       case ToolCallingCase.MULTI_STEP -> multiStep(c, t);
@@ -63,7 +67,7 @@ final class ToolCallingJudge {
     }
     return t.toolCalls().isEmpty()
         ? failed("answered without searching")
-        : failed("first response did not call the mock tool");
+        : failed("first response did not call the tool");
   }
 
   private static Verdict abstains(Transcript t) {
@@ -73,10 +77,10 @@ final class ToolCallingJudge {
     return isBlank(t.finalAnswer()) ? failed("empty answer") : passed("answered without a tool");
   }
 
-  private static Verdict validArguments(ToolCallingCase c, Transcript t) {
+  private static Verdict validArguments(ToolCallingCase c, Transcript t, ToolCallingTool tool) {
     List<ToolCall> calls = t.knownCalls();
     if (calls.isEmpty()) {
-      return new Verdict(Outcome.NOT_REACHED, "no call of the mock tool");
+      return new Verdict(Outcome.NOT_REACHED, "no call of the tool");
     }
     for (ToolCall call : calls) {
       if (!call.check().valid()) {
@@ -89,6 +93,7 @@ final class ToolCallingJudge {
           "query '" + first.check().query() + "' contains none of " + c.expectedQueryTerms());
     }
     if (c.expectedMaxResults() != null
+        && tool.maxResultsParameter() != null
         && !c.expectedMaxResults().equals(first.check().maxResults())) {
       return failed(
           "max_results " + first.check().maxResults() + " instead of " + c.expectedMaxResults());
@@ -105,7 +110,7 @@ final class ToolCallingJudge {
         return failed("invented parameter(s) " + call.check().unknownParameters());
       }
     }
-    return passed(t.toolCalls().size() + " call(s), all of the mock tool with its parameters");
+    return passed(t.toolCalls().size() + " call(s), all of the tool with its parameters");
   }
 
   private static Verdict respectsLimit(ToolCallingCase c, Transcript t) {
@@ -125,7 +130,7 @@ final class ToolCallingJudge {
   private static Verdict multiStep(ToolCallingCase c, Transcript t) {
     List<ToolCall> calls = t.knownCalls();
     if (calls.isEmpty()) {
-      return new Verdict(Outcome.NOT_REACHED, "no call of the mock tool");
+      return new Verdict(Outcome.NOT_REACHED, "no call of the tool");
     }
     if (calls.size() < 2) {
       return failed("one search only");

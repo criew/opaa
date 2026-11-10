@@ -3,11 +3,14 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.llm.ChatResponses;
+import io.opaa.query.toolcheck.ToolCallingCaseBase;
+import io.opaa.query.toolcheck.ToolCallingMeasurement;
+import io.opaa.query.toolcheck.ToolCallingReport;
+import io.opaa.query.toolcheck.ToolCallingTool;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -18,7 +21,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 /**
  * Measures the tool-calling case base ({@code eval/corpus/tool-calling/SOURCE.md}) against one
- * OpenAI-compatible endpoint and writes {@code build/eval-reports/tool-calling.{json,md}}.
+ * OpenAI-compatible endpoint, offering the mock tool or, with {@code
+ * -Dopaa.eval.toolCalling.tool=production}, the agent loop's {@code search_knowledge}, and writes {@code build/eval-reports/tool-calling.{json,md}}.
  *
  * <p>The model address is mandatory: {@code -Dopaa.eval.chatBaseUrl} and {@code
  * -Dopaa.eval.chatModel}, the key only from {@code OPAA_EVAL_CHAT_API_KEY}. Without them the run
@@ -52,12 +56,8 @@ class ToolCallingEvaluationHarnessTest {
                         "evaluateToolCalling measures the model at -Dopaa.eval.chatBaseUrl with"
                             + " -Dopaa.eval.chatModel; both are missing. There is no pinned"
                             + " fallback model for this measurement."));
-    Path corpusDir = ToolCallingMockTool.corpusDir();
-    Path manifestFile = corpusDir.resolve("MANIFEST.sha256");
-    CorpusManifest.VerificationResult manifest = CorpusManifest.verify(corpusDir, manifestFile);
-    assertThat(manifest.violations()).as("case base must match MANIFEST.sha256").isEmpty();
-    ToolCallingMockTool tool = ToolCallingMockTool.load(corpusDir);
-    List<ToolCallingCase> cases = ToolCallingCase.load(corpusDir.resolve("cases.json"));
+    ToolCallingCaseBase caseBase = ToolCallingCaseBase.load();
+    ToolCallingTool tool = ToolCallingTool.of(toolDefinition(), caseBase);
 
     int repetitions = intProperty("repetitions", DEFAULT_REPETITIONS);
     int maxTokens = intProperty("maxTokens", DEFAULT_MAX_TOKENS);
@@ -74,34 +74,22 @@ class ToolCallingEvaluationHarnessTest {
     String answeredModel = requireUsable(model, external.model());
 
     Instant start = Instant.now();
-    ToolCallingRunner runner = new ToolCallingRunner(tool, streaming, timeout);
-    List<ToolCallingReport.CaseRun> runs = new ArrayList<>();
-    for (int repetition = 1; repetition <= repetitions; repetition++) {
-      for (ToolCallingCase c : cases) {
-        ToolCallingRunner.Transcript transcript = runner.run(c, model);
-        ToolCallingJudge.Verdict verdict = ToolCallingJudge.judge(c, transcript);
-        runs.add(
-            new ToolCallingReport.CaseRun(
-                c.id(),
-                c.category(),
-                repetition,
-                verdict.outcome(),
-                verdict.reason(),
-                transcript.toolCalls().stream().map(t -> t.name() + " " + t.arguments()).toList(),
-                transcript.finalAnswer(),
-                transcript.cutOff(),
-                transcript.limitReached(c.callLimit()),
-                transcript.finishReasons(),
-                transcript.modelCallMillis()));
-        log.info(
-            "{} ({}), Wdh. {}: {} - {}",
-            c.id(),
-            c.category(),
-            repetition,
-            verdict.outcome(),
-            verdict.reason());
-      }
-    }
+    List<ToolCallingReport.CaseRun> runs =
+        ToolCallingMeasurement.run(
+            caseBase,
+            tool,
+            model,
+            repetitions,
+            streaming,
+            timeout,
+            (done, total, run) ->
+                log.info(
+                    "{} ({}), Wdh. {}: {} - {}",
+                    run.caseId(),
+                    run.category(),
+                    run.repetition(),
+                    run.outcome(),
+                    run.reason()));
 
     ToolCallingReport report =
         ToolCallingReport.of(
@@ -119,11 +107,12 @@ class ToolCallingEvaluationHarnessTest {
                 maxTokens,
                 streaming),
             new ToolCallingReport.CaseBase(
-                "eval/corpus/tool-calling",
-                ToolCallingCase.caseBaseVersion(corpusDir.resolve("cases.json")),
-                CorpusManifest.sha256Hex(manifestFile),
-                cases.size(),
-                repetitions),
+                ToolCallingCaseBase.SOURCE_PATH,
+                caseBase.caseBaseVersion(),
+                caseBase.manifestSha256(),
+                caseBase.cases().size(),
+                repetitions,
+                tool.definition().name()),
             Duration.between(start, Instant.now()).toMillis() / 1000.0,
             runs);
     Path json = EvalReportDirectory.resolve("tool-calling.json");
@@ -145,6 +134,18 @@ class ToolCallingEvaluationHarnessTest {
           "The model '" + ordered + "' returned no usable answer; check address and key.");
     }
     return ChatResponses.model(response);
+  }
+
+  /** {@code -Dopaa.eval.toolCalling.tool}: {@code mock} (default) or {@code production}. */
+  static ToolCallingTool.Definition toolDefinition() {
+    String value = System.getProperty(PREFIX + "tool");
+    if (value == null || value.isBlank() || value.strip().equalsIgnoreCase("mock")) {
+      return ToolCallingTool.Definition.MOCK;
+    }
+    if (value.strip().equalsIgnoreCase("production")) {
+      return ToolCallingTool.Definition.PRODUCTION;
+    }
+    throw new IllegalArgumentException(PREFIX + "tool must be mock or production, got: " + value);
   }
 
   private static String stated(String key) {

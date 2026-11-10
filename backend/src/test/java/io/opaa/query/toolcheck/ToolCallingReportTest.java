@@ -1,8 +1,8 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.eval.ToolCallingJudge.Outcome;
+import io.opaa.query.toolcheck.ToolCallingJudge.Outcome;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -210,7 +210,7 @@ class ToolCallingReportTest {
             "0",
             1024,
             false),
-        new ToolCallingReport.CaseBase("eval/corpus/tool-calling", 1, "abc", 28, 1),
+        new ToolCallingReport.CaseBase(ToolCallingCaseBase.SOURCE_PATH, 1, "abc", 28, 1, "MOCK"),
         12.5,
         runs);
   }
