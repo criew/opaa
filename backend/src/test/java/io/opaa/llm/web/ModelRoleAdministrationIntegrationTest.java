@@ -11,9 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.llm.ModelRoleEndpoints;
 import io.opaa.llm.OptionalRoleState;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankEndpoints;
+import io.opaa.llm.rerank.RerankModelRole;
+import io.opaa.llm.transcription.TranscriptionEndpoints;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -50,7 +51,8 @@ class ModelRoleAdministrationIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private ModelRoleEndpoints endpoints;
+  @Autowired private RerankEndpoints rerankEndpoints;
+  @Autowired private TranscriptionEndpoints transcriptionEndpoints;
   @Autowired private RerankModelRole rerankRole;
 
   private HttpServer server;
@@ -392,7 +394,8 @@ class ModelRoleAdministrationIntegrationTest {
         "DELETE FROM audit_log WHERE event_type IN (?, ?)", EVENTS.get(0), EVENTS.get(1));
     jdbcTemplate.update(
         "DELETE FROM model_role_observations WHERE base_url LIKE 'http://127.0.0.1:%'");
-    endpoints.invalidateAll();
+    rerankEndpoints.invalidateAll();
+    transcriptionEndpoints.invalidateAll();
   }
 
   private List<Map<String, Object>> events(String type) {

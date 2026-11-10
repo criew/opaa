@@ -33,7 +33,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
   Das gilt auch für `prompt.web`: Die Prompts eines Space holt `PromptService` über den Port
   `SpaceAssetDirectory`.
 - **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
-  `QueryService` kennt nur die Schnittstelle `ToolLoopQueryHandler`.
+  `QueryService` kennt nur `ToolLoopQueryHandler`, für `query.toolloop` nur `AgentTurnHandler` (ADR-0070).
 
 ## Maßgebliche ADRs
 

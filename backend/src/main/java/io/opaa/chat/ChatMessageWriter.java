@@ -62,6 +62,7 @@ class ChatMessageWriter {
       String answer,
       String serializedSources,
       String serializedEvidence,
+      String serializedAgentRun,
       String derivedTitle,
       Collection<UUID> attachmentIds,
       Collection<UUID> answerAttachmentIds) {
@@ -81,6 +82,7 @@ class ChatMessageWriter {
     ChatMessage answerMessage =
         new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources);
     answerMessage.setAnswerEvidence(serializedEvidence);
+    answerMessage.setAgentRun(serializedAgentRun);
     chatMessageRepository.save(answerMessage);
     if (!answerAttachmentIds.isEmpty()) {
       chatMessageRepository.flush();

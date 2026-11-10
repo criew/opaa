@@ -1,6 +1,6 @@
 package io.opaa.indexing.chunk;
 
-import io.opaa.llm.RecordedEmbeddingIndex;
+import io.opaa.llm.embedding.RecordedEmbeddingIndex;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 

@@ -4,7 +4,7 @@ import com.pgvector.PGvector;
 import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingClients;
+import io.opaa.llm.embedding.EmbeddingClients;
 import io.opaa.observability.QueryEmbeddingTime;
 import io.opaa.retrieval.VectorIndexScanProperties;
 import java.util.LinkedHashMap;

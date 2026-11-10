@@ -10,7 +10,7 @@ import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
-import io.opaa.llm.EmbeddingModelNotInstalledException;
+import io.opaa.llm.embedding.EmbeddingModelNotInstalledException;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Map;

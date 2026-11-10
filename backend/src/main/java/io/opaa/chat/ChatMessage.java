@@ -66,6 +66,11 @@ public class ChatMessage {
   @Column(name = "answer_evidence", updatable = false, columnDefinition = "json")
   private String answerEvidence;
 
+  /** The agent run that gave the answer as JSON ({@link AgentRunRecord}), null otherwise. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "agent_run", updatable = false, columnDefinition = "json")
+  private String agentRun;
+
   @Column(name = "used_prompt_id", updatable = false)
   private UUID usedPromptId;
 
@@ -162,5 +167,14 @@ public class ChatMessage {
   /** Sets the Belegstand before the answer's message is first saved; never changed afterwards. */
   void setAnswerEvidence(String answerEvidence) {
     this.answerEvidence = answerEvidence;
+  }
+
+  public String getAgentRun() {
+    return agentRun;
+  }
+
+  /** Sets the agent run before the answer's message is first saved; never changed afterwards. */
+  void setAgentRun(String agentRun) {
+    this.agentRun = agentRun;
   }
 }

@@ -108,6 +108,10 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_self_disclosure_refused_total` | abgewiesene Selbstauskünfte nach Grund (`reason`) |
 | `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person |
 | `opaa_query_decomposition_fallback_total`, `opaa_query_decomposition_no_search_total` | Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war |
+| `opaa_agent_runs_total`, `opaa_agent_run_duration_seconds_*` | Agentenläufe nach Art (`kind`: `builtin` für den mitgelieferten, `custom` für angelegte Agenten) und Ergebnis (`completed`, `limit_calls`, `limit_duration`, `limit_volume`, `model_not_capable`, `aborted`, `error`), Dauer mit Buckets; ohne Agentennamen |
+| `opaa_agent_tool_calls_total` | Werkzeugaufrufe nach Werkzeug und Ergebnis (`success`, `empty`, `argument_ignored`, `invalid_arguments`, `unknown_tool`, `denied`, `timeout`, `error`) |
+| `opaa_agent_workspace_occupied`, `opaa_agent_workspace_capacity`, `opaa_agent_workspace_rejected_total` | belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe; steigt `rejected` stetig, `OPAA_AGENT_WORKSPACE_CAPACITY` anheben |
+| `opaa_agent_citations_unverifiable_total` | Quellenangaben in Agentenantworten, die zu keiner gefundenen Stelle passen; sie erscheinen nicht als Quelle |
 | `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
 | `opaa_chat_search_duration_seconds_*` | Dauer und Anzahl der Chatsuchen, ohne Suchbegriff und Person |
 | `opaa_chat_note_extraction_total` | Verdichtungen der Gesprächsnotiz nach Ausgang (`applied`, `empty`, `failed`, `discarded`, `rejected`) |

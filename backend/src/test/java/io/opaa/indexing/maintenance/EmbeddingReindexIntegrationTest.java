@@ -34,7 +34,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingModelAdministration;
+import io.opaa.llm.embedding.EmbeddingModelAdministration;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
