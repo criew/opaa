@@ -16,5 +16,6 @@ export default function AreaPageCount(props: AreaCountValue) {
       {formatAreaCount(props)}
     </Typography>
   )
+  if (slot === undefined) return null
   return slot ? createPortal(count, slot) : count
 }

@@ -81,7 +81,6 @@ import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
-import { CONTENT_WIDTH } from '../components/setup/rowStyles'
 import { contentWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
@@ -562,7 +561,7 @@ export default function LibraryCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
+      <Box sx={{ maxWidth: contentWidth.form }}>
         <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
         <Typography aria-hidden sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}>
           Neue Wissensbibliothek

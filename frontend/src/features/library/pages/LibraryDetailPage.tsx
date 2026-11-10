@@ -40,7 +40,7 @@ import { libraryState, runWord } from '../components/libraryState'
 import LibraryNextSteps from '../components/LibraryNextSteps'
 import LibraryQuotaNotice from '../components/LibraryQuotaNotice'
 import { useNextSteps } from '../components/nextSteps'
-import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import { contentWidth } from '@/shared/theme/tokens'
 import { useDocumentUpload } from '../hooks/useDocumentUpload'
 import { useDocumentStore } from '../stores/documentStore'
 import LibraryUploadInputs from '../components/LibraryUploadInputs'
@@ -357,7 +357,7 @@ export default function LibraryDetailPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 5 }, overflowY: 'auto' }}>
       {/* one column for head, tabs and every tab's content - the width of wizard and editing */}
-      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="KNOWLEDGE_LIBRARY"
           assetId={libraryId}

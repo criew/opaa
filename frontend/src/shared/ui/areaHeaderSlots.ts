@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useLayoutEffect, useReducer, useSyncExternalStore } from 'react'
 
 /** The two places of a page header that content below it may fill. */
 export type AreaHeaderSlot = 'count' | 'action'
@@ -31,11 +31,20 @@ function attach(slot: AreaHeaderSlot) {
 export const attachCountSlot = attach('count')
 export const attachActionSlot = attach('action')
 
-/** The mounted header's element for the slot, or `null` while no header offers it. */
-export function useAreaHeaderSlot(slot: AreaHeaderSlot): HTMLElement | null {
-  return useSyncExternalStore(
+/**
+ * The mounted header's element for the slot, `null` where no header offers it, and `undefined`
+ * during the first render: a header in the same tree attaches its slots only on commit, so until
+ * then nobody knows whether there is one. A caller renders nothing for `undefined` - the answer
+ * arrives before the first paint.
+ */
+export function useAreaHeaderSlot(slot: AreaHeaderSlot): HTMLElement | null | undefined {
+  const element = useSyncExternalStore(
     subscribe,
     () => elements[slot],
     () => null,
   )
+  // One deliberate second render per mount, flushed before the paint.
+  const [committed, markCommitted] = useReducer(() => true, false)
+  useLayoutEffect(markCommitted, [markCommitted])
+  return committed ? element : undefined
 }

@@ -1,16 +1,13 @@
 package io.opaa.succession.web;
 
-import io.opaa.api.dto.SuccessionCountsResponse;
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.dto.SuccessionSettingsResponse;
-import io.opaa.api.types.SuccessionKind;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionAgingThreshold;
 import io.opaa.succession.SuccessionEntry;
 import io.opaa.succession.SuccessionPage;
 import io.opaa.succession.SuccessionSettingsAdministration;
-import java.util.Map;
 
 /**
  * Maps the lifecycle's domain records onto their generated counterparts (ADR-0006).
@@ -40,13 +37,6 @@ final class SuccessionResponseMapper {
         SuccessionAgingThreshold.MIN_MONTHS,
         SuccessionAgingThreshold.MAX_MONTHS,
         setting.overridden());
-  }
-
-  static SuccessionCountsResponse toResponse(Map<SuccessionKind, Integer> counts) {
-    return new SuccessionCountsResponse(
-        counts.getOrDefault(SuccessionKind.OPEN_SUCCESSION, 0),
-        counts.getOrDefault(SuccessionKind.GRANTS_WITHOUT_RECIPIENT, 0),
-        counts.getOrDefault(SuccessionKind.GROUP_WITHOUT_EFFECT, 0));
   }
 
   static SuccessionEntryResponse toResponse(SuccessionEntry entry) {

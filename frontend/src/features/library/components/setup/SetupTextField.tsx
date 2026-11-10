@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize } from '@/shared/theme/tokens'
 
 interface SetupTextFieldProps {
   id: string
@@ -38,7 +38,7 @@ export default function SetupTextField({
   width = 'full',
 }: SetupTextFieldProps) {
   return (
-    <Box sx={{ maxWidth: width === 'short' ? 240 : undefined }}>
+    <Box sx={{ maxWidth: width === 'short' ? fieldWidth.short : undefined }}>
       <FieldLabel htmlFor={id}>
         {label}
         {optional ? ' (optional)' : ''}

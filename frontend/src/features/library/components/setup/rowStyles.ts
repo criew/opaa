@@ -1,5 +1,4 @@
-import { fontSize } from '@/shared/theme/tokens' /** The one content width of wizard, review, editing and the Reiter „Quelle“. */
-export const CONTENT_WIDTH = 720
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The grid of every summary row, the review step and the detail tab: title | content | link. */
 export const ROW_GRID = {

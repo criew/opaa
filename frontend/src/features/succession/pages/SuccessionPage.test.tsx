@@ -275,20 +275,12 @@ describe('SuccessionPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('asks for the shown tab only and for no figures of the others', async () => {
-    const counts: string[] = []
-    const listSizes: string[] = []
+  it('asks for the shown tab only, once', async () => {
+    const lists: string[] = []
     server.use(
-      http.get('/api/v1/admin/succession/counts', ({ request }) => {
-        counts.push(request.url)
-        return HttpResponse.json({
-          openSuccession: 4,
-          grantsWithoutRecipient: 1,
-          groupWithoutEffect: 0,
-        })
-      }),
       http.get('/api/v1/admin/succession', ({ request }) => {
-        listSizes.push(new URL(request.url).searchParams.get('size') ?? '')
+        const params = new URL(request.url).searchParams
+        lists.push(`${params.get('kind')} ${params.get('size')}`)
         return HttpResponse.json({
           entries: [],
           page: 0,
@@ -301,8 +293,7 @@ describe('SuccessionPage', () => {
     renderPage()
 
     expect(await screen.findByText('Zurzeit ist hier nichts offen.')).toBeInTheDocument()
-    expect(counts).toHaveLength(0)
-    expect(listSizes).toEqual(['50'])
+    expect(lists).toEqual(['OPEN_SUCCESSION 50'])
   })
 
   it('explains the page to an account without the system role and asks the server nothing', async () => {
@@ -311,14 +302,6 @@ describe('SuccessionPage', () => {
       http.get('/api/v1/admin/succession', ({ request }) => {
         requests.push(request.url)
         return HttpResponse.json({ entries: [], page: 0, size: 1, totalElements: 0, totalPages: 0 })
-      }),
-      http.get('/api/v1/admin/succession/counts', ({ request }) => {
-        requests.push(request.url)
-        return HttpResponse.json({
-          openSuccession: 0,
-          grantsWithoutRecipient: 0,
-          groupWithoutEffect: 0,
-        })
       }),
     )
     signInAs('USER')

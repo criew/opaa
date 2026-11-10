@@ -47,13 +47,26 @@ describe('page grid (guidelines 4.6 and 5.1)', () => {
 
   /**
    * The plus icon marks the one action that creates an object. It comes from `CreateButton`,
-   * which shows it in the page header or, as `placement="empty"`, in an empty state; the overview
-   * pages build their header themselves. The sidebar's plus is an icon-only button, no start icon.
+   * which shows it in the page header or, as `placement="empty"`, in an empty state. Whoever else
+   * imports the icon is named here with its reason, so a new plus needs a decision.
    */
-  it('puts a plus icon before a label only in CreateButton and the overview header', () => {
-    const allowed = ['shared/ui/CreateButton.tsx', 'shared/ui/overview/OverviewPage.tsx']
+  it('lets only the named files import the plus icon', () => {
+    const allowed = [
+      'shared/ui/CreateButton.tsx',
+      // builds the header of the overview pages itself
+      'shared/ui/overview/OverviewPage.tsx',
+      // sidebar: „Neuer Space" in the space switcher and the icon-only plus of „Spaces" and „Chats"
+      'app/shell/Sidebar.tsx',
+      'app/shell/SidebarSpaceList.tsx',
+      'features/chat/components/ChatList.tsx',
+      // zoom in, an icon-only button of the viewer's toolbar
+      'features/library/components/PdfViewer.tsx',
+    ]
     expect(
-      offenders((path) => !allowed.includes(path), /startIcon=\{\s*<Add(Icon|Outlined|Rounded)?\b/),
+      offenders(
+        (path) => !allowed.includes(path),
+        /from '@mui\/icons-material\/Add(Outlined|Rounded|Sharp|TwoTone)?'/,
+      ),
     ).toEqual([])
   })
 
@@ -62,16 +75,40 @@ describe('page grid (guidelines 4.6 and 5.1)', () => {
    * five page widths had grown from numbers in single pages. Sign-in and installation pages stand
    * outside the app frame and keep their own layout files.
    */
-  it('writes no max width as a number under features/ and app/areas/', () => {
+  describe('widths under features/ and app/areas/', () => {
     const ownLayout = ['features/auth/', 'features/installation/']
-    expect(
-      offenders(
-        (path) =>
-          (path.startsWith('features/') || path.startsWith('app/areas/')) &&
-          !ownLayout.some((prefix) => path.startsWith(prefix)),
-        /maxWidth\s*[:=]\s*\{?\s*(\d+\b(?!%)|['"`]\d+(px|ch|rem|em)\b)/,
-      ),
-    ).toEqual([])
+    const themed = (path: string) =>
+      (path.startsWith('features/') || path.startsWith('app/areas/')) &&
+      !ownLayout.some((prefix) => path.startsWith(prefix))
+    const LENGTH = String.raw`(\d+\b(?!%)|['"\x60]\d+(px|ch|rem|em)\b)`
+
+    it('writes no max width as a number', () => {
+      expect(offenders(themed, new RegExp(String.raw`maxWidth\s*[:=]\s*\{?\s*${LENGTH}`))).toEqual(
+        [],
+      )
+    })
+
+    it('writes none per breakpoint either', () => {
+      const perBreakpoint = new RegExp(
+        String.raw`maxWidth\s*[:=]\s*\{?\s*\{[^{}]*?\b(xs|sm|md|lg|xl)\s*:\s*${LENGTH}`,
+      )
+      expect(
+        SOURCES.filter(([path, text]) => themed(path) && perBreakpoint.test(text)).map(
+          ([path]) => path,
+        ),
+      ).toEqual([])
+    })
+
+    it('keeps no width as a named number of its own', () => {
+      // The width below which the chat input shortens its placeholder: a measuring threshold of
+      // one control, no width of a page or field.
+      const thresholds = ['COMPACT_PLACEHOLDER_WIDTH']
+      expect(
+        offenders(themed, /\bconst\s+\w*WIDTH\w*\s*=\s*['"\x60]?\d/).filter(
+          (hit) => !thresholds.some((name) => hit.includes(name)),
+        ),
+      ).toEqual([])
+    })
   })
 
   it('keeps counters out of the tabs of an area page', () => {

@@ -56,5 +56,7 @@ export default function CreateButton({
     ) : (
       button
     )
-  return placement === 'header' && slot ? createPortal(explained, slot) : explained
+  if (placement === 'empty') return explained
+  if (slot === undefined) return null
+  return slot ? createPortal(explained, slot) : explained
 }

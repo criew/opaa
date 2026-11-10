@@ -251,38 +251,27 @@ export default function ConnectionProfilesTab() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          rowGap: 1.5,
-          alignItems: 'flex-start',
-          flexWrap: { xs: 'wrap', md: 'nowrap' },
-          mb: 3,
-        }}
+      <CreateButton
+        disabled={!anyTypeAdmitsProfiles}
+        onClick={() => setForm({ open: true, profile: null })}
       >
-        <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
-          {loading || error || !settled ? null : (
-            <StatusLine
-              component="h2"
-              label="Handlungsbedarf der Zugänge"
-              tone={summary.tone}
-              headline={summary.headline}
-              detail={
-                profiles.length === 0
-                  ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
-                  : summary.detail
-              }
-            />
-          )}
+        Neuer Zugang
+      </CreateButton>
+      {!loading && !error && settled && (
+        <Box sx={{ mb: 3 }}>
+          <StatusLine
+            component="h2"
+            label="Handlungsbedarf der Zugänge"
+            tone={summary.tone}
+            headline={summary.headline}
+            detail={
+              profiles.length === 0
+                ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
+                : summary.detail
+            }
+          />
         </Box>
-        <CreateButton
-          disabled={!anyTypeAdmitsProfiles}
-          onClick={() => setForm({ open: true, profile: null })}
-        >
-          Neuer Zugang
-        </CreateButton>
-      </Box>
+      )}
 
       {sourceTypesLoaded && !anyTypeAdmitsProfiles && (
         <Alert severity="info" sx={{ mb: 2 }} data-testid="no-profile-source-type">

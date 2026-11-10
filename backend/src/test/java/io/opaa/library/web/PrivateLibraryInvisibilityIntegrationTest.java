@@ -249,7 +249,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getSearchDiagnosisContext",
             "listDocumentChunks",
             "listSuccessionEntries",
-            "countSuccessionEntries",
             "getSuccessionSettings",
             "listUsers",
             "listAuditorRoleRequests",
