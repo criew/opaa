@@ -18,9 +18,10 @@ import org.springframework.core.env.Profiles;
 /**
  * Warns at start about variables that once preset a setting the system administration or each
  * library now holds in the database, or a value the installation now sets (ADR-0060, Entscheidungen
- * 1, 8 to 10, 17): they are no longer read as the value, outside the {@code dev} mode or at all,
- * and a value still set there would otherwise be lost without a word. Only warns, so an update with
- * an old environment starts; each instance warns for its own environment (ADR-0053).
+ * 1, 8 to 10, 17), and about the retired switch of the agent spike: they are no longer read as the
+ * value, outside the {@code dev} mode or at all, and a value still set there would otherwise be
+ * lost without a word. Only warns, so an update with an old environment starts; each instance warns
+ * for its own environment (ADR-0053).
  */
 @Configuration
 public class RetiredSettingVariables {
@@ -73,7 +74,8 @@ public class RetiredSettingVariables {
           "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
               "opaa.connection.private-library-deletion-days",
           "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
-              "opaa.connection.expired-connections.warning-threshold");
+              "opaa.connection.expired-connections.warning-threshold",
+          "OPAA_SPIKE_TOOL_LOOP_ENABLED", "opaa.spike.tool-loop.enabled");
 
   /**
    * The shared model address and key, read in the {@code dev} mode only (by its own installation);
@@ -250,6 +252,10 @@ public class RetiredSettingVariables {
     retired.put("OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", INACTIVITY);
     retired.put("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", DELETION);
     retired.put("OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD", WARNING);
+    retired.put(
+        "OPAA_SPIKE_TOOL_LOOP_ENABLED",
+        "the switch for agents under Administration > Agenten and choose an agent with @ in the"
+            + " chat - the prefix \"@test \" is gone");
     String account = "the first account in the installation, then in the user administration";
     retired.put("OPAA_INITIAL_ADMIN_EMAIL", account);
     retired.put("OPAA_INITIAL_ADMIN_PASSWORD", account);

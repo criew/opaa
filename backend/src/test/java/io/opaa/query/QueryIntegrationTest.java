@@ -29,7 +29,6 @@ import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1068,7 +1067,6 @@ class QueryIntegrationTest {
         queryMetrics,
         metadataFilterValidator,
         promptService,
-        Optional.empty(),
         neighborChunkExpansion,
         turn -> {
           throw new AssertionError("no agent in this test");

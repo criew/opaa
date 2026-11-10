@@ -32,8 +32,8 @@ Betriebssicht auf das Retrieval (`searchadmin`), Prompt-Bibliothek (`prompt`), D
   kennt `io.opaa.library` nicht, und kein Fachpaket kennt es (`PermissionPackageBoundaryTest`), auch
   `prompt.web` nicht: Die Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
 - **Sandbox nur über `query.sandbox.Sandboxes`** (ADR-0073), Ausgaben nur als Anhang; `query.runlog` ohne Konto/Inhalt.
-- **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
-  `QueryService` kennt nur `ToolLoopQueryHandler`, für `query.toolloop` nur `AgentTurnHandler` (ADR-0070).
+- **Zyklen:** keine zwischen Unterpaketen. `query.toolloop` hängt an `query`, nicht umgekehrt:
+  `QueryService` kennt nur `AgentTurnHandler` (ADR-0070).
 
 ## Maßgebliche ADRs
 
