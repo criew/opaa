@@ -40,6 +40,13 @@ services:
     depends_on:
       sandbox-image:
         condition: service_completed_successfully
+    # The server logs request lines and sandbox ids, never scripts or files ([log] level INFO in
+    # sandbox/config.toml); rotation bounds how long even those stay on the host.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     environment:

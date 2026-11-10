@@ -14,6 +14,8 @@ import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.chat.ChatAttachmentView;
 import io.opaa.common.ValidationException;
+import io.opaa.query.runlog.AgentRunLogWriter;
+import io.opaa.query.runlog.AgentSandboxLogEntry;
 import io.opaa.query.sandbox.SandboxException;
 import io.opaa.query.sandbox.SandboxProperties;
 import io.opaa.query.sandbox.SandboxSession;
@@ -44,6 +46,65 @@ class RunCodeToolTest {
   private static final JsonMapper JSON = JsonMapper.builder().build();
   private static final Instant START = Instant.parse("2026-11-10T08:00:00Z");
 
+  /** Shared by every tool of this class; reset per test. */
+  private static final AgentRunLogWriter RUN_LOG = mock(AgentRunLogWriter.class);
+
+  @org.junit.jupiter.api.BeforeEach
+  void resetRunLog() {
+    org.mockito.Mockito.reset(RUN_LOG);
+  }
+
+  @Test
+  void theSandboxLogGetsCountsAndSizesButNoNameWhenTheSandboxCloses() {
+    AgentRun run = run();
+    tool(START).call(args("print(1)"), run);
+    tool(START).call(args("print(2)"), run);
+    ChatAttachment attachment = mock(ChatAttachment.class);
+    when(attachments.uploadGenerated(any(), any(), anyInt(), any(), any(), any()))
+        .thenReturn(new ChatAttachmentView(attachment, null, null, null));
+    sandboxes.files = List.of(new OutputFile("geheim.pdf", new byte[] {1, 2, 3}));
+    RunResource resource = run.resources().getFirst();
+    resource.finish();
+    resource.close();
+    resource.close();
+
+    org.mockito.ArgumentCaptor<AgentSandboxLogEntry> entry = org.mockito.ArgumentCaptor.captor();
+    verify(RUN_LOG).writeSandbox(eq(run.organizationId()), eq(run.runId()), entry.capture());
+    assertThat(entry.getValue().scriptRuns()).isEqualTo(2);
+    assertThat(entry.getValue().fileCount()).isOne();
+    assertThat(entry.getValue().fileBytes()).isEqualTo(3);
+    assertThat(entry.getValue().status()).isEqualTo("COMPLETED");
+    assertThat(entry.getValue().toString()).doesNotContain("geheim");
+  }
+
+  @Test
+  void aSandboxThatCannotBeDeletedIsStillLogged() {
+    AgentRun run = run();
+    tool(START).call(args("print(1)"), run);
+    sandboxes.closeFailure = new SandboxException("delete sandbox answered 500");
+
+    assertThatThrownBy(() -> run.resources().getFirst().close())
+        .isInstanceOf(SandboxException.class);
+
+    verify(RUN_LOG).writeSandbox(eq(run.organizationId()), eq(run.runId()), any());
+  }
+
+  @Test
+  void aSandboxThatDoesNotStartIsLoggedAsSuch() {
+    AgentRun run = run();
+    sandboxes.onOpen =
+        () -> {
+          throw new SandboxException("create sandbox answered 503");
+        };
+
+    assertThatThrownBy(() -> tool(START).call(args("print(1)"), run))
+        .isInstanceOf(SandboxException.class);
+
+    org.mockito.ArgumentCaptor<AgentSandboxLogEntry> entry = org.mockito.ArgumentCaptor.captor();
+    verify(RUN_LOG).writeSandbox(any(), eq(run.runId()), entry.capture());
+    assertThat(entry.getValue().abortReason()).isEqualTo("START_FAILED");
+  }
+
   private final FakeSandboxes sandboxes = new FakeSandboxes();
   private final ChatAttachmentService attachments = mock(ChatAttachmentService.class);
 
@@ -67,6 +128,7 @@ class RunCodeToolTest {
         AgentToolCallbackTest.properties(),
         attachments,
         ProductionDocumentFormats.supportedFormats(),
+        RUN_LOG,
         clock);
   }
 
@@ -308,6 +370,7 @@ class RunCodeToolTest {
     List<OutputFile> files = List.of();
     RuntimeException collectFailure;
     Runnable onOpen = () -> {};
+    RuntimeException closeFailure;
 
     @Override
     public SandboxSession open(Duration lifetime, Duration readyWithin) {
@@ -343,6 +406,9 @@ class RunCodeToolTest {
         @Override
         public void close() {
           closed++;
+          if (closeFailure != null) {
+            throw closeFailure;
+          }
         }
       };
     }

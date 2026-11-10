@@ -4,6 +4,7 @@ import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.runlog.AgentStepLogEntry;
 import io.opaa.retrieval.context.ChunkPosition;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public final class AgentRun {
 
   private final List<Document> passages = new ArrayList<>();
   private final List<AgentRunRecord.Step> steps = new ArrayList<>();
+  private final List<AgentStepLogEntry> trace = new ArrayList<>();
   private final Map<String, Integer> callsPerTool = new HashMap<>();
   private final Map<Class<?>, RunResource> resources = new LinkedHashMap<>();
   private int toolCalls;
@@ -140,6 +142,21 @@ public final class AgentRun {
     steps.add(
         new AgentRunRecord.Step(
             toolName, outcome.detail(), outcome.hits(), outcome.result().stepStatus()));
+  }
+
+  /**
+   * Notes a step for the step log (ADR-0070, Bestand b): technical facts only, never the step's
+   * detail, which is the person's content and stays in the chat.
+   */
+  synchronized void traceStep(
+      String toolName, String status, Integer hits, long durationMs, String abortReason) {
+    trace.add(
+        new AgentStepLogEntry(trace.size(), null, toolName, status, hits, durationMs, abortReason));
+  }
+
+  /** The steps for the step log, in order. */
+  synchronized List<AgentStepLogEntry> trace() {
+    return List.copyOf(trace);
   }
 
   /** Notes a step that did not run, e.g. a call of an unknown tool. */

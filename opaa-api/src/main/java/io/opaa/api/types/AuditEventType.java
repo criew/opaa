@@ -517,6 +517,11 @@ public enum AuditEventType {
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
   /**
+   * The retention periods of the step log and the sandbox log of agent runs changed; before/after
+   * carry both values.
+   */
+  AGENT_RUN_LOG_RETENTION_CHANGED,
+  /**
    * The system administration set the periods of the automatic chat cleanup of the spaces, or
    * returned them to the factory defaults; {@code before} and {@code after} carry the periods only.
    */

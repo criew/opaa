@@ -75,6 +75,17 @@ Ohne Schalter gibt es weder Client noch Werkzeug als Bean; die Werkzeug-Registry
 dann nicht, und kein Agent kann es aufrufen. Eingeschaltet entscheiden der Werkzeugschalter und die
 Zuordnung am Agenten (ADR-0070, Entscheidung 6).
 
+### 7. Sandboxprotokoll als eigener Bestand neben dem Schrittprotokoll
+
+Je Sandbox hält eine eigene Tabelle Lauf-Kennung, technische Kennung der Sandbox, Werkzeug,
+Ergebnis, Dauer, Zahl der Skripte, Zahl und Größe der Dateien und den Abbruchgrund fest; kein Konto,
+kein Skript, kein Dateiinhalt. Sie folgt der Bauart des Schrittprotokolls (ADR-0070, Entscheidung 4,
+Bestand b): Tagespartitionen im Besitz von `opaa_audit_owner`, derselbe Leseweg mit Lauf-Kennung und
+Anlass, eigene Frist (Vorgabe 7, höchstens 30 Tage, nie länger als das Schrittprotokoll). Geschrieben
+wird beim Schließen der Sandbox, auch wenn sie nicht startet. Der Dienst selbst protokolliert auf
+Stufe `INFO` oder höher, also ohne Anfragekörper, und Compose rotiert sein Log; ein Test prüft die
+mitgelieferte Konfiguration.
+
 ## Konsequenzen
 
 - **Einfacher:** Ein weiteres isoliertes Werkzeug, etwa das Füllen einer Dokumentvorlage, nutzt

@@ -2,6 +2,7 @@
   "ACCOUNT_DEACTIVATED": [],
   "ACCOUNT_ERASED": ["origin"],
   "ACCOUNT_REAUTHENTICATION_FORCED": [],
+  "AGENT_RUN_LOG_RETENTION_CHANGED": ["sandboxLogRetentionDays", "stepLogRetentionDays"],
   "API_TOKEN_EXPIRED": ["reason", "serviceAccountId"],
   "API_TOKEN_ISSUED": ["expiresAt", "libraryIds", "serviceAccountId"],
   "API_TOKEN_REVOKED": ["by", "reason", "serviceAccountId"],

@@ -31,7 +31,7 @@ Betriebssicht auf das Retrieval (`searchadmin`), Prompt-Bibliothek (`prompt`) un
 - **`prompt` baut auf der Asset-Schale auf** und fragt `io.opaa.permission` nur nach Rollen. Es
   kennt `io.opaa.library` nicht, und kein Fachpaket kennt es (`PermissionPackageBoundaryTest`), auch
   `prompt.web` nicht: Die Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
-- **Sandbox nur über `query.sandbox.Sandboxes`** (ADR-0073): eine je Agentenlauf, Ausgaben nur als geprüfte Anhänge.
+- **Sandbox nur über `query.sandbox.Sandboxes`** (ADR-0073), Ausgaben nur als Anhang; `query.runlog` ohne Konto/Inhalt.
 - **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
   `QueryService` kennt nur `ToolLoopQueryHandler`, für `query.toolloop` nur `AgentTurnHandler` (ADR-0070).
 

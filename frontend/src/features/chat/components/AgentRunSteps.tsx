@@ -49,7 +49,8 @@ interface AgentRunStepsProps {
 /**
  * The steps an agent took for an answer, collapsed by default. A run that stopped at a limit is
  * marked "nicht geprüft": the agent answered with what it had, which is not an error. A run that
- * asked the person back is marked as a question; the reply starts a new run.
+ * asked the person back is marked as a question; the reply starts a new run. The open list names
+ * the run id, which the system administration needs to read the run's step log.
  */
 export default function AgentRunSteps({ run }: AgentRunStepsProps) {
   const [open, setOpen] = useState(false)
@@ -103,6 +104,15 @@ export default function AgentRunSteps({ run }: AgentRunStepsProps) {
             <li key={index}>{stepText(step)}</li>
           ))}
         </Box>
+      )}
+      {open && (
+        <Typography
+          variant="caption"
+          component="p"
+          sx={{ color: 'text.secondary', mt: 0.5, userSelect: 'all', wordBreak: 'break-all' }}
+        >
+          {`Laufkennung für die Fehlersuche: ${run.runId}`}
+        </Typography>
       )}
     </Box>
   )

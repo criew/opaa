@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09
+Akzeptiert · zuletzt geändert 2026-11-10
 
 ## Kontext
 
@@ -99,7 +99,10 @@ nicht abschaltbar, sondern nicht gebaut, und eine automatisierte Prüfung belegt
 **Zugriff auf (b).** Jeder Lesezugriff schreibt `AUDIT_LOG_ACCESSED` mit eigenem `accessPath`, der
 Lauf-Kennung und dem Anlass als Pflichtangabe. Ein abgewiesener Zugriff wird als `DENIED`, ein
 gescheiterter als `FAILURE` erfasst, wie bei `DiagnosticContextLogQueryService`. Eine Lauf-Kennung
-einer fremden Organisation ist von einer unbekannten nicht zu unterscheiden.
+einer fremden Organisation ist von einer unbekannten nicht zu unterscheiden. Der Leseweg ist genau
+eine Operation (`GET /api/v1/admin/agent-runs/{runId}/log`); die Frist stellt die Systemverwaltung
+unter „Datenschutz“ ein. Die Schritte eines Laufs schreibt die Schleife gesammelt an seinem Ende; ein
+Schreibfehler verwirft nie die Antwort.
 
 **Zu (c).** Ein lesender Aufruf ist Nutzung und gehört nicht ins Revisionsprotokoll. In der Menge
 ergäbe er ein Tätigkeitsprofil; die Frage „worauf durfte Person X zugreifen“ beantwortet die

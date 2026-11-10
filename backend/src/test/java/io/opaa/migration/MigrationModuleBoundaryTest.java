@@ -212,7 +212,10 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "document_template_files",
                   "document_template_settings",
                   "agent_workspace",
-                  "agent_run_reservations")),
+                  "agent_run_reservations",
+                  "agent_run_log_retention_settings",
+                  "agent_step_log",
+                  "agent_sandbox_log")),
           Map.entry(
               EXTERNAL,
               List.of(

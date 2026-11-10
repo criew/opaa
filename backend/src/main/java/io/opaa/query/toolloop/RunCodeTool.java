@@ -9,6 +9,8 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.runlog.AgentRunLogWriter;
+import io.opaa.query.runlog.AgentSandboxLogEntry;
 import io.opaa.query.sandbox.OutputSelection;
 import io.opaa.query.sandbox.OutputSelection.Verdict;
 import io.opaa.query.sandbox.SandboxProperties;
@@ -58,6 +60,12 @@ class RunCodeTool implements AgentTool {
   /** Longest step detail the person sees: the names of the files in the output directory. */
   static final int MAX_DETAIL_CHARS = 120;
 
+  /** The session reference of a sandbox that never started. */
+  static final String NO_SESSION = "none";
+
+  static final String STATUS_COMPLETED = "COMPLETED";
+  static final String STATUS_FAILED = "FAILED";
+
   static final String NO_CHAT = "Code kann nur in einem Chat eines Space ausgeführt werden.";
 
   private static final String SCHEMA =
@@ -79,6 +87,7 @@ class RunCodeTool implements AgentTool {
   private final AgentToolLoopProperties loopProperties;
   private final ChatAttachmentService attachmentService;
   private final SupportedDocumentFormats supportedFormats;
+  private final AgentRunLogWriter runLogWriter;
   private final Clock clock;
 
   /**
@@ -91,12 +100,14 @@ class RunCodeTool implements AgentTool {
       AgentToolLoopProperties loopProperties,
       ChatAttachmentService attachmentService,
       SupportedDocumentFormats supportedFormats,
+      AgentRunLogWriter runLogWriter,
       Clock clock) {
     this.sandboxes = sandboxes;
     this.sandboxProperties = sandboxProperties;
     this.loopProperties = loopProperties;
     this.attachmentService = attachmentService;
     this.supportedFormats = supportedFormats;
+    this.runLogWriter = runLogWriter;
     this.clock = clock;
     Duration needed = lifetime(loopProperties.maxDuration());
     if (sandboxProperties.maxLifetime().compareTo(needed) < 0) {
@@ -161,16 +172,8 @@ class RunCodeTool implements AgentTool {
       return ToolCallOutcome.refused(
           ToolCallResult.TIMEOUT, "Für ein Skript ist in diesem Lauf keine Zeit mehr.");
     }
-    SandboxSession session =
-        run.resource(
-                RunSandbox.class,
-                () ->
-                    new RunSandbox(
-                        sandboxes.open(lifetime(untilDeadline), untilDeadline),
-                        attachmentService,
-                        this::attachable,
-                        run))
-            .session();
+    RunSandbox sandbox = run.resource(RunSandbox.class, () -> openSandbox(run, untilDeadline));
+    SandboxSession session = sandbox.session();
     // Starting the sandbox took part of the run's time; the script gets only what is left.
     Duration remaining = Duration.between(clock.instant(), run.deadline());
     if (remaining.isNegative() || remaining.isZero()) {
@@ -182,6 +185,7 @@ class RunCodeTool implements AgentTool {
             ? sandboxProperties.runTimeout()
             : remaining;
     ScriptRun result = session.run(code, timeout);
+    sandbox.scriptRan(result);
     List<OutputEntry> entries = session.outputEntries();
     List<Verdict> verdicts = OutputSelection.of(entries, this::attachable);
     return new ToolCallOutcome(
@@ -190,6 +194,38 @@ class RunCodeTool implements AgentTool {
         detail(entries, verdicts),
         null,
         List.of());
+  }
+
+  /** Opens the run's sandbox; a start that fails is logged in the sandbox log before it fails. */
+  private RunSandbox openSandbox(AgentRun run, Duration untilDeadline) {
+    long started = System.nanoTime();
+    try {
+      return new RunSandbox(
+          sandboxes.open(lifetime(untilDeadline), untilDeadline),
+          attachmentService,
+          this::attachable,
+          runLogWriter,
+          run);
+    } catch (RuntimeException e) {
+      runLogWriter.writeSandbox(
+          run.organizationId(),
+          run.runId(),
+          new AgentSandboxLogEntry(
+              NO_SESSION,
+              null,
+              name(),
+              STATUS_FAILED,
+              0,
+              millisSince(started),
+              0,
+              0,
+              "START_FAILED"));
+      throw e;
+    }
+  }
+
+  private static long millisSince(long startedNanos) {
+    return Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
   }
 
   /** Whether a file of this name can become an attachment at all. */
@@ -278,21 +314,53 @@ class RunCodeTool implements AgentTool {
   /**
    * The sandbox of one run. {@link #finish()} takes the files of the output directory as the
    * asker's attachments; a file that cannot be read back or that a check refuses is left out and
-   * counted in the log, without name, and never fails the answer.
+   * counted in the log, without name, and never fails the answer. {@link #close()} deletes the
+   * sandbox and appends one entry to the sandbox log: counts and sizes, no script and no file name.
    */
-  record RunSandbox(
-      SandboxSession session,
-      ChatAttachmentService attachmentService,
-      Predicate<String> attachable,
-      AgentRun run)
-      implements RunResource {
+  static final class RunSandbox implements RunResource {
+
+    private final SandboxSession session;
+    private final ChatAttachmentService attachmentService;
+    private final Predicate<String> attachable;
+    private final AgentRunLogWriter runLogWriter;
+    private final AgentRun run;
+    private final long openedNanos = System.nanoTime();
+    private int scriptRuns;
+    private boolean timedOut;
+    private boolean collectFailed;
+    private int fileCount;
+    private long fileBytes;
+    private boolean closed;
+
+    RunSandbox(
+        SandboxSession session,
+        ChatAttachmentService attachmentService,
+        Predicate<String> attachable,
+        AgentRunLogWriter runLogWriter,
+        AgentRun run) {
+      this.session = session;
+      this.attachmentService = attachmentService;
+      this.attachable = attachable;
+      this.runLogWriter = runLogWriter;
+      this.run = run;
+    }
+
+    SandboxSession session() {
+      return session;
+    }
+
+    synchronized void scriptRan(ScriptRun result) {
+      scriptRuns++;
+      timedOut |= result.timedOut();
+    }
 
     @Override
-    public List<ChatAttachment> finish() {
+    public synchronized List<ChatAttachment> finish() {
       List<SandboxSession.OutputFile> files;
       try {
         files = session.collectOutput(attachable, COLLECT_WITHIN);
       } catch (RuntimeException e) {
+        collectFailed = true;
         log.warn("Agent run {}: sandbox files could not be collected", run.runId(), e);
         return List.of();
       }
@@ -310,6 +378,8 @@ class RunCodeTool implements AgentTool {
                       file.content(),
                       run.userId())
                   .attachment());
+          fileCount++;
+          fileBytes += file.content().length;
         } catch (ValidationException
             | PayloadTooLargeException
             | TooManyRequestsException
@@ -328,8 +398,33 @@ class RunCodeTool implements AgentTool {
     }
 
     @Override
-    public void close() {
-      session.close();
+    public synchronized void close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      try {
+        session.close();
+      } finally {
+        writeLog();
+      }
+    }
+
+    private void writeLog() {
+      String abortReason = collectFailed ? "COLLECT_FAILED" : timedOut ? "SCRIPT_TIMEOUT" : null;
+      runLogWriter.writeSandbox(
+          run.organizationId(),
+          run.runId(),
+          new AgentSandboxLogEntry(
+              session.id(),
+              null,
+              ToolNames.RUN_CODE,
+              collectFailed ? STATUS_FAILED : STATUS_COMPLETED,
+              scriptRuns,
+              millisSince(openedNanos),
+              fileCount,
+              fileBytes,
+              abortReason));
     }
   }
 }

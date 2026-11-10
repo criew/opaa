@@ -202,6 +202,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAccounts",
             "listCapabilities",
             "getConnectionLogRetention",
+            "getAgentRunLogRetention",
             "getDataCollectionDisclosure",
             "getDataCollectionDisclosureMarkdown",
             "getSelfDisclosureStatus",
@@ -372,6 +373,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAuditEventsByIncidentScope")) {
       probes.put(protocol, protocol());
     }
+    probes.put(
+        "getAgentRunLog",
+        same().withQuery("runId", "{unknown}").withQuery("reason", "Fehlersuche im Agentenlauf"));
     probes.put("listAuditEventsByEventType", protocol().withQuery("eventType", "LIBRARY_CREATED"));
     // the chain report names counts and hashes of a month, never an entry: the same for everyone
     probes.put("verifyAuditChain", same());
