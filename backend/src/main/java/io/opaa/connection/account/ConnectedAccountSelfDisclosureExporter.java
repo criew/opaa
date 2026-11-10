@@ -11,6 +11,7 @@ import io.opaa.compliance.SelfDisclosureCategory.Section;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
 import java.io.IOException;
@@ -26,7 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * with their name at the provider, and the libraries she connected or answers for. No secret, no
  * token, no pending authorization goes out. The account name of a library goes out only when she
  * connected it; another connecting or responsible person is "andere Person", a responsible group
- * its name.
+ * its name. A library she may no longer read appears without its name ({@link ReadableAssetNames}).
  */
 @Component
 public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -91,13 +92,16 @@ public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExp
   private final JdbcTemplate jdbc;
   private final CredentialsEncryptor encryptor;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public ConnectedAccountSelfDisclosureExporter(
       JdbcTemplate jdbc,
       CredentialsEncryptor encryptor,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      ReadableAssetNames names) {
     this.jdbc = jdbc;
     this.encryptor = encryptor;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -145,45 +149,52 @@ public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExp
         sink,
         "libraries",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT l.library_id, a.name AS library_name, p.name AS profile_name,"
-                    + " l.account_label, l.connected_by, l.connected_at, l.responsible_type,"
-                    + " l.responsible_id, g.name AS group_name, l.ended_cause, l.ended_at,"
-                    + " l.created_at FROM library_connections l"
-                    + " JOIN assets a ON a.id = l.library_id"
-                    + " LEFT JOIN connection_profiles p ON p.id = l.profile_id"
-                    + " LEFT JOIN groups g ON l.responsible_type = 'GROUP'"
-                    + " AND g.id = l.responsible_id"
-                    + " WHERE a.organization_id = ? AND (l.connected_by = ?"
-                    + " OR (l.responsible_type = 'USER' AND l.responsible_id = ?))"
-                    + " AND (l.created_at, l.library_id) > (?, ?)"
-                    + " ORDER BY l.created_at, l.library_id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "library_id");
-                  UUID connectedBy = rs.getObject("connected_by", UUID.class);
-                  boolean user = "USER".equals(rs.getString("responsible_type"));
-                  record.put("library", rs.getString("library_name"));
-                  record.put("profile", rs.getString("profile_name"));
-                  record.put(
-                      "accountLabel",
-                      me.equals(connectedBy) ? rs.getString("account_label") : null);
-                  record.put("connectedBy", who(connectedBy, me, null));
-                  record.put("connectedAt", instant(rs.getTimestamp("connected_at")));
-                  record.put("responsibleType", rs.getString("responsible_type"));
-                  record.put(
-                      "responsible",
-                      user ? who(rs.getObject("responsible_id", UUID.class), me, null) : null);
-                  record.put("responsibleGroup", user ? null : rs.getString("group_name"));
-                  record.put("endedCause", rs.getString("ended_cause"));
-                  record.put("endedAt", instant(rs.getTimestamp("ended_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT l.library_id, a.asset_type, a.name AS library_name, p.name AS profile_name,"
+                        + " l.account_label, l.connected_by, l.connected_at, l.responsible_type,"
+                        + " l.responsible_id, g.name AS group_name, l.ended_cause, l.ended_at,"
+                        + " l.created_at FROM library_connections l"
+                        + " JOIN assets a ON a.id = l.library_id"
+                        + " LEFT JOIN connection_profiles p ON p.id = l.profile_id"
+                        + " LEFT JOIN groups g ON l.responsible_type = 'GROUP'"
+                        + " AND g.id = l.responsible_id"
+                        + " WHERE a.organization_id = ? AND (l.connected_by = ?"
+                        + " OR (l.responsible_type = 'USER' AND l.responsible_id = ?))"
+                        + " AND (l.created_at, l.library_id) > (?, ?)"
+                        + " ORDER BY l.created_at, l.library_id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "library_id");
+                      UUID connectedBy = rs.getObject("connected_by", UUID.class);
+                      boolean user = "USER".equals(rs.getString("responsible_type"));
+                      record.put("library", rs.getString("library_name"));
+                      ReadableAssetNames.mark(
+                          record,
+                          rs.getObject("library_id", UUID.class),
+                          rs.getString("asset_type"));
+                      record.put("profile", rs.getString("profile_name"));
+                      record.put(
+                          "accountLabel",
+                          me.equals(connectedBy) ? rs.getString("account_label") : null);
+                      record.put("connectedBy", who(connectedBy, me, null));
+                      record.put("connectedAt", instant(rs.getTimestamp("connected_at")));
+                      record.put("responsibleType", rs.getString("responsible_type"));
+                      record.put(
+                          "responsible",
+                          user ? who(rs.getObject("responsible_id", UUID.class), me, null) : null);
+                      record.put("responsibleGroup", user ? null : rs.getString("group_name"));
+                      record.put("endedCause", rs.getString("ended_cause"));
+                      record.put("endedAt", instant(rs.getTimestamp("ended_at")));
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "library"));
   }
 
   /** The account name for its owner; a value that is not encrypted or not readable is none. */

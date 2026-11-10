@@ -17,6 +17,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -130,7 +131,13 @@ public class LibraryFolderService {
     return toDetail(folder);
   }
 
-  @Transactional
+  /**
+   * Runs without an ambient transaction: every document goes in its own transaction through {@link
+   * FolderDocumentDeleter}, so the per-document chunk locks are released document by document and a
+   * folder of any size stays within the lock table. A failure stops the walk with the documents
+   * already deleted gone and the rest, and their folders, kept; a repeated call finishes the job.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void deleteFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());

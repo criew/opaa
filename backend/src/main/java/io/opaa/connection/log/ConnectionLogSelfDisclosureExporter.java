@@ -12,6 +12,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code connection-log} of the self-disclosure: the entries of the connection log in
  * which the person acted or whose connection they concern, found through her existing pseudonym
  * (none is minted). Pseudonyms never go out: the actor is "Sie", "andere Person" or "System". The
- * account name of a library goes out only for a connection she established herself.
+ * account name of a library goes out only for a connection she established herself; a library she
+ * may no longer read appears without its name ({@link ReadableAssetNames}).
  */
 @Component
 public class ConnectionLogSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -55,13 +57,16 @@ public class ConnectionLogSelfDisclosureExporter implements SelfDisclosureExport
   private final JdbcTemplate jdbc;
   private final AuditActorPseudonymService pseudonyms;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public ConnectionLogSelfDisclosureExporter(
       JdbcTemplate jdbc,
       AuditActorPseudonymService pseudonyms,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      ReadableAssetNames names) {
     this.jdbc = jdbc;
     this.pseudonyms = pseudonyms;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -81,36 +86,43 @@ public class ConnectionLogSelfDisclosureExporter implements SelfDisclosureExport
         sink,
         "entries",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT l.event_id, l.recorded_at, l.event_type, l.actor_ref, l.owner_kind,"
-                    + " l.person_ref, a.name AS library_name, l.account_label, l.profile_name,"
-                    + " l.cause FROM connection_log l LEFT JOIN assets a ON a.id = l.library_id"
-                    + " WHERE l.organization_id = ? AND (l.actor_ref = ? OR l.person_ref = ?)"
-                    + " AND (l.recorded_at, l.event_id) > (?, ?)"
-                    + " ORDER BY l.recorded_at, l.event_id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "recorded_at", "event_id");
-                  String actor = rs.getString("actor_ref");
-                  String person = rs.getString("person_ref");
-                  String eventType = rs.getString("event_type");
-                  boolean ownStart = mine.equals(actor) && STARTS.contains(eventType);
-                  record.put("recordedAt", instant(rs.getTimestamp("recorded_at")));
-                  record.put("eventType", eventType);
-                  record.put("actor", label(actor, mine));
-                  record.put("ownerKind", rs.getString("owner_kind"));
-                  record.put("person", person == null ? null : label(person, mine));
-                  record.put("library", rs.getString("library_name"));
-                  record.put("accountLabel", ownStart ? rs.getString("account_label") : null);
-                  record.put("profile", rs.getString("profile_name"));
-                  record.put("cause", rs.getString("cause"));
-                  return record;
-                },
-                subject.organizationId(),
-                mine,
-                mine,
-                afterTime,
-                afterId,
-                limit));
+            names.apply(
+                subject.accountId(),
+                jdbc.query(
+                    "SELECT l.event_id, l.recorded_at, l.event_type, l.actor_ref, l.owner_kind,"
+                        + " l.person_ref, l.library_id, a.asset_type, a.name AS library_name,"
+                        + " l.account_label, l.profile_name, l.cause FROM connection_log l LEFT JOIN assets a ON a.id = l.library_id"
+                        + " WHERE l.organization_id = ? AND (l.actor_ref = ? OR l.person_ref = ?)"
+                        + " AND (l.recorded_at, l.event_id) > (?, ?)"
+                        + " ORDER BY l.recorded_at, l.event_id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "recorded_at", "event_id");
+                      String actor = rs.getString("actor_ref");
+                      String person = rs.getString("person_ref");
+                      String eventType = rs.getString("event_type");
+                      boolean ownStart = mine.equals(actor) && STARTS.contains(eventType);
+                      record.put("recordedAt", instant(rs.getTimestamp("recorded_at")));
+                      record.put("eventType", eventType);
+                      record.put("actor", label(actor, mine));
+                      record.put("ownerKind", rs.getString("owner_kind"));
+                      record.put("person", person == null ? null : label(person, mine));
+                      record.put("library", rs.getString("library_name"));
+                      record.put("accountLabel", ownStart ? rs.getString("account_label") : null);
+                      record.put("profile", rs.getString("profile_name"));
+                      record.put("cause", rs.getString("cause"));
+                      ReadableAssetNames.mark(
+                          record,
+                          rs.getObject("library_id", UUID.class),
+                          rs.getString("asset_type"));
+                      return record;
+                    },
+                    subject.organizationId(),
+                    mine,
+                    mine,
+                    afterTime,
+                    afterId,
+                    limit),
+                "library"));
   }
 
   private static String label(String ref, String mine) {

@@ -140,6 +140,33 @@ class ChatSelfDisclosureExporterIntegrationTest {
     assertThat(valuesOtherThanIdsAndTimestamps(sink)).noneMatch(value -> value.contains("9917"));
   }
 
+  /**
+   * A chat source from a library the person no longer reads keeps its file name, but the library's
+   * name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void aSourceFromALibraryWithoutReadRightAppearsWithoutTheLibraryName() throws Exception {
+    UUID left = data.library("Neuer Name ohne Leserecht", other, false, "UPLOAD");
+    UUID document =
+        data.document(left, "erlass.pdf", "org/lib/left-original", null, "UPLOAD", other, "y");
+    UUID chat = chat("Chat mit alter Quelle", person);
+    message(chat, 1, "USER", "Was regelt der Erlass?", null);
+    message(
+        chat,
+        2,
+        "ASSISTANT",
+        "Er regelt die Frist.",
+        "[{\"fileName\":\"erlass.pdf\",\"documentId\":\""
+            + document
+            + "\",\"relevanceScore\":1.0,\"matchCount\":1,\"cited\":true}]");
+
+    CapturingSelfDisclosureSink sink = export();
+
+    assertThat(sink.records("messages").get(1))
+        .containsEntry("sources", List.of("erlass.pdf · Bibliothek: (kein Leserecht) · zitiert"));
+    assertThat(sink.text()).doesNotContain("Neuer Name ohne Leserecht");
+  }
+
   @Test
   void leavesOutTheChatsOfAnotherPersonInTheSameSpace() throws Exception {
     UUID mine = chat("Mein Chat", person);

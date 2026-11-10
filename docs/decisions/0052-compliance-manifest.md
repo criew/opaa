@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-10
 
 ## Kontext
 
@@ -185,6 +185,12 @@ hält beide Seiten ohne Datenbank gleich: Jede Spalte der Auskunft ist von einem
 Spalten des Wegs deckt die Auswahl selbst ab), kein Feld nennt eine unbekannte oder ausgeschlossene
 Spalte, außer es sagt über sie nur ja/nein oder eine feste Bezeichnung, und ein Datum mit Exporteur
 führt `EXPORT` unter `accessPaths`.
+
+Ein Exporteur, der ein Asset über seinen heutigen Namen nennt, gibt diesen Namen nur aus, solange
+die Person das Asset nach der Rechteformel lesen darf, ohne Boden der Systemverwaltung; sonst steht
+dort „(kein Leserecht)“ (`ReadableAssetNames` in `io.opaa.permission`). Der Verweis selbst – Art,
+Zeitpunkt, Rolle – bleibt. Ein zum Zeitpunkt des Ereignisses gespeicherter Name darf stehen bleiben.
+Sonst verriete die Auskunft, wie ein Asset heißt, das die Person längst nicht mehr sehen darf.
 
 Der Weg steht an der Tabelle, weil die Tabelle die Einheit ist, an der eine neue Spalte oder Tabelle
 auffällt; eine Liste der Kategorien neben dem Manifest wüchse nicht mit.

@@ -164,6 +164,7 @@ class DocumentDeletionSentinelIntegrationTest {
         .extracting(SentinelScan.Hit::qualifiedColumn)
         .contains(
             "documents.file_name",
+            "vector_store.content",
             "chunk_full_text.content_tsv",
             "document_metadata_values.text_value",
             "document_keywords.keyword");

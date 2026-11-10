@@ -388,6 +388,53 @@ class LibraryFolderServiceIntegrationTest {
     assertThat(folderRepository.findById(child.folder().getId())).isEmpty();
   }
 
+  /**
+   * A folder's documents go in a transaction each: the chunk lock of one document is released
+   * before the next row is deleted, so a folder of any size never accumulates one advisory lock per
+   * document in a single transaction (the shared lock table runs out otherwise). A trigger on this
+   * library's documents records how many chunk locks the deleting session holds at each row delete.
+   */
+  @Test
+  void deletingAFolderHoldsNoChunkLockOfAnEarlierDocument() {
+    LibraryFolderDetail folder =
+        folderService.createFolder(libraryId, "Viele", null, currentUserOf(editor, false));
+    for (int i = 0; i < 3; i++) {
+      uploadDocumentIntoFolder(folder.folder().getId(), "akte-" + i + ".txt", "Akte Nummer " + i);
+    }
+    String suffix = libraryId.toString().replace("-", "");
+    String probe = "folder_lock_probe_" + suffix;
+    try {
+      jdbcTemplate.execute("CREATE TABLE " + probe + " (held bigint NOT NULL)");
+      jdbcTemplate.execute(
+          "CREATE FUNCTION "
+              + probe
+              + "_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO "
+              + probe
+              + " SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'"
+              + " AND pid = pg_backend_pid() AND classid = "
+              + io.opaa.indexing.chunk.VectorStoreWriter.DOCUMENT_CHUNK_LOCK_NAMESPACE
+              + "; RETURN OLD; END $$");
+      jdbcTemplate.execute(
+          "CREATE TRIGGER "
+              + probe
+              + "_trg BEFORE DELETE ON documents FOR EACH ROW WHEN (OLD.library_id = '"
+              + libraryId
+              + "') EXECUTE FUNCTION "
+              + probe
+              + "_fn()");
+
+      folderService.deleteFolder(libraryId, folder.folder().getId(), currentUserOf(editor, false));
+
+      assertThat(jdbcTemplate.queryForList("SELECT held FROM " + probe, Long.class))
+          .hasSize(3)
+          .containsOnly(0L);
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + probe + "_trg ON documents");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS " + probe + "_fn()");
+      jdbcTemplate.execute("DROP TABLE IF EXISTS " + probe);
+    }
+  }
+
   @Test
   void deletingAnEmptyFolderRemovesOnlyTheFolderRow() {
     LibraryFolderDetail folder =

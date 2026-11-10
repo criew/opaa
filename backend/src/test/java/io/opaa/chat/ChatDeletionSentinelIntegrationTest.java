@@ -33,9 +33,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Deletion completeness of a chat: a unique marker goes into the question, the answer and the
- * generated title, and after the chat's deletion no column of any table of the schema holds it any
- * more ({@link SentinelScan}), except the columns of {@link #RETAINED}.
+ * Deletion completeness of a chat: a unique marker goes into the question, the answer, the
+ * generated title (the title executor of this context runs synchronously), a note item and a read
+ * attachment with its text, and after the chat's deletion no column of any table of the schema
+ * holds it any more ({@link SentinelScan}), except the columns of {@link #RETAINED}.
  */
 @OpaaMockedChatModelIntegrationTest
 class ChatDeletionSentinelIntegrationTest {
@@ -88,15 +89,48 @@ class ChatDeletionSentinelIntegrationTest {
         "Frage zu " + sentinel,
         "Antwort zu " + sentinel,
         List.of());
+    markNoteAndAttachment(chatId, spaceId, authorId, sentinel);
     assertThat(SentinelScan.find(jdbcTemplate, sentinel))
         .as("the marker must first be stored where the deletion has to reach")
         .extracting(SentinelScan.Hit::qualifiedColumn)
-        .contains("chat_messages.content");
+        .contains(
+            "chats.title",
+            "chat_messages.content",
+            "chat_note_items.text",
+            "chat_attachments.file_name",
+            "chat_attachment_chunks.content");
 
     chatService.deleteChat(chatId, authorId);
 
     assertThat(SentinelScan.find(jdbcTemplate, sentinel))
         .extracting(SentinelScan.Hit::qualifiedColumn)
         .allSatisfy(column -> assertThat(RETAINED).containsKey(column));
+  }
+
+  /** A note item and a read attachment of the chat, both carrying {@code sentinel}. */
+  private void markNoteAndAttachment(UUID chatId, UUID spaceId, UUID authorId, String sentinel) {
+    jdbcTemplate.update(
+        "INSERT INTO chat_note_items (id, chat_id, organization_id, position, text, kind,"
+            + " created_at) VALUES (?, ?, ?, 0, ?, 'RAHMEN', now())",
+        UUID.randomUUID(),
+        chatId,
+        organizationId,
+        "Notiz " + sentinel);
+    UUID attachmentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO chat_attachments (id, organization_id, space_id, author_id, chat_id,"
+            + " file_name, content_type, size_bytes, status, text_chars, created_at, processed_at)"
+            + " VALUES (?, ?, ?, ?, ?, ?, 'text/plain', 1, 'READY', 1, now(), now())",
+        attachmentId,
+        organizationId,
+        spaceId,
+        authorId,
+        chatId,
+        sentinel + ".txt");
+    jdbcTemplate.update(
+        "INSERT INTO chat_attachment_chunks (attachment_id, chunk_index, content)"
+            + " VALUES (?, 0, ?)",
+        attachmentId,
+        "Anhang " + sentinel);
   }
 }

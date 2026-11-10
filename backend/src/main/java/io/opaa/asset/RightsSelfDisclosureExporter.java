@@ -12,6 +12,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code rights} of the self-disclosure: the assets the person owns or created, with
  * type and name only (prompt libraries included, their texts never), the grants she holds or gave
  * and the capabilities she holds or gave. A grant to a group or to "Alle Konten" appears only when
- * she gave it; another person is "andere Person", a grant without granting person "System".
+ * she gave it; another person is "andere Person", a grant without granting person "System". An
+ * asset she may no longer read - one she created and handed on, one she shared and lost - appears
+ * without its name ({@link ReadableAssetNames}).
  */
 @Component
 public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -83,10 +86,12 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public RightsSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -102,71 +107,82 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
         sink,
         "assets",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT a.id, a.asset_type, a.name, a.owner_user_id, g.name AS owner_group,"
-                    + " a.created_by_user_id, a.owner_only, a.created_at FROM assets a"
-                    + " LEFT JOIN groups g ON g.id = a.owner_group_id"
-                    + " WHERE a.organization_id = ?"
-                    + " AND (a.owner_user_id = ? OR a.created_by_user_id = ?)"
-                    + " AND (a.created_at, a.id) > (?, ?) ORDER BY a.created_at, a.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("name", rs.getString("name"));
-                  record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
-                  record.put("ownerGroup", rs.getString("owner_group"));
-                  record.put(
-                      "createdBy", who(rs.getObject("created_by_user_id", UUID.class), me, null));
-                  record.put("ownerOnly", rs.getBoolean("owner_only"));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT a.id, a.asset_type, a.name, a.owner_user_id, g.name AS owner_group,"
+                        + " a.created_by_user_id, a.owner_only, a.created_at FROM assets a"
+                        + " LEFT JOIN groups g ON g.id = a.owner_group_id"
+                        + " WHERE a.organization_id = ?"
+                        + " AND (a.owner_user_id = ? OR a.created_by_user_id = ?)"
+                        + " AND (a.created_at, a.id) > (?, ?) ORDER BY a.created_at, a.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("name", rs.getString("name"));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("id", UUID.class), rs.getString("asset_type"));
+                      record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
+                      record.put("ownerGroup", rs.getString("owner_group"));
+                      record.put(
+                          "createdBy",
+                          who(rs.getObject("created_by_user_id", UUID.class), me, null));
+                      record.put("ownerOnly", rs.getBoolean("owner_only"));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "name"));
     reader.copy(
         sink,
         "grants",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "WITH ag AS (SELECT * FROM asset_grants WHERE organization_id = ?"
-                    + " AND (subject_user_id = ? OR granted_by_user_id = ?)"
-                    + " AND (created_at, id) > (?, ?))"
-                    + " SELECT ag.id, ag.asset_type, a.name AS asset_name, ag.subject_type,"
-                    + " ag.subject_user_id, g.name AS group_name, ag.role, ag.expires_at,"
-                    + " ag.granted_by_user_id, ag.created_at, ag.updated_at FROM ag"
-                    + " LEFT JOIN assets a ON a.id = ag.asset_id"
-                    + " LEFT JOIN groups g ON g.id = ag.subject_group_id"
-                    + " ORDER BY ag.created_at, ag.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("asset_name"));
-                  record.put("recipientType", rs.getString("subject_type"));
-                  record.put(
-                      "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("recipientGroup", rs.getString("group_name"));
-                  record.put("role", rs.getString("role"));
-                  record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
-                  record.put(
-                      "grantedBy",
-                      who(
-                          rs.getObject("granted_by_user_id", UUID.class),
-                          me,
-                          SelfDisclosureLabels.SYSTEM));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  record.put("updatedAt", instant(rs.getTimestamp("updated_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "WITH ag AS (SELECT * FROM asset_grants WHERE organization_id = ?"
+                        + " AND (subject_user_id = ? OR granted_by_user_id = ?)"
+                        + " AND (created_at, id) > (?, ?))"
+                        + " SELECT ag.id, ag.asset_id, ag.asset_type, a.name AS asset_name, ag.subject_type,"
+                        + " ag.subject_user_id, g.name AS group_name, ag.role, ag.expires_at,"
+                        + " ag.granted_by_user_id, ag.created_at, ag.updated_at FROM ag"
+                        + " LEFT JOIN assets a ON a.id = ag.asset_id"
+                        + " LEFT JOIN groups g ON g.id = ag.subject_group_id"
+                        + " ORDER BY ag.created_at, ag.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("asset_name"));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      record.put("recipientType", rs.getString("subject_type"));
+                      record.put(
+                          "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("recipientGroup", rs.getString("group_name"));
+                      record.put("role", rs.getString("role"));
+                      record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
+                      record.put(
+                          "grantedBy",
+                          who(
+                              rs.getObject("granted_by_user_id", UUID.class),
+                              me,
+                              SelfDisclosureLabels.SYSTEM));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      record.put("updatedAt", instant(rs.getTimestamp("updated_at")));
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
     reader.copy(
         sink,
         "capabilities",
