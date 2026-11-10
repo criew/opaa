@@ -3,7 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { SharedLibraryQuotaResponse } from '@/shared/api/types'
 import { getSharedLibraryQuota, updateSharedLibraryQuota } from '../api/sharedLibraryQuotaApi'
@@ -13,7 +12,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 /** The limit in force in words; 0 is none. */
@@ -120,42 +119,44 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <FormFieldRow>
-        <FormField
-          label="Grenze je Bibliothek (GB)"
-          size="small"
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value)
-            setSaveError(null)
-          }}
-          error={!valid && draft.trim() !== ''}
-          helperText={
-            draft.trim() !== '' && parsed.error
-              ? parsed.error
-              : current.capBytes > 0
-                ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
-                : 'Der Betrieb hat keine Obergrenze gesetzt.'
-          }
-          numeric
-          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 320 }}
-        />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          busy={busy}
-          busyAnnouncement="Grenze wird gespeichert"
-          disabled={!changed && !busy}
-        >
-          Grenze speichern
-        </BusyButton>
-        {own !== null && (
-          <Button variant="text" disabled={busy} onClick={() => void handleRemove()}>
-            Eigene Grenze entfernen
-          </Button>
-        )}
-      </FormFieldRow>
+      <FormField
+        label="Grenze je Bibliothek (GB)"
+        size="small"
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setSaveError(null)
+        }}
+        error={!valid && draft.trim() !== ''}
+        helperText={
+          draft.trim() !== '' && parsed.error
+            ? parsed.error
+            : current.capBytes > 0
+              ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
+              : 'Der Betrieb hat keine Obergrenze gesetzt.'
+        }
+        numeric
+        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+        sx={{ maxWidth: formWidth.column }}
+        action={
+          <>
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              busy={busy}
+              busyAnnouncement="Grenze wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Grenze speichern
+            </BusyButton>
+            {own !== null && (
+              <Button variant="text" disabled={busy} onClick={() => void handleRemove()}>
+                Eigene Grenze entfernen
+              </Button>
+            )}
+          </>
+        }
+      />
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

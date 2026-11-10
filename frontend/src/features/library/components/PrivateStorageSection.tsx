@@ -11,7 +11,6 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type {
   MaskedNumber,
@@ -29,7 +28,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 /** A size in words; 0 is unlimited. */
@@ -143,49 +142,51 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <FormFieldRow>
-        <FormField
-          label="Grenze je Person (GB)"
-          size="small"
-          value={draft}
-          disabled={unlimited}
-          onChange={(event) => {
-            setDraft(event.target.value)
-            setSaveError(null)
-          }}
-          error={!valid}
-          helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
-          numeric
-          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 320 }}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={unlimited}
-              onChange={(event) => {
-                setUnlimited(event.target.checked)
-                setSaveError(null)
-              }}
+      <FormField
+        label="Grenze je Person (GB)"
+        size="small"
+        value={draft}
+        disabled={unlimited}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setSaveError(null)
+        }}
+        error={!valid}
+        helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
+        numeric
+        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+        sx={{ maxWidth: formWidth.column }}
+        action={
+          <>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={unlimited}
+                  onChange={(event) => {
+                    setUnlimited(event.target.checked)
+                    setSaveError(null)
+                  }}
+                />
+              }
+              label="Unbegrenzt"
             />
-          }
-          label="Unbegrenzt"
-        />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          busy={busy}
-          busyAnnouncement="Grenze wird gespeichert"
-          disabled={!changed && !busy}
-        >
-          Grenze speichern
-        </BusyButton>
-        {current.overridden && (
-          <Button variant="text" disabled={busy} onClick={() => void handleReset()}>
-            Werkseinstellung wiederherstellen
-          </Button>
-        )}
-      </FormFieldRow>
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              busy={busy}
+              busyAnnouncement="Grenze wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Grenze speichern
+            </BusyButton>
+            {current.overridden && (
+              <Button variant="text" disabled={busy} onClick={() => void handleReset()}>
+                Werkseinstellung wiederherstellen
+              </Button>
+            )}
+          </>
+        }
+      />
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

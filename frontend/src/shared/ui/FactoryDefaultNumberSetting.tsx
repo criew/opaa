@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import FormField from './form/FormField'
-import FormFieldRow from './form/FormFieldRow'
+import { formWidth } from '../theme/tokens'
 import Typography from '@mui/material/Typography'
 import { apiFieldErrors } from '../api/apiErrorDetails'
 import { confirmAction } from '../stores/confirmStore'
@@ -116,34 +116,34 @@ export default function FactoryDefaultNumberSetting({
   return (
     <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
       <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-        <FormFieldRow>
-          <FormField
-            label={label}
-            size="small"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setSaveError(null)
-            }}
-            error={parsed === null || saveError !== null}
-            helperText={
-              parsed === null ? rangeError : (saveError ?? `Von ${format(min)} bis ${format(max)}.`)
-            }
-            slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            numeric
-            sx={{ width: 320 }}
-          />
-          <BusyButton
-            type="submit"
-            variant="outlined"
-            size="small"
-            busy={busy}
-            busyAnnouncement="Wird gespeichert"
-            disabled={!changed && !busy}
-          >
-            Speichern
-          </BusyButton>
-        </FormFieldRow>
+        <FormField
+          label={label}
+          size="small"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={parsed === null || saveError !== null}
+          helperText={
+            parsed === null ? rangeError : (saveError ?? `Von ${format(min)} bis ${format(max)}.`)
+          }
+          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+          numeric
+          sx={{ maxWidth: formWidth.column }}
+          action={
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              size="small"
+              busy={busy}
+              busyAnnouncement="Wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Speichern
+            </BusyButton>
+          }
+        />
       </Box>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         {overridden

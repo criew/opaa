@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box'
+import FormHelperText from '@mui/material/FormHelperText'
 import TextField, { type OutlinedTextFieldProps } from '@mui/material/TextField'
 import { useId, type ReactNode } from 'react'
 import { formWidth } from '../../theme/tokens'
@@ -23,6 +24,11 @@ export interface FormFieldProps extends Omit<
    * wide. Implied by `type="number"`.
    */
   numeric?: boolean
+  /**
+   * What acts on this one field (the button that saves it, a switch that lifts it): stands
+   * directly beside the box, between label and helper text.
+   */
+  action?: ReactNode
 }
 
 /** Marks a field with a visible label, so that `FormFieldRow` can align what stands beside it. */
@@ -39,19 +45,24 @@ function slotObject(slot: unknown): SlotObject {
  * The one form field of the application (guidelines 5.2): text, select (`select`), date
  * (`type="date"`) and, as `renderInput` of an Autocomplete, search-and-pick. The label stands
  * above the field and is tied to the control (`htmlFor`, for a select `aria-labelledby`); helper
- * text and error start at the field's left edge; `required` never draws an asterisk; a multiline
- * field starts with three rows. Fills its container unless it is a filter field.
+ * text and error start at the field's left edge and describe the control (`aria-describedby`);
+ * `required` never draws an asterisk; a multiline field starts with three rows. Fills its
+ * container unless it is a filter field.
  */
 export default function FormField({
   label,
   optional = false,
   hideLabel = false,
   numeric: numericProp,
+  action,
   id: idProp,
   select,
   multiline,
   minRows,
   fullWidth: fullWidthProp,
+  helperText,
+  error,
+  disabled,
   slotProps,
   sx,
   className,
@@ -61,11 +72,44 @@ export default function FormField({
   const generatedId = useId()
   const id = idProp ?? generatedId
   const labelId = `${id}-label`
+  const helperId = helperText ? `${id}-helper-text` : undefined
   const numeric = numericProp ?? type === 'number'
   const fullWidth = fullWidthProp ?? !hideLabel
   const htmlInput = slotObject(slotProps?.htmlInput)
   const selectSlot = slotObject(slotProps?.select)
   const native = selectSlot.native === true
+  const describedBy =
+    [htmlInput['aria-describedby'], helperId].filter(Boolean).join(' ') || undefined
+
+  const control = (
+    <TextField
+      {...rest}
+      id={id}
+      type={type}
+      select={select}
+      error={error}
+      disabled={disabled}
+      multiline={multiline}
+      minRows={multiline ? (minRows ?? 3) : undefined}
+      fullWidth={!numeric}
+      sx={
+        numeric
+          ? { width: formWidth.number, maxWidth: '100%', flexShrink: 0 }
+          : action
+            ? { flex: '1 1 0', minWidth: 0 }
+            : undefined
+      }
+      slotProps={{
+        ...slotProps,
+        htmlInput: {
+          ...(hideLabel ? { 'aria-label': label } : {}),
+          ...htmlInput,
+          'aria-describedby': describedBy,
+        },
+        select: select && !hideLabel ? { labelId, ...selectSlot } : slotProps?.select,
+      }}
+    />
+  )
 
   return (
     <Box
@@ -78,10 +122,7 @@ export default function FormField({
           verticalAlign: 'top',
         },
         fullWidth && { width: '100%' },
-        numeric &&
-          (fullWidth
-            ? { '& .MuiInputBase-root': { width: formWidth.number, maxWidth: '100%' } }
-            : { width: formWidth.number, flexShrink: 0 }),
+        numeric && !fullWidth && { width: formWidth.number, flexShrink: 0 },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
@@ -94,20 +135,19 @@ export default function FormField({
           {label}
         </FormFieldLabel>
       )}
-      <TextField
-        {...rest}
-        id={id}
-        type={type}
-        select={select}
-        multiline={multiline}
-        minRows={multiline ? (minRows ?? 3) : undefined}
-        fullWidth
-        slotProps={{
-          ...slotProps,
-          htmlInput: hideLabel ? { 'aria-label': label, ...htmlInput } : slotProps?.htmlInput,
-          select: select && !hideLabel ? { labelId, ...selectSlot } : slotProps?.select,
-        }}
-      />
+      {action ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+          {control}
+          {action}
+        </Box>
+      ) : (
+        control
+      )}
+      {helperText && (
+        <FormHelperText id={helperId} error={error} disabled={disabled}>
+          {helperText}
+        </FormHelperText>
+      )}
     </Box>
   )
 }

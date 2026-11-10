@@ -6,7 +6,6 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import MenuItem from '@mui/material/MenuItem'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -48,19 +47,20 @@ export default function RemapValueDialog({
     <Dialog open={remapField != null} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Wert bearbeiten</DialogTitle>
       <DialogContent>
-        <FormFieldRow sx={{ mb: 2, mt: 1 }}>
-          <FormField
-            size="small"
-            fullWidth
-            label="Bezeichnung"
-            helperText="Der Code bleibt; eine Bezeichnung zu korrigieren hat keine Rückwirkung."
-            value={valueLabel}
-            onChange={(e) => onValueLabelChange(e.target.value)}
-          />
-          <Button onClick={onSaveValueLabel} sx={{ flex: 'none' }}>
-            Bezeichnung speichern
-          </Button>
-        </FormFieldRow>
+        <FormField
+          size="small"
+          fullWidth
+          label="Bezeichnung"
+          helperText="Der Code bleibt; eine Bezeichnung zu korrigieren hat keine Rückwirkung."
+          value={valueLabel}
+          onChange={(e) => onValueLabelChange(e.target.value)}
+          action={
+            <Button onClick={onSaveValueLabel} sx={{ flex: 'none' }}>
+              Bezeichnung speichern
+            </Button>
+          }
+          sx={{ mb: 2, mt: 1 }}
+        />
         <Divider sx={{ mb: 2 }} />
         <Typography variant="body2" sx={{ mb: 2 }}>
           {remapUsage == null

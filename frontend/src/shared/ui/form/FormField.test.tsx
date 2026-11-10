@@ -8,7 +8,6 @@ import type { ReactElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { createAppTheme } from '../../theme/theme'
 import { formWidth } from '../../theme/tokens'
-import FormColumn from './FormColumn'
 import FormField from './FormField'
 import FormFieldRow from './FormFieldRow'
 
@@ -96,31 +95,43 @@ describe('FormField', () => {
         <FormField label="Adresse" />
       </>,
     )
+    // MUI's root of the box, and the field around label, box and helper text.
     const box = (name: string) =>
-      getComputedStyle(screen.getByLabelText(name).closest('.MuiInputBase-root') as HTMLElement)
+      getComputedStyle(screen.getByLabelText(name).closest('.MuiTextField-root') as HTMLElement)
     const field = (name: string) =>
       getComputedStyle(
-        (screen.getByLabelText(name).closest('.MuiInputBase-root') as HTMLElement).parentElement
-          ?.parentElement as HTMLElement,
+        screen.getByLabelText(name).closest('.OpaaFormField-labelled') as HTMLElement,
       )
     expect(box('Tage').width).toBe(`${formWidth.number}px`)
     expect(field('Tage').width).toBe('100%')
     expect(field('Port').width).toBe(`${formWidth.number}px`)
-    expect(box('Adresse').width).not.toBe(`${formWidth.number}px`)
+    expect(box('Adresse').width).toBe('100%')
+  })
+
+  it('places an action beside the box, between label and helper text', () => {
+    renderInTheme(
+      <FormField
+        label="Aufbewahrungsfrist (Monate)"
+        type="number"
+        helperText="Erlaubt sind 6 bis 120 Monate."
+        action={<Button>Speichern</Button>}
+      />,
+    )
+    const input = screen.getByLabelText('Aufbewahrungsfrist (Monate)')
+    const button = screen.getByRole('button', { name: 'Speichern' })
+    const row = button.parentElement as HTMLElement
+    expect(row).toContainElement(input)
+    expect(getComputedStyle(row).display).toBe('flex')
+    const helper = screen.getByText('Erlaubt sind 6 bis 120 Monate.')
+    expect(row).not.toContainElement(helper)
+    expect(row.compareDocumentPosition(helper) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(input).toHaveAccessibleDescription('Erlaubt sind 6 bis 120 Monate.')
   })
 })
 
-describe('FormColumn and FormFieldRow', () => {
-  it('limits a settings form to one column of 640 px', () => {
-    renderInTheme(
-      <FormColumn data-testid="form">
-        <FormField label="Adresse" />
-      </FormColumn>,
-    )
-    expect(formWidth.column).toBe(640)
-    const column = getComputedStyle(screen.getByTestId('form'))
-    expect(column.maxWidth).toBe('640px')
-    expect(column.flexDirection).toBe('column')
+describe('FormFieldRow', () => {
+  it('keeps the widths of a settings form in the theme', () => {
+    expect(formWidth).toEqual({ column: 640, number: 160 })
   })
 
   it('moves a button beside a field down by the height of the label', () => {

@@ -4,7 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import { getLinkTargets } from '@/shared/linkTargets/linkTargetsApi'
 import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
@@ -136,25 +135,25 @@ export default function LinkTargetsSection() {
             </Box>
           )}
           <Box component="form" onSubmit={(event) => void handleAdd(event)} noValidate>
-            <FormFieldRow>
-              <FormField
-                label="Neues Linkziel"
-                size="small"
-                value={draft}
-                placeholder="https://intranet.stadt.example"
-                onChange={(event) => setDraft(event.target.value)}
-                helperText="Schema, Host und optional Port, ohne Pfad. Einen Host mit Umlauten in der Form xn--… eintragen."
-              />
-              <BusyButton
-                type="submit"
-                variant="outlined"
-                busy={busy}
-                busyAnnouncement="Erlaubte Linkziele werden gespeichert"
-                disabled={draft.trim() === '' && !busy}
-              >
-                Hinzufügen
-              </BusyButton>
-            </FormFieldRow>
+            <FormField
+              label="Neues Linkziel"
+              size="small"
+              value={draft}
+              placeholder="https://intranet.stadt.example"
+              onChange={(event) => setDraft(event.target.value)}
+              helperText="Schema, Host und optional Port, ohne Pfad. Einen Host mit Umlauten in der Form xn--… eintragen."
+              action={
+                <BusyButton
+                  type="submit"
+                  variant="outlined"
+                  busy={busy}
+                  busyAnnouncement="Erlaubte Linkziele werden gespeichert"
+                  disabled={draft.trim() === '' && !busy}
+                >
+                  Hinzufügen
+                </BusyButton>
+              }
+            />
           </Box>
           {saveError && (
             <Alert severity="error" role="alert">

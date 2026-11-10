@@ -437,13 +437,31 @@ Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & In
 
 ### 5.2 Formularfelder
 
-Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
-schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
+Jedes Eingabefeld – Text, Auswahl, Autocomplete, Datum – kommt aus dem Baustein `FormField`
+(`frontend/src/shared/ui/form/`). Kein Thema setzt `label=` direkt an ein MUI-Feld; das prüft
+`FormField.test.tsx` am Quelltext.
+
+**Beschriftung.** Oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
+schwebendes Label im Feld), mit dem Feld verbunden (`htmlFor`, bei einer Auswahl
+`aria-labelledby`). Pflichtfelder tragen kein Sternchen, auch nicht über `required`; optionale
+Felder tragen „(optional)" (Eigenschaft `optional`). Ein Bedienelement, das `FormField` nicht
+umschließen kann (Optionsgruppe, Kachelauswahl), bekommt dieselbe Beschriftung über
+`FormFieldLabel`.
+
+**Feld.** Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
 Haarlinien-Schatten und Höhe 36 px für jedes einzeilige Feld, gleich welche MUI-Größe
-(`controlHeight` im Theme) — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
-das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
-sichtbare Beschriftung, sondern Platzhalter plus `aria-label`.
-Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
+(`controlHeight` im Theme, geprüft in `frontend/src/shared/theme/fieldHeight.test.tsx`) — keine
+gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
+das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Ein mehrzeiliges Feld beginnt
+mit drei Zeilen und wächst mit dem Inhalt. Ein leeres Feld zeigt höchstens ein Beispiel als
+Platzhalter, nie seine eigene Beschriftung.
+
+**Such- und Filterfelder** über einer Liste tragen keine sichtbare Beschriftung
+(`FormField hideLabel`): Beim Suchfeld nennt der Platzhalter den Inhalt, beim Filter der
+Vorgabewert („Alle Zustände"); das `aria-label` nennt die Dimension („Zustand").
+
+**Hilfetext und Fehler.** Hilfetext unterhalb in `fg-3`, bündig mit der linken Feldkante wie die
+Beschriftung. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
 Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
@@ -451,8 +469,16 @@ auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahm
 ohne Fokusring, für Textfelder, Auswahllisten und Autocomplete
 gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
 behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
-Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
+
+**Breite und Anordnung.** Formulare auf Einstellungsseiten sind einspaltig und 640 px breit
+(`formWidth.column` im Theme). Nebeneinander stehen nur Wertepaare, die als ein
+Wert gelesen werden (Server und Port, `FormFieldRow`). Die Schaltfläche, die ein einzelnes Feld
+absendet, steht direkt neben dessen Feld, zwischen Beschriftung und Hilfetext
+(`FormField action`). Ein
+reines Zahlenfeld ist 160 px breit (`formWidth.number`, `FormField numeric` oder
+`type="number"`); Beschriftung und Hilfetext behalten die Spaltenbreite. In Dialogen gilt die
+Breite des Dialogs.
 
 **Personen- und Gruppensuche.** Wo Personen und Gruppen Empfänger sein können (Freigaben,
 Space-Mitglieder, Eigentum), gibt es **ein** Suchfeld ohne Umschalter „Person / Gruppe"

@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureSettings, SelfDisclosureSettingsUpdate } from '@/shared/api/types'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
@@ -14,7 +13,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 const MIN_DAILY_LIMIT = 1
 const MAX_DAILY_LIMIT = 10
@@ -140,37 +139,37 @@ export default function SelfDisclosureSettingsSection() {
               ? 'Eingeschaltet: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
               : 'Abgeschaltet: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
           </Typography>
-          <FormFieldRow>
-            <FormField
-              label="Tagesgrenze (vollständige Downloads je Person und Tag)"
-              type="number"
-              size="small"
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value)
-                setSaveError(null)
-              }}
-              error={!valid}
-              helperText={
-                valid
-                  ? `Erlaubt sind ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT}. Ein abgebrochener Download zählt nicht.`
-                  : `Bitte eine ganze Zahl von ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT} eingeben.`
-              }
-              slotProps={{
-                htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
-              }}
-              sx={{ maxWidth: 420 }}
-            />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Einstellungen werden gespeichert"
-              disabled={!changed && !busy}
-            >
-              Speichern
-            </BusyButton>
-          </FormFieldRow>
+          <FormField
+            label="Tagesgrenze (vollständige Downloads je Person und Tag)"
+            type="number"
+            size="small"
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value)
+              setSaveError(null)
+            }}
+            error={!valid}
+            helperText={
+              valid
+                ? `Erlaubt sind ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT}. Ein abgebrochener Download zählt nicht.`
+                : `Bitte eine ganze Zahl von ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT} eingeben.`
+            }
+            slotProps={{
+              htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
+            }}
+            sx={{ maxWidth: formWidth.column }}
+            action={
+              <BusyButton
+                type="submit"
+                variant="outlined"
+                busy={busy}
+                busyAnnouncement="Einstellungen werden gespeichert"
+                disabled={!changed && !busy}
+              >
+                Speichern
+              </BusyButton>
+            }
+          />
           {saveError && (
             <Alert severity="error" role="alert" sx={{ mt: 2 }}>
               {saveError}

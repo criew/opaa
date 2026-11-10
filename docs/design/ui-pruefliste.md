@@ -161,6 +161,13 @@ zwei Einträgen.
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
 
+52. **Formularfelder aus einem Baustein:** Beschriftung oberhalb, kein schwebendes Label, kein
+    Sternchen, „(optional)“ an optionalen Feldern, Hilfetext bündig mit der Feldkante;
+    Such- und Filterfelder ohne sichtbare Beschriftung; Einstellungsformulare einspaltig in
+    640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
+    ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
+    `FormField.test.tsx` und `fieldHeight.test.tsx`
+
 ## Pflege
 
 Ein neuer Punkt bekommt die nächste freie Nummer; ein gestrichener behält seine Nummer mit dem

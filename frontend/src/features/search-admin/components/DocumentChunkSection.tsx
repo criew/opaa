@@ -7,7 +7,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
@@ -117,24 +116,25 @@ export default function DocumentChunkSection({
         Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein Klick
         auf einen Dokumenttitel in der Diagnose führt hierher.
       </Typography>
-      <FormFieldRow sx={{ maxWidth: formWidth.column }}>
-        <FormField
-          label="Dokument-ID"
-          value={documentIdInput}
-          onChange={(e) => setDocumentIdInput(e.target.value)}
-          size="small"
-          fullWidth
-        />
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => showDocument(documentIdInput.trim())}
-          disabled={loading || documentIdInput.trim() === ''}
-          sx={{ flex: 'none' }}
-        >
-          {loading ? 'Lädt …' : 'Chunks laden'}
-        </Button>
-      </FormFieldRow>
+      <FormField
+        label="Dokument-ID"
+        value={documentIdInput}
+        onChange={(e) => setDocumentIdInput(e.target.value)}
+        size="small"
+        fullWidth
+        action={
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => showDocument(documentIdInput.trim())}
+            disabled={loading || documentIdInput.trim() === ''}
+            sx={{ flex: 'none' }}
+          >
+            {loading ? 'Lädt …' : 'Chunks laden'}
+          </Button>
+        }
+        sx={{ maxWidth: formWidth.column }}
+      />
       {documentChunksError && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {documentChunksError}

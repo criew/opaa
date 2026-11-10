@@ -6,11 +6,10 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import { clockLabel, intervalLabel, nextRunOf, switchOnBlocker } from './directorySyncState'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 /** The bounds the backend enforces (OidcProviderService), and its default of six hours. */
 const MIN_INTERVAL_MINUTES = 5
@@ -76,31 +75,31 @@ export default function DirectorySyncScheduleSection({
       </Box>
 
       <Box>
-        <FormFieldRow>
-          <FormField
-            size="small"
-            label="Intervall in Minuten"
-            value={interval}
-            onChange={(event) => setIntervalValue(event.target.value)}
-            error={minutes === null}
-            helperText={
-              minutes === null
-                ? `Eine ganze Zahl von ${MIN_INTERVAL_MINUTES} bis ${MAX_INTERVAL_MINUTES} (eine Woche).`
-                : `${intervalLabel(minutes)} · ${MIN_INTERVAL_MINUTES} Minuten bis eine Woche`
-            }
-            slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            numeric
-            sx={{ maxWidth: 320 }}
-          />
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={busy || !enabled || minutes === null || minutes === saved}
-            onClick={() => onSave(true, minutes, true)}
-          >
-            Intervall speichern
-          </Button>
-        </FormFieldRow>
+        <FormField
+          size="small"
+          label="Intervall in Minuten"
+          value={interval}
+          onChange={(event) => setIntervalValue(event.target.value)}
+          error={minutes === null}
+          helperText={
+            minutes === null
+              ? `Eine ganze Zahl von ${MIN_INTERVAL_MINUTES} bis ${MAX_INTERVAL_MINUTES} (eine Woche).`
+              : `${intervalLabel(minutes)} · ${MIN_INTERVAL_MINUTES} Minuten bis eine Woche`
+          }
+          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+          numeric
+          sx={{ maxWidth: formWidth.column }}
+          action={
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={busy || !enabled || minutes === null || minutes === saved}
+              onClick={() => onSave(true, minutes, true)}
+            >
+              Intervall speichern
+            </Button>
+          }
+        />
         {!enabled && (
           <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             Das Intervall gilt ab dem Einschalten.
