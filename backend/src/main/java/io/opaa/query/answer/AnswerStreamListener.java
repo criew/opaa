@@ -1,6 +1,8 @@
 package io.opaa.query.answer;
 
+import io.opaa.chat.AgentRunRecord;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Receives a streamed answer on the thread that asked for it. A method that throws ends the stream:
@@ -21,10 +23,40 @@ public interface AnswerStreamListener {
   void idle() throws IOException;
 
   /**
+   * A keep-alive from another thread while the turn works. Never waits for a write under way - that
+   * write keeps the connection alive itself - and does nothing once the turn has closed.
+   */
+  default void ping() throws IOException {
+    idle();
+  }
+
+  /**
    * The answer is complete and the turn is about to be kept - the last chance to notice that the
    * reader went away, so that a turn it never receives is not kept either.
    */
   default void beforeKeeping() throws IOException {
     idle();
   }
+
+  /**
+   * An agent run holds its place (ADR-0070): {@code runId} names it, {@code cancelToken} is the
+   * secret that ends it from any instance. Never sent on an ordinary turn.
+   */
+  default void runStarted(UUID runId, String cancelToken) throws IOException {}
+
+  /**
+   * An agent run's tool call at {@code index} begins (ADR-0070): {@code tool} is the tool's name,
+   * {@code detail} what the call is about in the person's words, {@code null} when not yet known.
+   * Never sent on an ordinary turn.
+   */
+  default void stepStarted(int index, String tool, String detail) throws IOException {}
+
+  /** The step at {@code index} ended as it is kept with the answer. */
+  default void stepFinished(int index, AgentRunRecord.Step step) throws IOException {}
+
+  /** The run reached {@code limit} and answers with what it has; sent once per run. */
+  default void limitReached(AgentRunRecord.EndState limit) throws IOException {}
+
+  /** The run ended in {@code endState}; its provisional answer and the kept turn follow. */
+  default void runFinished(AgentRunRecord.EndState endState) throws IOException {}
 }
