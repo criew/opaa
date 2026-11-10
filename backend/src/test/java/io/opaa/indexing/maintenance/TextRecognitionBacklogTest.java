@@ -25,8 +25,8 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.llm.TextRecognitionEndpoint;
-import io.opaa.llm.TextRecognitionModelRole.ActiveTextRecognition;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoint;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole.ActiveTextRecognition;
 import io.opaa.organization.Organization;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
@@ -183,13 +183,13 @@ class TextRecognitionBacklogTest {
 
     assertThat(
             TextRecognitionBacklog.PASS_DURATION
-                .plus(io.opaa.llm.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT)
+                .plus(io.opaa.llm.textrecognition.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT)
                 .plus(embeddingAndCut))
         .isLessThan(lock);
     assertThat(
-            new io.opaa.llm.TextRecognitionProperties(
+            new io.opaa.llm.textrecognition.TextRecognitionProperties(
                     true, 0, java.time.Duration.ofHours(3), 0, 0, null, null)
                 .documentTimeout())
-        .isEqualTo(io.opaa.llm.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT);
+        .isEqualTo(io.opaa.llm.textrecognition.TextRecognitionProperties.MAX_DOCUMENT_TIMEOUT);
   }
 }

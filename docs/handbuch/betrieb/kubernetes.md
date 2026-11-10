@@ -1403,7 +1403,10 @@ verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die alte
 weiter.
 
 Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
-weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nach der
+weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nennt es
+„Migration checksum mismatch“, stammt die Datenbank aus der Zeit vor einer neuen Baseline und wird
+neu aufgesetzt; was dabei verloren geht, steht unter
+[Neu aufsetzen statt aktualisieren](docker-compose.md#neu-aufsetzen-statt-aktualisieren). Nach der
 Behebung den gescheiterten Job löschen (`kubectl -n opaa delete job <Name>`) und `helm upgrade`
 wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update oder lässt
 die neue Version die laufende nicht zu, gehört `--set backend.updateStrategy=Recreate` an diesen
@@ -1708,8 +1711,8 @@ curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health
 ## Betriebsüberwachung
 
 OPAA bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
-Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt einige
-Grundalarme mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.
+Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt Alarme
+und Grafana-Dashboards mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.
 
 ### Management-Port
 
@@ -1731,10 +1734,10 @@ Backend weiter.
 | `metrics.serviceMonitor.labels` | leer | Labels, nach denen der Prometheus seine ServiceMonitors auswählt |
 | `metrics.serviceMonitor.interval`, `scrapeTimeout` | `30s`, `10s` | Abfrageintervall und Timeout |
 | `metrics.podAnnotations` | `false` | setzt `prometheus.io/scrape`, `port` und `path` am Backend-Pod, für Prometheus ohne Operator |
-| `metrics.scrapeFrom` | Pods mit `app.kubernetes.io/name: prometheus` in jedem Namespace | wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind |
+| `metrics.scrapeFrom` | Pods mit `app.kubernetes.io/name: prometheus` im Namespace `monitoring` | wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind |
 
-Mit **kube-prometheus-stack** genügen zwei Werte. Der Prometheus dieses Charts wählt ServiceMonitors
-nach dem Label `release` mit dem Namen seines Releases aus:
+Mit **kube-prometheus-stack** im Namespace `monitoring` genügen zwei Werte. Der Prometheus dieses
+Charts wählt ServiceMonitors nach dem Label `release` mit dem Namen seines Releases aus:
 
 ```yaml
 metrics:
@@ -1745,7 +1748,21 @@ metrics:
 ```
 
 Seine Pods tragen `app.kubernetes.io/name: prometheus`, die Vorgabe von `metrics.scrapeFrom` lässt
-sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nach `metrics.scrapeFrom`.
+sie also durch. Der Management-Port antwortet ohne Anmeldung; die Vorgabe öffnet ihn deshalb nur
+einem Namespace, nicht jedem Pod mit diesem Label im Cluster. Läuft der Prometheus in einem anderen
+Namespace oder ist er anders beschriftet, gehört sein Selektor nach `metrics.scrapeFrom`:
+
+```yaml
+metrics:
+  scrapeFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: observability
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+```
+
 Fehlen dort die passenden Labels, sieht man das am Alarm `OpaaBackendMetricsMissing`.
 
 Welche Metriken das Backend liefert, steht unter
@@ -1755,43 +1772,66 @@ Namen des Pods; die Latenzen haben Buckets für p95 und SLO-Auswertungen. Eigene
 Buckets kommen als `OPAA_METRICS_SLO_*` über `backend.extraEnv`
 ([Konfiguration](../referenz/konfiguration.md)).
 
+Mit mehreren Backend-Pods melden Gauges, die jede Instanz aus der Datenbank liest, auf jedem Pod
+denselben Wert, etwa `opaa_indexing_run_last_success_seconds`,
+`opaa_indexing_libraries_overdue` und die Gauges des Verzeichnisabgleichs. Eigene Dashboards und
+Alarme fassen sie mit `max by (…)` über die Pods zusammen, nicht mit `sum`; sonst zählt jede
+Bibliothek so oft, wie Pods laufen. Zähler, Timer und Gauges einer einzelnen Instanz wie
+`opaa_indexing_runs_active` werden über die Pods summiert.
+
 ### Alarme
 
-`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit neun Alarmen an. Mit mehreren
-Backend-Pods melden fehlende Metriken, voller Heap und hängende Indexierung schon einen einzelnen Pod;
-die beiden letzten nennen ihn im Label `pod`. Sie setzt den
-ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen.
-`metrics.prometheusRule.labels` trägt die Labels, nach denen der Prometheus Regeln auswählt; bei
-kube-prometheus-stack wieder `release: <Release-Name>`.
+`metrics.prometheusRule.enabled` legt die Alarme als `PrometheusRule` an. Sie setzt den
+ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen; die Alarme zur
+Bereitschaft von Backend und Frontend lesen zusätzlich **kube-state-metrics**, das
+kube-prometheus-stack mitbringt. `metrics.prometheusRule.labels` trägt die Labels, nach denen der
+Prometheus Regeln auswählt; bei kube-prometheus-stack wieder `release: <Release-Name>`. Jeder Alarm
+und was zu tun ist: [Alarme](alarme.md); Dashboards und Zustellung:
+[Dashboards und Alarme](dashboards-und-alarme.md#kubernetes).
 
-| Alarm | Schwere | Löst aus, wenn | Erste Prüfung |
-|---|---|---|---|
-| `OpaaBackendNotReady` | critical | das Backend zehn Minuten lang weniger bereite Pods hat als gewünscht | Protokoll des Pods; ist die Datenbank erreichbar? |
-| `OpaaBackendMetricsMissing` | warning | Prometheus zehn Minuten lang weniger Backend-Pods abfragen kann, als das Deployment haben will; ohne kube-state-metrics erst, wenn es keinen erreicht | Pods, `ServiceMonitor`, `metrics.scrapeFrom` |
-| `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen | Protokoll; oft ein nicht erreichbares Modell. Auch die `503` einer Installation ohne Chat- oder Embedding-Modell zählen mit (Fragen, Uploads, Suchen); die Health Groups `chat-model` und `embedding-model` mit `NOT_CONFIGURED` zeigen diesen Fall ([Ohne Modelle installiert](installation.md#ohne-modelle-installiert)) |
-| `OpaaIndexingStalled` | warning | in einem Pod die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
-| `OpaaAuditRetentionOverdue` | warning | die automatische Löschung des Revisionsprotokolls seit mehr als 35 Tagen nicht gelaufen ist (sie läuft am 1. jedes Monats um 03:00) oder das Backend ihren Stand nicht lesen kann | Log des Pods, vor allem zu diesem Zeitpunkt |
-| `OpaaAuditPayloadDropped` | warning | das Backend in der letzten Stunde Einträge einer Ereignisart ohne Angaben geschrieben hat, die der Ereigniskatalog nicht nennt (Programmfehler; der Vorgang selbst ist durchgeführt) | Log des Pods nach „Dropped audit payload keys“, Fund melden |
-| `OpaaAuditChainStalled` | warning | der älteste Protokolleintrag ohne Kontrollpunkt der Prüfsummenkette eine Stunde lang älter als sechs Stunden ist (der Lauf findet alle zehn Minuten statt) oder das Backend den Stand der Kette nicht lesen kann; beim ersten Start einer großen Installation auch, bis der Lauf den Bestand aufgeholt hat | Log der Pods, Sperre `audit-chain` in der Tabelle `shedlock`, offene Transaktionen in `pg_stat_activity` |
-| `OpaaAuditChainUnsealed` | warning | ein abgeschlossener Protokollmonat seit sechs Stunden kein Siegel trägt: der Lauf kommt nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag `AUDIT_LOG_MONTH_SEALED` noch steht; beim ersten Start einer großen Installation auch, bis der Lauf den Bestand aufgeholt hat | Log der Pods nach „no seal“, `GET /api/v1/audit/chain/{Monat}` für den Vormonat. Bleibt ein Monat dauerhaft `BROKEN`, prüft die Revision den Befund; danach schaltet der Betrieb den Alarm für diesen Monat bewusst stumm (Silence), weil der Lauf ihn nicht neu versiegelt |
-| `OpaaHeapUsageHigh` | warning | der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist | Speicher-Limit oder Heap-Anteil anheben |
+Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBackendNotReady` und
+`OpaaBackendMetricsMissing`.
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
-| `metrics.prometheusRule.errorRateThreshold` | `0.05` | Schwelle von `OpaaHighErrorRate` (Anteil) |
-| `metrics.prometheusRule.errorRateMinRequests` | `20` | Mindestzahl der Anfragen in zehn Minuten, ab der `OpaaHighErrorRate` zählt |
-| `metrics.prometheusRule.heapUsageThreshold` | `0.9` | Schwelle von `OpaaHeapUsageHigh` (Anteil des maximalen Heaps) |
-| `metrics.prometheusRule.indexingStallMinutes` | `60` | Frist ohne Fortschritt für `OpaaIndexingStalled` |
+| `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“ |
+| `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
+| `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
+| `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |
+| `metrics.grafanaDashboards.folder` | `OPAA` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
+| `metrics.grafanaDashboards.labels`, `annotations` | leer | weitere Labels und Annotationen der ConfigMaps |
 
-`OpaaBackendNotReady` liest die Metriken von **kube-state-metrics**, das kube-prometheus-stack
-mitbringt. Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen
-`OpaaBackendNotReady` und `OpaaBackendMetricsMissing`.
+Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und 1:
 
-Uploads zählen ebenfalls als verarbeitete Dokumente. Ein Upload während eines hängenden Laufs
-verschiebt `OpaaIndexingStalled` deshalb um eine Frist.
+| Wert | Vorgabe | Alarm |
+|---|---|---|
+| `errorRateThreshold`, `errorRateMinRequests` | `0.05`, `20` | `OpaaHighErrorRate` `warning`: Anteil 5xx in zehn Minuten, ab so vielen Anfragen |
+| `errorRateCriticalThreshold`, `errorRateCriticalMinRequests` | `0.25`, `50` | `OpaaHighErrorRate` `critical` |
+| `heapUsageThreshold` | `0.85` | `OpaaHeapUsageHigh`: Anteil des Heaps, der nach der Speicherbereinigung belegt bleibt |
+| `indexingStallMinutes` | `60` | `OpaaIndexingStalled`: Frist ohne verarbeitetes Dokument |
+| `chatSloObjective`, `chatSloMinQuestions` | `0.995`, `30` | `OpaaChatSloBurn`: Ziel für Fragen ohne Fehler des Dienstes über 30 Tage |
+| `timeToFirstTokenSeconds`, `timeToFirstTokenMinQuestions` | `10`, `30` | `OpaaTimeToFirstTokenHigh`: p95 bis zum ersten Wort |
+| `retrievalEmptyShare`, `retrievalEmptyMinQuestions` | `0.8`, `30` | `OpaaRetrievalMostlyEmpty` |
+| `outboundAuthErrorShare`, `outboundAuthErrorMinRequests` | `0.5`, `5` | `OpaaOutboundAuthFailing` |
+| `identityProviderFailureShare`, `identityProviderMinRequests` | `0.5`, `10` | `OpaaIdentityProviderRejected`: Anteil gescheiterter Aufrufe an den Identitätsanbieter in zehn Minuten, ohne Erfolge und Client-Fehler |
+| `identityProviderKeyErrorMin` | `5` | `OpaaIdentityProviderRejected`: so viele Anmeldungen in zehn Minuten, die sich mangels Signaturschlüsseln nicht prüfen ließen |
+| `throttledShare`, `throttledMinRequests` | `0.2`, `20` | `OpaaOutboundThrottled` |
+| `indexingRunFailureShare`, `indexingRunFailureMinRuns` | `0.25`, `4` | `OpaaIndexingRunsFailing`: in sechs Stunden je Konnektortyp |
+| `directorySyncMaxAgeHours`, `directorySyncPlanPendingHours` | `26`, `24` | `OpaaDirectorySyncStale`, `OpaaDirectorySyncPlanPending` |
+| `queueMaxAgeMinutes.<Warteschlange>` | `mail_outbox` 30, `source_events` 60, `ocr_backlog` 360, `indexing` 120 | `OpaaQueueBacklog`; `indexing` zählt laufende Läufe mit und liegt deshalb über der üblichen Laufdauer |
+| `scheduledOverdueFactor`, `scheduledOverdueMinMinutes` | `3`, `15` | `OpaaScheduledJobOverdue`: Intervalle ohne Erfolg, frühestens nach so vielen Minuten |
+| `mailFailureShare`, `mailFailureMinAttempts` | `0.5`, `5` | `OpaaMailDeliveryFailing` |
+| `malwareScanFailureShare`, `malwareScanMinScans` | `0.5`, `3` | `OpaaMalwareScanFailing` |
+| `malwareSignatureMaxAgeDays` | `3` | `OpaaMalwareSignaturesOutdated` |
+| `loginFailureFactor`, `loginFailureMin` | `5`, `50` | `OpaaLoginFailureSpike`: abgewiesene lokale Anmeldungen in 15 Minuten über dem Mindestwert und dem Vielfachen des Medians derselben Viertelstunde der sieben Tage davor |
+| `siemExportLagMinutes` | `60` | `OpaaSiemExportLagging` |
+| `auditLogHorizonWarningDays`, `auditLogHorizonCriticalHours` | `14`, `48` | `OpaaAuditLogHorizon` |
+| `heartbeatMaxAgeSeconds` | `45` | `OpaaInstanceHeartbeatStale`; drei Intervalle von `OPAA_INSTANCE_HEARTBEAT_INTERVAL` |
+| `monthlyTokenBudget` | `0`, aus | `OpaaTokenBudgetForecast`: Tokens des Chat-Modells je Monat |
 
-Schwellen mit Nachkommastellen gehören in eine Wertedatei oder `--set-json`: `--set` übergibt sie
-als Text, und das Schema lehnt sie ab.
+Die Kacheln der Startseite zeigen den Zustand der Alarme, eine geänderte Schwelle wirkt also auf
+beide; die Kurven der Bereiche färben sich nach den Vorgaben dieser Tabelle. Schwellen mit Nachkommastellen gehören in eine Wertedatei oder `--set-json`:
+`--set` übergibt sie als Text, und das Schema lehnt sie ab.
 
 ### Protokolle
 

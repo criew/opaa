@@ -56,7 +56,7 @@ final class DriveApiFactory {
         URI.create(settings.sourceUrl()),
         token,
         renewedAfterRejection,
-        SourceHttpClientFactory.buildHttpClient(),
+        SourceHttpClientFactory.buildHttpClient("google_drive"),
         targetAddressValidator,
         properties.requestTimeout(),
         properties.downloadTimeout(),

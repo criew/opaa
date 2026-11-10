@@ -14,7 +14,6 @@ import io.opaa.common.FeatureFlags;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -64,47 +63,39 @@ class CapabilityServiceFeatureTest {
   }
 
   @Test
-  void aRightBehindASwitchedOffRuntimeSwitchIsNeitherHeldNorListed() {
+  void aRuntimeSwitchWithholdsItsCapabilityWhileOff() {
     CurrentUser admin =
         CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Verwaltung");
-    CurrentUser user =
-        CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.USER, "Sachbearbeitung");
-    when(grants.findCapabilitiesGrantedDirectly(any(), any()))
-        .thenReturn(EnumSet.of(Capability.CREATE_AGENT));
-    AtomicBoolean agents = new AtomicBoolean(false);
-    CapabilityService service = service(true, agentsSwitch(agents));
-
-    assertThat(service.capabilitiesOf(admin)).doesNotContain(Capability.CREATE_AGENT);
-    assertThat(service.hasCapability(user, Capability.CREATE_AGENT)).isFalse();
-    assertThat(service.overview(organizationId))
+    assertThat(service(true, templateSwitch(false)).capabilitiesOf(admin))
+        .doesNotContain(Capability.CREATE_TEMPLATE)
+        .contains(Capability.CREATE_PROMPT_LIBRARY);
+    assertThat(service(true, templateSwitch(true)).capabilitiesOf(admin))
+        .contains(Capability.CREATE_TEMPLATE);
+    assertThat(service(true, templateSwitch(false)).overview(organizationId))
         .extracting(CapabilityOverview::capability)
-        .doesNotContain(Capability.CREATE_AGENT);
-
-    agents.set(true);
-
-    assertThat(service.capabilitiesOf(admin)).contains(Capability.CREATE_AGENT);
-    assertThat(service.hasCapability(user, Capability.CREATE_AGENT)).isTrue();
+        .doesNotContain(Capability.CREATE_TEMPLATE);
   }
 
-  private static RuntimeCapabilitySwitch agentsSwitch(AtomicBoolean on) {
+  private static RuntimeCapabilitySwitch templateSwitch(boolean offered) {
     return new RuntimeCapabilitySwitch() {
       @Override
       public Capability capability() {
-        return Capability.CREATE_AGENT;
+        return Capability.CREATE_TEMPLATE;
       }
 
       @Override
       public boolean offered() {
-        return on.get();
+        return offered;
       }
     };
   }
 
   private CapabilityService service(boolean promptLibraries) {
-    return service(promptLibraries, agentsSwitch(new AtomicBoolean(true)));
+    return service(promptLibraries, templateSwitch(true));
   }
 
-  private CapabilityService service(boolean promptLibraries, RuntimeCapabilitySwitch agents) {
+  private CapabilityService service(
+      boolean promptLibraries, RuntimeCapabilitySwitch runtimeSwitch) {
     return new CapabilityService(
         grants,
         mock(GroupMembershipResolver.class),
@@ -117,6 +108,6 @@ class CapabilityServiceFeatureTest {
             new MockEnvironment()
                 .withProperty(
                     "opaa.features.prompt-libraries.enabled", String.valueOf(promptLibraries))),
-        List.of(agents));
+        List.of(runtimeSwitch));
   }
 }

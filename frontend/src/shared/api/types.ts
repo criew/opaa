@@ -23,6 +23,8 @@ export type DocumentTextPassage = components['schemas']['DocumentTextPassage']
 export type DocumentTextSection = components['schemas']['DocumentTextSection']
 export type SearchedLibrary = components['schemas']['SearchedLibrary']
 export type AnswerEvidence = components['schemas']['AnswerEvidence']
+export type AgentRun = components['schemas']['AgentRun']
+export type AgentRunStep = components['schemas']['AgentRunStep']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']
@@ -180,6 +182,15 @@ export type AgentResponse = components['schemas']['AgentResponse']
 export type AgentAvailabilityResponse = components['schemas']['AgentAvailabilityResponse']
 export type AgentSettingsUpdateRequest = components['schemas']['AgentSettingsUpdateRequest']
 export type AgentSettingsResponse = components['schemas']['AgentSettingsResponse']
+export type DocumentTemplateResponse = components['schemas']['DocumentTemplateResponse']
+export type DocumentTemplatePlaceholder = components['schemas']['DocumentTemplatePlaceholder']
+export type DocumentTemplateUpdateRequest = components['schemas']['DocumentTemplateUpdateRequest']
+export type DocumentTemplateAvailabilityResponse =
+  components['schemas']['DocumentTemplateAvailabilityResponse']
+export type DocumentTemplateSettingsResponse =
+  components['schemas']['DocumentTemplateSettingsResponse']
+export type DocumentTemplateSettingsRequest =
+  components['schemas']['DocumentTemplateSettingsRequest']
 export type AssetOrigin = components['schemas']['AssetOrigin']
 export type CatalogEntryResponse = components['schemas']['CatalogEntryResponse']
 export type CatalogPageResponse = components['schemas']['CatalogPageResponse']
@@ -290,6 +301,7 @@ export type LockedAccountChatRetention = components['schemas']['LockedAccountCha
 export type LockedAccountChatRetentionUpdate =
   components['schemas']['LockedAccountChatRetentionUpdate']
 export type IncidentScopeRetention = components['schemas']['IncidentScopeRetention']
+export type AgentRunLogRetention = components['schemas']['AgentRunLogRetention']
 export type IncidentScopeRetentionUpdate = components['schemas']['IncidentScopeRetentionUpdate']
 export type RetentionPause = components['schemas']['RetentionPause']
 export type LinkTargets = components['schemas']['LinkTargets']

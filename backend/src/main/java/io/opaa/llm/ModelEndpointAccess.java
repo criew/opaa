@@ -3,6 +3,10 @@ package io.opaa.llm;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.compliance.DataFlowCarrier;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundPathClass;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -33,12 +37,15 @@ import org.springframework.util.StringUtils;
  * Authorization} header cannot be replayed to an origin this rule never checked.
  */
 @DataFlowCarrier
-final class ModelEndpointAccess {
+public final class ModelEndpointAccess {
 
   /** Short enough that a caller trying several drafts in a row is never left waiting long. */
   static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 
   static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+
+  private static final OutboundMetrics CHECK_METRICS =
+      OutboundMetrics.global(OutboundTarget.MODEL_CHECK, null);
 
   private final LlmModelRepository repository;
   private final SettingsEncryptor settingsEncryptor;
@@ -109,20 +116,27 @@ final class ModelEndpointAccess {
     }
   }
 
-  /** A client that never follows a redirect; the caller closes it. */
-  static HttpClient newHttpClient() {
-    return HttpClient.newBuilder()
-        .connectTimeout(CONNECT_TIMEOUT)
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build();
+  /**
+   * A client that never follows a redirect; the caller closes it. Its calls count as target {@code
+   * model_check} on the background path, so a failing check of a draft never enters the error rate
+   * of what a person waits for.
+   */
+  public static HttpClient newHttpClient() {
+    return MeteredHttpClient.of(
+        HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build(),
+        CHECK_METRICS,
+        OutboundPathClass.BACKGROUND);
   }
 
-  static boolean isHttp(URI uri) {
+  public static boolean isHttp(URI uri) {
     String scheme = uri.getScheme();
     return scheme != null && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
   }
 
-  static HttpRequest.Builder authorized(HttpRequest.Builder builder, String apiKey) {
+  public static HttpRequest.Builder authorized(HttpRequest.Builder builder, String apiKey) {
     if (StringUtils.hasText(apiKey)) {
       builder.header("Authorization", "Bearer " + apiKey);
     }
@@ -130,12 +144,12 @@ final class ModelEndpointAccess {
   }
 
   /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */
-  static String unexpectedStatus(int status) {
+  public static String unexpectedStatus(int status) {
     return ProxyRefusal.describeStatus(status)
         .orElse("Der Server antwortete mit HTTP " + status + ".");
   }
 
-  static String translateConnectionError(IOException e) {
+  public static String translateConnectionError(IOException e) {
     Optional<String> proxyRefusal = ProxyRefusal.describe(e);
     if (proxyRefusal.isPresent()) {
       return proxyRefusal.get();

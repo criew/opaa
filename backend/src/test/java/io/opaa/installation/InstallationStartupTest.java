@@ -21,7 +21,7 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.instance.CurrentInstance;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;

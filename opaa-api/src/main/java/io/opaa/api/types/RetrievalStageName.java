@@ -92,9 +92,9 @@ public enum RetrievalStageName {
 
   /**
    * Re-scores the fused candidate window with the rerank model role ({@code
-   * io.opaa.llm.RerankModelRole}) and cuts it back to {@code QueryProperties#topK}. Runs after
-   * {@link #RANK_FUSION} and before {@link #DOCUMENT_COMPLETION}: completion adds sibling chunks of
-   * already selected documents and must therefore work on the final ranking.
+   * io.opaa.llm.rerank.RerankModelRole}) and cuts it back to {@code QueryProperties#topK}. Runs
+   * after {@link #RANK_FUSION} and before {@link #DOCUMENT_COMPLETION}: completion adds sibling
+   * chunks of already selected documents and must therefore work on the final ranking.
    *
    * <p>Off by the factory default of the model administration, and off it is the identity. Switched
    * on but unusable (role unbound, endpoint silent, call failed), the stage still restores the

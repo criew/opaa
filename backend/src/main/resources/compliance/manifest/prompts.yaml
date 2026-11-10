@@ -12,7 +12,7 @@ prompts:
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "ece4655f419e6c88037798105df112d6620f8434b12b0e0a6ba817f0e2b6009c"
+    sha256: "2a7890445e70d562619d646fe0246e07ee8803f036eedaed3965a2608271cc1b"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -36,12 +36,12 @@ prompts:
     purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
     classes:
       - io.opaa.query.spike.SpikeToolLoopQueryHandler
-      - io.opaa.query.spike.SearchKnowledgeTool
+      - io.opaa.query.spike.SpikeSearchKnowledgeTool
       - io.opaa.query.spike.RunCodeTool
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.common.ContentFence
-    sha256: "74acd02cb86c042f361d0a4d9796f98d63b80a224e4c4cb897d7d902fa7570a7"
+    sha256: "620c4ed66f306836a4c999366404af4ef0b85b7471b7b62ae8c70abecfad9402"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
@@ -56,7 +56,7 @@ prompts:
     purpose: >-
       Bittet ein Vision-Modell der Texterkennung, den Text einer gescannten Seite wortgetreu und
       ohne Zusätze wiederzugeben
-    classes: [io.opaa.llm.TextRecognitionVisionPrompt]
+    classes: [io.opaa.llm.textrecognition.TextRecognitionVisionPrompt]
     sha256: "54c5316716f8591a052e95ac0bc9b407d3368585aac9ec47d8feec423fd422bb"
 aiFunctions:
   - id: chat-answer

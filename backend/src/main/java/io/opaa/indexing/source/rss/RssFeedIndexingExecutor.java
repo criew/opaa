@@ -140,7 +140,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                       parsed.username(), parsed.password());
                 });
 
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("rss_feed");
 
     RequestBudget budget = RequestBudget.forRun(requestPolicy);
     run.recordRequestCost(budget.meter());

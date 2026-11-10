@@ -3,8 +3,8 @@
 # repository root. Lints and renders the chart with every value set in <chart>/ci/, validates the
 # rendered manifests against each supported Kubernetes version and asserts that the chart's guards
 # still refuse the misconfigurations they exist for, and dry-runs the release scripts of
-# publish-images.yml, including the release notes. Needs helm, kubeconform and openssl on the PATH,
-# the dry run also curl and jq.
+# publish-images.yml, including the release notes. Needs helm, kubeconform, openssl, yq and jq on the
+# PATH, the dry run also curl.
 set -euo pipefail
 
 CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
@@ -56,6 +56,42 @@ for flag in OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED OPAA_FEATURES_METADATA_ENABLE
   done
 done
 
+# The dashboards (metrics.grafanaDashboards): the full value set renders one ConfigMap per file of
+# <chart>/dashboards/ with the sidecar label, each holding valid JSON with the uid of its file; the
+# minimal value set renders none.
+dashboard_files=("$CHART_DIR"/dashboards/*.json)
+helm template opaa "$CHART_DIR" --namespace opaa --values "$CHART_DIR/ci/full-values.yaml" \
+  --show-only templates/grafana-dashboards.yaml >"$work_dir/dashboards.yaml"
+rendered="$(yq 'select(.kind == "ConfigMap" and .metadata.labels.grafana_dashboard == "1") | .metadata.name' \
+  "$work_dir/dashboards.yaml" | grep -vc '^---$' || true)"
+if [ "$rendered" -ne "${#dashboard_files[@]}" ]; then
+  echo "The full value set renders $rendered dashboard ConfigMaps for ${#dashboard_files[@]} files." >&2
+  exit 1
+fi
+for file in "${dashboard_files[@]}"; do
+  key="$(basename "$file")"
+  yq "select(.data[\"$key\"] != null) | .data[\"$key\"]" "$work_dir/dashboards.yaml" >"$work_dir/$key"
+  if ! jq -e --arg uid "$(jq -r .uid "$file")" '.uid == $uid and (.panels | length) > 0' "$work_dir/$key" >/dev/null; then
+    echo "The ConfigMap of $key holds no valid dashboard JSON with the uid of the file." >&2
+    exit 1
+  fi
+done
+# A switched-off rule group turns the tiles only its alerts colour into "nicht gemessen" (-2);
+# the chat tile goes, the platform tile with measurements of its own stays.
+helm template opaa "$CHART_DIR" --namespace opaa --values "$CHART_DIR/ci/full-values.yaml" \
+  --set metrics.prometheusRule.groups.chat=false --show-only templates/grafana-dashboards.yaml |
+  yq 'select(.data["opaa-start.json"] != null) | .data["opaa-start.json"]' >"$work_dir/start-chat-off.json"
+off_tiles="$(jq -r '[.panels[] | select(.targets[0].expr == "vector(-2)") | .title] | join(",")' \
+  "$work_dir/start-chat-off.json")"
+if [ "$off_tiles" != "Chat" ]; then
+  echo "With the chat rule group off, the start page shows \"$off_tiles\" as not measured, not Chat." >&2
+  exit 1
+fi
+if grep -q 'grafana_dashboard' "$work_dir/minimal.yaml"; then
+  echo "The minimal value set renders dashboard ConfigMaps, though metrics.grafanaDashboards is off." >&2
+  exit 1
+fi
+
 # Renders the minimal value set with extra arguments and fails unless Helm refuses it with a message
 # containing the expected text.
 expect_refusal() {
@@ -98,6 +134,8 @@ expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
 expect_refusal "otlpEndpoint" --set tracing.enabled=true
 expect_refusal "otlpEndpoint" --set tracing.enabled=true --set-string 'tracing.otlpEndpoint=collector:4318'
 expect_refusal "samplingProbability" --set-string tracing.samplingProbability=1.5
+# The tiles of the dashboards read the alerts.
+expect_refusal "needs metrics.prometheusRule.enabled" --set metrics.grafanaDashboards.enabled=true
 # CSP keywords such as 'self' are quoted; quotes would break the nginx configuration. The schema
 # admits what frontend/docker-entrypoint.d/05-opaa-runtime.sh admits at start, nothing else.
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"
@@ -347,6 +385,38 @@ if grep -qF "ocr-api-key:" "$work_dir/ocr-existing.yaml"; then
   exit 1
 fi
 echo "key from an existing secret as expected"
+
+echo "--- metrics port"
+# The management port answers without login. By default only the Prometheus pods of one named
+# namespace reach it, never pods with the right label in any namespace (namespaceSelector: {}).
+policy="$(helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" \
+  --set metrics.serviceMonitor.enabled=true --show-only templates/networkpolicies.yaml |
+  awk 'BEGIN { RS = "\n---\n" } /\nkind: NetworkPolicy\n/ && /\n  name: opaa-backend-ingress\n/ { print }')"
+if [[ "$policy" != *"port: management"* || "$policy" == *"namespaceSelector: {}"* ||
+  "$policy" != *"kubernetes.io/metadata.name: monitoring"* ||
+  "$policy" != *"app.kubernetes.io/name: prometheus"* ]]; then
+  echo "By default the management port must admit only the Prometheus pods of the namespace monitoring:" >&2
+  echo "$policy" >&2
+  exit 1
+fi
+echo "management port open to the Prometheus of one namespace only"
+
+echo "--- sandbox"
+sandbox_values="$CHART_DIR/ci/sandbox-values.yaml"
+policy="$(helm template opaa "$CHART_DIR" --values "$sandbox_values" --show-only templates/sandbox-networkpolicy.yaml)"
+if [[ "$policy" != *"namespace: opensandbox"* || "$policy" != *"egress: []"* ||
+  "$policy" != *"podSelector: {}"* || "$policy" != *"opensandbox-server"* ]]; then
+  echo "The sandbox namespace's NetworkPolicy must select every pod there, allow no egress and admit only the sandbox server:" >&2
+  echo "$policy" >&2
+  exit 1
+fi
+expect_refusal "must differ from the release namespace" --values "$sandbox_values" --set sandbox.namespace=default
+expect_refusal "must differ from the release namespace" --values "$sandbox_values" --namespace opaa \
+  --set sandbox.namespace=opaa
+expect_refusal "sandbox.namespace is required" --values "$sandbox_values" --set-string sandbox.namespace=
+expect_refusal "serverPodSelector is required" --values "$sandbox_values" --set sandbox.serverPodSelector=null
+expect_refusal "sandboxApiKey" --values "$sandbox_values" --set-string secrets.sandboxApiKey=
+echo "sandbox network policy and guards as expected"
 
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format

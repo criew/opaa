@@ -58,23 +58,33 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.indexing.source.smb.SmbShareClient$ValidatingSocketFactory#createSocket",
               "runs TargetAddressValidator#validateHost before it connects"),
-          Map.entry("io.opaa.llm.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
-              "io.opaa.query.spike.OpenSandboxClient#send",
-              "development-only spike: reaches only the sandbox server the operator configured in"
-                  + " opaa.sandbox.base-url, never an address from the model or a person; follows"
-                  + " no redirect"),
+              "io.opaa.observability.MeteredHttpClient#send",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures, its callers stand in this list or send through"
+                  + " the blocks"),
+          Map.entry(
+              "io.opaa.observability.MeteredHttpClient#sendAsync",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures"),
+          Map.entry("io.opaa.llm.embedding.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.query.sandbox.OpenSandboxClient#send",
+              "reaches only the sandbox server the operator configured in opaa.sandbox.base-url,"
+                  + " never an address from the model or a person; follows no redirect"),
           Map.entry("io.opaa.llm.LlmModelConnectionTester#probe", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.LlmModelDiscoverer#send", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.llm.ModelRedirectRefusal#intercept",
               "re-issues the model client's own request with redirects off; the endpoint was"
                   + " checked with ModelAddressPolicy when it was stored"),
-          Map.entry("io.opaa.llm.RerankClient#send", MODEL_ADDRESS_CHECKED),
-          Map.entry("io.opaa.llm.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry("io.opaa.llm.rerank.RerankClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry("io.opaa.llm.transcription.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
           Map.entry(
-              "io.opaa.llm.RealtimeTranscriptionClient$Connection#connect", MODEL_ADDRESS_CHECKED),
-          Map.entry("io.opaa.llm.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
+              "io.opaa.llm.transcription.RealtimeTranscriptionClient$Connection#connect",
+              MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.audit.SyslogSender#deliver",
               "the SIEM receiver comes from the operator's configuration (opaa.siem-export.*),"
@@ -157,23 +167,38 @@ class SecurityInvariantsTest {
                   + " settings the installation writes"),
           Map.entry("io.opaa.llm.ActiveChatModelResolver#chatModelBuilder", OWN_ADDRESS_AND_KEY),
           Map.entry(
-              "io.opaa.llm.EmbeddingModelAdministration#decrypt",
+              "io.opaa.llm.embedding.EmbeddingModelAdministration#decrypt",
               "reuses the installed model's key for a draft only at the stored address"
                   + " (ModelEndpointRules#sameEndpoint)"),
-          Map.entry("io.opaa.llm.InstalledEmbeddingModel#build", OWN_ADDRESS_AND_KEY),
+          Map.entry("io.opaa.llm.embedding.InstalledEmbeddingModel#build", OWN_ADDRESS_AND_KEY),
           Map.entry(
-              "io.opaa.llm.ModelRoleAdministration#decryptForTest",
+              "io.opaa.llm.administration.ModelRoleAdministration#decryptForTest",
               "reuses the stored live key for a test only at the stored live address"
                   + " (ModelEndpointRules#sameEndpoint) and the batch key only at the batch"
                   + " address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
           Map.entry(
-              "io.opaa.llm.ModelRoleAdministration#testKey",
+              "io.opaa.llm.administration.ModelRoleAdministration#testKey",
               "reuses a role's stored key for a test only at the stored address"
                   + " (ModelEndpointRules#sameEndpoint)"),
           Map.entry(
-              "io.opaa.llm.ModelRoleEndpoints#decrypt",
-              "loads the rerank and transcription endpoints with their own address and key; the"
-                  + " live upstream borrows the batch key only at its origin"),
+              "io.opaa.llm.OptionalRoleEndpoints#decrypt",
+              "loads the rerank, transcription and text recognition endpoints, each with its own"
+                  + " address and key; the live upstream borrows the batch key only at its origin"),
+          Map.entry(
+              "io.opaa.llm.rerank.RerankEndpoints#load",
+              "the rerank key, bound to its row, goes into the endpoint with the stored address"),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionEndpoints#load",
+              "the text recognition key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#load",
+              "the transcription key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#realtimeOf",
+              "the live key goes to the stored live address; without one the batch key goes only"
+                  + " to the batch address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
           Map.entry(
               "io.opaa.mail.MailOutbox#decrypt",
               "queued mails (recipient, subject, body); no credential"),

@@ -8,6 +8,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.instance.BusBoundCache;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.MeteredCaches;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -49,7 +50,7 @@ import org.springframework.stereotype.Component;
  * (ADR-0036, Entscheidung 1).
  */
 @Component
-public class AssetAccessService implements InvalidationSubscriber {
+public class AssetAccessService implements InvalidationSubscriber, MeteredCaches {
 
   private final AssetGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;
@@ -72,7 +73,11 @@ public class AssetAccessService implements InvalidationSubscriber {
     // never too little - invalidateAsset below, called post-commit, is the primary correctness
     // mechanism. Time-based expiry is a safety net only.
     Cache<AssetKey, List<AssetGrant>> cache =
-        Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
+        Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .recordStats()
+            .build();
     this.grantsByAsset = new BusBoundCache<>(cache, bus);
   }
 
@@ -374,5 +379,10 @@ public class AssetAccessService implements InvalidationSubscriber {
       case GROUP -> groupIds.contains(grant.getSubjectGroupId());
       case ALL_ACCOUNTS -> true;
     };
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("asset_grants", grantsByAsset.statistics());
   }
 }

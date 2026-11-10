@@ -163,6 +163,7 @@ components:
           CREATE_INTERNAL_GROUP,
           CREATE_PROMPT_LIBRARY,
           CREATE_AGENT,
+          CREATE_TEMPLATE,
         ]
       example: CREATE_SPACE
 

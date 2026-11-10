@@ -1,4 +1,5 @@
 import type {
+  AgentRun,
   AnswerEvidence,
   ChatAttachmentRef,
   SearchedLibrary,
@@ -45,6 +46,8 @@ export interface ChatMessage {
   answerEmpty?: boolean
   /** The answer's Belegstand (QueryResponse/ChatMessageResponse#evidence), absent when not assessed. */
   evidence?: AnswerEvidence
+  /** The agent run behind the answer (QueryResponse/ChatMessageResponse#agentRun), absent otherwise. */
+  agentRun?: AgentRun
   /**
    * True when any source the answer was given with - cited or not - came from one of the
    * caller's private libraries (QueryResponse/ChatMessageResponse#privateSourcesInContext).

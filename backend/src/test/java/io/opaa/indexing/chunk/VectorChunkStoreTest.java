@@ -14,7 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import io.opaa.llm.EmbeddingClients;
+import io.opaa.llm.embedding.EmbeddingClients;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.Map;

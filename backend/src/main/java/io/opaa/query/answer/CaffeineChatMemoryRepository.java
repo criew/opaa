@@ -2,8 +2,6 @@ package io.opaa.query.answer;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.PrivateLibraryErased;
 import java.util.ArrayList;
@@ -22,13 +20,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL, bounding the
- * number of concurrent conversations against unbounded memory growth. The {@code
- * opaa.conversations.active} {@link Gauge} that {@link #size()} backs is registered in the
- * constructor, as elsewhere in {@code io.opaa.observability}.
+ * number of concurrent conversations against unbounded memory growth. Not measured: its size and
+ * its misses would show conversations held and begun (ADR-0071, Entscheidung 10).
  *
  * <p>The two-/three-arg constructors are package-visible for tests that need non-default limits or
- * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository(MeterRegistry)} is the one
- * Spring calls, marked {@link Autowired} because more than one constructor exists.
+ * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository()} is the one Spring calls,
+ * marked {@link Autowired} because more than one constructor exists.
  */
 @Service
 public class CaffeineChatMemoryRepository implements ChatMemoryRepository, InvalidationSubscriber {
@@ -59,11 +56,8 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository, Inval
 
   /** The constructor Spring calls. */
   @Autowired
-  public CaffeineChatMemoryRepository(MeterRegistry meterRegistry) {
+  public CaffeineChatMemoryRepository() {
     this(MAX_CONVERSATIONS, TTL_MINUTES, null);
-    Gauge.builder("opaa.conversations.active", this, CaffeineChatMemoryRepository::size)
-        .description("Active conversations in memory")
-        .register(meterRegistry);
   }
 
   /**

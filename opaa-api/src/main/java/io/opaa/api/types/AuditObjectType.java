@@ -18,5 +18,6 @@ public enum AuditObjectType {
   PROMPT_LIBRARY,
   PROMPT,
   SERVICE_ACCOUNT,
-  AGENT
+  AGENT,
+  DOCUMENT_TEMPLATE
 }

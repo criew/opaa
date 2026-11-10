@@ -165,6 +165,35 @@ transcription:
   # default (4).
   maxConcurrent: ""
 
+# Isolated execution environment of the agent tool run_code (ADR-0073), off by default. The sandbox
+# server (OpenSandbox) is installed from its own chart into namespaces of its own; this release
+# connects the backend to it with the API key from the secret (key OPAA_SANDBOX_API_KEY:
+# secrets.sandboxApiKey, or that key in secrets.existingSecret) and closes the network of the
+# sandbox pods: in "namespace" it creates a NetworkPolicy that denies every egress of every pod
+# there and admits ingress only from the server.
+sandbox:
+  enabled: false
+  # Address of the OpenSandbox server, e.g. http://opensandbox-server.opensandbox-system:8090.
+  baseUrl: ""
+  # Namespace the server starts the sandbox pods in; required with enabled.
+  namespace: ""
+  # The server's pods, for the backend's egress rule (networkPolicy.egress.enabled) and the
+  # ingress of the sandbox pods; both required with enabled.
+  serverNamespaceSelector: {}
+  # e.g. { matchLabels: { app.kubernetes.io/name: opensandbox-server } }
+  serverPodSelector: {}
+  serverPort: 8090
+  # Settings of the backend; empty keeps the application default.
+  # Sandbox image with Python and the document libraries.
+  image: ""
+  # Time limit of one script, e.g. 60s.
+  runTimeout: ""
+  # Longest life of one sandbox, e.g. 15m; at most the server's max_sandbox_timeout_seconds.
+  maxLifetime: ""
+  # Limits of one sandbox, e.g. "1" and 1Gi.
+  cpu: ""
+  memory: ""
+
 # Text recognition (OCR) of scanned PDF documents. Two switches, both off by default: "enabled" is
 # the backend's operation switch (OPAA_OCR_ENABLED) - without it no page goes to any text
 # recognition service; "service" runs the bundled service opaa-ocr in the release. Connection type,
@@ -406,6 +435,7 @@ secrets:
   #             v0.1.0-rc.4)
   #   no longer read: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY (set under Modelle)
   #   with ocr.service.enabled: ocr-api-key (the key of the bundled text recognition service)
+  #   with sandbox.enabled: OPAA_SANDBOX_API_KEY (the key of the OpenSandbox server)
   #   optional: OPAA_INSTALLATION_TOKEN
   #   during a key change: OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS,
   #             OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS
@@ -445,6 +475,9 @@ secrets:
   # at least 32 characters without spaces, e.g. openssl rand -hex 32. The system administration
   # enters the same key under Modelle > Texterkennung.
   ocrApiKey: ""
+  # API key of the OpenSandbox server (OPAA_SANDBOX_API_KEY), required with sandbox.enabled: the
+  # same value as the server's OPENSANDBOX_SERVER_API_KEY, e.g. openssl rand -hex 32.
+  sandboxApiKey: ""
 
 backend:
   image:
@@ -682,27 +715,125 @@ metrics:
   # prometheus.io/* annotations on the backend pod, for scrapers configured by annotations.
   podAnnotations: false
   # Who may reach the management port while metrics are on (NetworkPolicy peers). The default
-  # matches the Prometheus pods of the Prometheus Operator in any namespace.
+  # matches the Prometheus pods of the Prometheus Operator in the namespace monitoring only; a
+  # Prometheus elsewhere needs its namespace here.
   scrapeFrom:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
       podSelector:
         matchLabels:
           app.kubernetes.io/name: prometheus
-  # A PrometheusRule with basic alerts; needs serviceMonitor, the readiness alert also
-  # kube-state-metrics. Decimal values belong in a values file or --set-json: --set passes them as
-  # strings, which the schema refuses.
+  # Base address of the runbooks, one anchor per alert name (OpaaBackendNotReady ->
+  # <runbookBaseUrl>#OpaaBackendNotReady). Read by the alerts (annotation runbook_url) and by the
+  # dashboards' links; an installation without internet points it at its own copy of the handbook.
+  runbookBaseUrl: https://opaa.io/handbuch/betrieb/alarme.html
+  # Grafana dashboards as ConfigMaps for the dashboard sidecar of an existing Grafana, e.g. the one
+  # of kube-prometheus-stack. The chart brings no Grafana of its own.
+  grafanaDashboards:
+    enabled: false
+    # Label the sidecar selects ConfigMaps by (kube-prometheus-stack: grafana_dashboard: "1").
+    label: grafana_dashboard
+    labelValue: "1"
+    # Grafana folder of the dashboards (annotation grafana_folder, read by the sidecar with
+    # folderAnnotation: grafana_folder); empty puts them in the sidecar's default folder.
+    folder: OPAA
+    # Further labels and annotations of the ConfigMaps.
+    labels: {}
+    annotations: {}
+  # A PrometheusRule with the alerts of the runbooks; needs serviceMonitor, the readiness alerts of
+  # backend and frontend also kube-state-metrics. Every alert carries severity (critical wakes,
+  # warning opens a ticket, info only shows), component and runbook_url. The defaults of the
+  # thresholds below also colour the dashboard tiles (deploy/monitoring/build_dashboards.py).
+  # Decimal values belong in a values file or --set-json: --set passes them as strings, which the
+  # schema refuses.
   prometheusRule:
     enabled: false
     labels: {}
-    # Share of answers with status 5xx over 10 minutes ...
+    # One switch per rule group, e.g. chat: false for an installation without chat model, whose
+    # 503 answers would otherwise count as errors.
+    groups:
+      platform: true
+      chat: true
+      model: true
+      indexing: true
+      directory: true
+      background: true
+      audit: true
+      security: true
+    # Share of answers with status 5xx over 10 minutes: warning ...
     errorRateThreshold: 0.05
-    # ... counted only from this many requests in those 10 minutes on.
+    # ... counted only from this many requests in those 10 minutes on ...
     errorRateMinRequests: 20
-    # Share of the maximum heap in use over 15 minutes.
-    heapUsageThreshold: 0.9
+    # ... and critical above this share and volume.
+    errorRateCriticalThreshold: 0.25
+    errorRateCriticalMinRequests: 50
+    # Share of the maximum heap still in use after garbage collection, over 15 minutes.
+    heapUsageThreshold: 0.85
     # An indexing run was active for this long without processing a document. Uploads count as
     # processed documents as well.
     indexingStallMinutes: 60
+    # Target share of chat questions answered without a service error (success / (success +
+    # error) of opaa_query_count) over 30 days; the burn-rate alerts spend its error budget ...
+    chatSloObjective: 0.995
+    # ... from this many questions in the long window of each alert on.
+    chatSloMinQuestions: 30
+    # 95th percentile of the time to the first word over 30 minutes, from this many questions on.
+    timeToFirstTokenSeconds: 10
+    timeToFirstTokenMinQuestions: 30
+    # Share of questions with search that found no passage over 30 minutes, from this many on.
+    retrievalEmptyShare: 0.8
+    retrievalEmptyMinQuestions: 30
+    # Share of outbound calls refused for authentication or TLS over 10 minutes, per target.
+    outboundAuthErrorShare: 0.5
+    outboundAuthErrorMinRequests: 5
+    # Identity provider, critical: share of calls ending in anything but success or a client error
+    # over 10 minutes, from this many calls on, or this many sign-ins whose token could not be
+    # checked for want of the provider's signing keys. The directory service counts under the
+    # outbound shares above, as a warning of component directory.
+    identityProviderFailureShare: 0.5
+    identityProviderMinRequests: 10
+    identityProviderKeyErrorMin: 5
+    # Share of throttled outbound calls a person waits for, over 30 minutes.
+    throttledShare: 0.2
+    throttledMinRequests: 20
+    # Share of failed indexing runs per connector type over 6 hours, from this many runs on.
+    indexingRunFailureShare: 0.25
+    indexingRunFailureMinRuns: 4
+    # Hours since the last applied directory synchronisation, and since a plan awaits confirmation.
+    directorySyncMaxAgeHours: 26
+    directorySyncPlanPendingHours: 24
+    # Age of the oldest entry per queue in minutes. The indexing queue counts running runs too, so
+    # its threshold lies above the usual run duration.
+    queueMaxAgeMinutes:
+      mail_outbox: 30
+      source_events: 60
+      ocr_backlog: 360
+      indexing: 120
+    # A scheduled run is overdue after this many of its intervals without success, and not before
+    # this many minutes.
+    scheduledOverdueFactor: 3
+    scheduledOverdueMinMinutes: 15
+    # Share of mails finally discarded over 30 minutes, from this many delivery attempts on.
+    mailFailureShare: 0.5
+    mailFailureMinAttempts: 5
+    # Share of failed malware scans over 15 minutes, from this many scans on.
+    malwareScanFailureShare: 0.5
+    malwareScanMinScans: 3
+    malwareSignatureMaxAgeDays: 3
+    # Refused local sign-ins in 15 minutes: above the minimum and this factor times the median of
+    # the same 15 minutes on the seven days before.
+    loginFailureFactor: 5
+    loginFailureMin: 50
+    siemExportLagMinutes: 60
+    # Time left until the last prepared month of the audit log ends.
+    auditLogHorizonWarningDays: 14
+    auditLogHorizonCriticalHours: 48
+    # Age of an instance's own heartbeat; three intervals of OPAA_INSTANCE_HEARTBEAT_INTERVAL.
+    heartbeatMaxAgeSeconds: 45
+    # Tokens of the chat model per month; above it the projection of the last seven days alerts.
+    # 0 switches the alert off.
+    monthlyTokenBudget: 0
 
 # Client addresses behind the proxy chain ingress/gateway controller -> frontend nginx -> backend.
 # The backend reads X-Forwarded-For only from connections out of these networks; the resolved

@@ -164,3 +164,7 @@ metrics:
     enabled: true
     labels:
       release: kube-prometheus-stack
+    # Renders the optional budget alert for the rule test.
+    monthlyTokenBudget: 100000
+  grafanaDashboards:
+    enabled: true

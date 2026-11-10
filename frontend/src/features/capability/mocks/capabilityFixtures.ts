@@ -2,7 +2,7 @@ import type { MyCapabilitiesResponse } from '@/shared/api/types'
 
 /**
  * The capabilities of the mock account: every one, as for a system administrator - the four
- * delivered to all accounts plus CREATE_INTERNAL_GROUP and CREATE_AGENT, which are delivered to
+ * delivered to all accounts plus CREATE_INTERNAL_GROUP, CREATE_AGENT and CREATE_TEMPLATE, delivered to
  * nobody.
  */
 export const mockMyCapabilities: MyCapabilitiesResponse = {
@@ -13,5 +13,6 @@ export const mockMyCapabilities: MyCapabilitiesResponse = {
     'CREATE_INTERNAL_GROUP',
     'CREATE_PROMPT_LIBRARY',
     'CREATE_AGENT',
+    'CREATE_TEMPLATE',
   ],
 }

@@ -1,0 +1,430 @@
+package io.opaa.query.toolloop;
+
+import io.opaa.chat.ChatAttachment;
+import io.opaa.chat.ChatAttachmentService;
+import io.opaa.common.ConflictException;
+import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TooManyRequestsException;
+import io.opaa.common.ValidationException;
+import io.opaa.format.SupportedDocumentFormats;
+import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.runlog.AgentRunLogWriter;
+import io.opaa.query.runlog.AgentSandboxLogEntry;
+import io.opaa.query.sandbox.OutputSelection;
+import io.opaa.query.sandbox.OutputSelection.Verdict;
+import io.opaa.query.sandbox.SandboxProperties;
+import io.opaa.query.sandbox.SandboxSession;
+import io.opaa.query.sandbox.SandboxSession.OutputEntry;
+import io.opaa.query.sandbox.SandboxSession.ScriptRun;
+import io.opaa.query.sandbox.Sandboxes;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+
+/**
+ * Runs a Python script in the run's sandbox (ADR-0070 rights class isolated, ADR-0073). The first
+ * call of a run opens one sandbox without network for this run alone; later calls of the same run
+ * work in the same directory, so a correction builds on the files of the call before. When the run
+ * has its answer, every file then lying in {@link Sandboxes#OUTPUT_DIR} becomes an attachment of
+ * the asker in the chat's space, through every check of an ordinary upload, and is bound to the
+ * answer; then the sandbox is deleted. Space and person come only from the {@link AgentRun}. A
+ * failing script is reported to the model so it can correct it; an unreachable sandbox fails the
+ * call. A file that cannot be collected or attached is left out without failing the answer.
+ */
+@Component
+@ConditionalOnProperty(name = "opaa.sandbox.enabled", havingValue = "true")
+class RunCodeTool implements AgentTool {
+
+  private static final Logger log = LoggerFactory.getLogger(RunCodeTool.class);
+
+  /** Longest script the tool accepts; a longer one is refused before any sandbox exists. */
+  static final int MAX_CODE_CHARS = 20_000;
+
+  /** Longest part of stdout and of stderr that goes back to the model. */
+  static final int MAX_OUTPUT_CHARS = 4_000;
+
+  /** Lifetime of a sandbox beyond the run's own limit: collecting the files and deleting. */
+  static final Duration LIFETIME_MARGIN = Duration.ofMinutes(2);
+
+  /** Longest the run waits, after its answer, to read the output files back. */
+  static final Duration COLLECT_WITHIN = Duration.ofSeconds(30);
+
+  /** Longest step detail the person sees: the names of the files in the output directory. */
+  static final int MAX_DETAIL_CHARS = 120;
+
+  /** The session reference of a sandbox that never started. */
+  static final String NO_SESSION = "none";
+
+  static final String STATUS_COMPLETED = "COMPLETED";
+  static final String STATUS_FAILED = "FAILED";
+
+  static final String NO_CHAT = "Code kann nur in einem Chat eines Space ausgeführt werden.";
+
+  private static final String SCHEMA =
+      """
+      {
+        "type": "object",
+        "properties": {
+          "skript": {
+            "type": "string",
+            "description": "Das vollständige Python-3-Skript."
+          }
+        },
+        "required": ["skript"]
+      }
+      """;
+
+  private final Sandboxes sandboxes;
+  private final SandboxProperties sandboxProperties;
+  private final AgentToolLoopProperties loopProperties;
+  private final ChatAttachmentService attachmentService;
+  private final SupportedDocumentFormats supportedFormats;
+  private final AgentRunLogWriter runLogWriter;
+  private final Clock clock;
+
+  /**
+   * @throws IllegalStateException when {@code opaa.sandbox.max-lifetime} is shorter than a run may
+   *     need its sandbox, so the server would remove it while the run still works.
+   */
+  RunCodeTool(
+      Sandboxes sandboxes,
+      SandboxProperties sandboxProperties,
+      AgentToolLoopProperties loopProperties,
+      ChatAttachmentService attachmentService,
+      SupportedDocumentFormats supportedFormats,
+      AgentRunLogWriter runLogWriter,
+      Clock clock) {
+    this.sandboxes = sandboxes;
+    this.sandboxProperties = sandboxProperties;
+    this.loopProperties = loopProperties;
+    this.attachmentService = attachmentService;
+    this.supportedFormats = supportedFormats;
+    this.runLogWriter = runLogWriter;
+    this.clock = clock;
+    Duration needed = lifetime(loopProperties.maxDuration());
+    if (sandboxProperties.maxLifetime().compareTo(needed) < 0) {
+      throw new IllegalStateException(
+          "opaa.sandbox.max-lifetime must be at least "
+              + needed.toSeconds()
+              + "s: the agent run's limit, twice the closing call allowance and "
+              + LIFETIME_MARGIN.toSeconds()
+              + "s to collect and delete");
+    }
+  }
+
+  @Override
+  public String name() {
+    return ToolNames.RUN_CODE;
+  }
+
+  @Override
+  public ToolRightsClass rightsClass() {
+    return ToolRightsClass.ISOLATED;
+  }
+
+  @Override
+  public String description() {
+    return "Führt ein Python-3-Skript in einer abgeschotteten Umgebung ohne Netzzugang aus und gibt"
+        + " Exit-Code, Standardausgabe und Fehlerausgabe zurück. Verfügbar sind u. a. reportlab,"
+        + " fpdf2, python-docx, openpyxl, pandas und matplotlib; nachinstallieren geht nicht."
+        + " Dateien, die das Skript im Verzeichnis "
+        + Sandboxes.OUTPUT_DIR
+        + " ablegt, werden am Ende des Laufs der Person als Download an die Antwort gehängt,"
+        + " höchstens "
+        + Sandboxes.MAX_OUTPUT_FILES
+        + ", und nur in diesen Formaten: "
+        + String.join(", ", supportedFormats.extensions())
+        + ". Bilder werden nicht angehängt: ein Diagramm als PDF speichern oder in ein Dokument"
+        + " einbetten. Weitere Aufrufe in diesem Lauf arbeiten im selben Verzeichnis weiter. Die Umgebung"
+        + " sieht die Wissensbasis nicht: Inhalte aus Fundstellen müssen im Skript selbst stehen.";
+  }
+
+  @Override
+  public String inputSchema() {
+    return SCHEMA;
+  }
+
+  @Override
+  public ToolCallOutcome call(JsonNode arguments, AgentRun run) {
+    if (run.chatId() == null || run.spaceId() == null) {
+      return ToolCallOutcome.refused(ToolCallResult.DENIED, NO_CHAT);
+    }
+    JsonNode codeNode = arguments.get("skript");
+    String code = codeNode != null && codeNode.isString() ? codeNode.asString() : null;
+    if (code == null || code.isBlank()) {
+      return ToolCallOutcome.refused(ToolCallResult.INVALID_ARGUMENTS, "Das Skript fehlt.");
+    }
+    if (code.length() > MAX_CODE_CHARS) {
+      return ToolCallOutcome.refused(
+          ToolCallResult.INVALID_ARGUMENTS,
+          "Das Skript ist zu lang (höchstens " + MAX_CODE_CHARS + " Zeichen).");
+    }
+    Duration untilDeadline = Duration.between(clock.instant(), run.deadline());
+    if (untilDeadline.isNegative() || untilDeadline.isZero()) {
+      return ToolCallOutcome.refused(
+          ToolCallResult.TIMEOUT, "Für ein Skript ist in diesem Lauf keine Zeit mehr.");
+    }
+    RunSandbox sandbox = run.resource(RunSandbox.class, () -> openSandbox(run, untilDeadline));
+    SandboxSession session = sandbox.session();
+    // Starting the sandbox took part of the run's time; the script gets only what is left.
+    Duration remaining = Duration.between(clock.instant(), run.deadline());
+    if (remaining.isNegative() || remaining.isZero()) {
+      return ToolCallOutcome.refused(
+          ToolCallResult.TIMEOUT, "Für ein Skript ist in diesem Lauf keine Zeit mehr.");
+    }
+    Duration timeout =
+        sandboxProperties.runTimeout().compareTo(remaining) < 0
+            ? sandboxProperties.runTimeout()
+            : remaining;
+    ScriptRun result = session.run(code, timeout);
+    sandbox.scriptRan(result);
+    List<OutputEntry> entries = session.outputEntries();
+    List<Verdict> verdicts = OutputSelection.of(entries, this::attachable);
+    return new ToolCallOutcome(
+        report(result, entries, verdicts, run.blockId()),
+        resultOf(result),
+        detail(entries, verdicts),
+        null,
+        List.of());
+  }
+
+  /** Opens the run's sandbox; a start that fails is logged in the sandbox log before it fails. */
+  private RunSandbox openSandbox(AgentRun run, Duration untilDeadline) {
+    long started = System.nanoTime();
+    try {
+      return new RunSandbox(
+          sandboxes.open(lifetime(untilDeadline), untilDeadline),
+          attachmentService,
+          this::attachable,
+          runLogWriter,
+          run);
+    } catch (RuntimeException e) {
+      runLogWriter.writeSandbox(
+          run.organizationId(),
+          run.runId(),
+          new AgentSandboxLogEntry(
+              NO_SESSION,
+              null,
+              name(),
+              STATUS_FAILED,
+              0,
+              millisSince(started),
+              0,
+              0,
+              "START_FAILED"));
+      throw e;
+    }
+  }
+
+  private static long millisSince(long startedNanos) {
+    return Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
+  }
+
+  /** Whether a file of this name can become an attachment at all. */
+  private boolean attachable(String fileName) {
+    return supportedFormats.isSupported(fileName);
+  }
+
+  /** The run's remaining time, the two model calls that may still follow and the margin. */
+  private Duration lifetime(Duration remaining) {
+    return remaining
+        .plus(loopProperties.closingCallAllowance().multipliedBy(2))
+        .plus(LIFETIME_MARGIN);
+  }
+
+  private static ToolCallResult resultOf(ScriptRun result) {
+    if (result.timedOut()) {
+      return ToolCallResult.TIMEOUT;
+    }
+    // A failing script is the model's to correct: the argument it wrote did not work.
+    return result.exitCode() == 0 ? ToolCallResult.SUCCESS : ToolCallResult.INVALID_ARGUMENTS;
+  }
+
+  /**
+   * The result for the model. Everything the sandbox controls - output and file names - stands in
+   * one data block of the run, cleaned like a document, so it cannot pose as an instruction.
+   */
+  static String report(
+      ScriptRun result, List<OutputEntry> entries, List<Verdict> verdicts, String blockId) {
+    List<String> lines = new ArrayList<>();
+    appendStream(lines, "Standardausgabe", result.stdout());
+    appendStream(lines, "Fehlerausgabe", result.stderr());
+    if (entries.isEmpty()) {
+      lines.add("Keine Dateien in " + Sandboxes.OUTPUT_DIR + ".");
+    } else {
+      lines.add("Dateien in " + Sandboxes.OUTPUT_DIR + ":");
+      for (int i = 0; i < entries.size(); i++) {
+        OutputEntry entry = entries.get(i);
+        lines.add("- " + entry.name() + " (" + entry.size() + " Bytes)" + note(verdicts.get(i)));
+      }
+    }
+    String head =
+        result.timedOut()
+            ? "Abgebrochen: Zeitlimit überschritten."
+            : "Exit-Code: " + result.exitCode();
+    return head + "\n" + DocumentBlock.renderIndentedLines(blockId, lines);
+  }
+
+  private static String note(Verdict verdict) {
+    return switch (verdict) {
+      case TAKEN -> "";
+      case FORMAT -> " – wird nicht angehängt, Format nicht erlaubt";
+      case TOO_LARGE -> " – wird nicht angehängt, zu groß";
+      case TOO_MANY -> " – wird nicht angehängt, zu viele Dateien";
+    };
+  }
+
+  /** The names of the files the person will get, bounded; {@code null} for none. */
+  static String detail(List<OutputEntry> entries, List<Verdict> verdicts) {
+    List<String> taken = new ArrayList<>();
+    for (int i = 0; i < entries.size(); i++) {
+      if (verdicts.get(i) == Verdict.TAKEN) {
+        taken.add(entries.get(i).name());
+      }
+    }
+    if (taken.isEmpty()) {
+      return null;
+    }
+    String names = String.join(", ", taken);
+    return names.length() > MAX_DETAIL_CHARS
+        ? names.substring(0, MAX_DETAIL_CHARS - 1) + "…"
+        : names;
+  }
+
+  private static void appendStream(List<String> lines, String label, String text) {
+    if (text == null || text.isBlank()) {
+      return;
+    }
+    String bounded =
+        text.length() > MAX_OUTPUT_CHARS
+            ? "[Anfang gekürzt] " + text.substring(text.length() - MAX_OUTPUT_CHARS)
+            : text;
+    lines.add(label + ":");
+    lines.addAll(bounded.lines().toList());
+  }
+
+  /**
+   * The sandbox of one run. {@link #finish()} takes the files of the output directory as the
+   * asker's attachments; a file that cannot be read back or that a check refuses is left out and
+   * counted in the log, without name, and never fails the answer. {@link #close()} deletes the
+   * sandbox and appends one entry to the sandbox log: counts and sizes, no script and no file name.
+   */
+  static final class RunSandbox implements RunResource {
+
+    private final SandboxSession session;
+    private final ChatAttachmentService attachmentService;
+    private final Predicate<String> attachable;
+    private final AgentRunLogWriter runLogWriter;
+    private final AgentRun run;
+    private final long openedNanos = System.nanoTime();
+    private int scriptRuns;
+    private boolean timedOut;
+    private boolean collectFailed;
+    private int fileCount;
+    private long fileBytes;
+    private boolean closed;
+
+    RunSandbox(
+        SandboxSession session,
+        ChatAttachmentService attachmentService,
+        Predicate<String> attachable,
+        AgentRunLogWriter runLogWriter,
+        AgentRun run) {
+      this.session = session;
+      this.attachmentService = attachmentService;
+      this.attachable = attachable;
+      this.runLogWriter = runLogWriter;
+      this.run = run;
+    }
+
+    SandboxSession session() {
+      return session;
+    }
+
+    synchronized void scriptRan(ScriptRun result) {
+      scriptRuns++;
+      timedOut |= result.timedOut();
+    }
+
+    @Override
+    public synchronized List<ChatAttachment> finish() {
+      List<SandboxSession.OutputFile> files;
+      try {
+        files = session.collectOutput(attachable, COLLECT_WITHIN);
+      } catch (RuntimeException e) {
+        collectFailed = true;
+        log.warn("Agent run {}: sandbox files could not be collected", run.runId(), e);
+        return List.of();
+      }
+      List<ChatAttachment> attachments = new ArrayList<>();
+      int refused = 0;
+      for (SandboxSession.OutputFile file : files) {
+        try {
+          attachments.add(
+              attachmentService
+                  .uploadGenerated(
+                      run.spaceId(),
+                      run.chatId(),
+                      attachments.size(),
+                      file.name(),
+                      file.content(),
+                      run.userId())
+                  .attachment());
+          fileCount++;
+          fileBytes += file.content().length;
+        } catch (ValidationException
+            | PayloadTooLargeException
+            | TooManyRequestsException
+            | ServiceUnavailableException
+            | ConflictException e) {
+          refused++;
+        } catch (RuntimeException e) {
+          refused++;
+          log.warn("Agent run {}: a sandbox file could not be attached", run.runId(), e);
+        }
+      }
+      if (refused > 0) {
+        log.info("Agent run {}: {} sandbox file(s) refused as attachments", run.runId(), refused);
+      }
+      return attachments;
+    }
+
+    @Override
+    public synchronized void close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      try {
+        session.close();
+      } finally {
+        writeLog();
+      }
+    }
+
+    private void writeLog() {
+      String abortReason = collectFailed ? "COLLECT_FAILED" : timedOut ? "SCRIPT_TIMEOUT" : null;
+      runLogWriter.writeSandbox(
+          run.organizationId(),
+          run.runId(),
+          new AgentSandboxLogEntry(
+              session.id(),
+              null,
+              ToolNames.RUN_CODE,
+              collectFailed ? STATUS_FAILED : STATUS_COMPLETED,
+              scriptRuns,
+              millisSince(openedNanos),
+              fileCount,
+              fileBytes,
+              abortReason));
+    }
+  }
+}

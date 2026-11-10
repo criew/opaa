@@ -49,7 +49,8 @@ class DirectorySyncPlanExecutorTest {
           auditEventRecorder,
           pendingPlanRepository,
           adminGuard,
-          mock(ApplicationEventPublisher.class));
+          mock(ApplicationEventPublisher.class),
+          java.time.Instant::now);
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID providerId = UUID.randomUUID();

@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { apiClient } from '../api/api'
 import type { AgentAvailabilityResponse } from '../api/types'
-import { recordAgentsEnabled } from './installationFeatures'
 import { registerSessionStore } from './resettableStores'
+import { useRuntimeSwitchStore } from './runtimeSwitches'
 
 interface AgentAvailabilityState {
   /** The installation's agents switch; `null` until the first answer of this session. */
@@ -34,5 +34,15 @@ export const useAgentAvailability = create<AgentAvailabilityState>((set) => ({
 
 registerSessionStore(useAgentAvailability)
 
-recordAgentsEnabled(useAgentAvailability.getState().enabled === true)
-useAgentAvailability.subscribe((state) => recordAgentsEnabled(state.enabled === true))
+/** Keeps the shared runtime switch in step; the shell reads this tri-state store for the routes. */
+useAgentAvailability.subscribe((state, previous) => {
+  if (state.enabled !== previous.enabled && state.enabled !== null) {
+    useRuntimeSwitchStore.setState({ agents: state.enabled })
+  }
+})
+useRuntimeSwitchStore.subscribe((state, previous) => {
+  const known = useAgentAvailability.getState().enabled
+  if (state.agents !== previous.agents && known !== null && known !== state.agents) {
+    useAgentAvailability.setState({ enabled: state.agents })
+  }
+})

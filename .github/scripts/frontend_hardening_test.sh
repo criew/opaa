@@ -6,7 +6,8 @@
 # (Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy), only the self-disclosure download
 # may be framed (by the application itself), the access log leaves out the marker of the
 # quick-tour hint, a valid X-Request-Id reaches the upstream and the access log while any other is
-# replaced by 32 hex characters, a caller's trace context reaches no upstream, and the start refuses
+# replaced by 32 hex characters, both also on the dictation WebSocket, a caller's trace context
+# reaches no upstream, and the start refuses
 # an invalid OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy,
 # and with OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
@@ -75,6 +76,10 @@ echo_conf="server {
     location = /api/v1/request-id {
         default_type text/plain;
         return 200 \"request-id=[\$http_x_request_id]\\n\";
+    }
+    location = /api/v1/transcriptions/stream {
+        default_type text/plain;
+        return 200 \"request-id=[\$http_x_request_id] trace=[\$http_traceparent\$http_tracestate\$http_baggage\$http_b3\$http_x_b3_traceid\$http_x_b3_sampled]\\n\";
     }
     location = /api/v1/me/self-disclosure/download {
         default_type text/plain;
@@ -205,6 +210,19 @@ received="$(curl -sS --max-time 10 -H 'traceparent: 00-ffffffffffffffff000000000
   "$base/api/v1/trace-context" || true)"
 [[ "$received" == "trace=[]" ]] && echo "dropped as expected: the caller's trace context" ||
   fail "the caller's trace context reached the upstream: ${received:-no answer}"
+# The dictation WebSocket has a location of its own; it keeps a valid request id, replaces an
+# invalid one and drops the trace context exactly like /api/.
+received="$(curl -sS --max-time 10 -H "X-Request-Id: $valid_id" \
+  -H 'traceparent: 00-ffffffffffffffff0000000000000001-0000000000000001-01' -H 'tracestate: a=b' \
+  -H 'baggage: user=x' -H 'b3: 1-2-1' -H 'X-B3-TraceId: 1' -H 'X-B3-Sampled: 1' \
+  "$base/api/v1/transcriptions/stream" || true)"
+[[ "$received" == "request-id=[$valid_id] trace=[]" ]] &&
+  echo "kept and dropped as expected: request id and trace context of the dictation WebSocket" ||
+  fail "the dictation WebSocket reached the upstream as '${received:-no answer}'"
+received="$(curl -sS --max-time 10 -H 'X-Request-Id: short' "$base/api/v1/transcriptions/stream" || true)"
+[[ "$received" =~ ^request-id=\[[0-9a-f]{32}\]\ trace=\[\]$ ]] &&
+  echo "replaced as expected: an invalid request id on the dictation WebSocket" ||
+  fail "an invalid request id reached the dictation WebSocket's upstream as '${received:-no answer}'"
 
 echo "--- OPAA_CSP_CONNECT_SRC_EXTRA"
 # Starts the image with the value and reports whether nginx came up within a few seconds.

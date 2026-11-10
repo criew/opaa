@@ -86,7 +86,6 @@ data:
         nonPersonalColumns:
           - password_change_required
           - password_change_reason
-          - password_invalidated_before
           - is_bootstrap
           - created_at
           - updated_at
@@ -291,6 +290,9 @@ data:
       - name: agent_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, updated_at, version]
+      - name: document_template_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, updated_at]
         person:
           columns: [updated_by]
       - name: self_disclosure_settings
@@ -682,3 +684,5 @@ capabilities:
     seesAboutOthers: Nichts über andere Personen
   - id: CREATE_AGENT
     seesAboutOthers: Nichts über andere Personen
+  - id: CREATE_TEMPLATE
+    seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage

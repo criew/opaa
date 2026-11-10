@@ -11,6 +11,8 @@ import io.micrometer.core.instrument.Tag;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.instance.PostgresInvalidationBus;
+import io.opaa.llm.embedding.EmbeddingClientFactory;
+import io.opaa.llm.embedding.EmbeddingEndpoint;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LlmModelCatalogFixtures;
@@ -30,13 +32,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * The {@code gen_ai.*} metrics Spring AI derives from the observations of the chat and embedding
- * clients OPAA builds itself ({@link ActiveChatModelResolver}, {@link
+ * clients OPAA builds itself ({@link ActiveChatModelResolver}, {@code
  * OpenAiEmbeddingClientFactory}): operation duration with SLO buckets and token usage, each with
  * tags from a small fixed set only - no prompt, answer, person or library. Also asserts that every
  * content property of Spring AI's observations is off in the running application (regression guard
@@ -63,7 +66,12 @@ class SpringAiMetricsIntegrationTest {
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private Environment environment;
   @Autowired private ActiveChatModelResolver resolver;
-  @Autowired private OpenAiEmbeddingClientFactory embeddingClients;
+
+  /** The production factory itself: the test beans put a fake factory first. */
+  @Autowired
+  @Qualifier("openAiEmbeddingClientFactory")
+  private EmbeddingClientFactory embeddingClients;
+
   @Autowired private LlmModelService llmModelService;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;

@@ -18,7 +18,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -67,7 +66,8 @@ public class CapabilityService {
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken anlegen",
           Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen",
-          Capability.CREATE_AGENT, "Agenten anlegen");
+          Capability.CREATE_AGENT, "Agenten anlegen",
+          Capability.CREATE_TEMPLATE, "Vorlagen anlegen");
 
   /**
    * What each capability creates, as the object of a sentence - the piece the overview's plain-text
@@ -81,7 +81,8 @@ public class CapabilityService {
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken",
           Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken",
-          Capability.CREATE_AGENT, "Agenten");
+          Capability.CREATE_AGENT, "Agenten",
+          Capability.CREATE_TEMPLATE, "Vorlagen");
 
   /**
    * The capabilities that belong to an installation-wide feature (ADR-0044): while it is off, the
@@ -101,7 +102,7 @@ public class CapabilityService {
   private final AuditEventRecorder auditEventRecorder;
   private final CapabilityScopeCatalog scopeCatalog;
   private final FeatureFlags featureFlags;
-  private final Map<Capability, RuntimeCapabilitySwitch> runtimeSwitches;
+  private final List<RuntimeCapabilitySwitch> runtimeSwitches;
 
   CapabilityService(
       CapabilityGrantRepository grantRepository,
@@ -121,25 +122,24 @@ public class CapabilityService {
     this.auditEventRecorder = auditEventRecorder;
     this.scopeCatalog = scopeCatalog;
     this.featureFlags = featureFlags;
-    this.runtimeSwitches = new EnumMap<>(Capability.class);
-    for (RuntimeCapabilitySwitch runtimeSwitch : runtimeSwitches) {
-      if (this.runtimeSwitches.put(runtimeSwitch.capability(), runtimeSwitch) != null) {
-        throw new IllegalStateException("two runtime switches for " + runtimeSwitch.capability());
-      }
-    }
+    this.runtimeSwitches = List.copyOf(runtimeSwitches);
   }
 
   /**
    * Whether the installation offers {@code capability}: its feature, if any, is switched on, and so
-   * is its runtime switch, if any ({@link RuntimeCapabilitySwitch}).
+   * is every {@link RuntimeCapabilitySwitch} for it.
    */
   private boolean isOffered(Capability capability) {
     Feature feature = FEATURES.get(capability);
     if (feature != null && !featureFlags.isEnabled(feature)) {
       return false;
     }
-    RuntimeCapabilitySwitch runtimeSwitch = runtimeSwitches.get(capability);
-    return runtimeSwitch == null || runtimeSwitch.offered();
+    for (RuntimeCapabilitySwitch runtimeSwitch : runtimeSwitches) {
+      if (runtimeSwitch.capability() == capability && !runtimeSwitch.offered()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Whether {@code capability} is granted per scope. */

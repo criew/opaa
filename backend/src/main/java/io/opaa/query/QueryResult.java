@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatNotePoint;
@@ -18,6 +19,8 @@ import java.util.UUID;
  * @param evidence the answer's Belegstand, {@code null} when there is nothing to assess.
  * @param generatedFiles files a tool of the agent loop produced, bound to the answer's message;
  *     empty on every other path.
+ * @param agentRun steps and end of the agent run that gave the answer, {@code null} on every other
+ *     path.
  */
 public record QueryResult(
     String answer,
@@ -27,7 +30,21 @@ public record QueryResult(
     String chatTitle,
     List<ChatNotePoint> noteItems,
     AnswerEvidence evidence,
-    List<ChatAttachment> generatedFiles) {
+    List<ChatAttachment> generatedFiles,
+    AgentRunRecord agentRun) {
+
+  /** A result without an agent run - every path but the agent loop. */
+  public QueryResult(
+      String answer,
+      List<ChatSource> sources,
+      QueryOutcome metadata,
+      UUID chatId,
+      String chatTitle,
+      List<ChatNotePoint> noteItems,
+      AnswerEvidence evidence,
+      List<ChatAttachment> generatedFiles) {
+    this(answer, sources, metadata, chatId, chatTitle, noteItems, evidence, generatedFiles, null);
+  }
 
   /** A result without generated files - every path but the agent loop. */
   public QueryResult(

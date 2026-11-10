@@ -65,7 +65,7 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
@@ -1870,6 +1870,8 @@ class LibraryDocumentServiceTest {
     when(library.getSourceCredentials()).thenReturn(sourceCredentials);
     // the credentials only reach originals on the origin of the library's own address
     lenient().when(library.getSourceUrl()).thenReturn(remoteBaseUrl + "/");
+    // the connector type names the kind of the measured outbound call
+    lenient().when(library.getSourceType()).thenReturn(SourceTypes.HTTP_DIRECTORY);
     return library;
   }
 

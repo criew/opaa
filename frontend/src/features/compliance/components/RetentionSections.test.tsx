@@ -6,10 +6,12 @@ import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import {
+  getAgentRunLogRetention,
   getChatAutoCleanupRetention,
   getIncidentScopeRetention,
   getLockedAccountChatRetention,
 } from '../api/retentionApi'
+import AgentRunLogRetentionSection from './AgentRunLogRetentionSection'
 import ChatAutoCleanupRetentionSection from './ChatAutoCleanupRetentionSection'
 import IncidentScopeRetentionSection from './IncidentScopeRetentionSection'
 import LockedAccountChatRetentionSection from './LockedAccountChatRetentionSection'
@@ -242,5 +244,53 @@ describe('reset and pause', () => {
 
     await waitFor(() => expect(sent).toEqual({ retentionYears: 1 }))
     await waitFor(() => expect(screen.queryByText('Löschen pausiert')).not.toBeInTheDocument())
+  })
+})
+
+describe('AgentRunLogRetentionSection', () => {
+  it('shortens both periods after a warning and returns to the factory default', async () => {
+    const user = userEvent.setup()
+    render(<AgentRunLogRetentionSection />)
+
+    const step = await screen.findByLabelText('Schrittprotokoll (Tage)')
+    expect(step).toHaveValue('7')
+    expect(screen.getByText('Es gilt die Werkseinstellung.')).toBeInTheDocument()
+
+    await user.clear(step)
+    await user.type(step, '3')
+    const sandbox = screen.getByLabelText('Sandboxprotokoll (Tage)')
+    await user.clear(sandbox)
+    await user.type(sandbox, '2')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/endgültig/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Fristen ändern' }))
+
+    await waitFor(async () =>
+      expect(await getAgentRunLogRetention()).toEqual({
+        stepLogRetentionDays: 3,
+        sandboxLogRetentionDays: 2,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Fristen ändern' }),
+    )
+    await waitFor(async () =>
+      expect((await getAgentRunLogRetention()).stepLogRetentionDays).toBe(7),
+    )
+  })
+
+  it('refuses a period beyond 30 days before sending', async () => {
+    const user = userEvent.setup()
+    render(<AgentRunLogRetentionSection />)
+
+    const step = await screen.findByLabelText('Schrittprotokoll (Tage)')
+    await user.clear(step)
+    await user.type(step, '31')
+
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 })

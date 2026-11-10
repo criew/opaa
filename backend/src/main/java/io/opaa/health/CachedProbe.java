@@ -3,6 +3,7 @@ package io.opaa.health;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.springframework.boot.health.contributor.Health;
 
@@ -19,8 +20,10 @@ final class CachedProbe {
   private final Supplier<Health> probe;
   private final Clock clock;
 
-  private Health last;
-  private Instant probedAt;
+  /** Result and time of the last probe as one snapshot, read without the lock. */
+  private record Probed(Health health, Instant at) {}
+
+  private volatile Probed last;
 
   CachedProbe(Supplier<Health> probe, Clock clock) {
     this.probe = probe;
@@ -30,10 +33,23 @@ final class CachedProbe {
   /** The cached result, or a new probe once it has expired; one probe at a time. */
   synchronized Health health() {
     Instant now = clock.instant();
-    if (last == null || !now.isBefore(probedAt.plus(TIME_TO_LIVE))) {
-      last = probe.get();
-      probedAt = now;
+    Probed current = last;
+    if (current == null || !now.isBefore(current.at().plus(TIME_TO_LIVE))) {
+      current = new Probed(probe.get(), now);
+      last = current;
     }
-    return last;
+    return current.health();
+  }
+
+  /**
+   * The last result if it is at most {@code maxAge} old; never probes and never waits for a probe
+   * under way, so a reader is not held up by a slow model call.
+   */
+  Optional<Health> last(Duration maxAge) {
+    Probed current = last;
+    if (current == null || clock.instant().isAfter(current.at().plus(maxAge))) {
+      return Optional.empty();
+    }
+    return Optional.of(current.health());
   }
 }

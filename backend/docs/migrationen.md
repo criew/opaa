@@ -6,12 +6,13 @@ Das Werkzeug ist Flyway Community (Apache-2.0); warum nicht Liquibase, steht in
 
 ## Baselines
 
-Die Historie wurde mehrfach zu einer Baseline zusammengefasst, zuletzt beim Umstieg von Liquibase
-auf Flyway (ADR-0056): Jedes Modul hat seitdem genau eine Baseline `V1.<n>__<modul>_baseline.sql`,
-die den Endstand der vorherigen Historie wiedergibt. Schema, Eigentümer, Rechte, Partitionen und
-gelieferte Zeilen einer frischen Datenbank sind dabei unverändert geblieben. Jede bestehende
-Installation wird danach neu aufgesetzt; Liquibases `databasechangelog` nimmt Flyway nicht als
-Historie an.
+Die Historie wurde mehrfach zu einer Baseline zusammengefasst: beim Umstieg von Liquibase auf
+Flyway (ADR-0056) und im November 2026, als die seither entstandenen Flyway-Migrationen in die
+Baselines eingingen. Jedes Modul hat genau eine Baseline `V1.<n>__<modul>_baseline.sql`, die den Endstand der
+vorherigen Historie wiedergibt. Schema, Eigentümer, Rechte, Partitionen und gelieferte Zeilen einer
+frischen Datenbank sind dabei unverändert geblieben (Abgleich per `pg_dump`), bis auf entfallene
+Spalten, deren Contract-Schritt die Zusammenfassung übernimmt. Jede bestehende Installation wird
+danach neu aufgesetzt; Flyway lehnt eine Historie mit geänderten Prüfsummen der Baselines ab.
 
 **Eine weitere Baseline gibt es nur an einer ausgewiesenen [Versionsgrenze ohne Rolling Update](#versionsgrenzen-ohne-rolling-update).**
 Eine Zusammenfassung schreibt die Historie um; die Vorgängerversion läuft danach nicht neben der
@@ -219,7 +220,7 @@ Prompt-Variablen); dort gilt die Regel ohne Prüfung.
 
 `OPAA_MODE=migrate` (`opaa.mode`, gelesen aus Aufrufargumenten, Systemeigenschaften und Umgebung)
 startet statt der Anwendung nur Datenquelle, die Startwächter vor Flyway (`DatabaseSchemaGuard`,
-`DatabasePrerequisiteCheck`), die Platzhalter der Baseline-Vektortabelle und Flyway, wendet die Migrationen an
+`DatabasePrerequisiteCheck`) und Flyway, wendet die Migrationen an
 und endet mit Exit-Code 0 (`io.opaa.config.DatabaseMigrationMode`). Flyway läuft dort auch bei
 `SPRING_FLYWAY_ENABLED=false`, damit Migrationsschritt und Instanzen dieselben Variablen teilen
 können. Instanzen starten danach mit `SPRING_FLYWAY_ENABLED=false`. Ohne den Modus migriert jeder
@@ -250,18 +251,10 @@ Transaktion, die `embedding_model` schreibt, und unter der Schemasperre der Vekt
 `spring.ai.vectorstore.pgvector.initialize-schema` bleibt `false`, damit Spring AI beim Start keiner
 Instanz DDL ausführt. Indextyp und Distanz kommen aus `spring.ai.vectorstore.pgvector`.
 
-Die knowledge-Baseline legt `vector_store` aus der Zeit davor weiterhin an; ein ausgeführtes Skript
-wird nicht geändert. Ihre Dimension ist ein fester Flyway-Platzhalter
-(`VectorStoreMigrationPlaceholders`), Indextyp und Distanz bleiben Platzhalter. Danach entfernt
-`knowledge/V2026.10.25.5__contract_vector_store_at_installation.sql` die leere Tabelle wieder, aber
-nur auf einer Datenbank, auf der noch keine Instanz gestartet ist (keine Zeile in
-`embedding_index`, die jeder Start schreibt) und die keinen Abschnitt hält. Auf einer solchen
-Datenbank läuft keine Vorgängerversion, daher bricht das Entfernen keine; als `contract_` ist es
-benannt, weil `RollingUpdateGuardTest` das Entfernen einer Tabelle sonst ablehnt. Eine bestehende
-Installation behält Tabelle, Spalten und Abschnitte unverändert (`VectorStoreAtInstallationMigrationTest`).
-`MigrationSchema` liest dieses Entfernen als Ausnahme und führt `vector_store` als vorhanden.
+Keine Migration legt `vector_store` an; `MigrationSchema` führt die Tabelle mit den Spalten, die
+`VectorTableCreator` anlegt.
 
-Eine bestehende Installation übernimmt beim ersten Start ihr bisher konfiguriertes Embedding-Modell
+Nur der Modus `dev` richtet sein Embedding-Modell selbst ein: Er übernimmt das konfigurierte Modell
 einmalig nach `embedding_model` (`EmbeddingModelService#adoptIfMissing`, aufgerufen von der
 Startentscheidung der Installation). Mit vorhandener Tabelle nur, wenn die Konfiguration das Modell
 nennt, das `embedding_index` verzeichnet (bei laufender Neueinbettung das Ziel), und mit der

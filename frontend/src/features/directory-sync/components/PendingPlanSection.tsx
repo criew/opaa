@@ -43,10 +43,10 @@ export default function PendingPlanSection({
         Wartet seit {ageSinceLabel(plan.createdAt)} auf Ihre Entscheidung
       </Typography>
       <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-        Vorgelegt am {formatDateTime(plan.createdAt)}. Der Lauf hätte mehr entzogen oder gesperrt,
-        als OPAA ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige Stand. Beim
-        Bestätigen liest OPAA das Verzeichnis neu — weicht es ab, wird der Plan neu vorgelegt statt
-        angewendet.
+        Erstmals vorgelegt am {formatDateTime(plan.createdAt)}. Der Lauf hätte mehr entzogen oder
+        gesperrt, als OPAA ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige
+        Stand. Beim Bestätigen liest OPAA das Verzeichnis neu — weicht es ab, wird der Plan neu
+        vorgelegt statt angewendet.
       </Typography>
 
       <Typography component="h4" sx={{ fontSize: 13, fontWeight: 600, mt: 2 }}>

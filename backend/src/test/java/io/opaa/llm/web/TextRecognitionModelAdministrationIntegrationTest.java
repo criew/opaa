@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.llm.ModelRoleEndpoints;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoints;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -49,7 +49,7 @@ class TextRecognitionModelAdministrationIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private ModelRoleEndpoints endpoints;
+  @Autowired private TextRecognitionEndpoints endpoints;
 
   private HttpServer server;
   private String serverUrl;

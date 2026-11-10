@@ -13,6 +13,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Wissensbibliothek anlegen](../benutzer/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
 | [Prompt-Bibliothek anlegen](../benutzer/prompt-bibliothek-anlegen.md) | — | Prompts schreiben ab *Bearbeiter* | „Prompt-Bibliotheken anlegen“ | jedes Konto |
 | [Agent anlegen](../benutzer/agent-anlegen.md) | — | einrichten ab *Verwalter* | „Agenten anlegen“, Agenten eingeschaltet | niemand, Agenten aus |
+| [Vorlage anlegen](../benutzer/vorlage-anlegen.md) | — | Datei ersetzen ab *Bearbeiter* | „Vorlagen anlegen“, Schalter „Vorlagen“ | niemand, Schalter aus |
 | [Space anlegen](../benutzer/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
 | [Konto verbinden](../benutzer/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
 | [Private Bibliothek anlegen](../benutzer/private-bibliothek.md) | — | verbundenes Konto | Anlegerecht für den Zugang | kein Zugang |

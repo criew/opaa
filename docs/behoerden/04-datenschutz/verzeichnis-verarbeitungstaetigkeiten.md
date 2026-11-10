@@ -82,6 +82,10 @@ Stand:                   [Datum]        geprüft durch: [Name]
   gescannter Dokumente ({{faktenblatt:datenfluesse#text-recognition-model}}). Läuft er im Haus,
   etwa als mitgelieferter OCR-Container, bleibt er Teil des Betriebs; ein externer Anbieter gehört
   als Auftragsverarbeiter in den Eintrag.
+- Arbeiten Agenten, hält OPAA je Lauf ein Schritt- und ein Sandboxprotokoll für die Fehlersuche
+  ({{faktenblatt:datenkatalog#agent-run-logs}}): ohne Konto und ohne Inhalte, nur über die
+  Laufkennung im Chat einer Person zuzuordnen und nach wenigen Tagen gelöscht. Es gehört zum Zweck
+  des Betriebs und ist kein Mittel der Leistungs- oder Verhaltenskontrolle.
 - Nutzt die Behörde das Muster ihrer Aufsichtsbehörde, überträgt sie die Angaben dorthin.
 
 ## Zum Nachlesen

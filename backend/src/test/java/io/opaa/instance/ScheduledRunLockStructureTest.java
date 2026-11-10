@@ -38,17 +38,40 @@ class ScheduledRunLockStructureTest {
    * instance reports, so every instance may run it at once.
    */
   static final Map<String, String> RUNS_ON_EVERY_INSTANCE =
-      Map.of(
-          "io.opaa.mail.MailOutboxWorker#poll",
-          "every instance delivers; FOR UPDATE SKIP LOCKED claims each mail (ADR-0053, E11)",
-          "io.opaa.connection.token.GrantRevocations#poll",
-          "every instance revokes; FOR UPDATE SKIP LOCKED claims each revocation (ADR-0053, E10)",
-          "io.opaa.indexing.run.SourceEventIntake#drainDue",
-          "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)",
-          "io.opaa.audit.AuditStorageMetrics#refresh",
-          "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)",
-          "io.opaa.audit.AuditChainService#refreshMetrics",
-          "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)");
+      Map.ofEntries(
+          Map.entry(
+              "io.opaa.mail.MailOutboxWorker#poll",
+              "every instance delivers; FOR UPDATE SKIP LOCKED claims each mail (ADR-0053, E11)"),
+          Map.entry(
+              "io.opaa.connection.token.GrantRevocations#poll",
+              "every instance revokes; FOR UPDATE SKIP LOCKED claims each revocation (ADR-0053, E10)"),
+          Map.entry(
+              "io.opaa.indexing.run.SourceEventIntake#drainDue",
+              "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)"),
+          Map.entry(
+              "io.opaa.audit.AuditStorageMetrics#refresh",
+              "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)"),
+          Map.entry(
+              "io.opaa.audit.AuditChainService#refreshMetrics",
+              "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)"),
+          Map.entry(
+              "io.opaa.llm.administration.ModelRoleAvailability#refresh",
+              "each instance reports the role availability it sees; it only reads (ADR-0053, E12)"),
+          Map.entry(
+              "io.opaa.knowledge.MalwareSignatureAge#refresh",
+              "each instance asks its clamd for the signature age it reports; it only reads (E12)"),
+          Map.entry(
+              "io.opaa.indexing.maintenance.IndexingStateMetrics#refresh",
+              "each instance reads the indexing gauges it reports itself; it only reads (E12)"),
+          Map.entry(
+              "io.opaa.indexing.maintenance.IndexingStateMetrics#refreshReindex",
+              "each instance reads the re-index backlog it reports itself; it only reads (E12)"),
+          Map.entry(
+              "io.opaa.directory.sync.DirectorySyncMetrics#refresh",
+              "each instance reads the directory gauges it reports itself; it only reads (E12)"),
+          Map.entry(
+              "io.opaa.observability.PolledGaugeRefresher#refresh",
+              "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)"));
 
   /** Above the clock skew of hosts synchronised by NTP; the database clock compares the locks. */
   static final Duration MINIMUM_AT_LEAST_FOR = Duration.ofSeconds(2);

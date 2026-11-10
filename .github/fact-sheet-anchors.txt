@@ -4,6 +4,7 @@
 datenkatalog
 datenkatalog#account-state-history
 datenkatalog#accounts
+datenkatalog#agent-run-logs
 datenkatalog#application-log
 datenkatalog#audit-incident-scopes
 datenkatalog#audit-log
@@ -57,6 +58,7 @@ protokollereignisse#account-reauthentication-forced
 protokollereignisse#agent-changed
 protokollereignisse#agent-created
 protokollereignisse#agent-deleted
+protokollereignisse#agent-run-log-retention-changed
 protokollereignisse#agent-settings-changed
 protokollereignisse#api-token-expired
 protokollereignisse#api-token-issued
@@ -111,6 +113,10 @@ protokollereignisse#directory-sync-plan-discarded
 protokollereignisse#directory-sync-report-read
 protokollereignisse#directory-sync-run-completed
 protokollereignisse#document-metadata-changed
+protokollereignisse#document-template-changed
+protokollereignisse#document-template-created
+protokollereignisse#document-template-deleted
+protokollereignisse#document-template-settings-changed
 protokollereignisse#embedding-model-change-discarded
 protokollereignisse#embedding-model-changed
 protokollereignisse#embedding-model-endpoint-changed
@@ -247,6 +253,7 @@ rollensicht#create-internal-group
 rollensicht#create-library
 rollensicht#create-prompt-library
 rollensicht#create-space
+rollensicht#create-template
 rollensicht#faehigkeiten
 rollensicht#matrix
 rollensicht#system-admin
@@ -287,6 +294,8 @@ datenfluesse#transcription-model
 datenfluesse#transcription-realtime
 datenfluesse#uebersicht
 voreinstellungen
+voreinstellungen#agent-run-log-retention-settings-sandbox-log-retention-days
+voreinstellungen#agent-run-log-retention-settings-step-log-retention-days
 voreinstellungen#audit-incident-scope-retention-settings-retention-years
 voreinstellungen#audit-retention-settings-retention-months
 voreinstellungen#bereich-accounts
@@ -305,6 +314,7 @@ voreinstellungen#connection-lifecycle-settings-setting-value-inactivity-threshol
 voreinstellungen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
+voreinstellungen#document-template-settings-enabled
 voreinstellungen#einstellungen
 voreinstellungen#embedding-model-base-url
 voreinstellungen#embedding-model-model-identifier
@@ -372,6 +382,8 @@ voreinstellungen#opaa-indexing-dropbox-token-endpoint
 voreinstellungen#opaa-indexing-filesystem-allowlist
 voreinstellungen#opaa-ocr-enabled
 voreinstellungen#opaa-permission-minimum-group-size
+voreinstellungen#opaa-sandbox-base-url
+voreinstellungen#opaa-sandbox-enabled
 voreinstellungen#opaa-siem-export-enabled
 voreinstellungen#opaa-siem-export-host
 voreinstellungen#opaa-siem-export-include-labels
@@ -408,6 +420,8 @@ voreinstellungen#transcription-model-realtime-model
 voreinstellungen#transcription-model-realtime-protocol
 voreinstellungen#transcription-model-realtime-url
 fristen
+fristen#agent-run-log-retention-settings-sandbox-log-retention-days
+fristen#agent-run-log-retention-settings-step-log-retention-days
 fristen#audit-incident-scope-retention-settings-retention-years
 fristen#audit-retention-settings-retention-months
 fristen#chat-auto-cleanup-settings-archive-after-days

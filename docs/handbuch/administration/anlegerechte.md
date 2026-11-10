@@ -17,6 +17,7 @@ es an eine Person, eine Gruppe oder an „Alle Konten“.
 | Interne Gruppen anlegen | niemand außer der Systemverwaltung |
 | Prompt-Bibliotheken anlegen | Alle Konten |
 | Agenten anlegen | niemand außer der Systemverwaltung; nur sichtbar, wenn [Agenten eingeschaltet](agenten.md) sind |
+| Vorlagen anlegen | ab Werk niemand außer der Systemverwaltung; nur sichtbar, solange [Vorlagen](vorlagen.md) eingeschaltet sind |
 
 1. In der Zeile des Rechts „Ändern“.
 2. Bei Konnektorbibliotheken zuerst die Quellart oder den Zugang wählen.

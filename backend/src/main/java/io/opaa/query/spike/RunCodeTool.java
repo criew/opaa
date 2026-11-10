@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * until {@link SpikeToolLoopQueryHandler} binds them to the answer's message. A failing script is
  * reported back to the model so it can correct it; only an unreachable sandbox fails the turn.
  */
-@Component
+@Component("spikeRunCodeTool")
 @ConditionalOnProperty(
     name = {"opaa.spike.tool-loop.enabled", "opaa.sandbox.enabled"},
     havingValue = "true")
@@ -56,7 +56,7 @@ class RunCodeTool {
               + " Wissensbasis müssen im Skript selbst stehen.")
   String runCode(String code, ToolContext toolContext) {
     ToolLoopRunState runState =
-        (ToolLoopRunState) toolContext.getContext().get(SearchKnowledgeTool.RUN_STATE_KEY);
+        (ToolLoopRunState) toolContext.getContext().get(SpikeSearchKnowledgeTool.RUN_STATE_KEY);
     if (runState.chatId() == null) {
       return "Code kann nur in einem Chat eines Space ausgeführt werden.";
     }

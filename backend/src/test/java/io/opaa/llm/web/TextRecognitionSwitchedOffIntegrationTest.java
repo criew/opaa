@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.llm.ModelRoleEndpoints;
-import io.opaa.llm.TextRecognitionModelRole;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoints;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole;
 import io.opaa.test.OpaaIntegrationTest;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +32,7 @@ class TextRecognitionSwitchedOffIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private ModelRoleEndpoints endpoints;
+  @Autowired private TextRecognitionEndpoints endpoints;
   @Autowired private TextRecognitionModelRole role;
 
   private HttpServer server;

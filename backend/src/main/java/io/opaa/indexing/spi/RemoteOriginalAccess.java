@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.BiPredicate;
@@ -94,7 +95,9 @@ public class RemoteOriginalAccess implements OriginalAccess {
     }
     HttpClient httpClient = null;
     try {
-      httpClient = SourceHttpClientFactory.buildHttpClient();
+      httpClient =
+          SourceHttpClientFactory.buildHttpClient(
+              library.getSourceType().key().toLowerCase(Locale.ROOT));
       String authHeader = null;
       if (withCredentials) {
         BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());

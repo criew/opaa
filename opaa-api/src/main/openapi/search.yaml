@@ -55,9 +55,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: >
+            The named chat's space is archived. Or agentId names an agent the caller cannot use,
+            with code AGENT_NOT_AVAILABLE: unknown, of another organization, not visible to the
+            caller, not assigned to the chat's space, locked, or agents are switched off - all
+            alike, so a foreign id is never confirmed. Nothing is persisted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: >
+            The rate limit was reached. Or, with agentId, every place of the installation's agent
+            workspace is taken, with code AGENT_WORKSPACE_FULL: the request is refused before a
+            run begins, nothing is queued and nothing is persisted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           $ref: "#/components/responses/BadGateway"
         "503":
@@ -84,6 +99,9 @@ paths:
         this one request: there is no reconnection and no resumption, and a turn whose stream
         ends without final - the client went away, the instance shut down - was not persisted.
         The response carries X-Accel-Buffering: no for proxies in front of the application.
+        With agentId the stream commits as soon as the run holds its place in the workspace:
+        started follows at once, ping comments before each model call, then final without
+        delta events.
       requestBody:
         required: true
         content:
@@ -110,9 +128,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: >
+            As POST /api/v1/query: the named chat's space is archived, or agentId names an agent
+            the caller cannot use, with code AGENT_NOT_AVAILABLE.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: >
+            As POST /api/v1/query: the rate limit was reached, or with agentId every place of the
+            agent workspace is taken, with code AGENT_WORKSPACE_FULL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           $ref: "#/components/responses/BadGateway"
         "503":
@@ -621,6 +651,19 @@ components:
             space of the named chat (403 otherwise, also without a persisted chat), and keeps the
             prompt's id and its current title as a snapshot on the question's message. It changes
             nothing about the model call.
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The agent chosen for this question (ADR-0070). The turn then runs as one agent run:
+            the model calls the agent's switched-on tools within the run's limits, over the
+            libraries of the chat's space the caller may read, narrowed to the agent's - the
+            chat's own useKnowledge and @-references do not apply. Requires chatId to name a chat
+            the caller authored and no new attachmentIds (400 otherwise); refused with 409 when
+            the agent cannot be used, 429 when the agent workspace is full and 503 while the
+            active chat model is not recorded as tool-capable. The stream endpoint sends such a
+            turn as one final event. Absent: the ordinary turn, unchanged.
 
     QueryStreamEvent:
       type: object
@@ -722,6 +765,69 @@ components:
             message's attachments.
           items:
             $ref: "#/components/schemas/ChatAttachmentRef"
+        agentRun:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AgentRun"
+          description: >
+            The agent run that gave this answer; null on every answer without an agent.
+
+    AgentRun:
+      type: object
+      required: [runId, endState, steps]
+      description: >
+        What the person sees of an agent run at its answer (ADR-0070, Entscheidung 4): the run's
+        id, how it ended and each tool call. Kept with the answer's message and deleted with the
+        chat.
+      properties:
+        runId:
+          type: string
+          format: uuid
+        endState:
+          $ref: "#/components/schemas/AgentRunEndState"
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunStep"
+
+    AgentRunEndState:
+      type: string
+      description: >
+        COMPLETED - the model answered on its own. LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME - the
+        run reached its limit of tool calls, of time or of collected text and answered with what
+        it had; a client shows this as a set-off state "nicht geprüft", not as an error. ASK_USER -
+        the agent asked the person back; the answer is the question and the run ended there, the
+        reply starts a new run.
+      enum: [COMPLETED, LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME, ASK_USER]
+
+    AgentRunStep:
+      type: object
+      required: [tool, status]
+      properties:
+        tool:
+          type: string
+          description: The tool's name, or unknown for a tool the model invented.
+          example: search_knowledge
+        detail:
+          type: string
+          nullable: true
+          description: What the step was about, e.g. the sub-question of a search.
+        hits:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Passages the step found; null for a tool that finds none.
+        status:
+          $ref: "#/components/schemas/AgentRunStepStatus"
+
+    AgentRunStepStatus:
+      type: string
+      description: >
+        DONE - ran and delivered. EMPTY - ran and found nothing. ARGUMENT_IGNORED - ran, but a
+        narrowing outside the run's scope was ignored. INVALID_ARGUMENTS - not run, the arguments
+        were unusable. UNKNOWN_TOOL - the model called a tool that does not exist. DENIED - refused
+        for lack of rights. LIMIT - not run, the run's limit was reached. ERROR - failed.
+      enum: [DONE, EMPTY, ARGUMENT_IGNORED, INVALID_ARGUMENTS, UNKNOWN_TOOL, DENIED, LIMIT, ERROR]
 
     SourceFreeze:
       type: object

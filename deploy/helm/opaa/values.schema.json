@@ -712,6 +712,62 @@
         }
       }
     },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Offers the agent tool run_code (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
+        },
+        "baseUrl": {
+          "type": "string",
+          "pattern": "^(https?://\\S+)?$",
+          "description": "Address of the OpenSandbox server (OPAA_SANDBOX_BASE_URL)"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$",
+          "description": "Namespace of the sandbox pods; the chart closes their network there"
+        },
+        "serverNamespaceSelector": {
+          "type": "object",
+          "description": "Namespace selector of the OpenSandbox server"
+        },
+        "serverPodSelector": {
+          "type": "object",
+          "description": "Pod selector of the OpenSandbox server"
+        },
+        "serverPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port of the OpenSandbox server"
+        },
+        "image": {
+          "type": "string",
+          "description": "Sandbox image; empty keeps the application default"
+        },
+        "runTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Time limit of one script such as 60s; empty keeps the application default"
+        },
+        "maxLifetime": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Longest life of one sandbox such as 15m, at least 60s; empty keeps the application default"
+        },
+        "cpu": {
+          "type": "string",
+          "description": "CPU limit of one sandbox such as 1 or 500m; empty keeps the application default"
+        },
+        "memory": {
+          "type": "string",
+          "description": "Memory limit of one sandbox such as 1Gi; empty keeps the application default"
+        }
+      }
+    },
     "mail": {
       "type": "object",
       "additionalProperties": false,
@@ -1002,6 +1058,217 @@
             "indexingStallMinutes": {
               "type": "integer",
               "minimum": 1
+            },
+            "groups": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "platform": {
+                  "type": "boolean"
+                },
+                "chat": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "boolean"
+                },
+                "indexing": {
+                  "type": "boolean"
+                },
+                "directory": {
+                  "type": "boolean"
+                },
+                "background": {
+                  "type": "boolean"
+                },
+                "audit": {
+                  "type": "boolean"
+                },
+                "security": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "errorRateCriticalThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "retrievalEmptyShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "outboundAuthErrorShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "identityProviderFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "throttledShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "indexingRunFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "mailFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "malwareScanFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "chatSloObjective": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            },
+            "errorRateCriticalMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chatSloMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retrievalEmptyMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outboundAuthErrorMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityProviderMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityProviderKeyErrorMin": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "throttledMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indexingRunFailureMinRuns": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mailFailureMinAttempts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "malwareScanMinScans": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "loginFailureMin": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "monthlyTokenBudget": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncMaxAgeHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncPlanPendingHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueMinMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "malwareSignatureMaxAgeDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "siemExportLagMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonWarningDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonCriticalHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "heartbeatMaxAgeSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "loginFailureFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "queueMaxAgeMinutes": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[a-z_]+$"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "runbookBaseUrl": {
+          "type": "string",
+          "pattern": "^https?://[^#\\s]+$",
+          "description": "Address of the runbook page without anchor"
+        },
+        "grafanaDashboards": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "labelValue": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "object"
+            },
+            "annotations": {
+              "type": "object"
             }
           }
         }
@@ -1317,6 +1584,11 @@
           "type": "string",
           "pattern": "^$|^\\S{32,}$",
           "description": "Key of the bundled text recognition service (ocr-api-key), at least 32 characters without spaces; required with ocr.service.enabled unless secrets.existingSecret is set"
+        },
+        "sandboxApiKey": {
+          "type": "string",
+          "pattern": "^$|^\\S{32,}$",
+          "description": "API key of the OpenSandbox server (OPAA_SANDBOX_API_KEY), at least 32 characters without spaces; required with sandbox.enabled unless secrets.existingSecret is set"
         },
         "rerankApiKey": {
           "type": "string",

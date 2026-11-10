@@ -8,13 +8,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
+import io.opaa.instance.ScheduledJobMetrics;
 import io.opaa.mail.MailOutbox.Batch;
 import io.opaa.mail.MailOutbox.Claimed;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
+import org.springframework.scheduling.config.ScheduledTaskHolder;
+import org.springframework.scheduling.support.ScheduledMethodRunnable;
 
 /**
  * The decisions of {@link MailOutboxWorker} on one claimed row (ADR-0053, Entscheidung 11); that
@@ -28,14 +35,16 @@ class MailOutboxWorkerTest {
   private final MailOutbox outbox = mock(MailOutbox.class);
   private final MailService mail = mock(MailService.class);
   private final MailSenderProvider senderProvider = mock(MailSenderProvider.class);
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final MailOutboxWorker worker =
       new MailOutboxWorker(
           outbox,
           mail,
           senderProvider,
           new ConcurrentTaskScheduler(),
-          java.time.Clock.systemUTC(),
-          LEASE);
+          Clock.systemUTC(),
+          LEASE,
+          new MailDeliveryMetrics(meters));
 
   @Test
   void theRetryDelayDoublesFromOneMinuteUpToOneHour() {
@@ -119,6 +128,72 @@ class MailOutboxWorkerTest {
     worker.deliverDue();
 
     verify(outbox, never()).claimDue(anyInt(), any());
+  }
+
+  @Test
+  void everyAttemptIsCountedAsSentRetryOrFailedWithoutRecipientOrTemplate() {
+    Claimed delivered = claimed(1);
+    Claimed refused = claimed(2);
+    Claimed last = claimed(MailOutboxWorker.MAX_ATTEMPTS);
+    UUID unreadable = UUID.randomUUID();
+    when(senderProvider.isEnabled()).thenReturn(true);
+    when(outbox.claimDue(1, LEASE))
+        .thenReturn(
+            new Batch(List.of(delivered), List.of()),
+            new Batch(List.of(refused), List.of()),
+            new Batch(List.of(last), List.of()),
+            new Batch(
+                List.of(),
+                List.of(new MailOutbox.Unreadable(unreadable, "password-reset", 1, "kaputt"))),
+            NOTHING);
+    when(mail.deliver(delivered)).thenReturn(new SendResult.Sent("x"));
+    when(mail.deliver(refused)).thenReturn(new SendResult.Failed("Connection refused"));
+    when(mail.deliver(last)).thenReturn(new SendResult.Failed("Connection refused"));
+
+    worker.deliverDue();
+
+    assertThat(sent("sent")).isEqualTo(1.0);
+    assertThat(sent("retry")).isEqualTo(1.0);
+    assertThat(sent("failed")).isEqualTo(2.0);
+    assertThat(meters.get(MailDeliveryMetrics.SENT).meters())
+        .allSatisfy(meter -> assertThat(meter.getId().getTags()).hasSize(1));
+  }
+
+  @Test
+  void aRunThatStopsOnAnErrorCountsAsAFailedScheduledRun() throws Exception {
+    when(senderProvider.isEnabled()).thenReturn(true);
+    when(outbox.claimDue(1, LEASE)).thenThrow(new IllegalStateException("database away"));
+    SimpleMeterRegistry runs = new SimpleMeterRegistry();
+    ObservationRegistry observations = ObservationRegistry.create();
+    observations
+        .observationConfig()
+        .observationHandler(
+            new ScheduledJobMetrics(
+                runs,
+                Clock.systemUTC(),
+                new DefaultListableBeanFactory().getBeanProvider(ScheduledTaskHolder.class)));
+    double started = Clock.systemUTC().millis() / 1000.0;
+
+    new ScheduledMethodRunnable(
+            worker, MailOutboxWorker.class.getMethod("poll"), null, () -> observations)
+        .run();
+
+    assertThat(
+            runs.get(ScheduledJobMetrics.FAILURES)
+                .tag(ScheduledJobMetrics.TAG, "mail-outbox-worker.poll")
+                .counter()
+                .count())
+        .isEqualTo(1.0);
+    assertThat(
+            runs.get(ScheduledJobMetrics.LAST_SUCCESS)
+                .tag(ScheduledJobMetrics.TAG, "mail-outbox-worker.poll")
+                .gauge()
+                .value())
+        .isLessThanOrEqualTo(started);
+  }
+
+  private double sent(String result) {
+    return meters.get(MailDeliveryMetrics.SENT).tag("result", result).counter().count();
   }
 
   private static Claimed claimed(int attempts) {

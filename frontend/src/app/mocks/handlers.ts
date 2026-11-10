@@ -21,6 +21,8 @@ import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmH
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
 import { agentHandlers } from '@/features/agent/mocks/agentHandlers'
+// document-template
+import { documentTemplateHandlers } from '@/features/document-template/mocks/documentTemplateHandlers'
 // group
 import { groupHandlers } from '@/features/group/mocks/groupHandlers'
 import { groupAdminHandlers } from '@/features/group/mocks/groupAdminHandlers'
@@ -109,6 +111,8 @@ export const handlers = [
   // prompt
   ...promptLibraryHandlers,
   ...agentHandlers,
+  // document-template
+  ...documentTemplateHandlers,
   // group
   ...groupHandlers,
   ...groupAdminHandlers,

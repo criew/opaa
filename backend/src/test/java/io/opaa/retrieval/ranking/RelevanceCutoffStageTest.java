@@ -12,7 +12,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.CandidateOutcome;
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.api.types.VerdictReason;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
@@ -242,10 +242,10 @@ class RelevanceCutoffStageTest {
     when(rerank.rerank(anyString(), any()))
         .thenReturn(
             List.of(
-                new io.opaa.llm.RerankClient.ScoredCandidate(0, 0.9),
-                new io.opaa.llm.RerankClient.ScoredCandidate(2, 0.85),
-                new io.opaa.llm.RerankClient.ScoredCandidate(1, 0.2),
-                new io.opaa.llm.RerankClient.ScoredCandidate(3, 0.1)));
+                new io.opaa.llm.rerank.RerankClient.ScoredCandidate(0, 0.9),
+                new io.opaa.llm.rerank.RerankClient.ScoredCandidate(2, 0.85),
+                new io.opaa.llm.rerank.RerankClient.ScoredCandidate(1, 0.2),
+                new io.opaa.llm.rerank.RerankClient.ScoredCandidate(3, 0.1)));
     QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 50, 20, 2);
 
     RetrievalPipelineResult result =

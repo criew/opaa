@@ -110,6 +110,7 @@ public final class S3RequestGuard implements ExecutionInterceptor {
       }
     }
     SdkHttpRequest request = context.httpRequest();
+    S3OutboundMetrics.attempt(true);
     try {
       targetPolicy.validate(request);
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
@@ -122,6 +123,7 @@ public final class S3RequestGuard implements ExecutionInterceptor {
       throw NonRetryableException.create(
           "request budget exhausted", new BudgetSignal(requestBudget));
     }
+    S3OutboundMetrics.attempt(false);
     if (requestObserver != null) {
       requestObserver.accept(request);
     }

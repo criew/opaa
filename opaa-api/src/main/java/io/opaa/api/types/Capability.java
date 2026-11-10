@@ -43,5 +43,11 @@ public enum Capability {
    * the system administration names who may build one. Offered only while the installation switch
    * for agents is on.
    */
-  CREATE_AGENT
+  CREATE_AGENT,
+
+  /**
+   * Creating a document template. Delivered to nobody: a template shapes what agents hand out as
+   * files, so who may add one is a deliberate decision of the installation.
+   */
+  CREATE_TEMPLATE
 }

@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -250,7 +251,8 @@ class MailOutboxIntegrationTest {
         senderProvider,
         new ConcurrentTaskScheduler(),
         java.time.Clock.systemUTC(),
-        SHORT_LEASE);
+        SHORT_LEASE,
+        new MailDeliveryMetrics(new SimpleMeterRegistry()));
   }
 
   private static void awaitThenDeliver(CountDownLatch start, MailOutboxWorker worker) {

@@ -55,8 +55,8 @@ import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingModelService;
-import io.opaa.llm.TextRecognitionModelRole;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
@@ -68,6 +68,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -102,7 +103,8 @@ public class IndexingConfiguration {
       DatabaseClock databaseClock,
       CurrentInstance currentInstance,
       InstanceRegistry instanceRegistry,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      IndexingMetrics indexingMetrics) {
     return new IndexingJobService(
         indexingJobRepository,
         assetRepository,
@@ -110,12 +112,29 @@ public class IndexingConfiguration {
         databaseClock,
         currentInstance,
         instanceRegistry,
-        embeddingModels);
+        embeddingModels,
+        indexingMetrics);
   }
 
   @Bean
   IndexingMetrics indexingMetrics(MeterRegistry meterRegistry) {
     return new IndexingMetrics(meterRegistry);
+  }
+
+  /**
+   * Registers the {@code opaa.indexing.documents} series of every registered source type at 0 once
+   * all beans exist, so a fresh pod reports them before its first document (OpaaIndexingStalled).
+   */
+  @Bean
+  SmartInitializingSingleton indexingDocumentSeries(
+      IndexingMetrics indexingMetrics, ObjectProvider<SourceConnectorRegistry> connectors) {
+    return () ->
+        connectors.ifAvailable(
+            registry ->
+                indexingMetrics.registerDocumentSeries(
+                    registry.descriptors().stream()
+                        .map(descriptor -> descriptor.type().key())
+                        .toList()));
   }
 
   /**

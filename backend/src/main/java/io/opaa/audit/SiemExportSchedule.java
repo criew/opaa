@@ -1,5 +1,8 @@
 package io.opaa.audit;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.jvm.ExecutorServiceMetrics;
 import io.opaa.instance.ScheduledRunLocks;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,8 +25,10 @@ public class SiemExportSchedule {
 
   private final SiemExportService service;
 
-  SiemExportSchedule(SiemExportService service) {
+  SiemExportSchedule(SiemExportService service, MeterRegistry meterRegistry) {
     this.service = service;
+    new ExecutorServiceMetrics(SyslogSender.WATCHDOG, "siem-export-watchdog", Tags.empty())
+        .bindTo(meterRegistry);
   }
 
   @Bean(name = SCHEDULER, destroyMethod = "shutdown")

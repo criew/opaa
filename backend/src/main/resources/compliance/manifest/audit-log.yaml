@@ -446,6 +446,20 @@ auditEvents:
   - id: AGENT_DELETED
     trigger: Ein Agent wird gelöscht
     payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_CREATED
+    trigger: Eine Dokumentvorlage wird angelegt
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_CHANGED
+    trigger: Name, Beschreibung oder Datei einer Dokumentvorlage ändert sich
+    details: Nur die Namen der geänderten Felder, nie der Inhalt der Datei
+    payloadKeys: [changedFields]
+  - id: DOCUMENT_TEMPLATE_DELETED
+    trigger: Eine Dokumentvorlage wird mit ihrer Datei gelöscht
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_SETTINGS_CHANGED
+    trigger: Der Schalter „Vorlagen“ wird ein- oder ausgeschaltet
+    details: Vorher/Nachher des Schalters
+    payloadKeys: [enabled]
   - id: PROMPT_CREATED
     trigger: Ein Prompt wird einer Bibliothek hinzugefügt
     details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
@@ -1063,6 +1077,9 @@ auditEvents:
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
     payloadKeys: [retentionMonths]
+  - id: AGENT_RUN_LOG_RETENTION_CHANGED
+    trigger: Die Aufbewahrungsfristen des Schrittprotokolls oder des Sandbox-Protokolls der Agenten ändern sich
+    payloadKeys: [sandboxLogRetentionDays, stepLogRetentionDays]
   - id: CHAT_AUTO_CLEANUP_PERIODS_CHANGED
     trigger: >-
       Die Fristen der automatischen Bereinigung der Chats in Spaces ändern sich oder kehren zur

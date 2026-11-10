@@ -1,3 +1,4 @@
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import type { ElementType } from 'react'
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
@@ -48,6 +49,11 @@ const PRESENTATION: Record<Capability, CapabilityPresentation> = {
     description:
       'Helfer, die eine Frage in mehreren Schritten mit Werkzeugen abarbeiten. Sie lesen nur, was die aufrufende Person lesen darf.',
     icon: SmartToyOutlinedIcon,
+  },
+  CREATE_TEMPLATE: {
+    title: 'Vorlagen',
+    description: 'Word-Vorlagen mit Platzhaltern, nach denen Agenten Dateien erstellen.',
+    icon: DescriptionOutlinedIcon,
   },
 }
 

@@ -14,7 +14,7 @@ import io.opaa.api.dto.TranscriptionRealtimeSettingsRequest;
 import io.opaa.api.dto.TranscriptionRealtimeTestRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

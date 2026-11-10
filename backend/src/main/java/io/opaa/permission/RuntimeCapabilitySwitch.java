@@ -3,16 +3,19 @@ package io.opaa.permission;
 import io.opaa.api.types.Capability;
 
 /**
- * A capability that hangs on a switch the system administration turns at run time, stored in the
- * database rather than in the start-up configuration. While {@link #offered()} answers {@code
- * false}, the capability is neither held nor listed, exactly as for a switched-off feature
- * (ADR-0044); its grants stay stored. The business package owning the switch contributes the bean.
+ * An installation switch that offers or withholds one {@link Capability} while the installation
+ * runs, without a restart. The business package owning the switch contributes the bean; {@link
+ * CapabilityService} asks every one on each evaluation, so the answer must be a cheap read of the
+ * current state, never cached across instances (ADR-0053).
+ *
+ * <p>Withheld, the capability is neither held nor listed, exactly as for a switched-off feature
+ * flag; its grants stay stored.
  */
 public interface RuntimeCapabilitySwitch {
 
-  /** The capability this switch governs. */
+  /** The capability this switch offers or withholds. */
   Capability capability();
 
-  /** Whether the installation offers the capability right now; asked per check, never cached. */
+  /** Whether the installation offers the capability right now. */
   boolean offered();
 }

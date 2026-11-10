@@ -1,4 +1,5 @@
 import type {
+  AgentRunLogRetention,
   ChatAutoCleanupRetention,
   ChatAutoCleanupRetentionUpdate,
   IncidentScopeRetention,
@@ -62,4 +63,16 @@ export function updateIncidentScopeRetention(
   update: IncidentScopeRetentionUpdate,
 ): Promise<IncidentScopeRetention> {
   return write('incident-scopes', update)
+}
+
+/** The periods of the step log and the sandbox log of agent runs. */
+export function getAgentRunLogRetention(): Promise<AgentRunLogRetention> {
+  return read('agent-run-logs')
+}
+
+/** Both periods in days; the sandbox log never longer than the step log. */
+export function updateAgentRunLogRetention(
+  update: AgentRunLogRetention,
+): Promise<AgentRunLogRetention> {
+  return write('agent-run-logs', update)
 }

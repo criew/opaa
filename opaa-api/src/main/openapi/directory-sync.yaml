@@ -775,7 +775,7 @@ components:
         createdAt:
           type: string
           format: date-time
-          description: When the run that produced this plan read the directory - its age.
+          description: When the first plan still undecided was presented - the age of the pending decision; a run replacing the plan keeps it.
         changedFraction:
           type: number
           format: double

@@ -40,6 +40,9 @@ import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMemberSeed;
 import io.opaa.space.SpaceService;
+import io.opaa.template.DocumentTemplateCreation;
+import io.opaa.template.DocumentTemplateService;
+import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import io.opaa.test.OwnOrganizationFixtures;
@@ -101,7 +104,8 @@ class PermissionMatrixIntegrationTest {
           "membershipId",
           "promptLibraryId",
           "promptId",
-          "agentId");
+          "agentId",
+          "documentTemplateId");
 
   /** Path parameters naming an object of one person. */
   private static final Set<String> PERSON_SCOPED =
@@ -147,6 +151,7 @@ class PermissionMatrixIntegrationTest {
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private LibraryFolderService folderService;
   @Autowired private PromptLibraryService promptLibraryService;
+  @Autowired private DocumentTemplateService documentTemplateService;
   @Autowired private PromptService promptService;
   @Autowired private AgentService agentService;
   @Autowired private GroupRepository groupRepository;
@@ -164,6 +169,7 @@ class PermissionMatrixIntegrationTest {
   private final Map<UUID, UUID> libraries = new LinkedHashMap<>();
   private final List<UUID> promptLibraries = new ArrayList<>();
   private final List<UUID> agents = new ArrayList<>();
+  private final List<UUID> documentTemplates = new ArrayList<>();
   private final List<UUID> groups = new ArrayList<>();
 
   @BeforeEach
@@ -198,9 +204,15 @@ class PermissionMatrixIntegrationTest {
       jdbc.update("DELETE FROM prompt_libraries WHERE id = ?", library);
       jdbc.update("DELETE FROM assets WHERE id = ?", library);
     }
+    for (UUID template : documentTemplates) {
+      jdbc.update("DELETE FROM document_templates WHERE id = ?", template);
+      jdbc.update("DELETE FROM assets WHERE id = ?", template);
+    }
+    jdbc.update("DELETE FROM document_template_settings");
     List<UUID> assets = new ArrayList<>(libraries.keySet());
     assets.addAll(promptLibraries);
     assets.addAll(agents);
+    assets.addAll(documentTemplates);
     for (UUID asset : assets) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", asset.toString());
       jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", asset);
@@ -211,6 +223,7 @@ class PermissionMatrixIntegrationTest {
     }
     promptLibraries.clear();
     agents.clear();
+    documentTemplates.clear();
     libraryFixtures.removeLibraries(libraries.keySet().toArray(UUID[]::new));
     // An upload stores its original outside the transaction that rolled back.
     libraries.forEach(
@@ -657,6 +670,22 @@ class PermissionMatrixIntegrationTest {
             .getId();
     agents.add(agent);
     associations.associate(space, Agent.ASSET_TYPE, agent, ownerCaller);
+    jdbc.update(
+        "INSERT INTO document_template_settings (id, enabled, updated_at) VALUES (1, true, now())"
+            + " ON CONFLICT (id) DO UPDATE SET enabled = true");
+    UUID documentTemplate =
+        documentTemplateService
+            .create(
+                new DocumentTemplateCreation(
+                    "Matrix-Vorlage " + suffix,
+                    null,
+                    null,
+                    null,
+                    TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}"))),
+                ownerCaller)
+            .template()
+            .getId();
+    documentTemplates.add(documentTemplate);
 
     UUID chatAuthor = devUserRole != null ? devUser : owner;
     UUID chat = aChat(space, chatAuthor, organization);
@@ -676,6 +705,7 @@ class PermissionMatrixIntegrationTest {
       grant(library, "KNOWLEDGE_LIBRARY", devUserAssetRole);
       grant(promptLibrary, "PROMPT_LIBRARY", devUserAssetRole);
       grant(agent, "AGENT", devUserAssetRole);
+      grant(documentTemplate, "DOCUMENT_TEMPLATE", devUserAssetRole);
     }
     UUID membership =
         jdbc.queryForObject(
@@ -781,6 +811,7 @@ class PermissionMatrixIntegrationTest {
     ids.put("promptLibraryId", promptLibrary.toString());
     ids.put("promptId", prompt.toString());
     ids.put("agentId", agent.toString());
+    ids.put("documentTemplateId", documentTemplate.toString());
     ids.put("chatId", chat.toString());
     ids.put("itemId", item.toString());
     ids.put("otherChatId", otherChat.toString());

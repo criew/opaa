@@ -89,6 +89,7 @@ nav:
           - benutzer/bibliothek-anlegen.md
           - benutzer/prompt-bibliothek-anlegen.md
           - benutzer/agent-anlegen.md
+          - benutzer/vorlage-anlegen.md
       - Bibliothek pflegen:
           - benutzer/arbeitsmittel-teilen.md
           - benutzer/bibliothek-aktuell-halten.md
@@ -133,6 +134,7 @@ nav:
           - administration/e-mail.md
           - administration/virenpruefung.md
           - administration/agenten.md
+          - administration/vorlagen.md
           - administration/einstellungen-uebertragen.md
       - Revision:
           - administration/stichtagsauskunft.md
@@ -147,6 +149,7 @@ nav:
       - betrieb/authentifizierung.md
       - betrieb/modell-endpunkte.md
       - betrieb/texterkennung.md
+      - betrieb/sandbox.md
       - betrieb/netz-und-sicherheit.md
       - betrieb/datenbank.md
       - betrieb/originalablage.md
@@ -155,6 +158,8 @@ nav:
       - betrieb/aktualisierung.md
       - betrieb/sicherung-und-wiederherstellung.md
       - betrieb/ueberwachung-und-fehlerbehebung.md
+      - betrieb/dashboards-und-alarme.md
+      - betrieb/alarme.md
       - betrieb/nachvollziehbarkeit.md
       - betrieb/releases-und-nachweise.md
   - Referenz:

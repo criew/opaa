@@ -79,6 +79,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                           "chat_messages." + ChatMessage.TITLE_OF_USED_COLUMN),
                       Field.of("createdAt", "Zeitpunkt", "chat_messages.created_at"),
                       Field.of("evidence", "Belegstand", "chat_messages.answer_evidence"),
+                      Field.of("agentRun", "Agentenlauf (Schritte)", "chat_messages.agent_run"),
                       Field.of(
                           "sources",
                           "Fundstellen (Titel, Bibliothek, Ort)",
@@ -257,6 +258,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                         message.getUsedPrompt() == null ? null : message.getUsedPrompt().title(),
                         message.getCreatedAt(),
                         evidenceOf(message.getAnswerEvidence()),
+                        agentRunOf(message.getAgentRun()),
                         sourcesOf(message.getSources())))
             .toList();
     Map<UUID, String> libraries = libraryNames(stored, chat.organizationId());
@@ -273,6 +275,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       record.put("prompt", message.prompt());
       record.put("createdAt", message.createdAt());
       record.put("evidence", message.evidence());
+      record.put("agentRun", message.agentRun());
       record.put(
           "sources",
           message.sources().stream()
@@ -368,6 +371,29 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
   }
 
   /**
+   * The steps of the agent run that gave an answer, one line each: tool, sub-question and hit
+   * count; {@code null} for an answer without an agent run.
+   */
+  static List<String> agentRunOf(String agentRun) {
+    if (agentRun == null || agentRun.isBlank()) {
+      return null;
+    }
+    List<String> lines = new ArrayList<>();
+    for (JsonNode step : EVIDENCE_JSON.readTree(agentRun).path("steps")) {
+      StringBuilder line = new StringBuilder(step.path("tool").asString(""));
+      String detail = step.path("detail").asString("");
+      if (!detail.isBlank()) {
+        line.append(": ").append(detail);
+      }
+      if (step.path("hits").isNumber()) {
+        line.append(" (").append(step.path("hits").asInt()).append(" Treffer)");
+      }
+      lines.add(line.toString());
+    }
+    return lines;
+  }
+
+  /**
    * The numbered position within {@code location} - page, slide, row, message or part - without
    * heading paths, sheet names or slide titles, which are text of the document; {@code null} when
    * the location names no such position.
@@ -431,6 +457,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       String prompt,
       Instant createdAt,
       String evidence,
+      List<String> agentRun,
       List<StoredSource> sources) {}
 
   record StoredSource(String fileName, UUID documentId, List<String> locations, boolean cited) {}

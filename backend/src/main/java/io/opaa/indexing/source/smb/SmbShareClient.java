@@ -35,6 +35,10 @@ import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.spi.ConnectorChecks;
 import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.indexing.spi.RequestBudget;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundOutcome;
+import io.opaa.observability.OutboundPathClass;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.security.TargetAddressValidator.Scope;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -68,7 +72,8 @@ import org.slf4j.LoggerFactory;
  * SMB message charged to the {@link RequestBudget} before it leaves. The socket is opened only
  * after the target validation passed for the host of {@code sourceUrl}, signing is required,
  * encryption is used where the server offers it, and DFS referrals are not followed - credentials
- * never leave that host. A guest or anonymous session is refused.
+ * never leave that host. A guest or anonymous session is refused. Every sign-in, folder opening and
+ * download counts in {@code opaa.outbound.requests} as kind {@code smb} ({@link #outcome}).
  */
 @DataFlow("source-smb")
 final class SmbShareClient implements AutoCloseable {
@@ -76,6 +81,9 @@ final class SmbShareClient implements AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(SmbShareClient.class);
 
   static final String ALLOWLIST_HINT = TargetAddressValidator.ALLOWLIST_HINT;
+
+  private static final OutboundMetrics METRICS =
+      OutboundMetrics.global(OutboundTarget.CONNECTOR, "smb");
 
   private static final long REPARSE_TAG_NAME_SURROGATE = 0x20000000L;
   private static final long REPARSE_TAG_DFS = 0x8000000AL;
@@ -287,7 +295,7 @@ final class SmbShareClient implements AutoCloseable {
     }
     try {
       try {
-        signIn();
+        measured(this::signedIn);
       } catch (SmbAccessException.Authentication e) {
         if (!e.secretRejected() || !credentials.renewedAfterRejection(signedInWith)) {
           throw e;
@@ -295,7 +303,7 @@ final class SmbShareClient implements AutoCloseable {
         closeSessionAndConnection();
         session = null;
         connection = null;
-        signIn();
+        measured(this::signedIn);
       }
     } catch (SmbAccessException e) {
       failure = e;
@@ -306,6 +314,11 @@ final class SmbShareClient implements AutoCloseable {
   private DiskShare share() throws SmbAccessException, InterruptedException {
     connect();
     return share;
+  }
+
+  private Void signedIn() throws SmbAccessException, InterruptedException {
+    signIn();
+    return null;
   }
 
   private void signIn() throws SmbAccessException, InterruptedException {
@@ -420,6 +433,12 @@ final class SmbShareClient implements AutoCloseable {
 
   private Listing list(String path, String pattern)
       throws SmbAccessException, InterruptedException {
+    connect();
+    return measured(() -> openListing(path, pattern));
+  }
+
+  private Listing openListing(String path, String pattern)
+      throws SmbAccessException, InterruptedException {
     String what = path.isEmpty() ? "den Stammordner der Freigabe" : "den Ordner „" + path + "“";
     Directory directory = (Directory) openUnlinked(path, true, what);
     try {
@@ -451,6 +470,12 @@ final class SmbShareClient implements AutoCloseable {
   }
 
   private Path downloadOnce(String path, String fileName, long maxBytes)
+      throws SmbAccessException, InterruptedException {
+    connect();
+    return measured(() -> copyToTemporaryFile(path, fileName, maxBytes));
+  }
+
+  private Path copyToTemporaryFile(String path, String fileName, long maxBytes)
       throws SmbAccessException, InterruptedException {
     String what = "die Datei „" + path + "“";
     File file = (File) openUnlinked(path, false, what);
@@ -780,7 +805,7 @@ final class SmbShareClient implements AutoCloseable {
     }
     if (find(e, TimeoutException.class) != null || find(e, SocketTimeoutException.class) != null) {
       return new SmbAccessException.Unreachable(
-          "Der Server „" + address.host() + "“ hat nicht rechtzeitig geantwortet.");
+          "Der Server „" + address.host() + "“ hat nicht rechtzeitig geantwortet.", true);
     }
     IOException io = e instanceof IOException direct ? direct : find(e, IOException.class);
     if (io != null && !(io instanceof TransportException)) {
@@ -795,6 +820,57 @@ final class SmbShareClient implements AutoCloseable {
         "Die Verbindung zum Server „"
             + address.host()
             + "“ ist gescheitert (SMB 2 oder 3 mit Signatur erforderlich).");
+  }
+
+  /** One SMB exchange of this client. */
+  @FunctionalInterface
+  private interface SmbCall<T> {
+    T run() throws SmbAccessException, InterruptedException;
+  }
+
+  /**
+   * Runs {@code call} and counts it; a request the budget refused never left and does not count.
+   */
+  private static <T> T measured(SmbCall<T> call) throws SmbAccessException, InterruptedException {
+    OutboundPathClass path = OutboundPathClass.ofCurrentThread();
+    long start = System.nanoTime();
+    try {
+      T result = call.run();
+      METRICS.record(path, OutboundOutcome.SUCCESS, System.nanoTime() - start);
+      return result;
+    } catch (SmbAccessException e) {
+      METRICS.record(path, outcome(e), System.nanoTime() - start);
+      throw e;
+    } catch (InterruptedException e) {
+      METRICS.record(path, OutboundOutcome.TIMEOUT, System.nanoTime() - start);
+      throw e;
+    } catch (RequestBudgetExhaustedException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      METRICS.record(path, OutboundOutcome.IO_ERROR, System.nanoTime() - start);
+      throw e;
+    }
+  }
+
+  /**
+   * The result class of a failed SMB exchange: a refused account or right is {@code auth_error}, a
+   * missing share, file or a link {@code client_error}, a refusal of the server for this one
+   * request {@code server_error}, no answer in time {@code timeout}, no answer at all {@code
+   * io_error}.
+   */
+  static OutboundOutcome outcome(SmbAccessException failure) {
+    return switch (failure) {
+      case SmbAccessException.Authentication a -> OutboundOutcome.AUTH_ERROR;
+      case SmbAccessException.AccessDenied a -> OutboundOutcome.AUTH_ERROR;
+      case SmbAccessException.ShareNotFound a -> OutboundOutcome.CLIENT_ERROR;
+      case SmbAccessException.NotFound a -> OutboundOutcome.CLIENT_ERROR;
+      case SmbAccessException.Link a -> OutboundOutcome.CLIENT_ERROR;
+      case SmbAccessException.TooLarge a -> OutboundOutcome.CLIENT_ERROR;
+      case SmbAccessException.Unreachable u ->
+          u.timedOut() ? OutboundOutcome.TIMEOUT : OutboundOutcome.IO_ERROR;
+      case SmbAccessException.Transient a -> OutboundOutcome.SERVER_ERROR;
+      default -> OutboundOutcome.IO_ERROR;
+    };
   }
 
   private static boolean isGuestRefusal(RuntimeException e) {

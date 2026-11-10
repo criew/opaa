@@ -41,6 +41,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
   /** The rows the migrations deliver; every other table starts empty. */
   private static final Map<String, Long> SEEDED_ROW_COUNTS =
       Map.ofEntries(
+          Map.entry("agent_workspace", 1L),
           Map.entry("agent_settings", 1L),
           Map.entry("agent_settings_tools", 4L),
           Map.entry("audit_retention_settings", 1L),
@@ -50,6 +51,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
           Map.entry("chat_locked_account_cleanup_state", 1L),
           Map.entry("connection_log_retention_settings", 1L),
           Map.entry("diagnostic_context_retention_settings", 1L),
+          Map.entry("agent_run_log_retention_settings", 1L),
           Map.entry("document_type_suffix_exclusions", 14L),
           Map.entry("document_type_suffixes", 7L),
           Map.entry("document_type_synonyms", 34L),
@@ -232,6 +234,11 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "space_memberships",
             "spaces",
             // assistant
+            "agent_run_log_retention_settings",
+            "agent_run_reservations",
+            "agent_sandbox_log",
+            "agent_step_log",
+            "agent_workspace",
             "agent_libraries",
             "agent_seeds",
             "agent_settings",
@@ -248,6 +255,9 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "chat_note_items",
             "chat_personal_marks",
             "chats",
+            "document_template_files",
+            "document_template_settings",
+            "document_templates",
             "locked_account_chat_cleanup_settings",
             "prompt_libraries",
             "prompts",

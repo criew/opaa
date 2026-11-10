@@ -170,6 +170,27 @@ public record QueryProperties(
         Fusion.DEFAULT);
   }
 
+  /**
+   * The same parameter set without the sub-question decomposition: the question is searched as
+   * given. For a caller whose question already is a search query, such as a tool call of the agent
+   * loop, where a second decomposition would only cost a model call.
+   */
+  public QueryProperties withoutDecomposition() {
+    return new QueryProperties(
+        topK,
+        fetchK,
+        mmrLambda,
+        similarityThreshold,
+        false,
+        maxSubQueries,
+        maxChunksPerDocument,
+        fullTextSearchEnabled,
+        rerankCandidateCount,
+        conversationWindowMessages,
+        searchWindowTurns,
+        fusion);
+  }
+
   /** The same parameter set with another {@link Fusion}. */
   public QueryProperties withFusion(Fusion otherFusion) {
     return new QueryProperties(

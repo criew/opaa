@@ -1,0 +1,414 @@
+# Topic "document-templates": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: document-template
+    description: >
+      Document templates: DOCX files with placeholders that an agent fills through the sandbox.
+      The backend stores and inspects a template, it never renders one.
+paths:
+  /api/v1/document-templates/availability:
+    get:
+      operationId: getDocumentTemplateAvailability
+      tags: [document-template]
+      summary: >
+        Whether the installation offers document templates right now - the installation switch
+        "Vorlagen" of getDocumentTemplateSettings. Read per request, so switching takes effect on
+        every instance without a restart.
+      responses:
+        "200":
+          description: The current state of the switch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateAvailabilityResponse"
+
+  /api/v1/system/document-templates:
+    get:
+      operationId: getDocumentTemplateSettings
+      tags: [document-template]
+      summary: The installation switch "Vorlagen" (system admin only)
+      responses:
+        "200":
+          description: The switch and who changed it last
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateDocumentTemplateSettings
+      tags: [document-template]
+      summary: >
+        Switch document templates on or off for the whole installation (system admin only). Off
+        is the delivered state. Switched off, no template is listed, offered or readable and
+        creating one answers 404; the stored templates are kept. Every change is audited as
+        DOCUMENT_TEMPLATE_SETTINGS_CHANGED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentTemplateSettingsRequest"
+      responses:
+        "200":
+          description: The stored switch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/document-templates:
+    get:
+      operationId: listDocumentTemplates
+      tags: [document-template]
+      summary: >
+        List the document templates the caller may read - direct grant, grant to one of their
+        groups, or organization-wide release. 404 while the switch "Vorlagen" is off.
+      responses:
+        "200":
+          description: The readable templates, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentTemplateResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createDocumentTemplate
+      tags: [document-template]
+      summary: >
+        Create a document template from a DOCX file, owned by the caller or by one of the caller's
+        groups. Needs the capability CREATE_TEMPLATE. The file must be a Word document (.docx)
+        without macros or ActiveX controls, at most 10 MB, and its placeholders must be well
+        formed: every for and if closed by its endfor and endif. The placeholders are read from
+        the file and returned; nothing in it is executed. Rights are then given through
+        /api/v1/assets/DOCUMENT_TEMPLATE/{assetId}/grants. 404 while the switch "Vorlagen" is off;
+        503 when the malware scan is switched on and could not check the file (nothing stored).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentTemplateCreateForm"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The caller lacks the capability CREATE_TEMPLATE (code CAPABILITY_REQUIRED), or the
+            named owner group is one the caller is not a member of.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/document-templates/{documentTemplateId}:
+    parameters:
+      - $ref: "#/components/parameters/DocumentTemplateIdPath"
+
+    get:
+      operationId: getDocumentTemplate
+      tags: [document-template]
+      summary: Get a document template (VIEWER or above; a system administrator counts as OWNER)
+      responses:
+        "200":
+          description: The template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateDocumentTemplate
+      tags: [document-template]
+      summary: Replace name and description (MANAGER or above).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentTemplateUpdateRequest"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteDocumentTemplate
+      tags: [document-template]
+      summary: >
+        Delete a document template (OWNER only) together with its file, grants and space
+        associations.
+      responses:
+        "204":
+          description: Template deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/document-templates/{documentTemplateId}/file:
+    parameters:
+      - $ref: "#/components/parameters/DocumentTemplateIdPath"
+
+    get:
+      operationId: downloadDocumentTemplateFile
+      tags: [document-template]
+      summary: >
+        The template's DOCX file as uploaded (VIEWER or above), sent as attachment with its file
+        name.
+      responses:
+        "200":
+          description: The DOCX file
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: replaceDocumentTemplateFile
+      tags: [document-template]
+      summary: >
+        Replace the template's file (EDITOR or above - the file is the template's content),
+        checked like on creation (503 when the malware scan could not check it). The
+        placeholders are read again from the new file.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentTemplateFileForm"
+      responses:
+        "200":
+          description: Template with its new file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTemplateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+components:
+  parameters:
+    DocumentTemplateIdPath:
+      name: documentTemplateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    DocumentTemplateAvailabilityResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Whether the installation switch "Vorlagen" is on.
+
+    DocumentTemplateSettingsRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    DocumentTemplateSettingsResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: The installation switch "Vorlagen"; off as delivered.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the switch was changed last; null while it is as delivered.
+        updatedBy:
+          type: string
+          nullable: true
+          description: Display name of who changed the switch last.
+
+    DocumentTemplateCreateForm:
+      type: object
+      required: [file, name]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The Word document (.docx) with placeholders.
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+        ownerType:
+          description: USER (default) for the caller, GROUP for one of the caller's groups.
+          allOf:
+            - $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning group, required when ownerType is GROUP.
+
+    DocumentTemplateFileForm:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The Word document (.docx) with placeholders.
+
+    DocumentTemplateUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+
+    DocumentTemplatePlaceholderKind:
+      type: string
+      description: >
+        What a placeholder stands for in the template: FIELD a value inserted as text ({{ name }}),
+        LIST a repeated part ({% for item in name %}), CONDITION a part shown only when the value
+        is set ({% if name %}).
+      enum: [FIELD, LIST, CONDITION]
+
+    DocumentTemplatePlaceholder:
+      type: object
+      required: [name, kind, fields]
+      properties:
+        name:
+          type: string
+          description: The name of the value the data must provide.
+        kind:
+          $ref: "#/components/schemas/DocumentTemplatePlaceholderKind"
+        fields:
+          type: array
+          description: For a LIST, the fields each entry provides ({{ item.title }}); else empty.
+          items:
+            type: string
+
+    DocumentTemplateResponse:
+      type: object
+      required:
+        [
+          id,
+          name,
+          ownerType,
+          ownerId,
+          reach,
+          myRole,
+          fileName,
+          sizeBytes,
+          placeholders,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning user or group, whichever ownerType names.
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning person or group; null when it cannot be resolved or the
+            group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
+        myRole:
+          description: >
+            The role the caller holds. In the list, the role of the formula (at least VIEWER);
+            for a single template a system administrator counts as OWNER, as for every asset.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        fileName:
+          type: string
+          description: The name of the uploaded file.
+        sizeBytes:
+          type: integer
+          format: int64
+        placeholders:
+          type: array
+          description: The placeholders read from the file, in the order they first appear.
+          items:
+            $ref: "#/components/schemas/DocumentTemplatePlaceholder"
+        succession:
+          description: >
+            Set while the template has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

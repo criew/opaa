@@ -71,6 +71,15 @@ public enum AuditEventType {
   PROMPT_CHANGED,
   PROMPT_DELETED,
   /**
+   * A document template was created, changed (name, description or file) or deleted. The payload
+   * names changed fields and file names, never the content of the file.
+   */
+  DOCUMENT_TEMPLATE_CREATED,
+  DOCUMENT_TEMPLATE_CHANGED,
+  DOCUMENT_TEMPLATE_DELETED,
+  /** The installation switch "Vorlagen" was turned on or off. */
+  DOCUMENT_TEMPLATE_SETTINGS_CHANGED,
+  /**
    * A library's source configuration (sourcePath/sourceUrl/sourceCredentials/sourceSettings)
    * changed - distinct from {@link #LIBRARY_CHANGED} (name/description), which does not fire for a
    * source configuration edit alone. Only which fields changed is recorded, never their values -
@@ -514,6 +523,11 @@ public enum AuditEventType {
   INCIDENT_SCOPE_APPROVED,
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
+  /**
+   * The retention periods of the step log and the sandbox log of agent runs changed; before/after
+   * carry both values.
+   */
+  AGENT_RUN_LOG_RETENTION_CHANGED,
   /**
    * The system administration set the periods of the automatic chat cleanup of the spaces, or
    * returned them to the factory defaults; {@code before} and {@code after} carry the periods only.

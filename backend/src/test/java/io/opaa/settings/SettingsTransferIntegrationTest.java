@@ -207,6 +207,11 @@ class SettingsTransferIntegrationTest {
         .put("deleteAfterDays", 500);
     sections.withObject("incidentScopeRetention").put("retentionYears", 2);
     sections.withObject("connectorLocks").put("PROFILE_PROBE.locked", true);
+    sections.withObject("documentTemplates").put("enabled", true);
+    sections
+        .withObject("agentRunLogRetention")
+        .put("stepLogRetentionDays", 10)
+        .put("sandboxLogRetentionDays", 5);
     assertThat(sections.propertyNames())
         .as("every registered section is changed by this test")
         .containsExactlyInAnyOrderElementsOf(

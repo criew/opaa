@@ -33,6 +33,7 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Eigene Dokumente durchsuchbar machen | [Wissensbibliothek anlegen](bibliothek-anlegen.md) |
 | Eigene Prompts schreiben | [Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md) |
 | Einen Agenten für mehrstufige Fragen einrichten | [Agent anlegen](agent-anlegen.md) |
+| Word-Vorlage für Agenten bereitstellen | [Vorlage anlegen](vorlage-anlegen.md) |
 
 ## Bibliothek pflegen
 
