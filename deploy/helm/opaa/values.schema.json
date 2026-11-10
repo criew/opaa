@@ -718,7 +718,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Offers the agent tool run_code (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
+          "description": "Offers the agent tools run_code and fill_template (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
         },
         "baseUrl": {
           "type": "string",

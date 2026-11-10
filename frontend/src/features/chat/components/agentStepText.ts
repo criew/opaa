@@ -64,6 +64,8 @@ export function stepActivity(step: AgentRunStreamStep): string {
       return 'Rechnet …'
     case 'ask_user':
       return 'Formuliert eine Rückfrage …'
+    case 'fill_template':
+      return 'Füllt eine Vorlage …'
     default:
       return 'Arbeitet …'
   }
