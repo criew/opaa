@@ -97,5 +97,6 @@ def test_the_regex_manager_reads_the_execd_image() -> None:
     assert found, "the execd_image line of sandbox/config.toml no longer matches the manager"
     assert found.group("depName") == "opensandbox/execd"
     assert re.fullmatch(r"release-\d+\.\d+\.\d+", found.group("currentValue"))
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", found.group("currentDigest") or ""), found.group(0)
     # The template writes the digest even where the line has none yet, so Renovate can pin it.
     assert "{{{newDigest}}}" in template and template.startswith('execd_image = "')
