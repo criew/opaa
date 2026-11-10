@@ -10,6 +10,8 @@ import type { SearchScope } from './chatSettingsPersistence'
 export interface RefusedQuestion {
   restoreDraft: string
   onRestored: () => void
+  /** The question's agent goes back to the input with it; false when the agent was refused. */
+  keepAgent?: boolean
 }
 
 export interface ChatState {

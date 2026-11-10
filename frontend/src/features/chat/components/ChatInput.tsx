@@ -58,6 +58,8 @@ import {
 export interface SendOutcome {
   restoreDraft?: string
   onRestored?: () => void
+  /** The question's agent comes back with the draft. */
+  keepAgent?: boolean
 }
 
 /** The agent a question is sent to; it replaces the question's search scope. */
@@ -330,6 +332,7 @@ export default function ChatInput({
       if (!restoreDraft || !mountedRef.current) return
       setValue((current) => withRestoredQuestion(restoreDraft, current))
       draft.restore(attachments)
+      if (chosen && result.keepAgent) chooseAgent(chosen)
       result.onRestored?.()
     })
     return true
@@ -677,11 +680,12 @@ export default function ChatInput({
                 aria-label={agents.length > 0 ? 'Suchbereich oder Agent' : 'Suchbereich'}
                 dense
               >
-                {mentionGroups(suggestions).map((group) => (
+                {mentionGroups(suggestions).map((group, groupIndex) => (
                   <Box component="li" role="presentation" key={group.kind} sx={{ p: 0 }}>
-                    {group.kind === 'agent' && (
+                    {/* With agents on offer each group gets a visible heading of its own. */}
+                    {agents.length > 0 && (
                       <Typography
-                        id={`${mentionListboxId}-agents`}
+                        id={`${mentionListboxId}-${group.kind}`}
                         component="div"
                         sx={{
                           px: 1.5,
@@ -692,17 +696,18 @@ export default function ChatInput({
                           letterSpacing: '0.08em',
                           textTransform: 'uppercase',
                           color: 'text.secondary',
-                          borderTop: 1,
-                          borderColor: 'divider',
+                          ...(groupIndex > 0 ? { borderTop: 1, borderColor: 'divider' } : {}),
                         }}
                       >
-                        Agenten
+                        {group.kind === 'agent' ? 'Agenten' : 'Wissen'}
                       </Typography>
                     )}
                     <Box
                       component="ul"
                       role="group"
-                      aria-label={group.kind === 'agent' ? 'Agenten' : 'Wissen'}
+                      {...(agents.length > 0
+                        ? { 'aria-labelledby': `${mentionListboxId}-${group.kind}` }
+                        : { 'aria-label': 'Wissen' })}
                       sx={{ listStyle: 'none', m: 0, p: 0 }}
                     >
                       {group.items.map(({ suggestion, index }) => (

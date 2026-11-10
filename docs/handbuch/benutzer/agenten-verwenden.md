@@ -4,7 +4,7 @@
 {: .kopf }
 
 Agenten gibt es nur, wenn die Systemverwaltung sie eingeschaltet hat und dem Space ein Agent
-zugeordnet ist, den Sie lesen dürfen ([Inhalte eines Space zuordnen](space-inhalte.md)).
+zugeordnet ist, den Sie lesen dürfen ([Agent anlegen](agent-anlegen.md), Reiter „Zuordnungen“).
 
 1. Im Eingabefeld `@` tippen. Das Menü zeigt zwei Gruppen: oben „Wissen“, darunter „Agenten“ mit
    Roboter-Symbol.

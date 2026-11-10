@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The @ menu and the check of a chosen agent apply one rule: in the chat's space, readable by the
@@ -40,7 +41,9 @@ class AgentChoiceTest {
   private final AgentSwitch agentSwitch = mock(AgentSwitch.class);
   private final AssetAccessService access = mock(AssetAccessService.class);
   private final SpaceAssetDirectory spaceAssets = mock(SpaceAssetDirectory.class);
-  private final AgentChoice choice = new AgentChoice(repository, agentSwitch, access, spaceAssets);
+  private final AgentChoice choice =
+      new AgentChoice(
+          repository, agentSwitch, access, spaceAssets, mock(PlatformTransactionManager.class));
   private Agent agent;
 
   @BeforeEach

@@ -18,7 +18,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The agents a person can choose in a chat: associated with the chat's space and readable by the
@@ -34,22 +37,27 @@ public class AgentChoice implements AgentRunSpecResolver {
   private final AgentSwitch agentSwitch;
   private final AssetAccessService accessService;
   private final SpaceAssetDirectory spaceAssets;
+  private final TransactionTemplate readOnly;
 
   AgentChoice(
       AgentRepository agentRepository,
       AgentSwitch agentSwitch,
       AssetAccessService accessService,
-      SpaceAssetDirectory spaceAssets) {
+      SpaceAssetDirectory spaceAssets,
+      PlatformTransactionManager transactionManager) {
     this.agentRepository = agentRepository;
     this.agentSwitch = agentSwitch;
     this.accessService = accessService;
     this.spaceAssets = spaceAssets;
+    this.readOnly = new TransactionTemplate(transactionManager);
+    this.readOnly.setReadOnly(true);
   }
 
   /**
    * The agents the caller may choose in a chat of {@code spaceId}, by name; empty while agents are
-   * switched off. An unknown space is a {@code 404}, a caller who is no member a {@code 403}, as
-   * for the prompts of the space.
+   * switched off. An unknown space and a caller who is no member answer {@code 404}, as for the
+   * prompts of the space. The system administration passes the membership check here; a run still
+   * needs membership, which the query checks before it resolves the agent.
    */
   public List<Agent> available(CurrentUser caller, UUID spaceId) {
     Set<UUID> offered =
@@ -65,7 +73,12 @@ public class AgentChoice implements AgentRunSpecResolver {
         .toList();
   }
 
+  /**
+   * Runs outside a transaction of its own: a refused space check throws inside the directory's
+   * transaction, which a surrounding one would only report as rolled back instead of refusing.
+   */
   @Override
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public Optional<AgentRunSpec> resolve(
       UUID agentId, UUID organizationId, UUID userId, UUID spaceId, Set<UUID> readableLibraryIds) {
     if (agentId == null || spaceId == null || !agentSwitch.isEnabled()) {
@@ -82,10 +95,12 @@ public class AgentChoice implements AgentRunSpecResolver {
     } catch (NotFoundException | AccessDeniedException notInSpace) {
       return Optional.empty();
     }
-    return agentRepository
-        .findById(agentId)
-        .filter(agent -> agent.getOrganizationId().equals(organizationId))
-        .map(AgentChoice::spec);
+    return readOnly.execute(
+        status ->
+            agentRepository
+                .findById(agentId)
+                .filter(agent -> agent.getOrganizationId().equals(organizationId))
+                .map(AgentChoice::spec));
   }
 
   private static AgentRunSpec spec(Agent agent) {

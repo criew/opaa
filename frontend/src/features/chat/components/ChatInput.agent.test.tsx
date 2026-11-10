@@ -55,7 +55,7 @@ describe('ChatInput: choosing an agent', () => {
     const agents = await screen.findByRole('group', { name: 'Agenten' })
     const knowledge = screen.getByRole('group', { name: 'Wissen' })
     expect(
-      within(agents).getByRole('option', { name: /^Agent Recherche, Agent · ersetzt/ }),
+      within(agents).getByRole('option', { name: 'Agent Recherche, ersetzt den Suchbereich' }),
     ).toBeInTheDocument()
     expect(within(knowledge).getByRole('option', { name: /@Space-Wissen/ })).toBeInTheDocument()
     expect(within(knowledge).queryByRole('option', { name: /Recherche/ })).not.toBeInTheDocument()
@@ -79,6 +79,29 @@ describe('ChatInput: choosing an agent', () => {
       id: 'agent-recherche',
       name: 'Recherche',
     })
+    expect(screen.queryByTestId('chosen-agent-chip')).not.toBeInTheDocument()
+  })
+
+  it('gives the agent back with a refused question, but not an agent that was refused', async () => {
+    const user = userEvent.setup()
+    const onSend = vi
+      .fn()
+      .mockResolvedValueOnce({ restoreDraft: 'Erste Frage', keepAgent: true })
+      .mockResolvedValueOnce({ restoreDraft: 'Zweite Frage', keepAgent: false })
+    render(<ChatInput onSend={onSend} />)
+    const input = screen.getByRole('combobox')
+
+    await user.type(input, '@Rech')
+    await user.click(await screen.findByRole('option', { name: /^Agent Recherche/ }))
+    await user.type(input, 'Erste Frage{Enter}')
+
+    await waitFor(() => expect(input).toHaveValue('Erste Frage'))
+    expect(screen.getByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
+
+    await user.clear(input)
+    await user.type(input, 'Zweite Frage{Enter}')
+
+    await waitFor(() => expect(input).toHaveValue('Zweite Frage'))
     expect(screen.queryByTestId('chosen-agent-chip')).not.toBeInTheDocument()
   })
 

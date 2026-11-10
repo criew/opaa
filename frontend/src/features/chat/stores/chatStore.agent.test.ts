@@ -82,6 +82,28 @@ describe('chatStore with an agent', () => {
     expect(bodies[0].usedPromptId).toBe('prompt-frist')
   })
 
+  it.each([
+    ['AGENT_NOT_AVAILABLE', false],
+    ['AGENT_WORKSPACE_FULL', true],
+  ])('hands a question refused with %s back, keeping the agent: %s', async (code, keep) => {
+    server.use(
+      http.post('/api/v1/query', () =>
+        HttpResponse.json(
+          { error: 'Abgelehnt.', code },
+          { status: code === 'AGENT_WORKSPACE_FULL' ? 429 : 409 },
+        ),
+      ),
+    )
+    await useChatStore.getState().loadChat(CHAT_ID)
+
+    const refused = await useChatStore.getState().sendMessage('Welche Frist gilt?', undefined, [], {
+      id: 'agent-recherche',
+      name: 'Recherche',
+    })
+
+    expect(refused).toMatchObject({ restoreDraft: 'Welche Frist gilt?', keepAgent: keep })
+  })
+
   it('sends no agent id for a question without one', async () => {
     const bodies: QueryRequest[] = []
     server.use(
