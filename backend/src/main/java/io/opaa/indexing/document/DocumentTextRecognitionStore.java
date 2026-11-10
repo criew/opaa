@@ -19,10 +19,16 @@ public class DocumentTextRecognitionStore {
   /** The content type of the documents text recognition reads. */
   static final String PDF_CONTENT_TYPE = "application/pdf";
 
+  /** Bounds the metric read of {@link #uploadBacklog}, so a lock never holds its thread long. */
+  static final int BACKLOG_QUERY_TIMEOUT_SECONDS = 10;
+
   private final JdbcTemplate jdbcTemplate;
+  private final JdbcTemplate backlogReads;
 
   public DocumentTextRecognitionStore(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
+    this.backlogReads = new JdbcTemplate(jdbcTemplate.getDataSource());
+    this.backlogReads.setQueryTimeout(BACKLOG_QUERY_TIMEOUT_SECONDS);
   }
 
   /**
@@ -227,6 +233,28 @@ public class DocumentTextRecognitionStore {
             configurationId);
     return count == null ? 0 : count;
   }
+
+  /**
+   * How many uploaded scans of every library wait for text recognition, and the seconds since the
+   * oldest of them was uploaded ({@code 0} without one), by the database clock; gives up after
+   * {@value #BACKLOG_QUERY_TIMEOUT_SECONDS} seconds.
+   */
+  public UploadBacklog uploadBacklog(int pipelineVersion, String configurationId) {
+    return backlogReads.queryForObject(
+        "SELECT count(*) AS waiting,"
+            + " coalesce(extract(epoch FROM clock_timestamp() - min(d.created_at)), 0) AS age"
+            + " FROM documents d WHERE d.source_type = 'UPLOAD' AND "
+            + PENDING_CONDITION,
+        (rs, row) -> new UploadBacklog(rs.getLong("waiting"), rs.getDouble("age")),
+        DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+        PDF_CONTENT_TYPE,
+        (short) pipelineVersion,
+        configurationId,
+        configurationId);
+  }
+
+  /** The uploaded scans waiting for text recognition, without any document named. */
+  public record UploadBacklog(long waiting, double oldestAgeSeconds) {}
 
   /**
    * Uploaded scans of every library still waiting for text recognition, in a stable order after

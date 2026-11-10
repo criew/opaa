@@ -13,7 +13,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
@@ -129,6 +130,11 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
     return listening;
   }
 
+  /** The dispatch thread's executor while the bus runs, otherwise {@code null}. */
+  ExecutorService dispatcher() {
+    return dispatcher;
+  }
+
   /**
    * Waits until every announcement committed before this call has been handed to the subscribers:
    * Postgres delivers in commit order, and one dispatch thread hands them on in that order. Sent
@@ -179,7 +185,12 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
               .map(binding -> new Binding(binding.subscriber(), Set.copyOf(binding.topics())))
               .toList();
       dispatcher =
-          Executors.newSingleThreadExecutor(
+          new ThreadPoolExecutor(
+              1,
+              1,
+              0L,
+              TimeUnit.MILLISECONDS,
+              new LinkedBlockingQueue<>(),
               runnable -> {
                 Thread thread = new Thread(runnable, "cache-invalidation");
                 thread.setDaemon(true);

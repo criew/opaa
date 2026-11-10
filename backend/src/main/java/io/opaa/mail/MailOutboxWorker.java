@@ -1,6 +1,8 @@
 package io.opaa.mail;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.mail.MailOutbox.Batch;
 import io.opaa.mail.MailOutbox.Claimed;
 import io.opaa.mail.MailOutbox.Unreadable;
@@ -53,6 +55,7 @@ public class MailOutboxWorker {
   private final TaskScheduler scheduler;
   private final Clock clock;
   private final Duration lease;
+  private final MailDeliveryMetrics metrics;
   private final AtomicBoolean runRequested = new AtomicBoolean();
   private volatile boolean stopping;
 
@@ -63,8 +66,16 @@ public class MailOutboxWorker {
       MailSenderProvider senderProvider,
       @Qualifier(MailOutboxConfiguration.SCHEDULER) TaskScheduler scheduler,
       Clock clock,
-      SmtpProperties smtp) {
-    this(outbox, mail, senderProvider, scheduler, clock, leaseFor(smtp));
+      SmtpProperties smtp,
+      MeterRegistry meterRegistry) {
+    this(
+        outbox,
+        mail,
+        senderProvider,
+        scheduler,
+        clock,
+        leaseFor(smtp),
+        new MailDeliveryMetrics(meterRegistry));
   }
 
   MailOutboxWorker(
@@ -73,13 +84,15 @@ public class MailOutboxWorker {
       MailSenderProvider senderProvider,
       TaskScheduler scheduler,
       Clock clock,
-      Duration lease) {
+      Duration lease,
+      MailDeliveryMetrics metrics) {
     this.outbox = outbox;
     this.mail = mail;
     this.senderProvider = senderProvider;
     this.scheduler = scheduler;
     this.clock = clock;
     this.lease = lease;
+    this.metrics = metrics;
   }
 
   /**
@@ -148,15 +161,21 @@ public class MailOutboxWorker {
           "Mail outbox run stopped with {}: {}; the remaining mail waits for the next run",
           e.getClass().getName(),
           MailRecipients.maskAddresses(e.getMessage()));
+      ScheduledRunFailures.report();
     }
   }
 
   private void deliver(Claimed claimed) {
     SendResult result = mail.deliver(claimed);
     switch (result) {
-      case SendResult.Sent ignored -> outbox.delete(claimed.id());
-      case SendResult.Skipped skipped ->
-          outbox.reschedule(claimed.id(), claimed.attempts(), FIRST_RETRY, skipped.reason());
+      case SendResult.Sent ignored -> {
+        outbox.delete(claimed.id());
+        metrics.sent();
+      }
+      case SendResult.Skipped skipped -> {
+        outbox.reschedule(claimed.id(), claimed.attempts(), FIRST_RETRY, skipped.reason());
+        metrics.retry();
+      }
       case SendResult.Failed failed -> failed(claimed, failed.reason());
     }
   }
@@ -165,9 +184,11 @@ public class MailOutboxWorker {
     if (claimed.attempts() < MAX_ATTEMPTS) {
       outbox.reschedule(
           claimed.id(), claimed.attempts(), retryDelay(claimed.attempts()), maskedReason);
+      metrics.retry();
       return;
     }
     outbox.delete(claimed.id());
+    metrics.failed();
     log.error(
         "Mail {} (template {}, recipient {}) dropped after {} failed attempts: {}",
         claimed.id(),
@@ -180,6 +201,7 @@ public class MailOutboxWorker {
   /** A row the settings key cannot read is never deliverable; it goes at once. */
   private void giveUp(Unreadable row) {
     outbox.delete(row.id());
+    metrics.failed();
     log.error(
         "Mail {} (template {}) dropped: its content cannot be decrypted ({})",
         row.id(),

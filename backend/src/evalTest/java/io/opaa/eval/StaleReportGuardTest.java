@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNoteProperties;
 import io.opaa.indexing.IndexingProperties;
@@ -79,7 +78,7 @@ class StaleReportGuardTest {
         mock(RetrievalPipeline.class),
         mock(RetrievalContextFactory.class),
         MessageWindowChatMemory.builder()
-            .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+            .chatMemoryRepository(new CaffeineChatMemoryRepository())
             .maxMessages(20)
             .build(),
         mock(ChatNoteExtractionService.class),

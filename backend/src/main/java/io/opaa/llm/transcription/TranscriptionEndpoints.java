@@ -22,7 +22,7 @@ public class TranscriptionEndpoints extends OptionalRoleEndpoints<TranscriptionE
       TranscriptionModelSettingsRepository rows,
       SettingsEncryptor settingsEncryptor,
       InvalidationBus bus) {
-    super(TOPIC, settingsEncryptor, bus);
+    super(TOPIC, "transcription_endpoint", settingsEncryptor, bus);
     this.rows = rows;
   }
 

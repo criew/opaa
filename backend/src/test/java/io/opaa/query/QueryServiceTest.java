@@ -1637,8 +1637,7 @@ class QueryServiceTest {
    */
   @Test
   void sameChatIdForTwoDifferentUsersProducesIsolatedConversationHistories() {
-    ChatMemoryRepository realRepository =
-        new CaffeineChatMemoryRepository(new SimpleMeterRegistry());
+    ChatMemoryRepository realRepository = new CaffeineChatMemoryRepository();
     ChatMemory realChatMemory =
         MessageWindowChatMemory.builder()
             .chatMemoryRepository(realRepository)

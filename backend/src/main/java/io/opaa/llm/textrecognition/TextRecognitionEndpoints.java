@@ -22,7 +22,7 @@ public class TextRecognitionEndpoints extends OptionalRoleEndpoints<TextRecognit
       TextRecognitionModelSettingsRepository rows,
       SettingsEncryptor settingsEncryptor,
       InvalidationBus bus) {
-    super(TOPIC, settingsEncryptor, bus);
+    super(TOPIC, "text_recognition_endpoint", settingsEncryptor, bus);
     this.rows = rows;
   }
 

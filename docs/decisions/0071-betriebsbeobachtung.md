@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -127,6 +127,29 @@ regelt die Dienstvereinbarung, und das SIEM bekommt die Kennung nicht, damit dor
 verknüpft. Eine Positivliste bleibt dicht, wenn eine Bibliothek neue Attribute einführt. Ein
 Trace-Kontext von außen ließe den Aufrufer die Trace-ID und damit die Stichprobe wählen, einer nach
 außen gäbe Modellanbietern und Quellen eine Kennung, die das eigene Log einer Anfrage zuordnet.
+
+### 10. Hintergrundläufe zentral gemessen, installationsweite Werte von jeder Instanz
+
+Letzter Erfolg, Fehler und erwartetes Intervall jedes geplanten Laufs (`opaa.scheduled.*` mit
+`job`, dem Namen seiner Sperre) misst ein Handler an der Observation, die Spring um jeden Lauf
+legt, nicht Code im Lauf; ein Lauf zählt nur dort als erfolgreich, wo er seine Sperre bekam, und ein
+abgeschalteter Lauf hat keine Reihe. Bis zum ersten Erfolg gilt der Start der Instanz als letzter
+Erfolg, damit ein Lauf, der nie gelingt, ebenso überfällig wird wie einer, der aufhört zu gelingen.
+Ein Lauf, der einen Fehler selbst abfängt, um weiterzumachen oder eine Meldung aus dem Log zu halten,
+meldet ihn ausdrücklich als Fehlschlag, statt ihn erneut zu werfen. Werte der ganzen Installation
+(Warteschlangen, Bestand, Instanzregister, Sperren) liest jede Instanz selbst in festen Abständen
+aus vorhandenen Tabellen und meldet sie gleich; ein Dashboard fasst sie mit `max by` zusammen, Zähler je Instanz mit `sum`.
+Eine eigene Instanz, die solche Werte für alle meldet, bräuchte eine Wahl und fiele mit ihr aus.
+Zahlen über private Bibliotheken unterliegen derselben Mindestgruppengröße wie in der Oberfläche.
+
+Was dem Verhalten einzelner Personen folgt, wird nicht gemessen: erfolgreiche Anmeldungen bei keiner
+Methode, auch nicht bei lokalen Konten, denn über die Zeit gezählt zeichnen sie die
+Arbeitszeitkurve der Belegschaft; gezählt werden nur abgewiesene nach Grund. Ebenso wenig ein
+Zwischenspeicher, dessen Schlüssel eine Person, ein Token oder ein Gespräch ist (gesperrte
+Anmeldungen, Gruppenmitgliedschaften, persönliche Bereiche, Filterwerte, Kontingente externer
+Zugänge, Gesprächsgedächtnis): Treffer, Fehlgriffe und Größe zeigten aktive Personen und
+Gesprächsanfänge. Eine Health-Gruppe, deren Prüfung ein
+Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis einer Prüfung von außen.
 
 ## Konsequenzen
 

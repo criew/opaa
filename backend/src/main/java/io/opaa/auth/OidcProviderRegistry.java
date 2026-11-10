@@ -1,7 +1,11 @@
 package io.opaa.auth;
 
+import com.nimbusds.jose.KeySourceException;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.AuthMetrics;
+import io.opaa.observability.AuthMetrics.LoginMethod;
+import io.opaa.observability.AuthMetrics.LoginResult;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,10 +21,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.BearerTokenError;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -78,6 +86,7 @@ public class OidcProviderRegistry
   private final OidcAddressPolicy addressPolicy;
   private final Clock clock;
   private final InvalidationBus bus;
+  private final AuthMetrics metrics;
   private final Object lock = new Object();
   private volatile Map<String, Entry> entries;
   private volatile boolean stale;
@@ -90,12 +99,14 @@ public class OidcProviderRegistry
       OidcJwtDecoderFactory decoderFactory,
       OidcAddressPolicy addressPolicy,
       Clock clock,
-      InvalidationBus bus) {
+      InvalidationBus bus,
+      AuthMetrics metrics) {
     this.repository = repository;
     this.decoderFactory = decoderFactory;
     this.addressPolicy = addressPolicy;
     this.clock = clock;
     this.bus = bus;
+    this.metrics = metrics;
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -181,7 +192,12 @@ public class OidcProviderRegistry
     if (entry != null) {
       return entry.authenticationManager();
     }
+    // a provider OPAA knows but could not build is no fault of the token; idp_error stays with
+    // the key fetch
+    LoginResult result =
+        failures.containsKey(normalized) ? LoginResult.OTHER : LoginResult.BAD_CREDENTIALS;
     return authentication -> {
+      metrics.recordLogin(LoginMethod.OIDC, result);
       throw new OAuth2AuthenticationException(
           new BearerTokenError(
               OAuth2ErrorCodes.INVALID_TOKEN, HttpStatus.UNAUTHORIZED, UNKNOWN_ISSUER, null));
@@ -229,7 +245,42 @@ public class OidcProviderRegistry
     }
     JwtDecoder decoder = decoderFactory.create(provider);
     JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(decoder);
-    return new Entry(provider, authenticationProvider::authenticate);
+    return new Entry(provider, authentication -> counted(authenticationProvider, authentication));
+  }
+
+  /**
+   * Authenticates a bearer token, counting a refusal in {@code opaa.auth.logins}: a token whose
+   * signing keys could not be fetched from the provider is {@code idp_error}, an invalid token
+   * {@code bad_credentials}, anything else {@code other}. Accepted tokens are not counted: each
+   * request carries one, and their count would trace work.
+   */
+  private Authentication counted(JwtAuthenticationProvider provider, Authentication token) {
+    try {
+      return provider.authenticate(token);
+    } catch (AuthenticationServiceException e) {
+      metrics.recordLogin(
+          LoginMethod.OIDC, keysUnavailable(e) ? LoginResult.IDP_ERROR : LoginResult.OTHER);
+      throw e;
+    } catch (InvalidBearerTokenException e) {
+      metrics.recordLogin(LoginMethod.OIDC, LoginResult.BAD_CREDENTIALS);
+      throw e;
+    } catch (AuthenticationException e) {
+      metrics.recordLogin(LoginMethod.OIDC, LoginResult.OTHER);
+      throw e;
+    }
+  }
+
+  /** Whether the provider's key set could not be fetched, as the decoder reports it. */
+  static boolean keysUnavailable(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof KeySourceException) {
+        return true;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return false;
   }
 
   /**

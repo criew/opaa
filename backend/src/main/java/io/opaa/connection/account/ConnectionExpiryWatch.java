@@ -12,6 +12,7 @@ import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.ConnectionSecrets.EndingConsent;
 import io.opaa.connection.token.ConnectionSecrets.EndingGrant;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.notification.NotificationService;
 import java.time.Clock;
@@ -88,6 +89,7 @@ public class ConnectionExpiryWatch {
           warned.secrets());
     } catch (RuntimeException e) {
       log.warn("Expiry watch failed; the next run warns of what this one missed", e);
+      ScheduledRunFailures.report();
     }
   }
 

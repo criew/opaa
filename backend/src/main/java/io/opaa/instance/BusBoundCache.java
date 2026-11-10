@@ -56,6 +56,11 @@ public final class BusBoundCache<K, V> {
     cache.invalidateAll();
   }
 
+  /** The underlying cache, only to read its statistics ({@code MeteredCaches}). */
+  public Cache<K, V> statistics() {
+    return cache;
+  }
+
   /** The underlying map, for removals by a predicate over the keys. */
   public ConcurrentMap<K, V> asMap() {
     return cache.asMap();
