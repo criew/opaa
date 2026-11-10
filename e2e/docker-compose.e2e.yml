@@ -59,6 +59,9 @@ services:
       # never reaches COMPLETED for, timing out the test instead of failing it cleanly). Raised for
       # the same reason as the per-library limit above, not disabled.
       OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS: "20"
+      # The budget per account below the global ceiling (default 3/60s): the suite triggers as
+      # dev-admin almost always, so it gets the same raised budget.
+      OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT: "20"
       # test(e2e) #1489: the Gesprächsnotiz scenarios drive four chats of three turns each back to
       # back, and the display threshold of three completed rounds makes that count a property of
       # the feature, not a choice - twelve questions inside a few seconds, well past the default

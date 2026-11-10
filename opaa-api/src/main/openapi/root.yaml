@@ -37,10 +37,11 @@ info:
     alone. Independently of all this, a caller whose `Accept` admits nothing
     this API writes is answered without a body whatever went wrong.
 
-    `429` is deliberately absent from the list: the rate limits are per endpoint, not global. It is
-    declared at exactly those operations that have a budget of their own. Its answer carries
-    `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
-    than from a time window has none to name.
+    `429` is declared at exactly those operations that have a budget of their own. Every other
+    writing call (`POST`, `PUT`, `PATCH`, `DELETE`) shares one budget per client and per signed-in
+    account; past it, it is answered with `429` as well, without the operation declaring it. Its
+    answer carries `Retry-After` **where the waiting time is known** - a refusal from a concurrency
+    ceiling rather than from a time window has none to name.
 
     While the installation of the instance is pending (ADR-0060), every call outside the
     installation API, `GET /api/v1/auth/config`, the public branding and the health endpoints is

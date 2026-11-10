@@ -29,6 +29,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -249,6 +250,28 @@ class ExternalAccessTokenIntegrationTest {
             .getResponse()
             .getContentAsString();
     assertThat(list).doesNotContain(rawValue).contains(stored.getTokenPrefix());
+  }
+
+  @Test
+  void anAccountAtItsBoundOfLiveTokensGetsAnotherOneOnlyAfterRevokingOne() throws Exception {
+    List<UUID> issued = new java.util.ArrayList<>();
+    for (int i = 0; i < ExternalAccessProperties.DEFAULT_MAX_ACTIVE_TOKENS_PER_ACCOUNT; i++) {
+      issued.add(issueTokenId());
+    }
+
+    mockMvc
+        .perform(
+            post("/api/v1/external-access/tokens")
+                .with(devUser("dev-user"))
+                .content(createBody(libraryId, clock.instant().plus(Duration.ofDays(30)))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error", Matchers.containsString("gültige Zugangstokens")));
+
+    mockMvc
+        .perform(
+            delete("/api/v1/external-access/tokens/" + issued.getFirst()).with(devUser("dev-user")))
+        .andExpect(status().is2xxSuccessful());
+    assertThat(issueTokenId()).isNotNull();
   }
 
   @Test

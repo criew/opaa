@@ -88,6 +88,7 @@ nav:
           - benutzer/katalog.md
           - benutzer/bibliothek-anlegen.md
           - benutzer/prompt-bibliothek-anlegen.md
+          - benutzer/agent-anlegen.md
           - benutzer/vorlage-anlegen.md
       - Bibliothek pflegen:
           - benutzer/arbeitsmittel-teilen.md
@@ -132,6 +133,7 @@ nav:
           - administration/datenschutz.md
           - administration/e-mail.md
           - administration/virenpruefung.md
+          - administration/agenten.md
           - administration/vorlagen.md
           - administration/einstellungen-uebertragen.md
       - Revision:

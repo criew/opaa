@@ -35,6 +35,7 @@ import {
   VERIFY_EMAIL_ROUTE,
 } from '@/shared/routes'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { catalogRoute } from '@/shared/assetTypes'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 // pages, loaded on demand
@@ -70,6 +71,9 @@ import {
   DocumentTemplateDetailPage,
   DocumentTemplateSettingsPage,
   PromptLibraryDetailPage,
+  AgentCreatePage,
+  AgentDetailPage,
+  AgentSettingsPage,
   ProviderGroupWorklistPage,
   RegisterPage,
   RightsHistoryPage,
@@ -102,6 +106,7 @@ const ADMIN_SECTIONS = [
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
   { label: 'Virenprüfung', to: '/admin/malware-scan' },
+  { label: 'Agenten', to: '/admin/agents' },
   { label: 'Vorlagen', to: DOCUMENT_TEMPLATE_SETTINGS_ROUTE },
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
@@ -155,6 +160,8 @@ export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const promptLibraries = useFeatureEnabled('promptLibraries')
   const externalAccess = useFeatureEnabled('externalAccess')
+  // Unknown until the shell asked; the routes stay until the answer is a clear „off“.
+  const agentsOff = useAgentAvailability((s) => s.enabled === false)
   const themeMode = useUiStore((s) => s.themeMode)
   const branding = useBrandingStore((s) => s.branding)
   const loadBranding = useBrandingStore((s) => s.loadBranding)
@@ -267,6 +274,20 @@ export default function App() {
                   ) : (
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
+                  {/* The agents switch (a runtime setting): off, every agent address leads to the catalog. */}
+                  {agentsOff ? (
+                    <Route path="agents/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
+                  ) : (
+                    <>
+                      <Route
+                        path="agents"
+                        element={<Navigate to={catalogRoute('AGENT')} replace />}
+                      />
+                      <Route path="agents/new" element={<AgentCreatePage />} />
+                      <Route path="agents/:agentId" element={<AgentDetailPage />} />
+                      <Route path="agents/:agentId/:tab" element={<AgentDetailPage />} />
+                    </>
+                  )}
                   {/* Switched off at run time, the backend answers 404 and the page says so. */}
                   <Route
                     path="templates"
@@ -356,6 +377,7 @@ export default function App() {
                     </>
                   )}
                   <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
+                  <Route path="admin/agents" element={<AgentSettingsPage />} />
                   <Route
                     path="admin/succession"
                     element={<Navigate to="/admin/succession/open" replace />}

@@ -3,6 +3,7 @@ package io.opaa.externalaccess.token;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.security.LocalAuthKeyService;
 import java.time.Clock;
 import java.time.Duration;
@@ -31,15 +33,18 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * Every issued access token is announced to its owner by mail - the trace a briefly taken-over
- * session leaves with the person - and a refused issuance announces nothing.
+ * session leaves with the person - and a refused issuance announces nothing. An account at its
+ * bound of live tokens is refused under the lock of its issuances.
  */
 class ExternalAccessTokenIssuanceNoticeTest {
 
   private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
+  private static final int MAX_ACTIVE = 3;
   private static final Jwt SESSION =
       Jwt.withTokenValue("t").header("alg", "none").subject("s").build();
 
@@ -65,6 +70,7 @@ class ExternalAccessTokenIssuanceNoticeTest {
           users,
           mailer,
           sessions,
+          new ExternalAccessProperties(365, 30, MAX_ACTIVE),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private final User owner = new User("sub", "https://idp.example", "anna@amt.example", "Anna");
@@ -114,6 +120,44 @@ class ExternalAccessTokenIssuanceNoticeTest {
 
     verify(tokens, never()).save(any());
     verifyNoInteractions(mailer);
+  }
+
+  @Test
+  void anAccountHoldingTheBoundOfLiveTokensIsRefusedAnotherOne() {
+    when(tokens.countActiveOf(owner.getId(), NOW)).thenReturn((long) MAX_ACTIVE);
+
+    assertThatThrownBy(
+            () ->
+                service.issue(
+                    owner.getId(),
+                    UUID.randomUUID(),
+                    "Claude Code",
+                    List.of(libraryId),
+                    NOW.plus(Duration.ofDays(10)),
+                    SESSION))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining(MAX_ACTIVE + " gültige Zugangstokens");
+
+    InOrder order = inOrder(tokens);
+    order.verify(tokens).lockIssuance(owner.getId());
+    order.verify(tokens).countActiveOf(owner.getId(), NOW);
+    verify(tokens, never()).save(any());
+    verifyNoInteractions(mailer);
+  }
+
+  @Test
+  void anAccountBelowTheBoundGetsItsToken() {
+    when(tokens.countActiveOf(owner.getId(), NOW)).thenReturn((long) MAX_ACTIVE - 1);
+
+    service.issue(
+        owner.getId(),
+        UUID.randomUUID(),
+        "Claude Code",
+        List.of(libraryId),
+        NOW.plus(Duration.ofDays(10)),
+        SESSION);
+
+    verify(tokens).save(any());
   }
 
   @Test

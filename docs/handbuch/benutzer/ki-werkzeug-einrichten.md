@@ -19,6 +19,10 @@ Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt 
 anzeigen: neues Token erzeugen, altes widerrufen. Eine Bibliothek, die Sie nicht mehr lesen dürfen,
 steht in der Liste als „(kein Leserecht)“ statt mit ihrem Namen.
 
+Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein
+altes widerrufen ([Konfiguration](../referenz/konfiguration.md)). Das Kontingent an Anfragen je
+Stunde gilt je Token und zugleich für alle Ihre Tokens zusammen.
+
 ## Beispiel OpenCode
 
 In `~/.config/opencode/opencode.json`, den Tokenwert in der Umgebungsvariablen `OPAA_TOKEN`:

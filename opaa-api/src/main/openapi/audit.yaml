@@ -675,6 +675,7 @@ components:
           PROMPT_LIBRARY,
           PROMPT,
           SERVICE_ACCOUNT,
+          AGENT,
           DOCUMENT_TEMPLATE,
         ]
       example: KNOWLEDGE_LIBRARY
@@ -704,6 +705,9 @@ components:
           PROMPT_LIBRARY_CREATED,
           PROMPT_LIBRARY_CHANGED,
           PROMPT_LIBRARY_DELETED,
+          AGENT_CREATED,
+          AGENT_CHANGED,
+          AGENT_DELETED,
           PROMPT_CREATED,
           PROMPT_CHANGED,
           PROMPT_DELETED,
@@ -857,6 +861,7 @@ components:
           LOCAL_USER_HANDOVER_REQUESTED,
           LOCAL_USER_HANDED_OVER,
           EXTERNAL_ACCESS_SETTINGS_CHANGED,
+          AGENT_SETTINGS_CHANGED,
           CONNECTION_PROFILE_CREATED,
           CONNECTION_PROFILE_CHANGED,
           CONNECTION_PROFILE_DELETED,

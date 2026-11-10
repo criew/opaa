@@ -67,6 +67,7 @@ import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -107,11 +108,14 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.QueryTimeoutException;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -1875,6 +1879,55 @@ class LibraryDocumentServiceTest {
     document.setLibraryId(libraryId);
     document.setOrganizationId(organizationId);
     return document;
+  }
+
+  @Test
+  void anUnknownDocumentIsRefusedBeforeAnyFetchAndMarkedSo() {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/documents/x");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      UUID documentId = UUID.randomUUID();
+      when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(() -> service.loadContent(documentId, caller))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(java.util.Collections.list(request.getAttributeNames()))
+        .as("the refusal before the fetch gives back the global rate-limit token")
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
+  }
+
+  @Test
+  void aFetchThatFailsIsAnsweredNotFoundWithoutTheMarkOfARefusalBeforeTheWork() throws IOException {
+    startRemoteServer();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+    grantViewerOnUploadLibrary();
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
+    Document document = remoteDocument(SourceTypes.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/documents/x");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      assertThatThrownBy(() -> service.loadContent(documentId, caller))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(java.util.Collections.list(request.getAttributeNames()))
+        .as("the outbound fetch was made, so the request keeps its global rate-limit token")
+        .noneMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
   }
 
   @Test
