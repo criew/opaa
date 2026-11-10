@@ -35,8 +35,7 @@ class ReadDocumentTool implements AgentTool {
   static final String NOTHING_LEFT = "Für weiteren Text ist in diesem Lauf kein Platz mehr.";
 
   static final String TRUNCATED_NOTE =
-      "\n\nHinweis: Das Dokument ist länger; gelesen wurde nur der Anfang ab dem genannten"
-          + " Abschnitt.";
+      "\n\nHinweis: Das Dokument geht weiter; gelesen wurde nur bis zum letzten Abschnitt oben.";
 
   private static final String SCHEMA =
       """
@@ -127,7 +126,8 @@ class ReadDocumentTool implements AgentTool {
     long used = 0;
     boolean truncated = whole && loaded.size() >= MAX_SECTIONS;
     for (Document chunk : loaded) {
-      int length = chunk.getText() == null ? 0 : chunk.getText().length();
+      // Counted as the model reads it, so the run's volume holds what the call adds to it.
+      int length = DocumentBlock.render(run.blockId(), List.of(chunk)).length();
       if (used + length > budget) {
         truncated = true;
         break;

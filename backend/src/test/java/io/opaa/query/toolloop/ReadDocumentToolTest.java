@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.query.answer.DocumentBlock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -56,12 +57,18 @@ class ReadDocumentToolTest {
   }
 
   @Test
-  void readsTheWholeDocumentFromTheStartUpToTheRunsRemainingVolume() {
+  void readsTheWholeDocumentFromTheStartUpToTheRunsRemainingVolumeAsTheModelReadsIt() {
+    List<Document> sections =
+        List.of(
+            chunk("doc-1", 0, "a".repeat(30)),
+            chunk("doc-1", 1, "b".repeat(30)),
+            chunk("doc-1", 2, "c".repeat(30)));
+    int oneRendered = DocumentBlock.render("x".repeat(32), List.of(sections.get(0))).length();
     AgentRun run =
         AgentRuns.run(
             Set.of(library),
             MetadataFilter.NONE,
-            new AgentLimits(5, 3, Duration.ofSeconds(120), 50),
+            new AgentLimits(5, 3, Duration.ofSeconds(120), 10 + oneRendered + oneRendered / 2),
             Instant.parse("2026-11-10T08:00:00Z"));
     run.recordCall(
         ToolNames.SEARCH_KNOWLEDGE,
@@ -71,19 +78,14 @@ class ReadDocumentToolTest {
             "f",
             1,
             List.of(chunk("doc-1", 7, "Fundstelle"))));
-    when(lookup.findRange(eq("doc-1"), eq(0), anyInt(), eq(Set.of(library))))
-        .thenReturn(
-            List.of(
-                chunk("doc-1", 0, "a".repeat(30)),
-                chunk("doc-1", 1, "b".repeat(30)),
-                chunk("doc-1", 2, "c".repeat(30))));
+    when(lookup.findRange(eq("doc-1"), eq(0), anyInt(), eq(Set.of(library)))).thenReturn(sections);
 
     ToolCallOutcome outcome =
         tool.call(args("{\"dokument\":\"doc-1\",\"umfang\":\"dokument\"}"), run);
 
     assertThat(outcome.result()).isEqualTo(ToolCallResult.SUCCESS);
-    assertThat(outcome.passages()).hasSize(1);
-    assertThat(outcome.modelText()).contains(ReadDocumentTool.TRUNCATED_NOTE.strip());
+    assertThat(outcome.passages()).containsExactly(sections.get(0));
+    assertThat(outcome.modelText()).endsWith(ReadDocumentTool.TRUNCATED_NOTE);
   }
 
   /** Regression guard for ADR-0070, Entscheidung 3: a foreign document id as a model argument. */

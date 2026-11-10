@@ -325,7 +325,10 @@ class AgentToolLoop implements AgentTurnHandler {
         spec.builtin(), (int) citations.stream().filter(c -> !c.valid()).count());
     List<ChatSource> sources =
         chatSourceAssembler.assemble(passages, citations, turn.metadataFilter());
-    AnswerCompleteness completeness = ChatResponses.completeness(response);
+    // A question back is complete as asked and states nothing that needs a citation.
+    boolean asked = endState == EndState.ASK_USER;
+    AnswerCompleteness completeness =
+        asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
     List<String> searchQueries =
         run.steps().stream()
             .filter(step -> ToolNames.SEARCH_KNOWLEDGE.equals(step.tool()))
@@ -333,14 +336,16 @@ class AgentToolLoop implements AgentTurnHandler {
             .filter(detail -> detail != null)
             .toList();
     AnswerEvidence evidence =
-        AnswerEvidenceAssessor.assess(
-            citations,
-            !run.searchScope().isEmpty(),
-            !passages.isEmpty(),
-            true,
-            searchQueries,
-            Map.of(),
-            completeness);
+        asked
+            ? null
+            : AnswerEvidenceAssessor.assess(
+                citations,
+                !run.searchScope().isEmpty(),
+                !passages.isEmpty(),
+                true,
+                searchQueries,
+                Map.of(),
+                completeness);
     AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
 
     signal(turn, AnswerStreamListener::beforeKeeping);

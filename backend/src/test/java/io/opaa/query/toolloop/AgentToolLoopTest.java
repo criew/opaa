@@ -24,6 +24,7 @@ import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ToolCallingNotCapableException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
@@ -415,6 +416,8 @@ class AgentToolLoopTest {
 
     assertThat(result.answer()).isEqualTo("Für welches Jahr?");
     assertThat(result.agentRun().endState()).isEqualTo(EndState.ASK_USER);
+    assertThat(result.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.COMPLETE);
+    assertThat(result.evidence()).isNull();
     assertThat(result.agentRun().steps())
         .extracting(AgentRunRecord.Step::tool)
         .containsExactly(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);

@@ -23,7 +23,10 @@ import tools.jackson.databind.JsonNode;
  * Lists what the run may read (ADR-0070): the libraries of its scope with their number of indexed
  * documents, or the indexed documents of one of them by name. The libraries come from the run's
  * scope, never from an argument; a library id outside it is ignored and the step says so, without
- * the id. Names are data inside the run's block, never instructions, and no line is citable.
+ * the id. Names are data inside the run's block, never instructions, and no line is citable. The
+ * chat's metadata filter does not narrow the listing: it names what the caller may read anyway and
+ * hands the model no content, and {@code read_document} reads only what a search under the filter
+ * found.
  */
 @Component
 class ListSourcesTool implements AgentTool {

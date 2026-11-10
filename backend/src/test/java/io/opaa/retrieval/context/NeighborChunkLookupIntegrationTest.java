@@ -85,6 +85,17 @@ class NeighborChunkLookupIntegrationTest {
   }
 
   @Test
+  void ordersARangeNumericallyAndSkipsARowWithoutAnIntegralIndex() {
+    insert(document, 10, library, "Abschnitt 10");
+    insert(document, 9, library, "Abschnitt 9");
+    insertRaw(document, "\"x\"", library, "ohne Zahl");
+
+    assertThat(lookup.findRange(document, 8, 11, Set.of(library)))
+        .extracting(Document::getText)
+        .containsExactly("Abschnitt 9", "Abschnitt 10");
+  }
+
+  @Test
   void neverReadsARangeWhoseLibraryIsOutsideTheScope() {
     insert(document, 0, foreignLibrary, "fremde Bibliothek");
 
@@ -93,11 +104,15 @@ class NeighborChunkLookupIntegrationTest {
   }
 
   private void insert(String documentId, int chunkIndex, UUID libraryId, String content) {
+    insertRaw(documentId, String.valueOf(chunkIndex), libraryId, content);
+  }
+
+  private void insertRaw(String documentId, String chunkIndexJson, UUID libraryId, String content) {
     UUID id = UUID.randomUUID();
     chunkIds.add(id);
     String metadata =
-        "{\"document_id\":\"%s\",\"chunk_index\":%d,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\"}"
-            .formatted(documentId, chunkIndex, libraryId);
+        "{\"document_id\":\"%s\",\"chunk_index\":%s,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\"}"
+            .formatted(documentId, chunkIndexJson, libraryId);
     jdbcTemplate.update(
         "INSERT INTO vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
         id,
