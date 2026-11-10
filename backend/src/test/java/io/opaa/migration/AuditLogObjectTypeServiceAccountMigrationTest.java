@@ -17,9 +17,13 @@ class AuditLogObjectTypeServiceAccountMigrationTest extends AbstractBaselineTest
   private static final String SCRIPT =
       "db/migration/identity/V2026.11.05.33__audit_log_object_type_service_account.sql";
 
+  /** Widens the same list and builds on this script, so an installation receives it after. */
+  private static final String AGENT_SCRIPT =
+      "db/migration/identity/V2026.11.10.21__audit_log_object_type_agent.sql";
+
   @Override
   protected List<String> baseFixtureMigrations() {
-    return Migrations.except(SCRIPT);
+    return Migrations.except(SCRIPT, AGENT_SCRIPT);
   }
 
   @Test
