@@ -4219,6 +4219,19 @@ Agenten-Einstellungen eingeschaltet und dem Agenten zugeordnet ist.</p>
 <h2 id="protokolle">Protokolle<a class="headerlink" href="#protokolle" title="Permanent link">&para;</a></h2>
 <p>Das Backend schreibt zu einem Lauf nur Kennung, Ergebnis und Zahlen ins Anwendungslog, keine
 Skripte, Dateinamen oder Inhalte. Die Schritte eines Laufs sieht die Person an ihrer Antwort.</p>
+<p>Je Sandbox hält das <strong>Sandboxprotokoll</strong> in der Datenbank fest: Lauf, technische Kennung der
+Sandbox, Ergebnis, Dauer, Zahl der Skripte, Zahl und Größe der Dateien und gegebenenfalls den
+Abbruchgrund. Kein Konto, kein Skript, kein Dateiinhalt. Es wird frühestens nach 7 Tagen und spätestens am Tag
+darauf gelöscht, einstellbar 1 bis 30 Tage, nie länger als das Schrittprotokoll; Frist und Einsicht beschreibt
+<a href="../administration/datenschutz.html">Datenschutz einstellen</a>.</p>
+<p>Der Sandbox-Dienst führt ein eigenes Log. Damit keine Skripte darin landen:</p>
+<ul>
+<li>Log-Stufe des Dienstes <code>INFO</code> oder höher, nie <code>DEBUG</code> (<code>[log] level</code> in <code>sandbox/config.toml</code>,
+  im Chart von OpenSandbox der entsprechende Wert). Ein Test prüft die mitgelieferte Datei.</li>
+<li>Compose rotiert das Log des Dienstes (<code>logging</code> in <code>docker-compose.sandbox.yml</code>, 3 × 10 MB).
+  Die Logs der Sandbox-Container selbst rotiert der Docker-Dienst des Hosts
+  (<code>log-opts</code> in <code>/etc/docker/daemon.json</code>); in Kubernetes rotiert das Kubelet.</li>
+</ul>
 
 
 

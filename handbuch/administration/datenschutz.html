@@ -2291,6 +2291,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="datenschutz.html" class="md-nav__link md-nav__link--active">
         
   
@@ -2307,6 +2325,36 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#protokoll-eines-agentenlaufs-einsehen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protokoll eines Agentenlaufs einsehen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -3941,6 +3989,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#protokoll-eines-agentenlaufs-einsehen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protokoll eines Agentenlaufs einsehen
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3989,6 +4056,11 @@
 <td>wie lange Anträge und Freigaben einer Klärung liegen bleiben</td>
 <td>1 Jahr, 1 bis 10 Jahre</td>
 </tr>
+<tr>
+<td>„Protokolle der Agentenläufe“</td>
+<td>wie lange Schritt- und Sandboxprotokoll der Agenten liegen bleiben; die Löschung ist nicht abschaltbar, das Sandboxprotokoll nie länger als das Schrittprotokoll</td>
+<td>je 7 Tage, 1 bis 30 Tage</td>
+</tr>
 </tbody>
 </table>
 <p><strong>Eine Verkürzung wirkt mit dem nächsten Löschlauf vollständig</strong>, eine Verlängerung sofort, holt aber
@@ -3996,6 +4068,14 @@ Gelöschtes nicht zurück. Eine Dienstvereinbarung kann längere Fristen vorsehe
 <p>Weitere Fristen stehen an ihrem Ort: die Aufbewahrung des Verbindungsprotokolls und die Löschfrist
 privater Bibliotheken unter <a href="zugaenge.html#einstellungen-der-anbindungen">Zugänge einrichten</a>, die
 Hervorhebung „lange offen“ unter <a href="ausscheiden.html">Ausscheiden und Nachfolge</a>.</p>
+<h2 id="protokoll-eines-agentenlaufs-einsehen">Protokoll eines Agentenlaufs einsehen<a class="headerlink" href="#protokoll-eines-agentenlaufs-einsehen" title="Permanent link">&para;</a></h2>
+<p>Für die Fehlersuche hält OPAA zu jedem Agentenlauf fest, welches Werkzeug ein Schritt mit welchem
+Ergebnis und welcher Dauer lief, und je Sandbox die Zahl der Skripte, Dateien und Bytes. Konto,
+Suchtext, Skript und Dateiinhalt stehen nicht darin.</p>
+<p>Einsehen kann es nur die Systemverwaltung der eigenen Organisation, über die Schnittstelle
+<code>GET /api/v1/admin/agent-runs/{Laufkennung}/log?reason=…</code>: genau ein Lauf, nur mit Begründung.
+Die Laufkennung steht an der Antwort, wenn die Person die Schritte aufklappt, und bei einem abgebrochenen Lauf im Anwendungslog. Ein Tag wird frühestens nach der eingestellten Frist gelöscht, spätestens am Tag darauf. Jeder Abruf, auch ein abgelehnter, steht im
+Revisionsprotokoll. Eine Liste der Läufe, eine Suche nach Personen oder einen Export gibt es nicht.</p>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
 <li>Wann eine Person zuletzt ihre Daten geladen hat, zeigt keine Ansicht der Verwaltung.</li>
