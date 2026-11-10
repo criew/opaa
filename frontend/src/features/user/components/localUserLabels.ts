@@ -106,6 +106,12 @@ export const PRIVILEGED_CONFIRM_PURPOSE =
   'Eine Rolle zu vergeben oder ein Konto mit Systemrolle zu ändern, verlangt eine gerade ' +
   'bestätigte Anmeldung. Bitte bestätigen Sie Ihre Anmeldung.'
 
+/** Why saving the rules of the local sign-in asks for a confirmed sign-in. */
+export const LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE =
+  'Die Regeln der lokalen Anmeldung entscheiden, wer sich registrieren und ein Passwort ' +
+  'zurücksetzen kann. Sie zu ändern, verlangt eine gerade bestätigte Anmeldung. ' +
+  'Bitte bestätigen Sie Ihre Anmeldung.'
+
 /**
  * Back from the sign-in at the provider the page is new, so the change has to be made again; whether
  * the provider confirmed the sign-in only that next attempt tells.

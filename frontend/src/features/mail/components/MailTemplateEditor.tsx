@@ -18,6 +18,8 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import MailTemplatePreviewPane from './MailTemplatePreviewPane'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
+import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 
 /** What a placeholder inserts into the finished message — wording as in the backend's sample. */
 const placeholderDescriptions: Record<string, string> = {
@@ -53,6 +55,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   const [showComparison, setShowComparison] = useState(false)
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const gate = useRecentLoginGate(MAIL_CONFIRM_PURPOSE)
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   /** Which field a placeholder chip inserts into - the one that had the caret last. */
@@ -93,14 +97,19 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
     })
   }
 
-  async function handleSave() {
+  async function handleSave(afterConfirmation = false) {
+    setRefusal(null)
     try {
       // bodyHtml unchanged: the PUT is a full replacement, so leaving the field out would quietly
       // drop an HTML override somebody stored through the API.
       await saveTemplate(template.key, { subject, bodyPlain, bodyHtml: template.bodyHtml })
+      gate.settled()
       notify(`„${template.label}“ wurde gespeichert.`, 'success')
-    } catch {
-      // the store holds the backend's field error; the alert below renders it
+    } catch (err) {
+      // a refusal for want of a recent sign-in opens the confirmation; any other refusal is the
+      // store's backend field error, which the alert below renders
+      const refused = gate.refusal(err, () => void handleSave(true), afterConfirmation)
+      if (refused) setRefusal(refused)
     }
   }
 
@@ -153,9 +162,9 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         </Typography>
       </Box>
 
-      {error && (
+      {(refusal ?? error) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {refusal ?? error}
         </Alert>
       )}
 
@@ -286,6 +295,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         error={preview.error}
         isLoading={preview.isLoading}
       />
+      {gate.dialog}
     </Box>
   )
 }

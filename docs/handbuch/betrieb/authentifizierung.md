@@ -492,7 +492,12 @@ andere Hände kommen könnte ([Rollen](../administration/systemrollen.md)), und 
 sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert. Ebenso verlangt sie jede
 Änderung an Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim oder Gruppen-Claim eines bestehenden
 Anbieters: Diese Angaben entscheiden, wessen Tokens gelten und was sie gewähren. Anzeigename und
-Anzeigenamen-Claim ändern sich ohne Bestätigung.
+Anzeigenamen-Claim ändern sich ohne Bestätigung. Verlangt wird sie außerdem, bevor die
+Systemverwaltung den [E-Mail-Versand](../administration/e-mail.md) (SMTP-Zugang oder eine Vorlage)
+oder die Regeln der lokalen Anmeldung ändert, denn darüber laufen Einladungen und Links zum
+Zurücksetzen von Passwörtern, und bevor sie einen
+[Einstellungsimport](../administration/einstellungen-uebertragen.md) mit sicherheitsrelevanten
+Änderungen übernimmt. Die Vorschau eines Imports kommt ohne Bestätigung aus.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

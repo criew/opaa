@@ -8,6 +8,7 @@ import io.opaa.api.dto.MailTemplateSummaryResponse;
 import io.opaa.api.dto.MailTemplateUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import io.opaa.common.NotFoundException;
 import io.opaa.mail.MailTemplateDraft;
 import io.opaa.mail.MailTemplateKey;
@@ -66,7 +67,9 @@ public class SystemMailTemplateController {
         templateService.get(resolve(templateKey), MailTemplateService.DEFAULT_LOCALE));
   }
 
+  /** Demands a recent sign-in: a template decides where the link of a reset mail points. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @RequiresRecentLogin
   @PutMapping("/{templateKey}")
   public MailTemplateResponse updateMailTemplate(
       @PathVariable String templateKey,
