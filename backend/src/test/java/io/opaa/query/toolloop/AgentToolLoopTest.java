@@ -119,7 +119,8 @@ class AgentToolLoopTest {
           Set.of(ToolNames.SEARCH_KNOWLEDGE),
           AgentLimits.SYSTEM,
           false,
-          false);
+          false,
+          "Prüfhilfe");
   private Set<String> switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE);
   private boolean resolverPresent = true;
   private List<AgentTool> extraTools = List.of();
@@ -189,6 +190,8 @@ class AgentToolLoopTest {
     QueryResult result = loop().handle(turn());
 
     AgentRunRecord run = result.agentRun();
+    assertThat(run.agentId()).isEqualTo(agentId);
+    assertThat(run.agentName()).isEqualTo("Prüfhilfe");
     assertThat(run.endState()).isEqualTo(EndState.COMPLETED);
     assertThat(run.steps())
         .extracting(AgentRunRecord.Step::detail)

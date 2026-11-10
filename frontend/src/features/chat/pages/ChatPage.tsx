@@ -372,10 +372,12 @@ export default function ChatPage() {
       />
       <SearchAvailabilityNotice />
       <ChatInput
-        onSend={(message, usedPrompt, attachments) =>
-          attachments
-            ? sendMessage(message, usedPrompt, attachments)
-            : sendMessage(message, usedPrompt)
+        onSend={(message, usedPrompt, attachments, agent) =>
+          agent
+            ? sendMessage(message, usedPrompt, attachments ?? [], agent)
+            : attachments
+              ? sendMessage(message, usedPrompt, attachments)
+              : sendMessage(message, usedPrompt)
         }
         answerPending={isLoading}
         onCancelAnswer={cancelAnswer}

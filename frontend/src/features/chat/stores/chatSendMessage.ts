@@ -45,6 +45,7 @@ export async function sendChatMessage(
   question: string,
   usedPrompt?: { id: string; title: string },
   attachments: ChatAttachmentRef[] = [],
+  agent?: { id: string; name: string },
 ): Promise<RefusedQuestion | void> {
   // This call's token in the session epoch, captured before any await below. Checked
   // again before every set() that follows an await - a logout (resetAllStores) in the meantime
@@ -77,6 +78,7 @@ export async function sendChatMessage(
       content: question,
       ...(usedPrompt ? { usedPromptTitle: usedPrompt.title } : {}),
       ...(attachments.length > 0 ? { attachments } : {}),
+      ...(agent ? { agentName: agent.name } : {}),
       timestamp: new Date(),
     },
     persistedUserTurnsBefore: sendingChatId
@@ -192,6 +194,7 @@ export async function sendChatMessage(
       usedPrompt?.id,
       {
         signal: answerAbort.signal,
+        ...(agent ? { agentId: agent.id } : {}),
         ...(attachments.length > 0
           ? { attachmentIds: attachments.map((attachment) => attachment.id) }
           : {}),
