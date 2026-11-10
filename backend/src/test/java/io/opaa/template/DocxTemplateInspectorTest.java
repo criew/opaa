@@ -264,6 +264,54 @@ class DocxTemplateInspectorTest {
     assertThat(check.isPassive("kein Word".getBytes(StandardCharsets.UTF_8))).isFalse();
   }
 
+  @Test
+  void onlyAWordDocumentOrTemplateIsAdmittedAsMainPart() throws IOException {
+    DocxActiveContent check = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
+    byte[] plain = TestDocx.withParagraphs("Text");
+    String document =
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml";
+
+    assertThat(
+            check.isPassive(
+                withContentType(
+                    plain,
+                    document,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml")))
+        .isTrue();
+    assertThat(
+            check.isPassive(
+                withContentType(
+                    plain,
+                    document,
+                    "application/vnd.ms-word.template.macroEnabledTemplate.main+xml")))
+        .isFalse();
+    assertThat(
+            check.isPassive(
+                withContentType(
+                    plain, document, "application/vnd.ms-word.document.macroEnabled.main+xml")))
+        .isFalse();
+  }
+
+  /** {@code docx} with the content type {@code from} declared as {@code to}. */
+  private static byte[] withContentType(byte[] docx, String from, String to) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(docx));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        byte[] content = in.readAllBytes();
+        if (entry.getName().equals("[Content_Types].xml")) {
+          String text = new String(content, StandardCharsets.UTF_8);
+          assertThat(text).contains(from);
+          content = text.replace(from, to).getBytes(StandardCharsets.UTF_8);
+        }
+        zip.write(content);
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
   /** {@code docx} with {@code xml} inserted at the start of the document body. */
   private static byte[] withBodyStart(byte[] docx, String xml) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();

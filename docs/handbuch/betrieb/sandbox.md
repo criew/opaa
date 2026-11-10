@@ -45,8 +45,8 @@ flowchart LR
 - **Kein Nachinstallieren:** Das Image `opaa/sandbox-python` bringt Python mit reportlab, fpdf2,
   python-docx, openpyxl, pandas und matplotlib mit, dazu docxtpl, LibreOffice Writer ohne Oberfläche
   für die PDF-Fassung, Schriften mit den Maßen von Arial, Times New Roman, Courier New und Calibri
-  sowie das feste Skript für `fill_template`. LibreOffice macht das Image um mehrere hundert MB
-  größer. Der Bau des Images prüft das Skript mit eigenen Tests und bricht ab, wenn einer scheitert.
+  sowie das feste Skript für `fill_template`. LibreOffice samt Schriften macht das Image entpackt um
+  rund 370 MB größer (amd64). Der Bau des Images prüft das Skript mit eigenen Tests und bricht ab, wenn einer scheitert.
   Die Umwandlung in PDF bekommt einen Teil des Zeitlimits eines Aufrufs; reicht er nicht, bleibt die
   Word-Datei. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`; es braucht `python3` und das Kommando
   `env`, für `fill_template` zusätzlich `/opt/opaa/fill_template.py` mit docxtpl und `soffice`.
