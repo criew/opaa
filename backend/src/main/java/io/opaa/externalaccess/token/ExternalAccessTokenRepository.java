@@ -2,6 +2,7 @@ package io.opaa.externalaccess.token;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -119,6 +120,19 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
               + " AND (expiry_reminded_days IS NULL OR expiry_reminded_days > :leadDays)",
       nativeQuery = true)
   int claimExpiryReminder(@Param("id") UUID id, @Param("leadDays") int leadDays);
+
+  /**
+   * Sets the day of use of a token that is not revoked and was not yet used on {@code day}; no
+   * other column is written, so a concurrent revocation is never undone.
+   *
+   * @return 1 when the day was written
+   */
+  @Transactional
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE ExternalAccessToken t SET t.lastUsedOn = :day WHERE t.id = :id"
+          + " AND t.revokedAt IS NULL AND (t.lastUsedOn IS NULL OR t.lastUsedOn <> :day)")
+  int recordUseOn(@Param("id") UUID id, @Param("day") LocalDate day);
 
   /**
    * Removes dead rows whose retention has run out. Bounded by {@code lapseRecordedAt} rather than
