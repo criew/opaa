@@ -231,7 +231,10 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    startet deshalb einmal mit einem Stand ab dem Merge von #3206 oder wird neu aufgesetzt), ebenso
    wenig eine mit Liquibase migrierte
    ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2). Ab dieser
-   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei.
+   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei. Liegt der letzte Stand,
+   der eine Baseline umschreibt ([Baselines](../../backend/docs/migrationen.md#baselines)), später,
+   ist er die Untergrenze: Keine ältere Historie passt zu den neuen Prüfsummen. Auf einem solchen
+   Stand und in den 24 Stunden danach prüft Szenario 05 also das Update der Version auf sich selbst.
 
 Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
 Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.

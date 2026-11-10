@@ -27,7 +27,6 @@ data:
           - external_access_expires_at
           - external_access_set_at
           - external_access_reminder_sent_at
-          - all_accounts_grant_allowed
           - erasure_requested_at
           - erasure_cause
         person:

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · geändert durch
+Akzeptiert · zuletzt geändert 2026-11-10 · geändert durch
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 4 und die
 `listed`-Teile von 5, 6, 7 und 9) · ändert
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidungen 5 und 12) · betrifft
@@ -68,8 +68,7 @@ ihr `OWNER` und darf sie an „Alle" freigeben (höchstens `EDITOR`, Entscheidun
 Konnektorbibliotheken einschränken, schränkt es das Anlegerecht je Quellart oder Zugang ein
 (ADR-0036, Entscheidung 5). Der Asset-Typ hat dafür keinen eigenen Prüfpunkt am Freigabe-Pfad.
 
-Die Spalte `knowledge_libraries.all_accounts_grant_allowed` liest und schreibt der Code nicht; sie
-entfällt als Contract-Migration. `CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` hat keinen Schreiber und bleibt
+Eine Spalte für diese Decke gibt es nicht mehr. `CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` hat keinen Schreiber und bleibt
 für alte Protokollzeilen lesbar.
 
 ### 6. Nachfolge-Sperre: eine Formel
