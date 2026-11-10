@@ -273,11 +273,12 @@ class AgentResponsibilityIntegrationTest {
         agentService.list(caller, true).stream().map(view -> view.agent().getId()).toList());
   }
 
+  /** The audit entries of the object, without those of its grants. */
   private List<String> auditEvents(UUID objectId) {
     return jdbc.queryForList(
-        "SELECT event_type FROM audit_log WHERE object_id = ? ORDER BY recorded_at, event_id",
-        String.class,
-        objectId.toString());
+        "SELECT event_type FROM audit_log WHERE object_id = ? AND event_type NOT LIKE"
+            + " 'ASSET_GRANT_%' ORDER BY recorded_at, event_id",
+        String.class, objectId.toString());
   }
 
   private CurrentUser admin() {

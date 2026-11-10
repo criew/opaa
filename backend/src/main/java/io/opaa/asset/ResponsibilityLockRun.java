@@ -38,7 +38,9 @@ public class ResponsibilityLockRun {
 
   private static final Logger log = LoggerFactory.getLogger(ResponsibilityLockRun.class);
   private static final int PAGE_SIZE = 500;
-  private static final UUID FIRST = new UUID(Long.MIN_VALUE, Long.MIN_VALUE);
+
+  /** Below every id in the database's order, which compares uuids as unsigned bytes. */
+  private static final UUID FIRST = new UUID(0L, 0L);
 
   private final AssetResponsibilityRepository repository;
   private final AssetRepository assetRepository;

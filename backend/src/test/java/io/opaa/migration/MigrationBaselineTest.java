@@ -152,6 +152,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "asset_ownership_history",
             "asset_visibility_history",
             "assets",
+            "asset_responsibilities",
+            "responsibility_lock_settings",
             "capability_grant_history",
             "capability_grants",
             "directory_connectors",

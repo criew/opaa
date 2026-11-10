@@ -34,6 +34,10 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
   über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
 - **Web-Schicht:** `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web` (auch `/api/v1/me`),
   `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation); Raumzuordnungen eines Assets in `space.web`.
+- **Verantwortliche Stelle und Sperre** (`asset_responsibilities`, nur Agenten und Vorlagen) führt
+  `AssetResponsibilityService`; die Typen rufen ihn beim Anlegen, Ändern und vor jeder Nutzung. Eine Sperre
+  ist eine Datenbankzeile ohne Cache und gilt so ab dem nächsten Aufruf auf jeder Instanz. Die Sperre nach
+  Fristablauf setzt `ResponsibilityLockRun` per bedingtem UPDATE, der Takt läuft unter ShedLock.
 - **Gruppenrechte enden mit Mitgliedschaft oder Deaktivierung** (`GroupMembershipResolver`, Cache nach Commit).
 
 ## Maßgebliche ADRs

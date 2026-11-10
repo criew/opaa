@@ -21,5 +21,7 @@ Wert im [Nachweisprotokoll](nachweisprotokoll-lesen.md).
 
 - Wie eine Vorlage aufgebaut ist und welche Dateien abgelehnt werden, steht unter
   [Vorlage anlegen](../benutzer/vorlage-anlegen.md).
+- Eine einzelne Vorlage sperren Sie wie einen Agenten:
+  [Agent oder Vorlage sperren](agenten.md#agent-oder-vorlage-sperren).
 - Ist die [Virenprüfung](virenpruefung.md) eingeschaltet, geht auch jede Vorlage vor dem Speichern
   an den Scanner.

@@ -11,6 +11,7 @@ function initialTemplates(): Record<string, DocumentTemplateResponse> {
       ownerName: 'Max Mustermann',
       reach: { allAccounts: false, groupCount: 1, userCount: 0 },
       myRole: 'OWNER',
+      responsibility: { function: 'Referat 50 – Organisation', missing: false },
       fileName: 'vermerk-referat-50.docx',
       sizeBytes: 48_213,
       placeholders: [

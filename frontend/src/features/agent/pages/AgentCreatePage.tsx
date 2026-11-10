@@ -7,7 +7,14 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { AssetOwnerFields } from '@/features/asset'
+import {
+  AssetOwnerFields,
+  RESPONSIBLE_REQUIRED,
+  ResponsibleUnitField,
+  responsibleDraftOfGroup,
+  responsibleRequest,
+  type ResponsibleDraft,
+} from '@/features/asset'
 import { useMyGroups } from '@/features/principal'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
@@ -22,6 +29,8 @@ import { fieldMessages } from '../components/fieldMessages'
 import { NAME_MAX, NAME_PLACEHOLDER, PURPOSE_HELP, PURPOSE_MAX } from '../components/agentTexts'
 
 const ID = 'agent-create'
+
+type FieldKey = 'name' | 'ownerId' | 'responsible'
 
 /**
  * Creating an agent: name, purpose and owner, nothing else. The agent starts empty - no
@@ -39,9 +48,14 @@ export default function AgentCreatePage() {
   const [purpose, setPurpose] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'name' | 'ownerId', string>>>({})
+  const [responsible, setResponsible] = useState<ResponsibleDraft | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Follows the chosen owner group, else the person's first group, until the person edits it.
+  const prefill = selectedGroup ?? myGroups.groups.find((group) => !group.deactivated)
+  const responsibleDraft = responsible ?? responsibleDraftOfGroup(prefill)
 
   if (isMissing('CREATE_AGENT')) {
     return (
@@ -67,7 +81,7 @@ export default function AgentCreatePage() {
     navigate(CATALOG_ROUTE)
   }
 
-  function showErrors(errors: Partial<Record<'name' | 'ownerId', string>>) {
+  function showErrors(errors: Partial<Record<FieldKey, string>>) {
     setFieldErrors(errors)
     // The summary renders with this state; it takes the focus once it is there.
     requestAnimationFrame(() => summaryRef.current?.focus())
@@ -75,11 +89,13 @@ export default function AgentCreatePage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const errors: Partial<Record<'name' | 'ownerId', string>> = {}
+    const errors: Partial<Record<FieldKey, string>> = {}
     if (name.trim() === '') errors.name = 'Geben Sie dem Agenten einen Namen.'
     if (ownerType === 'GROUP' && !selectedGroup) {
       errors.ownerId = 'Wählen Sie die Gruppe, der der Agent gehören soll.'
     }
+    const unit = responsibleRequest(responsibleDraft)
+    if (!unit) errors.responsible = RESPONSIBLE_REQUIRED
     if (Object.keys(errors).length > 0) {
       showErrors(errors)
       return
@@ -93,12 +109,17 @@ export default function AgentCreatePage() {
         description: purpose.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
+        responsible: unit,
       })
       navigate(agentRoute(id))
     } catch (err) {
       const fromServer = fieldMessages(apiFieldErrors(err))
-      if (fromServer.name || fromServer.ownerId) {
-        showErrors({ name: fromServer.name, ownerId: fromServer.ownerId })
+      if (fromServer.name || fromServer.ownerId || fromServer.responsible) {
+        showErrors({
+          name: fromServer.name,
+          ownerId: fromServer.ownerId,
+          responsible: fromServer.responsible,
+        })
       } else {
         setError(err instanceof Error ? err.message : 'Der Agent konnte nicht angelegt werden.')
       }
@@ -121,6 +142,13 @@ export default function AgentCreatePage() {
           document.querySelector<HTMLElement>('input[aria-label="Gruppe"]') ??
           document.querySelector<HTMLElement>(`[aria-labelledby="${ID}-owner-label"] input`)
         )?.focus(),
+    })
+  }
+
+  if (fieldErrors.responsible) {
+    summary.push({
+      text: `Verantwortliche Stelle: ${fieldErrors.responsible}`,
+      onJump: () => document.getElementById(`${ID}-responsible`)?.focus(),
     })
   }
 
@@ -182,6 +210,16 @@ export default function AgentCreatePage() {
             myGroups={myGroups}
             selectedGroup={selectedGroup}
             onSelectedGroupChange={setSelectedGroup}
+          />
+          <ResponsibleUnitField
+            id={`${ID}-responsible`}
+            groups={myGroups.groups}
+            value={responsibleDraft}
+            onChange={(next) => {
+              setResponsible(next)
+              setFieldErrors((errors) => ({ ...errors, responsible: undefined }))
+            }}
+            error={fieldErrors.responsible}
           />
         </Box>
 

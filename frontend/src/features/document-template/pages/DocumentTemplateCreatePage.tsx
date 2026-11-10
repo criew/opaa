@@ -10,8 +10,13 @@ import {
   AssetNameFields,
   AssetOwnerFields,
   AssetRightsFields,
+  RESPONSIBLE_REQUIRED,
+  ResponsibleUnitField,
   applyPendingGrantsAfterCreation,
+  responsibleDraftOfGroup,
+  responsibleRequest,
   type PendingGrant,
+  type ResponsibleDraft,
 } from '@/features/asset'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
@@ -45,6 +50,12 @@ export default function DocumentTemplateCreatePage() {
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [responsible, setResponsible] = useState<ResponsibleDraft | null>(null)
+  const [responsibleError, setResponsibleError] = useState<string | undefined>()
+
+  // Follows the chosen owner group, else the person's first group, until the person edits it.
+  const prefill = selectedGroup ?? myGroups.groups.find((group) => !group.deactivated)
+  const responsibleDraft = responsible ?? responsibleDraftOfGroup(prefill)
 
   const missingCapability = isMissing('CREATE_TEMPLATE')
     ? capabilityMissingMessage('CREATE_TEMPLATE')
@@ -72,6 +83,10 @@ export default function DocumentTemplateCreatePage() {
       setError('Bitte eine Gruppe auswählen')
       return
     }
+    if (activeStep === 1 && !responsibleRequest(responsibleDraft)) {
+      setResponsibleError(RESPONSIBLE_REQUIRED)
+      return
+    }
     setError(null)
     setActiveStep((step) => step + 1)
   }
@@ -87,6 +102,7 @@ export default function DocumentTemplateCreatePage() {
         description: description.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
+        responsible: responsibleRequest(responsibleDraft),
       })
       await applyPendingGrantsAfterCreation('DOCUMENT_TEMPLATE', created.id, pendingGrants)
       navigate(documentTemplateRoute(created.id))
@@ -151,6 +167,16 @@ export default function DocumentTemplateCreatePage() {
                 myGroups={myGroups}
                 selectedGroup={selectedGroup}
                 onSelectedGroupChange={setSelectedGroup}
+              />
+              <ResponsibleUnitField
+                id="document-template-create-responsible"
+                groups={myGroups.groups}
+                value={responsibleDraft}
+                onChange={(next) => {
+                  setResponsible(next)
+                  setResponsibleError(undefined)
+                }}
+                error={responsibleError}
               />
             </>
           )}

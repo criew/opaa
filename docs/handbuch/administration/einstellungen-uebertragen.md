@@ -44,7 +44,7 @@ geteilter Bibliotheken gilt die Obergrenze des Betriebs allein.
 | Vollabgleich-Rhythmus | je Quellart die gesetzten Tage oder `null` für die Werkseinstellung |
 | Schwellen und Fristen der Verbindungen | Inaktivitätsschwelle, Löschfrist privater Bibliotheken und Warnschwelle abgelaufener Konten, je der gesetzte Wert oder `null` für die Werkseinstellung |
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext, Erinnerung vor Ablauf einer Freigabe |
-| Ohne Zuständigkeit | ab wie vielen Monaten ein Eintrag als „lange offen“ gilt |
+| Ohne Zuständigkeit | ab wie vielen Monaten ein Eintrag als „lange offen“ gilt und nach wie vielen Tagen ohne verantwortliche Stelle ein Agent oder eine Vorlage gesperrt wird |
 | Verzeichnisabgleich | die Plausibilitätsschwelle in Prozent |
 | Sperren und „Nur über Zugänge“ | je Quellart die Sperre und, wo ein Zugang wählbar ist, „Nur über Zugänge“ mit dem Umgang mit Bibliotheken mit eigener Adresse |
 

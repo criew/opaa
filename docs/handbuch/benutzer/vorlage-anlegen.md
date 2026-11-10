@@ -11,7 +11,9 @@
 2. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Vorlagen“ und „Weiter“.
 3. **Stammdaten:** Name, Beschreibung und „Word-Datei auswählen“.
 4. **Eigentümer:** „Mein Konto“ oder „Eine Gruppe“; für eine Hausvorlage ist die Gruppe die
-   haltbarere Wahl.
+   haltbarere Wahl. Darunter die „Verantwortliche Stelle“: eine Gruppe oder eine
+   Organisationseinheit bzw. Funktion als Text, keine Einzelperson. Vorbelegt ist die gewählte
+   Gruppe, sonst Ihre erste.
 5. **Rechte:** auf Wunsch Rollen vormerken, dann „Vorlage anlegen“.
 
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
@@ -46,4 +48,6 @@ aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar `{# … #}` erscheint nic
 - OPAA führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
   einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.
 - Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen.
+- Fehlt die verantwortliche Stelle länger als die Frist der Systemverwaltung, wird die Vorlage
+  gesperrt und von keinem Agenten mehr angeboten; ändern lässt sich die Stelle im Reiter „Freigaben“.
 - Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, nie der Inhalt der Datei.

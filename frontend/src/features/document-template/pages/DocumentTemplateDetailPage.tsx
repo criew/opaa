@@ -5,7 +5,11 @@ import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
-import type { AssetRole, DocumentTemplateResponse } from '@/shared/api/types'
+import type {
+  AssetRole,
+  DocumentTemplateResponse,
+  ResponsibleUnitRequest,
+} from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import {
@@ -24,15 +28,20 @@ import {
   AssetDetailHeader,
   AssetGrantsSection,
   AssetOwnerSection,
+  AssetResponsibilitySection,
   AssetSpacesSection,
+  responsibilityNote,
   responsibleParty,
   useAssetCatalogEntry,
 } from '@/features/asset'
+import { useMyGroups } from '@/features/principal'
 import {
   deleteDocumentTemplate,
   downloadDocumentTemplateFile,
   getDocumentTemplate,
+  lockDocumentTemplate,
   replaceDocumentTemplateFile,
+  unlockDocumentTemplate,
   updateDocumentTemplate,
 } from '../api/documentTemplateApi'
 import PlaceholderList from '../components/PlaceholderList'
@@ -184,6 +193,7 @@ export default function DocumentTemplateDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [associationsVersion, setAssociationsVersion] = useState(0)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const myGroups = useMyGroups()
 
   const load = useCallback(
     (id: string) =>
@@ -265,6 +275,27 @@ export default function DocumentTemplateDetailPage() {
     }
   }
 
+  const note = responsibilityNote(template.responsibility)
+  const current = template
+
+  async function saveResponsible(responsible: ResponsibleUnitRequest) {
+    setTemplate(
+      await updateDocumentTemplate(templateId, {
+        name: current.name,
+        description: current.description ?? null,
+        responsible,
+      }),
+    )
+  }
+
+  async function setLock(reason: string | null) {
+    const responsibility =
+      reason === null
+        ? await unlockDocumentTemplate(templateId)
+        : await lockDocumentTemplate(templateId, reason)
+    setTemplate({ ...current, responsibility })
+  }
+
   function associationsChanged() {
     catalog.reload()
     setAssociationsVersion((version) => version + 1)
@@ -279,7 +310,12 @@ export default function DocumentTemplateDetailPage() {
           name={template.name}
           description={template.description}
           isPublic={template.reach.allAccounts}
-          badges={<MetaBadge>{assetRoleLabel(template.myRole)}</MetaBadge>}
+          badges={
+            <>
+              <MetaBadge>{assetRoleLabel(template.myRole)}</MetaBadge>
+              {template.responsibility.lock && <MetaBadge>Gesperrt</MetaBadge>}
+            </>
+          }
           administrative={administrative}
           headline={{
             idPrefix: 'document-template-detail',
@@ -299,7 +335,16 @@ export default function DocumentTemplateDetailPage() {
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
           onDelete={canDelete ? () => void handleDelete() : undefined}
-          note={<SuccessionStateNote succession={template.succession} />}
+          note={
+            <>
+              <SuccessionStateNote succession={template.succession} />
+              {note && (
+                <Alert severity={note.severity} sx={{ mt: 1 }}>
+                  {note.text}
+                </Alert>
+              )}
+            </>
+          }
         />
 
         {deleteError && (
@@ -319,6 +364,18 @@ export default function DocumentTemplateDetailPage() {
             if (value === 'freigaben') {
               return (
                 <Stack>
+                  <AssetResponsibilitySection
+                    idPrefix="document-template"
+                    name={template.name}
+                    responsibility={template.responsibility}
+                    canEdit={canManage}
+                    canLock={isSystemAdmin}
+                    groups={myGroups.groups}
+                    lockConsequence="Kein Agent kann die Vorlage mehr füllen; er antwortet stattdessen im Chat und sagt das. Die Sperre gilt auf allen Instanzen ab dem nächsten Aufruf, die Vorlage bleibt erhalten und lässt sich wieder entsperren."
+                    onSave={saveResponsible}
+                    onLock={(reason) => setLock(reason)}
+                    onUnlock={() => setLock(null)}
+                  />
                   <AssetOwnerSection
                     assetType="DOCUMENT_TEMPLATE"
                     assetId={templateId}

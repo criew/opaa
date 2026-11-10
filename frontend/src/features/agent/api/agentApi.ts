@@ -4,6 +4,7 @@ import type {
   AgentSettingsResponse,
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
+  AssetResponsibilityResponse,
   LibraryListResponse,
 } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
@@ -45,6 +46,34 @@ export async function updateAgent(
 ): Promise<AgentResponse> {
   try {
     const { data } = await apiClient.put<AgentResponse>(`/v1/agents/${agentId}`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Locks the agent with a reason (system administration only). */
+export async function lockAgent(
+  agentId: string,
+  reason: string,
+): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.put<AssetResponsibilityResponse>(
+      `/v1/agents/${agentId}/lock`,
+      { reason },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Lifts the lock of the agent (system administration only). */
+export async function unlockAgent(agentId: string): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.delete<AssetResponsibilityResponse>(
+      `/v1/agents/${agentId}/lock`,
+    )
     return data
   } catch (err) {
     normalizeError(err)
