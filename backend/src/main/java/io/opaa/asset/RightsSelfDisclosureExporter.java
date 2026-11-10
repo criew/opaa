@@ -14,6 +14,8 @@ import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,8 +28,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * type and name only (prompt libraries included, their texts never), the grants she holds or gave
  * and the capabilities she holds or gave. A grant to a group or to "Alle Konten" appears only when
  * she gave it; another person is "andere Person", a grant without granting person "System". An
- * asset she may no longer read - one she created and handed on, one she shared and lost - appears
- * without its name ({@link ReadableAssetNames}).
+ * asset she may no longer read - one she created and handed on, one she shared and lost - and a
+ * group she may no longer see appear without their name ({@link ReadableAssetNames}).
  */
 @Component
 public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -110,7 +112,8 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
             names.apply(
                 me,
                 jdbc.query(
-                    "SELECT a.id, a.asset_type, a.name, a.owner_user_id, g.name AS owner_group,"
+                    "SELECT a.id, a.asset_type, a.name, a.owner_user_id, a.owner_group_id,"
+                        + " g.name AS owner_group,"
                         + " a.created_by_user_id, a.owner_only, a.created_at FROM assets a"
                         + " LEFT JOIN groups g ON g.id = a.owner_group_id"
                         + " WHERE a.organization_id = ?"
@@ -124,6 +127,7 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
                           record, rs.getObject("id", UUID.class), rs.getString("asset_type"));
                       record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
                       record.put("ownerGroup", rs.getString("owner_group"));
+                      markGroup(record, "ownerGroup", rs, "owner_group_id");
                       record.put(
                           "createdBy",
                           who(rs.getObject("created_by_user_id", UUID.class), me, null));
@@ -149,7 +153,8 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
                         + " AND (subject_user_id = ? OR granted_by_user_id = ?)"
                         + " AND (created_at, id) > (?, ?))"
                         + " SELECT ag.id, ag.asset_id, ag.asset_type, a.name AS asset_name, ag.subject_type,"
-                        + " ag.subject_user_id, g.name AS group_name, ag.role, ag.expires_at,"
+                        + " ag.subject_user_id, ag.subject_group_id, g.name AS group_name, ag.role,"
+                        + " ag.expires_at,"
                         + " ag.granted_by_user_id, ag.created_at, ag.updated_at FROM ag"
                         + " LEFT JOIN assets a ON a.id = ag.asset_id"
                         + " LEFT JOIN groups g ON g.id = ag.subject_group_id"
@@ -164,6 +169,7 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
                       record.put(
                           "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
                       record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
                       record.put("role", rs.getString("role"));
                       record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
                       record.put(
@@ -187,35 +193,46 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
         sink,
         "capabilities",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT c.id, c.capability, c.scope, c.subject_type, c.subject_user_id,"
-                    + " g.name AS group_name, c.granted_by_user_id, c.created_at"
-                    + " FROM capability_grants c LEFT JOIN groups g ON g.id = c.subject_group_id"
-                    + " WHERE c.organization_id = ?"
-                    + " AND (c.subject_user_id = ? OR c.granted_by_user_id = ?)"
-                    + " AND (c.created_at, c.id) > (?, ?) ORDER BY c.created_at, c.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "id");
-                  record.put("capability", rs.getString("capability"));
-                  record.put("scope", rs.getString("scope"));
-                  record.put("recipientType", rs.getString("subject_type"));
-                  record.put(
-                      "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("recipientGroup", rs.getString("group_name"));
-                  record.put(
-                      "grantedBy",
-                      who(
-                          rs.getObject("granted_by_user_id", UUID.class),
-                          me,
-                          SelfDisclosureLabels.SYSTEM));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT c.id, c.capability, c.scope, c.subject_type, c.subject_user_id,"
+                        + " c.subject_group_id, g.name AS group_name, c.granted_by_user_id,"
+                        + " c.created_at"
+                        + " FROM capability_grants c LEFT JOIN groups g ON g.id = c.subject_group_id"
+                        + " WHERE c.organization_id = ?"
+                        + " AND (c.subject_user_id = ? OR c.granted_by_user_id = ?)"
+                        + " AND (c.created_at, c.id) > (?, ?) ORDER BY c.created_at, c.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "id");
+                      record.put("capability", rs.getString("capability"));
+                      record.put("scope", rs.getString("scope"));
+                      record.put("recipientType", rs.getString("subject_type"));
+                      record.put(
+                          "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
+                      record.put(
+                          "grantedBy",
+                          who(
+                              rs.getObject("granted_by_user_id", UUID.class),
+                              me,
+                              SelfDisclosureLabels.SYSTEM));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
+  }
+
+  private static void markGroup(
+      Map<String, Object> record, String nameKey, ResultSet rs, String idColumn)
+      throws SQLException {
+    ReadableAssetNames.mark(
+        record, nameKey, rs.getObject(idColumn, UUID.class), ReadableAssetNames.GROUP);
   }
 }

@@ -24,8 +24,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code succession} of the self-disclosure: succession cases at assets the person
  * owned when the case was first seen (from the ownership history, so a successor never gets her
  * predecessor's case) and cases she closed, with the name of their object. No name is stored with a
- * case, so an asset she may no longer read appears without its name ({@link ReadableAssetNames}).
- * Whoever closed a case is "Sie" or "andere Person".
+ * case, so an asset, space or group she may no longer see appears without its name ({@link
+ * ReadableAssetNames}). Whoever closed a case is "Sie" or "andere Person".
  */
 @Component
 public class SuccessionSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -104,10 +104,12 @@ public class SuccessionSelfDisclosureExporter implements SelfDisclosureExporter 
                       record.put("objectType", rs.getString("object_type"));
                       record.put("assetType", rs.getString("asset_type"));
                       record.put("object", rs.getString("object_name"));
+                      String objectType = rs.getString("object_type");
                       ReadableAssetNames.mark(
                           record,
+                          "object",
                           rs.getObject("object_id", UUID.class),
-                          rs.getString("asset_type"));
+                          "ASSET".equals(objectType) ? rs.getString("asset_type") : objectType);
                       record.put("firstSeenAt", instant(rs.getTimestamp("first_seen_at")));
                       record.put("lastSeenAt", instant(rs.getTimestamp("last_seen_at")));
                       record.put("closedAt", instant(rs.getTimestamp("closed_at")));

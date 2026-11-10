@@ -186,11 +186,17 @@ Spalten des Wegs deckt die Auswahl selbst ab), kein Feld nennt eine unbekannte o
 Spalte, außer es sagt über sie nur ja/nein oder eine feste Bezeichnung, und ein Datum mit Exporteur
 führt `EXPORT` unter `accessPaths`.
 
-Ein Exporteur, der ein Asset über seinen heutigen Namen nennt, gibt diesen Namen nur aus, solange
-die Person das Asset nach der Rechteformel lesen darf, ohne Boden der Systemverwaltung; sonst steht
-dort „(kein Leserecht)“ (`ReadableAssetNames` in `io.opaa.permission`). Der Verweis selbst – Art,
-Zeitpunkt, Rolle – bleibt. Ein zum Zeitpunkt des Ereignisses gespeicherter Name darf stehen bleiben.
-Sonst verriete die Auskunft, wie ein Asset heißt, das die Person längst nicht mehr sehen darf.
+Ein Exporteur, der ein Arbeitsmittel, einen Space oder eine Gruppe über den heutigen Namen nennt,
+gibt diesen Namen nur aus, solange die Person das Objekt heute sehen darf; sonst steht dort „(kein
+Leserecht)“ (`ReadableAssetNames` in `io.opaa.permission`). Es gelten die bestehenden Regeln, keine
+eigene Formel: ein Asset nach der Rechteformel ohne Boden der Systemverwaltung, ein Space, solange
+die Person darin eine Rolle hat (Eigentum, direkte oder Gruppenmitgliedschaft, Port
+`SpaceVisibility`), eine Gruppe, solange die Person wirksam Mitglied ist oder die Gruppe für sie
+wählbar ist wie in der Auswahl der Gruppen, eine geschützte Gruppe nur über die Mitgliedschaft. Die
+eigenen heutigen Mitgliedschaften und eine eigene geltende „Sicht als“-Befugnis stehen deshalb
+immer mit Namen da. Der Verweis selbst – Art, Zeitpunkt, Rolle – bleibt. Ein zum Zeitpunkt des
+Ereignisses gespeicherter Name darf stehen bleiben. Sonst verriete die Auskunft, wie ein Objekt
+heute heißt, das die Person längst nicht mehr sehen darf.
 
 Der Weg steht an der Tabelle, weil die Tabelle die Einheit ist, an der eine neue Spalte oder Tabelle
 auffällt; eine Liste der Kategorien neben dem Manifest wüchse nicht mit.

@@ -27,7 +27,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * with their name at the provider, and the libraries she connected or answers for. No secret, no
  * token, no pending authorization goes out. The account name of a library goes out only when she
  * connected it; another connecting or responsible person is "andere Person", a responsible group
- * its name. A library she may no longer read appears without its name ({@link ReadableAssetNames}).
+ * its name. A library or group she may no longer see appears without its name ({@link
+ * ReadableAssetNames}).
  */
 @Component
 public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -184,6 +185,13 @@ public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExp
                           "responsible",
                           user ? who(rs.getObject("responsible_id", UUID.class), me, null) : null);
                       record.put("responsibleGroup", user ? null : rs.getString("group_name"));
+                      if (!user) {
+                        ReadableAssetNames.mark(
+                            record,
+                            "responsibleGroup",
+                            rs.getObject("responsible_id", UUID.class),
+                            ReadableAssetNames.GROUP);
+                      }
                       record.put("endedCause", rs.getString("ended_cause"));
                       record.put("endedAt", instant(rs.getTimestamp("ended_at")));
                       return record;

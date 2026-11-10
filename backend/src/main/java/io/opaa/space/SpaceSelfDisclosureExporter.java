@@ -21,9 +21,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The category {@code spaces} of the self-disclosure: the spaces the person owns with their model
- * instruction, her own memberships and the assets she assigned to a space, an asset's name only
- * while she may still read it ({@link ReadableAssetNames}). Memberships through a group are not
- * hers and stay out; her group memberships are in the category {@code groups}.
+ * instruction, her own memberships and the assets she assigned to a space, the name of an asset or
+ * space only while she may still see it ({@link ReadableAssetNames}). Memberships through a group
+ * are not hers and stay out; her group memberships are in the category {@code groups}.
  */
 @Component
 public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -131,7 +131,7 @@ public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
             names.apply(
                 subject.accountId(),
                 jdbc.query(
-                    "SELECT x.id, x.asset_id, s.name AS space_name, a.asset_type, a.name AS asset_name,"
+                    "SELECT x.id, x.asset_id, x.space_id, s.name AS space_name, a.asset_type, a.name AS asset_name,"
                         + " x.created_at FROM space_asset_associations x"
                         + " LEFT JOIN spaces s ON s.id = x.space_id"
                         + " LEFT JOIN assets a ON a.id = x.asset_id"
@@ -145,6 +145,11 @@ public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
                       record.put("createdAt", instant(rs.getTimestamp("created_at")));
                       ReadableAssetNames.mark(
                           record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      ReadableAssetNames.mark(
+                          record,
+                          "space",
+                          rs.getObject("space_id", UUID.class),
+                          ReadableAssetNames.SPACE);
                       return record;
                     },
                     subject.accountId(),

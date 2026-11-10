@@ -435,6 +435,48 @@ class LibraryFolderServiceIntegrationTest {
     }
   }
 
+  /**
+   * A document arriving in the folder while it is deleted keeps the folder: its row is refused by
+   * {@code fk_documents_folder}, which the caller gets as a conflict, never as a server error. A
+   * trigger moves a document of the library root into the folder at the moment its row goes.
+   */
+  @Test
+  void aDocumentArrivingDuringTheDeletionKeepsTheFolderAndAnswersWithAConflict() {
+    LibraryFolderDetail folder =
+        folderService.createFolder(libraryId, "Umkämpft", null, currentUserOf(editor, false));
+    UUID folderId = folder.folder().getId();
+    Document arriving = uploadDocumentIntoFolder(null, "spaet.txt", "Kommt gerade an");
+    String probe = "folder_arrival_probe_" + libraryId.toString().replace("-", "");
+    try {
+      jdbcTemplate.execute(
+          "CREATE FUNCTION "
+              + probe
+              + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE documents SET folder_id ="
+              + " OLD.id WHERE id = '"
+              + arriving.getId()
+              + "'; RETURN OLD; END $$");
+      jdbcTemplate.execute(
+          "CREATE TRIGGER "
+              + probe
+              + " BEFORE DELETE ON library_folders FOR EACH ROW WHEN (OLD.id = '"
+              + folderId
+              + "') EXECUTE FUNCTION "
+              + probe
+              + "()");
+
+      assertThatThrownBy(
+              () -> folderService.deleteFolder(libraryId, folderId, currentUserOf(editor, false)))
+          .isInstanceOf(ConflictException.class)
+          .hasMessageContaining("erneut");
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + probe + " ON library_folders");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS " + probe + "()");
+    }
+
+    assertThat(folderRepository.findById(folderId)).isPresent();
+    assertThat(documentRepository.findById(arriving.getId())).isPresent();
+  }
+
   @Test
   void deletingAnEmptyFolderRemovesOnlyTheFolderRow() {
     LibraryFolderDetail folder =

@@ -22,11 +22,13 @@ Vergessen? „Passwort vergessen“ auf der Anmeldeseite, sonst hilft die System
    maschinenlesbare Datei.
 
 Dokumentinhalte, Passwörter und Tokens fehlen darin. Darüber gibt die oder der
-Datenschutzbeauftragte Auskunft. Ein Arbeitsmittel, das Sie nicht mehr lesen dürfen, steht
-überall in der Auskunft als „(kein Leserecht)“ statt mit seinem heutigen Namen: bei Favoriten,
-Zuordnungen zu Spaces, eigenen Uploads, Quellen Ihrer Chats, angelegten Arbeitsmitteln,
-erteilten Rechten, Rechtehistorie, Nachfolgefällen, Freigaben für KI-Werkzeuge, verbundenen
-Bibliotheken und Verbindungsprotokoll.
+Datenschutzbeauftragte Auskunft. Arbeitsmittel, Spaces und Gruppen, die Sie heute nicht mehr
+sehen, stehen überall in der Auskunft als „(kein Leserecht)“ statt mit ihrem heutigen Namen, etwa
+bei Favoriten, Zuordnungen zu Spaces, Chats, früheren Mitgliedschaften, Gruppenverantwortungen,
+erteilten Rechten, Rechtehistorie, Nachfolgefällen, „Sicht als“-Befugnissen, Freigaben für
+KI-Werkzeuge und verbundenen Bibliotheken. Einen Space sehen Sie, solange Sie Mitglied sind,
+eine Gruppe, solange Sie Mitglied sind oder sie für Freigaben wählen können. Ihre heutigen
+Mitgliedschaften stehen immer mit Namen da.
 
 **Gut zu wissen:**
 

@@ -314,6 +314,137 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         profile);
   }
 
+  /**
+   * A space the person left and an internal group she was removed from, both renamed since: every
+   * record naming them stays, but their names today are replaced by the neutral placeholder. Her
+   * current group keeps its name.
+   */
+  @Test
+  void aSpaceAndAGroupThePersonNoLongerSeesAppearWithoutTheirNames() throws IOException {
+    UUID leftSpace = space("sd2991 Verlassen Space", other, null);
+    UUID leftGroup = group("sd2991 Verlassen Gruppe");
+    UUID prompts =
+        jdbc.queryForObject(
+            "SELECT id FROM assets WHERE name = 'sd2991 Meine Prompts' AND organization_id = ?",
+            UUID.class,
+            organization);
+    seedFormerSpace(leftSpace, leftGroup, prompts);
+    seedFormerGroup(leftGroup, prompts);
+    String closedCase =
+        "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
+            + " first_seen_at, last_seen_at, closed_at, closed_by_user_id)"
+            + " VALUES (?, ?, 'OPEN_SUCCESSION', ?, ?, now(), now(), now(), ?)";
+    jdbc.update(closedCase, UUID.randomUUID(), organization, "SPACE", leftSpace, person);
+    jdbc.update(closedCase, UUID.randomUUID(), organization, "GROUP", leftGroup, person);
+
+    Map<String, String> entries = export(person);
+
+    SoftAssertions.assertSoftly(
+        soft -> {
+          for (String entry : entries.keySet()) {
+            soft.assertThat(entries.get(entry)).as(entry).doesNotContain("sd2991 Verlassen");
+          }
+          soft.assertThat(entries.get("spaces.json")).contains("\"space\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("space-membership-history.json"))
+              .contains("\"space\":\"(kein Leserecht)\"", "\"memberGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("succession.json"))
+              .contains("\"object\":\"sd2991 Space Abgeschlossen\"")
+              .contains("\"object\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("groups.json"))
+              .contains("\"group\":\"sd2991 Gruppe Mein\"", "\"group\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("permission-history.json"))
+              .contains("\"group\":\"sd2991 Gruppe Mein\"", "\"group\":\"(kein Leserecht)\"")
+              .contains("\"recipientGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("rights.json"))
+              .contains("\"recipientGroup\":\"sd2991 Gruppe Mein\"")
+              .contains("\"recipientGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("connected-accounts.json"))
+              .contains("\"responsibleGroup\":\"(kein Leserecht)\"");
+        });
+  }
+
+  /** The person was a member of {@code space} until yesterday and assigned an asset to it. */
+  private void seedFormerSpace(UUID space, UUID group, UUID asset) {
+    jdbc.update(
+        "INSERT INTO space_membership_history (id, space_id, organization_id, subject_type,"
+            + " subject_user_id, role, cause, actor_user_id, valid_from, valid_to)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'MEMBER', 'ADDED', ?, now() - interval '2 days',"
+            + " now() - interval '1 day')",
+        UUID.randomUUID(),
+        space,
+        organization,
+        person,
+        other);
+    jdbc.update(
+        "INSERT INTO space_membership_history (id, space_id, organization_id, subject_type,"
+            + " subject_group_id, role, cause, actor_user_id, valid_from)"
+            + " VALUES (?, ?, ?, 'GROUP', ?, 'MEMBER', 'ADDED', ?, now())",
+        UUID.randomUUID(),
+        space,
+        organization,
+        group,
+        person);
+    jdbc.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id) VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        space,
+        asset,
+        organization,
+        person);
+  }
+
+  /**
+   * The person was a member of {@code group} until yesterday, appointed its steward, granted it a
+   * right and a capability and made it answer for a library connection.
+   */
+  private void seedFormerGroup(UUID group, UUID asset) {
+    jdbc.update(
+        "INSERT INTO group_membership_history (id, group_id, organization_id, user_id, cause,"
+            + " actor_user_id, valid_from, valid_to) VALUES (?, ?, ?, ?, 'ADDED', NULL,"
+            + " now() - interval '2 days', now() - interval '1 day')",
+        UUID.randomUUID(),
+        group,
+        organization,
+        person);
+    jdbc.update(
+        "INSERT INTO group_stewards (id, group_id, user_id, organization_id, appointed_by_user_id)"
+            + " VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        group,
+        other,
+        organization,
+        person);
+    grant(asset, "GROUP", null, group, person);
+    jdbc.update(
+        "INSERT INTO asset_grant_history (id, asset_id, organization_id, subject_type,"
+            + " subject_group_id, role, cause, actor_user_id, valid_from, asset_type)"
+            + " VALUES (?, ?, ?, 'GROUP', ?, 'VIEWER', 'GRANTED', ?, now(), 'PROMPT_LIBRARY')",
+        UUID.randomUUID(),
+        asset,
+        organization,
+        group,
+        person);
+    jdbc.update(
+        "INSERT INTO capability_grant_history (id, organization_id, capability, subject_type,"
+            + " subject_group_id, cause, actor_user_id, valid_from)"
+            + " VALUES (?, ?, 'CREATE_SPACE', 'GROUP', ?, 'GRANTED', ?, now())",
+        UUID.randomUUID(),
+        organization,
+        group,
+        person);
+    UUID library = library("sd2991 Gruppenverbindung", person);
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version, account_label, connected_by, connected_at, responsible_type,"
+            + " responsible_id) VALUES (?, ?, now(), now(), 0, 'ich-gruppe@anbieter.example', ?,"
+            + " now(), 'GROUP', ?)",
+        library,
+        profile,
+        person,
+        group);
+  }
+
   @Test
   void aSuccessionCaseGoesToWhoOwnedTheAssetWhenItWasFirstSeenNotToTheSuccessor()
       throws IOException {
@@ -594,6 +725,8 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         other,
         other);
     UUID closedSpace = space("sd2991 Space Abgeschlossen", other, null);
+    // still a member, so the succession case keeps the space's name
+    spaceMember(closedSpace, person, "MEMBER");
     String succession =
         "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
             + " asset_type, first_seen_at, last_seen_at, closed_at, closed_by_user_id)"

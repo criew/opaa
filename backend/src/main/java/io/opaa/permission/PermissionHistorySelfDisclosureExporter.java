@@ -26,8 +26,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code permission-history} of the self-disclosure: the intervals of the rights
  * history in which the person was subject, owner or group member, and those she brought about. It
  * reads her own history rows directly, page by page, never through the point-in-time query. Another
- * person is "andere Person", a change without acting person "System". An asset she may no longer
- * read appears without its name ({@link ReadableAssetNames}); the asset type stays.
+ * person is "andere Person", a change without acting person "System". An asset or group she may no
+ * longer see appears without its name ({@link ReadableAssetNames}); the asset type stays.
  */
 @Component
 public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureExporter {
@@ -159,8 +159,8 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
                         + " AND (subject_user_id = ? OR actor_user_id = ?)"
                         + " AND (valid_from, id) > (?, ?))"
                         + " SELECT h.id, h.asset_id, h.asset_type, a.name AS asset_name, h.subject_type,"
-                        + " h.subject_user_id, g.name AS group_name, h.role, h.expires_at, h.cause,"
-                        + " h.actor_user_id, h.valid_from, h.valid_to FROM h"
+                        + " h.subject_user_id, h.subject_group_id, g.name AS group_name, h.role,"
+                        + " h.expires_at, h.cause, h.actor_user_id, h.valid_from, h.valid_to FROM h"
                         + " LEFT JOIN assets a ON a.id = h.asset_id"
                         + " LEFT JOIN groups g ON g.id = h.subject_group_id"
                         + " ORDER BY h.valid_from, h.id LIMIT ?",
@@ -174,6 +174,7 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
                       record.put(
                           "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
                       record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
                       record.put("role", rs.getString("role"));
                       record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
                       putChange(record, rs, me);
@@ -194,7 +195,8 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
                 me,
                 jdbc.query(
                     "SELECT h.id, h.asset_id, h.asset_type, a.name AS asset_name, h.owner_type,"
-                        + " h.owner_user_id, g.name AS group_name, h.cause, h.actor_user_id, h.valid_from,"
+                        + " h.owner_user_id, h.owner_group_id, g.name AS group_name, h.cause,"
+                        + " h.actor_user_id, h.valid_from,"
                         + " h.valid_to FROM asset_ownership_history h LEFT JOIN assets a ON a.id = h.asset_id"
                         + " LEFT JOIN groups g ON g.id = h.owner_group_id"
                         + " WHERE h.organization_id = ? AND (h.owner_user_id = ? OR h.actor_user_id = ?)"
@@ -208,6 +210,7 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
                       record.put("ownerType", rs.getString("owner_type"));
                       record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
                       record.put("ownerGroup", rs.getString("group_name"));
+                      markGroup(record, "ownerGroup", rs, "owner_group_id");
                       putChange(record, rs, me);
                       return record;
                     },
@@ -254,53 +257,67 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
         sink,
         "capabilities",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, h.capability, h.scope, h.subject_type, h.subject_user_id,"
-                    + " g.name AS group_name, h.cause, h.actor_user_id, h.valid_from, h.valid_to"
-                    + " FROM capability_grant_history h"
-                    + " LEFT JOIN groups g ON g.id = h.subject_group_id"
-                    + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("capability", rs.getString("capability"));
-                  record.put("scope", rs.getString("scope"));
-                  record.put("recipientType", rs.getString("subject_type"));
-                  record.put(
-                      "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("recipientGroup", rs.getString("group_name"));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.capability, h.scope, h.subject_type, h.subject_user_id,"
+                        + " h.subject_group_id, g.name AS group_name, h.cause, h.actor_user_id,"
+                        + " h.valid_from, h.valid_to"
+                        + " FROM capability_grant_history h"
+                        + " LEFT JOIN groups g ON g.id = h.subject_group_id"
+                        + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("capability", rs.getString("capability"));
+                      record.put("scope", rs.getString("scope"));
+                      record.put("recipientType", rs.getString("subject_type"));
+                      record.put(
+                          "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
     reader.copy(
         sink,
         "groupMemberships",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, g.name AS group_name, h.user_id, h.cause, h.actor_user_id,"
-                    + " h.valid_from, h.valid_to FROM group_membership_history h"
-                    + " LEFT JOIN groups g ON g.id = h.group_id"
-                    + " WHERE h.organization_id = ? AND (h.user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("group", rs.getString("group_name"));
-                  record.put("member", who(rs.getObject("user_id", UUID.class), me, null));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.group_id, g.name AS group_name, h.user_id, h.cause, h.actor_user_id,"
+                        + " h.valid_from, h.valid_to FROM group_membership_history h"
+                        + " LEFT JOIN groups g ON g.id = h.group_id"
+                        + " WHERE h.organization_id = ? AND (h.user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("group", rs.getString("group_name"));
+                      markGroup(record, "group", rs, "group_id");
+                      record.put("member", who(rs.getObject("user_id", UUID.class), me, null));
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
+  }
+
+  private static void markGroup(
+      Map<String, Object> record, String nameKey, ResultSet rs, String idColumn)
+      throws SQLException {
+    ReadableAssetNames.mark(
+        record, nameKey, rs.getObject(idColumn, UUID.class), ReadableAssetNames.GROUP);
   }
 
   /** Cause, acting person and interval, the columns every history table shares. */

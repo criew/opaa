@@ -14,12 +14,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Hourly, on one instance at a time (ADR-0053): removes the chunks of documents whose row no longer
- * exists - unreachable through any document, yet still found by the search of their library - and
- * clears the proposed values of rejected model extractions, which are no longer written.
+ * Nightly, on one instance at a time (ADR-0053): removes the chunks of documents whose row no
+ * longer exists - unreachable through any document, yet still found by the search of their library
+ * - and clears the proposed values of rejected model extractions, which are no longer written.
  *
- * <p>A document id goes only once the previous run on the same instance found it orphaned too, so a
- * chunk set is never removed within the hour it lost its row; the ids of that earlier run are
+ * <p>A document id goes only once an earlier run on the same instance found it orphaned too, so a
+ * chunk set is never removed in the run that first saw it; the ids of that earlier run are
  * process-local and start empty on every instance. The candidates come from {@code
  * chunk_full_text}, whose {@code document_id} index answers the anti-join without reading the
  * vector table. A failure is logged and leaves the next run to try again.
@@ -44,12 +44,12 @@ public class OrphanedChunkCleanup {
     this.vectorChunkStore = vectorChunkStore;
   }
 
-  @Scheduled(cron = "0 41 * * * *")
+  @Scheduled(cron = "0 41 3 * * *")
   @SchedulerLock(
       name = "orphaned-chunk-cleanup",
-      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_HOURLY,
-      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
-  public void runHourly() {
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
+  public void runNightly() {
     try {
       int cleared = clearProposedValues();
       int removed = removeOrphans();

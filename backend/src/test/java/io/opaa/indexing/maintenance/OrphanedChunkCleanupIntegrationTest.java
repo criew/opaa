@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The hourly removal of chunks whose document row is gone: a chunk set goes from both stores once
+ * The nightly removal of chunks whose document row is gone: a chunk set goes from both stores once
  * two runs in a row found it orphaned, the chunks of a document that still exists stay, and the
  * proposed values of rejected model extractions are cleared.
  */
@@ -72,7 +72,7 @@ class OrphanedChunkCleanupIntegrationTest {
   }
 
   @Test
-  void theHourlyRunClearsEveryStoredProposedValue() {
+  void theNightlyRunClearsEveryStoredProposedValue() {
     UUID rejection = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO metadata_model_rejections (id, library_id, field_key, proposed_value,"
@@ -81,7 +81,7 @@ class OrphanedChunkCleanupIntegrationTest {
         rejection,
         libraryId);
 
-    cleanup.runHourly();
+    cleanup.runNightly();
 
     assertThat(
             jdbcTemplate.queryForObject(

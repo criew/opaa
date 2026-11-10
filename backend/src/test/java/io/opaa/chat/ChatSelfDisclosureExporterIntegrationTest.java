@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.test.CapturingSelfDisclosureSink;
@@ -165,6 +166,34 @@ class ChatSelfDisclosureExporterIntegrationTest {
     assertThat(sink.records("messages").get(1))
         .containsEntry("sources", List.of("erlass.pdf · Bibliothek: (kein Leserecht) · zitiert"));
     assertThat(sink.text()).doesNotContain("Neuer Name ohne Leserecht");
+  }
+
+  /**
+   * A chat in a space the person has left stays hers, but the space's name today is replaced by a
+   * neutral placeholder; the space she owns keeps its name.
+   */
+  @Test
+  void aChatInASpaceThePersonLeftAppearsWithoutTheSpaceName() throws Exception {
+    UUID left = data.space("Umbenannt nach dem Austritt", other);
+    chat("Chat im eigenen Space", person);
+    UUID chat = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " title, created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE',"
+            + " 'Chat im verlassenen Space', now(), now())",
+        chat,
+        left,
+        person,
+        data.organizationId());
+
+    CapturingSelfDisclosureSink sink = export();
+
+    assertThat(sink.records("chats"))
+        .extracting(r -> r.get("title"), r -> r.get("space"))
+        .containsExactlyInAnyOrder(
+            tuple("Chat im eigenen Space", "Fachbereich Bau"),
+            tuple("Chat im verlassenen Space", "(kein Leserecht)"));
+    assertThat(sink.text()).doesNotContain("Umbenannt nach dem Austritt");
   }
 
   @Test

@@ -39,7 +39,8 @@ import tools.jackson.databind.json.JsonMapper;
  * only as document title, library and page ({@link #sourceLine}, {@link #pageOf}), built from a
  * positive list of the stored JSON, never its excerpt, chunk or document id. Chats are read in
  * pages, the messages of a chat in pages of their sequence, each page in a short read-only
- * transaction.
+ * transaction. A library or space she may no longer see appears without its name ({@link
+ * ReadableAssetNames}).
  */
 @Component
 public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -190,7 +191,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
   private List<Map<String, Object>> chatPage(SelfDisclosureSubject subject, ChatCursor after) {
     List<Map<String, Object>> page =
         jdbc.query(
-            "SELECT c.id, c.title, s.name AS space_name, c.metadata_filter::text AS filter,"
+            "SELECT c.id, c.title, c.space_id, s.name AS space_name, c.metadata_filter::text AS filter,"
                 + " c.created_at, c.updated_at, k.pinned_at, k.archived_at, k.unarchived_at"
                 + " FROM chats c LEFT JOIN spaces s ON s.id = c.space_id"
                 + " LEFT JOIN chat_personal_marks k ON k.chat_id = c.id AND k.user_id = c.author_id"
@@ -207,6 +208,8 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
               record.put("pinnedAt", instant(rs, "pinned_at"));
               record.put("archivedAt", instant(rs, "archived_at"));
               record.put("unarchivedAt", instant(rs, "unarchived_at"));
+              ReadableAssetNames.mark(
+                  record, "space", rs.getObject("space_id", UUID.class), ReadableAssetNames.SPACE);
               return record;
             },
             subject.accountId(),
@@ -230,7 +233,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     for (Map<String, Object> record : page) {
       record.put("notes", notes.getOrDefault((UUID) record.get("chat"), List.of()));
     }
-    return page;
+    return assetNames.apply(subject.accountId(), page);
   }
 
   private List<ChatHead> chatHeads(SelfDisclosureSubject subject, ChatCursor after) {
