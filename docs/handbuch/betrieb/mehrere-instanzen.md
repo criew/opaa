@@ -507,7 +507,8 @@ sind drei Fragen wichtig:
   sie mithört, und `0`, solange ihre Zwischenspeicher an sich vorbei lesen.
 - **Laufen die geplanten Läufe?** Unter der Sperre führt nur eine Instanz einen Termin aus; den
   letzten Erfolg eines Laufs zeigt deshalb `max by (job) (opaa_scheduled_last_success)` über alle
-  Instanzen, die Fehler `sum by (job) (opaa_scheduled_failures_total)`. Die gehaltenen Sperren und das
+  Instanzen, die Fehler `sum by (job) (opaa_scheduled_failures_total)`. Bis ein Lauf auf einer
+  Instanz gelingt, zeigt sie ihren eigenen Start als letzten Erfolg. Die gehaltenen Sperren und das
   Alter der ältesten zeigt `opaa_scheduled_locks_held` und `opaa_scheduled_locks_oldest_age_seconds`.
 
 ## Was man wissen sollte

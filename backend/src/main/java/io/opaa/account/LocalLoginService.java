@@ -171,7 +171,6 @@ public class LocalLoginService {
       return refused(LoginResult.OTHER);
     }
     listeners.forEach(listener -> listener.onLoginSucceeded(user, current, now));
-    metrics.recordLogin(LoginMethod.LOCAL, LoginResult.SUCCESS);
     return Optional.of(new AuthenticatedLocalAccount(user, current));
   }
 
@@ -208,12 +207,12 @@ public class LocalLoginService {
     return locked;
   }
 
-  /** A local account whose password was just verified. */
   /** Counts a refused local sign-in by its reason; the caller learns nothing more than before. */
   private Optional<AuthenticatedLocalAccount> refused(LoginResult result) {
     metrics.recordLogin(LoginMethod.LOCAL, result);
     return Optional.empty();
   }
 
+  /** A local account whose password was just verified. */
   public record AuthenticatedLocalAccount(User user, LocalCredentials credentials) {}
 }

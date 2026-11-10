@@ -4,12 +4,16 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.observability.PassiveHealthGroup;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.Optional;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.health.contributor.Status;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,7 +28,7 @@ import org.springframework.stereotype.Component;
 @DataFlow("embedding-model")
 @Component
 @ConditionalOnProperty(name = "management.health.vectorstore.enabled", matchIfMissing = true)
-public class VectorStoreHealthIndicator implements HealthIndicator {
+public class VectorStoreHealthIndicator implements HealthIndicator, PassiveHealthGroup {
 
   private final VectorStore vectorStore;
   private final EmbeddingIndexState indexState;
@@ -59,6 +63,20 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
           .build();
     }
     return search.health();
+  }
+
+  @Override
+  public String healthGroup() {
+    return ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP;
+  }
+
+  /** The state without a search: the cheap states as they are, else the last search. */
+  @Override
+  public Optional<Status> lastStatus(Duration maxAge) {
+    if (!embeddingInfo.getEmbeddingInfo().installed() || !indexState.isVectorSearchAvailable()) {
+      return Optional.of(health().getStatus());
+    }
+    return search.last(maxAge).map(Health::getStatus);
   }
 
   private Health search() {

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatNoteExtractionService;
@@ -1049,7 +1048,7 @@ class QueryIntegrationTest {
   private QueryService secondInstance() {
     ChatMemory memoryOfB =
         MessageWindowChatMemory.builder()
-            .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+            .chatMemoryRepository(new CaffeineChatMemoryRepository())
             .maxMessages(retrievalContextFactory.queryProperties().conversationWindowMessages())
             .build();
     return new QueryService(

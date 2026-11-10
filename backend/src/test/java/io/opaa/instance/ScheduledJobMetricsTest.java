@@ -5,10 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
-import java.time.Clock;
+import io.opaa.test.MutableClock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import net.javacrumbs.shedlock.core.LockConfiguration;
 import net.javacrumbs.shedlock.core.LockProvider;
@@ -21,15 +20,18 @@ import org.springframework.scheduling.support.ScheduledMethodRunnable;
 /**
  * {@link ScheduledJobMetrics} on the observation Spring opens around a scheduled run: a failing run
  * counts a failure and leaves the last success alone, a successful one sets it, and a locked run
- * whose lock this instance did not get leaves both alone.
+ * whose lock this instance did not get leaves both alone. Until a run succeeds its last success is
+ * the start of the instance.
  */
 class ScheduledJobMetricsTest {
 
-  private static final Instant NOW = Instant.parse("2026-11-10T08:00:00Z");
+  private static final Instant STARTED = Instant.parse("2026-11-10T08:00:00Z");
+  private static final Instant NOW = STARTED.plus(Duration.ofHours(1));
 
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final ObservationRegistry observations = ObservationRegistry.create();
   private final Jobs jobs = new Jobs();
+  private final MutableClock clock = new MutableClock(STARTED);
 
   ScheduledJobMetricsTest() {
     observations
@@ -37,7 +39,7 @@ class ScheduledJobMetricsTest {
         .observationHandler(
             new ScheduledJobMetrics(
                 meters,
-                Clock.fixed(NOW, ZoneOffset.UTC),
+                clock,
                 new DefaultListableBeanFactory()
                     .getBeanProvider(
                         org.springframework.scheduling.config.ScheduledTaskHolder.class)));
@@ -50,7 +52,9 @@ class ScheduledJobMetricsTest {
 
   @Test
   void aFailingRunCountsAFailureAndLeavesTheLastSuccessAlone() throws Exception {
+    clock.advance(Duration.between(STARTED, NOW));
     run("succeedsThenFails");
+    clock.advance(Duration.ofMinutes(5));
     jobs.fail = true;
 
     assertThatThrownBy(() -> run("succeedsThenFails")).isInstanceOf(IllegalStateException.class);
@@ -60,19 +64,21 @@ class ScheduledJobMetricsTest {
   }
 
   @Test
-  void aRunThatNeverSucceededHasNoLastSuccessYet() throws Exception {
+  void aRunThatNeverSucceededHasTheStartOfTheInstanceAsItsLastSuccess() throws Exception {
+    clock.advance(Duration.between(STARTED, NOW));
     jobs.fail = true;
 
     assertThatThrownBy(() -> run("succeedsThenFails")).isInstanceOf(IllegalStateException.class);
 
-    assertThat(lastSuccess("jobs.succeeds-then-fails")).isNaN();
+    assertThat(lastSuccess("jobs.succeeds-then-fails")).isEqualTo(STARTED.getEpochSecond());
     assertThat(failures("jobs.succeeds-then-fails")).isEqualTo(1.0);
   }
 
   @Test
   void aLockedRunCountsOnlyWhereItGotTheLock() throws Exception {
+    clock.advance(Duration.between(STARTED, NOW));
     run("locked");
-    assertThat(lastSuccess("nightly-test-run")).isNaN();
+    assertThat(lastSuccess("nightly-test-run")).isEqualTo(STARTED.getEpochSecond());
     assertThat(failures("nightly-test-run")).isZero();
 
     jobs.lockGranted = true;

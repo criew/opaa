@@ -3,12 +3,10 @@ package io.opaa.account;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.auth.LocalCredentialsRepository;
-import io.opaa.observability.MeteredCaches;
 import io.opaa.security.LocalAuthKeyService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -28,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
  * LocalAccessTokenService#SESSION_GENERATION_CLAIM}; no clock of any host takes part.
  */
 @Service
-public class LocalTokenRevocationService implements MeteredCaches {
+public class LocalTokenRevocationService {
 
   private static final long CACHE_MAX_SIZE = 100_000;
 
@@ -49,7 +47,6 @@ public class LocalTokenRevocationService implements MeteredCaches {
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_SIZE)
             .expireAfterWrite(properties.accessTokenTtl())
-            .recordStats()
             .build();
   }
 
@@ -109,10 +106,5 @@ public class LocalTokenRevocationService implements MeteredCaches {
     return !(session.getClaim(LocalAccessTokenService.SESSION_GENERATION_CLAIM)
             instanceof Number number)
         || number.longValue() != generation.getFirst();
-  }
-
-  @Override
-  public Map<String, Cache<?, ?>> meteredCaches() {
-    return Map.of("revoked_tokens", denylisted);
   }
 }

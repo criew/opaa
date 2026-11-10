@@ -132,14 +132,14 @@ class LocalLoginServiceTest {
   }
 
   @Test
-  void everySignInIsCountedByItsOutcomeWithoutNamingTheAccount() {
+  void everyRefusedSignInIsCountedByItsReasonWithoutNamingTheAccountASuccessfulOneNot() {
     service.authenticate(EMAIL, "richtig", CLIENT);
     service.authenticate(EMAIL, "falsch", CLIENT);
     service.authenticate(" ", "falsch", CLIENT);
     row.lock(LockReason.ADMIN, NOW.minus(Duration.ofHours(1)), null);
     service.authenticate(EMAIL, "richtig", CLIENT);
 
-    assertThat(logins("success")).isEqualTo(1.0);
+    assertThat(meters.find(AuthMetrics.LOGINS_METRIC).tag("result", "success").meter()).isNull();
     assertThat(logins("bad_credentials")).isEqualTo(2.0);
     assertThat(logins("locked")).isEqualTo(1.0);
     assertThat(logins("other")).isZero();

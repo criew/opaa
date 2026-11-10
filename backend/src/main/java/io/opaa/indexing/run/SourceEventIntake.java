@@ -7,6 +7,7 @@ import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.spi.PushNotification;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -149,6 +150,7 @@ public class SourceEventIntake {
           "Draining the event batches stopped with {}; a claimed batch is due again after its"
               + " lease",
           e.getClass().getSimpleName());
+      ScheduledRunFailures.report();
     }
   }
 

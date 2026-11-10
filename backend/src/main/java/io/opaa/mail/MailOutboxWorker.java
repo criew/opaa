@@ -2,6 +2,7 @@ package io.opaa.mail;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.mail.MailOutbox.Batch;
 import io.opaa.mail.MailOutbox.Claimed;
 import io.opaa.mail.MailOutbox.Unreadable;
@@ -160,6 +161,7 @@ public class MailOutboxWorker {
           "Mail outbox run stopped with {}: {}; the remaining mail waits for the next run",
           e.getClass().getName(),
           MailRecipients.maskAddresses(e.getMessage()));
+      ScheduledRunFailures.report();
     }
   }
 

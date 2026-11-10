@@ -10,6 +10,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.common.ValidationException;
 import io.opaa.observability.AuthMetrics;
@@ -21,6 +28,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -33,9 +41,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.BearerTokenError;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
@@ -95,16 +103,15 @@ class OidcProviderRegistryTest {
   }
 
   @Test
-  void aTokenTheProviderCannotVouchForCountsAsIdpErrorAnInvalidOneAsBadCredentials() {
+  void aTokenWhoseKeysCannotBeFetchedCountsAsIdpErrorAnInvalidOneAsBadCredentials()
+      throws Exception {
+    // the provider's key set address does not answer: nothing listens on port 1
+    when(decoderFactory.create(enabledA))
+        .thenReturn(NimbusJwtDecoder.withJwkSetUri("http://127.0.0.1:1/jwks").build());
     registry.refresh();
-    when(decoderA.decode("signed.by.idp"))
-        .thenThrow(
-            new JwtException("Couldn't retrieve remote JWK set: 401 Unauthorized, invalid_client"));
-    when(decoderA.decode("x.y.z")).thenThrow(new BadJwtException("signature does not match"));
     AuthenticationManager manager = registry.resolve("https://idp.example/realms/a");
 
-    assertThatThrownBy(
-            () -> manager.authenticate(new BearerTokenAuthenticationToken("signed.by.idp")))
+    assertThatThrownBy(() -> manager.authenticate(new BearerTokenAuthenticationToken(signed())))
         .isInstanceOf(AuthenticationServiceException.class);
     assertThatThrownBy(() -> manager.authenticate(new BearerTokenAuthenticationToken("x.y.z")))
         .isInstanceOf(InvalidBearerTokenException.class);
@@ -114,7 +121,21 @@ class OidcProviderRegistryTest {
   }
 
   @Test
-  void aTokenOfAProviderThatCouldNotBeBuiltCountsAsIdpError() {
+  void aTokenTheDecoderRefusesForAnotherReasonCountsAsOther() {
+    registry.refresh();
+    when(decoderA.decode("signed.by.idp")).thenThrow(new JwtException("unsupported algorithm"));
+    AuthenticationManager manager = registry.resolve("https://idp.example/realms/a");
+
+    assertThatThrownBy(
+            () -> manager.authenticate(new BearerTokenAuthenticationToken("signed.by.idp")))
+        .isInstanceOf(AuthenticationServiceException.class);
+
+    assertThat(oidcLogins("other")).isEqualTo(1.0);
+    assertThat(oidcLogins("idp_error")).isZero();
+  }
+
+  @Test
+  void aTokenOfAProviderThatCouldNotBeBuiltCountsAsOther() {
     when(decoderFactory.create(enabledA))
         .thenThrow(new IllegalStateException("discovery refused: 401"));
     registry.refresh();
@@ -132,8 +153,24 @@ class OidcProviderRegistryTest {
                     .authenticate(new BearerTokenAuthenticationToken("x.y.z")))
         .isInstanceOf(OAuth2AuthenticationException.class);
 
-    assertThat(oidcLogins("idp_error")).isEqualTo(1.0);
+    assertThat(oidcLogins("other")).isEqualTo(1.0);
+    assertThat(oidcLogins("idp_error")).isZero();
     assertThat(oidcLogins("bad_credentials")).isEqualTo(1.0);
+  }
+
+  /** A well-formed token signed with a key the provider would publish. */
+  private static String signed() throws Exception {
+    RSAKey key = new RSAKeyGenerator(2048).keyID("k1").generate();
+    SignedJWT token =
+        new SignedJWT(
+            new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("k1").build(),
+            new JWTClaimsSet.Builder()
+                .issuer("https://idp.example/realms/a")
+                .subject("someone")
+                .expirationTime(Date.from(START.plus(Duration.ofHours(1))))
+                .build());
+    token.sign(new RSASSASigner(key));
+    return token.serialize();
   }
 
   private double oidcLogins(String result) {

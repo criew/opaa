@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import com.nimbusds.jose.KeySourceException;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.observability.AuthMetrics;
@@ -191,9 +192,10 @@ public class OidcProviderRegistry
     if (entry != null) {
       return entry.authenticationManager();
     }
-    // a provider OPAA knows but could not reach is the provider's error, not the token's
+    // a provider OPAA knows but could not build is no fault of the token; idp_error stays with
+    // the key fetch
     LoginResult result =
-        failures.containsKey(normalized) ? LoginResult.IDP_ERROR : LoginResult.BAD_CREDENTIALS;
+        failures.containsKey(normalized) ? LoginResult.OTHER : LoginResult.BAD_CREDENTIALS;
     return authentication -> {
       metrics.recordLogin(LoginMethod.OIDC, result);
       throw new OAuth2AuthenticationException(
@@ -247,16 +249,17 @@ public class OidcProviderRegistry
   }
 
   /**
-   * Authenticates a bearer token, counting a refusal in {@code opaa.auth.logins}: a token the
-   * decoder could not check - the provider's keys could not be fetched, e.g. because the provider
-   * refused or did not answer - is {@code idp_error}, an invalid token {@code bad_credentials}.
-   * Accepted tokens are not counted: each request carries one, and their count would trace work.
+   * Authenticates a bearer token, counting a refusal in {@code opaa.auth.logins}: a token whose
+   * signing keys could not be fetched from the provider is {@code idp_error}, an invalid token
+   * {@code bad_credentials}, anything else {@code other}. Accepted tokens are not counted: each
+   * request carries one, and their count would trace work.
    */
   private Authentication counted(JwtAuthenticationProvider provider, Authentication token) {
     try {
       return provider.authenticate(token);
     } catch (AuthenticationServiceException e) {
-      metrics.recordLogin(LoginMethod.OIDC, LoginResult.IDP_ERROR);
+      metrics.recordLogin(
+          LoginMethod.OIDC, keysUnavailable(e) ? LoginResult.IDP_ERROR : LoginResult.OTHER);
       throw e;
     } catch (InvalidBearerTokenException e) {
       metrics.recordLogin(LoginMethod.OIDC, LoginResult.BAD_CREDENTIALS);
@@ -265,6 +268,19 @@ public class OidcProviderRegistry
       metrics.recordLogin(LoginMethod.OIDC, LoginResult.OTHER);
       throw e;
     }
+  }
+
+  /** Whether the provider's key set could not be fetched, as the decoder reports it. */
+  static boolean keysUnavailable(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof KeySourceException) {
+        return true;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return false;
   }
 
   /**

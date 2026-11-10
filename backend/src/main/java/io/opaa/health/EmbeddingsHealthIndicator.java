@@ -3,11 +3,15 @@ package io.opaa.health;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.EmbeddingModelNotInstalledException;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.observability.PassiveHealthGroup;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.Optional;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.health.contributor.Status;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,7 +25,7 @@ import org.springframework.stereotype.Component;
 @DataFlow("embedding-model")
 @Component
 @ConditionalOnProperty(name = "management.health.embeddings.enabled", matchIfMissing = true)
-public class EmbeddingsHealthIndicator implements HealthIndicator {
+public class EmbeddingsHealthIndicator implements HealthIndicator, PassiveHealthGroup {
 
   /** The detail value of a role without a model. */
   static final String NOT_CONFIGURED = "NOT_CONFIGURED";
@@ -50,6 +54,16 @@ public class EmbeddingsHealthIndicator implements HealthIndicator {
   @Override
   public Health health() {
     return probe.health();
+  }
+
+  @Override
+  public String healthGroup() {
+    return ModelHealthGroupsConfiguration.EMBEDDINGS_GROUP;
+  }
+
+  @Override
+  public Optional<Status> lastStatus(Duration maxAge) {
+    return probe.last(maxAge).map(Health::getStatus);
   }
 
   private Health probe() {

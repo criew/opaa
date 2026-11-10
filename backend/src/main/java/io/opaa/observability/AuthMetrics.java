@@ -20,12 +20,16 @@ public class AuthMetrics {
 
   public static final String ACCOUNT_LOCKOUT_METRIC = "opaa.auth.local_account_lockout";
 
-  /** Sign-ins by {@code method} and {@code result}, without account, address or provider. */
+  /**
+   * Refused sign-ins by {@code method} and {@code result}, without account, address or provider.
+   * Successful ones are not counted for any method: over time they would draw the working hours of
+   * the staff (ADR-0071, Entscheidung 10).
+   */
   public static final String LOGINS_METRIC = "opaa.auth.logins";
 
   /** How a person signs in. */
   public enum LoginMethod {
-    LOCAL(LoginResult.SUCCESS, LoginResult.BAD_CREDENTIALS, LoginResult.LOCKED, LoginResult.OTHER),
+    LOCAL(LoginResult.BAD_CREDENTIALS, LoginResult.LOCKED, LoginResult.OTHER),
     /** The sign-in itself happens at the provider; OPAA sees only the tokens it refuses. */
     OIDC(LoginResult.BAD_CREDENTIALS, LoginResult.IDP_ERROR, LoginResult.OTHER);
 
@@ -37,11 +41,10 @@ public class AuthMetrics {
   }
 
   /**
-   * How a sign-in ended: {@code IDP_ERROR} when the identity provider could not vouch for a token,
-   * e.g. its keys could not be fetched because it refused or did not answer.
+   * Why a sign-in was refused: {@code IDP_ERROR} only when the signing keys of the identity
+   * provider could not be fetched to check a token.
    */
   public enum LoginResult {
-    SUCCESS,
     BAD_CREDENTIALS,
     LOCKED,
     IDP_ERROR,
@@ -71,14 +74,14 @@ public class AuthMetrics {
             Counter.builder(LOGINS_METRIC)
                 .tag("method", method.name().toLowerCase(Locale.ROOT))
                 .tag("result", result.name().toLowerCase(Locale.ROOT))
-                .description("Sign-ins by method and outcome, installation-wide")
+                .description("Refused sign-ins by method and reason, installation-wide")
                 .register(meterRegistry));
       }
       logins.put(method, byResult);
     }
   }
 
-  /** Counts one sign-in of {@code method} that ended with {@code result}. */
+  /** Counts one sign-in of {@code method} refused with {@code result}. */
   public void recordLogin(LoginMethod method, LoginResult result) {
     Counter counter = logins.get(method).get(result);
     if (counter == null) {

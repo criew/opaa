@@ -6,11 +6,13 @@ import io.micrometer.core.instrument.Tags;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,18 +59,51 @@ public final class PolledGauges {
     };
   }
 
+  /**
+   * Every column of the single row of {@code sql} as a number; {@code null} reads as {@code NaN}.
+   */
+  public static Supplier<double[]> sqlRow(JdbcTemplate jdbc, String sql, Object... arguments) {
+    return () ->
+        jdbc.queryForObject(
+            sql,
+            (row, number) -> {
+              double[] values = new double[row.getMetaData().getColumnCount()];
+              for (int i = 0; i < values.length; i++) {
+                double value = row.getDouble(i + 1);
+                values[i] = row.wasNull() ? Double.NaN : value;
+              }
+              return values;
+            },
+            arguments);
+  }
+
   /** Registers one gauge that shows the last value {@code read} returned. */
   public PolledGauges gauge(
       String name, Tags tags, String baseUnit, String description, DoubleSupplier read) {
-    Reading reading = new Reading(name, tags, read);
+    return gauges(
+        () -> new double[] {read.getAsDouble()}, new Spec(name, tags, baseUnit, description));
+  }
+
+  /**
+   * Registers several gauges filled from one read: {@code read} returns one value per spec, in
+   * their order. A failed read makes every one of them {@code NaN}.
+   */
+  public PolledGauges gauges(Supplier<double[]> read, Spec... specs) {
+    Reading reading = new Reading(List.of(specs), read);
     readings.add(reading);
-    Gauge.builder(name, reading.value, AtomicReference::get)
-        .tags(tags)
-        .baseUnit(baseUnit)
-        .description(description)
-        .register(registry);
+    for (int i = 0; i < specs.length; i++) {
+      Spec spec = specs[i];
+      Gauge.builder(spec.name(), reading.values.get(i), AtomicReference::get)
+          .tags(spec.tags())
+          .baseUnit(spec.baseUnit())
+          .description(spec.description())
+          .register(registry);
+    }
     return this;
   }
+
+  /** Name, tags, unit and description of one gauge of a shared read. */
+  public record Spec(String name, Tags tags, String baseUnit, String description) {}
 
   /** How often the values are read anew. */
   public Duration interval() {
@@ -87,42 +122,47 @@ public final class PolledGauges {
 
   /** Reads every value anew. */
   public void refresh() {
-    for (Reading reading : readings) {
-      reading.value.set(read(reading));
-    }
+    readings.forEach(PolledGauges::read);
   }
 
-  private static double read(Reading reading) {
+  private static void read(Reading reading) {
+    double[] values;
     try {
-      double value = reading.read.getAsDouble();
-      if (reading.failing.compareAndSet(true, false)) {
-        log.info("Metric {} {} is read again", reading.name, reading.tags);
+      values = reading.read.get();
+      if (values == null || values.length != reading.values.size()) {
+        throw new IllegalStateException("expected " + reading.values.size() + " values");
       }
-      return value;
+      if (reading.failing.compareAndSet(true, false)) {
+        log.info("Metrics {} are read again", reading.names());
+      }
     } catch (RuntimeException e) {
       if (reading.failing.compareAndSet(false, true)) {
         log.warn(
-            "Metric {} {} could not be read and reports NaN: {}",
-            reading.name,
-            reading.tags,
-            e.getMessage());
+            "Metrics {} could not be read and report NaN: {}", reading.names(), e.getMessage());
       }
-      return Double.NaN;
+      values = new double[reading.values.size()];
+      Arrays.fill(values, Double.NaN);
+    }
+    for (int i = 0; i < values.length; i++) {
+      reading.values.get(i).set(values[i]);
     }
   }
 
-  /** One gauge: how it is read, its last value and whether its last read failed. */
+  /** One read: the gauges it fills, their last values and whether the last read failed. */
   private static final class Reading {
-    private final String name;
-    private final Tags tags;
-    private final DoubleSupplier read;
-    private final AtomicReference<Double> value = new AtomicReference<>(Double.NaN);
+    private final List<Spec> specs;
+    private final Supplier<double[]> read;
+    private final List<AtomicReference<Double>> values = new ArrayList<>();
     private final AtomicBoolean failing = new AtomicBoolean();
 
-    private Reading(String name, Tags tags, DoubleSupplier read) {
-      this.name = name;
-      this.tags = tags;
+    private Reading(List<Spec> specs, Supplier<double[]> read) {
+      this.specs = specs;
       this.read = read;
+      specs.forEach(spec -> values.add(new AtomicReference<>(Double.NaN)));
+    }
+
+    private String names() {
+      return specs.stream().map(spec -> spec.name() + spec.tags()).toList().toString();
     }
   }
 }

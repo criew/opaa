@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteExtractionService;
@@ -258,7 +257,7 @@ class ConversationHarnessSupportTest {
 
   private static ChatMemory chatMemory() {
     return MessageWindowChatMemory.builder()
-        .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+        .chatMemoryRepository(new CaffeineChatMemoryRepository())
         .maxMessages(20)
         .build();
   }

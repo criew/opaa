@@ -1,6 +1,7 @@
 package io.opaa.connection.consent;
 
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.instance.ScheduledRunFailures;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ public class PendingConsentSweep {
       }
     } catch (RuntimeException e) {
       log.warn("Pending source consents could not be swept; the next run tries again", e);
+      ScheduledRunFailures.report();
     }
   }
 

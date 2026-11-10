@@ -3,6 +3,7 @@ package io.opaa.health;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.springframework.boot.health.contributor.Health;
 
@@ -35,5 +36,13 @@ final class CachedProbe {
       probedAt = now;
     }
     return last;
+  }
+
+  /** The last result if it is at most {@code maxAge} old; never probes. */
+  synchronized Optional<Health> last(Duration maxAge) {
+    if (last == null || clock.instant().isAfter(probedAt.plus(maxAge))) {
+      return Optional.empty();
+    }
+    return Optional.of(last);
   }
 }

@@ -2,8 +2,6 @@ package io.opaa.query.answer;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.PrivateLibraryErased;
 import io.opaa.observability.MeteredCaches;
@@ -24,13 +22,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL, bounding the
- * number of concurrent conversations against unbounded memory growth. The {@code
- * opaa.conversations.active} {@link Gauge} that {@link #size()} backs is registered in the
- * constructor, as elsewhere in {@code io.opaa.observability}.
+ * number of concurrent conversations against unbounded memory growth. Only its hits and misses are
+ * measured; how many conversations it holds is not published (ADR-0071).
  *
  * <p>The two-/three-arg constructors are package-visible for tests that need non-default limits or
- * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository(MeterRegistry)} is the one
- * Spring calls, marked {@link Autowired} because more than one constructor exists.
+ * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository()} is the one Spring calls,
+ * marked {@link Autowired} because more than one constructor exists.
  */
 @Service
 public class CaffeineChatMemoryRepository
@@ -62,11 +59,8 @@ public class CaffeineChatMemoryRepository
 
   /** The constructor Spring calls. */
   @Autowired
-  public CaffeineChatMemoryRepository(MeterRegistry meterRegistry) {
+  public CaffeineChatMemoryRepository() {
     this(MAX_CONVERSATIONS, TTL_MINUTES, null);
-    Gauge.builder("opaa.conversations.active", this, CaffeineChatMemoryRepository::size)
-        .description("Active conversations in memory")
-        .register(meterRegistry);
   }
 
   /**
@@ -168,5 +162,10 @@ public class CaffeineChatMemoryRepository
   @Override
   public Map<String, Cache<?, ?>> meteredCaches() {
     return Map.of("chat_memory", cache);
+  }
+
+  @Override
+  public Set<String> sizeWithheld() {
+    return Set.of("chat_memory");
   }
 }

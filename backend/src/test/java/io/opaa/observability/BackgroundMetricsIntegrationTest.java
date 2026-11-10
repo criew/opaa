@@ -13,25 +13,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * The background and platform metrics of the running application (ADR-0071): the polled gauges read
- * real values from the schema, every Caffeine cache reports hits and misses under its fixed name,
- * the invalidation bus and its dispatch thread are measured, and every health group has a status.
+ * real values from the schema, every measured cache reports hits and misses under its fixed name
+ * and none whose figures would trace persons is measured, the invalidation bus and its dispatch
+ * thread are measured, and every health group has a status.
  */
 @OpaaIntegrationTest
 class BackgroundMetricsIntegrationTest {
 
-  /** Every cache the application holds; a new one joins {@link MeteredCaches} and this list. */
+  /** Every measured cache; a new one joins {@link MeteredCaches} and this list. */
   private static final Set<String> CACHES =
       Set.of(
-          "revoked_tokens",
           "chat_memory",
           "external_access_quota",
-          "personal_space_provisioned",
           "rerank_endpoint",
           "transcription_endpoint",
           "text_recognition_endpoint",
           "metadata_filter_options",
-          "group_memberships",
           "asset_grants");
+
+  /** Caches whose hits, misses or size would trace persons; none of them is measured. */
+  private static final Set<String> UNMEASURED_CACHES =
+      Set.of("revoked_tokens", "personal_space_provisioned", "group_memberships");
 
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private List<PolledGauges> polledGauges;
@@ -45,7 +47,7 @@ class BackgroundMetricsIntegrationTest {
     assertThat(gauge("opaa.instance.heartbeat.age")).isBetween(0.0, 600.0);
     assertThat(gauge("opaa.scheduled.locks.held")).isGreaterThanOrEqualTo(0.0);
     assertThat(gauge("opaa.scheduled.locks.oldest.age")).isGreaterThanOrEqualTo(0.0);
-    for (String queue : List.of("mail_outbox", "source_events")) {
+    for (String queue : List.of("mail_outbox", "source_events", "indexing")) {
       assertThat(meterRegistry.get("opaa.queue.depth").tag("queue", queue).gauge().value())
           .isGreaterThanOrEqualTo(0.0);
       assertThat(meterRegistry.get("opaa.queue.oldest.age").tag("queue", queue).gauge().value())
@@ -76,7 +78,10 @@ class BackgroundMetricsIntegrationTest {
             .map(id -> id.getTag("cache"))
             .collect(Collectors.toSet());
 
-    assertThat(measured).containsAll(CACHES);
+    assertThat(measured).containsAll(CACHES).doesNotContainAnyElementsOf(UNMEASURED_CACHES);
+    assertThat(meterRegistry.find("cache.size").tag("cache", "chat_memory").meter()).isNull();
+    assertThat(meterRegistry.find("cache.evictions").tag("cache", "chat_memory").meter()).isNull();
+    assertThat(meterRegistry.find("opaa.conversations.active").meter()).isNull();
   }
 
   @Test
