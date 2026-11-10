@@ -4004,9 +4004,10 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <li><strong>Jede Reihe</strong> trägt <code>application</code> (<code>opaa</code>) und <code>host</code>, den Rechnernamen der Instanz, unter
   Kubernetes den Namen des Pods. <code>opaa_build_info</code> nennt je Instanz <code>version</code> und <code>commit</code>; zwei
   Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.</li>
-<li><strong>Latenzen als Histogramm:</strong> Die Dauer von HTTP-Anfragen, Chat-Fragen, Modellaufrufen,
-  Texterkennung und geplanten Läufen hat Buckets an festen Schwellen (<code>_bucket</code> mit <code>le</code>), aus denen
-  Prometheus Perzentile über alle Pods rechnet, etwa das p95 der Chat-Fragen:
+<li><strong>Latenzen als Histogramm:</strong> Die Dauer von HTTP-Anfragen, Chat-Fragen bis zum ersten Wort und
+  bis zum Ende, Modellaufrufen, Texterkennung und geplanten Läufen hat Buckets an festen Schwellen
+  (<code>_bucket</code> mit <code>le</code>), aus denen Prometheus Perzentile über alle Pods rechnet, etwa das p95 der
+  Chat-Fragen:
   <code>histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))</code>. Die
   Schwellen lassen sich je Timer über <code>OPAA_METRICS_SLO_*</code> an die eigenen Zielwerte anpassen; ein
   Zielwert sollte genau auf einer Schwelle liegen.</li>
@@ -4031,8 +4032,36 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Version und Commit der Instanz, immer <code>1</code></td>
 </tr>
 <tr>
-<td><code>opaa_query_duration_seconds_*</code>, <code>opaa_query_count_total</code>, <code>opaa_query_tokens_total</code></td>
-<td>Dauer je Frage mit Buckets, Fragen nach Erfolg und Fehler, Tokens der Antwortaufrufe des Chat-Modells</td>
+<td><code>opaa_query_duration_seconds_*</code>, <code>opaa_query_count_total</code></td>
+<td>Dauer je Chat-Frage mit Buckets und Fragen nach Ausgang (<code>status</code>: <code>success</code>, <code>error</code>, <code>rejected</code>), beide nach Art der Antwort (<code>mode</code>: <code>rag</code> mit Suche oder Anhängen, <code>no_search</code> ohne Suche, <code>agent</code> mit Werkzeugschleife). <code>error</code> zählt jeden Fehler des Dienstes, auch Fragen, deren Leser vorher gegangen ist; <code>rejected</code> zählt Anfragefehler wie fehlende Berechtigung, ungültige Eingabe oder fehlendes Chat-Modell, ohne Dauer. Die Erfolgsquote für ein SLO ist <code>success / (success + error)</code></td>
+</tr>
+<tr>
+<td><code>opaa_query_time_to_first_token_seconds_*</code></td>
+<td>Zeit von der Frage bis zum ersten sichtbaren Text der Antwort nach <code>mode</code>, mit Buckets; die Wartezeit, die man im Chat spürt. Ein vorangestellter Denkblock des Modells zählt nicht mit. Nur gestreamte Antworten</td>
+</tr>
+<tr>
+<td><code>opaa_query_stage_duration_seconds_*</code></td>
+<td>Zeit einer Frage je Stufe (<code>stage</code>): <code>decompose</code> Teilfragen-Zerlegung, <code>embed_query</code> Einbetten der Suchanfragen, <code>retrieve</code> Suche und Auswahl, <code>rerank</code> Neubewertung, <code>generate</code> Antwort des Chat-Modells, <code>persist</code> Speichern im Chat. Die Stufen überschneiden sich nicht; ihre Summe bleibt unter der Dauer der Frage</td>
+</tr>
+<tr>
+<td><code>opaa_retrieval_hits_*</code>, <code>opaa_retrieval_empty_total</code></td>
+<td>Ausgewählte Fundstellen je Chat-Frage mit Suche und Fragen ganz ohne Fundstelle; ein steigender Anteil leerer Suchen deutet auf fehlende Indizierung oder einen gestörten Suchweg</td>
+</tr>
+<tr>
+<td><code>opaa_query_context_tokens_*</code>, <code>opaa_query_context_truncated_total</code></td>
+<td>Eingabe-Tokens je Antwortaufruf, soweit der Anbieter sie meldet, und beantwortete Fragen in einem Chat mit mehr Nachrichten als das Gesprächsfenster, bei denen ältere Nachrichten nicht mehr ins Modell gehen</td>
+</tr>
+<tr>
+<td><code>opaa_query_finish_reason_total</code></td>
+<td>Antworten nach dem Ende, das das Modell meldet (<code>reason</code>: <code>stop</code>, <code>length</code> an der Ausgabegrenze abgeschnitten, <code>content_filter</code>, <code>tool</code>, <code>other</code>)</td>
+</tr>
+<tr>
+<td><code>opaa_query_aborted_total</code></td>
+<td>Chat-Fragen ohne Antwort nach Ursache (<code>cause</code>: <code>client_cancel</code> Leser gegangen, <code>timeout</code> ein Aufruf hat nicht rechtzeitig geantwortet, <code>error</code> jeder andere Fehler)</td>
+</tr>
+<tr>
+<td><code>opaa_model_tokens_total</code></td>
+<td>Tokens jedes Aufrufs des Chat-Modells nach Zweck (<code>purpose</code>: <code>answer</code>, <code>decompose</code>, <code>note</code>, <code>auxiliary</code> Titel und Metadaten, <code>agent</code>), Art (<code>token_type</code>: <code>input</code>, <code>output</code>) und <code>model</code>, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft OPAA mit einer Warnung im Log</td>
 </tr>
 <tr>
 <td><code>gen_ai_client_operation_seconds_*</code></td>

@@ -4115,6 +4115,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer einer Chat-Frage (<code>opaa_query_duration_seconds_bucket</code>)</td>
 </tr>
 <tr>
+<td><code>OPAA_METRICS_SLO_TTFT</code></td>
+<td><code>500ms,1s,2s,3s,5s,10s,20s,30s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Zeit bis zum ersten sichtbaren Text einer Chat-Antwort (<code>opaa_query_time_to_first_token_seconds_bucket</code>)</td>
+</tr>
+<tr>
 <td><code>OPAA_METRICS_SLO_MODEL</code></td>
 <td><code>250ms,500ms,1s,2500ms,5s,10s,30s,60s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
