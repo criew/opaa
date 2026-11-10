@@ -18,7 +18,7 @@ export const LOCK_CONSEQUENCE =
   'Das Konto kann sich nicht mehr anmelden, und alle laufenden Sitzungen enden sofort. Die Person ' +
   'wird per E-Mail darüber unterrichtet. Etwaige verbundene Konten enden, ihre Zugangsdaten werden ' +
   'gelöscht, und für etwaige private Bibliotheken beginnt die Löschfrist, ebenso für die Chats ' +
-  '(Datum unter „Bearbeiten"), sofern der Betrieb das nicht abgeschaltet hat. Die übrigen ' +
+  '(Datum unter „Bearbeiten“), sofern der Betrieb das nicht abgeschaltet hat. Die übrigen ' +
   'Inhalte und Rechte des Kontos bleiben erhalten.'
 
 export const RESET_CONSEQUENCE =

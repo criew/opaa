@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box'
 import type { DocumentUpload } from '../hooks/useDocumentUpload'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The empty state of an UPLOAD library: one drop zone with the one action that fills it. Once the
@@ -23,7 +24,7 @@ export default function LibraryDocumentUploadArea({ upload }: { upload: Document
         px: 2,
         textAlign: 'center',
         color: 'text.secondary',
-        fontSize: 13.5,
+        fontSize: fontSize.text,
       }}
     >
       {/* „Hochladen“ in the head is the one action; here only the drop target */}

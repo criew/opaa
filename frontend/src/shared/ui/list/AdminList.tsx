@@ -10,6 +10,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import { fontSize, iconSize } from '../../theme/tokens'
 
 /**
  * The shared building blocks of the administration lists (accounts, groups): table with
@@ -119,7 +120,7 @@ export function ListPager({
       spacing={1}
       sx={{ alignItems: 'center', justifyContent: 'flex-end', mt: 1.5, flexWrap: 'wrap' }}
     >
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         {countLabel} · Seite {page + 1} von {pageCount}
       </Typography>
       <Tooltip title="Vorherige Seite">
@@ -170,7 +171,7 @@ export function InfoHint({ label, reason }: { label: string; reason: string }) {
           cursor: 'help',
         }}
       >
-        <InfoOutlinedIcon aria-hidden sx={{ fontSize: 15 }} />
+        <InfoOutlinedIcon aria-hidden sx={{ fontSize: iconSize.sm }} />
       </Box>
     </Tooltip>
   )
@@ -196,7 +197,7 @@ export function StateLabel({
         aria-hidden="true"
         sx={{ width: 8, height: 8, borderRadius: '50%', flex: 'none', bgcolor: color }}
       />
-      <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
         {label}
       </Typography>
       {hint && <InfoHint label={hint.label} reason={hint.reason} />}

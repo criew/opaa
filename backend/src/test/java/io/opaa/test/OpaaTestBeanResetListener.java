@@ -2,6 +2,7 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.connection.token.GrantRevocations;
+import io.opaa.externalaccess.ExternalAccessQuotaReset;
 import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.msgraph.FakeGraphServer;
 import java.time.Duration;
@@ -29,6 +30,8 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
  * announcement of the invalidation bus an earlier method caused has reached the caches, so none
  * drops a cache in the middle of the next method. Every scheduler lock an earlier method left is
  * freed, so a locked {@code @Scheduled} method a test calls runs regardless of the class before.
+ * The hour windows of the access-token quota are forgotten: the window per person outlives the
+ * tokens a class issues, and every class shares the development accounts.
  */
 final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
 
@@ -49,6 +52,7 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
         .getBeanProvider(FakeEmbeddingProbe.class)
         .ifAvailable(FakeEmbeddingProbe::reset);
     FakeGraphServer.resetShared();
+    ExternalAccessQuotaReset.reset(testContext.getApplicationContext());
     if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
         instanceof FakeEmbeddingModel embeddingModel) {
       embeddingModel.reset();

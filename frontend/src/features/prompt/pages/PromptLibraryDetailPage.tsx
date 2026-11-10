@@ -15,7 +15,7 @@ import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { promptVariableTypeLabel } from '../components/promptLabels'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import {
   CATALOG_ROUTE,
   FORMER_PROMPT_LIBRARY_TABS,
@@ -87,7 +87,7 @@ function PromptsArea({
 
   async function handleDelete(prompt: PromptResponse) {
     const confirmed = await confirmAction({
-      question: `Prompt „${prompt.title}“ löschen?`,
+      question: `„${prompt.title}“ löschen?`,
       consequence: `Der Befehl /${prompt.name} steht danach nicht mehr zur Verfügung.`,
       confirmLabel: 'Löschen',
       tone: 'danger',
@@ -116,7 +116,7 @@ function PromptsArea({
           mb: 2,
         }}
       >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: '80ch' }}>
           Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein
           Prompt im Chat aufgerufen wird.
         </Typography>
@@ -175,17 +175,21 @@ function PromptsArea({
                     spacing={1.5}
                     sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
                   >
-                    <Typography component="span" sx={{ fontSize: 14.5, fontWeight: 600 }}>
+                    <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                       {prompt.title}
                     </Typography>
                     <Typography
                       component="span"
-                      sx={{ fontFamily: fontFamily.mono, fontSize: 12, color: 'primary.main' }}
+                      sx={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.meta,
+                        color: 'primary.main',
+                      }}
                     >
                       /{prompt.name}
                     </Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {[prompt.description, variablesSummary(prompt)].filter(Boolean).join(' · ')}
                   </Typography>
                 </Box>
@@ -194,7 +198,7 @@ function PromptsArea({
                 <Stack spacing={1.5}>
                   <PromptTextHighlight text={prompt.text} label={`Text von ${prompt.title}`} />
                   {prompt.variables.length > 0 && (
-                    <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: 12.5 }}>
+                    <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: fontSize.meta }}>
                       {prompt.variables.map((variable) => (
                         <li key={variable.name}>
                           <Box component="span" sx={{ fontFamily: fontFamily.mono }}>
@@ -328,9 +332,9 @@ export default function PromptLibraryDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Prompt-Bibliothek „${library?.name}“ löschen?`,
+      question: `„${library?.name}“ löschen?`,
       consequence:
-        'Das entfernt auch alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

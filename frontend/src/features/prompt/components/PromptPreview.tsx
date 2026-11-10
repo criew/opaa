@@ -7,6 +7,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { resolvePromptText } from '../utils/promptTemplate'
 import PromptVariableInput from './PromptVariableInput'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The prompt as someone inserting it would get it: example values for the variables, the system
@@ -57,7 +58,7 @@ export default function PromptPreview({
           role="region"
           aria-label="Vorschau des eingesetzten Textes"
           sx={{
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             border: 1,

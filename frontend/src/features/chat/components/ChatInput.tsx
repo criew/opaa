@@ -8,7 +8,7 @@ import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import { darkRoles, fontFamily, gray, shadow } from '@/shared/theme/tokens'
+import { darkRoles, fontFamily, fontSize, gray, iconSize, shadow } from '@/shared/theme/tokens'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -579,7 +579,7 @@ export default function ChatInput({
               aria-label="Dateien anhängen"
               sx={{ alignSelf: 'flex-end', p: 1, color: 'text.secondary' }}
             >
-              <AttachFileIcon sx={{ fontSize: 18 }} />
+              <AttachFileIcon sx={{ fontSize: iconSize.md }} />
             </IconButton>
           </>
         )}
@@ -598,7 +598,7 @@ export default function ChatInput({
               p: 1,
             }}
           >
-            <StopIcon sx={{ fontSize: 18 }} />
+            <StopIcon sx={{ fontSize: iconSize.md }} />
           </IconButton>
         )}
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
@@ -624,7 +624,7 @@ export default function ChatInput({
             '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
           }}
         >
-          <SendIcon sx={{ fontSize: 18 }} />
+          <SendIcon sx={{ fontSize: iconSize.md }} />
         </IconButton>
       </Box>
 
@@ -645,7 +645,7 @@ export default function ChatInput({
                 px: 1.5,
                 py: 1,
                 fontFamily: fontFamily.mono,
-                fontSize: 9.5,
+                fontSize: fontSize.label,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: 'text.secondary',
@@ -686,14 +686,16 @@ export default function ChatInput({
                       }}
                     >
                       {suggestion.kind === 'all' ? (
-                        <AllInclusiveIcon sx={{ fontSize: 15, color: 'text.primary' }} />
+                        <AllInclusiveIcon sx={{ fontSize: iconSize.sm, color: 'text.primary' }} />
                       ) : (
-                        <MenuBookOutlinedIcon sx={{ fontSize: 15, color: 'text.primary' }} />
+                        <MenuBookOutlinedIcon
+                          sx={{ fontSize: iconSize.sm, color: 'text.primary' }}
+                        />
                       )}
                       <Typography
                         component="span"
                         noWrap
-                        sx={{ flex: 1, fontSize: 13.5, color: 'text.primary' }}
+                        sx={{ flex: 1, fontSize: fontSize.text, color: 'text.primary' }}
                       >
                         {matchIndex >= 0 ? (
                           <>
@@ -749,13 +751,17 @@ export default function ChatInput({
           </Box>
         )}
         {scopeNotice && (
-          <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
+          <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             {scopeNotice}
           </Typography>
         )}
         <AiNotice variant="line" />
         {dictationError && (
-          <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
+          <Typography
+            component="div"
+            role="alert"
+            sx={{ fontSize: fontSize.meta, color: 'error.main' }}
+          >
             {dictationError}
           </Typography>
         )}
@@ -763,7 +769,10 @@ export default function ChatInput({
           <Typography
             id={lengthCounterId}
             component="div"
-            sx={{ fontSize: 12, color: questionTooLong ? 'error.main' : 'text.secondary' }}
+            sx={{
+              fontSize: fontSize.meta,
+              color: questionTooLong ? 'error.main' : 'text.secondary',
+            }}
           >
             {lengthCounter}
           </Typography>

@@ -655,7 +655,9 @@ trägt darauf erfahrungsgemäß etwa eine gleichzeitige Sitzung. „Gleichzeitig
 deshalb ab Werk 1 und gilt für die ganze Installation, auch über mehrere Instanzen. Wer darüber
 diktiert, bekommt den Text nach dem Ende der Aufnahme. Eine Sitzung endet spätestens nach zwei
 Minuten, nach 30 Sekunden ohne Audio oder, wenn der Dienst nach dem Ende nicht antwortet, nach
-15 Sekunden.
+15 Sekunden. Sie endet außerdem, sobald Audio deutlich schneller als in Echtzeit eintrifft, wie
+beim Einspielen einer Datei; wie oft eine Person Live-Sitzungen startet, begrenzt
+`OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_*`.
 
 **Was an den Dienst geht:** die Aufnahme fortlaufend während des Sprechens, als PCM-Audio, dazu
 Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. **Was OPAA behält:** nichts; Audio und

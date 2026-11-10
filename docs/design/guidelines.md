@@ -224,30 +224,27 @@ später über die Branding-Konfiguration nachladen; die Schriftstapel enden desh
 
 ### 3.2 Skala
 
-Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehören Markenmomenten
-(Anmeldeseite, Leerzustände):
+Sechs Schriftstufen in ganzen Pixeln, benannt im Theme (`fontSize` in
+`frontend/src/shared/theme/tokens.ts`). Andere Größen gibt es nicht, auch keine halben Pixel:
 
-| Stufe   | Größe     | Typische Verwendung                  |
-| ------- | --------- | ------------------------------------ |
-| 2xs     | 11 px     | Versal-Etiketten, Tabellen-Metadaten |
-| xs      | 12 px     | Metadaten, Chips, Eyebrow            |
-| sm      | 14 px     | Sekundärtext, Tabellen, Seitenleiste |
-| base    | 16 px     | Fließtext, Chat-Antworten            |
-| md      | 18 px     | Chat-Titel, hervorgehobener Text     |
-| lg      | 20 px     | h4-Äquivalent                        |
-| xl      | 24 px     | Abschnittsüberschriften (h3)         |
-| 2xl     | 30 px     | Seitenüberschriften (h2)             |
-| 3xl     | 36 px     | große Seitenköpfe                    |
-| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI     |
+| Stufe         | Größe | Verwendung                                                                 |
+| ------------- | ----- | -------------------------------------------------------------------------- |
+| `label`       | 11 px | Versal-Etiketten, Tabellenköpfe, Fußnotenzeichen                            |
+| `meta`        | 12 px | Chips und Etiketten (5.5), Metadaten neben einem Wert, Hilfetext am Feld    |
+| `text`        | 14 px | Fließtext, Feldwerte, Schaltflächen, Menüeinträge, Listen                   |
+| `title`       | 16 px | Titel von Bereichsseite, Dialog und Seitenpanel, Abschnittsköpfe; Chat-Text |
+| `detailTitle` | 20 px | Titel einer Detailseite                                                    |
+| `wizardTitle` | 24 px | Schritttitel im Assistenten, Einzweckseiten (Installation, Fehlerseite)     |
 
-Die Arbeitsflächen folgen zusätzlich dem **Feinraster** (#658): Fließtext
-14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
-Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
-bleiben das Vokabular für Markenmomente.
+Frage und Antwort im Chat stehen in 16 px (`MarkdownRenderer` mit `reading`), weil Antworten
+Lesetext sind; die übrige Oberfläche bleibt bei 14 px. **Kein Thema schreibt eine Schriftgröße als
+Zahl**: Komponenten nennen eine Stufe (`fontSize.meta`), Icons eine Icongröße (`iconSize`, 14–48
+px). ESLint weist eine Zahl als `fontSize` unter `features/` und `app/` ab, ein Theme-Test hält
+Stufen und Typografie-Varianten fest.
 
-**Titel einer Detailseite** (Asset, Space, Lauf), abweichend vom Seitentitel (27 px): 20 px / 28 px
-ab 600 px Breite, darunter 17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
-Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
+**Titel einer Detailseite** (Asset, Space, Lauf): 20 px ab 600 px Breite, darunter 16 px. Er
+steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine Leerzeilen. Bei
+320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
 
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
 
@@ -356,10 +353,15 @@ Zustandswechsel.
 | Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
-Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als Verb („Fragen",
-„Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
+Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
+Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
-rote Primärfläche als Standardaktion.
+rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
+`danger` (5.10).
+
+**Kompakte Schaltflächen** (`size="small"`) stehen nur in Tabellenzeilen, Abschnittsköpfen,
+Filterzeilen und Werkzeugleisten. Seitenkopf, Formular- und Dialogfußzeile tragen die normale
+Größe.
 
 **Nur-Icon-Schaltflächen** tragen immer beides: ein deutsches `aria-label` mit konkretem Bezug
 („Original von bescheid.pdf öffnen") **und** einen `Tooltip`, der die Funktion beim Zeigen mit
@@ -438,7 +440,8 @@ Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & In
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
 schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
-Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
+Haarlinien-Schatten und Höhe 36 px für jedes einzeilige Feld, gleich welche MUI-Größe
+(`controlHeight` im Theme) — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
 das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
 sichtbare Beschriftung, sondern Platzhalter plus `aria-label`.
 Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
@@ -526,8 +529,8 @@ erscheint nie.
   nicht neu zuordnen, solange die Nachfolge offen ist." in `warning`, nicht ausgegraut, außerhalb des
   Umschalters und als `aria-describedby` angebunden. Die Beschreibung des Umschalters folgt der
   sichtbaren Reihenfolge, Zustandszeilen eingeschlossen. Eine gewählte Kachel ist eine bestehende
-  Zuordnung: Sie bleibt lösbar und nennt denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo
-  das Lösen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
+  Zuordnung: Sie lässt sich entfernen und nennt denselben Grund vorab; nach dem Entfernen ist sie
+  gesperrt. Wo das Entfernen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
   dass die Zuordnung bis zum Abschluss der Nachfolge nicht wiederherzustellen ist. Im
   Space-Assistenten ist jede Wahl neu: Eine Vorauswahl aus „In Space verwenden" mit offener
   Nachfolge übernimmt er nicht, sagt das im Schritt „Inhalte" als Warnung und legt den Space erst an,
@@ -569,7 +572,7 @@ farbiger Chip.
 **Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
 (Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
 Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
-Etiketten nehmen Radius, Größe (12 px, `fontSize.xs`) und Gewicht aus `badgeShape`
+Etiketten nehmen Radius, Größe (12 px, `fontSize.meta`) und Gewicht aus `badgeShape`
 (`frontend/src/shared/theme/tokens.ts`), den Umriss aus `outlinedBadgeSx`
 (`frontend/src/shared/ui/badgeStyles.ts`); für ein reines Textetikett gibt es `MetaBadge`, das
 `MuiChip` des Themes hat dieselben Werte. Passt ein Etikett nicht in eine schmale Tabellenspalte,
@@ -764,23 +767,35 @@ if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) retur
 ```
 
 **Aufbau.** Die **Folge ist der Hauptinhalt**, nicht die Frage. Die Frage steht als Titel darüber
-in 17 px, die Folge darunter in 13,5 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
+in 16 px, die Folge darunter in 14 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
 starke Signalkante, bei gewichtigen Tönen zusätzlich ein Symbol neben dem Titel.
 
-**Die Schaltfläche trägt das Verb der Handlung** — „Löschen", „Abschalten", „Verwerfen",
-„Sperren". Nie „OK", nie „Ja". Wer nur die Schaltfläche liest, muss trotzdem wissen, was er
-zusagt.
+**Die Frage** lautet „`<Name>`“ `<Verb>`? — mit typografischen Anführungszeichen, ohne Objektart
+davor und ohne „wirklich“: `„Dienstanweisungen“ löschen?`, nicht
+`Bibliothek "Dienstanweisungen" wirklich löschen?`. Hat das Objekt keinen Namen, steht „Diesen Chat löschen?“.
+
+**Die Folge nennt, was verloren geht oder wen es trifft**, mit Zahl, wo sie bekannt ist („Der
+Ordner wird mit 7 Dokumenten darin gelöscht.“). „Diese Aktion kann nicht rückgängig gemacht
+werden“ allein ist keine Folge; das sagt der Ton `danger` bereits. Jede Bestätigung hat eine Folge.
+
+**Die Schaltfläche trägt genau das Verb aus der Frage** — „Löschen“, „Ausschalten“, „Verwerfen“,
+„Sperren“, nach der Verbliste in Abschnitt 6. Nie „OK“, „Ja“, „Weiter“, „Fortfahren“ oder
+„Bestätigen“. Wer nur die Schaltfläche liest, muss trotzdem wissen, was er zusagt.
 
 **Drei Töne**, mehr nicht:
 
 | Ton | Wofür | Kante | Vorgabefokus |
 | --- | --- | --- | --- |
-| `danger` | unwiderruflich: löschen, Zugang entziehen | Gefahr | **Abbrechen** |
-| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung |
-| `neutral` | Eingaben verwerfen, Zuordnung lösen | Rahmen | die Handlung |
+| `danger` | unwiderruflich: löschen, Freigabe widerrufen | Gefahr | **Abbrechen** |
+| `caution` | folgenreich, aber umkehrbar: ausschalten, einschalten | Warnung | die Handlung |
+| `neutral` | Eingaben verwerfen, Zuordnung entfernen | Rahmen | die Handlung |
 
 Bei `danger` liegt der Fokus bewusst auf „Abbrechen": Ein Enter aus dem Reflex heraus bricht dann
-ab, statt zu löschen.
+ab, statt zu löschen. Deshalb ist die Handlung dort eine rote Gefahr-Fläche, als einzige Ausnahme
+von 5.1.
+
+`frontend/src/shared/stores/confirmTexts.test.ts` liest jeden Aufruf von `confirmAction` aus dem
+Quelltext und prüft Frage, Folge und Schaltfläche gegen diese Regeln und die Verbliste.
 
 **Abbruch ist die sichere Antwort.** Escape, ein Klick daneben und eine verdrängende zweite
 Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
@@ -981,6 +996,14 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
 - **Keine Doppel-Labels** in Klammern („Token (Kennwort)") und kein künstlich allgemeines
   „Kennwort" für ein Token.
 
+**Datum und Zeit.** Ein Datum steht als „TT.MM.JJJJ“, ein Zeitpunkt als „TT.MM.JJJJ, HH:MM“,
+beide mit führender Null und in der Zeitzone des Browsers; Sekunden nur in Protokollen (Revision,
+Verbindungsprotokoll). Relative Angaben („vor 3 Tagen“) nur, wo die Dauer die Aussage ist, der
+genaue Zeitpunkt dann im Tooltip. Fehlt ein Wert, steht „–“; für kein Ablaufdatum steht
+„unbefristet“. Alle Formen kommen aus `frontend/src/shared/utils/formatDate.ts` (dort auch
+`formatNumber` für Zahlen); ESLint weist `toLocaleString`, `toLocaleDateString`,
+`toLocaleTimeString` und `Intl.DateTimeFormat` an jeder anderen Stelle ab.
+
 **Erklärtexte knapp.** Die Beschreibung unter einem Seiten- oder Abschnittstitel sagt in einem Satz,
 wofür die Seite da ist, höchstens zwei Zeilen bei 1280 px. Ein Hilfetext am Feld hat eine Zeile
 und sagt nur, was einen wahrscheinlichen Fehler verhindert oder wo man einen Wert findet
@@ -1017,6 +1040,22 @@ Verbindliche Begriffe:
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
 | Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
+
+**Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
+genau diese Verben; Ändern, Festlegen, Zurücksetzen, Übertragen und Ähnliches bleiben daneben
+erlaubt:
+
+| Verb | Wann |
+| --- | --- |
+| Löschen | das Objekt gibt es danach nicht mehr |
+| Entfernen | das Objekt bleibt, es verschwindet aus einer Liste oder Zuordnung |
+| Widerrufen | ein Token, eine Einladung oder eine Freigabe endet |
+| Trennen | die Verbindung zu einem fremden System endet |
+| Ausschalten · Einschalten | eine Funktion |
+| Sperren · Entsperren | ein Konto, ein Zugang, eine Quellart |
+| Verwerfen | ungespeicherte Eingaben |
+
+„Abschalten“, „Lösen“ (außer als Gegenstück zu „Anheften“), „Entziehen“ und „Beenden“ entfallen.
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
 „User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben

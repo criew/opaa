@@ -22,6 +22,7 @@ import { visibleChunkMetadata } from '@/features/library'
 import { getSearchChunk } from '../api/searchAdminApi'
 import { formatMetadataValue } from '../utils/searchAdminLabels'
 import ChunkContent from './ChunkContent'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
@@ -107,18 +108,18 @@ export default function ChunkPreviewDialog({
               </Stack>
             </Box>
             <Box>
-              <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
+              <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
                 Inhalt
               </Typography>
               {isRecognizedText(chunk.metadata.anchor) && (
                 <Box sx={{ mb: 0.75 }}>
-                  <RecognizedTextNotice fontSize={13} />
+                  <RecognizedTextNotice size="text" />
                 </Box>
               )}
               <ChunkContent content={chunk.content} />
             </Box>
             <Box>
-              <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
+              <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
                 Metadaten
               </Typography>
               {metadataEntries.length === 0 ? (

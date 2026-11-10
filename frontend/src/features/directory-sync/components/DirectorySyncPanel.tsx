@@ -47,6 +47,7 @@ import {
   outcomeLabel,
   outcomeTone,
 } from './directorySyncLabels'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import LoadError from '@/shared/ui/states/LoadError'
 
@@ -186,7 +187,7 @@ export default function DirectorySyncPanel({
           <Typography
             id="directory-sync-panel-heading"
             component="h2"
-            sx={{ fontSize: 18, fontWeight: 600, overflowWrap: 'anywhere' }}
+            sx={{ fontSize: fontSize.title, fontWeight: 600, overflowWrap: 'anywhere' }}
           >
             {provider.displayName}
           </Typography>
@@ -195,7 +196,7 @@ export default function DirectorySyncPanel({
             spacing={1}
             sx={{ mt: 0.75, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
           >
-            <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Abgleich: {state.label}
             </Typography>
             {provider.isExternal && <MetaBadge>extern</MetaBadge>}
@@ -256,7 +257,7 @@ export default function DirectorySyncPanel({
           />
         )}
         {pendingSummary && planState?.kind === 'NONE' && (
-          <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
             Dieser Plan ist nicht mehr offen; der Abgleichstand wird aktualisiert.
           </Typography>
         )}
@@ -318,7 +319,7 @@ export default function DirectorySyncPanel({
               Jetzt abgleichen
             </Button>
           </Stack>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
             {blocker ??
               'Der Trockenlauf zeigt, was sich ändern würde, und schreibt nichts. „Jetzt abgleichen“ wendet an – oder legt einen Plan vor, wenn der Lauf zu viel entziehen würde.'}
           </Typography>
@@ -328,7 +329,7 @@ export default function DirectorySyncPanel({
               aria-label={RESULT_TITLES[result.kind]}
               sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'divider' }}
             >
-              <Typography component="h4" sx={{ fontSize: 13, fontWeight: 600 }}>
+              <Typography component="h4" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                 {RESULT_TITLES[result.kind]}
               </Typography>
               <DirectorySyncReportView report={result.report} />

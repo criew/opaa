@@ -20,6 +20,7 @@ import { counted } from '../sourceCore/common'
 import PathLabel from '../sourceCore/PathLabel'
 import { SummaryValue } from './SummaryRow'
 import { TEXT_LINK } from './rowStyles'
+import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -175,7 +176,7 @@ export default function ScopePicker({
     } else if (wantsList && entries.length === 0 && current?.result?.complete) {
       body = (
         <Box>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Keine {plural} vorhanden.
           </Typography>
           {manualLink && <Box sx={{ mt: 0.5 }}>{manualLink}</Box>}
@@ -185,7 +186,7 @@ export default function ScopePicker({
       body = (
         <Box>
           {current?.result && incompleteNote(current.result) && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {incompleteNote(current.result)}
             </Typography>
           )}
@@ -203,7 +204,7 @@ export default function ScopePicker({
                   />
                 }
                 label={
-                  <Box sx={{ fontSize: 14, minWidth: 0 }}>
+                  <Box sx={{ fontSize: fontSize.text, minWidth: 0 }}>
                     <PathLabel path={entry.name} />
                   </Box>
                 }
@@ -217,7 +218,7 @@ export default function ScopePicker({
       body = (
         <Box>
           {current?.result && incompleteNote(current.result) && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {incompleteNote(current.result)}
             </Typography>
           )}
@@ -277,7 +278,7 @@ export default function ScopePicker({
       {all && (all.active ? all.hint : all.unavailable) && (
         <Typography
           id={`${id}-all-note`}
-          sx={{ fontSize: 13, color: 'text.secondary', pl: 3.5, mb: 0.5 }}
+          sx={{ fontSize: fontSize.text, color: 'text.secondary', pl: 3.5, mb: 0.5 }}
         >
           {all.active ? all.hint : all.unavailable}
         </Typography>
@@ -285,7 +286,7 @@ export default function ScopePicker({
       {all?.active && all.content && <Box sx={{ pl: 3.5, mt: 0.5 }}>{all.content}</Box>}
       {!all?.active && <Box sx={{ pl: all ? 3.5 : 0, mt: all ? 0.5 : 0 }}>{body}</Box>}
       {error && (
-        <Typography id={errorId} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+        <Typography id={errorId} sx={{ fontSize: fontSize.meta, color: 'error.main', mt: 0.5 }}>
           {error}
         </Typography>
       )}

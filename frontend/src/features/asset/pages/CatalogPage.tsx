@@ -16,6 +16,7 @@ import AssetTile from '../components/AssetTile'
 import { tileFromCatalogEntry } from '../components/assetTileData'
 import AssetFilterBar from '../components/AssetFilterBar'
 import { CATALOG_NEW_ROUTE } from '@/shared/routes'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300
@@ -143,7 +144,7 @@ export default function CatalogPage() {
               mt: 2.5,
             }}
           >
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {entries.length} von {total} angezeigt
             </Typography>
             <Button variant="outlined" onClick={() => void loadMore()} disabled={isLoading}>

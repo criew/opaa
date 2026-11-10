@@ -28,6 +28,7 @@ import {
 } from '@/shared/ui/smtp/smtpSettings'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -316,7 +317,7 @@ export default function MailServerSection() {
               Testmail an mich senden
             </Button>
           </Stack>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
             sich hier bewusst nicht eintragen.
           </Typography>

@@ -165,10 +165,10 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Weitere Aktionen für „Dev User“' }).click()
-    await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
+    await adminPage.getByRole('menuitem', { name: 'Widerrufen' }).click()
     // The confirmation is the app's own overlay. Addressed through the id every
     // confirmation carries rather than through role="dialog" alone: its own button says
-    // "Entziehen", and the id stays unambiguous should a second overlay ever stand.
+    // "Widerrufen", and the id stays unambiguous should a second overlay ever stand.
     const confirmRevoke = adminPage
       .getByRole('dialog')
       .filter({ has: adminPage.locator('#confirm-question') })

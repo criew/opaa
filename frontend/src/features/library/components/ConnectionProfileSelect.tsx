@@ -22,6 +22,7 @@ import {
   profileChoices,
 } from './connectionChoice'
 import { ownAddressAllowed } from './sourceCore/sourceConnection'
+import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -102,11 +103,11 @@ export default function ConnectionProfileSelect({
 
   const rowText = (row: (typeof rows)[number]) => (
     <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
-      <Box component="span" sx={{ fontSize: 14 }}>
+      <Box component="span" sx={{ fontSize: fontSize.text }}>
         {row.label}
       </Box>
       {row.detail && (
-        <Box component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+        <Box component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           {row.detail}
         </Box>
       )}

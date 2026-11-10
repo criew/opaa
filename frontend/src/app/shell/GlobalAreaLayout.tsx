@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import GlobalBadge from '@/shared/ui/GlobalBadge'
-import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, lightRoles } from '@/shared/theme/tokens'
 import PageLoading from './PageLoading'
 
 interface GlobalAreaSection {
@@ -74,7 +74,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
           <Box
             sx={{ display: 'flex', alignItems: 'center', gap: '7px', px: 1, pb: { md: '12px' } }}
           >
-            <Typography component="span" sx={{ fontSize: 14.5, fontWeight: 600 }}>
+            <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
               {title}
             </Typography>
             <GlobalBadge />
@@ -107,7 +107,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
                     px: '10px',
                     py: '7px',
                     borderRadius: '6px',
-                    fontSize: 12.5,
+                    fontSize: fontSize.meta,
                     textDecoration: 'none',
                     // The active entry is the raised card - page ground on the
                     // muted column, framed one step stronger; inactive entries lift to the

@@ -19,7 +19,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import ExternalAccessSettingsPanel, {
   SAVED_MESSAGE,
   SWITCH_CONSEQUENCE,
@@ -71,18 +71,18 @@ function Steps({ steps }: { steps: Step[] }) {
             <Typography
               component="span"
               aria-hidden="true"
-              sx={{ fontFamily: fontFamily.mono, fontSize: 12, color: 'text.secondary' }}
+              sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta, color: 'text.secondary' }}
             >
               {String(index + 1).padStart(2, '0')}
             </Typography>
-            <Typography component="span" sx={{ fontSize: 13.5 }}>
+            <Typography component="span" sx={{ fontSize: fontSize.text }}>
               {step.text}
             </Typography>
             <Typography
               component="span"
               sx={{
                 gridColumn: { xs: 2, sm: 3 },
-                fontSize: 13,
+                fontSize: fontSize.text,
                 fontWeight: 600,
                 color: 'text.secondary',
                 whiteSpace: 'nowrap',
@@ -255,7 +255,7 @@ export default function ExternalToolsTab() {
 
   return (
     <>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
         Externe KI-Werkzeuge, etwa ein Entwicklungsassistent oder ein eigenes Skript, lesen über
         diesen Weg Fundstellen aus freigegebenen Bibliotheken - mit den Rechten der Person, der das
         Zugangstoken gehört.

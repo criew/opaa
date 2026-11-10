@@ -1,11 +1,42 @@
 import { http, HttpResponse } from 'msw'
 import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
 import { isMockInstallationPending } from '@/features/installation/mocks/installationFixtures'
+import { currentMockProfile, mockProfileUser } from './mockProfile'
+
+/** The auth configuration of the `signed-out` profile: every way to sign in is on offer. */
+const SIGNED_OUT_CONFIG = {
+  mode: 'oidc' as const,
+  providers: [
+    {
+      id: '00000000-0000-4000-8000-0000000000a1',
+      displayName: 'Stadtverwaltung (Keycloak)',
+      issuerUri: 'https://login.stadt.example/realms/stadt',
+      clientId: 'opaa',
+      isDefault: true,
+      sortOrder: 0,
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000000a2',
+      displayName: 'Partnerportal',
+      issuerUri: 'https://portal.partner.example',
+      clientId: 'opaa',
+      isDefault: false,
+      sortOrder: 1,
+    },
+  ],
+  localAccounts: {
+    enabled: true,
+    selfRegistrationEnabled: true,
+    passwordResetEnabled: true,
+    passwordMinLength: 12,
+  },
+}
 
 export const authHandlers = [
   http.get('/api/v1/auth/config', () => {
     return HttpResponse.json({
       ...mockAuthConfig,
+      ...(currentMockProfile() === 'signed-out' ? SIGNED_OUT_CONFIG : {}),
       installationPending: isMockInstallationPending(),
     })
   }),
@@ -91,7 +122,13 @@ export const authHandlers = [
     return HttpResponse.json({ ...mockLocalTokenResponse, passwordChangeRequired: false })
   }),
 
-  http.get('/api/v1/auth/me', () => {
-    return HttpResponse.json(mockUser)
+  // The signed-out profile knows nobody until a sign-in presents its token; then it is the
+  // regular fixture user, so the way from the sign-in page into the app can be walked.
+  http.get('/api/v1/auth/me', ({ request }) => {
+    const user = mockProfileUser(currentMockProfile(), mockUser)
+    if (user) return HttpResponse.json(user)
+    return request.headers.has('Authorization')
+      ? HttpResponse.json(mockUser)
+      : new HttpResponse(null, { status: 401 })
   }),
 ]

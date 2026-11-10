@@ -39,6 +39,7 @@ import {
   TOKEN_STATUS_LABEL,
   formatDate,
 } from './tokenLabels'
+import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -150,7 +151,7 @@ export default function ExternalAccessTokenAdminSection({
 
   async function handleBlock(token: AdminExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ von ${token.ownerDisplayName} sperren?`,
+      question: `„${token.name}“ von ${token.ownerDisplayName} sperren?`,
       consequence: BLOCK_CONSEQUENCE,
       confirmLabel: 'Sperren',
       tone: 'danger',
@@ -173,7 +174,7 @@ export default function ExternalAccessTokenAdminSection({
     const confirmed = await confirmAction({
       question: `Alle Zugangstokens von ${token.ownerDisplayName} sperren?`,
       consequence: BLOCK_ALL_CONSEQUENCE,
-      confirmLabel: 'Alle sperren',
+      confirmLabel: 'Sperren',
       tone: 'danger',
     })
     if (!confirmed) return
@@ -299,10 +300,12 @@ export default function ExternalAccessTokenAdminSection({
             <Box component="li" key={token.id} sx={listCardSx}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+                  <Typography
+                    sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}
+                  >
                     {token.name}
                   </Typography>
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {token.ownerDisplayName}
                   </Typography>
                 </Box>

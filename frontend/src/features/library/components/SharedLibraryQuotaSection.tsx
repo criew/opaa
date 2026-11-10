@@ -13,6 +13,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
+import { formatNumber } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -96,7 +97,7 @@ function QuotaForm({
       question: `Speicherkontingent geteilter Bibliotheken auf ${formatFileSize(parsed.bytes)} je Bibliothek ändern?`,
       consequence:
         'Die Grenze gilt für jede geteilte Bibliothek ab dem nächsten aufgenommenen Dokument. Gelöscht wird nichts: Eine Bibliothek, die schon mehr belegt, behält alle Dokumente und nimmt nichts mehr auf, bis sie darunter liegt. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Grenze ändern',
+      confirmLabel: 'Ändern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -111,7 +112,7 @@ function QuotaForm({
         current.capBytes === 0
           ? 'Geteilte Bibliotheken nehmen dann ohne Grenze auf. Die Änderung steht im Revisionsprotokoll.'
           : `Es gilt dann die Obergrenze des Betriebs von ${formatFileSize(current.capBytes)}. Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Grenze entfernen',
+      confirmLabel: 'Entfernen',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -230,7 +231,7 @@ export default function SharedLibraryQuotaSection() {
             <Alert severity="warning" sx={{ mt: 2 }} data-testid="shared-library-quota-over">
               {quota.librariesOverQuota === 1
                 ? `1 geteilte Bibliothek belegt schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behält alle Dokumente und nimmt erst wieder etwas auf, wenn sie darunter liegt.`
-                : `${quota.librariesOverQuota.toLocaleString('de-DE')} geteilte Bibliotheken belegen schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behalten alle Dokumente und nehmen erst wieder etwas auf, wenn sie darunter liegen.`}
+                : `${formatNumber(quota.librariesOverQuota)} geteilte Bibliotheken belegen schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behalten alle Dokumente und nehmen erst wieder etwas auf, wenn sie darunter liegen.`}
             </Alert>
           )}
         </>

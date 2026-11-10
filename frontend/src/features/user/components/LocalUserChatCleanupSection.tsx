@@ -28,6 +28,7 @@ import {
   localUserErrorMessage,
   remainingDays,
 } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const CHAT_CLEANUP_HEADING = 'Chats nach der Sperre'
 
@@ -39,7 +40,7 @@ interface LocalUserChatCleanupSectionProps {
   user: LocalUserResponse
 }
 
-const smallText = { fontSize: 13, color: 'text.secondary' } as const
+const smallText = { fontSize: fontSize.text, color: 'text.secondary' } as const
 
 /**
  * The deletion of the account's chats after a lock by the administration, in the single view of the
@@ -113,7 +114,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       <Typography
         id="user-form-chat-cleanup-heading"
         component="h3"
-        sx={{ fontSize: 12, fontWeight: 600, mb: '5px' }}
+        sx={{ fontSize: fontSize.meta, fontWeight: 600, mb: '5px' }}
       >
         {CHAT_CLEANUP_HEADING}
       </Typography>
@@ -140,22 +141,22 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
 
           {pending && (
             <Alert severity="info" data-testid="chat-cleanup-pending">
-              <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                 {pending.extension
                   ? 'Verlängerung beantragt, wartet auf Freigabe'
                   : 'Anhaltung beantragt, wartet auf Freigabe'}
               </Typography>
-              <Typography sx={{ fontSize: 13 }}>
+              <Typography sx={{ fontSize: fontSize.text }}>
                 Zweck: {CHAT_CLEANUP_HOLD_PURPOSE_LABEL[pending.purpose]}
               </Typography>
-              <Typography sx={{ fontSize: 13 }}>Begründung: {pending.reason}</Typography>
-              <Typography sx={{ fontSize: 13 }}>
+              <Typography sx={{ fontSize: fontSize.text }}>Begründung: {pending.reason}</Typography>
+              <Typography sx={{ fontSize: fontSize.text }}>
                 Beantragt am {formatExpiry(pending.requestedAt)}
                 {pending.requestedByMe ? ' von Ihnen' : ''}. Ohne Antwort verfällt der Antrag nach
                 14 Tagen.
               </Typography>
               {pending.requestedByMe && (
-                <Typography sx={{ fontSize: 13, mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.text, mt: 0.5 }}>
                   Freigeben kann nur eine zweite Person der Systemverwaltung.
                 </Typography>
               )}
@@ -208,7 +209,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
               <Typography
                 id="chat-cleanup-hold-form-heading"
                 component="h4"
-                sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.5 }}
+                sx={{ fontSize: fontSize.meta, fontWeight: 600, mb: 0.5 }}
               >
                 {hold ? 'Verlängerung beantragen' : 'Anhaltung beantragen'}
               </Typography>
@@ -221,7 +222,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
               <Typography
                 id="chat-cleanup-hold-purpose-label"
                 component="span"
-                sx={{ display: 'block', fontSize: 12.5, fontWeight: 500, mb: 0.5 }}
+                sx={{ display: 'block', fontSize: fontSize.meta, fontWeight: 500, mb: 0.5 }}
               >
                 Zweck
               </Typography>

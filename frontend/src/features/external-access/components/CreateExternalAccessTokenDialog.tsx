@@ -38,6 +38,7 @@ import {
   releaseEndsBeforeExpiry,
   toDateInputValue,
 } from './tokenLabels'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface CreateExternalAccessTokenDialogProps {
@@ -221,7 +222,7 @@ export default function CreateExternalAccessTokenDialog({
     if (expiresOn === '') {
       errors.expiresAt = 'Bitte geben Sie ein Ablaufdatum an - ein Token ohne Ablauf gibt es nicht.'
     } else if (expiresOn > latestValue) {
-      errors.expiresAt = `Das Ablaufdatum liegt höchstens ${tokenMaxLifetimeDays} Tage in der Zukunft, also spätestens am ${latest.toLocaleDateString('de-DE')}.`
+      errors.expiresAt = `Das Ablaufdatum liegt höchstens ${tokenMaxLifetimeDays} Tage in der Zukunft, also spätestens am ${formatDate(latest)}.`
     } else if (expiresOn < earliestValue) {
       errors.expiresAt = 'Das Ablaufdatum muss in der Zukunft liegen, frühestens morgen.'
     }
@@ -289,7 +290,10 @@ export default function CreateExternalAccessTokenDialog({
           />
 
           <Box>
-            <Typography id="create-token-libraries-title" sx={{ fontSize: 13.5, fontWeight: 500 }}>
+            <Typography
+              id="create-token-libraries-title"
+              sx={{ fontSize: fontSize.text, fontWeight: 500 }}
+            >
               Bibliotheken
             </Typography>
             {libraries === null ? (
@@ -304,7 +308,7 @@ export default function CreateExternalAccessTokenDialog({
                     filters={filters}
                     onToggle={toggleFilter}
                     trailing={
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         {selected.length} ausgewählt
                       </Typography>
                     }
@@ -316,7 +320,9 @@ export default function CreateExternalAccessTokenDialog({
                   role="status"
                   aria-live="polite"
                   sx={
-                    tiles.length === 0 ? { fontSize: 13, color: 'text.secondary' } : visuallyHidden
+                    tiles.length === 0
+                      ? { fontSize: fontSize.text, color: 'text.secondary' }
+                      : visuallyHidden
                   }
                 >
                   {searching || filtering ? resultMessage(tiles.length, searching, filtering) : ''}
@@ -369,7 +375,7 @@ export default function CreateExternalAccessTokenDialog({
             error={Boolean(fieldErrors.expiresAt)}
             helperText={
               fieldErrors.expiresAt ??
-              `Höchstens ${tokenMaxLifetimeDays} Tage, also spätestens am ${latest.toLocaleDateString('de-DE')}.`
+              `Höchstens ${tokenMaxLifetimeDays} Tage, also spätestens am ${formatDate(latest)}.`
             }
             slotProps={{
               inputLabel: { shrink: true },
@@ -387,14 +393,14 @@ export default function CreateExternalAccessTokenDialog({
           )}
 
           <Box>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>Rechte</Typography>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Rechte</Typography>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Nur lesen und suchen. Der Umfang ist fest und nicht wählbar.
             </Typography>
           </Box>
 
           <Alert severity="info" role="note">
-            <Typography sx={{ fontSize: 13 }}>{DISCLOSURE_HINT}</Typography>
+            <Typography sx={{ fontSize: fontSize.text }}>{DISCLOSURE_HINT}</Typography>
           </Alert>
         </Stack>
       </DialogContent>

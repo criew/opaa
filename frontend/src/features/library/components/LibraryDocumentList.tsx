@@ -28,12 +28,13 @@ import StateDot from '@/shared/ui/StateDot'
 import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { sourceRegistration } from './sources/registry'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { formatDateTime, formatNumber } from '@/shared/utils/formatDate'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
-  if (!indexedAt) return '—'
-  return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(indexedAt)
 }
 
 /** Folders a level shows before „alle n Ordner anzeigen“. */
@@ -103,7 +104,10 @@ function DocumentStatusMark({ document }: { document: LibraryDocumentResponse })
   const label = DOCUMENT_STATUS_WORDS[document.status]
   if (document.status === 'INDEXED') {
     return (
-      <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary', minWidth: 112 }}>
+      <Typography
+        component="span"
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', minWidth: 112 }}
+      >
         {label}
       </Typography>
     )
@@ -240,13 +244,16 @@ export default function LibraryDocumentList({
           )}
           <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-              {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
+              {isAttachment && <AttachFileIcon sx={{ fontSize: iconSize.sm }} color="action" />}
               <Typography
                 noWrap
                 title={[document.fileName, originOf(document, confluenceSpaceNameByKey)]
                   .filter(Boolean)
                   .join('\n')}
-                sx={{ fontWeight: isAttachment ? 500 : 600, fontSize: isAttachment ? 13.5 : 14 }}
+                sx={{
+                  fontWeight: isAttachment ? 500 : 600,
+                  fontSize: isAttachment ? fontSize.text : fontSize.text,
+                }}
               >
                 {document.fileName}
               </Typography>
@@ -361,7 +368,7 @@ export default function LibraryDocumentList({
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 16 }} />
+                      <SearchIcon sx={{ fontSize: iconSize.sm }} />
                     </InputAdornment>
                   ),
                   endAdornment: searchInput ? (
@@ -371,7 +378,7 @@ export default function LibraryDocumentList({
                         aria-label="Suche zurücksetzen"
                         onClick={() => onSearchChange('')}
                       >
-                        <CloseIcon sx={{ fontSize: 16 }} />
+                        <CloseIcon sx={{ fontSize: iconSize.sm }} />
                       </IconButton>
                     </InputAdornment>
                   ) : undefined,
@@ -427,7 +434,7 @@ export default function LibraryDocumentList({
           <Typography
             role="status"
             aria-live="polite"
-            sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
           >
             {selectedIds.length > 0 ? `${selectedIds.length} ausgewählt` : 'Name'}
           </Typography>
@@ -509,7 +516,7 @@ export default function LibraryDocumentList({
                   <Typography
                     noWrap
                     title={folder.name}
-                    sx={{ fontWeight: 600, fontSize: 14, maxWidth: '100%' }}
+                    sx={{ fontWeight: 600, fontSize: fontSize.text, maxWidth: '100%' }}
                   >
                     {folder.name}
                   </Typography>
@@ -598,9 +605,9 @@ export default function LibraryDocumentList({
             {/* the head counts the library; the foot counts a filtered list only */}
             {[
               isSearchActive
-                ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
+                ? `${formatNumber(pageState.totalElements)} Treffer für „${pageState.q}“`
                 : isFlatList
-                  ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
+                  ? `${formatNumber(pageState.totalElements)} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
                   : null,
               pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
             ]

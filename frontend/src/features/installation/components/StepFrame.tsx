@@ -5,7 +5,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import type { WizardResult } from '../hooks/useInstallationWizard'
 import { stepMeta } from '../utils/steps'
 import { STEP_RHYTHM, STEP_TITLE_SX } from './stepLayout'
@@ -98,7 +98,7 @@ export default function StepFrame({
       <Typography
         sx={{
           fontFamily: fontFamily.mono,
-          fontSize: 11,
+          fontSize: fontSize.label,
           fontWeight: 500,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
@@ -115,7 +115,7 @@ export default function StepFrame({
       <Typography
         component="div"
         sx={{
-          fontSize: 14,
+          fontSize: fontSize.text,
           color: 'text.secondary',
           mt: STEP_RHYTHM.withinHeading,
           mb: STEP_RHYTHM.betweenGroups,

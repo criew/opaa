@@ -9,6 +9,7 @@ import GroupsIcon from '@mui/icons-material/Groups'
 import type { SelectableGroupResponse } from '@/shared/api/types'
 import { useGroupSearch } from '../hooks/useGroupSearch'
 import { groupDetailLine, groupLabel } from './subjectSelection'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface GroupPickerProps {
   /** The input field's screen reader name — German like every visible text. */
@@ -80,7 +81,7 @@ export default function GroupPicker({
                 <GroupsIcon fontSize="small" color="disabled" sx={{ mt: 0.25 }} />
               )}
               <Stack spacing={0}>
-                <Typography sx={{ fontSize: 13.5 }}>{groupLabel(option)}</Typography>
+                <Typography sx={{ fontSize: fontSize.text }}>{groupLabel(option)}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {groupDetailLine(option)}
                 </Typography>

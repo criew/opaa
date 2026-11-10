@@ -15,7 +15,7 @@ import { useTheme } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { incompleteNote } from './incompleteNote'
 import { plainMessage } from '../sourceCore/plainMessage'
 import PathLabel from '../sourceCore/PathLabel'
@@ -280,7 +280,7 @@ function SelectionDialogBody({
   const body = reviewing ? (
     <Box>
       {draft.length === 0 ? (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 2 }}>
           {source.emptyMeans ?? `Noch keine ${source.noun[1]} ausgewählt.`}
         </Typography>
       ) : (
@@ -299,7 +299,9 @@ function SelectionDialogBody({
               }}
             >
               <Tooltip disableInteractive title={pathLabel(item)} placement="bottom-start">
-                <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14, color: 'text.primary' }}>
+                <Typography
+                  sx={{ ...ellipsis, flex: 1, fontSize: fontSize.text, color: 'text.primary' }}
+                >
                   {item.name}
                   {item.trail.length > 0 && (
                     <Box component="span" sx={{ color: 'text.secondary' }}>
@@ -326,7 +328,7 @@ function SelectionDialogBody({
   ) : (
     <Box>
       {current?.result && incompleteNote(current.result) && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           {incompleteNote(current.result)}
         </Typography>
       )}
@@ -350,7 +352,7 @@ function SelectionDialogBody({
         </Box>
       )}
       {current?.result && levelSize === 0 && !filtered && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
           {current.result.complete
             ? `In „${levelName}“ liegen keine ${levelNoun}.`
             : current.result.message
@@ -364,7 +366,7 @@ function SelectionDialogBody({
         </Box>
       )}
       {someBlocked && !coveringParent && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           {entries.find((entry) => entry.blocked)?.blocked}
         </Typography>
       )}
@@ -388,20 +390,20 @@ function SelectionDialogBody({
                 onChange={() => setDraft((prev) => prev.filter((other) => other.key !== item.key))}
                 slotProps={{ input: { 'aria-label': pathLabel(item) } }}
               />
-              <Box sx={{ flex: 1, minWidth: 0, fontSize: 14 }}>
+              <Box sx={{ flex: 1, minWidth: 0, fontSize: fontSize.text }}>
                 <PathLabel path={pathLabel(item)} />
               </Box>
             </Box>
           ))}
           {pinned.length > PINNED_SHOWN && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', py: 1 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
               und {pinned.length - PINNED_SHOWN} weitere ausgewählt
             </Typography>
           )}
         </Box>
       )}
       {coveringParent && entries.length > 0 && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           Ganz ausgewählt über „{coveringParent.name}“.
         </Typography>
       )}
@@ -433,7 +435,7 @@ function SelectionDialogBody({
                   },
                 }}
               />
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500, color: 'text.primary' }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500, color: 'text.primary' }}>
                 {allLabel}
               </Typography>
             </Box>
@@ -492,7 +494,7 @@ function SelectionDialogBody({
                       ...ellipsis,
                       display: 'block',
                       width: '100%',
-                      fontSize: 14,
+                      fontSize: fontSize.text,
                       textAlign: 'left',
                       border: 0,
                       bgcolor: 'transparent',
@@ -522,7 +524,7 @@ function SelectionDialogBody({
           })}
           {entries.length > shown && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 {shown} von {entries.length} angezeigt
               </Typography>
               <TextAction onClick={() => setShown((n) => n + PAGE)}>Weitere anzeigen</TextAction>
@@ -539,7 +541,12 @@ function SelectionDialogBody({
               <Typography
                 component="label"
                 htmlFor="selection-manual"
-                sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: '5px' }}
+                sx={{
+                  display: 'block',
+                  fontSize: fontSize.meta,
+                  color: 'text.secondary',
+                  mb: '5px',
+                }}
               >
                 {source.manual.label}
               </Typography>
@@ -587,7 +594,7 @@ function SelectionDialogBody({
       </DialogTitle>
       <Box sx={{ px: 3, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
         {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Ausgewählt über alle Ebenen
           </Typography>
         ) : (
@@ -614,7 +621,7 @@ function SelectionDialogBody({
                         aria-current="location"
                         sx={{
                           ...ellipsis,
-                          fontSize: 14,
+                          fontSize: fontSize.text,
                           fontWeight: 600,
                           maxWidth: { xs: 220, sm: 320 },
                         }}
@@ -657,7 +664,9 @@ function SelectionDialogBody({
       </DialogContent>
       <Box sx={{ px: 3, pt: 1 }} role="alert">
         {applyError && (
-          <Typography sx={{ fontSize: 13, color: 'error.main' }}>{applyError}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'error.main' }}>
+            {applyError}
+          </Typography>
         )}
       </Box>
       <DialogActions
@@ -672,7 +681,7 @@ function SelectionDialogBody({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, color: 'text.primary' }} aria-live="polite">
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }} aria-live="polite">
             {draft.length === 0 && source.emptyMeans
               ? source.emptyMeans
               : `${draft.length} ausgewählt`}

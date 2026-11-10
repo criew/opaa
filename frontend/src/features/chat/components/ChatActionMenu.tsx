@@ -7,7 +7,7 @@ import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, iconSize } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { actionOptionId } from './chatActions'
 import type { ChatActionTexts } from './chatActions'
@@ -80,7 +80,7 @@ export default function ChatActionMenu({
               px: 1.5,
               py: 1,
               fontFamily: fontFamily.mono,
-              fontSize: 9.5,
+              fontSize: fontSize.label,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'text.secondary',
@@ -120,7 +120,7 @@ export default function ChatActionMenu({
                       id={headerId}
                       component="div"
                       disableSticky
-                      sx={{ lineHeight: 2.2, fontSize: 11.5 }}
+                      sx={{ lineHeight: 2.2, fontSize: fontSize.meta }}
                     >
                       {group.label}
                     </ListSubheader>
@@ -148,11 +148,15 @@ export default function ChatActionMenu({
                               },
                             }}
                           >
-                            <Icon sx={{ fontSize: 15, mt: 0.25, color: 'text.primary' }} />
+                            <Icon sx={{ fontSize: iconSize.sm, mt: 0.25, color: 'text.primary' }} />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography
                                 component="span"
-                                sx={{ display: 'block', fontSize: 13.5, color: 'text.primary' }}
+                                sx={{
+                                  display: 'block',
+                                  fontSize: fontSize.text,
+                                  color: 'text.primary',
+                                }}
                                 noWrap
                               >
                                 <Box
@@ -167,7 +171,11 @@ export default function ChatActionMenu({
                                 <Typography
                                   component="span"
                                   noWrap
-                                  sx={{ display: 'block', fontSize: 12, color: 'text.secondary' }}
+                                  sx={{
+                                    display: 'block',
+                                    fontSize: fontSize.meta,
+                                    color: 'text.secondary',
+                                  }}
                                 >
                                   {action.description}
                                 </Typography>

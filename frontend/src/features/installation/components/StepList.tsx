@@ -3,7 +3,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { darkRoles, fontFamily, lightRoles, radius } from '@/shared/theme/tokens'
+import { darkRoles, fontFamily, fontSize, lightRoles, radius } from '@/shared/theme/tokens'
 import type { InstallationStatusResponse } from '../api/types'
 import {
   STEP_INFO,
@@ -63,14 +63,14 @@ function Entry({ label, status, tone, current, onSelect }: EntryProps) {
           component="span"
           sx={{
             display: 'block',
-            fontSize: 14,
+            fontSize: fontSize.text,
             fontWeight: current ? 600 : 500,
             color: 'text.primary',
           }}
         >
           {label}
         </Typography>
-        <Typography component="span" sx={{ display: 'block', fontSize: 12.5 }}>
+        <Typography component="span" sx={{ display: 'block', fontSize: fontSize.meta }}>
           {status}
         </Typography>
       </Box>
@@ -116,7 +116,7 @@ function GroupTitle({ id, children }: { id: string; children: string }) {
       component="h2"
       sx={{
         fontFamily: fontFamily.mono,
-        fontSize: 11,
+        fontSize: fontSize.label,
         fontWeight: 500,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',

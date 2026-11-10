@@ -3,7 +3,7 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import { radius } from '../theme/tokens'
+import { fontSize, radius } from '../theme/tokens'
 
 export interface AreaTab<T extends string> {
   value: T
@@ -61,7 +61,7 @@ export default function AreaTabs<T extends string>({
           minHeight: 42,
           '& .MuiTab-root': {
             textTransform: 'none',
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             fontWeight: 500,
             minHeight: 42,
             px: 2,
@@ -83,7 +83,7 @@ export default function AreaTabs<T extends string>({
                       minWidth: 22,
                       px: 0.75,
                       borderRadius: `${radius.pill}px`,
-                      fontSize: 12,
+                      fontSize: fontSize.meta,
                       fontWeight: 600,
                       lineHeight: '20px',
                       textAlign: 'center',

@@ -10,13 +10,14 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import { Link as RouterLink } from 'react-router'
 import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, radius } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { TextLink } from '@/shared/ui/DetailSection'
 import StateDot from '@/shared/ui/StateDot'
 import PermissionTransferDialog from './PermissionTransferDialog'
 import { assetTypeDefinition, assetTypeLabel } from '../../../shared/assetTypes'
 import { addresseeOf, nextStepOf, problemOf, sinceLabel } from './successionPresentation'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 function objectHref(entry: SuccessionEntryResponse): string | null {
   switch (entry.objectType) {
@@ -101,12 +102,16 @@ export default function SuccessionRow({
           bgcolor: 'action.hover',
         }}
       >
-        <Icon sx={{ fontSize: 20 }} />
+        <Icon sx={{ fontSize: iconSize.md }} />
       </Box>
 
       <Box sx={{ minWidth: 0 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography id={titleId} component="h2" sx={{ fontSize: 15, fontWeight: 600 }}>
+          <Typography
+            id={titleId}
+            component="h2"
+            sx={{ fontSize: fontSize.title, fontWeight: 600 }}
+          >
             {href ? (
               <Link component={RouterLink} to={href}>
                 {entry.objectName}
@@ -117,13 +122,17 @@ export default function SuccessionRow({
           </Typography>
           <MetaBadge>{objectTypeLabel(entry)}</MetaBadge>
         </Stack>
-        <Typography sx={{ fontSize: 14, mt: 0.5 }}>{problemOf(kind, entry)}</Typography>
+        <Typography sx={{ fontSize: fontSize.text, mt: 0.5 }}>{problemOf(kind, entry)}</Typography>
         <Stack
           direction="row"
           spacing={1}
           sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.5, rowGap: 0.5 }}
         >
-          <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography
+            component="span"
+            title={entry.firstSeenAt ? formatDateTime(entry.firstSeenAt) : undefined}
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+          >
             {sinceLabel(entry)}
           </Typography>
           {entry.highlighted && <StateDot tone="warning" label="lange offen" />}
@@ -133,7 +142,7 @@ export default function SuccessionRow({
             </Box>
           )}
         </Stack>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
           {details.join(' · ')}
         </Typography>
       </Box>

@@ -6,6 +6,7 @@ import { Link as RouterLink } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import { stateTargetHref, type StateTarget } from './libraryState'
 import type { NextStep } from './nextSteps'
+import { fontSize } from '@/shared/theme/tokens'
 
 const ROW_ANCHORS: Record<string, StateTarget['anchor']> = {
   connection: 'verbindung',
@@ -41,7 +42,7 @@ export default function LibraryNextSteps({
             sx={{
               display: { xs: step.done ? 'none' : 'flex', sm: 'flex' },
               gap: 1,
-              fontSize: 13.5,
+              fontSize: fontSize.text,
               lineHeight: '26px',
             }}
           >
@@ -53,7 +54,10 @@ export default function LibraryNextSteps({
               {step.done ? '✓' : '○'}
             </Box>
             {step.done ? (
-              <Typography component="span" sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography
+                component="span"
+                sx={{ fontSize: fontSize.text, color: 'text.secondary' }}
+              >
                 {step.label}
                 <Box component="span" sx={visuallyHidden}>
                   {' (erledigt)'}
@@ -68,7 +72,7 @@ export default function LibraryNextSteps({
                 })}
                 replace
                 underline="hover"
-                sx={{ fontSize: 13.5 }}
+                sx={{ fontSize: fontSize.text }}
               >
                 {step.label}
               </Link>

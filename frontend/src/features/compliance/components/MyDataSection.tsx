@@ -28,6 +28,7 @@ import {
   completedText,
   formatMoment,
 } from '../utils/selfDisclosureMessages'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 
 /** How often the page asks for the status while a download it started may still run. */
@@ -301,15 +302,15 @@ export default function MyDataSection() {
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
         Laden Sie die zu Ihnen in {productName} gespeicherten Daten als ZIP-Datei herunter: Konto,
         Chats, Rechte, Gruppen, Spaces und weitere, lesbar und maschinenlesbar.
       </Typography>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
         Nicht enthalten sind Dokumentinhalte, Sicherungen, das Betriebslog und anlassbezogene
         Klärungen; darüber gibt die oder der Datenschutzbeauftragte Auskunft.
       </Typography>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 600, mb: 2.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 2.5 }}>
         {PERSONAL_ONLY_NOTICE}
       </Typography>
 
@@ -322,13 +323,13 @@ export default function MyDataSection() {
       )}
 
       {disabled ? (
-        <Typography role="status" sx={{ fontSize: 13.5 }}>
+        <Typography role="status" sx={{ fontSize: fontSize.text }}>
           {DISABLED_MESSAGE}
         </Typography>
       ) : (
         <>
           {status?.lastCompletedAt && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
               Zuletzt vollständig heruntergeladen: {formatMoment(status.lastCompletedAt)}.
             </Typography>
           )}

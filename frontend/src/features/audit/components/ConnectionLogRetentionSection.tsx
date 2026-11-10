@@ -11,6 +11,8 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -71,7 +73,7 @@ export default function ConnectionLogRetentionSection() {
       consequence: shorter
         ? `Einträge, die älter als ${months(value)} sind, werden mit dem nächsten täglichen Lauf endgültig gelöscht. Die Änderung steht im Nachweisprotokoll.`
         : 'Die längere Frist gilt sofort. Bereits gelöschte Einträge kommen nicht zurück. Die Änderung steht im Nachweisprotokoll.',
-      confirmLabel: 'Frist ändern',
+      confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return
@@ -152,9 +154,8 @@ export default function ConnectionLogRetentionSection() {
             </Alert>
           )}
           {current.lastCutoff && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-              Gelöscht ist bisher alles vor dem{' '}
-              {new Date(current.lastCutoff).toLocaleDateString('de-DE', { dateStyle: 'medium' })}.
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+              Gelöscht ist bisher alles vor dem {formatDate(current.lastCutoff)}.
             </Typography>
           )}
         </Box>

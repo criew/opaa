@@ -10,14 +10,14 @@ import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import { copyToClipboard } from '@/shared/utils/clipboard'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, iconSize, radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
 import ProviderStateDot from './ProviderStateDot'
 import { PER_INSTANCE_NOTE, PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 
 const eyebrowSx = {
   fontFamily: fontFamily.mono,
-  fontSize: 10,
+  fontSize: fontSize.label,
   fontWeight: 500,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
@@ -26,7 +26,7 @@ const eyebrowSx = {
 
 const codeSx = {
   fontFamily: fontFamily.mono,
-  fontSize: 12,
+  fontSize: fontSize.meta,
   px: 0.75,
   py: 0.25,
   borderRadius: `${radius.xs}px`,
@@ -43,7 +43,7 @@ interface CopyableValueProps {
 function CopyableValue({ label, value, testId }: CopyableValueProps) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{label}</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>{label}</Typography>
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0, mt: 0.25 }}>
         <Box
           component="code"
@@ -65,7 +65,7 @@ function CopyableValue({ label, value, testId }: CopyableValueProps) {
             aria-label={`${label} kopieren`}
             onClick={() => void copyToClipboard(value, label)}
           >
-            <ContentCopyOutlinedIcon sx={{ fontSize: 14 }} />
+            <ContentCopyOutlinedIcon sx={{ fontSize: iconSize.xs }} />
           </IconButton>
         </Tooltip>
       </Stack>
@@ -113,7 +113,7 @@ function Step({ number, icon, title, children }: StepProps) {
             bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
             border: 1,
             borderColor: (t) => alpha(t.palette.primary.main, 0.4),
-            '& svg': { fontSize: 18 },
+            '& svg': { fontSize: iconSize.md },
           }}
         >
           {icon}
@@ -122,12 +122,17 @@ function Step({ number, icon, title, children }: StepProps) {
           <Typography component="span" sx={{ ...eyebrowSx, display: 'block' }}>
             Schritt {number}
           </Typography>
-          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, m: 0 }}>
+          <Typography
+            component="h3"
+            sx={{ fontSize: fontSize.text, fontWeight: 600, lineHeight: 1.25, m: 0 }}
+          >
             {title}
           </Typography>
         </Box>
       </Stack>
-      <Box sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.5, '& code': codeSx }}>
+      <Box
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', lineHeight: 1.5, '& code': codeSx }}
+      >
         {children}
       </Box>
     </Box>
@@ -155,7 +160,7 @@ export default function OidcProviderSetupInstructions() {
   return (
     <Box component="section" aria-labelledby="oidc-setup-title">
       <SectionHead id="oidc-setup-title">Einrichtung beim Anbieter und im Betrieb</SectionHead>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
         Drei Schritte, bevor ein Anbieter Anmeldungen annimmt. Die Werte gelten für diese
         Installation.
       </Typography>
@@ -219,25 +224,35 @@ export default function OidcProviderSetupInstructions() {
             <Box key={state}>
               <Stack component="dt" direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                 <ProviderStateDot state={state} />
-                <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
+                <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                   {PROVIDER_STATE_LABEL[state]}
                 </Typography>
               </Stack>
               <Typography
                 component="dd"
-                sx={{ m: 0, mt: 0.5, fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5 }}
+                sx={{
+                  m: 0,
+                  mt: 0.5,
+                  fontSize: fontSize.meta,
+                  color: 'text.secondary',
+                  lineHeight: 1.5,
+                }}
               >
                 {STATE_EXPLANATION[state]}
               </Typography>
             </Box>
           ))}
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5, mt: 2 }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', lineHeight: 1.5, mt: 2 }}
+        >
           „Erreichbar“ und „Nicht erreichbar“ gelten für die Backend-Instanz, die diese Seite
           geladen hat: Laufen mehrere, lädt jede die Schlüssel selbst, und die Liste kennzeichnet
           den Status als „{PER_INSTANCE_NOTE}“.
         </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5, mt: 1 }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', lineHeight: 1.5, mt: 1 }}
+        >
           Der Verbindungstest im Formular prüft Discovery-Dokument und JWK-Set vor dem Speichern.
           Ist die Issuer-URI vom Backend aus nicht erreichbar, prüft er das JWK-Set über die
           Backend-seitige Adresse und sagt das.

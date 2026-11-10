@@ -29,6 +29,7 @@ import GroupOriginTag from './GroupOriginTag'
 import GroupRowMenu from './GroupRowMenu'
 import { GROUP_STATE_COLOR, GROUP_STATE_LABEL, groupStateReason } from './groupListLabels'
 import { GROUP_UNUSED_DETAIL, groupUsageDetails, groupUsageShort } from './groupUsageLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 const SORT_LABEL: Record<GroupSortField, string> = {
   name: 'Name',
@@ -87,7 +88,7 @@ function GroupNameCell({ group }: { group: GroupListResponse }) {
         <Typography
           title={group.name}
           sx={{
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             fontWeight: 600,
             minWidth: 0,
             overflow: 'hidden',
@@ -111,7 +112,7 @@ function GroupNameCell({ group }: { group: GroupListResponse }) {
       {secondLine && (
         <Typography
           sx={{
-            fontSize: 12,
+            fontSize: fontSize.meta,
             color: 'text.secondary',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -147,7 +148,8 @@ function memberText(count: number): string {
  * this group?
  */
 function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
-  if (!effects) return <Typography sx={{ fontSize: 13, color: 'text.disabled' }}>–</Typography>
+  if (!effects)
+    return <Typography sx={{ fontSize: fontSize.text, color: 'text.disabled' }}>–</Typography>
   const short = groupUsageShort(effects)
   const details = groupUsageDetails(effects)
   const unused = details.length === 0
@@ -158,7 +160,7 @@ function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
         tabIndex={0}
         aria-label={`Verwendung: ${tooltip}`}
         sx={{
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           color: unused ? 'text.secondary' : 'text.primary',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -212,7 +214,7 @@ function GroupCard({ group, effects, ...handlers }: RowProps) {
       <Box sx={{ mt: 1 }}>
         <GroupStateCell group={group} />
       </Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.75 }}>
         {memberText(group.memberCount)}
         {effects ? ` · ${groupUsageShort(effects)}` : ''}
       </Typography>

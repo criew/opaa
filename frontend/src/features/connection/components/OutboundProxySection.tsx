@@ -11,6 +11,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -75,14 +76,12 @@ export default function OutboundProxySection() {
     if (busy || !changed) return
     const confirmed = await confirmAction({
       question:
-        proxyUrl === null
-          ? 'Ausgangsproxy entfernen und alle Verbindungen direkt aufbauen?'
-          : `Ausgangsproxy ${proxyUrl} speichern?`,
+        proxyUrl === null ? 'Ausgangsproxy entfernen?' : `Ausgangsproxy ${proxyUrl} speichern?`,
       consequence:
         proxyUrl === null
           ? 'Alle ausgehenden Verbindungen gehen ab sofort direkt hinaus. Die Änderung steht im Revisionsprotokoll.'
           : 'Ab sofort gehen alle ausgehenden HTTP(S)-Verbindungen über diesen Proxy, außer zu den Zielen der Ausnahmeliste – auch die Anmeldung über einen Identitätsanbieter. Ein falscher Proxy kann die Anmeldung über den Anbieter lahmlegen; das lokale Konto der Systemverwaltung bleibt nutzbar. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Speichern',
+      confirmLabel: proxyUrl === null ? 'Entfernen' : 'Speichern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -162,7 +161,7 @@ export default function OutboundProxySection() {
                 'Ein Eintrag je Zeile: ein Hostname (gilt auch für alle Subdomänen), eine IP-Adresse oder ein Netzbereich wie 10.0.0.0/8. Interne Ziele gehören hierher.'
               }
             />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Die Ausnahmeliste gibt keine internen Adressen frei. Welche internen Ziele OPAA
               überhaupt erreichen darf, legt der Betrieb über
               OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST fest.

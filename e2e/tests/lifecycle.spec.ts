@@ -141,7 +141,7 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
     const row = page.getByTestId("space-member-row").filter({ hasText: "Dev User" });
     await row.getByRole("button", { name: "Weitere Aktionen für „Dev User“" }).click();
     await page.getByRole("menuitem", { name: "Zum Eigentümer machen" }).click();
-    await acceptConfirm(page, "Verantwortung an Dev User übertragen?");
+    await acceptConfirm(page, "Verantwortung an „Dev User“ übertragen?");
     await expect(page.getByText("Verantwortung an Dev User übertragen")).toBeVisible();
     await expect(row.getByRole("combobox")).toHaveText("Eigentümer");
 
@@ -255,7 +255,7 @@ test("Bibliothek über die Oberfläche löschen: Dokumente und Original sind weg
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await page.getByRole("button", { name: `Weitere Aktionen für „${name}“` }).click();
     await page.getByRole("menuitem", { name: "Löschen" }).click();
-    await acceptConfirm(page, `Bibliothek "${name}" löschen?`);
+    await acceptConfirm(page, `„${name}“ löschen?`);
     await expect(page).not.toHaveURL(new RegExp(`/libraries/${libraryId}`));
 
     expect((await admin.get(`/api/v1/libraries/${libraryId}`)).status()).toBe(404);

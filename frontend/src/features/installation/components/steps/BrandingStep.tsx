@@ -20,6 +20,7 @@ import { STEP_INFO } from '../../utils/steps'
 import { compact } from '../../utils/validation'
 import FormField from '../FormField'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
+import { fontSize } from '@/shared/theme/tokens'
 
 const BRANDING_FIELDS = ['productName', 'claim', 'aiNotice', 'primaryColor']
 
@@ -173,10 +174,14 @@ export default function BrandingStep({ step, submit, onBack, onSkip }: BrandingS
       />
       <AccentContrastWarning primaryColor={primaryColor.trim()} />
       <Box component="section" aria-labelledby={`${id}-preview`}>
-        <Typography id={`${id}-preview`} component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+        <Typography
+          id={`${id}-preview`}
+          component="h3"
+          sx={{ fontSize: fontSize.text, fontWeight: 600 }}
+        >
           {BRANDING_LABELS.preview}
         </Typography>
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
           {BRANDING_TEXTS.previewHint}
         </Typography>
         <BrandingPreviews

@@ -6,6 +6,7 @@ import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
 import { InfoHint } from '@/shared/ui/list/AdminList'
 import { groupOriginExplanation } from './groupListLabels'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The origin of a group, built like the origin of an account: „Intern" for a
@@ -26,12 +27,16 @@ export default function GroupOriginTag({ group }: { group: GroupListResponse }) 
     >
       <Icon
         aria-hidden="true"
-        sx={{ fontSize: 15, flex: 'none', color: internal ? 'primary.main' : 'text.secondary' }}
+        sx={{
+          fontSize: iconSize.sm,
+          flex: 'none',
+          color: internal ? 'primary.main' : 'text.secondary',
+        }}
       />
       <Typography
         component="span"
         sx={{
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           fontWeight: internal ? 600 : 500,
           color: internal ? 'text.primary' : 'text.secondary',
           minWidth: 0,

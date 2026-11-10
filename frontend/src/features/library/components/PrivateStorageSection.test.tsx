@@ -90,7 +90,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /ab dem nächsten aufgenommenen Dokument.*Bereits Gespeichertes bleibt/,
     )
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 20 * GIB }]))
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
@@ -112,7 +112,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const dialog = await screen.findByRole('dialog', { name: question })
     expect(dialog).toHaveTextContent(/ohne Grenze/)
     expect(dialog).not.toHaveTextContent(/über der Grenze/)
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 0 }]))
   })
@@ -128,7 +128,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     await user.clear(field)
     await user.type(field, '2,5')
     await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
-    await answerConfirm(user, /auf 2,5 GB je Person ändern\?/, 'Grenze ändern')
+    await answerConfirm(user, /auf 2,5 GB je Person ändern\?/, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 2.5 * GIB }]))
   })
@@ -169,11 +169,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
     )
-    await answerConfirm(
-      user,
-      /zur Werkseinstellung von 10 GB zurückkehren\?/,
-      'Werkseinstellung wiederherstellen',
-    )
+    await answerConfirm(user, /auf die Werkseinstellung von 10 GB zurücksetzen\?/, 'Zurücksetzen')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: null }]))
   })

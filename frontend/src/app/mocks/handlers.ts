@@ -20,6 +20,7 @@ import { sharedLibraryQuotaHandlers } from '@/features/library/mocks/sharedLibra
 import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmHandlers'
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
+import { agentHandlers } from '@/features/agent/mocks/agentHandlers'
 // document-template
 import { documentTemplateHandlers } from '@/features/document-template/mocks/documentTemplateHandlers'
 // group
@@ -110,6 +111,7 @@ const topicHandlers = [
   ...fullSyncRhythmHandlers,
   // prompt
   ...promptLibraryHandlers,
+  ...agentHandlers,
   // document-template
   ...documentTemplateHandlers,
   // group

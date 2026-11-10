@@ -41,6 +41,7 @@ import {
 import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
 import RoleApiKeyField from './RoleApiKeyField'
 import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -330,7 +331,9 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
 
   return (
     <Box sx={{ maxWidth: '72ch' }}>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>{texts.intro}</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+        {texts.intro}
+      </Typography>
       {settings.retiredVariables.length > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Im Betrieb ist noch {settings.retiredVariables.join(', ')} gesetzt. Diese Angaben werden
@@ -345,7 +348,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           der Betrieb sie freigibt.
         </Alert>
       )}
-      <Typography role="status" sx={{ fontSize: 13, mb: 2 }}>
+      <Typography role="status" sx={{ fontSize: fontSize.text, mb: 2 }}>
         Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
       {error && (
@@ -436,11 +439,11 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
             <Typography
               id={`${prefix}-live-heading`}
               component="h3"
-              sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}
+              sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
             >
               {REALTIME_TEXTS.sectionLabel}
             </Typography>
-            <Typography role="status" sx={{ fontSize: 13, mb: 1.5 }}>
+            <Typography role="status" sx={{ fontSize: fontSize.text, mb: 1.5 }}>
               Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
             </Typography>
             <RealtimeTranscriptionFields

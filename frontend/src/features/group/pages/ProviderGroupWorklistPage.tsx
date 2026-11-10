@@ -16,7 +16,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { PermissionTransferDialog } from '@/features/succession'
 import { groupUsageDetails } from '../components/groupUsageLabels'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -109,7 +109,9 @@ export default function ProviderGroupWorklistPage() {
             {reaching.map((entry) => (
               <Box key={entry.groupId} sx={{ borderBottom: 1, borderColor: 'divider', pb: 1.5 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{entry.name}</Typography>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
+                    {entry.name}
+                  </Typography>
                   {entry.dissolved && <MetaBadge>aufgelöst</MetaBadge>}
                   {entry.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
                   <Button
@@ -122,17 +124,17 @@ export default function ProviderGroupWorklistPage() {
                   </Button>
                 </Stack>
                 {entry.sourcePath && (
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {entry.sourcePath}
                   </Typography>
                 )}
-                <Typography sx={{ fontSize: 13.5, mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.text, mt: 0.5 }}>
                   {groupUsageDetails(entry).join(' · ')}
                 </Typography>
               </Box>
             ))}
             {idle.length > 0 && (
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Nicht verwendet, werden mit dem Anbieter gelöscht:{' '}
                 {idle.map((entry) => entry.name).join(', ')}
               </Typography>

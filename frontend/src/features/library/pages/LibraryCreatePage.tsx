@@ -81,6 +81,7 @@ import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -304,7 +305,8 @@ export default function LibraryCreatePage() {
   const handleCancel = async () => {
     if (isDirty) {
       const confirmed = await confirmAction({
-        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        question: 'Eingaben verwerfen?',
+        consequence: 'Der Assistent schließt, ohne etwas anzulegen; Ihre Eingaben gehen verloren.',
         confirmLabel: 'Verwerfen',
         tone: 'caution',
       })
@@ -563,7 +565,7 @@ export default function LibraryCreatePage() {
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: CONTENT_WIDTH }}>
         <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
-        <Typography aria-hidden sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}>
+        <Typography aria-hidden sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}>
           Neue Wissensbibliothek
         </Typography>
         {/* one page title for the whole wizard; the step heading takes the focus after „Weiter“ */}
@@ -615,7 +617,7 @@ export default function LibraryCreatePage() {
                 value: type,
                 label: displayNameOf(type),
                 description: documentSourceTypeDescription(type),
-                icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+                icon: <SourceTypeIcon sourceType={type} fontSize={iconSize.lg} />,
                 disabledReason: missingFor(type),
               }))}
             />
@@ -672,7 +674,7 @@ export default function LibraryCreatePage() {
         {currentStep === STEP_NAME && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
             {uploadLibrary && (
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
                 gebündelt.
               </Typography>

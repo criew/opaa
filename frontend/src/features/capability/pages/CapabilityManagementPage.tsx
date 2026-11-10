@@ -10,7 +10,7 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import CapabilityRow from '../components/CapabilityRow'
 import CapabilityAccessPanel from '../components/CapabilityAccessPanel'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import LoadError from '@/shared/ui/states/LoadError'
 
@@ -85,7 +85,7 @@ export default function CapabilityManagementPage() {
           <Typography
             id="capability-overview-heading"
             component="h2"
-            sx={{ fontSize: 17, fontWeight: 600, mb: 1.5 }}
+            sx={{ fontSize: fontSize.title, fontWeight: 600, mb: 1.5 }}
           >
             Wer darf was anlegen?
           </Typography>

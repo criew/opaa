@@ -6,6 +6,8 @@ import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
+import { fontSize } from '@/shared/theme/tokens'
+
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -66,8 +68,8 @@ export default function SuccessionList({
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 14, maxWidth: 760 }}>{text.intro}</Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1, mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, maxWidth: 760 }}>{text.intro}</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, mb: 1.5 }}>
         {data.totalElements === 1 ? '1 Eintrag' : `${data.totalElements} Einträge`}, die ältesten
         zuerst.
       </Typography>

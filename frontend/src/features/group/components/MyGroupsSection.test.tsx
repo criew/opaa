@@ -258,11 +258,7 @@ describe('MyGroupsSection', () => {
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
     await user.click(await screen.findByRole('button', { name: /verantwortung abgeben/i }))
-    await answerConfirm(
-      user,
-      'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?',
-      'Verantwortung abgeben',
-    )
+    await answerConfirm(user, 'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?', 'Abgeben')
 
     await waitFor(() =>
       expect(mockDismissGroupSteward).toHaveBeenCalledWith('group-phoenix', OWN_USER_ID),
@@ -315,11 +311,7 @@ describe('MyGroupsSection', () => {
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
     await user.click(await screen.findByRole('button', { name: /verantwortung abgeben/i }))
-    await answerConfirm(
-      user,
-      'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?',
-      'Verantwortung abgeben',
-    )
+    await answerConfirm(user, 'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?', 'Abgeben')
 
     expect(await screen.findByText(/Noch keine Gruppen in Ihrer Verantwortung/)).toBeInTheDocument()
     expect(screen.queryByText('Gruppe nicht gefunden')).not.toBeInTheDocument()

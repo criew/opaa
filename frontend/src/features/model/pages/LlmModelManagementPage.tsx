@@ -19,7 +19,7 @@ import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
 import TextRecognitionSection from '../components/TextRecognitionSection'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -74,7 +74,7 @@ function ChatModelsSection() {
           mb: 2,
         }}
       >
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
         </Typography>
         <Button
@@ -169,7 +169,9 @@ function EmbeddingInfoSection() {
          below it would be the same statement a second time. The area is named via the tab
          its panel points to. */}
       {embeddingInfo?.model !== null && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}
+        >
           Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
           bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
           Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.

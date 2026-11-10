@@ -42,6 +42,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
   private static final Map<String, Long> SEEDED_ROW_COUNTS =
       Map.ofEntries(
           Map.entry("agent_workspace", 1L),
+          Map.entry("agent_settings", 1L),
+          Map.entry("agent_settings_tools", 4L),
           Map.entry("audit_retention_settings", 1L),
           Map.entry("branding_settings", 1L),
           Map.entry("capability_grant_history", 8L),
@@ -237,6 +239,12 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "agent_sandbox_log",
             "agent_step_log",
             "agent_workspace",
+            "agent_libraries",
+            "agent_seeds",
+            "agent_settings",
+            "agent_settings_tools",
+            "agent_tools",
+            "agents",
             "chat_attachment_chunks",
             "chat_attachments",
             "chat_cleanup_hold_requests",

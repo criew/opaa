@@ -669,7 +669,7 @@ describe('ConnectionProfilesTab', () => {
     expect(question).toHaveTextContent(
       'Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; 2 Verbindungen müssen neu angemeldet werden, die gespeicherten Zugangsdaten von 1 Bibliothek sind neu einzutragen. Bitte bestätigen.',
     )
-    await answerConfirm(user, /Änderung an/, 'Bestätigen und speichern')
+    await answerConfirm(user, /Änderung an/, 'Speichern')
 
     expect(await screen.findByText('https://cloud-neu.rheinfurt.example')).toBeVisible()
     expect(sent.at(-1)).toMatchObject({ confirmDiscard: true })
@@ -873,7 +873,7 @@ describe('ConnectionProfilesTab', () => {
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
     expect(question).toHaveTextContent('2 Verbindungen')
-    await answerConfirm(user, /Alle Verbindungen von/, 'Alle trennen')
+    await answerConfirm(user, /Alle Verbindungen von/, 'Trennen')
 
     expect(await screen.findByText('2 Verbindungen getrennt.')).toBeVisible()
   })
@@ -925,7 +925,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(
       await within(panel).findByRole('button', { name: `Sperre von ${PROFILE} aufheben` }),
     )
-    await answerConfirm(user, /aufheben\?/, 'Entsperren')
+    await answerConfirm(user, /entsperren\?/, 'Entsperren')
     expect(await within(panel).findByRole('button', { name: `${PROFILE} sperren` })).toBeVisible()
     expect(within(panel).queryByText('Gesperrt')).not.toBeInTheDocument()
   })
@@ -957,10 +957,10 @@ describe('ConnectionProfilesTab', () => {
     expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
     const panel = await openProfile(user, PROFILE)
     await user.click(within(panel).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
-    const question = await screen.findByRole('dialog', { name: /aufheben\?/ })
+    const question = await screen.findByRole('dialog', { name: /entsperren\?/ })
     expect(question).toHaveTextContent('Die Quellart „Nextcloud“ bleibt gesperrt')
     expect(question).not.toHaveTextContent('ohne Neueinrichtung weiter')
-    await answerConfirm(user, /aufheben\?/, 'Abbrechen')
+    await answerConfirm(user, /entsperren\?/, 'Abbrechen')
   })
 
   // „Zugang bearbeiten“ waits for the source type's description: while it loads, that is no

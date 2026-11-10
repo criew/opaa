@@ -15,7 +15,7 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SectionEyebrow from './SectionEyebrow'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '@/shared/routes'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 
 interface LocalSignInFormProps {
   /** Eyebrow of the section; also the accessible name of the form. */
@@ -70,7 +70,7 @@ export default function LocalSignInForm({
   return (
     <Box component="form" aria-labelledby={titleId} onSubmit={submit} noValidate>
       <SectionEyebrow id={titleId}>{title}</SectionEyebrow>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
         {description}
       </Typography>
       <Stack spacing={2}>
@@ -137,13 +137,17 @@ export default function LocalSignInForm({
             {isSigningIn ? 'Anmeldung läuft …' : 'Anmelden'}
           </Button>
           {showPasswordReset && (
-            <Link component={RouterLink} to={FORGOT_PASSWORD_ROUTE} sx={{ fontSize: 13 }}>
+            <Link
+              component={RouterLink}
+              to={FORGOT_PASSWORD_ROUTE}
+              sx={{ fontSize: fontSize.text }}
+            >
               Passwort vergessen?
             </Link>
           )}
         </Stack>
         {showSelfRegistration && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Noch kein Konto?{' '}
             <Link component={RouterLink} to={REGISTER_ROUTE}>
               Konto registrieren

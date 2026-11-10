@@ -144,8 +144,8 @@ export default function ProfileRequirementDialog({
               {switchingOn && (
                 <Typography variant="body2">
                   Danach lassen sich Bibliotheken dieser Quellart nur noch über einen Zugang
-                  anlegen, testen und auflisten; eine eigene Adresse ist nicht mehr möglich, und
-                  keine Bibliothek lässt sich von ihrem Zugang lösen.
+                  anlegen, testen und auflisten; eine eigene Adresse ist nicht mehr möglich, und die
+                  Zuordnung zu einem Zugang lässt sich nicht mehr entfernen.
                 </Typography>
               )}
               {requirement.coverageNotice && (

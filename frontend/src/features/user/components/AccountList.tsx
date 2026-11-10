@@ -42,6 +42,7 @@ import {
   formatExpiry,
   lockReasonText,
 } from './localUserLabels'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
   INVITED: 'text.disabled',
@@ -99,12 +100,12 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       {hint && (
         <WarningAmberIcon
           aria-hidden="true"
-          sx={{ fontSize: 14, flex: 'none', color: 'warning.main' }}
+          sx={{ fontSize: iconSize.xs, flex: 'none', color: 'warning.main' }}
         />
       )}
       <Typography
         component="span"
-        sx={{ fontSize: 13, color: 'text.secondary', fontWeight: hint ? 500 : 400 }}
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', fontWeight: hint ? 500 : 400 }}
       >
         {providerStateText(account)}
       </Typography>
@@ -191,7 +192,7 @@ function RowMenu({ account, isSelf, onChangeRole, ...local }: RowProps) {
 function AccountCell({ account }: { account: AccountResponse }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
         {account.displayName}
         {account.local?.bootstrap && (
           <Box component="span" sx={{ ml: 0.75 }}>
@@ -199,7 +200,9 @@ function AccountCell({ account }: { account: AccountResponse }) {
           </Box>
         )}
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', overflowWrap: 'anywhere' }}>
+      <Typography
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
+      >
         {account.email}
       </Typography>
     </Box>
@@ -247,7 +250,7 @@ function AccountCard(props: RowProps) {
       <Box sx={{ mt: 1 }}>
         <StateCell account={account} />
       </Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.75 }}>
         {SYSTEM_ROLE_LABEL[account.systemRole]}
         {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''}
         {account.pendingSystemRole
@@ -276,10 +279,10 @@ function AccountTableRow(props: RowProps) {
         <StateCell account={account} />
       </TableCell>
       <TableCell>
-        <Typography sx={{ fontSize: 13 }}>{expiryText(account)}</Typography>
+        <Typography sx={{ fontSize: fontSize.text }}>{expiryText(account)}</Typography>
       </TableCell>
       <TableCell>
-        <Typography sx={{ fontSize: 13 }}>{formatExpiry(account.createdAt)}</Typography>
+        <Typography sx={{ fontSize: fontSize.text }}>{formatExpiry(account.createdAt)}</Typography>
       </TableCell>
       <TableCell align="right">
         <RowMenu {...props} />
