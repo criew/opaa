@@ -18,6 +18,10 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
 Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
 anzeigen: neues Token erzeugen, altes widerrufen.
 
+Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein
+altes widerrufen ([Konfiguration](../referenz/konfiguration.md)). Das Kontingent an Anfragen je
+Stunde gilt je Token und zugleich für alle Ihre Tokens zusammen.
+
 ## Beispiel OpenCode
 
 In `~/.config/opencode/opencode.json`, den Tokenwert in der Umgebungsvariablen `OPAA_TOKEN`:

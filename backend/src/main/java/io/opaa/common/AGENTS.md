@@ -24,7 +24,7 @@ Ratenbegrenzung, Metriken (Labels nur aus festen kleinen Mengen, [ADR-0071](../.
 - **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus `OPAA_AUTH_JWT_SECRET` ab**, je
   Zweck ein eigenes Label. Eine Rotation beendet alle lokalen Sitzungen, offenen Links und Zugangstokens zugleich.
 - **Ratenbegrenzung:** Fenster je Instanz (`RateLimitService`), Deckel in der DB, Kontogrenze hinter der Kette;
-  Wildcard-Proxy-CIDR bricht den Start ab. Marken zurück: Unangemeldete (außer Anmelden), Tokens je Adresse.
+  Wildcard-Proxy-CIDR bricht den Start ab. Jede Gesamtgrenze mit Kontogrenze darunter, jedes Schreiben mit Regel.
 - **`TargetAddressValidator` bindet je Prüfung, bewacht `STORED_TARGET`** (JVM-Resolver, ADR-0063); kein Client löst
   selbst auf. **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und bedingten Teilgraphen.
 - **Zwei Uhren:** Was eine andere Instanz vergleicht, aus `DatabaseClock` oder `clock_timestamp()`, sonst `Clock`. Ein
