@@ -57,17 +57,17 @@ import org.springframework.ai.model.tool.ToolCallingChatOptions;
 
 /**
  * #1789 acceptance criteria (c) and (d): the tool-calling loop actually calls {@link
- * SearchKnowledgeTool}, and the hard cap of {@link SpikeToolLoopQueryHandler#MAX_TOOL_CALLS} stops
- * it rather than looping forever against a model that keeps requesting the tool. Uses a raw {@link
- * ChatModel} mock wrapped in a real {@link ChatClient} - {@code ActiveChatModelResolver} is mocked
- * only to hand back that client, never the tool-calling loop itself, which is Spring AI's own and
- * out of this project's control (the very question the spike answers).
+ * SpikeSearchKnowledgeTool}, and the hard cap of {@link SpikeToolLoopQueryHandler#MAX_TOOL_CALLS}
+ * stops it rather than looping forever against a model that keeps requesting the tool. Uses a raw
+ * {@link ChatModel} mock wrapped in a real {@link ChatClient} - {@code ActiveChatModelResolver} is
+ * mocked only to hand back that client, never the tool-calling loop itself, which is Spring AI's
+ * own and out of this project's control (the very question the spike answers).
  */
 class SpikeToolLoopQueryHandlerTest {
 
   private final KnowledgeRetrieval knowledgeRetrieval = mock(KnowledgeRetrieval.class);
-  private final SearchKnowledgeTool searchKnowledgeTool =
-      new SearchKnowledgeTool(knowledgeRetrieval);
+  private final SpikeSearchKnowledgeTool spikeSearchKnowledgeTool =
+      new SpikeSearchKnowledgeTool(knowledgeRetrieval);
   private final ActiveChatModelResolver activeChatModelResolver =
       mock(ActiveChatModelResolver.class);
   private final ChatMemory chatMemory = mock(ChatMemory.class);
@@ -91,7 +91,7 @@ class SpikeToolLoopQueryHandlerTest {
     handler =
         new SpikeToolLoopQueryHandler(
             activeChatModelResolver,
-            searchKnowledgeTool,
+            spikeSearchKnowledgeTool,
             Optional.empty(),
             chatMemory,
             new CitationParser(),
@@ -108,7 +108,7 @@ class SpikeToolLoopQueryHandlerTest {
             .toolCalls(
                 List.of(
                     new AssistantMessage.ToolCall(
-                        toolCallId, "function", SearchKnowledgeTool.TOOL_NAME, frageJson)))
+                        toolCallId, "function", SpikeSearchKnowledgeTool.TOOL_NAME, frageJson)))
             .build();
     return new ChatResponse(List.of(new Generation(message)));
   }
@@ -365,7 +365,7 @@ class SpikeToolLoopQueryHandlerTest {
     SpikeToolLoopQueryHandler handlerWithMockedMetrics =
         new SpikeToolLoopQueryHandler(
             activeChatModelResolver,
-            searchKnowledgeTool,
+            spikeSearchKnowledgeTool,
             Optional.empty(),
             chatMemory,
             new CitationParser(),
@@ -508,7 +508,7 @@ class SpikeToolLoopQueryHandlerTest {
     SpikeToolLoopQueryHandler handlerWithCode =
         new SpikeToolLoopQueryHandler(
             activeChatModelResolver,
-            searchKnowledgeTool,
+            spikeSearchKnowledgeTool,
             Optional.of(new RunCodeTool(sandbox, attachmentService)),
             chatMemory,
             new CitationParser(),
