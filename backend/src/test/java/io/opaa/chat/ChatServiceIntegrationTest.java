@@ -1039,6 +1039,107 @@ class ChatServiceIntegrationTest {
     assertThat(parsed.getFirst().getCited()).isTrue();
   }
 
+  /**
+   * Two answers of one agent with a change in between: each keeps the revision it was made with,
+   * and both show the revision the agent has now - only to a person who may still read it.
+   */
+  @Test
+  void eachAgentAnswerKeepsItsStampAndShowsTheAgentsCurrentRevision() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID library = createLibrary(author);
+    UUID agent = createAgentReadableBy(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = true WHERE id = 1");
+    try {
+      chatService.appendTurn(
+          chat,
+          "Erste Frage?",
+          null,
+          "Erste Antwort.",
+          List.of(),
+          null,
+          List.of(),
+          List.of(),
+          agentRecord(agent, 1, library));
+      jdbcTemplate.update("UPDATE agents SET revision = 2 WHERE id = ?", agent);
+      chatService.appendTurn(
+          chat,
+          "Zweite Frage?",
+          null,
+          "Zweite Antwort.",
+          List.of(),
+          null,
+          List.of(),
+          List.of(),
+          agentRecord(agent, 2, library));
+      chatService.appendTurn(chat, "Ohne Agent?", "Gewöhnliche Antwort.", List.of());
+
+      List<ChatTurn> answers =
+          chatService.getChat(chat.getId(), author).getMessages().stream()
+              .filter(turn -> turn.getRole() == ChatRole.ASSISTANT)
+              .toList();
+
+      AgentRunStamp first = answers.get(0).getAgentRun().stamp();
+      assertThat(first.agentId()).isEqualTo(agent);
+      assertThat(first.agentName()).isEqualTo("Prüfhilfe");
+      assertThat(first.agentRevision()).isEqualTo(1);
+      assertThat(first.libraries())
+          .containsExactly(new SearchedLibraryRef(library, "Testbibliothek"));
+      assertThat(first.templates())
+          .containsExactly(new AgentRunStamp.TemplateRef(agent, "Bescheid", 3));
+      assertThat(first.model()).isEqualTo("modell-a");
+      assertThat(answers.get(0).getCurrentAgentRevision()).isEqualTo(2);
+      assertThat(answers.get(1).getAgentRun().stamp().agentRevision()).isEqualTo(2);
+      assertThat(answers.get(1).getCurrentAgentRevision()).isEqualTo(2);
+      // regression guard: an ordinary answer stays without agent run, stamp or revision
+      assertThat(answers.get(2).getAgentRun()).isNull();
+      assertThat(answers.get(2).getCurrentAgentRevision()).isNull();
+
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", agent);
+      assertThat(chatService.getChat(chat.getId(), author).getMessages())
+          .allSatisfy(turn -> assertThat(turn.getCurrentAgentRevision()).isNull());
+    } finally {
+      jdbcTemplate.update("UPDATE agent_settings SET enabled = false WHERE id = 1");
+    }
+  }
+
+  private static AgentRunRecord agentRecord(UUID agent, int revision, UUID library) {
+    return new AgentRunRecord(
+        UUID.randomUUID(),
+        AgentRunRecord.EndState.COMPLETED,
+        List.of(),
+        new AgentRunStamp(
+            agent,
+            "Prüfhilfe",
+            revision,
+            List.of(new SearchedLibraryRef(library, "Testbibliothek")),
+            List.of(new AgentRunStamp.TemplateRef(agent, "Bescheid", 3)),
+            "modell-a"));
+  }
+
+  /** An agent of organization A that {@code readerId} may read by an explicit grant. */
+  private UUID createAgentReadableBy(UUID readerId) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id) VALUES (?, 'AGENT', ?, 'Prüfhilfe', 'USER', ?)"
+            + " RETURNING id, organization_id) INSERT INTO agents (id, organization_id)"
+            + " SELECT id, organization_id FROM shell",
+        id,
+        organizationA,
+        readerId);
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at)"
+            + " VALUES (?, 'AGENT', ?, ?, 'USER', ?, 'VIEWER', now(), now())",
+        UUID.randomUUID(),
+        id,
+        organizationA,
+        readerId);
+    return id;
+  }
+
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {
     jdbcTemplate.update(
         "INSERT INTO space_asset_associations"

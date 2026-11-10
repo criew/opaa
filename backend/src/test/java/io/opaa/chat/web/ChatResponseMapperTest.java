@@ -14,6 +14,8 @@ import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.chat.AgentRunRecord;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatListEntry;
@@ -22,6 +24,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
+import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.metadata.MetadataFilter;
 import java.time.Instant;
@@ -78,6 +81,46 @@ class ChatResponseMapperTest {
     assertThat(response.getCreatedAt()).isEqualTo(createdAt);
     assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
     assertThat(response.getPinnedAt()).isEqualTo(pinnedAt);
+  }
+
+  /** The stamp reaches the answer field by field, the current revision only when looked up. */
+  @Test
+  void carriesTheStampOfAnAgentRunWithTheCurrentRevision() {
+    UUID agent = UUID.randomUUID();
+    UUID library = UUID.randomUUID();
+    UUID template = UUID.randomUUID();
+    AgentRunRecord run =
+        new AgentRunRecord(
+            UUID.randomUUID(),
+            AgentRunRecord.EndState.COMPLETED,
+            List.of(),
+            new AgentRunStamp(
+                agent,
+                "Prüfhilfe",
+                3,
+                List.of(new SearchedLibraryRef(library, "Erlasse")),
+                List.of(new AgentRunStamp.TemplateRef(template, "Bescheid", 2)),
+                "modell-a"));
+
+    io.opaa.api.dto.AgentRunStamp stamp = ChatResponseMapper.toAgentRun(run, 5).getStamp();
+
+    assertThat(stamp.getAgentId()).isEqualTo(agent);
+    assertThat(stamp.getAgentName()).isEqualTo("Prüfhilfe");
+    assertThat(stamp.getAgentRevision()).isEqualTo(3);
+    assertThat(stamp.getCurrentAgentRevision()).isEqualTo(5);
+    assertThat(stamp.getLibraries().getFirst().getId()).isEqualTo(library);
+    assertThat(stamp.getLibraries().getFirst().getName()).isEqualTo("Erlasse");
+    assertThat(stamp.getTemplates().getFirst().getId()).isEqualTo(template);
+    assertThat(stamp.getTemplates().getFirst().getName()).isEqualTo("Bescheid");
+    assertThat(stamp.getTemplates().getFirst().getRevision()).isEqualTo(2);
+    assertThat(stamp.getModel()).isEqualTo("modell-a");
+    assertThat(ChatResponseMapper.toAgentRun(run).getStamp().getCurrentAgentRevision()).isNull();
+    assertThat(
+            ChatResponseMapper.toAgentRun(
+                    new AgentRunRecord(
+                        UUID.randomUUID(), AgentRunRecord.EndState.COMPLETED, List.of()))
+                .getStamp())
+        .isNull();
   }
 
   /** The "Stand vom" of a source reaches the answer with reason, who acts and the last run. */

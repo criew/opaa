@@ -43,6 +43,13 @@ public class DocumentTemplate extends Asset {
   @Column(name = "placeholders", nullable = false, columnDefinition = "jsonb")
   private String placeholders;
 
+  /**
+   * Counts every replacement of the file (the "Fassung"). {@code null} on a row written by a
+   * version that did not know the column yet and read as {@code 1}.
+   */
+  @Column(name = "revision")
+  private Integer revision = 1;
+
   protected DocumentTemplate() {}
 
   private DocumentTemplate(
@@ -69,9 +76,10 @@ public class DocumentTemplate extends Asset {
         organizationId, name, description, AssetOwnerType.GROUP, ownerGroupId, file);
   }
 
-  /** The file was replaced; the template counts as changed with it. */
+  /** The file was replaced; the template counts as changed with it and gets a new revision. */
   void replaceFile(StoredFile file) {
     apply(file);
+    this.revision = getRevision() + 1;
     touch();
   }
 
@@ -92,6 +100,11 @@ public class DocumentTemplate extends Asset {
 
   public String getSha256() {
     return sha256;
+  }
+
+  /** The file's revision, from 1; an agent answer and its result file name the one they filled. */
+  public int getRevision() {
+    return revision == null ? 1 : revision;
   }
 
   public List<TemplatePlaceholder> getPlaceholders() {

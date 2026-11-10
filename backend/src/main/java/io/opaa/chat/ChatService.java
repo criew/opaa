@@ -85,6 +85,7 @@ public class ChatService {
   private final ChatMetrics chatMetrics;
   private final ChatAutoCleanupSettings chatAutoCleanup;
   private final ChatAttachmentService attachmentService;
+  private final AgentRevisions agentRevisions;
   private final Clock clock;
 
   public ChatService(
@@ -105,7 +106,9 @@ public class ChatService {
       ChatMetrics chatMetrics,
       ChatAutoCleanupSettings chatAutoCleanup,
       ChatAttachmentService attachmentService,
+      AgentRevisions agentRevisions,
       Clock clock) {
+    this.agentRevisions = agentRevisions;
     this.chatAutoCleanup = chatAutoCleanup;
     this.attachmentService = attachmentService;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
@@ -704,17 +707,42 @@ public class ChatService {
     return new ChatConversation(chat, messages, chatNoteService.points(chat.getId()));
   }
 
-  /** {@link #toConversation(Chat)} carrying the requesting person's own archive mark. */
+  /**
+   * {@link #toConversation(Chat)} carrying the requesting person's own archive mark and, at every
+   * stamped answer, the stamped agent's current revision as far as the person may still read it.
+   */
   private ChatConversation toConversation(Chat chat, UUID userId) {
     ChatConversation conversation = toConversation(chat);
     Instant archivedAt =
         chatPersonalMarkRepository.findArchivedAt(chat.getId(), userId).orElse(null);
     return new ChatConversation(
         chat,
-        conversation.getMessages(),
+        withCurrentAgentRevisions(conversation.getMessages(), chat.getOrganizationId(), userId),
         conversation.getNoteItems(),
         archivedAt,
         deletionDueAt(chat, archivedAt));
+  }
+
+  private List<ChatTurn> withCurrentAgentRevisions(
+      List<ChatTurn> turns, UUID organizationId, UUID userId) {
+    Set<UUID> agentIds = new LinkedHashSet<>();
+    for (ChatTurn turn : turns) {
+      if (turn.getAgentRun() != null && turn.getAgentRun().stamp() != null) {
+        agentIds.add(turn.getAgentRun().stamp().agentId());
+      }
+    }
+    if (agentIds.isEmpty()) {
+      return turns;
+    }
+    Map<UUID, Integer> current = agentRevisions.current(agentIds, organizationId, userId);
+    return turns.stream()
+        .map(
+            turn ->
+                turn.getAgentRun() == null || turn.getAgentRun().stamp() == null
+                    ? turn
+                    : turn.withCurrentAgentRevision(
+                        current.get(turn.getAgentRun().stamp().agentId())))
+        .toList();
   }
 
   /** When the automatic chat cleanup deletes the chat archived at {@code archivedAt}, if ever. */

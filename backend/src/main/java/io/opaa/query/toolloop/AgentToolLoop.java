@@ -3,6 +3,7 @@ package io.opaa.query.toolloop;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatAttachment;
@@ -13,6 +14,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.compliance.DataFlow;
+import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
@@ -185,6 +187,7 @@ class AgentToolLoop implements AgentTurnHandler {
       throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
     }
     try {
+      run.stampWith(stamp(spec, run));
       signal(turn, AnswerStreamListener::started);
       QueryResult result = runAndKeep(turn, spec, run, client);
       metrics.recordRun(
@@ -208,6 +211,21 @@ class AgentToolLoop implements AgentTurnHandler {
       runLogWriter.writeSteps(run.organizationId(), run.runId(), run.trace());
       release(run);
     }
+  }
+
+  /**
+   * The version stamp as the run starts: the agent and its revision, the run's scope by the names
+   * the libraries have now and the active model's identifier. Templates join as tools fill them.
+   */
+  private AgentRunStamp stamp(AgentRunSpec spec, AgentRun run) {
+    ActiveChatModelDescription model = chatModelResolver.resolveDescription();
+    return new AgentRunStamp(
+        spec.agentId(),
+        spec.name() == null ? "" : spec.name(),
+        spec.version(),
+        chatSourceAssembler.searchedLibraries(run.searchScope()),
+        List.of(),
+        model == null ? null : model.modelIdentifier());
   }
 
   /** Closes what the run's tools opened, e.g. its sandbox; a failure is logged, never thrown. */
@@ -384,7 +402,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 searchQueries,
                 Map.of(),
                 completeness);
-    AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
+    AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps(), run.stamp());
 
     signal(turn, AnswerStreamListener::beforeKeeping);
     List<ChatAttachment> generatedFiles = finishResources(run);

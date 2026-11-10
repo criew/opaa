@@ -6,12 +6,18 @@ import java.util.UUID;
 /**
  * What a person sees of an agent run at its answer, kept with the answer's message (ADR-0070,
  * Entscheidung 4, Bestand a): the run's id, how it ended, and each step with its sub-question and
- * hit count. It lives and is deleted with the chat.
+ * hit count, and the version stamp. It lives and is deleted with the chat.
  *
  * @param endState how the run ended; a limit is shown as a set-off state "nicht geprüft", never as
  *     an error; {@link EndState#ASK_USER} as a question back to the person.
+ * @param stamp with what the answer was made; {@code null} in records kept before it was recorded.
  */
-public record AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
+public record AgentRunRecord(UUID runId, EndState endState, List<Step> steps, AgentRunStamp stamp) {
+
+  /** A record without a stamp. */
+  public AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
+    this(runId, endState, steps, null);
+  }
 
   public AgentRunRecord {
     steps = steps == null ? List.of() : List.copyOf(steps);

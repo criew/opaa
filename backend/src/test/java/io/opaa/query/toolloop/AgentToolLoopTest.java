@@ -19,14 +19,17 @@ import io.opaa.api.types.ToolCapability;
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
 import io.opaa.chat.AgentRunRecord.StepStatus;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.chat.ChatAttachmentView;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
+import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
+import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ToolCallingNotCapableException;
@@ -174,6 +177,89 @@ class AgentToolLoopTest {
         JsonMapper.builder().build(),
         runLogWriter,
         Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  @Test
+  void everyAnswerCarriesTheStampOfTheAgentRevisionItRanWith() {
+    when(modelResolver.resolveDescription())
+        .thenReturn(new ActiveChatModelDescription("http://modell", "modell-a"));
+    when(sourceAssembler.searchedLibraries(Set.of(spaceLibrary, agentLibrary)))
+        .thenReturn(
+            List.of(
+                new SearchedLibraryRef(agentLibrary, "Erlasse"),
+                new SearchedLibraryRef(spaceLibrary, "Satzungen")));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answer("Erste Antwort."), answer("Zweite Antwort."));
+    spec = named(spec, "Prüfhilfe");
+    AgentToolLoop loop = loop();
+
+    AgentRunStamp first = loop.handle(turn()).agentRun().stamp();
+    spec =
+        named(
+            new AgentRunSpec(
+                agentId,
+                4,
+                "Antworte in ganzen Sätzen.",
+                Set.of(),
+                Set.of(ToolNames.SEARCH_KNOWLEDGE),
+                AgentLimits.SYSTEM,
+                false,
+                false),
+            "Prüfhilfe");
+    AgentRunStamp second = loop.handle(turn()).agentRun().stamp();
+
+    assertThat(first.agentId()).isEqualTo(agentId);
+    assertThat(first.agentName()).isEqualTo("Prüfhilfe");
+    assertThat(first.agentRevision()).isEqualTo(3);
+    assertThat(first.libraries())
+        .extracting(SearchedLibraryRef::name)
+        .containsExactly("Erlasse", "Satzungen");
+    assertThat(first.templates()).isEmpty();
+    assertThat(first.model()).isEqualTo("modell-a");
+    assertThat(second.agentRevision()).isEqualTo(4);
+    ArgumentCaptor<AgentRunRecord> kept = ArgumentCaptor.captor();
+    verify(chatService, times(2))
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), kept.capture());
+    assertThat(kept.getAllValues())
+        .extracting(record -> record.stamp().agentRevision())
+        .containsExactly(3, 4);
+  }
+
+  @Test
+  void aFilledTemplateJoinsTheStampAndItsDocumentTextLeadsWithTheDraftNotice() {
+    AgentRun run = AgentRuns.run(Set.of());
+    AgentRunStamp.TemplateRef template =
+        new AgentRunStamp.TemplateRef(UUID.randomUUID(), "Bescheid", 2);
+    run.stampWith(
+        new AgentRunStamp(
+            agentId,
+            "Prüfhilfe",
+            3,
+            List.of(new SearchedLibraryRef(spaceLibrary, "Satzungen")),
+            List.of(),
+            "modell-a"));
+
+    AgentRunStamp stamp = run.recordTemplate(template);
+    run.recordTemplate(template);
+
+    assertThat(run.stamp().templates()).containsExactly(template);
+    assertThat(stamp.documentText(template))
+        .isEqualTo(
+            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bescheid“,"
+                + " Fassung 2 · Bibliotheken: Satzungen · Modell modell-a");
+  }
+
+  private static AgentRunSpec named(AgentRunSpec spec, String name) {
+    return new AgentRunSpec(
+        spec.agentId(),
+        spec.version(),
+        spec.instruction(),
+        spec.libraryIds(),
+        spec.toolNames(),
+        spec.limits(),
+        spec.confirmPlan(),
+        spec.builtin(),
+        name);
   }
 
   @Test

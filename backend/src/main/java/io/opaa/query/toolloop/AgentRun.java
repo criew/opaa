@@ -2,6 +2,7 @@ package io.opaa.query.toolloop;
 
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.runlog.AgentStepLogEntry;
@@ -45,6 +46,7 @@ public final class AgentRun {
   private long collectedChars;
   private EndState limitReached;
   private String question;
+  private AgentRunStamp stamp;
 
   AgentRun(
       UUID organizationId,
@@ -238,5 +240,27 @@ public final class AgentRun {
 
   synchronized int toolCalls() {
     return toolCalls;
+  }
+
+  /** Sets the stamp the loop builds at the start: agent, revision, scope by name and model. */
+  synchronized void stampWith(AgentRunStamp base) {
+    this.stamp = base;
+  }
+
+  /**
+   * Notes a template a tool filled, with the revision it filled, and returns the run's stamp with
+   * it; the stamp's {@link AgentRunStamp#documentText} goes into the file. {@code null} while the
+   * run has no stamp.
+   */
+  synchronized AgentRunStamp recordTemplate(AgentRunStamp.TemplateRef template) {
+    if (stamp != null) {
+      stamp = stamp.withTemplate(template);
+    }
+    return stamp;
+  }
+
+  /** The run's stamp as it stands, {@code null} when the loop set none. */
+  synchronized AgentRunStamp stamp() {
+    return stamp;
   }
 }
