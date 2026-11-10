@@ -93,6 +93,7 @@ class SpecEnumParityTest {
         Arguments.of("SearchModelRole", ModelRole.values()),
         Arguments.of("SearchModelRoleState", ModelRoleCondition.values()),
         Arguments.of("TextRecognitionConnectionType", TextRecognitionConnectionType.values()),
+        Arguments.of("RealtimeTranscriptionProtocol", RealtimeTranscriptionProtocol.values()),
         Arguments.of("SearchDiagnosisContextType", DiagnosisContextType.values()),
         Arguments.of("RetrievalCandidateOutcome", CandidateOutcome.values()),
         Arguments.of("RetrievalVerdictReason", VerdictReason.values()),

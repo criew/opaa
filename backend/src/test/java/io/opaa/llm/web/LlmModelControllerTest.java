@@ -203,7 +203,9 @@ class LlmModelControllerTest {
             put("/api/v1/admin/models/" + UUID.randomUUID() + "/tool-capability")
                 .with(asRegularUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"value\":\"CAPABLE\",\"basis\":\"MANUAL\"}"))
+                .content(
+                    "{\"value\":\"CAPABLE\",\"basis\":\"MANUAL\","
+                        + "\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3:mini\"}"))
         .andExpect(status().isForbidden());
   }
 
@@ -232,6 +234,8 @@ class LlmModelControllerTest {
             eq(actingAdminOrganizationId),
             eq(actingAdminId),
             eq(model.getId()),
+            eq("http://ollama:11434/v1"),
+            eq("phi3:mini"),
             eq(ToolCapability.CAPABLE),
             eq(ToolCapabilityBasis.MEASURED),
             eq("Lauf 2026-11-09")))
@@ -244,7 +248,8 @@ class LlmModelControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"value\":\"CAPABLE\",\"basis\":\"MEASURED\","
-                        + "\"measurementRun\":\"Lauf 2026-11-09\"}"))
+                        + "\"measurementRun\":\"Lauf 2026-11-09\","
+                        + "\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3:mini\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(model.getId().toString()))
         .andExpect(jsonPath("$.toolCapability").exists());
@@ -254,7 +259,14 @@ class LlmModelControllerTest {
   void anInconsistentToolCapabilityIsA400() throws Exception {
     UUID modelId = UUID.randomUUID();
     when(llmModelService.setToolCapability(
-            any(), any(), eq(modelId), eq(ToolCapability.CAPABLE), isNull(), isNull()))
+            any(),
+            any(),
+            eq(modelId),
+            any(),
+            any(),
+            eq(ToolCapability.CAPABLE),
+            isNull(),
+            isNull()))
         .thenThrow(new ValidationException("Bitte die Grundlage der Angabe nennen."));
 
     mockMvc
@@ -262,8 +274,39 @@ class LlmModelControllerTest {
             put("/api/v1/admin/models/" + modelId + "/tool-capability")
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"value\":\"CAPABLE\"}"))
+                .content(
+                    "{\"value\":\"CAPABLE\","
+                        + "\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3:mini\"}"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void aToolCapabilityWithoutTheAssessedCombinationIsA400() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/" + UUID.randomUUID() + "/tool-capability")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"CAPABLE\",\"basis\":\"MANUAL\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void aToolCapabilityForAnOutdatedCombinationIsA409() throws Exception {
+    UUID modelId = UUID.randomUUID();
+    when(llmModelService.setToolCapability(
+            any(), any(), eq(modelId), any(), any(), any(), any(), any()))
+        .thenThrow(new ConflictException("Das Modell wurde inzwischen geändert."));
+
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/" + modelId + "/tool-capability")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"value\":\"CAPABLE\",\"basis\":\"MANUAL\","
+                        + "\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3:mini\"}"))
+        .andExpect(status().isConflict());
   }
 
   // --- Key never returned ---

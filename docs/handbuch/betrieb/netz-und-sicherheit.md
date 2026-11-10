@@ -32,6 +32,8 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
   OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
   und Mail aus, bis die Starts des Tages erschöpft sind.
+- **Das WebSocket-Upgrade der Spracheingabe weiterreichen** (`/api/v1/transcriptions/stream`),
+  siehe [WebSocket der Spracheingabe](#websocket-der-spracheingabe).
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
@@ -39,6 +41,25 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - OPAA läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
   `OPAA_CORS_ALLOWED_ORIGINS`.
 - **`Strict-Transport-Security` setzt der äußere Proxy**, wo TLS endet.
+
+### WebSocket der Spracheingabe
+
+Das [Live-Transkript](modell-endpunkte.md#live-transkript) läuft über einen WebSocket unter
+`/api/v1/transcriptions/stream`. Der Frontend-Container reicht das Upgrade weiter; ein Proxy oder
+Ingress davor muss es ebenso tun:
+
+- **`Upgrade` und `Connection` weiterreichen** und HTTP/1.1 zum Frontend sprechen.
+- **Nicht puffern**; das Timeout für Lesen und Senden deckt Sprechpausen ab. Eine Aufnahme dauert
+  höchstens gut zwei Minuten und endet nach 30 Sekunden ohne Audio. Im Frontend-Container gilt dafür
+  `OPAA_BACKEND_READ_TIMEOUT` wie für `/api/` (Vorgabe `600s`); ein Wert unter einer Minute bricht
+  Live-Sitzungen in Sprechpausen ab, das Diktat fällt dann auf die ganze Aufnahme zurück.
+- **`Sec-WebSocket-Protocol` nicht protokollieren:** Der Browser kann an einen WebSocket keine
+  Header hängen und schickt das Anmeldetoken deshalb in diesem Header mit.
+- **Origin unverändert lassen:** Das Backend nimmt das Upgrade nur von der eigenen Adresse oder einer
+  aus `OPAA_CORS_ALLOWED_ORIGINS` an.
+
+Reicht der Proxy das Upgrade nicht weiter, bleibt es still beim Diktat mit der ganzen Aufnahme;
+die Person sieht keine Fehlermeldung, nur keinen Text beim Sprechen.
 
 ### Sicherheits-Header und `Strict-Transport-Security`
 

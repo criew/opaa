@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,7 @@ import io.opaa.api.types.ToolCapability;
 import io.opaa.api.types.ToolCapabilityBasis;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
@@ -107,6 +109,50 @@ class LlmModelToolCapabilityTest {
   }
 
   @Test
+  void aStatementForAnOutdatedCombinationIsAConflictAndChangesNothing() {
+    LlmModel model = stored();
+
+    assertThatThrownBy(
+            () ->
+                service.setToolCapability(
+                    ORGANIZATION,
+                    ACTOR,
+                    model.getId(),
+                    "https://vorher.example/v1",
+                    model.getModelIdentifier(),
+                    ToolCapability.CAPABLE,
+                    ToolCapabilityBasis.MANUAL,
+                    null))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("neu laden");
+    assertThatThrownBy(
+            () ->
+                service.setToolCapability(
+                    ORGANIZATION,
+                    ACTOR,
+                    model.getId(),
+                    model.getBaseUrl(),
+                    "qwen2.5:7b",
+                    ToolCapability.CAPABLE,
+                    ToolCapabilityBasis.MANUAL,
+                    null))
+        .isInstanceOf(ConflictException.class);
+
+    assertUnverified(model);
+    verify(repository, never()).save(model);
+  }
+
+  @Test
+  void theCombinationIsReadUnderARowLock() {
+    LlmModel model = stored();
+
+    set(model, ToolCapability.CAPABLE, ToolCapabilityBasis.MANUAL, null);
+    update(model, model.getBaseUrl(), model.getModelIdentifier());
+
+    verify(repository, times(2)).findLockedById(model.getId());
+  }
+
+  @Test
   void aChangeIsAuditedAsAChangeOfTheModelWithoutAPersonInTheState() {
     LlmModel model = stored();
 
@@ -171,6 +217,7 @@ class LlmModelToolCapabilityTest {
             2000,
             null);
     when(repository.findById(model.getId())).thenReturn(Optional.of(model));
+    when(repository.findLockedById(model.getId())).thenReturn(Optional.of(model));
     return model;
   }
 
@@ -182,7 +229,15 @@ class LlmModelToolCapabilityTest {
 
   private void set(
       LlmModel model, ToolCapability capability, ToolCapabilityBasis basis, String run) {
-    service.setToolCapability(ORGANIZATION, ACTOR, model.getId(), capability, basis, run);
+    service.setToolCapability(
+        ORGANIZATION,
+        ACTOR,
+        model.getId(),
+        model.getBaseUrl(),
+        model.getModelIdentifier(),
+        capability,
+        basis,
+        run);
   }
 
   private void update(LlmModel model, String baseUrl, String modelIdentifier) {

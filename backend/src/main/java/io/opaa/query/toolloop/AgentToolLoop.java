@@ -352,7 +352,7 @@ class AgentToolLoop implements AgentTurnHandler {
     ConversationWindowMessages.answer(answer)
         .ifPresent(message -> chatMemory.add(turn.conversationKey(), message));
     chatNoteExtractionService.condenseAsync(chat.getId(), chat.getSpaceId(), turn.question());
-    queryMetrics.recordSuccess(tokens);
+    queryMetrics.recordFinishReason(ChatResponses.finishReason(response));
     // Counts only: the sub-questions are the person's content and stay in the chat (ADR-0070).
     log.info(
         "Agent run {} ended {} after {} tool call(s) with {} passage(s)",

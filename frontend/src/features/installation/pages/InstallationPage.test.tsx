@@ -1025,6 +1025,121 @@ describe('InstallationPage', () => {
       ).toBeInTheDocument()
     })
 
+    it('chooses live transcription from a fixed list with the address and model of each service', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
+      await user.type(field('Modell-Kennung'), 'whisper-1')
+      const liveSwitch = screen.getByRole('switch', { name: 'Live-Transkript einschalten' })
+      expect(liveSwitch).not.toBeChecked()
+      expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
+      expect(screen.queryByRole('radiogroup', { name: 'Live-Dienst' })).not.toBeInTheDocument()
+
+      await user.click(liveSwitch)
+      const services = screen.getByRole('radiogroup', { name: 'Live-Dienst' })
+      expect(
+        within(services)
+          .getAllByRole('radio')
+          .map((tile) => tile.textContent),
+      ).toEqual([
+        expect.stringMatching(/^OpenAI/),
+        expect.stringMatching(/^vLLM/),
+        expect.stringMatching(/^Mistral/),
+      ])
+      expect(field('Live-Adresse')).toHaveValue(
+        'wss://api.openai.com/v1/realtime?intent=transcription',
+      )
+      expect(field('Live-Modell')).toHaveValue('gpt-live-transcribe')
+      await user.click(within(services).getByRole('radio', { name: /^vLLM/ }))
+      expect(field('Live-Adresse')).toHaveValue('ws://vllm:8000/v1/realtime')
+      const liveUrl = field('Live-Adresse')
+      await user.clear(liveUrl)
+      await user.type(liveUrl, 'ws://gpu-01:8000/v1/realtime')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL'),
+      ).toMatchObject({
+        transcriptionModel: {
+          realtime: {
+            protocol: 'VLLM',
+            url: 'ws://gpu-01:8000/v1/realtime',
+            model: 'mistralai/Voxtral-Mini-4B-Realtime-2602',
+          },
+        },
+      })
+    })
+
+    it('fills an empty dictation endpoint to match the live service', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+
+      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      expect(field('Basis-Adresse')).toHaveValue('https://api.openai.com/v1')
+      expect(field('Modell-Kennung')).toHaveValue('gpt-4o-mini-transcribe')
+      expect(screen.getByText(/passend zum Live-Dienst vorbelegt/)).toBeInTheDocument()
+      // Dictation and live on OpenAI's host: the endpoint's notice says it once.
+      expect(screen.getAllByText(/an einen externen Dienst außerhalb des Hauses/)).toHaveLength(1)
+
+      const services = screen.getByRole('radiogroup', { name: 'Live-Dienst' })
+      await user.click(within(services).getByRole('radio', { name: /^vLLM/ }))
+      expect(field('Basis-Adresse')).toHaveValue('http://vllm:8000/v1')
+      expect(field('Modell-Kennung')).toHaveValue('mistralai/Voxtral-Mini-4B-Realtime-2602')
+
+      await user.click(within(services).getByRole('radio', { name: /^Mistral/ }))
+      expect(field('Basis-Adresse')).toHaveValue('')
+      expect(field('Modell-Kennung')).toHaveValue('')
+    })
+
+    it('asks for a live key of its own when OpenAI runs live beside a batch model elsewhere', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
+      await user.type(field('Modell-Kennung'), 'whisper-1')
+      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+
+      await submitStep(user)
+
+      expect(field('Live-Schlüssel (optional)')).toHaveAccessibleDescription(
+        /OpenAI und Mistral verlangen einen Zugangsschlüssel/,
+      )
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')?.saved,
+      ).toBe(false)
+
+      expect(screen.getByText(/laufend an einen externen Dienst/)).toBeInTheDocument()
+      await user.type(field('Live-Schlüssel (optional)'), 'sk-live')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      const saved = mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')
+      expect(saved).toMatchObject({
+        transcriptionModel: { realtime: { protocol: 'OPENAI', apiKeySet: true } },
+      })
+      expect(JSON.stringify(saved)).not.toContain('sk-live')
+    })
+
+    it('refuses a live address that is no WebSocket address before sending it', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
+      await user.type(field('Modell-Kennung'), 'whisper-1')
+      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      const liveUrl = field('Live-Adresse')
+      await user.clear(liveUrl)
+      await user.type(liveUrl, 'https://api.openai.com/v1/realtime')
+
+      await submitStep(user)
+
+      expect(field('Live-Adresse')).toHaveAccessibleDescription(
+        'Die Live-Adresse beginnt mit ws:// oder wss://.',
+      )
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')?.saved,
+      ).toBe(false)
+    })
+
     it('refuses a language that is no two-letter code before sending it', async () => {
       const user = userEvent.setup()
       await openTranscriptionStep(user)

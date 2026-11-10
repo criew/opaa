@@ -34,6 +34,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
+| **Live-Transkript** | Zusatz zur Spracheingabe: Ein Live-Dienst erkennt den Text schon beim Sprechen, der Chat zeigt ihn gedimmt im Eingabefeld und übernimmt ihn erst mit dem endgültigen Text. Fällt Live aus, gilt das Diktat mit der ganzen Aufnahme ([Live-Transkript](../betrieb/modell-endpunkte.md#live-transkript)) |
 | **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
 | **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das OPAA beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
 | **Rolle** | Gestufte Berechtigung an genau einem Objekt — an einer Bibliothek Leser, Bearbeiter, Verwalter, Eigentümer; in einem Space Mitglied, Kurator, Administrator. Für eine Person oder eine Gruppe, unbefristet oder mit Ablaufdatum |

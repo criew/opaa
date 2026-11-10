@@ -3,6 +3,7 @@ package io.opaa.installation;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
@@ -80,10 +81,30 @@ record AnswerFile(
   @JsonIgnoreProperties(ignoreUnknown = true)
   record RerankModel(String baseUrl, String model, String apiKeyFile, String apiKey) {}
 
-  /** {@code language} absent means {@code de}, empty lets the model detect it. */
+  /**
+   * {@code language} absent means {@code de}, empty lets the model detect it; {@code realtime}
+   * absent means dictation by recording only.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record TranscriptionModel(
-      String baseUrl, String model, String apiKeyFile, String apiKey, String language) {}
+      String baseUrl,
+      String model,
+      String apiKeyFile,
+      String apiKey,
+      String language,
+      TranscriptionRealtime realtime) {}
+
+  /**
+   * The live transcription on top of dictation; without {@code apiKeyFile} it sends the key of the
+   * transcription model, on that model's origin only.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record TranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol,
+      String url,
+      String model,
+      String apiKeyFile,
+      String apiKey) {}
 
   /**
    * The text recognition model; {@code connectionType} absent means docling-serve, {@code model} is
@@ -150,6 +171,9 @@ record AnswerFile(
         || (embeddingModel != null && embeddingModel.apiKey() != null)
         || (rerankModel != null && rerankModel.apiKey() != null)
         || (transcriptionModel != null && transcriptionModel.apiKey() != null)
+        || (transcriptionModel != null
+            && transcriptionModel.realtime() != null
+            && transcriptionModel.realtime().apiKey() != null)
         || (textRecognitionModel != null && textRecognitionModel.apiKey() != null)
         || (mail != null && mail.password() != null)) {
       throw new ValidationException(
@@ -206,7 +230,16 @@ record AnswerFile(
               transcriptionModel.baseUrl(),
               transcriptionModel.model(),
               keyOf(transcriptionModel.apiKeyFile(), "transcriptionModel.apiKeyFile"),
-              transcriptionModel.language()));
+              transcriptionModel.language(),
+              transcriptionModel.realtime() == null
+                  ? null
+                  : new StepInput.TranscriptionRealtime(
+                      transcriptionModel.realtime().protocol(),
+                      transcriptionModel.realtime().url(),
+                      transcriptionModel.realtime().model(),
+                      keyOf(
+                          transcriptionModel.realtime().apiKeyFile(),
+                          "transcriptionModel.realtime.apiKeyFile"))));
     }
     if (textRecognitionModel != null && offered.test(InstallationStep.TEXT_RECOGNITION_MODEL)) {
       steps.add(

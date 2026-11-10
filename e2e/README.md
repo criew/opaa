@@ -704,6 +704,15 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
+- `tests/live-dictation.spec.ts` (#2615) — Live-Diktat (ADR-0072) durch den ganzen Stack: Browser,
+  WebSocket-Upgrade in nginx, `/api/v1/transcriptions/stream` und `ai-stub` als Live-Dienst im
+  vLLM-Protokoll (`ws://ai-stub:8089/realtime`). Chromium spielt über das Fake-Mikrofon einen Ton ab.
+  - **1.** Der Text erscheint beim Sprechen gedimmt unter der Eingabe, nach „Aufnahme beenden“ steht
+    der endgültige Live-Text im Entwurf.
+  - **2.** `ai-stub` bricht die Verbindung beim ersten Audio-Frame ab (`POST /control/realtime`
+    `{"drop": true}`); der Entwurf bekommt den Text der parallel aufgezeichneten Aufnahme vom
+    Batch-Endpunkt, ohne Fehlermeldung.
+
 - `tests/text-recognition.spec.ts` (#3606) — Texterkennung gescannter PDFs (ADR-0069) mit
   `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Die Nummern sind die der Testtitel
   (Szenarien des Issues); ausgeführt wird in dieser Reihenfolge:

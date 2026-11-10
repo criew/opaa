@@ -65,7 +65,7 @@ describe('ModelRoleSection', () => {
     await user.click(await screen.findByRole('switch', { name: 'Reranking einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://reranker:80')
     await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
-    await user.type(screen.getByLabelText(/Zugangsschlüssel/), 'sk-1')
+    await user.type(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/), 'sk-1')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toHaveLength(1))
@@ -123,7 +123,7 @@ describe('ModelRoleSection', () => {
     const sent = captureRerankSave()
     renderWithProviders(<ModelRoleSection kind="rerank" />)
 
-    const key = await screen.findByLabelText(/Zugangsschlüssel/)
+    const key = await screen.findByLabelText(/^Zugangsschlüssel(?! anzeigen)/)
     await user.type(key, 'sk-1')
     await user.clear(key)
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
@@ -185,5 +185,131 @@ describe('ModelRoleSection', () => {
     expect(
       await screen.findByText('Die Verbindung wurde vom Server abgelehnt.'),
     ).toBeInTheDocument()
+  })
+
+  it('offers live transcription as a choice with a fixed list of services and their presets', async () => {
+    const user = userEvent.setup()
+    const sent: Record<string, unknown>[] = []
+    server.use(
+      http.put('/api/v1/admin/models/transcription', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        sent.push(body)
+        return HttpResponse.json(factoryTranscriptionModel())
+      }),
+    )
+    renderWithProviders(<ModelRoleSection kind="transcription" />)
+
+    expect(
+      await screen.findByRole('switch', { name: 'Live-Transkript einschalten' }),
+    ).not.toBeChecked()
+    expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Live-Adresse/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+
+    expect(screen.getByLabelText(/Live-Adresse/)).toHaveValue(
+      'wss://api.openai.com/v1/realtime?intent=transcription',
+    )
+    expect(screen.getByLabelText(/Live-Modell/)).toHaveValue('gpt-live-transcribe')
+    expect(screen.getByText(/laufend an einen externen Dienst/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: /^vLLM \(eigener Server\)/ }))
+    expect(screen.getByLabelText(/Live-Adresse/)).toHaveValue('ws://vllm:8000/v1/realtime')
+    expect(screen.getByLabelText(/Live-Modell/)).toHaveValue(
+      'mistralai/Voxtral-Mini-4B-Realtime-2602',
+    )
+    expect(screen.queryByText(/laufend an einen externen Dienst/)).not.toBeInTheDocument()
+
+    const url = screen.getByLabelText(/Live-Adresse/)
+    await user.clear(url)
+    await user.type(url, 'ws://gpu-01:8000/v1/realtime')
+    await user.click(screen.getByRole('radio', { name: /^Mistral/ }))
+    expect(screen.getByLabelText(/Live-Adresse/)).toHaveValue('ws://gpu-01:8000/v1/realtime')
+    expect(screen.getByLabelText(/Live-Modell/)).toHaveValue('voxtral-mini-transcribe-realtime-3')
+
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].realtime).toEqual({
+      enabled: true,
+      protocol: 'MISTRAL',
+      url: 'ws://gpu-01:8000/v1/realtime',
+      model: 'voxtral-mini-transcribe-realtime-3',
+      maxSessions: 1,
+    })
+  })
+
+  it('asks for a live key of its own when OpenAI runs live beside a batch model elsewhere', async () => {
+    const user = userEvent.setup()
+    const sent: Record<string, unknown>[] = []
+    server.use(
+      http.get('/api/v1/admin/models/transcription', () =>
+        HttpResponse.json({
+          ...factoryTranscriptionModel(),
+          enabled: true,
+          baseUrl: 'http://speaches:8000/v1',
+          model: 'whisper',
+          apiKeySet: false,
+        }),
+      ),
+      http.put('/api/v1/admin/models/transcription', async ({ request }) => {
+        sent.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json(factoryTranscriptionModel())
+      }),
+    )
+    renderWithProviders(<ModelRoleSection kind="transcription" />)
+
+    await user.click(await screen.findByRole('switch', { name: 'Live-Transkript einschalten' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      await screen.findByText(/OpenAI und Mistral verlangen einen Zugangsschlüssel/),
+    ).toBeInTheDocument()
+    expect(sent).toHaveLength(0)
+
+    const key = screen.getByLabelText('Live-Schlüssel (optional)')
+    await user.type(key, 'sk-live')
+    expect(key).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Live-Schlüssel anzeigen' }))
+    expect(key).toHaveAttribute('type', 'text')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].realtime).toMatchObject({ protocol: 'OPENAI', apiKey: 'sk-live' })
+  })
+
+  it('switches live off again and tests a live service on its own', async () => {
+    const user = userEvent.setup()
+    const sent: Record<string, unknown>[] = []
+    server.use(
+      http.get('/api/v1/admin/models/transcription', () =>
+        HttpResponse.json({
+          ...factoryTranscriptionModel(),
+          realtime: {
+            enabled: true,
+            protocol: 'VLLM',
+            url: 'ws://unerreichbar:8000/v1/realtime',
+            model: 'voxtral',
+            apiKeySet: false,
+            maxSessions: 2,
+            state: 'UNREACHABLE',
+          },
+        }),
+      ),
+      http.put('/api/v1/admin/models/transcription', async ({ request }) => {
+        sent.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json(factoryTranscriptionModel())
+      }),
+    )
+    renderWithProviders(<ModelRoleSection kind="transcription" />)
+
+    expect(await screen.findByText(/der Live-Dienst antwortet noch nicht/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Gleichzeitige Live-Sitzungen/)).toHaveValue(2)
+    await user.click(screen.getByRole('button', { name: 'Live-Dienst testen' }))
+    expect(
+      await screen.findByText('Die Verbindung wurde vom Server abgelehnt.'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].realtime).toEqual({ enabled: false })
   })
 })

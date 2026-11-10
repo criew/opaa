@@ -367,6 +367,7 @@ class LocalAccountLockoutIntegrationTest {
         .andReturn()
         .getResponse()
         .getContentAsString()
-        .replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"");
+        .replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "\"requestId\":\"-\"");
   }
 }

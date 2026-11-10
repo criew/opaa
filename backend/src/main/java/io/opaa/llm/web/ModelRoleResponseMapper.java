@@ -4,7 +4,9 @@ import io.opaa.api.dto.RerankModelSettingsResponse;
 import io.opaa.api.dto.TextRecognitionModelSettingsResponse;
 import io.opaa.api.dto.TextRecognitionTestResponse;
 import io.opaa.api.dto.TranscriptionModelSettingsResponse;
+import io.opaa.api.dto.TranscriptionRealtimeSettingsResponse;
 import io.opaa.api.types.ModelRoleCondition;
+import io.opaa.llm.ModelRoleAdministration.RealtimeView;
 import io.opaa.llm.ModelRoleAdministration.RerankModelView;
 import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
 import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
@@ -34,12 +36,21 @@ final class ModelRoleResponseMapper {
             view.apiKeySet(),
             view.language(),
             view.vocabulary(),
+            toResponse(view.realtime()),
             condition(view.status().state()),
             view.speechInputAvailable(),
             view.retiredVariables())
         .baseUrl(view.baseUrl())
         .model(view.model())
         .updatedAt(view.updatedAt());
+  }
+
+  static TranscriptionRealtimeSettingsResponse toResponse(RealtimeView view) {
+    return new TranscriptionRealtimeSettingsResponse(
+            view.enabled(), view.apiKeySet(), view.maxSessions(), condition(view.status().state()))
+        .protocol(view.protocol())
+        .url(view.url())
+        .model(view.model());
   }
 
   static TextRecognitionModelSettingsResponse toResponse(TextRecognitionModelView view) {

@@ -109,6 +109,8 @@ public class LlmModelController {
             caller.organizationId(),
             caller.id(),
             modelId,
+            request.getBaseUrl(),
+            request.getModelIdentifier(),
             request.getValue(),
             request.getBasis(),
             request.getMeasurementRun());

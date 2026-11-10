@@ -145,6 +145,11 @@ spec:
         - port: http
           protocol: TCP
     {{- end }}
+    {{- if .Values.tracing.enabled }}
+    {{- with .Values.tracing.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
     {{- with .Values.networkPolicy.egress.backendRules }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

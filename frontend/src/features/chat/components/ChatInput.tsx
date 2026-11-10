@@ -31,6 +31,8 @@ import { ChatAttachmentDraftChips } from './ChatAttachmentChips'
 import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
+import DictationField from './DictationField'
+import { useChatDictation } from './useChatDictation'
 import { withDictatedText } from './dictationText'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
@@ -105,6 +107,13 @@ export default function ChatInput({
   focusRequest = null,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
@@ -273,8 +282,8 @@ export default function ChatInput({
     trackMention(nextValue, cursor, scopeLocked)
   }
 
-  const handleSend = () => {
-    const trimmed = value.trim()
+  const handleSend = (text: string = value) => {
+    const trimmed = text.trim()
     if (
       sendLocked ||
       !trimmed ||
@@ -282,7 +291,7 @@ export default function ChatInput({
       actions.isInserting ||
       attachmentsPending
     )
-      return
+      return false
     // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
     const selected = actions.selected
     const mark =
@@ -302,17 +311,18 @@ export default function ChatInput({
     // Sending by button would leave the focus on the button, which is locked from now on.
     inputRef.current?.focus()
     // A refused question comes back without its prompt, before any draft typed since, unless the
-    // input is gone.
+    // input is gone; a running dictation keeps it in the draft above the recording.
     void Promise.resolve(outcome).then((result) => {
       const restoreDraft = result?.restoreDraft
-      if (!restoreDraft || !inputRef.current) return
+      if (!restoreDraft || !mountedRef.current) return
       setValue((current) => withRestoredQuestion(restoreDraft, current))
       draft.restore(attachments)
       result.onRestored?.()
     })
+    return true
   }
 
-  // Dictation only ever fills the input; sending stays the person's own action.
+  // Dictation fills the input; only the send button sends, during a recording with its final text.
   const [dictationError, setDictationError] = useState<string | null>(null)
   const appendDictatedText = useCallback((text: string) => {
     setValue((draft) => withDictatedText(draft, text))
@@ -323,6 +333,34 @@ export default function ChatInput({
       input.setSelectionRange(input.value.length, input.value.length)
     })
   }, [])
+  const dictation = useChatDictation({ onText: appendDictatedText, onError: setDictationError })
+  // Send during a recording: the final text joins the draft, and the send itself runs once the
+  // field is back, with the state of that moment - a question that cannot go out then (too long,
+  // answer running, upload pending) stays in the field.
+  const sendAfterDictationRef = useRef(false)
+  const sendDictation = async () => {
+    const text = await dictation.stop(false)
+    if (!text) return
+    sendAfterDictationRef.current = true
+    setValue((current) => withDictatedText(current, text))
+  }
+  const wasDictatingRef = useRef(false)
+  useEffect(() => {
+    const wasDictating = wasDictatingRef.current
+    wasDictatingRef.current = dictation.busy
+    if (dictation.busy) return
+    if (sendAfterDictationRef.current) {
+      sendAfterDictationRef.current = false
+      handleSend()
+    } else if (wasDictating) {
+      // Discarded, failed or taken over: the field is back and gets the focus, unless the person
+      // has moved on to another part of the page meanwhile.
+      const active = document.activeElement
+      if (!active || active === document.body || inputBoxEl?.contains(active)) {
+        inputRef.current?.focus()
+      }
+    }
+  })
 
   const chooseAction = (index: number) => {
     const entry = actions.matches[index]
@@ -474,54 +512,58 @@ export default function ChatInput({
           }),
         })}
       >
-        <TextField
-          ref={setFieldEl}
-          fullWidth
-          multiline
-          maxRows={6}
-          placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={disabled}
-          inputRef={inputRef}
-          variant="standard"
-          slotProps={{
-            htmlInput: {
-              role: 'combobox',
-              'aria-expanded': comboboxExpanded,
-              'aria-haspopup': 'listbox',
-              'aria-controls': comboboxControls,
-              'aria-autocomplete': 'list',
-              'aria-activedescendant': activeDescendant,
-              'aria-invalid': questionTooLong,
-              'aria-label': INPUT_LABEL,
-              [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
-              'aria-describedby':
-                [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
-                  .filter((id) => id !== null)
-                  .join(' ') || undefined,
-            },
-          }}
-          sx={{
-            '& .MuiInputBase-root': {
-              borderRadius: 0,
-              background: 'none',
-              px: 1.5,
-              py: 1,
-              alignItems: 'flex-start',
-              '&::before, &::after': { display: 'none' },
-            },
-            '& textarea': {
-              overflowY: 'auto !important',
-              resize: 'none',
-            },
-            // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
-            '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
-          }}
-        />
-        {uploadsEnabled && (
+        {dictation.busy ? (
+          <DictationField dictation={dictation} draft={value} />
+        ) : (
+          <TextField
+            ref={setFieldEl}
+            fullWidth
+            multiline
+            maxRows={6}
+            placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            inputRef={inputRef}
+            variant="standard"
+            slotProps={{
+              htmlInput: {
+                role: 'combobox',
+                'aria-expanded': comboboxExpanded,
+                'aria-haspopup': 'listbox',
+                'aria-controls': comboboxControls,
+                'aria-autocomplete': 'list',
+                'aria-activedescendant': activeDescendant,
+                'aria-invalid': questionTooLong,
+                'aria-label': INPUT_LABEL,
+                [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
+                'aria-describedby':
+                  [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
+                    .filter((id) => id !== null)
+                    .join(' ') || undefined,
+              },
+            }}
+            sx={{
+              '& .MuiInputBase-root': {
+                borderRadius: 0,
+                background: 'none',
+                px: 1.5,
+                py: 1,
+                alignItems: 'flex-start',
+                '&::before, &::after': { display: 'none' },
+              },
+              '& textarea': {
+                overflowY: 'auto !important',
+                resize: 'none',
+              },
+              // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
+              '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
+            }}
+          />
+        )}
+        {uploadsEnabled && !dictation.busy && (
           <>
             <input
               ref={fileInputRef}
@@ -541,11 +583,7 @@ export default function ChatInput({
             </IconButton>
           </>
         )}
-        <DictationControl
-          onText={appendDictatedText}
-          onError={setDictationError}
-          disabled={disabled}
-        />
+        <DictationControl dictation={dictation} disabled={disabled} />
         {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
         {answerPending && onCancelAnswer && (
           <IconButton
@@ -566,10 +604,11 @@ export default function ChatInput({
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
-          onClick={handleSend}
+          onClick={() => (dictation.status === 'recording' ? void sendDictation() : handleSend())}
           disabled={
             sendLocked ||
-            !value.trim() ||
+            dictation.status === 'processing' ||
+            (!value.trim() && dictation.status !== 'recording') ||
             questionTooLong ||
             actions.isInserting ||
             attachmentsPending

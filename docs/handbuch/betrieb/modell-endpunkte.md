@@ -17,7 +17,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-su
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Installation oder Modellverwaltung in der Oberfläche | jederzeit, ohne Neustart; berührt den Index nicht |
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Installation oder Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
-| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
+| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, wahlweise schon beim Sprechen ([Live-Transkript](#live-transkript)), optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 | **Texterkennung** | liest gescannte PDF-Seiten ohne Textebene (OCR), optional | Modellverwaltung, Reiter „Texterkennung"; begrenzt durch `OPAA_OCR_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Texterkennung einschalten](#texterkennung-einschalten)) |
 
 Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
@@ -623,6 +623,76 @@ Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung brauch
 datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Modellverwaltung weist nicht
 darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der Kachel OpenAI.
 
+### Live-Transkript
+
+Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Dafür hält der Browser während
+der Aufnahme eine WebSocket-Verbindung zu OPAA (`/api/v1/transcriptions/stream`), und OPAA eine zu
+einem Live-Dienst. Eingerichtet wird es unter **Modelle → Spracheingabe**, Abschnitt
+„Live-Transkript (optional)“ ([Live-Transkript einrichten](../administration/modelle.md#live-transkript-einrichten)),
+oder im Installationsschritt Transkriptionsmodell. Es setzt die eingeschaltete Spracheingabe voraus;
+die Aufnahme läuft daneben weiter und geht an das Transkriptionsmodell, sobald Live ausfällt, kein
+Platz frei ist oder nach dem Ende kein endgültiger Text kommt.
+
+| Live-Dienst | Adresse (Vorbelegung) | Modell (Vorbelegung) | Audio |
+|---|---|---|---|
+| OpenAI | `wss://api.openai.com/v1/realtime?intent=transcription` | `gpt-live-transcribe` | 24 kHz |
+| vLLM (eigener Server) | `ws://vllm:8000/v1/realtime` | `mistralai/Voxtral-Mini-4B-Realtime-2602` | 16 kHz |
+| Mistral | `wss://api.mistral.ai/v1/audio/transcriptions/realtime` | `voxtral-mini-transcribe-realtime-3` | 16 kHz |
+
+Das Protokoll ist eine Auswahl, kein Freitext; OPAA spricht genau diese drei. Die Live-Adresse
+beginnt mit `ws://` oder `wss://` und durchläuft dieselbe
+[Adressprüfung der Modelle](#adressprüfung-der-modelle) wie die übrigen Rollen, mit `http`/`https`
+an Stelle von `ws`/`wss`; ein Host im Haus kommt also in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`.
+Die Verbindung geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und folgt keinem
+Redirect. Ohne eigenen Live-Schlüssel sendet OPAA den Schlüssel des Transkriptionsmodells mit, aber
+nur bei gleicher Adresse bis zum Port (Schema, Host, Port), wobei `ws`/`wss` wie `http`/`https`
+zählen; sonst geht keiner mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen
+Live-Schlüssel und ohne Schlüssel des Transkriptionsmodells unter der gleichen Adresse bis zum Port
+lehnen Verwaltung, Assistent und Antwortdatei sie ab.
+
+**Hardware im Haus.** Voxtral Realtime auf vLLM braucht eine GPU mit mindestens 16 GB Speicher und
+trägt darauf erfahrungsgemäß etwa eine gleichzeitige Sitzung. „Gleichzeitige Live-Sitzungen“ ist
+deshalb ab Werk 1 und gilt für die ganze Installation, auch über mehrere Instanzen. Wer darüber
+diktiert, bekommt den Text nach dem Ende der Aufnahme. Eine Sitzung endet spätestens nach zwei
+Minuten, nach 30 Sekunden ohne Audio oder, wenn der Dienst nach dem Ende nicht antwortet, nach
+15 Sekunden.
+
+**Was an den Dienst geht:** die Aufnahme fortlaufend während des Sprechens, als PCM-Audio, dazu
+Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. **Was OPAA behält:** nichts; Audio und
+Text laufen nur durch. **Ein externer Live-Dienst erhält die Stimme laufend**, nicht erst nach dem
+Ende; das braucht wie beim [externen Anbieter](#externer-anbieter) eine eigene
+datenschutzrechtliche Prüfung. Verwaltung und Assistent weisen bei OpenAI und Mistral darauf hin.
+
+Zwischen Browser und OPAA muss jeder Proxy das WebSocket-Upgrade weiterreichen
+([Netz und Sicherheit](netz-und-sicherheit.md#websocket-der-spracheingabe)). Fehlt es, bleibt es ohne
+Fehlermeldung beim Diktat mit ganzer Aufnahme. Zustand und Fehler zeigt der Abschnitt
+„Live-Transkript (optional)“ unter Modelle → Spracheingabe; im Log steht nur Code oder Typ eines Fehlers des
+Dienstes, nie Audio oder Text.
+
+#### Nur ein Live-Dienst vorhanden?
+
+Das Diktat mit ganzer Aufnahme bleibt Pflicht der Rolle; es ist der Rückfall, wenn Live ausfällt.
+Wer nur einen Live-Dienst hat, trägt ihn deshalb auch als Diktat-Endpunkt ein. Sind Basis-Adresse
+und Modell-Kennung des Diktats noch leer, belegen Assistent und Verwaltung sie bei der Wahl des
+Live-Dienstes vor:
+
+| Live-Dienst | Basis-Adresse des Diktats | Modell-Kennung des Diktats |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini-transcribe` |
+| vLLM | Schema, Host und Port der Live-Adresse mit `/v1`, etwa `http://vllm:8000/v1` | das Live-Modell |
+| Mistral | keine Vorbelegung | – |
+
+Bei OpenAI haben Diktat und Live die gleiche Adresse bis zum Port; ein Schlüssel im Feld des
+Diktats gilt dann für beide. Für Mistral belegt OPAA nichts vor: Dass dessen
+`/v1/audio/transcriptions` die Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
+Dienste, ist nicht geprüft; ein Diktat-Endpunkt wird dort selbst eingetragen und mit „Verbindung
+testen“ geprüft.
+
+Bei vLLM mit Voxtral Realtime kann der Endpunkt der ganzen Aufnahme hängen bleiben (vLLM-Fehler
+[#52926](https://github.com/vllm-project/vllm/issues/52926), offen). Dann kommt auch der Rückfall
+nicht an. Wo das auftritt, gehört das Diktat auf einen eigenen Dienst, etwa speaches mit einem
+Whisper-Modell.
+
 ### Spracheingabe und Mitbestimmung
 
 - *Worum es geht:* Die Spracheingabe verarbeitet die Stimme der Beschäftigten. Auch beim Betrieb im
@@ -899,6 +969,9 @@ nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.
   das zutrifft. Die übrigen Klassen wägt das Haus selbst.
 - **Ein Ergebnis gilt nur seiner Kombination.** Nach einem Wechsel von Laufzeit, Version,
   Quantisierung oder Kontextlänge wird neu gemessen.
+- **Ergebnis eintragen:** Wert und Kennung des Messlaufs trägt die Systemverwaltung am Modelleintrag
+  mit der Grundlage „Gemessen“ ein, siehe
+  [Werkzeugfähigkeit festhalten](../administration/modelle.md#werkzeugfähigkeit-festhalten).
 - **Fällt ein sonst fähiges Modell durch,** kann die Laufzeit die Ursache sein, siehe Fehlerbilder
   unten.
 

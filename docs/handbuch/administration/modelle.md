@@ -40,8 +40,13 @@ verliert Werkzeugaufrufe bei der Ausgabe im Fluss, und eine zu kleine Kontextlä
 Werkzeugbeschreibungen stillschweigend ab. Die Angabe gilt deshalb für diesen Endpunkt und diese
 Laufzeit.
 
+Heute nutzt der Chat noch keine Werkzeuge im regulären Betrieb; die Angabe wirkt erst, sobald
+Anfragen mit Werkzeugen laufen. Sie lässt sich schon jetzt festhalten.
+
 1. Im Zeilenmenü „Werkzeugfähigkeit festlegen“.
-2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen und speichern.
+2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen.
+3. Bei „Fähig“ und „Nicht fähig“ die Grundlage wählen: „Gemessen“ verlangt die Kennung des
+   Messlaufs, „Manuell gesetzt“ nicht. Speichern.
 
 | Wert | Anfrage mit Werkzeugen |
 |---|---|
@@ -55,9 +60,12 @@ stillschweigend ohne Werkzeuge. Der gewöhnliche Chat funktioniert mit jedem Wer
 
 Die Spalte „Werkzeuge“ zeigt neben dem Wert die **Grundlage** der Angabe und ihr Datum: „manuell
 gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennbar, ob „Fähig“ ein
-Messergebnis oder eine Behauptung ist. In der Oberfläche wird die Angabe manuell gesetzt; eine
-gemessene Angabe samt Messlauf trägt die Verwaltungsschnittstelle ein. Eine Person oder Gruppe
-steht nicht am Modell. Wer die Angabe geändert hat, steht im
+Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit der Messung unter
+[Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen):
+Ergebnis und Kennung des Messlaufs aus dem Kopf des Berichts tragen Sie im Dialog mit der Grundlage
+„Gemessen“ ein. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher;
+„Speichern“ bleibt gesperrt, solange sich nichts ändert. Eine Person oder Gruppe steht nicht am
+Modell. Wer die Angabe geändert hat, steht im
 [Nachweisprotokoll](nachweisprotokoll-lesen.md) als Änderung des Chat-Modells, mit dem Wert vorher
 und nachher.
 
@@ -65,7 +73,12 @@ und nachher.
 Grundlage und Datum. Das Formular weist vor dem Speichern darauf hin. Nach einem Umzug des
 Modellservers oder einem Update der Laufzeit mit neuer Adresse muss also erneut geprüft werden. Ein
 Update an derselben Adresse setzt nichts zurück; dann die Angabe selbst auf „Ungeprüft“ stellen und
-neu prüfen.
+neu prüfen. Hat jemand anderes das Modell geändert, während der Dialog offen war, lehnt OPAA das
+Speichern ab; die Liste neu laden und die Angabe für die neue Kombination erneut prüfen.
+
+Beim Update auf die Version, die die Werkzeugfähigkeit einführt, kann bei mehreren Instanzen eine
+Instanz der alten Version die Adresse ändern, ohne die Angabe zurückzusetzen. Basis-Adresse und Modell-Kennung deshalb erst ändern, wenn alle
+Instanzen die neue Version fahren, oder die Angabe danach selbst auf „Ungeprüft“ stellen.
 
 Ist das aktive Modell beim Start „Ungeprüft“, schreibt jede Instanz eine Warnung ins Log; der Start
 läuft weiter.
@@ -93,6 +106,33 @@ Grenzen und welche Dienste die Liste auswerten, stehen unter
 speichern. Fehlt der Betriebsschalter für die Spracheingabe, lässt sie sich nur vorbereiten. Die
 Spracheingabe verarbeitet Stimmen; sie gehört vor dem Einschalten mit der Personalvertretung
 geklärt ([Einführung vorbereiten](einfuehrung.md)).
+
+## Live-Transkript einrichten
+
+Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Es kommt zum Diktat hinzu und
+ersetzt es nicht: Das Diktat bleibt immer verfügbar, und fällt der Live-Dienst aus, wird die ganze
+Aufnahme wie beim Diktat verarbeitet. Im Chat gibt es keinen Umschalter; das Mikrofon nutzt Live von
+selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Transkript (optional)“:
+
+1. „Live-Transkript einschalten“ anschalten.
+2. Den „Live-Dienst“ wählen: „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“. „Live-Adresse“ und
+   „Live-Modell“ werden dabei vorbelegt; beim eigenen Server den Host anpassen. Sind Basis-Adresse
+   und Modell-Kennung des Diktats noch leer, belegt die Wahl auch sie vor, siehe
+   [Nur ein Live-Dienst vorhanden?](../betrieb/modell-endpunkte.md#nur-ein-live-dienst-vorhanden).
+3. Den „Live-Schlüssel“ eintragen, wenn der Dienst einen anderen Schlüssel als das
+   Transkriptionsmodell braucht. Ohne ihn geht der Schlüssel des Transkriptionsmodells mit, aber
+   nur an die gleiche Adresse bis zum Port (Schema, Host, Port). OpenAI und Mistral verlangen
+   einen Schlüssel: Liegt das Transkriptionsmodell unter einer anderen Adresse, etwa auf einem
+   eigenen speaches, lehnt „Speichern“ ohne Live-Schlüssel ab. Das Auge neben dem Feld zeigt den eingetippten Schlüssel zur Kontrolle.
+4. „Gleichzeitige Live-Sitzungen“ für die ganze Installation festlegen. Wer darüber diktiert,
+   bekommt den Text wie ohne Live nach dem Ende der Aufnahme.
+5. „Live-Dienst testen“ öffnet eine Sitzung ohne Audio; dann „Speichern“.
+
+Den Schalter ausschalten und „Speichern“ entfernt den Live-Dienst samt Schlüssel. Fällt der Live-Dienst aus,
+diktieren alle weiter, nur ohne Live-Text. Ein externer Dienst erhält die Aufnahme laufend während
+des Sprechens; das gehört wie die Spracheingabe selbst vorher mit Datenschutz und
+Personalvertretung geklärt. Was ein eigener Server leisten muss, steht unter
+[Live-Transkript im Betrieb](../betrieb/modell-endpunkte.md#live-transkript).
 
 ## Texterkennung einrichten
 

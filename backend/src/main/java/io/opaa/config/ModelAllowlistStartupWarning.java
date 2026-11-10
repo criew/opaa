@@ -6,6 +6,7 @@ import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelRepository;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelTargetValidationProperties;
+import io.opaa.llm.RealtimeTranscriptionEndpoint;
 import io.opaa.llm.RerankModelSettingsRepository;
 import io.opaa.llm.TranscriptionModelSettingsRepository;
 import io.opaa.security.TargetAddressValidator;
@@ -96,7 +97,16 @@ class ModelAllowlistStartupWarning {
         .ifPresent(row -> stored.add(new StoredEndpoint("rerank model", row.getBaseUrl())));
     transcriptionModel
         .findStored()
-        .ifPresent(row -> stored.add(new StoredEndpoint("transcription model", row.getBaseUrl())));
+        .ifPresent(
+            row -> {
+              stored.add(new StoredEndpoint("transcription model", row.getBaseUrl()));
+              if (row.getRealtimeUrl() != null) {
+                stored.add(
+                    new StoredEndpoint(
+                        "live transcription",
+                        RealtimeTranscriptionEndpoint.httpEquivalent(row.getRealtimeUrl())));
+              }
+            });
     return stored;
   }
 

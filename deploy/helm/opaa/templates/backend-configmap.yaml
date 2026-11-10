@@ -65,6 +65,13 @@ data:
   {{- with .Values.siemExport.timeout }}
   OPAA_SIEM_EXPORT_TIMEOUT: {{ . | quote }}
   {{- end }}
+  OPAA_TRACING_ENABLED: {{ .Values.tracing.enabled | quote }}
+  {{- with .Values.tracing.otlpEndpoint }}
+  OPAA_TRACING_OTLP_ENDPOINT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.tracing.samplingProbability }}
+  OPAA_TRACING_SAMPLING_PROBABILITY: {{ . | quote }}
+  {{- end }}
   {{- with .Values.transcription.maxAudioBytes }}
   OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES: {{ . | quote }}
   {{- end }}

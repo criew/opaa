@@ -128,7 +128,17 @@ export const modelHandlers = [
       return HttpResponse.json({ error: 'Modell nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as LlmModelToolCapabilityRequest
-    // Mirrors LlmModelService#setToolCapability: UNVERIFIED clears basis, run and date.
+    // Mirrors LlmModelService#setToolCapability: a statement for another combination is a 409,
+    // UNVERIFIED clears basis, run and date.
+    if (body.baseUrl !== model.baseUrl || body.modelIdentifier !== model.modelIdentifier) {
+      return HttpResponse.json(
+        {
+          error:
+            'Das Modell wurde inzwischen geändert: Basis-Adresse oder Modell-Kennung stimmen nicht mehr mit der geprüften Kombination überein. Bitte die Liste neu laden und erneut prüfen.',
+        },
+        { status: 409 },
+      )
+    }
     model.toolCapability =
       body.value === 'UNVERIFIED'
         ? { ...UNVERIFIED_TOOL_CAPABILITY }

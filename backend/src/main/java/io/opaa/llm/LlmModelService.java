@@ -54,6 +54,10 @@ public class LlmModelService {
 
   private static final String OBJECT_LABEL_PREFIX = "Chat-Modell";
 
+  static final String STALE_COMBINATION_MESSAGE =
+      "Das Modell wurde inzwischen geändert: Basis-Adresse oder Modell-Kennung stimmen nicht mehr"
+          + " mit der geprüften Kombination überein. Bitte die Liste neu laden und erneut prüfen.";
+
   static final String KEY_DOES_NOT_FOLLOW_MESSAGE =
       "Die Basis-Adresse hat sich geändert: Bitte den API-Schlüssel erneut eingeben oder den"
           + " gespeicherten Schlüssel entfernen, damit er nicht an die neue Adresse gesendet wird.";
@@ -196,7 +200,7 @@ public class LlmModelService {
       BigDecimal temperature,
       int maxTokens,
       String apiKey) {
-    LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
+    LlmModel model = repository.findLockedById(id).orElseThrow(() -> notFound(id));
     Map<String, Object> before = auditState(model);
     String previousApiKeyCiphertext = model.getApiKeyCiphertext();
     requireKeyFollowsEndpoint(model.getBaseUrl(), baseUrl, apiKey, previousApiKeyCiphertext);
@@ -222,16 +226,26 @@ public class LlmModelService {
    * now. {@link ToolCapability#UNVERIFIED} takes neither basis nor measurement run and clears both;
    * any other value takes a basis, and {@code measurementRun} is required for {@link
    * ToolCapabilityBasis#MEASURED} and refused for {@link ToolCapabilityBasis#MANUAL}.
+   *
+   * <p>{@code baseUrl} and {@code modelIdentifier} name the combination the caller assessed; they
+   * must equal the stored values verbatim, otherwise the statement is refused with a {@link
+   * ConflictException}. The row is locked for the check, so an address edit cannot slip in between.
    */
   @Transactional
   public LlmModel setToolCapability(
       UUID organizationId,
       UUID actorUserId,
       UUID id,
+      String baseUrl,
+      String modelIdentifier,
       ToolCapability capability,
       ToolCapabilityBasis basis,
       String measurementRun) {
-    LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
+    LlmModel model = repository.findLockedById(id).orElseThrow(() -> notFound(id));
+    if (!model.getBaseUrl().equals(baseUrl)
+        || !model.getModelIdentifier().equals(modelIdentifier)) {
+      throw new ConflictException(STALE_COMBINATION_MESSAGE);
+    }
     String run = measurementRun == null || measurementRun.isBlank() ? null : measurementRun.strip();
     requireConsistentStatement(capability, basis, run);
     Map<String, Object> before = auditState(model);
