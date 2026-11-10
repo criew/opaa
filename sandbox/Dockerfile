@@ -1,6 +1,7 @@
 # Sandbox image for the run_code tool: Python plus the document libraries the generated scripts
 # may import. The OpenSandbox server injects execd at start-up, so the image needs no agent.
-FROM python:3.13.16-slim-bookworm
+# Version and index digest, kept current by Renovate; cve-scan.yml builds and scans the image.
+FROM python:3.13.16-slim-bookworm@sha256:73aa5faee130c60da030e105ec971ccf57473fbd22ce73bd6fc9ba99a40b838d
 
 RUN pip install --no-cache-dir \
         reportlab==5.0.1 \

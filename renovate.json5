@@ -221,6 +221,19 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*ZAP_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
       ],
     },
+    // Den Ausführungsagenten execd startet der Sandbox-Dienst aus seiner Konfiguration
+    // sandbox/config.toml, die kein regulärer Manager liest. Der Digest ist optional, und die
+    // Vorlage schreibt ihn mit: So setzt Renovate einen fehlenden Digest selbst (pinDigests in der
+    // Regel für sandbox/** unten). test_sandbox_image_pins.py prüft, dass der Ausdruck greift.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['sandbox/config.toml'],
+      matchStrings: [
+        'execd_image = "(?<depName>[^:"]+):(?<currentValue>[^@"]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"',
+      ],
+      datasourceTemplate: 'docker',
+      autoReplaceStringTemplate: 'execd_image = "{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"',
+    },
   ],
 
   packageRules: [
@@ -561,6 +574,29 @@
       matchDepNames: ['ghcr.io/docling-project/docling-serve-cpu'],
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
+    },
+    // Dritte Ausnahme: Die Images der Sandbox tragen Version und Digest. Der Sandbox-Dienst
+    // (docker-compose.sandbox.yml) hält den Docker-Socket des Hosts, execd (sandbox/config.toml)
+    // und das Basis-Image (sandbox/Dockerfile) laufen mit fremdem Code. Keine Pflichtprüfung
+    // startet den Stapel; ein Update kommt deshalb erst nach drei Tagen und mergt nie automatisch.
+    {
+      matchFileNames: ['docker-compose.sandbox.yml', 'sandbox/**'],
+      pinDigests: true,
+      minimumReleaseAge: '3 days',
+      automerge: false,
+    },
+    // Ein neuer Digest bei gleicher Version heißt, dass der Tag umgehängt wurde; erst nach Freigabe.
+    {
+      matchFileNames: ['docker-compose.sandbox.yml', 'sandbox/**'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+    },
+    // Dienst und execd gehören zur selben Version von OpenSandbox und kommen in einem PR. Nur
+    // Release-Tags zählen, keine Vorabversionen, staging-Builds oder die alten v0-Tags.
+    {
+      matchDepNames: ['opensandbox/server', 'opensandbox/execd'],
+      versioning: 'regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$',
+      groupName: 'OpenSandbox',
     },
     // gradle/actions bringt im Dependency Graph ein Plugin mit, dem
     // backend/gradle/verification-metadata.xml in genau einer Version vertraut. Hebt ein Update

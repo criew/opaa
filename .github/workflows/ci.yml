@@ -167,7 +167,9 @@ jobs:
             # the release wiring, the record the fixture writes and the hash-pinned seed install. The
             # Compose templates belong here because test_check_compose_defaults.py edits copies of them.
             # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
-            # suppressions, the ZAP image pin and its wiring.
+            # suppressions, the ZAP image pin and its wiring. Every Dockerfile and the sandbox
+            # configuration belong here because test_image_scan_coverage.py checks that cve-scan.yml
+            # scans each image and test_sandbox_image_pins.py reads the execd pin.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -195,6 +197,8 @@ jobs:
               - '**/docker-compose*.yml'
               - '.env.docker.example'
               - '.env.example'
+              - '**/Dockerfile'
+              - 'sandbox/config.toml'
             # Filter of the action pin guard in the `changes` job.
             workflows:
               - '.github/workflows/**'
