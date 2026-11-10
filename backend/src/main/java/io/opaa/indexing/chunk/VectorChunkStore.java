@@ -7,6 +7,8 @@ import io.opaa.llm.embedding.EmbeddingClients;
 import io.opaa.llm.embedding.EmbeddingClients.Pinned;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import io.opaa.observability.IndexingStage;
+import io.opaa.observability.IndexingStageTimes;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -154,6 +156,23 @@ public class VectorChunkStore implements ChunkMetadataStore {
    * another model are never written.
    */
   public void addChunks(List<Document> chunks, Map<String, float[]> known, long knownGeneration) {
+    IndexingStageTimes times = new IndexingStageTimes();
+    try {
+      addChunks(chunks, known, knownGeneration, times);
+    } finally {
+      times.record();
+    }
+  }
+
+  /**
+   * {@link #addChunks(List, Map, long)}, adding its embedding and write time to {@code times}
+   * instead of recording them, so the caller records one value per document for all its batches.
+   */
+  public void addChunks(
+      List<Document> chunks,
+      Map<String, float[]> known,
+      long knownGeneration,
+      IndexingStageTimes times) {
     if (chunks.isEmpty()) {
       return;
     }
@@ -161,6 +180,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
     for (int attempt = 1; ; attempt++) {
       Pinned pinned = clients.pin();
       Map<String, float[]> reusable = pinned.generation() == knownGeneration ? known : Map.of();
+      long embedStart = IndexingStage.start();
       EmbeddingInputCheck check = checkInputs(pinned, chunks, reusable, Runnable::run);
       if (!check.overlong().isEmpty()) {
         EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
@@ -168,8 +188,11 @@ public class VectorChunkStore implements ChunkMetadataStore {
       }
       warnUnverified(pinned, chunks, check);
       try {
-        vectorStoreWriter.writeEmbeddedChunks(
-            chunks, vectorsFor(pinned, chunks, reusable, check.vectors()), pinned.generation());
+        List<float[]> vectors = vectorsFor(pinned, chunks, reusable, check.vectors());
+        times.addSince(IndexingStage.EMBED, embedStart);
+        long storeStart = IndexingStage.start();
+        vectorStoreWriter.writeEmbeddedChunks(chunks, vectors, pinned.generation());
+        times.addSince(IndexingStage.STORE, storeStart);
         return;
       } catch (EmbeddingGenerationChangedException e) {
         if (attempt >= GENERATION_ATTEMPTS) {

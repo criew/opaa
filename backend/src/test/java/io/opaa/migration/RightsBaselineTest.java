@@ -445,9 +445,9 @@ class RightsBaselineTest extends AbstractBaselineTest {
     execute(capabilitySql("CREATE_INTERNAL_GROUP", "GROUP", null, group));
 
     assertRejected(
-        capabilitySql("CREATE_TEMPLATE", "USER", user, null), "chk_capability_grants_capability");
+        capabilitySql("CREATE_UNKNOWN", "USER", user, null), "chk_capability_grants_capability");
     assertRejected(
-        capabilityHistorySql("CREATE_TEMPLATE", "GRANTED", "now()", null),
+        capabilityHistorySql("CREATE_UNKNOWN", "GRANTED", "now()", null),
         "chk_capability_grant_history_capability");
     assertRejected(
         capabilitySql("CREATE_SPACE", "USER", null, group), "chk_capability_grants_subject");

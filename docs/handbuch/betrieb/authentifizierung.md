@@ -301,7 +301,8 @@ Ergebnis „fehlgeschlagen", ohne Ursache.
   Entsperren nicht zurückholt.
 
 **Der Bestätigungsweg.** Ein wartender Plan steht mit seinem **Alter** in der Übersicht. Ein neuer
-Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen. **Bestätigt wird gegen einen frischen
+Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen; das Alter läuft dabei weiter, denn es
+misst, wie lange die Entscheidung schon aussteht. **Bestätigt wird gegen einen frischen
 Stand**, mit Pflichtangabe eines Anlasses: OPAA liest das Verzeichnis erneut und wendet nur an, was
 dem vorgelegten Plan noch entspricht; weicht es ab, wird nichts angewendet, und der neue Plan tritt an
 die Stelle des alten. **Verwerfen** entscheidet über diesen Plan, nicht über den Befund — der nächste

@@ -288,6 +288,11 @@ data:
           - version
         person:
           columns: [updated_by]
+      - name: document_template_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, updated_at]
+        person:
+          columns: [updated_by]
       - name: self_disclosure_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, daily_limit, updated_at]
@@ -675,3 +680,5 @@ capabilities:
     seesAboutOthers: Anzeigenamen der Personen, die in die eigene Gruppe aufgenommen werden
   - id: CREATE_PROMPT_LIBRARY
     seesAboutOthers: Nichts über andere Personen
+  - id: CREATE_TEMPLATE
+    seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage

@@ -33,7 +33,10 @@ public class DirectorySyncPendingPlan {
   @Column(name = "provider_id", nullable = false)
   private UUID providerId;
 
-  /** When the run that produced this plan read the directory - the plan's age. */
+  /**
+   * When the first plan still undecided was presented - the age of the pending decision. A run that
+   * replaces the plan keeps it (DirectorySyncPlanExecutor#storePendingPlan).
+   */
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 

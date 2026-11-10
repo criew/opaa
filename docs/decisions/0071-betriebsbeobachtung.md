@@ -165,6 +165,44 @@ gebauten Clients des Quellzugriffs messen über die globale Registry, an die Spr
 Registry der Anwendung bindet. Ob ein 429 stört, hängt am Pfad: Im Hintergrund drosselt die
 Indexierung adaptiv, interaktiv wartet eine Person.
 
+### 9. Indizierung und Verzeichnisabgleich: Konnektortyp als Label, Zustand aus der Datenbank
+
+Die Metriken der Indizierung tragen als `connector` den Schlüssel des Quellentyps klein geschrieben
+(`confluence`, `sharepoint`, `upload`), denselben Wert, den `opaa.outbound.requests` als `kind`
+nennt; die Bibliothek ist nie ein Label. Ein Lauf zählt an seinem Ende in `opaa.indexing.runs` mit
+Betriebsart, Ergebnis und `failure_category` aus der festen Liste der Laufgründe; einen Lauf, den
+die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, zählt sie als
+`abandoned`. `opaa.indexing.run.duration` veröffentlicht SLO-Buckets wie die Timer aus
+Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`).
+
+Läufe, letzter Erfolg und Überfälligkeit einer privaten Bibliothek zählen nicht unter ihrem
+Quellentyp, sondern unter `connector="private"`. Als `failure_category` gilt dort eine Positivliste:
+`none`, `abandoned`, `private` und die Sperren der Verwaltung (`type_locked`, `profile_locked`,
+`profile_required`), die für alle gleich gelten. Jeder andere Laufgrund, auch ein künftiger, fällt in
+die Sammelkategorie `private`, denn Kontingent, Konto, Verbindung und Anmeldedaten sprechen von der
+einen Person dahinter. Eine
+private Bibliothek ist oft die einzige ihres Typs; unter ihrem Typ ergäbe die Reihe den Verlauf
+einer Person. Das folgt derselben Linie wie die Maskierung geschützter Gruppen (ADR-0036,
+Entscheidung 9) und der Zahlen über private Bibliotheken (ADR-0049): keine Personensicht aus
+Betriebsdaten. `opaa.indexing.documents` bleibt beim Typ, auch bei `upload`, weil es
+installationsweit über alle Bibliotheken zählt.
+
+Was nur die Datenbank weiß, liest jede Instanz jede Minute aus den vorhandenen Tabellen: den
+jüngsten Erfolg je Konnektortyp, die Zahl überfälliger Bibliotheken je Typ, den letzten angewendeten
+Verzeichnisabgleich und das Alter der ausstehenden Entscheidung über einen Abgleichplan. Den
+Rückstand eines Modellwechsels liest sie alle fünf Minuten, weil er dann den ganzen Vektorindex
+zählt. Jeder Pod meldet dann denselben Wert; Dashboards und Alarme fassen solche Gauges mit `max`
+über die Pods zusammen, nicht mit `sum`. Scheitert das Lesen, meldet der Gauge `NaN`, nicht den
+letzten Wert: Ein veralteter Wert sähe aus wie ein gesunder. Der jüngste Erfolg je Typ verdeckt eine tote Bibliothek,
+solange eine andere desselben Typs läuft. Deshalb zählt `opaa.indexing.libraries.overdue` die
+Bibliotheken mit Zeitplan, deren letzter Erfolg länger als zwei ihrer Intervalle zurückliegt, als
+Anzahl ohne Kennung; eine Bibliothek ohne Erfolg zählt ab ihrer Anlage, weil der Zeitpunkt des
+Einschaltens ihres Zeitplans nicht gespeichert ist. Ein unvollständiger Lauf zählt als Erfolg: Er
+hat geendet und den erreichbaren Teil indiziert. Der Verzeichnisabgleich nennt als `provider` den
+Typ des Verzeichniszugangs (`keycloak`); sein letzter Erfolg ist der letzte angewendete Lauf und
+steht still, solange ein Plan auf Bestätigung wartet. Ersetzt ein neuer Lauf den wartenden Plan,
+behält der neue Plan die Entstehungszeit des ersten, denn so lange wartet die Entscheidung.
+
 ### 10. Hintergrundläufe zentral gemessen, installationsweite Werte von jeder Instanz
 
 Letzter Erfolg, Fehler und erwartetes Intervall jedes geplanten Laufs (`opaa.scheduled.*` mit
@@ -214,3 +252,4 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.
 - Micrometer-Observation je ausgehendem Aufruf — legt je Reihe einen Long-Task-Timer und ein `error`-Tag dazu, Entscheidung 8.
 - Eigene Probe für `opaa.model.role.available` — kostete Modellaufrufe je Abruf, Entscheidung 8.
+- Letzter Erfolg je Bibliothek als eigene Reihe — Bibliothekskennung im Label, Entscheidung 9.

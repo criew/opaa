@@ -21,7 +21,7 @@ class RunCodeToolTest {
   private final ChatAttachmentService attachmentService = mock(ChatAttachmentService.class);
 
   private static ToolContext contextFor(ToolLoopRunState runState) {
-    return new ToolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState));
+    return new ToolContext(Map.of(SpikeSearchKnowledgeTool.RUN_STATE_KEY, runState));
   }
 
   @Test

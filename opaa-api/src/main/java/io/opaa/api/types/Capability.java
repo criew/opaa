@@ -36,5 +36,11 @@ public enum Capability {
    * Creating a prompt library. Delivered to all accounts: a prompt binds no knowledge and reaches
    * no source, so creating one widens nothing.
    */
-  CREATE_PROMPT_LIBRARY
+  CREATE_PROMPT_LIBRARY,
+
+  /**
+   * Creating a document template. Delivered to nobody: a template shapes what agents hand out as
+   * files, so who may add one is a deliberate decision of the installation.
+   */
+  CREATE_TEMPLATE
 }
