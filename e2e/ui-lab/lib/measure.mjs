@@ -77,7 +77,7 @@ const PAGE_METRICS = () => {
       b.getAttribute('aria-busy') !== 'true',
   )
   const disabledSubmits = lockedSubmits.map((b) => b.innerText.trim())
-  // the budget counts the footer actions of dialogs; locked submits of a page are reported only
+  // how many of them are footer actions of a dialog
   const disabledDialogSubmits = lockedSubmits.filter((b) => b.closest('[role=dialog]')).length
   const alerts = [...new Set([...document.querySelectorAll('[role=alert], .MuiAlert-root')].filter(visible))].map((el) => {
     const m = /MuiAlert-(?:standard|outlined|filled|color)(Error|Warning|Info|Success)/.exec(el.className)
@@ -155,7 +155,7 @@ export function budgetViolations(metrics, width, scenario) {
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
   if (metrics.fontSizes > BUDGETS.fontSizes) over.push('fontSizes')
-  if (metrics.disabledDialogSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
+  if (metrics.disabledSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
   return over
 }
 

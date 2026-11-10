@@ -107,7 +107,7 @@ async function createSpace(page: Page, spaceName: string): Promise<string> {
   // The lookahead keeps /spaces/new itself from matching while the wizard is still open.
   await Promise.all([
     page.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Space anlegen' }).click(),
+    page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
   ])
   await expect(page.getByRole('heading', { name: spaceName })).toBeVisible()
   return page.url().split('/spaces/')[1]

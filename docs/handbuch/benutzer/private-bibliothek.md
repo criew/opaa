@@ -6,10 +6,11 @@
 Nur Sie lesen diese Bibliothek, auch die Systemverwaltung nicht. Voraussetzung ist ein
 [verbundenes Konto](konto-verbinden.md).
 
-1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, „Wissen“ und die Quellart wählen.
-2. Unter „Verbindung“ den Zugang mit dem Zusatz **„· privat“** wählen. Das lässt sich später nicht
-   ändern.
-3. „Umfang“ und „Zeitplan“ setzen, prüfen und „Bibliothek anlegen“ wählen.
+1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, „Wissen“ und die Quellart wählen, unter
+   „Stammdaten“ den Namen eintragen.
+2. Im Schritt „Quelle“ unter „Verbindung“ den Zugang mit dem Zusatz **„· privat“** wählen. Das lässt
+   sich später nicht ändern.
+3. „Umfang“ und „Zeitplan“ setzen, unter „Prüfen“ die Angaben durchsehen und „Anlegen“ wählen.
 4. Die Bibliothek einem eigenen Space zuordnen, am einfachsten dem Standard-Space.
 
 Sie trägt die Marke **„Privat“** mit Schloss. Ihre Belege im Chat sehen nur Sie.

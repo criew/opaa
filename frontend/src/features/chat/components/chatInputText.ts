@@ -19,7 +19,16 @@ export interface SpaceLibrary {
   name: string
 }
 
-export type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
+/** An agent offered in the '@' menu, set apart from the knowledge entries. */
+export interface MentionAgent {
+  id: string
+  name: string
+}
+
+export type MentionSuggestion =
+  | { kind: 'all' }
+  | { kind: 'library'; library: SpaceLibrary }
+  | { kind: 'agent'; agent: MentionAgent }
 
 /** The input's accessible name; the placeholder only adds the prefix hint to it. */
 export const INPUT_LABEL = 'Nachricht eingeben'

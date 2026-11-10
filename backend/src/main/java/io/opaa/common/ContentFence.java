@@ -2,15 +2,17 @@ package io.opaa.common;
 
 import java.security.SecureRandom;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * A fence around text a document controls, as handed to a model: an opening and a closing marker
- * with the tag and an id fresh per use. {@link #strip} removes the tag's keyword itself from such
- * text - in any case, in fullwidth letters and with invisible format characters between its letters
- * - and repeats until nothing changes, so no text can contain a marker of the fence, also not one a
- * removal or a later cut would reassemble. Whatever else of a marker remains is plain text.
+ * with the tag and an id fresh per use. {@link #strip} cleans such text with {@link PromptText}:
+ * invisible characters go, and so does the tag's keyword itself - in any case, in fullwidth letters
+ * and with invisible format characters between its letters - until nothing changes, so no text can
+ * contain a marker of the fence, also not one a removal or a later cut would reassemble. Whatever
+ * else of a marker remains is plain text.
  */
 public final class ContentFence {
 
@@ -60,18 +62,12 @@ public final class ContentFence {
     return text == null ? null : open(id) + "\n" + strip(text) + "\n" + close(id);
   }
 
-  /** {@code text} without the keyword of the tag; {@code null} stays {@code null}. */
+  /**
+   * {@code text} without invisible characters and without the keyword of the tag; {@code null}
+   * stays {@code null}.
+   */
   public String strip(String text) {
-    if (text == null) {
-      return null;
-    }
-    String previous;
-    String current = text;
-    do {
-      previous = current;
-      current = keyword.matcher(previous).replaceAll("");
-    } while (!current.equals(previous));
-    return current;
+    return PromptText.clean(text, List.of(keyword));
   }
 
   private static String anySpelling(int letter) {

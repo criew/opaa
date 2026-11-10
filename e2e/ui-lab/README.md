@@ -189,7 +189,7 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
   `record-flows.mjs` behält die 3 s.
 - `metrics.jsonl`, eine Zeile je Screenshot: `appliedScheme` (tatsächlich dargestelltes Schema),
   `overflowX`, `docHeight`, `clippedText`, `disabledSubmits` (davon in Dialogen:
-  `disabledDialogSubmits`, nur dieser Wert zählt im Budget), `alertCount`/`alertSeverities`,
+  `disabledDialogSubmits`), `alertCount`/`alertSeverities`,
   `invalidFields`, `focusable`, `fontSizes`, `colors`, `words`, `uiWords`, `helpTexts`,
   `helpTextsPerForm`, `helpTextMaxLines`, `budgetViolations`, `headings`, `axe` (hell: WCAG 2.0–2.2
   A/AA und best-practice mit `target-size`; dunkel: nur `color-contrast`; je Kontrastbefund Farben

@@ -1,5 +1,6 @@
 package io.opaa.query.toolloop;
 
+import io.opaa.common.PromptText;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.PassageRules;
 import io.opaa.query.answer.SpaceInstructionBlock;
@@ -64,11 +65,7 @@ final class AgentPrompt {
       text.append("\n\n")
           .append(AGENT_HEADER)
           .append('\n')
-          .append(AGENT_START)
-          .append('\n')
-          .append(withoutMarkers(agentInstruction).strip())
-          .append('\n')
-          .append(AGENT_END);
+          .append(PromptText.between(AGENT_START, AGENT_END, agentInstruction));
     }
     String spaceBlock = SpaceInstructionBlock.render(spaceInstruction);
     if (spaceBlock != null) {
@@ -90,19 +87,5 @@ final class AgentPrompt {
         + (spaceInstruction == null || spaceInstruction.isBlank()
             ? AnswerGenerationService.LANGUAGE_REMINDER
             : AnswerGenerationService.SPACE_LANGUAGE_REMINDER);
-  }
-
-  /**
-   * The instruction without the block's own markers, so it cannot close its block early; repeated
-   * until nothing changes, since a removal can join the halves of a marker written around another.
-   */
-  private static String withoutMarkers(String instruction) {
-    String previous;
-    String current = instruction;
-    do {
-      previous = current;
-      current = previous.replace(AGENT_START, "").replace(AGENT_END, "");
-    } while (!current.equals(previous));
-    return current;
   }
 }

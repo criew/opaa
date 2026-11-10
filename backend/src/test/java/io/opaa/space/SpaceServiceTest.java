@@ -87,6 +87,25 @@ class SpaceServiceTest {
             Clock.systemUTC());
   }
 
+  /** The space's instruction reaches every answer, so it is stored without invisible characters. */
+  @Test
+  void theInstructionToTheModelIsStoredWithoutInvisibleCharacters() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    Space space = new Space("Team", null, false, owner, organizationId);
+    when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
+    when(accessPolicy.hasAtLeast(space, owner, SpaceRole.ADMIN)).thenReturn(true);
+    when(spaceRepository.save(space)).thenReturn(space);
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    spaceService.updateSpace(
+        space.getId(),
+        new SpaceUpdate("Team", null, null, " Antworte knapp.\uDB40\uDC49\u200B\u202E "),
+        caller);
+
+    assertThat(space.getModelInstruction()).isEqualTo("Antworte knapp.");
+  }
+
   /**
    * ADR-0036, Entscheidung 6, Schutzregel 1 - the half the integration test cannot reach: a space
    * whose owner is not the membership being touched, so the owner rule does not apply and {@code

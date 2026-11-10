@@ -263,10 +263,6 @@ opaa:
       account-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ACCOUNT_QUOTA_BYTES:2147483648}
       unbound-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_QUOTA_BYTES:536870912}
       organization-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ORGANIZATION_QUOTA_BYTES:0}
-  # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
-  # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
-  # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
-  # behind it (io.opaa.query.spike) only exist while this is set.
   # Limits of an agent run and of the runs at the same time (ADR-0070, Entscheidung 6). An agent may
   # only lower the four run limits. workspace-capacity is the installation's absolute figure, the
   # same on every instance; a request beyond it is refused before its run begins.
@@ -277,9 +273,6 @@ opaa:
     max-collected-chars: ${OPAA_AGENT_MAX_COLLECTED_CHARS:60000}
     workspace-capacity: ${OPAA_AGENT_WORKSPACE_CAPACITY:2}
     closing-call-allowance: ${OPAA_AGENT_CLOSING_CALL_ALLOWANCE:60s}
-  spike:
-    tool-loop:
-      enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
   # The isolated execution environment behind the agent tools run_code and fill_template
   # (ADR-0073): an OpenSandbox server that starts one sandbox without network per agent run. Off by
   # default; switched on, the start fails without base-url and api-key. max-lifetime must not

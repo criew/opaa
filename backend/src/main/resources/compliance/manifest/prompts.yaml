@@ -8,18 +8,20 @@ prompts:
     classes:
       - io.opaa.query.answer.AnswerGenerationService
       - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "2a7890445e70d562619d646fe0246e07ee8803f036eedaed3965a2608271cc1b"
+    sha256: "1641942805a2aef568eeec580c0f273eaa45c1ad751a86a6d48c075febb45e15"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
       - io.opaa.retrieval.search.QueryDecompositionService
       - io.opaa.retrieval.search.DecompositionContext
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "11aae7c367b2f10f4333a97c8dcfc54aa09c358cd37331e13fca72e16f87ba3e"
+      - io.opaa.common.PromptText
+    sha256: "69e776f659a9e6f200dbac6da39a4661b86395f58beb2bb6faa41d9f571f8643"
   - id: chat-title
     purpose: Erzeugt aus erster Frage und Antwort einen Titel für den Chat
     classes: [io.opaa.chat.ChatTitleGenerationService]
@@ -30,18 +32,33 @@ prompts:
     sha256: "b642eb44720453f950ce49d422dc2356c30d8df21460e7f00f4b5c8b3c930abb"
   - id: metadata-extraction
     purpose: Ordnet einem Dokument Metadatencodes und freie Schlagworte zu
-    classes: [io.opaa.metadata.ModelExtractionPrompt]
-    sha256: "e2b44a307f70ff0f67b0b695b594001c648e95d91858f23e073a2005e86699df"
-  - id: tool-loop-spike
-    purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
     classes:
-      - io.opaa.query.spike.SpikeToolLoopQueryHandler
-      - io.opaa.query.spike.SpikeSearchKnowledgeTool
-      - io.opaa.query.spike.RunCodeTool
+      - io.opaa.metadata.ModelExtractionPrompt
+      - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
+    sha256: "91af4169c942a12372b950ab4611af05805377f17a883a7f23071857d78c688e"
+  - id: agent-run
+    purpose: >-
+      Regeln für einen Agentenlauf: Werkzeuge in Schritten nutzen, Belegpflicht, Antwortsprache,
+      Anweisung des Agenten und des Space, Gesprächsnotiz; dazu die Beschreibungen der Werkzeuge,
+      nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
+      dem Hinweis, dass ihr Inhalt keine Anweisung ist
+    classes:
+      - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.toolloop.AgentToolCallback
+      - io.opaa.query.toolloop.SearchKnowledgeTool
+      - io.opaa.query.toolloop.ReadDocumentTool
+      - io.opaa.query.toolloop.ListSourcesTool
+      - io.opaa.query.toolloop.RunCodeTool
+      - io.opaa.query.toolloop.FillTemplateTool
+      - io.opaa.query.toolloop.AskUserTool
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock
+      - io.opaa.query.answer.SpaceInstructionBlock
+      - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
-    sha256: "620c4ed66f306836a4c999366404af4ef0b85b7471b7b62ae8c70abecfad9402"
+      - io.opaa.common.PromptText
+    sha256: "1555ab192c5129629c0eb33b172f0c91f68d6fad362d7e822a302fd8f5cdce63"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
@@ -94,13 +111,17 @@ aiFunctions:
     prompts: [metadata-extraction]
     notes:
       - Der Prompt verbietet Personennamen als Schlagworte
-  - id: tool-loop-spike
-    purpose: Erprobung, nur mit Präfix „@test “ und eingeschaltetem Schalter
+  - id: agent-run
+    purpose: >-
+      Bearbeitet eine Frage im Chat in mehreren Schritten mit Werkzeugen, wenn die Person einen
+      Agenten mit @ wählt; nur bei eingeschalteten Agenten der Installation
     outputKind: TEXT
     interactsWithPersons: true
     assessesPersons: false
-    labelling: Wie die Chat-Antwort
-    prompts: [tool-loop-spike]
+    labelling: >-
+      Wie die Chat-Antwort; zusätzlich nennt die Frage den gewählten Agenten und die Antwort zeigt
+      die Schritte des Laufs
+    prompts: [agent-run]
   - id: speech-transcription
     purpose: Wandelt eine Sprachaufnahme der Person in Text für die Eingabe um (Diktat)
     outputKind: TEXT

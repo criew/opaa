@@ -33,7 +33,9 @@ const EXPECTATIONS = [
     check: (r) =>
       r.axe.contrastViolations > 0 &&
       ['label', 'button-name', 'target-size'].every((id) => ids(r.axe).includes(id)) &&
-      ['helpTextsPerForm', 'helpTextLines', 'uiWords', 'disabledSubmits'].every((b) => r.budgets.includes(b)),
+      ['helpTextsPerForm', 'helpTextLines', 'uiWords', 'disabledSubmits'].every((b) =>
+        r.budgets.includes(b),
+      ),
     expect: 'contrast, label, button-name, target-size; all four budgets exceeded',
   },
   { page: 'bad.html', scheme: 'dark', check: (r) => r.axe.contrastViolations > 0 && r.shown === 'dark', expect: 'contrast violation, shown dark' },

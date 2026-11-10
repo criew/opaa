@@ -3,7 +3,8 @@
 # Adds the OpenSandbox lifecycle server, which starts one container per agent run through the
 # host's Docker socket. Whoever holds that socket controls the host: run this stack on a VM of its
 # own, on Linux preferably with gVisor ([secure_runtime] in sandbox/config.toml).
-# OPAA_SPIKE_TOOL_LOOP_ENABLED=true additionally opens the development spike ("@test " prefix).
+# Only an agent run uses the sandbox: agents switched on and the tool allowed under Administration >
+# Agenten, and the tool chosen at the agent.
 services:
   # One-off build step: produces the sandbox image locally and exits. The server never pulls it.
   sandbox-image:
@@ -62,7 +63,6 @@ services:
 
   backend:
     environment:
-      OPAA_SPIKE_TOOL_LOOP_ENABLED: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:-false}
       OPAA_SANDBOX_ENABLED: "true"
       OPAA_SANDBOX_BASE_URL: http://opensandbox-server:8090
       OPAA_SANDBOX_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}

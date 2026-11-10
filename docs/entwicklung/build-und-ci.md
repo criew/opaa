@@ -459,6 +459,23 @@ die ihn auslöst, als Probe in den Generator. Jazzer ist bewusst nicht eingebund
 bringt einen nativen Agenten und eine eigene JUnit-Anbindung mit, und die bekannten
 Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
 
+## Löschvollständigkeit (Sentinel-Tests)
+
+`DocumentDeletionSentinelIntegrationTest` und `ChatDeletionSentinelIntegrationTest` laufen mit den
+Integrationstests (Docker). Sie schreiben einen eindeutigen Markertext überall hin, wo ein Dokument
+bzw. ein Chat abgeleitete Daten hinterlässt (Dateiname, Inhalt, Vektor- und Volltext-Chunks,
+Metadatenwert, Schlagwort und verworfener Modellvorschlag; Frage, Antwort, erzeugter Titel,
+Notiz und gelesener Anhang mit seinem Text), prüfen vorab, dass der Marker in diesen Spalten
+angekommen ist, löschen das Objekt über den Dienst der Anwendung und durchsuchen danach mit
+`io.opaa.test.SentinelScan` jede Text-, JSON-, Array-, `tsvector`- und `bytea`-Spalte jeder
+Tabelle des Schemas, Partitionen über ihre Elterntabelle. Die Spalten kommen aus
+`information_schema`; eine neue Tabelle oder Spalte ist ohne Pflege erfasst. Was den Marker nach
+dem Löschen behalten darf, steht mit Begründung in der Liste `RETAINED` des Tests (heute nur das
+Revisionsprotokoll); ein neuer Treffer ist eine Löschlücke und wird behoben, nicht in die Liste
+eingetragen. Geprüft wird nur die Datenbank: Die Ablage der Originale (Dateisystem oder S3) und
+der Gesprächsspeicher im Prozess liegen außerhalb des Scans; das Löschen des Originals sichern
+die Tests von `LibraryDocumentService` ab.
+
 ## Sicherheitsinvarianten als Architekturtests
 
 `io.opaa.architecture.SecurityInvariantsTest` läuft in jedem Build und prüft mit ArchUnit:
@@ -480,7 +497,16 @@ Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
 - `io.opaa.format` kompiliert kein Muster je Aufruf oder je Objekt (`String.matches`, `replaceAll`,
   `replaceFirst`, `split`, `Pattern.matches`, `Pattern.compile` außerhalb des statischen
   Initialisierers, auch in Konstruktoren); ein `split` an einem einzelnen Zeichen und der
-  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste.
+  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste;
+- Text, den eine Person, ein Dokument oder eine frühere Antwort bestimmt, kommt nur über
+  `PromptText` (unsichtbare Zeichen und Marker bis zum Fixpunkt entfernen, zwischen Marker setzen)
+  oder `ContentFence` (Zaun mit Kennung je Aufruf) in einen Prompt. Als Prompt-Bau zählen
+  `UserMessage`, `SystemMessage` und `Prompt` (Konstruktor und Builder) sowie `system` und `user`
+  einer `ChatClient`-Anfrage; gemeldet wird eine Methode (samt ihrer Lambdas), die selbst keinen
+  der beiden Bausteine aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
+  (`PROMPTS_PAST_THE_BLOCKS`) nennt je Methode, wo ihr Text bereinigt wurde, eine neue Stelle muss
+  diese Entscheidung ausdrücklich treffen. Grenze: Ruft eine Methode einen Baustein auf, prüft die
+  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet.
 
 Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
 wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat

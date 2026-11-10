@@ -5,6 +5,7 @@ datenkatalog
 datenkatalog#account-state-history
 datenkatalog#accounts
 datenkatalog#agent-run-logs
+datenkatalog#agent-run-reservations
 datenkatalog#application-log
 datenkatalog#audit-incident-scopes
 datenkatalog#audit-log
@@ -329,13 +330,13 @@ voreinstellungen#full-sync-rhythm-settings-interval-days-sharepoint
 voreinstellungen#io-opaa-account-localtokencleanupservice-retention
 voreinstellungen#io-opaa-audit-auditincidentscopegrant-usable-window
 voreinstellungen#io-opaa-externalaccess-externalaccessalertretention-retention
+voreinstellungen#ki-funktion-agent-run
 voreinstellungen#ki-funktion-chat-answer
 voreinstellungen#ki-funktion-chat-note-extraction
 voreinstellungen#ki-funktion-chat-title
 voreinstellungen#ki-funktion-metadata-extraction
 voreinstellungen#ki-funktion-speech-transcription
 voreinstellungen#ki-funktion-text-recognition
-voreinstellungen#ki-funktion-tool-loop-spike
 voreinstellungen#ki-funktionen
 voreinstellungen#link-target-settings-allowed-origins
 voreinstellungen#llm-models-model-identifier
@@ -392,6 +393,7 @@ voreinstellungen#opaa-upload-orphan-grace-minutes
 voreinstellungen#opaa-upload-s3-endpoint
 voreinstellungen#opaa-upload-store
 voreinstellungen#permission-history-retention-settings-retention-months
+voreinstellungen#prompt-agent-run
 voreinstellungen#prompt-answer-generation
 voreinstellungen#prompt-chat-note-extraction
 voreinstellungen#prompt-chat-title
@@ -400,7 +402,6 @@ voreinstellungen#prompt-mcp-tool-descriptions
 voreinstellungen#prompt-metadata-extraction
 voreinstellungen#prompt-query-decomposition
 voreinstellungen#prompt-text-recognition-vision
-voreinstellungen#prompt-tool-loop-spike
 voreinstellungen#rerank-model-base-url
 voreinstellungen#rerank-model-enabled
 voreinstellungen#rerank-model-model-identifier
