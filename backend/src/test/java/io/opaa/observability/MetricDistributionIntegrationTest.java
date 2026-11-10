@@ -36,6 +36,7 @@ class MetricDistributionIntegrationTest {
       strings = {
         "http.server.requests",
         "opaa.query.duration",
+        "opaa.query.time_to_first_token",
         "opaa.ocr.duration",
         "opaa.outbound.requests",
         "tasks.scheduled.execution"
@@ -55,15 +56,19 @@ class MetricDistributionIntegrationTest {
   /**
    * One sample of {@code timer} with the tag keys production gives it, since Prometheus drops a
    * second tag set under the same name: through the production code for the HTTP, query and OCR
-   * timers, through the global registry for the outbound calls of clients built outside the
-   * context, and for {@code tasks.scheduled.execution} by observing a method by hand with the
-   * observation and convention the scheduler uses, as no scheduled job of the context is due.
-   * {@code gen_ai.client.operation} is covered by {@code SpringAiMetricsIntegrationTest}.
+   * timers and the time to the first token, through the global registry for the outbound calls of
+   * clients built outside the context, and for {@code tasks.scheduled.execution} by observing a
+   * method by hand with the observation and convention the scheduler uses, as no scheduled job of
+   * the context is due. {@code gen_ai.client.operation} is covered by {@code
+   * SpringAiMetricsIntegrationTest}.
    */
   private void record(String timer) throws Exception {
     switch (timer) {
       case "http.server.requests" -> scrape();
-      case "opaa.query.duration" -> queryMetrics.queryTimer().record(Duration.ofMillis(300));
+      case "opaa.query.duration" ->
+          queryMetrics.recordQuery(QueryMetrics.Mode.RAG, true, Duration.ofMillis(300));
+      case "opaa.query.time_to_first_token" ->
+          queryMetrics.recordTimeToFirstToken(QueryMetrics.Mode.RAG, Duration.ofMillis(800));
       case "opaa.ocr.duration" ->
           indexingMetrics.recordTextRecognition(
               "recognized", "distribution-test", 0, Duration.ofSeconds(2));

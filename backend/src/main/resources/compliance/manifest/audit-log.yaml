@@ -64,6 +64,10 @@ defaults:
         im Protokoll, nie mit ihrem Namen, auch nicht in den Angaben des Eintrags: private
         Bibliothek („Private Bibliothek“), Prompt einer privaten Prompt-Bibliothek („Privater
         Prompt“) und persönlicher Bereich („Persönlicher Bereich“)
+      - >-
+        correlation_ref trägt, wo kein eigener Vorgang benannt ist, die Request-ID der Anfrage
+        („request:“ und die ID); sie verbindet den Eintrag mit Anwendungslog und Zugriffslog
+        derselben Anfrage und geht nicht in die Ausleitung an das Sicherheitsmonitoring
 data:
   - id: audit-log
     title: Revisionssicheres Protokoll

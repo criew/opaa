@@ -1,6 +1,6 @@
-import { displayPath } from '../paths'
-import { listSummary } from './common'
-import type { RowSummary } from '../setupTypes'
+import { displayPath } from '../../sourceCore/paths'
+import { listSummary } from '../../sourceCore/common'
+import type { RowSummary } from '../../sourceCore/setupTypes'
 
 /** „Alle Ordner“ or the chosen paths. */
 export function folderSummary(text: string): RowSummary {

@@ -3,8 +3,8 @@ import type { GenericSourceValues } from '../../../utils/librarySourceConfig'
 import Stack from '@mui/material/Stack'
 import SecretField from '../SecretField'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { credentialsKept } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { credentialsKept } from '../../sourceCore/common'
 
 export function PathConnectionFields({
   values,

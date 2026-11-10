@@ -7,7 +7,7 @@ import {
 } from '../../utils/smbSource'
 import { smbSetup } from '../setup/connectors/smbSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const smbSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SMB,

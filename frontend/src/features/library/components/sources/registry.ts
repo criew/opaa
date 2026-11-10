@@ -9,7 +9,7 @@ import { oneDriveSource } from './oneDriveSource'
 import { s3Source } from './s3Source'
 import { sharePointSource } from './sharePointSource'
 import { smbSource } from './smbSource'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 const uploadSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.UPLOAD,

@@ -12,8 +12,8 @@ import {
 } from '../../../utils/googleDriveSource'
 import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { ALL_SCOPE_HINT } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { ALL_SCOPE_HINT } from '../../sourceCore/common'
 import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
 
 export function GoogleDriveConnectionFields({

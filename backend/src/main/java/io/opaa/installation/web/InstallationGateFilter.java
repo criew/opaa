@@ -2,6 +2,7 @@ package io.opaa.installation.web;
 
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.common.InstallationStatus;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -101,7 +102,7 @@ public class InstallationGateFilter extends OncePerRequestFilter {
 
   private void write(HttpServletResponse response, HttpStatus status, String message, String code)
       throws IOException {
-    ErrorResponse body = new ErrorResponse(message, status.value(), clock.instant());
+    ErrorResponse body = RequestIds.errorResponse(message, status.value(), clock.instant());
     body.setCode(code);
     response.setStatus(status.value());
     // runs before the security chain, so its default headers never reach this answer

@@ -49,9 +49,11 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     proxy: {
+      // ws: the live dictation's WebSocket (/api/v1/transcriptions/stream) goes the same way.
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        ws: true,
       },
       // The MCP endpoint of the external-access channel, reachable through the dev server on the
       // same origin as in the container (frontend/nginx.conf). A prefix, like '/api' above: it

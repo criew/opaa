@@ -838,6 +838,15 @@ Chart selbst auf den Backend-Service.
 | `httpRoute.parentRefs` | leer | — | das Gateway, an das die Route gebunden wird; Pflicht bei `enabled` |
 | `httpRoute.hostnames`, `.annotations`, `.timeouts` | leer | — | Hostnamen, Annotationen, Timeouts der Route, etwa `request: 600s`; nicht kürzer als `frontend.backendReadTimeout` |
 
+### Tracing
+
+| Wert | Vorgabe | Setzt | Wirkung |
+|---|---|---|---|
+| `tracing.enabled` | `false` | `OPAA_TRACING_ENABLED` | sendet Spans an einen Collector ([Korrelation und Tracing](ueberwachung-und-fehlerbehebung.md#korrelation-und-tracing)) |
+| `tracing.otlpEndpoint` | leer, Pflicht bei `enabled` | `OPAA_TRACING_OTLP_ENDPOINT` | Adresse des Collectors mit Pfad |
+| `tracing.samplingProbability` | leer, die Vorgabe der Anwendung | `OPAA_TRACING_SAMPLING_PROBABILITY` | Anteil der erfassten Anfragen |
+| `tracing.egress` | leer | — | Ausgangsregeln des Backends zum Collector, solange das Tracing an ist und `networkPolicy.egress.enabled` gilt |
+
 ### Metriken und Alarme
 
 Die Werte unter `metrics` beschreibt der Abschnitt [Betriebsüberwachung](#betriebsüberwachung).

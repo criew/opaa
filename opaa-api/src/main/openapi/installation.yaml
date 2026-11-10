@@ -700,6 +700,52 @@ components:
             Two-letter ISO-639-1 code; an empty string lets the model detect the language, omitted
             means de.
           example: de
+        realtime:
+          $ref: "#/components/schemas/InstallationTranscriptionRealtime"
+
+    InstallationTranscriptionRealtime:
+      type: object
+      nullable: true
+      description: >
+        Live transcription on top of dictation, optional; omitted means dictation by recording
+        only. Without a key of its own it sends the key of the transcription model, but only when
+        the live address has the origin (scheme, host, port) of the transcription model's address.
+        OPENAI and MISTRAL need a key: one of its own, or the transcription model's on the same
+        origin.
+      required: [protocol, url, model]
+      properties:
+        protocol:
+          $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+        url:
+          type: string
+          maxLength: 500
+          description: ws:// or wss://, without userinfo.
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          maxLength: 200
+          example: gpt-live-transcribe
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            The live upstream's own key, stored encrypted; omitted keeps a key saved before for the
+            same live address, empty removes it.
+
+    InstallationTranscriptionRealtimeView:
+      type: object
+      required: [protocol, url, model, apiKeySet]
+      properties:
+        protocol:
+          $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+        url:
+          type: string
+        model:
+          type: string
+        apiKeySet:
+          type: boolean
+          description: Whether the step holds a key of its own for the live upstream.
 
     InstallationTranscriptionModelView:
       type: object
@@ -714,6 +760,8 @@ components:
         language:
           type: string
           description: The language passed to the model; empty lets the model detect it.
+        realtime:
+          $ref: "#/components/schemas/InstallationTranscriptionRealtimeView"
 
     InstallationTextRecognitionModel:
       type: object

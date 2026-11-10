@@ -1,7 +1,6 @@
 package io.opaa.retrieval;
 
 import io.opaa.api.types.RetrievalStageName;
-import io.opaa.retrieval.ranking.RerankStage;
 import java.util.List;
 
 /**
@@ -68,7 +67,7 @@ public record StageExplanation(
   /**
    * A stage that did not do its work but still had to hand something on - with its own note instead
    * of the status's generic one, and with an outgoing count that may differ from the incoming one:
-   * {@link RerankStage} restores the {@code top-k} cap even when it could not rerank, and a
+   * {@code RerankStage} restores the {@code top-k} cap even when it could not rerank, and a
    * protocol claiming it passed everything through would misstate the selection.
    */
   public static StageExplanation notRun(

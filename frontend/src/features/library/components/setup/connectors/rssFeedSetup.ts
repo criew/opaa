@@ -3,9 +3,9 @@ import {
   rssFeedSettingsOf,
   type RssFeedSourceValues,
 } from '../../../utils/rssFeedSource'
-import type { SourceSetupSpec } from '../setupTypes'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
 import { urlSetup } from './genericSetups'
-import { hostOf, joinSummary } from './common'
+import { hostOf, joinSummary } from '../../sourceCore/common'
 import { RssFeedConnectionFields, RssFeedScopeFields } from './RssFeedSetupFields'
 
 const SCOPE_FIELDS = ['mainContentSelector', 'attachmentProfile']

@@ -98,6 +98,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private static final String PASSWORD = PersonProbeSourceConnector.ACCEPTED_PASSWORD;
   private static final UUID UNKNOWN = UUID.fromString("7f1d3c58-0d8b-4c39-9a52-5d2a4a8f2e11");
   private static final Pattern PREVIEW_ID = Pattern.compile("\"previewId\"\\s*:\\s*\"[^\"]*\"");
+  private static final Pattern REQUEST_ID = Pattern.compile("\"requestId\"\\s*:\\s*\"[^\"]*\"");
   private static final tools.jackson.databind.ObjectMapper JSON =
       new tools.jackson.databind.ObjectMapper();
   private static final String PERSON_CONTEXT_QUESTION = "Wo steht meine Abrechnung?";
@@ -1491,7 +1492,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
                       .replace(chunk.toString(), "<chunk>")
                       .replace(folder.toString(), "<folder>"))
               .replaceAll("<instant>");
-      return PREVIEW_ID.matcher(normalized).replaceAll("\"previewId\":\"<preview>\"");
+      normalized = PREVIEW_ID.matcher(normalized).replaceAll("\"previewId\":\"<preview>\"");
+      return REQUEST_ID.matcher(normalized).replaceAll("\"requestId\":\"<request>\"");
     }
   }
 

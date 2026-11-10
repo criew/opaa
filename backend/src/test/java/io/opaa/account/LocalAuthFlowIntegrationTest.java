@@ -710,14 +710,18 @@ class LocalAuthFlowIntegrationTest {
     return "Bearer " + token;
   }
 
-  /** The body with the timestamp removed, so two answers can be compared for equality. */
+  /**
+   * The body with timestamp and request id removed, so two answers can be compared for equality;
+   * both differ per request whatever the outcome.
+   */
   private static String body(org.springframework.test.web.servlet.ResultActions actions)
       throws Exception {
     return actions
         .andReturn()
         .getResponse()
         .getContentAsString()
-        .replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"");
+        .replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "\"requestId\":\"-\"");
   }
 
   private static String json(Map<String, String> fields) {

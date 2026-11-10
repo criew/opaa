@@ -5,6 +5,7 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
@@ -18,6 +19,7 @@ import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
 import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.RealtimeTranscriptionEndpoint;
 import io.opaa.llm.TextRecognitionEndpoint;
 import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.mail.MailSettingsRules;
@@ -100,8 +102,26 @@ class StepRules {
   /** The rerank model without its key. */
   record RerankModelPayload(String baseUrl, String model) {}
 
-  /** The transcription model; {@code language} is never {@code null}, empty for detection. */
-  record TranscriptionModelPayload(String baseUrl, String model, String language) {}
+  /**
+   * The transcription model; {@code language} is never {@code null}, empty for detection; {@code
+   * realtime} {@code null} for dictation by recording only.
+   */
+  record TranscriptionModelPayload(
+      String baseUrl, String model, String language, RealtimePayload realtime) {}
+
+  /**
+   * The live upstream of the transcription step; {@code apiKeyCiphertext} is its own key, encrypted
+   * as the step's secret, {@code null} for none.
+   */
+  record RealtimePayload(
+      RealtimeTranscriptionProtocol protocol, String url, String model, String apiKeyCiphertext) {
+
+    /** Without the key, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "RealtimePayload[protocol=" + protocol + ", url=" + url + ", model=" + model + "]";
+    }
+  }
 
   /**
    * The text recognition model without its key; {@code connectionType} is never {@code null},
@@ -212,7 +232,17 @@ class StepRules {
       case TRANSCRIPTION_MODEL -> {
         TranscriptionModelPayload model = transcriptionModelPayload(payload);
         yield new InstallationOverview.TranscriptionModel(
-            model.baseUrl(), model.model(), secret != null, model.language());
+            model.baseUrl(),
+            model.model(),
+            secret != null,
+            model.language(),
+            model.realtime() == null
+                ? null
+                : new InstallationOverview.TranscriptionRealtime(
+                    model.realtime().protocol(),
+                    model.realtime().url(),
+                    model.realtime().model(),
+                    model.realtime().apiKeyCiphertext() != null));
       }
       case TEXT_RECOGNITION_MODEL -> {
         TextRecognitionModelPayload model = textRecognitionModelPayload(payload);
@@ -539,6 +569,44 @@ class StepRules {
       errors.add(
           error(TRANSCRIPTION_PREFIX + ".language", INVALID, TranscriptionEndpoint.LANGUAGE_RULE));
     }
+    StepInput.TranscriptionRealtime realtime = realtimeOf(input.realtime());
+    RealtimePayload previousLive =
+        previousPayload == null ? null : transcriptionModelPayload(previousPayload).realtime();
+    RealtimePayload live = null;
+    if (realtime != null) {
+      ModelRoleAdministration.realtimeErrors(
+          TRANSCRIPTION_PREFIX + ".realtime",
+          ModelRoleAdministration.RealtimeChange.installed(
+              realtime.protocol(), realtime.url(), realtime.model(), realtime.apiKey()),
+          errors);
+      if (errors.isEmpty()) {
+        String blocked =
+            blockedModelAddress(
+                modelAddresses, RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()));
+        if (blocked != null) {
+          errors.add(
+              error(
+                  TRANSCRIPTION_PREFIX + ".realtime.url",
+                  "BLOCKED",
+                  blocked.replace("Basis-Adresse", "Live-Adresse")));
+        }
+      }
+      if (errors.isEmpty()) {
+        String liveSecret = liveSecretOf(realtime, previousLive);
+        boolean batchKey =
+            input.apiKey() == null ? previousSecret != null : !input.apiKey().isBlank();
+        if (RealtimeTranscriptionEndpoint.lacksRequiredKey(
+            realtime.protocol(), realtime.url(), liveSecret != null, baseUrl, batchKey)) {
+          errors.add(
+              error(
+                  TRANSCRIPTION_PREFIX + ".realtime.apiKey",
+                  REQUIRED,
+                  RealtimeTranscriptionEndpoint.KEY_RULE));
+        }
+        live =
+            new RealtimePayload(realtime.protocol(), realtime.url(), realtime.model(), liveSecret);
+      }
+    }
     return modelStep(
         InstallationStep.TRANSCRIPTION_MODEL,
         TRANSCRIPTION_PREFIX,
@@ -548,7 +616,36 @@ class StepRules {
         previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
         previousSecret,
         new TranscriptionModelPayload(
-            baseUrl, model, language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language));
+            baseUrl,
+            model,
+            language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language,
+            live));
+  }
+
+  /**
+   * The live key to store, as {@link #secretOf} for the live address: a new one encrypted, an empty
+   * one removed, none kept from {@code previous} only for an unchanged live address.
+   */
+  private String liveSecretOf(StepInput.TranscriptionRealtime realtime, RealtimePayload previous) {
+    String previousSecret = previous == null ? null : previous.apiKeyCiphertext();
+    return secretOf(
+        InstallationStep.TRANSCRIPTION_MODEL,
+        TRANSCRIPTION_PREFIX + ".realtime",
+        realtime.apiKey(),
+        previousSecret == null
+            ? null
+            : RealtimeTranscriptionEndpoint.httpEquivalent(previous.url()),
+        RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()),
+        previousSecret);
+  }
+
+  /** The live part of a step with stripped texts; {@code null} stays {@code null}. */
+  private static StepInput.TranscriptionRealtime realtimeOf(StepInput.TranscriptionRealtime input) {
+    if (input == null) {
+      return null;
+    }
+    return new StepInput.TranscriptionRealtime(
+        input.protocol(), trimmed(input.url()), trimmed(input.model()), input.apiKey());
   }
 
   /**
@@ -793,8 +890,11 @@ class StepRules {
         throw FieldValidationException.of(
             prefix + ".apiKey",
             REQUIRED,
-            "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben oder"
-                + " das Feld leeren, um ihn zu entfernen.");
+            prefix.endsWith(".realtime")
+                ? "Die Live-Adresse hat sich geändert: Bitte den Live-Schlüssel erneut eingeben oder"
+                    + " das Feld leeren, um ihn zu entfernen."
+                : "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben"
+                    + " oder das Feld leeren, um ihn zu entfernen.");
       }
       return previousSecret;
     }

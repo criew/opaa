@@ -7,8 +7,8 @@ import {
   isDropboxTeamApp,
   type DropboxSourceValues,
 } from '../../../utils/dropboxSource'
-import type { SourceSetupSpec } from '../setupTypes'
-import { folderIssues, issueList, joinSummary, listSummary } from './common'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { folderIssues, issueList, joinSummary, listSummary } from '../../sourceCore/common'
 import { DropboxConnectionFields, DropboxScopeFields } from './DropboxSetupFields'
 import { folderSummary } from './folderNodes'
 

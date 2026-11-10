@@ -115,9 +115,9 @@ Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Pe
 
 ### I · Kanäle & Oberflächen
 
-**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[ADR-0072](./decisions/0072-live-transkript-ueber-websocket.md)** · **[Roadmap](./ROADMAP.md)**
 
-Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
+Spracheingabe mit Live-Transkript · Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
 
 

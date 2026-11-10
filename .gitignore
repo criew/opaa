@@ -76,6 +76,7 @@ uploads/
 # Answer file and its secret files of a Compose installation; only the example is tracked
 /installation/*
 !/installation/installation.example.json
+!/installation/installation.live-transcription.example.json
 
 # Claude
 /.claude/settings.local.json

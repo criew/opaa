@@ -1,10 +1,10 @@
 import type { LibraryResponse } from '@/shared/api/types'
-import { displayPath } from './setup/paths'
+import { displayPath } from './paths'
 import {
   googleDriveScopeKey,
   googleDriveScopesOf,
   type GoogleDriveSettings,
-} from '../utils/googleDriveSource'
+} from '../../utils/googleDriveSource'
 
 type Settings = Record<string, unknown>
 

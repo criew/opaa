@@ -7,9 +7,9 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
-import PathLabel from './PathLabel'
+import PathLabel from '../sourceCore/PathLabel'
 import { ROW_GRID } from './rowStyles'
-import type { RowStatus, RowSummary } from './setupTypes'
+import type { RowStatus, RowSummary } from '../sourceCore/setupTypes'
 
 /** Entries a list summary names before „und n weitere“. */
 const SHOWN = 5

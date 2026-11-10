@@ -6,7 +6,7 @@ import {
 } from '../../utils/confluenceSource'
 import { confluenceSetup } from '../setup/connectors/confluenceSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const confluenceSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.CONFLUENCE,

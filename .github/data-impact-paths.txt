@@ -54,6 +54,8 @@ backend/src/main/java/io/opaa/mcp/**/*.java
 backend/src/main/java/io/opaa/outbound/**/*.java
 backend/src/main/java/io/opaa/observability/MeteredHttpClient.java
 backend/src/main/java/io/opaa/llm/**/*.java
+backend/src/main/java/io/opaa/observability/TracingConfiguration.java
+backend/src/main/java/io/opaa/observability/AllowlistedSpanExporter.java
 backend/src/main/java/io/opaa/sourceaccess/**/*.java
 backend/src/main/java/io/opaa/connection/oauth/**/*.java
 backend/src/main/java/io/opaa/connection/profile/McpServerDiscovery.java
@@ -133,4 +135,5 @@ backend/src/main/java/**/*Erasure*.java
 backend/src/main/java/io/opaa/externalaccess/ExternalAccessMassRetrievalAlarm.java
 backend/src/main/java/io/opaa/api/RequestLoggingFilter.java
 backend/src/main/java/io/opaa/observability/UnobservedRoutes.java
+backend/src/main/java/io/opaa/observability/RequestId*.java
 backend/src/main/java/io/opaa/auth/QuickTourHint.java

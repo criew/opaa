@@ -18,8 +18,8 @@ import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { fontFamily } from '@/shared/theme/tokens'
 import { incompleteNote } from './incompleteNote'
-import { plainMessage } from './plainMessage'
-import PathLabel from '../setup/PathLabel'
+import { plainMessage } from '../sourceCore/plainMessage'
+import PathLabel from '../sourceCore/PathLabel'
 import { TextAction } from '@/shared/ui/DetailSection'
 import {
   adoptTrail,

@@ -8,9 +8,9 @@ import {
   smbShareOf,
   type SmbSourceValues,
 } from '../../../utils/smbSource'
-import { connectionFields } from '../../sources/sourceConnection'
-import type { SourceSetupSpec } from '../setupTypes'
-import { credentialsKept, folderIssues, issueList, pairIssues } from './common'
+import { connectionFields } from '../../sourceCore/sourceConnection'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { credentialsKept, folderIssues, issueList, pairIssues } from '../../sourceCore/common'
 import { folderSummary } from './folderNodes'
 import { SmbConnectionFields, SmbScopeFields } from './SmbSetupFields'
 

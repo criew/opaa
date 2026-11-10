@@ -5,6 +5,7 @@ import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -74,7 +75,7 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
 
   private void refuse(HttpServletResponse response, Jwt jwt) throws IOException {
     ErrorResponse body =
-        new ErrorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
+        RequestIds.errorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
     body.setCode(CODE);
     reasonOf(jwt).ifPresent(reason -> body.setReason(reason.name()));
     response.setStatus(HttpStatus.FORBIDDEN.value());

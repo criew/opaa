@@ -7,7 +7,7 @@ import {
 } from '../../utils/dropboxSource'
 import { dropboxSetup } from '../setup/connectors/dropboxSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const dropboxSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.DROPBOX,

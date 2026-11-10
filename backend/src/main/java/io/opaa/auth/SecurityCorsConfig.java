@@ -2,9 +2,8 @@ package io.opaa.auth;
 
 import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
-import java.util.Arrays;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -15,14 +14,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @InstallationWide
 @NoDataImpact("browser origins of the API")
 @Configuration
+@EnableConfigurationProperties(CorsProperties.class)
 public class SecurityCorsConfig {
 
   @Bean
-  CorsConfigurationSource corsConfigurationSource(
-      @Value("${opaa.cors.allowed-origins}") String origins) {
+  CorsConfigurationSource corsConfigurationSource(CorsProperties cors) {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(
-        Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+    config.setAllowedOrigins(cors.allowedOrigins());
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
     // ADR-0025: the SPA tells a token of an unknown (disabled) issuer apart from an expired one by

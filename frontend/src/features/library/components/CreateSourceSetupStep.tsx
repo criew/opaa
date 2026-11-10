@@ -11,8 +11,8 @@ import ConnectionProfileSelect from './ConnectionProfileSelect'
 import { onlyPersons } from './connectionChoice'
 import SourceConsentPanel from './SourceConsentPanel'
 import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
-import type { SetupRowId, SourceSetupSpec } from './setup/setupTypes'
-import type { SourceFormContext } from './sources/types'
+import type { SetupRowId, SourceSetupSpec } from './sourceCore/setupTypes'
+import type { SourceFormContext } from './sourceCore/types'
 
 interface CreateSourceSetupStepProps {
   showConnectionSelect: boolean

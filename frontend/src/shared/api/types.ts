@@ -415,6 +415,13 @@ export type TranscriptionModelSettingsResponse =
   components['schemas']['TranscriptionModelSettingsResponse']
 export type TranscriptionModelSettingsRequest =
   components['schemas']['TranscriptionModelSettingsRequest']
+export type RealtimeTranscriptionProtocol = components['schemas']['RealtimeTranscriptionProtocol']
+export type TranscriptionRealtimeSettingsResponse =
+  components['schemas']['TranscriptionRealtimeSettingsResponse']
+export type TranscriptionRealtimeSettingsRequest =
+  components['schemas']['TranscriptionRealtimeSettingsRequest']
+export type TranscriptionRealtimeTestRequest =
+  components['schemas']['TranscriptionRealtimeTestRequest']
 export type TextRecognitionConnectionType = components['schemas']['TextRecognitionConnectionType']
 export type TextRecognitionModelSettingsResponse =
   components['schemas']['TextRecognitionModelSettingsResponse']

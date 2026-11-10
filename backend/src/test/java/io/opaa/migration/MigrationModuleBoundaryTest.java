@@ -156,6 +156,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "rerank_model",
                   "text_recognition_model",
                   "transcription_model",
+                  "transcription_realtime_slots",
                   "transcription_vocabularies",
                   "private_storage_quota_settings",
                   "shared_library_quota_settings",

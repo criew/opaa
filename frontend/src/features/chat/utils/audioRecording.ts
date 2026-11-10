@@ -11,6 +11,8 @@ export interface Recording {
   stop(): Promise<Blob>
   /** Ends the recording and the microphone and drops what was recorded. */
   cancel(): void
+  /** The microphone stream, for a live transcription beside the recording; ends with it. */
+  stream?: MediaStream
 }
 
 export interface RecordingOptions {
@@ -97,6 +99,7 @@ export async function startRecording(options: RecordingOptions = {}): Promise<Re
   }
 
   return {
+    stream,
     stop: () =>
       new Promise<Blob>((resolve, reject) => {
         if (finished) {

@@ -11,6 +11,7 @@ import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.RealtimeTranscriptionRole;
 import io.opaa.llm.TranscriptionAudioFormat;
 import io.opaa.llm.TranscriptionClient.TranscriptionUnavailableException;
 import io.opaa.llm.TranscriptionModelRole;
@@ -53,17 +54,22 @@ public class TranscriptionController {
           + " Frage.";
 
   private final TranscriptionModelRole role;
+  private final RealtimeTranscriptionRole realtime;
   private final PersonalTranscriptionVocabularyService vocabularies;
 
   public TranscriptionController(
-      TranscriptionModelRole role, PersonalTranscriptionVocabularyService vocabularies) {
+      TranscriptionModelRole role,
+      RealtimeTranscriptionRole realtime,
+      PersonalTranscriptionVocabularyService vocabularies) {
     this.role = role;
+    this.realtime = realtime;
     this.vocabularies = vocabularies;
   }
 
   @GetMapping("/availability")
   public TranscriptionAvailabilityResponse getTranscriptionAvailability() {
-    return new TranscriptionAvailabilityResponse(role.usable(), false);
+    boolean usable = role.usable();
+    return new TranscriptionAvailabilityResponse(usable, usable && realtime.available());
   }
 
   @PostMapping(consumes = "audio/*")

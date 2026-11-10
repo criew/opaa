@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../../../test/test-utils'
 import { server } from '../../../../../test/server'
 import { EMPTY_DROPBOX_VALUES, type DropboxSourceValues } from '../../../utils/dropboxSource'
-import { connectionFields, type SourceConnection } from '../../sources/sourceConnection'
-import type { SourceFormContext } from '../../sources/types'
+import { connectionFields, type SourceConnection } from '../../sourceCore/sourceConnection'
+import type { SourceFormContext } from '../../sourceCore/types'
 import { DropboxConnectionFields, DropboxScopeFields } from './DropboxSetupFields'
 
 const MEMBER_APP: SourceConnection = {

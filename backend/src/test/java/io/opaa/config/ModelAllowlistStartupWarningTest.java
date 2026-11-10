@@ -13,6 +13,7 @@ import io.opaa.llm.LlmModelRepository;
 import io.opaa.llm.ModelTargetValidationProperties;
 import io.opaa.llm.RerankModelSettings;
 import io.opaa.llm.RerankModelSettingsRepository;
+import io.opaa.llm.TranscriptionModelSettings;
 import io.opaa.llm.TranscriptionModelSettingsRepository;
 import java.util.List;
 import java.util.Optional;
@@ -109,6 +110,23 @@ class ModelAllowlistStartupWarningTest {
     assertThat(warnings.get(0)).contains("'intranet:99999999999'").contains("admits nothing");
     assertThat(warnings.get(1)).contains("chat model 'Ollama FAKE log line'").doesNotContain("\n");
     assertThat(warnings.get(2)).contains("rerank model").contains("add reranker:8080");
+  }
+
+  @Test
+  void theLiveAddressOfSpeechInputIsComparedAsItsHttpEquivalent() {
+    when(chatModels.findAllByOrderByDisplayNameAsc()).thenReturn(List.of());
+    when(embeddingModel.findInstalled()).thenReturn(Optional.empty());
+    when(rerankModel.findStored()).thenReturn(Optional.empty());
+    TranscriptionModelSettings transcription = mock(TranscriptionModelSettings.class);
+    when(transcription.getBaseUrl()).thenReturn("http://speaches:8000/v1");
+    when(transcription.getRealtimeUrl()).thenReturn("ws://vllm:8000/v1/realtime");
+    when(transcriptionModel.findStored()).thenReturn(Optional.of(transcription));
+
+    List<String> warnings =
+        startupWarning(sources(true, "speaches:8000", "vllm:8000")).currentWarnings();
+
+    assertThat(warnings).hasSize(2);
+    assertThat(warnings.get(1)).contains("live transcription").contains("add vllm:8000");
   }
 
   @Test

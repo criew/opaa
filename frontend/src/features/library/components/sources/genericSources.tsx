@@ -19,7 +19,7 @@ import {
   type RssFeedSourceValues,
 } from '../../utils/rssFeedSource'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceConfiguration, SourceRegistration } from './types'
+import type { SourceConfiguration, SourceRegistration } from '../sourceCore/types'
 
 const FIRST_RUN_HINT =
   'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
