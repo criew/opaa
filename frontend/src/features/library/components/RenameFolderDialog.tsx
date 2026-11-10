@@ -6,9 +6,8 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import TextField from '@mui/material/TextField'
 import type { LibraryFolderListItem } from '@/shared/api/types'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 
 interface RenameFolderDialogProps {
   open: boolean
@@ -52,8 +51,8 @@ export default function RenameFolderDialog({
           </Alert>
         )}
         <Box sx={{ pt: 0.5 }}>
-          <FieldLabel htmlFor="rename-folder-name">Ordnername</FieldLabel>
-          <TextField
+          <FormField
+            label="Ordnername"
             id="rename-folder-name"
             fullWidth
             size="small"

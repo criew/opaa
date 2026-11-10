@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 
 interface PasswordFieldProps {
   id: string
@@ -57,7 +57,7 @@ export default function PasswordField({
 
   return (
     <Box>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <FormFieldLabel htmlFor={id}>{label}</FormFieldLabel>
       <TextField
         id={id}
         inputRef={inputRef}

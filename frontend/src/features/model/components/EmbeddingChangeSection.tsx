@@ -12,7 +12,7 @@ import Link from '@mui/material/Link'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   EmbeddingInfoResponse,
@@ -36,7 +36,7 @@ import {
   formatTokens,
   sameEndpoint,
 } from './embeddingChange'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 
 type KeyChoice = 'keep' | 'new' | 'none'
@@ -80,7 +80,7 @@ interface EmbeddingChangeSectionProps {
 export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingChangeSectionProps) {
   if (!info.model) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
+      <Box sx={{ maxWidth: formWidth.column }}>
         <EmbeddingDraftForm info={info} mode="initial" onDone={onChanged} />
       </Box>
     )
@@ -90,7 +90,7 @@ export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingCha
     return <ChangeUnderWay info={info} index={index} onChanged={onChanged} />
   }
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       {index?.lastRun?.kind === 'REFILL' && index.running && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Nach dem Verwerfen werden {formatCount(index.withoutCurrentVector ?? 0)} Abschnitte mit
@@ -147,7 +147,7 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
   }
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       <Alert severity="warning" sx={{ mb: 2 }}>
         Die Vektorsuche ist ausgesetzt, bis die Neueinbettung abgeschlossen ist. Suche und Chat
         finden bis dahin nur über die Volltextsuche.
@@ -395,7 +395,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
       <Stack spacing={2}>
-        <TextField
+        <FormField
           id={`${prefix}-base-url`}
           label="Basis-Adresse"
           required
@@ -409,7 +409,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           size="small"
           fullWidth
         />
-        <TextField
+        <FormField
           id={`${prefix}-model`}
           label="Modell-Kennung"
           required
@@ -455,7 +455,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           )}
         </FormControl>
         {effectiveChoice === 'new' && (
-          <TextField
+          <FormField
             id={`${prefix}-api-key`}
             label="Neuer Zugangsschlüssel"
             type="password"
@@ -471,7 +471,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             autoComplete="new-password"
           />
         )}
-        <TextField
+        <FormField
           id={`${prefix}-max-input-tokens`}
           label="Eingabegrenze in Tokens"
           value={maxInputTokens}
@@ -485,7 +485,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             'Leer für 2048, die Grenze eines unverändert gezogenen Ollama-Modells.'
           }
           size="small"
-          sx={{ maxWidth: 260 }}
+          numeric
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
         />
         {error && <Alert severity="error">{error}</Alert>}

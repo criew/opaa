@@ -7,7 +7,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
@@ -202,7 +202,7 @@ function TokenDialog({
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
             <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
-            <TextField
+            <FormField
               label="Name"
               placeholder="Produktion"
               value={name}
@@ -213,7 +213,7 @@ function TokenDialog({
               size="small"
               fullWidth
             />
-            <TextField
+            <FormField
               label="Läuft ab"
               type="date"
               value={expiry}
@@ -224,7 +224,6 @@ function TokenDialog({
               size="small"
               sx={{ maxWidth: 240 }}
               slotProps={{
-                inputLabel: { shrink: true },
                 htmlInput: {
                   min: toDateInputValue(earliestExpiryDate()),
                   max: toDateInputValue(maxExpiryDate(maxDays)),

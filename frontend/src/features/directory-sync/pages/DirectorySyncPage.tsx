@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
@@ -184,10 +184,12 @@ export default function DirectorySyncPage() {
                     </ToggleButton>
                     <ToggleButton value="ON">Eingeschaltet ({onCount})</ToggleButton>
                   </ToggleButtonGroup>
-                  <TextField
+                  <FormField
                     size="small"
                     type="search"
                     label="Anbieter suchen"
+                    hideLabel
+                    placeholder="Anbieter suchen …"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     sx={{ width: { sm: 260 } }}

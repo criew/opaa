@@ -6,7 +6,8 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
@@ -14,7 +15,7 @@ import type { DocumentChunksResponse } from '@/shared/api/types'
 import SectionHead from '@/shared/ui/SectionHead'
 import ChunkContent from './ChunkContent'
 import { plural } from '@/shared/utils/format'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 /** Lets the diagnosis result open a document here, the one navigation that reaches into this section. */
 export interface DocumentChunkSectionHandle {
@@ -116,8 +117,8 @@ export default function DocumentChunkSection({
         Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein Klick
         auf einen Dokumenttitel in der Diagnose führt hierher.
       </Typography>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
-        <TextField
+      <FormFieldRow sx={{ maxWidth: formWidth.column }}>
+        <FormField
           label="Dokument-ID"
           value={documentIdInput}
           onChange={(e) => setDocumentIdInput(e.target.value)}
@@ -129,11 +130,11 @@ export default function DocumentChunkSection({
           size="small"
           onClick={() => showDocument(documentIdInput.trim())}
           disabled={loading || documentIdInput.trim() === ''}
-          sx={{ flex: 'none', mt: 0.25 }}
+          sx={{ flex: 'none' }}
         >
           {loading ? 'Lädt …' : 'Chunks laden'}
         </Button>
-      </Stack>
+      </FormFieldRow>
       {documentChunksError && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {documentChunksError}

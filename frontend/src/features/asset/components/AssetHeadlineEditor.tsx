@@ -7,10 +7,9 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { fontSize } from '@/shared/theme/tokens'
 
 export interface AssetHeadlineProps {
@@ -162,8 +161,8 @@ export function EditHeadlineDialog({
             </Alert>
           )}
           <Box sx={{ mb: 1.5 }}>
-            <FieldLabel htmlFor={`${idPrefix}-name`}>{nameLabel}</FieldLabel>
-            <TextField
+            <FormField
+              label={nameLabel}
               id={`${idPrefix}-name`}
               size="small"
               fullWidth
@@ -174,13 +173,13 @@ export function EditHeadlineDialog({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`${idPrefix}-description`}>Beschreibung (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
+              optional
               id={`${idPrefix}-description`}
               size="small"
               fullWidth
               multiline
-              minRows={2}
               value={draft.description}
               onChange={(e) => setDraft({ ...draft, description: e.target.value })}
               slotProps={{ htmlInput: { maxLength: 2000 } }}

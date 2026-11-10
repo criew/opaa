@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -27,7 +26,7 @@ import {
   type SubjectSelection,
 } from '@/features/principal'
 import ChatAutoCleanupField from '../components/ChatAutoCleanupField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -250,8 +249,8 @@ export default function SpaceCreatePage() {
         {activeStep === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <Box>
-              <FieldLabel htmlFor="space-create-name">Name</FieldLabel>
-              <TextField
+              <FormField
+                label="Name"
                 id="space-create-name"
                 size="small"
                 value={name}
@@ -261,14 +260,14 @@ export default function SpaceCreatePage() {
               />
             </Box>
             <Box>
-              <FieldLabel htmlFor="space-create-description">Beschreibung (optional)</FieldLabel>
-              <TextField
+              <FormField
+                label="Beschreibung"
+                optional
                 id="space-create-description"
                 size="small"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 multiline
-                minRows={2}
                 fullWidth
               />
             </Box>

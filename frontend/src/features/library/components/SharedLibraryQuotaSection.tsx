@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { SharedLibraryQuotaResponse } from '@/shared/api/types'
 import { getSharedLibraryQuota, updateSharedLibraryQuota } from '../api/sharedLibraryQuotaApi'
@@ -120,12 +120,8 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'flex-start' } }}
-      >
-        <TextField
+      <FormFieldRow>
+        <FormField
           label="Grenze je Bibliothek (GB)"
           size="small"
           value={draft}
@@ -141,8 +137,9 @@ function QuotaForm({
                 ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
                 : 'Der Betrieb hat keine Obergrenze gesetzt.'
           }
+          numeric
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 260 }}
+          sx={{ maxWidth: 320 }}
         />
         <BusyButton
           type="submit"
@@ -150,21 +147,15 @@ function QuotaForm({
           busy={busy}
           busyAnnouncement="Grenze wird gespeichert"
           disabled={!changed && !busy}
-          sx={{ mt: { sm: 0.25 } }}
         >
           Grenze speichern
         </BusyButton>
         {own !== null && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onClick={() => void handleRemove()}
-            sx={{ mt: { sm: 0.25 } }}
-          >
+          <Button variant="text" disabled={busy} onClick={() => void handleRemove()}>
             Eigene Grenze entfernen
           </Button>
         )}
-      </Stack>
+      </FormFieldRow>
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

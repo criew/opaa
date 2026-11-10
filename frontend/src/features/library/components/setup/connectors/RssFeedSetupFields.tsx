@@ -3,7 +3,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import type { RssAttachmentProfile, RssFeedSourceValues } from '../../../utils/rssFeedSource'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
@@ -44,7 +44,7 @@ export function RssFeedScopeFields({
         mono
       />
       <Box sx={{ maxWidth: 480 }}>
-        <FieldLabel id={`${profileId}-label`}>Anlagenprofil</FieldLabel>
+        <FormFieldLabel id={`${profileId}-label`}>Anlagenprofil</FormFieldLabel>
         <Select
           id={profileId}
           size="small"

@@ -6,7 +6,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ConnectionProfileRef,
@@ -225,7 +225,7 @@ export default function LibraryConnectionDialog({
                 liegt nicht unter dem Zugang „{next.name}“. Tragen Sie die Adresse ein, unter der
                 die Bibliothek künftig liest.
               </Alert>
-              <TextField
+              <FormField
                 label="Neue Adresse"
                 size="small"
                 fullWidth

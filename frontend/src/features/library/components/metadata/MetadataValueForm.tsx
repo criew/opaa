@@ -1,11 +1,8 @@
 import Checkbox from '@mui/material/Checkbox'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   DatePrecision,
@@ -85,7 +82,7 @@ function ValueInput({
     if (!libraryField) return null
     if (libraryField.type === 'PATTERN') {
       return (
-        <TextField
+        <FormField
           label={libraryField.label}
           value={value.textValue ?? ''}
           onChange={(e) => onChange({ ...value, textValue: e.target.value })}
@@ -103,26 +100,26 @@ function ValueInput({
       (entry) => !entry.retiring || entry.code === value.textValue,
     )
     return (
-      <FormControl fullWidth required disabled={disabled}>
-        <InputLabel id="metadata-library-field-label">{libraryField.label}</InputLabel>
-        <Select
-          labelId="metadata-library-field-label"
-          label={libraryField.label}
-          value={value.textValue ?? ''}
-          onChange={(e) => onChange({ ...value, textValue: String(e.target.value) })}
-        >
-          {selectable.map((entry) => (
-            <MenuItem key={entry.code} value={entry.code} disabled={entry.retiring}>
-              {entry.retiring ? `${entry.label} (läuft aus)` : entry.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FormField
+        select
+        label={libraryField.label}
+        fullWidth
+        required
+        disabled={disabled}
+        value={value.textValue ?? ''}
+        onChange={(e) => onChange({ ...value, textValue: String(e.target.value) })}
+      >
+        {selectable.map((entry) => (
+          <MenuItem key={entry.code} value={entry.code} disabled={entry.retiring}>
+            {entry.retiring ? `${entry.label} (läuft aus)` : entry.label}
+          </MenuItem>
+        ))}
+      </FormField>
     )
   }
   if (fieldKey === 'title') {
     return (
-      <TextField
+      <FormField
         label="Titel"
         value={value.textValue ?? ''}
         onChange={(e) => onChange({ ...value, textValue: e.target.value })}
@@ -135,33 +132,32 @@ function ValueInput({
   }
   if (fieldKey === 'document_type') {
     return (
-      <FormControl fullWidth required disabled={disabled}>
-        <InputLabel id="metadata-document-type-label">Dokumentart</InputLabel>
-        <Select
-          labelId="metadata-document-type-label"
-          label="Dokumentart"
-          value={value.vocabularyCode ?? ''}
-          onChange={(e) => onChange({ ...value, vocabularyCode: String(e.target.value) })}
-        >
-          {vocabulary.map((entry) => (
-            <MenuItem key={entry.code} value={entry.code}>
-              {entry.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FormField
+        select
+        label="Dokumentart"
+        fullWidth
+        required
+        disabled={disabled}
+        value={value.vocabularyCode ?? ''}
+        onChange={(e) => onChange({ ...value, vocabularyCode: String(e.target.value) })}
+      >
+        {vocabulary.map((entry) => (
+          <MenuItem key={entry.code} value={entry.code}>
+            {entry.label}
+          </MenuItem>
+        ))}
+      </FormField>
     )
   }
   return (
     <Stack direction="row" spacing={2}>
-      <TextField
+      <FormField
         label="Datum"
         type="date"
         value={value.dateValue ?? ''}
         onChange={(e) => onChange({ ...value, dateValue: e.target.value })}
         required
         disabled={disabled}
-        slotProps={{ inputLabel: { shrink: true } }}
         helperText={
           value.datePrecision === 'MONTH'
             ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
@@ -171,23 +167,22 @@ function ValueInput({
         }
         sx={{ flexGrow: 1 }}
       />
-      <FormControl sx={{ minWidth: 160 }} disabled={disabled}>
-        <InputLabel id="metadata-date-precision-label">Genauigkeit</InputLabel>
-        <Select
-          labelId="metadata-date-precision-label"
-          label="Genauigkeit"
-          value={value.datePrecision ?? 'DAY'}
-          onChange={(e) =>
-            onChange({ ...value, datePrecision: String(e.target.value) as DatePrecision })
-          }
-        >
-          {datePrecisions.map((precision) => (
-            <MenuItem key={precision} value={precision}>
-              {datePrecisionLabel(precision)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FormField
+        select
+        label="Genauigkeit"
+        sx={{ minWidth: 160 }}
+        disabled={disabled}
+        value={value.datePrecision ?? 'DAY'}
+        onChange={(e) =>
+          onChange({ ...value, datePrecision: String(e.target.value) as DatePrecision })
+        }
+      >
+        {datePrecisions.map((precision) => (
+          <MenuItem key={precision} value={precision}>
+            {datePrecisionLabel(precision)}
+          </MenuItem>
+        ))}
+      </FormField>
     </Stack>
   )
 }

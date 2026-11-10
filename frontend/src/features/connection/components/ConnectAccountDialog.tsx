@@ -6,7 +6,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { ConnectedAccount, PersonalSecretForm } from '@/shared/api/types'
 import { ConnectAccountError, connectMyAccount } from '../api/connectedAccountApi'
@@ -113,7 +113,7 @@ export default function ConnectAccountDialog({
               </Alert>
             )}
             {withUsername && (
-              <TextField
+              <FormField
                 label="Benutzername"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
@@ -122,7 +122,7 @@ export default function ConnectAccountDialog({
                 slotProps={{ htmlInput: { maxLength: 255 } }}
               />
             )}
-            <TextField
+            <FormField
               label={secretFieldLabel(target.secretForm)}
               type="password"
               value={secret}

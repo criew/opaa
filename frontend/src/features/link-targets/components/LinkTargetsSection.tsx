@@ -3,7 +3,8 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import { getLinkTargets } from '@/shared/linkTargets/linkTargetsApi'
 import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
@@ -11,7 +12,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { updateLinkTargets } from '../api/linkTargetsApi'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 /**
  * The allowed link targets of answers: links to the application's own address and to these origins
@@ -97,7 +98,7 @@ export default function LinkTargetsSection() {
           Erlaubte Linkziele werden geladen …
         </Typography>
       ) : (
-        <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
           {origins.length === 0 ? (
             <Typography variant="body2" data-testid="link-targets-empty">
               Es ist kein Linkziel eingetragen; klickbar sind nur Links zur eigenen Adresse.
@@ -134,30 +135,26 @@ export default function LinkTargetsSection() {
               ))}
             </Box>
           )}
-          <Box
-            component="form"
-            onSubmit={(event) => void handleAdd(event)}
-            noValidate
-            sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}
-          >
-            <TextField
-              label="Neues Linkziel"
-              size="small"
-              value={draft}
-              placeholder="https://intranet.stadt.example"
-              onChange={(event) => setDraft(event.target.value)}
-              helperText="Schema, Host und optional Port, ohne Pfad. Einen Host mit Umlauten in der Form xn--… eintragen."
-              sx={{ flexGrow: 1 }}
-            />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Erlaubte Linkziele werden gespeichert"
-              disabled={draft.trim() === '' && !busy}
-            >
-              Hinzufügen
-            </BusyButton>
+          <Box component="form" onSubmit={(event) => void handleAdd(event)} noValidate>
+            <FormFieldRow>
+              <FormField
+                label="Neues Linkziel"
+                size="small"
+                value={draft}
+                placeholder="https://intranet.stadt.example"
+                onChange={(event) => setDraft(event.target.value)}
+                helperText="Schema, Host und optional Port, ohne Pfad. Einen Host mit Umlauten in der Form xn--… eintragen."
+              />
+              <BusyButton
+                type="submit"
+                variant="outlined"
+                busy={busy}
+                busyAnnouncement="Erlaubte Linkziele werden gespeichert"
+                disabled={draft.trim() === '' && !busy}
+              >
+                Hinzufügen
+              </BusyButton>
+            </FormFieldRow>
           </Box>
           {saveError && (
             <Alert severity="error" role="alert">

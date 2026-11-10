@@ -6,8 +6,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 
 interface NewFolderDialogProps {
   open: boolean
@@ -47,8 +46,8 @@ export default function NewFolderDialog({ open, onClose, onCreate }: NewFolderDi
           </Alert>
         )}
         <Box sx={{ pt: 0.5 }}>
-          <FieldLabel htmlFor="new-folder-name">Ordnername</FieldLabel>
-          <TextField
+          <FormField
+            label="Ordnername"
             id="new-folder-name"
             fullWidth
             size="small"

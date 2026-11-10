@@ -3,9 +3,9 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureSettings, SelfDisclosureSettingsUpdate } from '@/shared/api/types'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
@@ -140,12 +140,8 @@ export default function SelfDisclosureSettingsSection() {
               ? 'Eingeschaltet: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
               : 'Abgeschaltet: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
           </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ alignItems: { sm: 'flex-start' } }}
-          >
-            <TextField
+          <FormFieldRow>
+            <FormField
               label="Tagesgrenze (vollständige Downloads je Person und Tag)"
               type="number"
               size="small"
@@ -163,7 +159,7 @@ export default function SelfDisclosureSettingsSection() {
               slotProps={{
                 htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
               }}
-              sx={{ maxWidth: 420, flexGrow: 1 }}
+              sx={{ maxWidth: 420 }}
             />
             <BusyButton
               type="submit"
@@ -171,11 +167,10 @@ export default function SelfDisclosureSettingsSection() {
               busy={busy}
               busyAnnouncement="Einstellungen werden gespeichert"
               disabled={!changed && !busy}
-              sx={{ mt: { sm: 0.25 } }}
             >
               Speichern
             </BusyButton>
-          </Stack>
+          </FormFieldRow>
           {saveError && (
             <Alert severity="error" role="alert" sx={{ mt: 2 }}>
               {saveError}

@@ -14,7 +14,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   LibraryServiceAccountConsentResponse,
@@ -222,7 +222,7 @@ function UntilField({
   inputRef?: Ref<HTMLInputElement>
 }) {
   return (
-    <TextField
+    <FormField
       label="Zugriff bis"
       type="date"
       value={value}
@@ -233,7 +233,6 @@ function UntilField({
       size="small"
       sx={{ width: 220, maxWidth: '100%' }}
       slotProps={{
-        inputLabel: { shrink: true },
         htmlInput: { min: tomorrow(), max: latestDate(maxDays) },
       }}
     />

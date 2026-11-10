@@ -8,7 +8,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import Popover from '@mui/material/Popover'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import type {
@@ -324,16 +324,15 @@ export default function MetadataFilterPopover({
                       ` · Werte von ${options.documentDateMin} bis ${options.documentDateMax}`}
                   </Typography>
                   <Stack direction="row" spacing={1}>
-                    <TextField
+                    <FormField
                       label="Von"
                       type="date"
                       size="small"
                       value={draftFrom}
                       onChange={(e) => setDraftFrom(e.target.value)}
-                      slotProps={{ inputLabel: { shrink: true } }}
                       fullWidth
                     />
-                    <TextField
+                    <FormField
                       label="Bis"
                       type="date"
                       size="small"
@@ -341,7 +340,6 @@ export default function MetadataFilterPopover({
                       onChange={(e) => setDraftTo(e.target.value)}
                       error={dateInvalid}
                       helperText={dateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
-                      slotProps={{ inputLabel: { shrink: true } }}
                       fullWidth
                     />
                   </Stack>
@@ -402,7 +400,7 @@ export default function MetadataFilterPopover({
                   </FormGroup>
                   {/* The value set is open - whoever looks for an address outside the offered
                       ones types it exactly; a value the field's pattern rejects is a 400. */}
-                  <TextField
+                  <FormField
                     label={`${field.label} genau`}
                     size="small"
                     fullWidth
@@ -468,7 +466,7 @@ export default function MetadataFilterPopover({
                       </FormGroup>
                     )}
                     {field.type === 'PATTERN' && (
-                      <TextField
+                      <FormField
                         label="Kennung"
                         size="small"
                         fullWidth
@@ -488,12 +486,11 @@ export default function MetadataFilterPopover({
                     )}
                     {field.type === 'DATE' && (
                       <Stack direction="row" spacing={1}>
-                        <TextField
+                        <FormField
                           label="Von"
                           type="date"
                           size="small"
                           fullWidth
-                          slotProps={{ inputLabel: { shrink: true } }}
                           value={draftLibraryFields[libraryFieldKey(field)]?.dateFrom ?? ''}
                           onChange={(e) =>
                             setDraftLibraryFields((current) => ({
@@ -507,12 +504,11 @@ export default function MetadataFilterPopover({
                             }))
                           }
                         />
-                        <TextField
+                        <FormField
                           label="Bis"
                           type="date"
                           size="small"
                           fullWidth
-                          slotProps={{ inputLabel: { shrink: true } }}
                           value={draftLibraryFields[libraryFieldKey(field)]?.dateTo ?? ''}
                           onChange={(e) =>
                             setDraftLibraryFields((current) => ({

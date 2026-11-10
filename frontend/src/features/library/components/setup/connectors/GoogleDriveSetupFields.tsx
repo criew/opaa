@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { readGoogleDriveKey } from '@/features/connection'
 import {
   GOOGLE_DRIVE_API,
@@ -54,7 +54,7 @@ export function GoogleDriveConnectionFields({
     <Stack spacing={2}>
       {fields.asksSecret && (
         <Box>
-          <FieldLabel htmlFor={fieldId('keyFile')}>Schlüsseldatei</FieldLabel>
+          <FormFieldLabel htmlFor={fieldId('keyFile')}>Schlüsseldatei</FormFieldLabel>
           <Box
             sx={{
               display: 'flex',

@@ -5,10 +5,8 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
+import FormField from '@/shared/ui/form/FormField'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -134,29 +132,27 @@ export default function BulkMetadataDialog({
           {error && <Alert severity="error">{error}</Alert>}
           {step === 'form' && (
             <>
-              <FormControl fullWidth>
-                <InputLabel id="bulk-metadata-field-label">Feld</InputLabel>
-                <Select
-                  labelId="bulk-metadata-field-label"
-                  label="Feld"
-                  value={fieldKey}
-                  onChange={(e) => {
-                    setFieldKey(String(e.target.value))
-                    setValue({})
-                  }}
-                >
-                  {CORE_METADATA_FIELDS.map((field) => (
-                    <MenuItem key={field.key} value={field.key}>
-                      {field.label}
-                    </MenuItem>
-                  ))}
-                  {libraryFields.map((field) => (
-                    <MenuItem key={field.documentFieldKey} value={field.documentFieldKey}>
-                      {field.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <FormField
+                select
+                label="Feld"
+                fullWidth
+                value={fieldKey}
+                onChange={(e) => {
+                  setFieldKey(String(e.target.value))
+                  setValue({})
+                }}
+              >
+                {CORE_METADATA_FIELDS.map((field) => (
+                  <MenuItem key={field.key} value={field.key}>
+                    {field.label}
+                  </MenuItem>
+                ))}
+                {libraryFields.map((field) => (
+                  <MenuItem key={field.documentFieldKey} value={field.documentFieldKey}>
+                    {field.label}
+                  </MenuItem>
+                ))}
+              </FormField>
               <MetadataValueForm
                 fieldKey={fieldKey}
                 value={value}

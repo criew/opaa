@@ -5,7 +5,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { addLibraryMetadataFieldValue } from '../../api/libraryMetadataApi'
 
@@ -44,13 +44,13 @@ export default function AddValueButton({
         <DialogTitle>Wert ergänzen</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
+            <FormField
               size="small"
               label="Code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
             />
-            <TextField
+            <FormField
               size="small"
               label="Bezeichnung"
               value={label}

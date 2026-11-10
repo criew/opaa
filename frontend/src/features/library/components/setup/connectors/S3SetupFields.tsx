@@ -7,7 +7,7 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import {
   S3_PROVIDERS,
   S3_PROVIDER_LABELS,
@@ -40,7 +40,7 @@ export function S3ConnectionFields({
   return (
     <Stack spacing={2}>
       <Box sx={{ maxWidth: 320 }}>
-        <FieldLabel id={`${fieldId('provider')}-label`}>Anbieter</FieldLabel>
+        <FormFieldLabel id={`${fieldId('provider')}-label`}>Anbieter</FormFieldLabel>
         <Select
           id={fieldId('provider')}
           size="small"

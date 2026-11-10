@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { hostOf } from './sourceCore/common'
 import type { SourceTypeDescriptor } from '@/shared/api/types'
 import {
@@ -115,7 +115,7 @@ export default function ConnectionProfileSelect({
   return (
     <Box data-testid={`${idPrefix}-connection`}>
       {state.loaded && !state.error && (showList || soleLine) && (
-        <FieldLabel id={headingId}>Zugang</FieldLabel>
+        <FormFieldLabel id={headingId}>Zugang</FormFieldLabel>
       )}
       {state.loaded && !state.error && soleLine && (
         <Box data-testid={`${idPrefix}-connection-sole`}>{rowText(rows[0])}</Box>

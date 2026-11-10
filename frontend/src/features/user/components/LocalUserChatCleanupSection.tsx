@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ChatCleanupHoldPurpose,
@@ -219,24 +219,13 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                 disziplinarischer, arbeitsrechtlicher oder leistungsbezogener Zweck ist nicht
                 zulässig.
               </Typography>
-              <Typography
-                id="chat-cleanup-hold-purpose-label"
-                component="span"
-                sx={{ display: 'block', fontSize: fontSize.meta, fontWeight: 500, mb: 0.5 }}
-              >
-                Zweck
-              </Typography>
-              <TextField
+              <FormField
                 id="chat-cleanup-hold-purpose"
+                label="Zweck"
                 select
                 fullWidth
                 size="small"
                 required
-                slotProps={{
-                  select: {
-                    SelectDisplayProps: { 'aria-labelledby': 'chat-cleanup-hold-purpose-label' },
-                  },
-                }}
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value as ChatCleanupHoldPurpose)}
                 disabled={busy}
@@ -246,12 +235,11 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                     {CHAT_CLEANUP_HOLD_PURPOSE_LABEL[entry]}
                   </MenuItem>
                 ))}
-              </TextField>
-              <TextField
+              </FormField>
+              <FormField
                 id="chat-cleanup-hold-reason"
                 label="Begründung"
                 multiline
-                minRows={2}
                 fullWidth
                 size="small"
                 required

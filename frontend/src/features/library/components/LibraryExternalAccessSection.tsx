@@ -7,7 +7,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '@/features/succession'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -170,14 +170,13 @@ export default function LibraryExternalAccessSection({
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {dialogError && <Alert severity="error">{dialogError}</Alert>}
-            <TextField
+            <FormField
               label="Freigabe bis"
               type="date"
               value={dateInput}
               disabled={saving}
               onChange={(event) => setDateInput(event.target.value)}
               slotProps={{
-                inputLabel: { shrink: true },
                 htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
               }}
               size="small"

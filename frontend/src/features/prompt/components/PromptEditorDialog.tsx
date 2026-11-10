@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { PromptResponse, PromptVariable } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
@@ -23,7 +22,7 @@ import {
   variablesForText,
 } from '../utils/promptTemplate'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import SectionHead from '@/shared/ui/SectionHead'
 import PromptTextHighlight from './PromptTextHighlight'
 import PromptVariablesTable from './PromptVariablesTable'
@@ -133,8 +132,8 @@ export default function PromptEditorDialog({
             </Alert>
           )}
           <Box>
-            <FieldLabel htmlFor="prompt-editor-title-field">Titel</FieldLabel>
-            <TextField
+            <FormField
+              label="Titel"
               id="prompt-editor-title-field"
               size="small"
               fullWidth
@@ -145,8 +144,8 @@ export default function PromptEditorDialog({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="prompt-editor-name">Befehl</FieldLabel>
-            <TextField
+            <FormField
+              label="Befehl"
               id="prompt-editor-name"
               size="small"
               fullWidth
@@ -175,25 +174,24 @@ export default function PromptEditorDialog({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="prompt-editor-description">Beschreibung (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
+              optional
               id="prompt-editor-description"
               size="small"
               fullWidth
               multiline
-              minRows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               slotProps={{ htmlInput: { maxLength: PROMPT_DESCRIPTION_MAX_LENGTH } }}
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="prompt-editor-text">Text</FieldLabel>
-            <TextField
+            <FormField
+              label="Text"
               id="prompt-editor-text"
               fullWidth
               multiline
-              minRows={5}
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}, Stand {{CURRENT_DATE}}."

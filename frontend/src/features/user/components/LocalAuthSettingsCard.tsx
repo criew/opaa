@@ -8,7 +8,6 @@ import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '@/shared/api/types'
@@ -16,11 +15,11 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { useMailStore } from '@/features/mail'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import PageSection from '@/shared/ui/PageSection'
 import { mailStatusOf } from '@/features/mail'
 import { localUserErrorMessage } from './localUserLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
   'Reguläre lokale Konten können sich ab sofort nicht mehr anmelden, und ihre laufenden Sitzungen ' +
@@ -148,8 +147,8 @@ function LockoutField(props: LockoutFieldProps) {
   }
   return (
     <Box>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <TextField
+      <FormField
+        label={label}
         id={id}
         inputRef={inputRef}
         fullWidth
@@ -502,16 +501,14 @@ export default function LocalAuthSettingsCard() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
+            gridTemplateColumns: '1fr',
             rowGap: 2,
+            maxWidth: formWidth.column,
           }}
         >
-          <Box sx={{ gridColumn: { sm: 'span 2' } }}>
-            <FieldLabel htmlFor="local-auth-domains">
-              Adress-Domänen der Selbstregistrierung
-            </FieldLabel>
-            <TextField
+          <Box>
+            <FormField
+              label="Adress-Domänen der Selbstregistrierung"
               id="local-auth-domains"
               fullWidth
               size="small"
@@ -531,8 +528,8 @@ export default function LocalAuthSettingsCard() {
             ] as Array<[keyof RulesDraft, string, string]>
           ).map(([field, label, help]) => (
             <Box key={field}>
-              <FieldLabel htmlFor={`local-auth-${field}`}>{label}</FieldLabel>
-              <TextField
+              <FormField
+                label={label}
                 id={`local-auth-${field}`}
                 fullWidth
                 size="small"
@@ -565,9 +562,9 @@ export default function LocalAuthSettingsCard() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
+            gridTemplateColumns: '1fr',
             rowGap: 2,
+            maxWidth: formWidth.column,
           }}
         >
           <LockoutField

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { browseSource } from '../../../api/libraryApi'
 import {
   ONEDRIVE_API,
@@ -158,7 +158,7 @@ function DriveState({
   }
   return (
     <Box id={id} aria-describedby={issue ? `${id}-error` : undefined}>
-      <FieldLabel id={`${id}-label`}>OneDrive</FieldLabel>
+      <FormFieldLabel id={`${id}-label`}>OneDrive</FormFieldLabel>
       <Box role="status">{body}</Box>
       {!drive.loading && (drive.refusal !== null || (editing && values.driveId !== '')) && (
         <Box sx={{ mt: 0.5 }}>

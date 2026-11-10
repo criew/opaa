@@ -11,7 +11,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import TableContainer from '@mui/material/TableContainer'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -63,7 +63,7 @@ function librariesOf(token: AdminExternalAccessTokenResponse): string {
 const EXPIRING_WITHIN_DAYS = 30
 
 const STATUS_OPTIONS: Array<{ value: ExternalAccessTokenStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'alle Zustände' },
+  { value: 'ALL', label: 'Alle Zustände' },
   { value: 'ACTIVE', label: TOKEN_STATUS_LABEL.ACTIVE },
   { value: 'EXPIRED', label: TOKEN_STATUS_LABEL.EXPIRED },
   { value: 'REVOKED', label: TOKEN_STATUS_LABEL.REVOKED },
@@ -213,10 +213,11 @@ export default function ExternalAccessTokenAdminSection({
       )}
 
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
-        <TextField
+        <FormField
           select
           size="small"
           label="Zustand"
+          hideLabel
           value={status}
           onChange={(e) => setStatus(e.target.value as ExternalAccessTokenStatus | 'ALL')}
           sx={{ minWidth: 200 }}
@@ -226,7 +227,7 @@ export default function ExternalAccessTokenAdminSection({
               {option.label}
             </MenuItem>
           ))}
-        </TextField>
+        </FormField>
         <FormControlLabel
           control={
             <Switch checked={expiringSoon} onChange={(e) => setExpiringSoon(e.target.checked)} />

@@ -5,7 +5,8 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import { clockLabel, intervalLabel, nextRunOf, switchOnBlocker } from './directorySyncState'
@@ -75,8 +76,8 @@ export default function DirectorySyncScheduleSection({
       </Box>
 
       <Box>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-          <TextField
+        <FormFieldRow>
+          <FormField
             size="small"
             label="Intervall in Minuten"
             value={interval}
@@ -88,18 +89,18 @@ export default function DirectorySyncScheduleSection({
                 : `${intervalLabel(minutes)} · ${MIN_INTERVAL_MINUTES} Minuten bis eine Woche`
             }
             slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            sx={{ width: 240 }}
+            numeric
+            sx={{ maxWidth: 320 }}
           />
           <Button
             size="small"
             variant="outlined"
             disabled={busy || !enabled || minutes === null || minutes === saved}
             onClick={() => onSave(true, minutes, true)}
-            sx={{ mt: 0.5 }}
           >
             Intervall speichern
           </Button>
-        </Stack>
+        </FormFieldRow>
         {!enabled && (
           <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             Das Intervall gilt ab dem Einschalten.

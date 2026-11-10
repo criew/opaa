@@ -10,7 +10,8 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type {
   MaskedNumber,
@@ -142,12 +143,8 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'flex-start' } }}
-      >
-        <TextField
+      <FormFieldRow>
+        <FormField
           label="Grenze je Person (GB)"
           size="small"
           value={draft}
@@ -158,8 +155,9 @@ function QuotaForm({
           }}
           error={!valid}
           helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
+          numeric
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 240 }}
+          sx={{ maxWidth: 320 }}
         />
         <FormControlLabel
           control={
@@ -179,21 +177,15 @@ function QuotaForm({
           busy={busy}
           busyAnnouncement="Grenze wird gespeichert"
           disabled={!changed && !busy}
-          sx={{ mt: { sm: 0.25 } }}
         >
           Grenze speichern
         </BusyButton>
         {current.overridden && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onClick={() => void handleReset()}
-            sx={{ mt: { sm: 0.25 } }}
-          >
+          <Button variant="text" disabled={busy} onClick={() => void handleReset()}>
             Werkseinstellung wiederherstellen
           </Button>
         )}
-      </Stack>
+      </FormFieldRow>
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { MailSendResultResponse, MailTemplateResponse } from '@/shared/api/types'
@@ -12,7 +12,7 @@ import { useMailStore } from '../stores/mailStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useMailTemplatePreview } from '../hooks/useMailTemplatePreview'
-import { fontSize, radius } from '@/shared/theme/tokens'
+import { fontSize, radius, formWidth } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -160,8 +160,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
       )}
 
       <PageSection title="Wortlaut">
-        <Stack spacing={2.5}>
-          <TextField
+        <Stack spacing={2.5} sx={{ maxWidth: formWidth.column }}>
+          <FormField
             label="Betreff"
             value={subject}
             inputRef={subjectRef}
@@ -172,7 +172,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             helperText={isSubjectEmpty ? 'Betreff darf nicht leer sein.' : undefined}
             fullWidth
           />
-          <TextField
+          <FormField
             label="Textfassung"
             value={bodyPlain}
             inputRef={bodyRef}
@@ -186,7 +186,6 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
                 : 'Die HTML-Fassung entsteht daraus im gebrandeten Rahmen und wird hier nicht bearbeitet.'
             }
             multiline
-            minRows={10}
             fullWidth
           />
 

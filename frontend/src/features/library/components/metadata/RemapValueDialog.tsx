@@ -4,12 +4,9 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
-import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -51,8 +48,8 @@ export default function RemapValueDialog({
     <Dialog open={remapField != null} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Wert bearbeiten</DialogTitle>
       <DialogContent>
-        <Stack direction="row" spacing={1} sx={{ mb: 2, mt: 1, alignItems: 'flex-start' }}>
-          <TextField
+        <FormFieldRow sx={{ mb: 2, mt: 1 }}>
+          <FormField
             size="small"
             fullWidth
             label="Bezeichnung"
@@ -60,32 +57,33 @@ export default function RemapValueDialog({
             value={valueLabel}
             onChange={(e) => onValueLabelChange(e.target.value)}
           />
-          <Button onClick={onSaveValueLabel}>Bezeichnung speichern</Button>
-        </Stack>
+          <Button onClick={onSaveValueLabel} sx={{ flex: 'none' }}>
+            Bezeichnung speichern
+          </Button>
+        </FormFieldRow>
         <Divider sx={{ mb: 2 }} />
         <Typography variant="body2" sx={{ mb: 2 }}>
           {remapUsage == null
             ? 'Betroffene Dokumente werden ermittelt …'
             : `${remapUsage} Dokument(e) tragen „${remapCode}“. Der Wert wird nur zusammen mit einer Abbildung entfernt.`}
         </Typography>
-        <FormControl fullWidth size="small">
-          <InputLabel id="remap-target-label">Abbilden auf</InputLabel>
-          <Select
-            labelId="remap-target-label"
-            label="Abbilden auf"
-            value={remapTarget}
-            onChange={(e) => onRemapTargetChange(e.target.value)}
-          >
-            <MenuItem value="">leer (kein Wert)</MenuItem>
-            {(remapField?.values ?? [])
-              .filter((value) => value.code !== remapCode)
-              .map((value) => (
-                <MenuItem key={value.code} value={value.code}>
-                  {value.label}
-                </MenuItem>
-              ))}
-          </Select>
-        </FormControl>
+        <FormField
+          select
+          label="Abbilden auf"
+          fullWidth
+          size="small"
+          value={remapTarget}
+          onChange={(e) => onRemapTargetChange(e.target.value)}
+        >
+          <MenuItem value="">leer (kein Wert)</MenuItem>
+          {(remapField?.values ?? [])
+            .filter((value) => value.code !== remapCode)
+            .map((value) => (
+              <MenuItem key={value.code} value={value.code}>
+                {value.label}
+              </MenuItem>
+            ))}
+        </FormField>
         {remapField && remapCode && (
           <ChangeImpactNotice
             libraryId={libraryId}

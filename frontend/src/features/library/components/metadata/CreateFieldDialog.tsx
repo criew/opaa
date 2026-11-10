@@ -6,13 +6,10 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { createLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldType } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -74,47 +71,45 @@ export default function CreateFieldDialog({
       <DialogTitle>Metadatenfeld anlegen</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
+          <FormField
             size="small"
             label="Feldschlüssel"
             helperText="Kleinbuchstaben, Ziffern und Unterstriche, z. B. fassung"
             value={fieldKey}
             onChange={(e) => setFieldKey(e.target.value)}
           />
-          <TextField
+          <FormField
             size="small"
             label="Feldname"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
-          <FormControl fullWidth size="small">
-            <InputLabel id="field-type-label">Typ</InputLabel>
-            <Select
-              labelId="field-type-label"
-              label="Typ"
-              value={type}
-              onChange={(e) => setType(e.target.value as LibraryMetadataFieldType)}
-            >
-              {(Object.keys(TYPE_LABELS) as LibraryMetadataFieldType[]).map((option) => (
-                <MenuItem key={option} value={option}>
-                  {TYPE_LABELS[option]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <FormField
+            select
+            label="Typ"
+            fullWidth
+            size="small"
+            value={type}
+            onChange={(e) => setType(e.target.value as LibraryMetadataFieldType)}
+          >
+            {(Object.keys(TYPE_LABELS) as LibraryMetadataFieldType[]).map((option) => (
+              <MenuItem key={option} value={option}>
+                {TYPE_LABELS[option]}
+              </MenuItem>
+            ))}
+          </FormField>
           {type === 'SELECT' && (
-            <TextField
+            <FormField
               size="small"
               label="Werteliste"
               helperText="Eine Zeile je Wert, Format CODE=Bezeichnung"
               multiline
-              minRows={3}
               value={values}
               onChange={(e) => setValues(e.target.value)}
             />
           )}
           {type === 'PATTERN' && (
-            <TextField
+            <FormField
               size="small"
               label="Muster"
               helperText="Regulärer Ausdruck, gegen den jeder Wert geprüft wird"

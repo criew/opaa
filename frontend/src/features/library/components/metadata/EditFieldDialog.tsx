@@ -8,7 +8,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { updateLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -60,7 +60,7 @@ export default function EditFieldDialog({
       <DialogTitle>Metadatenfeld bearbeiten</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
+          <FormField
             size="small"
             label="Feldname"
             value={label}

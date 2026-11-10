@@ -3,13 +3,12 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import type { SpaceResponse } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import ChatAutoCleanupField from './ChatAutoCleanupField'
 import ModelInstructionField from './ModelInstructionField'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -100,8 +99,8 @@ export default function SpaceGeneralSection({
         )}
         <Stack spacing={2.5}>
           <Box>
-            <FieldLabel htmlFor="space-manage-name">Name des Space</FieldLabel>
-            <TextField
+            <FormField
+              label="Name des Space"
               id="space-manage-name"
               size="small"
               fullWidth
@@ -111,15 +110,14 @@ export default function SpaceGeneralSection({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="space-manage-description">Beschreibung</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
               id="space-manage-description"
               size="small"
               fullWidth
               value={description}
               onChange={(event) => setDraft({ ...current, description: event.target.value })}
               multiline
-              minRows={2}
               slotProps={{ htmlInput: { readOnly: !canManage } }}
             />
           </Box>

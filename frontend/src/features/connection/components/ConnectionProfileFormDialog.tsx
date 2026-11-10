@@ -9,7 +9,7 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ConnectionAuthMethod,
@@ -411,7 +411,7 @@ export default function ConnectionProfileFormDialog({
           )}
           {showFields && (
             <>
-              <TextField
+              <FormField
                 label="Name"
                 required
                 size="small"
@@ -420,7 +420,7 @@ export default function ConnectionProfileFormDialog({
                 helperText="Erscheint in der Auswahl, z. B. „Zugang Nextcloud intern“."
               />
               {fixedAddress === null ? (
-                <TextField
+                <FormField
                   label="Server-Adresse"
                   required
                   size="small"
@@ -433,7 +433,7 @@ export default function ConnectionProfileFormDialog({
                   Die Quellart hat eine feste Adresse: {fixedAddress}
                 </Typography>
               )}
-              <TextField
+              <FormField
                 select
                 label="Anmeldeart"
                 required
@@ -456,8 +456,8 @@ export default function ConnectionProfileFormDialog({
                     {AUTH_METHOD_LABELS[m]}
                   </MenuItem>
                 ))}
-              </TextField>
-              <TextField
+              </FormField>
+              <FormField
                 select
                 label="Besitzart"
                 required
@@ -473,7 +473,7 @@ export default function ConnectionProfileFormDialog({
                     {OWNERSHIP_LABELS[o]}
                   </MenuItem>
                 ))}
-              </TextField>
+              </FormField>
               {usesKey && (
                 <ServiceAccountKeyField
                   idPrefix="connection-profile"
@@ -484,14 +484,14 @@ export default function ConnectionProfileFormDialog({
               )}
               {usesRegistration && !usesKey && (
                 <>
-                  <TextField
+                  <FormField
                     label="Client-ID"
                     required
                     size="small"
                     value={draft.clientId}
                     onChange={(e) => setDraft({ ...draft, clientId: e.target.value })}
                   />
-                  <TextField
+                  <FormField
                     label="Client-Secret"
                     type="password"
                     size="small"
@@ -519,16 +519,15 @@ export default function ConnectionProfileFormDialog({
                       label="Ohne Client-Secret speichern (öffentlicher Client)"
                     />
                   )}
-                  <TextField
+                  <FormField
                     label="Ablaufdatum des Secrets"
                     type="date"
                     size="small"
                     value={draft.clientSecretExpiresOn}
                     onChange={(e) => setDraft({ ...draft, clientSecretExpiresOn: e.target.value })}
-                    slotProps={{ inputLabel: { shrink: true } }}
                     helperText="OPAA warnt 14 Tage vorher."
                   />
-                  <TextField
+                  <FormField
                     label="Mandant"
                     size="small"
                     value={draft.tenant}
@@ -537,7 +536,7 @@ export default function ConnectionProfileFormDialog({
                 </>
               )}
               {usesScopes && (
-                <TextField
+                <FormField
                   label="Scopes"
                   size="small"
                   value={draft.scopes}
@@ -552,7 +551,7 @@ export default function ConnectionProfileFormDialog({
               {endpointFields.map((field) => {
                 const invalid = endpointError(field, draft[field.key])
                 return (
-                  <TextField
+                  <FormField
                     key={field.key}
                     label={field.label}
                     required
@@ -682,7 +681,7 @@ function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
   const options = optionsOf(defaultKey)
   if (options === null) {
     return (
-      <TextField
+      <FormField
         label={defaultKey.label}
         size="small"
         value={value}
@@ -692,7 +691,7 @@ function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
     )
   }
   return (
-    <TextField
+    <FormField
       select
       label={defaultKey.label}
       size="small"
@@ -707,6 +706,6 @@ function DefaultField({ defaultKey, value, onChange }: DefaultFieldProps) {
           {option.label}
         </MenuItem>
       ))}
-    </TextField>
+    </FormField>
   )
 }
