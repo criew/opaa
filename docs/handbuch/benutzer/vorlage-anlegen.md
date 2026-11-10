@@ -45,5 +45,6 @@ aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar `{# … #}` erscheint nic
 
 - OPAA führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
   einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.
-- Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen.
+- Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen, und die
+  Vorlage bekommt eine neue Fassung; eine Agentenantwort nennt die Fassung, die sie ausgefüllt hat.
 - Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, nie der Inhalt der Datei.
