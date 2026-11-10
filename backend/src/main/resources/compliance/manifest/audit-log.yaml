@@ -1056,7 +1056,8 @@ auditEvents:
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
       Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
       ob ein eigener gesetzt ist;
-      beim Transkriptionsmodell Adresse, Modell und Sprache; bei der Texterkennung Verbindungstyp,
+      beim Transkriptionsmodell Adresse, Modell und Sprache, beim Live-Dienst Protokoll, Adresse,
+      Modell und ob ein Schlüssel gesetzt ist; bei der Texterkennung Verbindungstyp,
       Adresse und, bei einem Vision-Modell, das Modell; beim Virenscanner Adresse, Port, Frist und
       Verhalten bei nicht geprüften Dateien
     payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, connectionType, defaultColorScheme,
