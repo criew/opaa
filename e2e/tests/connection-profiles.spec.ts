@@ -296,7 +296,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expect(dialog.getByTestId('library-connection-test')).toContainText('erreichbar', {
       timeout: 15_000,
     })
-    await dialog.getByRole('button', { name: 'Prüfen und zuordnen' }).click()
+    await dialog.getByRole('button', { name: 'Zuordnen' }).click()
     await expect(dialog).toHaveCount(0)
 
     await expect(lockNotice(page)).toHaveCount(0)

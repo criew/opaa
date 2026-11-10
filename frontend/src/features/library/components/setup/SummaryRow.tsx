@@ -1,7 +1,4 @@
 import { useId, useState, type ReactNode } from 'react'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import TextField from '@mui/material/TextField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
@@ -11,6 +8,7 @@ import PathLabel from '../sourceCore/PathLabel'
 import { ROW_GRID } from './rowStyles'
 import type { RowStatus, RowSummary } from '../sourceCore/setupTypes'
 import { fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** Entries a list summary names before „und n weitere“. */
 const SHOWN = 5
@@ -154,53 +152,47 @@ export function SummaryValue({
           </Box>
         )}
         {expandable && (
-          <Dialog
+          <ViewDialog
             open={showAll}
             onClose={() => setShowAll(false)}
-            fullWidth
-            maxWidth="sm"
-            aria-labelledby={allTitleId}
+            titleId={allTitleId}
+            title={text}
           >
-            <DialogTitleWithClose id={allTitleId} onClose={() => setShowAll(false)}>
-              {text}
-            </DialogTitleWithClose>
-            <DialogContent>
-              <TextField
-                size="small"
-                fullWidth
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name enthält …"
-                slotProps={{ htmlInput: { 'aria-label': 'Einträge durchsuchen' } }}
-                sx={{ mb: 1.5, mt: 0.5 }}
-              />
-              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-                {items
-                  .filter(
-                    (item) =>
-                      !query.trim() || item.toLowerCase().includes(query.trim().toLowerCase()),
-                  )
-                  .map((item) => (
-                    <Box
-                      component="li"
-                      key={item}
-                      sx={{
-                        py: 0.75,
-                        fontSize: fontSize.text,
-                        borderBottom: 1,
-                        borderColor: 'divider',
-                        display: 'flex',
-                      }}
-                    >
-                      <Box component="span" sx={{ minWidth: 0 }}>
-                        <PathLabel path={item} />
-                      </Box>
-                      {mark(item)}
+            <TextField
+              size="small"
+              fullWidth
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name enthält …"
+              slotProps={{ htmlInput: { 'aria-label': 'Einträge durchsuchen' } }}
+              sx={{ mb: 1.5, mt: 0.5 }}
+            />
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+              {items
+                .filter(
+                  (item) =>
+                    !query.trim() || item.toLowerCase().includes(query.trim().toLowerCase()),
+                )
+                .map((item) => (
+                  <Box
+                    component="li"
+                    key={item}
+                    sx={{
+                      py: 0.75,
+                      fontSize: fontSize.text,
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                      display: 'flex',
+                    }}
+                  >
+                    <Box component="span" sx={{ minWidth: 0 }}>
+                      <PathLabel path={item} />
                     </Box>
-                  ))}
-              </Box>
-            </DialogContent>
-          </Dialog>
+                    {mark(item)}
+                  </Box>
+                ))}
+            </Box>
+          </ViewDialog>
         )}
       </Box>
     )

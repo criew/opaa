@@ -2,11 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Drawer from '@mui/material/Drawer'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
 import type {
   DirectorySyncPendingPlanResponse,
   DirectorySyncReportResponse,
@@ -48,6 +45,7 @@ import {
   outcomeTone,
 } from './directorySyncLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 type ResultKind = 'DRY_RUN' | 'RUN' | 'CONFIRM'
 
@@ -110,7 +108,7 @@ export default function DirectorySyncPanel({
     if (error) errorRef.current?.focus()
   }, [error])
 
-  if (!provider) return <Drawer anchor="right" open={false} onClose={onClose} />
+  if (!provider) return null
 
   const providerId = provider.id
   const pendingSummary = status?.pendingPlan ?? null
@@ -157,56 +155,24 @@ export default function DirectorySyncPanel({
     }, 'Der Abgleich konnte nicht umgeschaltet werden.')
 
   return (
-    <Drawer
-      anchor="right"
-      open
-      onClose={busy ? undefined : onClose}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'directory-sync-panel-heading',
-          sx: { width: { xs: '100%', sm: 560 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
+    <ViewDialog
+      titleId="directory-sync-panel-heading"
+      title={provider.displayName}
+      onClose={onClose}
+      busy={busy}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            id="directory-sync-panel-heading"
-            component="h2"
-            sx={{ fontSize: fontSize.title, fontWeight: 600, overflowWrap: 'anywhere' }}
-          >
-            {provider.displayName}
+      <Stack spacing={3.5}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
+        >
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            Abgleich: {state.label}
           </Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ mt: 0.75, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
-          >
-            <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Abgleich: {state.label}
-            </Typography>
-            {provider.isExternal && <MetaBadge>extern</MetaBadge>}
-            {!provider.enabled && <MetaBadge>deaktiviert</MetaBadge>}
-          </Stack>
-        </Box>
-        <IconButton aria-label="Schließen" onClick={onClose} disabled={busy} sx={{ mt: -0.5 }}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      <Stack spacing={3.5} sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
+          {provider.isExternal && <MetaBadge>extern</MetaBadge>}
+          {!provider.enabled && <MetaBadge>deaktiviert</MetaBadge>}
+        </Stack>
         {error && (
           <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
             {error}
@@ -365,6 +331,6 @@ export default function DirectorySyncPanel({
           Arbeitsliste der Gruppen dieses Anbieters
         </TextLink>
       </Stack>
-    </Drawer>
+    </ViewDialog>
   )
 }

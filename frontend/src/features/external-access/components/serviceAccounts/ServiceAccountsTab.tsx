@@ -180,7 +180,6 @@ export default function ServiceAccountsTab() {
     <IssueServiceAccountTokenDialog
       account={firstTokenFor}
       title="Erstes Token ausstellen"
-      cancelLabel="Ohne Token beenden"
       onClose={() => setFirstTokenFor(null)}
       onIssued={() => {
         void reload()

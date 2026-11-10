@@ -1,16 +1,12 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import type { UserSummary } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import GroupFormFields, { type GroupFormValues } from './GroupFormFields'
 import InitialStewardsSection from './InitialStewardsSection'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface CreateGroupDialogProps {
   open: boolean
@@ -55,7 +51,7 @@ function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialog
   async function handleCreate() {
     const name = values.name.trim()
     if (!name) {
-      setError('Name ist erforderlich')
+      setError('Bitte einen Namen angeben.')
       return
     }
     setError(null)
@@ -75,41 +71,34 @@ function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialog
   }
 
   return (
-    <Dialog open onClose={handleClose} maxWidth="sm" fullWidth aria-labelledby="group-create-title">
-      <DialogTitle id="group-create-title">Gruppe anlegen</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        <GroupFormFields
-          values={values}
-          onChange={setValues}
-          idPrefix="group-create"
-          canProtect={isSystemAdmin}
-          autoFocusName
-        />
-        <Divider sx={{ my: 2 }} />
-        <InitialStewardsSection
-          stewards={stewards}
-          onChange={setStewards}
-          currentUserId={user?.id}
-          canRemoveSelf={isSystemAdmin}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button
-          onClick={() => void handleCreate()}
-          variant="contained"
-          disabled={submitting || !values.name.trim()}
-        >
-          {submitting ? 'Wird angelegt …' : 'Anlegen'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      titleId="group-create-title"
+      title="Gruppe anlegen"
+      submitLabel="Anlegen"
+      onSubmit={() => void handleCreate()}
+      onClose={handleClose}
+      busy={submitting}
+      busyAnnouncement="Die Gruppe wird angelegt"
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      <GroupFormFields
+        values={values}
+        onChange={setValues}
+        idPrefix="group-create"
+        canProtect={isSystemAdmin}
+        autoFocusName
+      />
+      <Divider sx={{ my: 2 }} />
+      <InitialStewardsSection
+        stewards={stewards}
+        onChange={setStewards}
+        currentUserId={user?.id}
+        canRemoveSelf={isSystemAdmin}
+      />
+    </FormDialog>
   )
 }

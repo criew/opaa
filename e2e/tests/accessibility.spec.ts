@@ -772,7 +772,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       .getByRole("button", { name: "Einstellungen", exact: true })
       .click();
     const panel = page.getByRole("dialog", {
-      name: "Einstellungen für externe KI-Werkzeuge",
+      name: "Einstellungen",
     });
     await expect(
       panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),

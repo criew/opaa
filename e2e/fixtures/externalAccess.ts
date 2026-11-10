@@ -169,7 +169,7 @@ export async function mcpSearch(
  */
 export async function setChannelEnabled(adminPage: Page, enabled: boolean): Promise<void> {
   await adminPage.goto('/admin/connections/external-tools?panel=settings')
-  const panel = adminPage.getByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' })
+  const panel = adminPage.getByRole('dialog', { name: 'Einstellungen' })
   const toggle = panel.getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' })
   await expect(toggle).toBeVisible()
   if ((await toggle.isChecked()) !== enabled) {
@@ -324,7 +324,7 @@ export async function createToken(
   await expect(value).toBeVisible()
   const token = (await value.textContent()) ?? ''
   expect(token).toMatch(/^opaa_pat_/)
-  await page.getByRole('button', { name: 'Kopiert, schließen' }).click()
+  await page.getByRole('button', { name: 'Schließen' }).click()
   await expect(value).toHaveCount(0)
   return token
 }

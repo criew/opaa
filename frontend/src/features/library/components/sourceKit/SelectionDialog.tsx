@@ -2,17 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Skeleton from '@mui/material/Skeleton'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -32,6 +26,7 @@ import {
   type SelectionItem,
   type SelectionSource,
 } from './selection'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 /** A level shows its search field from this many entries on (Prüfliste #35). */
 const SEARCH_FROM = 7
@@ -97,8 +92,6 @@ function SelectionDialogBody({
   initialLevel = [],
   startManual = false,
 }: SelectionDialogProps) {
-  const theme = useTheme()
-  const narrow = useMediaQuery(theme.breakpoints.down('sm'))
   const [draft, setDraft] = useState<SelectionItem[]>(value)
   const [level, setLevel] = useState<Crumb[]>(initialLevel)
   const [search, setSearch] = useState('')
@@ -585,107 +578,95 @@ function SelectionDialogBody({
     </Box>
   )
 
-  return (
-    <Dialog
-      open
-      onClose={() => void requestClose()}
-      fullScreen={narrow}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="selection-dialog-title"
-      slotProps={{ paper: { sx: { maxHeight: narrow ? '100%' : 'min(760px, 88vh)' } } }}
-    >
-      <DialogTitle id="selection-dialog-title" sx={{ pb: 1 }}>
-        {title}
-      </DialogTitle>
-      <Box sx={{ px: 3, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-        {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-            Ausgewählt über alle Ebenen
-          </Typography>
-        ) : (
-          <Box
-            component="nav"
-            aria-label="Ebenen"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mb: 1 }}
-          >
-            {[{ key: '', name: source.rootLabel }, ...level].map((crumb, i, all) => {
-              const last = i === all.length - 1
-              return (
-                <Box
-                  key={crumb.key || 'root'}
-                  sx={{ display: 'flex', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}
-                >
-                  {i > 0 && (
-                    <Typography aria-hidden sx={{ color: 'text.secondary', px: 0.5 }}>
-                      /
+  const toolbar = (
+    <Box sx={{ px: 3, pb: 1.5 }}>
+      {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Ausgewählt über alle Ebenen
+        </Typography>
+      ) : (
+        <Box
+          component="nav"
+          aria-label="Ebenen"
+          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mb: 1 }}
+        >
+          {[{ key: '', name: source.rootLabel }, ...level].map((crumb, i, all) => {
+            const last = i === all.length - 1
+            return (
+              <Box
+                key={crumb.key || 'root'}
+                sx={{ display: 'flex', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}
+              >
+                {i > 0 && (
+                  <Typography aria-hidden sx={{ color: 'text.secondary', px: 0.5 }}>
+                    /
+                  </Typography>
+                )}
+                <Tooltip disableInteractive title={crumb.name} enterDelay={600}>
+                  {last ? (
+                    <Typography
+                      aria-current="location"
+                      sx={{
+                        ...ellipsis,
+                        fontSize: fontSize.text,
+                        fontWeight: 600,
+                        maxWidth: { xs: 220, sm: 320 },
+                      }}
+                    >
+                      {crumb.name}
                     </Typography>
-                  )}
-                  <Tooltip disableInteractive title={crumb.name} enterDelay={600}>
-                    {last ? (
-                      <Typography
-                        aria-current="location"
-                        sx={{
-                          ...ellipsis,
-                          fontSize: fontSize.text,
-                          fontWeight: 600,
-                          maxWidth: { xs: 220, sm: 320 },
-                        }}
-                      >
+                  ) : (
+                    <Button
+                      size="small"
+                      onClick={() => openLevel(level.slice(0, i))}
+                      sx={{ minWidth: 0, px: 0.5, maxWidth: { xs: 160, sm: 240 } }}
+                    >
+                      <Box component="span" sx={ellipsis}>
                         {crumb.name}
-                      </Typography>
-                    ) : (
-                      <Button
-                        size="small"
-                        onClick={() => openLevel(level.slice(0, i))}
-                        sx={{ minWidth: 0, px: 0.5, maxWidth: { xs: 160, sm: 240 } }}
-                      >
-                        <Box component="span" sx={ellipsis}>
-                          {crumb.name}
-                        </Box>
-                      </Button>
-                    )}
-                  </Tooltip>
-                </Box>
-              )
-            })}
-          </Box>
-        )}
-        {!reviewing && showSearch && (
-          <TextField
-            size="small"
-            fullWidth
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setShown(PAGE)
-            }}
-            placeholder={source.searchLabel(level)}
-            slotProps={{ htmlInput: { 'aria-label': source.searchLabel(level), type: 'search' } }}
-          />
-        )}
-      </Box>
-      <DialogContent ref={listRef} sx={{ pt: '8px !important' }}>
-        {body}
-      </DialogContent>
-      <Box sx={{ px: 3, pt: 1 }} role="alert">
+                      </Box>
+                    </Button>
+                  )}
+                </Tooltip>
+              </Box>
+            )
+          })}
+        </Box>
+      )}
+      {!reviewing && showSearch && (
+        <TextField
+          size="small"
+          fullWidth
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setShown(PAGE)
+          }}
+          placeholder={source.searchLabel(level)}
+          slotProps={{ htmlInput: { 'aria-label': source.searchLabel(level), type: 'search' } }}
+        />
+      )}
+      <Box role="alert">
         {applyError && (
-          <Typography sx={{ fontSize: fontSize.text, color: 'error.main' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'error.main', mt: 1 }}>
             {applyError}
           </Typography>
         )}
       </Box>
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 1.5,
-          borderTop: 1,
-          borderColor: 'divider',
-          flexWrap: 'wrap',
-          gap: 1,
-          justifyContent: 'space-between',
-        }}
-      >
+    </Box>
+  )
+
+  return (
+    <FormDialog
+      width="editor"
+      titleId="selection-dialog-title"
+      title={title}
+      submitLabel="Übernehmen"
+      onSubmit={apply}
+      onClose={() => void requestClose()}
+      submitOnEnter={false}
+      contentRef={listRef}
+      toolbar={toolbar}
+      secondaryAction={
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }} aria-live="polite">
             {draft.length === 0 && source.emptyMeans
@@ -698,13 +679,9 @@ function SelectionDialogBody({
             </TextAction>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
-          <Button onClick={() => void requestClose()}>Abbrechen</Button>
-          <Button variant="contained" onClick={apply}>
-            Übernehmen
-          </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      {body}
+    </FormDialog>
   )
 }

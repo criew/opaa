@@ -3,14 +3,11 @@ import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileResponse,
@@ -34,6 +31,7 @@ import ProfileRequirementDialog from './ProfileRequirementDialog'
 import { confirmLock } from './connectorLock'
 import { stockLabel } from './connectorTypeState'
 import { fontSize } from '@/shared/theme/tokens'
+import SidePanel from '@/shared/ui/dialog/SidePanel'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -65,20 +63,14 @@ interface ConnectorTypePanelProps {
 export default function ConnectorTypePanel(props: ConnectorTypePanelProps) {
   const { state, onClose } = props
   return (
-    <Drawer
-      anchor="right"
+    <SidePanel
       open={state !== null}
       onClose={onClose}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'connector-type-panel-heading',
-          sx: { width: { xs: '100%', sm: 520 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
+      titleId="connector-type-panel-heading"
+      title={state?.displayName}
     >
       {state && <PanelContent key={state.sourceType} {...props} state={state} />}
-    </Drawer>
+    </SidePanel>
   )
 }
 
@@ -86,7 +78,6 @@ function PanelContent({
   state,
   profiles,
   ownAddressEntry,
-  onClose,
   onChanged,
 }: ConnectorTypePanelProps & { state: ConnectorTypeStateResponse }) {
   const [requirementDialog, setRequirementDialog] = useState(false)
@@ -142,30 +133,6 @@ function PanelContent({
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Typography
-          id="connector-type-panel-heading"
-          component="h2"
-          sx={{ flex: 1, fontSize: fontSize.title, fontWeight: 600, overflowWrap: 'anywhere' }}
-        >
-          {state.displayName}
-        </Typography>
-        <IconButton aria-label="Schließen" onClick={onClose} sx={{ mt: -0.5 }}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
       <Stack spacing={3.5} sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
         <PanelSection title="Zustand">
           <StatusLine

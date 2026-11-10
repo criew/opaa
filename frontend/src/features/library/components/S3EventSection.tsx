@@ -2,10 +2,6 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { S3ScopeRef } from '../utils/s3Source'
@@ -13,6 +9,8 @@ import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import SecretDialog from '@/shared/ui/dialog/SecretDialog'
+import { copyOnce } from '@/shared/utils/copyOnce'
 
 interface S3EventSectionProps {
   libraryId: string
@@ -136,92 +134,86 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
         </Alert>
       )}
 
-      <Dialog
+      <SecretDialog
         open={revealed !== null}
+        width="editor"
+        titleId="s3-event-token-title"
+        title="Ereignis-Token"
+        onCopy={() => void copyOnce(revealed?.token ?? '', 'Das Token')}
         onClose={() => setRevealed(null)}
-        aria-labelledby="s3-event-token-title"
-        fullWidth
-        maxWidth="md"
       >
-        <DialogTitle id="s3-event-token-title">Ereignis-Token</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Dieses Token wird nur jetzt angezeigt. Hinterlegen Sie es im Objektspeicher, bevor Sie
-            den Dialog schließen — danach lässt es sich nur noch neu erzeugen.
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Dieses Token wird nur jetzt angezeigt. Hinterlegen Sie es im Objektspeicher, bevor Sie den
+          Dialog schließen — danach lässt es sich nur noch neu erzeugen.
+        </Alert>
+        {insecureOrigin && (
+          <Alert severity="error" sx={{ mb: 2 }} data-testid="s3-event-insecure-origin">
+            Diese Adresse ist nicht über https erreichbar. Der Objektspeicher würde das Token
+            unverschlüsselt senden — für den Betrieb OPAA hinter TLS betreiben.
           </Alert>
-          {insecureOrigin && (
-            <Alert severity="error" sx={{ mb: 2 }} data-testid="s3-event-insecure-origin">
-              Diese Adresse ist nicht über https erreichbar. Der Objektspeicher würde das Token
-              unverschlüsselt senden — für den Betrieb OPAA hinter TLS betreiben.
-            </Alert>
-          )}
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Token
-          </Typography>
-          <Typography
-            component="code"
-            data-testid="s3-event-token"
-            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
-          >
-            {revealed?.token}
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Adresse (URL) des Endpunkts
-          </Typography>
-          <Typography
-            component="code"
-            data-testid="s3-event-endpoint"
-            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
-          >
-            {revealed?.url}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            <strong>MinIO:</strong> Webhook-Ziel anlegen und je Bucket die Ereignisse abonnieren
-            (der Token wird als <code>Authorization: Bearer</code> gesendet):
-          </Typography>
-          <Typography
-            component="pre"
-            sx={{
-              fontFamily: fontFamily.mono,
-              fontSize: fontSize.meta,
-              whiteSpace: 'pre-wrap',
-              mb: 2,
-            }}
-          >
-            {[
-              `mc admin config set ALIAS notify_webhook:opaa endpoint="${revealed?.url ?? ''}" auth_token="${revealed?.token ?? ''}"`,
-              'mc admin service restart ALIAS',
-              ...subscriptions,
-            ].join('\n')}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            <strong>Ceph RGW:</strong> Ein Topic mit dem Endpunkt anlegen; da Ceph nur
-            Benutzer:Passwort in der Adresse kennt, den Token als Passwort eintragen — nur über
-            https:
-          </Typography>
-          <Typography
-            component="pre"
-            sx={{
-              fontFamily: fontFamily.mono,
-              fontSize: fontSize.meta,
-              whiteSpace: 'pre-wrap',
-              mb: 2,
-            }}
-          >
-            {`push-endpoint=${(revealed?.url ?? '').replace('://', `://opaa:${revealed?.token ?? ''}@`)}`}
-          </Typography>
-          <Typography variant="body2">
-            <strong>AWS (EventBridge):</strong> Eine API-Destination mit dieser Adresse und einer
-            Verbindung vom Typ „API-Schlüssel“ anlegen — Kopfzeile{' '}
-            <code>X-OPAA-Webhook-Secret</code>, Wert: das Token — und eine Regel auf „Object
-            Created“ und „Object Deleted“ für den Bucket darauf zeigen lassen. Die Testnachricht{' '}
-            <code>s3:TestEvent</code> beim Einrichten wird angenommen.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevealed(null)}>Schließen</Button>
-        </DialogActions>
-      </Dialog>
+        )}
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Token
+        </Typography>
+        <Typography
+          component="code"
+          data-testid="s3-event-token"
+          sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
+        >
+          {revealed?.token}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Adresse (URL) des Endpunkts
+        </Typography>
+        <Typography
+          component="code"
+          data-testid="s3-event-endpoint"
+          sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
+        >
+          {revealed?.url}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 0.5 }}>
+          <strong>MinIO:</strong> Webhook-Ziel anlegen und je Bucket die Ereignisse abonnieren (der
+          Token wird als <code>Authorization: Bearer</code> gesendet):
+        </Typography>
+        <Typography
+          component="pre"
+          sx={{
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.meta,
+            whiteSpace: 'pre-wrap',
+            mb: 2,
+          }}
+        >
+          {[
+            `mc admin config set ALIAS notify_webhook:opaa endpoint="${revealed?.url ?? ''}" auth_token="${revealed?.token ?? ''}"`,
+            'mc admin service restart ALIAS',
+            ...subscriptions,
+          ].join('\n')}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 0.5 }}>
+          <strong>Ceph RGW:</strong> Ein Topic mit dem Endpunkt anlegen; da Ceph nur
+          Benutzer:Passwort in der Adresse kennt, den Token als Passwort eintragen — nur über https:
+        </Typography>
+        <Typography
+          component="pre"
+          sx={{
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.meta,
+            whiteSpace: 'pre-wrap',
+            mb: 2,
+          }}
+        >
+          {`push-endpoint=${(revealed?.url ?? '').replace('://', `://opaa:${revealed?.token ?? ''}@`)}`}
+        </Typography>
+        <Typography variant="body2">
+          <strong>AWS (EventBridge):</strong> Eine API-Destination mit dieser Adresse und einer
+          Verbindung vom Typ „API-Schlüssel“ anlegen — Kopfzeile <code>X-OPAA-Webhook-Secret</code>,
+          Wert: das Token — und eine Regel auf „Object Created“ und „Object Deleted“ für den Bucket
+          darauf zeigen lassen. Die Testnachricht <code>s3:TestEvent</code> beim Einrichten wird
+          angenommen.
+        </Typography>
+      </SecretDialog>
     </Box>
   )
 }

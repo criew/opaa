@@ -22,6 +22,7 @@ import {
   type AccessLevel,
   type NamedSubject,
 } from './capabilityAccess'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 
 const CHOICES: Array<{ level: AccessLevel; title: string; hint: string }> = [
   { level: 'ALL', title: 'Alle Konten', hint: 'Jede Person Ihrer Organisation.' },
@@ -287,7 +288,7 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
         <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600, color: 'text.secondary' }}>
           Danach
         </Typography>
-        <Typography sx={{ fontSize: fontSize.text, mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.text, mt: 0.25 }} aria-live="polite">
           {missingSubject
             ? 'Wählen Sie mindestens eine Gruppe oder Person aus.'
             : unchanged
@@ -311,13 +312,20 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
         <Button onClick={onCancel} disabled={busy}>
           Abbrechen
         </Button>
-        <Button
+        <BusyButton
           variant="contained"
-          disabled={busy || unchanged || missingSubject}
-          onClick={() => void onSave(target)}
+          busy={busy}
+          busyAnnouncement="Wird gespeichert"
+          onClick={() => {
+            // without a subject the line under „Danach“ says what is missing
+            if (missingSubject) return
+            // nothing changed: there is nothing to save, the editor just closes
+            if (unchanged) onCancel()
+            else void onSave(target)
+          }}
         >
-          {busy ? 'Wird gespeichert …' : 'Speichern'}
-        </Button>
+          Speichern
+        </BusyButton>
       </Stack>
     </Stack>
   )

@@ -34,6 +34,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
+| Gesperrtes Absenden | 0 | gemessen: `disabledSubmits`, sichtbare Schaltflächen mit einer Absende-Beschriftung („Anlegen“, „Speichern“, „Weiter“ …), die gesperrt sind, ohne dass ihre eigene Aktion läuft (P28) |
 
 ## Visuell
 
@@ -111,8 +112,11 @@ zwei Einträgen.
     gemessen (`tabStops`, `title`) und Tastatur
 27. Fokus nicht verdeckt durch Sticky-Leiste oder Popup-Benachrichtigung (WCAG 2.4.11). –
     gemessen (`focusObscured`, `focusHidden`)
-28. **Absenden bleibt aktiv:** kein `disabled` wegen fehlender Eingaben; ein Doppelklick legt
-    nichts doppelt an. – gemessen (`disabledSubmits`) und Sicht
+28. **Absenden bleibt aktiv:** kein `disabled` wegen fehlender oder unveränderter Eingaben; gesperrt
+    ist die Handlung nur, solange sie läuft, und ein Doppelklick legt nichts doppelt an. Was fehlt,
+    steht nach dem Absenden am Feld, und der Fokus geht hinein. In Dialogen liefert das
+    `FormDialog` ([guidelines.md](./guidelines.md), 5.6). – gemessen (`disabledSubmits`,
+    Zählbudget 0) und Sicht
 29. **Validierung beim Verlassen des Felds oder beim Absenden**, nicht beim Tippen;
     Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “. –
     gemessen (`title`, `invalidFields`) und Tastatur
@@ -160,6 +164,12 @@ zwei Einträgen.
     (Konsistenz-Review, Kategorie A)
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
+52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
+    öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
+    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Breite 600 oder 900 px,
+    444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
+    Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
+    wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
 
 ## Pflege
 

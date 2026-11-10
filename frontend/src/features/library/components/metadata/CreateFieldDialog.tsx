@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import InputLabel from '@mui/material/InputLabel'
@@ -17,6 +12,7 @@ import { createLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldType } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
 import { TYPE_LABELS } from './metadataFieldText'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 /** „Feld anlegen": key, name, type, value list or pattern and Wirkstellen. */
 export default function CreateFieldDialog({
@@ -43,6 +39,8 @@ export default function CreateFieldDialog({
   const noEffect = !filter && !contextPrefix
 
   async function submit() {
+    // the warning in the form says why nothing is created
+    if (noEffect) return
     try {
       await createLibraryMetadataField(libraryId, {
         fieldKey,
@@ -70,87 +68,84 @@ export default function CreateFieldDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Metadatenfeld anlegen</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+    <FormDialog
+      open={open}
+      title="Feld anlegen"
+      submitLabel="Anlegen"
+      onSubmit={() => void submit()}
+      onClose={onClose}
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        <TextField
+          size="small"
+          label="Feldschlüssel"
+          helperText="Kleinbuchstaben, Ziffern und Unterstriche, z. B. fassung"
+          value={fieldKey}
+          onChange={(e) => setFieldKey(e.target.value)}
+        />
+        <TextField
+          size="small"
+          label="Feldname"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <FormControl fullWidth size="small">
+          <InputLabel id="field-type-label">Typ</InputLabel>
+          <Select
+            labelId="field-type-label"
+            label="Typ"
+            value={type}
+            onChange={(e) => setType(e.target.value as LibraryMetadataFieldType)}
+          >
+            {(Object.keys(TYPE_LABELS) as LibraryMetadataFieldType[]).map((option) => (
+              <MenuItem key={option} value={option}>
+                {TYPE_LABELS[option]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {type === 'SELECT' && (
           <TextField
             size="small"
-            label="Feldschlüssel"
-            helperText="Kleinbuchstaben, Ziffern und Unterstriche, z. B. fassung"
-            value={fieldKey}
-            onChange={(e) => setFieldKey(e.target.value)}
+            label="Werteliste"
+            helperText="Eine Zeile je Wert, Format CODE=Bezeichnung"
+            multiline
+            minRows={3}
+            value={values}
+            onChange={(e) => setValues(e.target.value)}
           />
+        )}
+        {type === 'PATTERN' && (
           <TextField
             size="small"
-            label="Feldname"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
+            label="Muster"
+            helperText="Regulärer Ausdruck, gegen den jeder Wert geprüft wird"
+            value={valuePattern}
+            onChange={(e) => setValuePattern(e.target.value)}
           />
-          <FormControl fullWidth size="small">
-            <InputLabel id="field-type-label">Typ</InputLabel>
-            <Select
-              labelId="field-type-label"
-              label="Typ"
-              value={type}
-              onChange={(e) => setType(e.target.value as LibraryMetadataFieldType)}
-            >
-              {(Object.keys(TYPE_LABELS) as LibraryMetadataFieldType[]).map((option) => (
-                <MenuItem key={option} value={option}>
-                  {TYPE_LABELS[option]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {type === 'SELECT' && (
-            <TextField
-              size="small"
-              label="Werteliste"
-              helperText="Eine Zeile je Wert, Format CODE=Bezeichnung"
-              multiline
-              minRows={3}
-              value={values}
-              onChange={(e) => setValues(e.target.value)}
+        )}
+        <FormControlLabel
+          control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
+          label="Wirkt im Filter"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={contextPrefix}
+              onChange={(e) => setContextPrefix(e.target.checked)}
             />
-          )}
-          {type === 'PATTERN' && (
-            <TextField
-              size="small"
-              label="Muster"
-              helperText="Regulärer Ausdruck, gegen den jeder Wert geprüft wird"
-              value={valuePattern}
-              onChange={(e) => setValuePattern(e.target.value)}
-            />
-          )}
-          <FormControlLabel
-            control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
-            label="Wirkt im Filter"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={contextPrefix}
-                onChange={(e) => setContextPrefix(e.target.checked)}
-              />
-            }
-            label="Wirkt im Kontextpräfix"
-          />
-          {noEffect && (
-            <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
-            </Alert>
-          )}
-          {contextPrefix && (
-            <ChangeImpactNotice libraryId={libraryId} fieldKey={fieldKey} change="FIELD_ADDED" />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
-          Anlegen
-        </Button>
-      </DialogActions>
-    </Dialog>
+          }
+          label="Wirkt im Kontextpräfix"
+        />
+        {noEffect && (
+          <Alert severity="warning">
+            Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
+          </Alert>
+        )}
+        {contextPrefix && (
+          <ChangeImpactNotice libraryId={libraryId} fieldKey={fieldKey} change="FIELD_ADDED" />
+        )}
+      </Stack>
+    </FormDialog>
   )
 }
