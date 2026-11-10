@@ -66,6 +66,7 @@ public class CapabilityService {
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken anlegen",
           Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen",
+          Capability.CREATE_AGENT, "Agenten anlegen",
           Capability.CREATE_TEMPLATE, "Vorlagen anlegen");
 
   /**
@@ -80,6 +81,7 @@ public class CapabilityService {
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken",
           Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken",
+          Capability.CREATE_AGENT, "Agenten",
           Capability.CREATE_TEMPLATE, "Vorlagen");
 
   /**

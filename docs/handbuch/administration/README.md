@@ -24,6 +24,7 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Fristen und Schalter für Daten von Personen | [Datenschutz einstellen](datenschutz.md) |
 | Mailversand und Vorlagen | [E-Mail](e-mail.md) |
 | Virenscanner anbinden | [Virenprüfung einrichten](virenpruefung.md) |
+| Agenten und ihre Werkzeuge zulassen | [Agenten einschalten](agenten.md) |
 | Word-Vorlagen anbieten | [Vorlagen einschalten](vorlagen.md) |
 | Einstellungen in eine andere Installation mitnehmen | [Einstellungen übertragen](einstellungen-uebertragen.md) |
 

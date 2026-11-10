@@ -29,6 +29,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import io.opaa.test.SourceTypes;
@@ -41,6 +42,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,6 +50,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen -
@@ -1119,6 +1124,32 @@ class SourceConnectionTestServiceTest {
                         .build(),
                     caller))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void anUnknownLibraryIsRefusedBeforeTheProbeAndMarkedSo() {
+    UUID libraryId = UUID.randomUUID();
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.empty());
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/x/test");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      assertThatThrownBy(
+              () ->
+                  service.test(
+                      sourceConnectionTest()
+                          .sourceType(SourceTypes.HTTP_DIRECTORY)
+                          .sourceUrl(URI.create(baseUrl + "/dir/"))
+                          .libraryId(libraryId)
+                          .build(),
+                      caller))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(Collections.list(request.getAttributeNames()))
+        .as("the refusal before the probe gives back the global rate-limit token")
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
   }
 
   @Test

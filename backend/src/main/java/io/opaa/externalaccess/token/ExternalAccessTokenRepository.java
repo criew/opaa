@@ -30,6 +30,28 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
 
   List<ExternalAccessToken> findByUserIdAndRevokedAtIsNull(UUID userId);
 
+  /** Advisory-lock namespace of the issuance of personal tokens. */
+  int ISSUANCE_LOCK_NAMESPACE = 232;
+
+  /**
+   * Serializes the issuances of {@code userId} until the end of the transaction, across every
+   * instance: the bound of active tokens per account is a count over the rows the issuance itself
+   * writes, so it holds only when no second issuance of the same account counts in between.
+   */
+  @Query(
+      value =
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + ISSUANCE_LOCK_NAMESPACE
+              + ", hashtext(CAST(:userId AS text)))) acquired",
+      nativeQuery = true)
+  int lockIssuance(@Param("userId") UUID userId);
+
+  /** The tokens of {@code userId} still live at {@code now}. */
+  @Query(
+      "SELECT COUNT(t) FROM ExternalAccessToken t WHERE t.userId = :userId"
+          + " AND t.revokedAt IS NULL AND t.expiresAt > :now")
+  long countActiveOf(@Param("userId") UUID userId, @Param("now") Instant now);
+
   /**
    * The token, its row locked until the caller's transaction ends - so that of two runs recording
    * its lapse, the second reads the marker the first committed.

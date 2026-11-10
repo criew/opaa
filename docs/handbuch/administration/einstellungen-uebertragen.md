@@ -63,6 +63,8 @@ nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
   zum Suchindex dieser Installation.
 - **Virenscanner.** Seine Adresse empfängt jede aufgenommene Datei; er wird in jeder Installation
   unter [Virenprüfung](virenpruefung.md) eingetragen.
+- **Agenten.** Wer sie einschaltet, wird Eigentümer des Agenten „Recherche“; sie werden in jeder
+  Installation unter [Agenten einschalten](agenten.md) eingeschaltet.
 - **Identitätsanbieter und der Schalter der lokalen Konten.** Sie legen fest, wer sich anmeldet und
   wer welche Systemrolle erhält. Ein Import könnte den Kreis der Systemverwaltung erweitern oder die
   Systemverwaltung aussperren.

@@ -38,7 +38,11 @@ Dienstkonto als Besitzer. Sie können ein einzelnes Token oder alle Tokens einer
 Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel, die Übergabe
 an einen Identitätsanbieter und die Vergabe der Systemverwaltung an ein lokales Konto beenden die
 Tokens eines Kontos von selbst. Die Zahl der Tokens an
-einer Bibliothek zählt die Tokens der Dienstkonten mit.
+einer Bibliothek zählt die Tokens der Dienstkonten mit. Wie viele gültige Tokens ein Konto
+höchstens hat, legt `OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT` fest.
+
+„Anfragen je Token und Stunde“ gilt je Token und zusätzlich für alle Tokens einer Person zusammen:
+Ein weiteres Token bringt ihr keine weiteren Anfragen.
 
 Der **Abflussalarm** zählt die Abrufe des ganzen Kanals je Stunde und meldet eine Überschreitung
 einmal an die Systemverwaltung. Die Meldung führt zur Tokenliste und dient Vorfall und Sperre, nicht
@@ -95,7 +99,7 @@ Einzelne Abfragen stehen in keinem Log; die Ursache steht in der Antwort, beim M
 | `401 network_not_allowed` | Aufruf außerhalb der Netzbereiche, oder Proxy ohne Eintrag | Netz oder vertraute Proxys prüfen |
 | `503` oder `401 channel_closed` | Kanal ausgeschaltet | einschalten |
 | `404` am MCP-Server | Kanal aus und kein gültiges Token, oder falsche Adresse (`/mcp`) | mit gültigem Token wiederholen |
-| `429`, am MCP-Server Fehler `-32000` oder ein Ergebnis mit „Kontingent“ | Anfragen je Token und Stunde erschöpft (schon das Verbinden zählt); bei Suche und Trefferabruf auch die Grenze je Konto oder der Suche insgesamt | warten, bei Bedarf Grenze anheben |
+| `429`, am MCP-Server Fehler `-32000` oder ein Ergebnis mit „Kontingent“ | Anfragen je Token und Stunde erschöpft, auch über alle Tokens der Person zusammen (schon das Verbinden zählt); bei Suche und Trefferabruf auch die Grenze je Konto oder der Suche insgesamt | warten, bei Bedarf Grenze anheben |
 | Bibliothek fehlt in den Treffern | Leserecht, Freigabe oder Token-Auswahl fehlt | Freigabe erneuern, neues Token |
 | HTML statt JSON | Reverse Proxy reicht `/mcp` nicht durch | Proxy-Regel |
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DocumentTemplateAvailabilityResponse } from '../api/types'
+import type { AgentAvailabilityResponse, DocumentTemplateAvailabilityResponse } from '../api/types'
 import { apiClient as client } from '../api/api'
 import { useAuthStore } from './authStore'
 import { recordRuntimeSwitches, type RuntimeSwitches } from './installationFeatures'
@@ -16,22 +16,32 @@ interface RuntimeSwitchState extends RuntimeSwitches {
  */
 export const useRuntimeSwitchStore = create<RuntimeSwitchState>((set) => ({
   documentTemplates: false,
+  agents: false,
   refresh: async () => {
-    try {
-      const { data } = await client.get<DocumentTemplateAvailabilityResponse>(
-        '/v1/document-templates/availability',
-      )
-      set({ documentTemplates: data.enabled })
-    } catch {
-      set({ documentTemplates: false })
-    }
+    const [documentTemplates, agents] = await Promise.all([
+      readSwitch<DocumentTemplateAvailabilityResponse>('/v1/document-templates/availability'),
+      readSwitch<AgentAvailabilityResponse>('/v1/agents/availability'),
+    ])
+    set({ documentTemplates, agents })
   },
 }))
 
-recordRuntimeSwitches({ documentTemplates: useRuntimeSwitchStore.getState().documentTemplates })
+async function readSwitch<T extends { enabled: boolean }>(path: string): Promise<boolean> {
+  try {
+    const { data } = await client.get<T>(path)
+    return data.enabled
+  } catch {
+    return false
+  }
+}
+
+recordRuntimeSwitches({
+  documentTemplates: useRuntimeSwitchStore.getState().documentTemplates,
+  agents: useRuntimeSwitchStore.getState().agents,
+})
 useRuntimeSwitchStore.subscribe((state, previous) => {
-  if (state.documentTemplates !== previous.documentTemplates) {
-    recordRuntimeSwitches({ documentTemplates: state.documentTemplates })
+  if (state.documentTemplates !== previous.documentTemplates || state.agents !== previous.agents) {
+    recordRuntimeSwitches({ documentTemplates: state.documentTemplates, agents: state.agents })
   }
 })
 
@@ -40,6 +50,6 @@ useAuthStore.subscribe((state, previous) => {
     void useRuntimeSwitchStore.getState().refresh()
   }
   if (!state.isAuthenticated && previous.isAuthenticated) {
-    useRuntimeSwitchStore.setState({ documentTemplates: false })
+    useRuntimeSwitchStore.setState({ documentTemplates: false, agents: false })
   }
 })

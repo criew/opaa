@@ -32,16 +32,21 @@ import io.opaa.indexing.spi.SourceListing;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.time.Clock;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * The S3 branch of {@link SourceConnectionTestService}: the effective request handed to {@link
@@ -210,6 +215,34 @@ class SourceConnectionTestServiceS3Test {
                         null),
                     caller))
         .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void aMissingReleaseRefusesTheListingBeforeTheWorkAndMarksIt() {
+    Mockito.doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(connectorRelease)
+        .requireCreatable(caller, SourceTypes.S3, null);
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/x/browse");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      assertThatThrownBy(
+              () ->
+                  service.browse(
+                      new SourceBrowseRequest(
+                          SourceTypes.S3,
+                          URI.create("https://s3.example.org"),
+                          "ak:sk",
+                          TestConnectorSettings.s3Query(null, true),
+                          null),
+                      caller))
+          .isInstanceOf(AccessDeniedException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(Collections.list(request.getAttributeNames()))
+        .as("the refusal before the listing gives back the global rate-limit token")
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
   }
 
   @Test
