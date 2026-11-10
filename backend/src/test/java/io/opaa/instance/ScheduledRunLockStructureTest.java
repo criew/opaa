@@ -54,7 +54,9 @@ class ScheduledRunLockStructureTest {
           "io.opaa.indexing.maintenance.IndexingStateMetrics#refreshReindex",
           "each instance reads the re-index backlog it reports itself; it only reads (E12)",
           "io.opaa.directory.sync.DirectorySyncMetrics#refresh",
-          "each instance reads the directory gauges it reports itself; it only reads (E12)");
+          "each instance reads the directory gauges it reports itself; it only reads (E12)",
+          "io.opaa.observability.PolledGaugeRefresher#refresh",
+          "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)");
 
   /** Above the clock skew of hosts synchronised by NTP; the database clock compares the locks. */
   static final Duration MINIMUM_AT_LEAST_FOR = Duration.ofSeconds(2);

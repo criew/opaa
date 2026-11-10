@@ -2,9 +2,11 @@ package io.opaa.retrieval.context;
 
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.VectorTable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -87,6 +89,56 @@ public class NeighborChunkLookup {
               ChunkPosition.of(chunk)
                   .map(position -> byKey.get(position.key()))
                   .ifPresent(position -> result.put(position, chunk));
+            });
+    return result;
+  }
+
+  /**
+   * The stored chunks of {@code documentId} from {@code fromIndex} to {@code toIndex} (both
+   * inclusive) within {@code libraryIds}, in index order. A document outside the scope loads
+   * nothing; an empty scope loads nothing.
+   */
+  public List<Document> findRange(
+      String documentId, int fromIndex, int toIndex, Set<UUID> libraryIds) {
+    if (documentId == null || libraryIds.isEmpty() || toIndex < fromIndex) {
+      return List.of();
+    }
+    String indexText = "metadata->>'" + VectorChunkStore.CHUNK_INDEX_METADATA_KEY + "'";
+    // The guard keeps a non-integral index of any row from failing the cast.
+    String chunkIndex =
+        "(CASE WHEN " + indexText + " ~ '^[0-9]{1,9}$' THEN (" + indexText + ")::int END)";
+    String sql =
+        "SELECT id, content, metadata FROM "
+            + vectorTable.qualifiedName()
+            + " WHERE metadata->>'"
+            + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+            + "' = ?"
+            + " AND metadata->>'"
+            + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+            + "' = ANY(?)"
+            + " AND "
+            + chunkIndex
+            + " BETWEEN ? AND ?"
+            + " ORDER BY "
+            + chunkIndex;
+    String[] libraries = libraryIds.stream().map(UUID::toString).toArray(String[]::new);
+    List<Document> result = new ArrayList<>();
+    jdbcTemplate.query(
+        sql,
+        ps -> {
+          ps.setString(1, documentId);
+          ps.setArray(2, ps.getConnection().createArrayOf("text", libraries));
+          ps.setInt(3, fromIndex);
+          ps.setInt(4, toIndex);
+        },
+        (RowCallbackHandler)
+            rs -> {
+              result.add(
+                  Document.builder()
+                      .id(rs.getString("id"))
+                      .text(rs.getString("content"))
+                      .metadata(readMetadata(rs.getString("metadata")))
+                      .build());
             });
     return result;
   }

@@ -491,6 +491,26 @@ Mehr Instanzen brauchen mehr Datenbankverbindungen: Jede Instanz hält ihren Con
 die Hörverbindung für die Benachrichtigungen, und während eines Updates läuft kurz eine Instanz mehr.
 Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 
+## Instanzen beobachten
+
+Jede Instanz gibt ihre eigenen Metriken aus, Prometheus fragt jede einzeln ab
+([Überwachung](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)). Für den Mehrinstanzbetrieb
+sind drei Fragen wichtig:
+
+- **Laufen alle Instanzen, und in welcher Version?** `opaa_instances_active` zählt die laufenden
+  Instanzen nach dem Register, `opaa_instances_versions` ihre verschiedenen Versionen. Jede Instanz
+  meldet denselben Wert; `max(opaa_instances_active)` unter der Zahl der gewünschten Instanzen
+  heißt, eine fehlt, `opaa_instances_versions` dauerhaft über `1`, ein Rolling Update hängt.
+  `opaa_instance_heartbeat_age_seconds` ist das Alter des eigenen Herzschlags; nähert es sich der
+  Frist `OPAA_INSTANCE_DEAD_AFTER`, droht der Selbstschutz.
+- **Hört jede Instanz die Änderungen?** `opaa_invalidation_bus_connected` ist je Instanz `1`, solange
+  sie mithört, und `0`, solange ihre Zwischenspeicher an sich vorbei lesen.
+- **Laufen die geplanten Läufe?** Unter der Sperre führt nur eine Instanz einen Termin aus; den
+  letzten Erfolg eines Laufs zeigt deshalb `max by (job) (opaa_scheduled_last_success)` über alle
+  Instanzen, die Fehler `sum by (job) (opaa_scheduled_failures_total)`. Bis ein Lauf auf einer
+  Instanz gelingt, zeigt sie ihren eigenen Start als letzten Erfolg. Die gehaltenen Sperren und das
+  Alter der ältesten zeigt `opaa_scheduled_locks_held` und `opaa_scheduled_locks_oldest_age_seconds`.
+
 ## Was man wissen sollte
 
 | Eigenheit | Was das praktisch heißt |

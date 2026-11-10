@@ -4,6 +4,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.organization.Organization;
 import java.time.Duration;
@@ -93,6 +94,7 @@ public class DirectorySyncScheduler {
         executor.execute(() -> run(provider));
       } catch (Exception e) {
         log.error("Directory sync: scheduled run for provider {} failed", provider.getId(), e);
+        ScheduledRunFailures.report();
       }
     }
   }

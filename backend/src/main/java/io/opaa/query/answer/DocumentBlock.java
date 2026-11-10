@@ -64,6 +64,16 @@ public final class DocumentBlock {
     return BLOCK.open(id) + "\n" + (sections.isEmpty() ? "" : sections + "\n") + BLOCK.close(id);
   }
 
+  /**
+   * A block of plain lines that are data, not passages - e.g. the names of libraries and documents
+   * a listing found. Each line is cleaned like a document name; the block has no sections, so no
+   * line can be cited.
+   */
+  public static String renderLines(String id, List<String> lines) {
+    String body = lines.stream().map(DocumentBlock::cleanName).collect(Collectors.joining("\n"));
+    return BLOCK.open(id) + "\n" + (body.isEmpty() ? "" : body + "\n") + BLOCK.close(id);
+  }
+
   private static String section(String id, Document chunk) {
     String fileName =
         cleanName(chunk.getMetadata().getOrDefault("file_name", "unknown").toString());

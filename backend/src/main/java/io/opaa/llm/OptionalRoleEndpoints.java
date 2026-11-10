@@ -1,11 +1,14 @@
 package io.opaa.llm;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.instance.BusBoundCache;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.MeteredCaches;
 import io.opaa.security.CipherBinding;
 import io.opaa.security.SettingsEncryptor;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,19 +23,22 @@ import org.slf4j.LoggerFactory;
  * refuses the call, which the role reports as its state.
  */
 public abstract class OptionalRoleEndpoints<E extends OptionalRoleEndpoint>
-    implements InvalidationSubscriber {
+    implements InvalidationSubscriber, MeteredCaches {
 
   private static final Logger log = LoggerFactory.getLogger(OptionalRoleEndpoints.class);
 
   private final String topic;
+  private final String cacheName;
   private final SettingsEncryptor settingsEncryptor;
   private final BusBoundCache<Boolean, E> cache;
 
   protected OptionalRoleEndpoints(
-      String topic, SettingsEncryptor settingsEncryptor, InvalidationBus bus) {
+      String topic, String cacheName, SettingsEncryptor settingsEncryptor, InvalidationBus bus) {
     this.topic = topic;
+    this.cacheName = cacheName;
     this.settingsEncryptor = settingsEncryptor;
-    this.cache = new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).build(), bus);
+    this.cache =
+        new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).recordStats().build(), bus);
   }
 
   /** The endpoint in force; never blocks on the network. */
@@ -51,6 +57,11 @@ public abstract class OptionalRoleEndpoints<E extends OptionalRoleEndpoint>
   @Override
   public void invalidateAll() {
     cache.invalidateAll();
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of(cacheName, cache.statistics());
   }
 
   /** {@code ciphertext} decrypted, empty for none or one that cannot be decrypted. */
