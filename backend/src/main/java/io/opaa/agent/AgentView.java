@@ -1,6 +1,7 @@
 package io.opaa.agent;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.asset.AssetResponsibilityView;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.UUID;
  * @param succession {@code null} while the agent has a capable owner
  * @param instructionReadable whether the caller may read the instruction, which is content: the
  *     system administration's management alone does not open it
+ * @param responsibility the responsible unit and the lock
  */
 public record AgentView(
     Agent agent,
@@ -25,7 +27,8 @@ public record AgentView(
     String ownerName,
     SuccessionFinding succession,
     AssetReach reach,
-    boolean instructionReadable) {
+    boolean instructionReadable,
+    AssetResponsibilityView responsibility) {
 
   /** A library the caller may read. */
   public record LibraryRef(UUID id, String name) {}

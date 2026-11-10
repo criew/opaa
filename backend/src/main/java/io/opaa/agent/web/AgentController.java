@@ -6,6 +6,9 @@ import io.opaa.api.dto.AgentAvailabilityResponse;
 import io.opaa.api.dto.AgentCreateRequest;
 import io.opaa.api.dto.AgentResponse;
 import io.opaa.api.dto.AgentUpdateRequest;
+import io.opaa.api.dto.AssetLockRequest;
+import io.opaa.api.dto.AssetResponsibilityResponse;
+import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -40,8 +44,10 @@ public class AgentController {
   }
 
   @GetMapping
-  public List<AgentResponse> listAgents(@Caller CurrentUser caller) {
-    return AgentResponseMapper.toResponses(agentService.list(caller));
+  public List<AgentResponse> listAgents(
+      @RequestParam(name = "usable", defaultValue = "false") boolean usable,
+      @Caller CurrentUser caller) {
+    return AgentResponseMapper.toResponses(agentService.list(caller, usable));
   }
 
   @PostMapping
@@ -70,6 +76,21 @@ public class AgentController {
       @Caller CurrentUser caller) {
     return AgentResponseMapper.toResponse(
         agentService.update(agentId, AgentResponseMapper.toUpdate(request), caller));
+  }
+
+  @PutMapping("/{agentId}/lock")
+  public AssetResponsibilityResponse lockAgent(
+      @PathVariable UUID agentId,
+      @Valid @RequestBody AssetLockRequest request,
+      @Caller CurrentUser caller) {
+    return AssetResponsibilityResponseMapper.toResponse(
+        agentService.lock(agentId, request.getReason(), caller));
+  }
+
+  @DeleteMapping("/{agentId}/lock")
+  public AssetResponsibilityResponse unlockAgent(
+      @PathVariable UUID agentId, @Caller CurrentUser caller) {
+    return AssetResponsibilityResponseMapper.toResponse(agentService.unlock(agentId, caller));
   }
 
   @DeleteMapping("/{agentId}")

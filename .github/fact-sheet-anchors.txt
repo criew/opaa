@@ -70,10 +70,13 @@ protokollereignisse#asset-grant-changed
 protokollereignisse#asset-grant-expired
 protokollereignisse#asset-grant-granted
 protokollereignisse#asset-grant-revoked
+protokollereignisse#asset-locked
 protokollereignisse#asset-owner-changed
 protokollereignisse#asset-ownership-claimed
+protokollereignisse#asset-responsibility-changed
 protokollereignisse#asset-shared-to-space
 protokollereignisse#asset-succession-opened
+protokollereignisse#asset-unlocked
 protokollereignisse#asset-visibility-changed
 protokollereignisse#audit-log-accessed
 protokollereignisse#audit-log-configuration-changed
@@ -217,6 +220,7 @@ protokollereignisse#prompt-library-changed
 protokollereignisse#prompt-library-created
 protokollereignisse#prompt-library-deleted
 protokollereignisse#rerank-model-changed
+protokollereignisse#responsibility-lock-period-changed
 protokollereignisse#search-diagnosis-profile-run
 protokollereignisse#self-disclosure-export-finished
 protokollereignisse#self-disclosure-export-started
@@ -404,6 +408,7 @@ voreinstellungen#prompt-tool-loop-spike
 voreinstellungen#rerank-model-base-url
 voreinstellungen#rerank-model-enabled
 voreinstellungen#rerank-model-model-identifier
+voreinstellungen#responsibility-lock-settings-lock-after-days
 voreinstellungen#self-disclosure-settings-daily-limit
 voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#succession-settings-aging-threshold-months

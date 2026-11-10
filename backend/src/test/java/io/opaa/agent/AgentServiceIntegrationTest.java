@@ -10,6 +10,7 @@ import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -321,7 +322,7 @@ class AgentServiceIntegrationTest {
   }
 
   private static AgentCreation creation(String name) {
-    return new AgentCreation(name, null, null, null);
+    return new AgentCreation(name, null, null, null, ResponsibleUnit.ofFunction("Referat Z3"));
   }
 
   private static AgentUpdate withLibraries(Set<UUID> libraryIds) {

@@ -11,11 +11,15 @@ import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
+import io.opaa.asset.AssetResponsibilityService;
+import io.opaa.asset.AssetResponsibilityView;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.NotFoundException;
@@ -50,6 +54,10 @@ import org.springframework.transaction.annotation.Transactional;
  * address. A library is assigned only if the editor may read it; an assigned library the editor may
  * not read stays assigned and is shown only as a count, never by name. Assigning grants nothing: a
  * run reads only what the calling person may read (ADR-0070, Entscheidung 3).
+ *
+ * <p>Every agent names a responsible unit ({@link AssetResponsibilityService}); the system
+ * administration may lock a single agent. A locked agent stays manageable, is left out of the list
+ * to choose from and refused for every run ({@link #requireUsableForRun}).
  */
 @Service
 @Transactional(readOnly = true)
@@ -59,6 +67,9 @@ public class AgentService {
   static final int MAX_DESCRIPTION_LENGTH = 2000;
   static final int MAX_INSTRUCTION_LENGTH = 8000;
   static final int MAX_LIBRARIES = 100;
+
+  /** The code a run of a locked agent is refused with. */
+  public static final String LOCKED_CODE = "AGENT_LOCKED";
 
   private final AgentRepository agentRepository;
   private final AgentSwitch agentSwitch;
@@ -72,6 +83,7 @@ public class AgentService {
   private final LibraryAccessService libraryAccess;
   private final KnowledgeLibraryRepository libraryRepository;
   private final AuditEventRecorder auditEventRecorder;
+  private final AssetResponsibilityService responsibilityService;
 
   AgentService(
       AgentRepository agentRepository,
@@ -85,7 +97,9 @@ public class AgentService {
       AssetSuccessionSource successionSource,
       LibraryAccessService libraryAccess,
       KnowledgeLibraryRepository libraryRepository,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      AssetResponsibilityService responsibilityService) {
+    this.responsibilityService = responsibilityService;
     this.agentRepository = agentRepository;
     this.agentSwitch = agentSwitch;
     this.capabilityService = capabilityService;
@@ -113,6 +127,8 @@ public class AgentService {
     List<FieldError> errors = new ArrayList<>();
     String name = validateName(request.name(), errors);
     String description = validateDescription(request.description(), errors);
+    ResponsibleUnit responsible =
+        responsibilityService.validate(request.responsible(), caller, errors);
     throwIfAny(errors);
 
     Agent agent;
@@ -134,6 +150,7 @@ public class AgentService {
             "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, AgentLimits.INSTALLATION));
     Agent saved = agentRepository.save(agent);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
+    responsibilityService.establish(saved, responsible);
     return view(saved, AssetRole.OWNER, caller);
   }
 
@@ -142,9 +159,21 @@ public class AgentService {
    * least {@code VIEWER}.
    */
   public List<AgentView> list(CurrentUser caller) {
+    return list(caller, false);
+  }
+
+  /**
+   * As {@link #list(CurrentUser)}; with {@code usableOnly} without the locked agents - the list a
+   * person chooses an agent from.
+   */
+  public List<AgentView> list(CurrentUser caller, boolean usableOnly) {
     requireEnabled();
     Set<UUID> readable =
-        accessService.readableAssetIds(Agent.ASSET_TYPE, caller.id(), caller.organizationId());
+        new HashSet<>(
+            accessService.readableAssetIds(Agent.ASSET_TYPE, caller.id(), caller.organizationId()));
+    if (usableOnly) {
+      readable.removeAll(responsibilityService.lockedAmong(readable));
+    }
     List<Agent> agents =
         agentRepository.findAllById(readable).stream()
             .sorted(Comparator.comparing(Agent::getName).thenComparing(Agent::getId))
@@ -155,6 +184,8 @@ public class AgentService {
     Map<UUID, String> names = ownerNames.of(agents);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(agents, false);
     LibraryNames libraryNames = libraryNames(agents, caller);
+    Map<UUID, AssetResponsibilityView> responsibilities =
+        responsibilityService.viewsOf(agents, caller);
     List<AgentView> views = new ArrayList<>(agents.size());
     for (Agent agent : agents) {
       views.add(
@@ -166,7 +197,8 @@ public class AgentService {
               names.get(agent.getOwnerId()),
               succession.get(agent.getId()),
               reach.getOrDefault(agent.getId(), AssetReach.NONE),
-              true));
+              true,
+              responsibilities.get(agent.getId())));
     }
     return views;
   }
@@ -210,7 +242,14 @@ public class AgentService {
             errors);
     Set<String> toolNames = validateTools(submitted.toolNames(), errors);
     AgentLimits limits = validateLimits(submitted.limits(), errors);
+    ResponsibleUnit responsible =
+        request.responsible() == null
+            ? null
+            : responsibilityService.validate(request.responsible(), caller, errors);
     throwIfAny(errors);
+    if (responsible != null) {
+      responsibilityService.change(agent, responsible, caller);
+    }
 
     AgentConfiguration target =
         new AgentConfiguration(instruction, libraryIds, toolNames, submitted.planStep(), limits);
@@ -259,6 +298,49 @@ public class AgentService {
     agentRepository.delete(agent);
   }
 
+  /**
+   * Locks the agent (system administration only) with a required reason; it stays manageable and is
+   * never deleted. Holds for the next run on every instance.
+   */
+  @Transactional
+  public AssetResponsibilityView lock(UUID agentId, String reason, CurrentUser caller) {
+    requireEnabled();
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Agenten sperren.");
+    agentRepository.lockById(agentId);
+    return responsibilityService.lock(load(agentId, caller), reason, caller);
+  }
+
+  /** Lifts the lock of the agent (system administration only), whatever its cause. */
+  @Transactional
+  public AssetResponsibilityView unlock(UUID agentId, CurrentUser caller) {
+    requireEnabled();
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Agenten entsperren.");
+    agentRepository.lockById(agentId);
+    return responsibilityService.unlock(load(agentId, caller), caller);
+  }
+
+  /**
+   * The gate every run of an agent passes, after the caller's right to see it was checked: a locked
+   * agent is refused with {@code 409} and {@link #LOCKED_CODE}, read from the table on every call
+   * so a lock holds on every instance from the next run on (ADR-0053). Using an agent writes no
+   * audit entry.
+   */
+  public void requireUsableForRun(Agent agent) {
+    if (responsibilityService.isLocked(agent.getId())) {
+      throw new ConflictException(
+          "Der Agent „"
+              + agent.getName()
+              + "“ ist gesperrt und kann gerade nicht genutzt werden. Wenden Sie sich an die"
+              + " Systemverwaltung.",
+          LOCKED_CODE);
+    }
+  }
+
+  /** {@link #requireUsableForRun(Agent)} for an agent named by id; an unknown id passes here. */
+  public void requireUsableForRun(UUID agentId) {
+    agentRepository.findById(agentId).ifPresent(this::requireUsableForRun);
+  }
+
   /** The {@code 404} of a switched-off installation: agents cannot be told from no agents. */
   private void requireEnabled() {
     if (!agentSwitch.isEnabled()) {
@@ -290,7 +372,8 @@ public class AgentService {
         accessService
             .reachByAsset(Agent.ASSET_TYPE, Set.of(agent.getId()))
             .getOrDefault(agent.getId(), AssetReach.NONE),
-        holdsContentRole(agent, caller, AssetRole.VIEWER));
+        holdsContentRole(agent, caller, AssetRole.VIEWER),
+        responsibilityService.view(agent, caller));
   }
 
   /**

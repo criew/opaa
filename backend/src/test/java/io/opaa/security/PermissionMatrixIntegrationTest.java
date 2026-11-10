@@ -10,6 +10,7 @@ import io.opaa.agent.AgentService;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.format.ChunkFormatMetadata;
@@ -665,7 +666,14 @@ class PermissionMatrixIntegrationTest {
 
     UUID agent =
         agentService
-            .create(new AgentCreation("Matrix-Agent " + suffix, null, null, null), ownerCaller)
+            .create(
+                new AgentCreation(
+                    "Matrix-Agent " + suffix,
+                    null,
+                    null,
+                    null,
+                    ResponsibleUnit.ofFunction("Referat Z3")),
+                ownerCaller)
             .agent()
             .getId();
     agents.add(agent);
@@ -681,7 +689,8 @@ class PermissionMatrixIntegrationTest {
                     null,
                     null,
                     null,
-                    TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}"))),
+                    TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")),
+                    ResponsibleUnit.ofFunction("Referat Z3")),
                 ownerCaller)
             .template()
             .getId();

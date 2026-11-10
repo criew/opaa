@@ -7,6 +7,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetTypes;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -35,6 +36,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @OpaaIntegrationTest
 class DocumentTemplateServiceIntegrationTest {
+
+  private static final ResponsibleUnit RESPONSIBLE = ResponsibleUnit.ofFunction("Referat Z3");
 
   @Autowired private DocumentTemplateService templateService;
   @Autowired private DocumentTemplateSettingsService settingsService;
@@ -110,7 +113,12 @@ class DocumentTemplateServiceIntegrationTest {
     DocumentTemplateView created =
         templateService.create(
             new DocumentTemplateCreation(
-                "Bericht", "Für Recherchen", null, null, TestDocx.upload("bericht.docx", content)),
+                "Bericht",
+                "Für Recherchen",
+                null,
+                null,
+                TestDocx.upload("bericht.docx", content),
+                RESPONSIBLE),
             caller(author));
 
     DocumentTemplate template = created.template();
@@ -152,7 +160,8 @@ class DocumentTemplateServiceIntegrationTest {
                         null,
                         null,
                         TestDocx.upload(
-                            "kaputt.docx", "kein Word".getBytes(StandardCharsets.UTF_8))),
+                            "kaputt.docx", "kein Word".getBytes(StandardCharsets.UTF_8)),
+                        RESPONSIBLE),
                     admin()))
         .isInstanceOf(ValidationException.class);
     assertThat(
@@ -208,7 +217,8 @@ class DocumentTemplateServiceIntegrationTest {
         null,
         null,
         null,
-        TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")));
+        TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")),
+        RESPONSIBLE);
   }
 
   private long auditCount(String eventType, UUID objectId) {

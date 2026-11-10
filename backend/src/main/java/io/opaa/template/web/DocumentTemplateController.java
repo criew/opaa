@@ -1,9 +1,12 @@
 package io.opaa.template.web;
 
+import io.opaa.api.dto.AssetLockRequest;
+import io.opaa.api.dto.AssetResponsibilityResponse;
 import io.opaa.api.dto.DocumentTemplateAvailabilityResponse;
 import io.opaa.api.dto.DocumentTemplateResponse;
 import io.opaa.api.dto.DocumentTemplateUpdateRequest;
 import io.opaa.api.types.AssetOwnerType;
+import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.template.DocumentTemplateCreation;
@@ -71,13 +74,21 @@ public class DocumentTemplateController {
       @RequestParam(value = "description", required = false) String description,
       @RequestParam(value = "ownerType", required = false) AssetOwnerType ownerType,
       @RequestParam(value = "ownerId", required = false) UUID ownerId,
+      @RequestParam(value = "responsibleGroupId", required = false) UUID responsibleGroupId,
+      @RequestParam(value = "responsibleFunction", required = false) String responsibleFunction,
       @Caller CurrentUser caller) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
             DocumentTemplateResponseMapper.toResponse(
                 templateService.create(
                     new DocumentTemplateCreation(
-                        name, description, ownerType, ownerId, upload(file)),
+                        name,
+                        description,
+                        ownerType,
+                        ownerId,
+                        upload(file),
+                        AssetResponsibilityResponseMapper.toUnit(
+                            responsibleGroupId, responsibleFunction)),
                     caller)));
   }
 
@@ -95,7 +106,27 @@ public class DocumentTemplateController {
       @Caller CurrentUser caller) {
     return DocumentTemplateResponseMapper.toResponse(
         templateService.update(
-            documentTemplateId, request.getName(), request.getDescription(), caller));
+            documentTemplateId,
+            request.getName(),
+            request.getDescription(),
+            AssetResponsibilityResponseMapper.toUnit(request.getResponsible()),
+            caller));
+  }
+
+  @PutMapping("/{documentTemplateId}/lock")
+  public AssetResponsibilityResponse lockDocumentTemplate(
+      @PathVariable UUID documentTemplateId,
+      @Valid @RequestBody AssetLockRequest request,
+      @Caller CurrentUser caller) {
+    return AssetResponsibilityResponseMapper.toResponse(
+        templateService.lock(documentTemplateId, request.getReason(), caller));
+  }
+
+  @DeleteMapping("/{documentTemplateId}/lock")
+  public AssetResponsibilityResponse unlockDocumentTemplate(
+      @PathVariable UUID documentTemplateId, @Caller CurrentUser caller) {
+    return AssetResponsibilityResponseMapper.toResponse(
+        templateService.unlock(documentTemplateId, caller));
   }
 
   @DeleteMapping("/{documentTemplateId}")

@@ -250,7 +250,9 @@ paths:
       summary: >
         Sets the aging threshold of the operational list (system admin only);
         agingThresholdMonths null returns to the factory default. Holds for the next reading on
-        every instance; it highlights and triggers nothing.
+        every instance; it highlights and triggers nothing. responsibleLockDays sets after how many
+        days without a responsible unit an agent or a document template is locked; null returns
+        to the factory default. Each changed value is audited on its own.
       requestBody:
         required: true
         content:
@@ -656,12 +658,21 @@ components:
           description: >
             From which age in months an entry is highlighted, within minAgingThresholdMonths and
             maxAgingThresholdMonths; null (or absent) returns to the factory default.
+        responsibleLockDays:
+          type: integer
+          format: int32
+          nullable: true
+          description: >
+            After how many days without a responsible unit an agent or a document template is
+            locked, within minResponsibleLockDays and maxResponsibleLockDays; null (or absent)
+            returns to the factory default.
 
     SuccessionSettingsResponse:
       type: object
       required:
         [agingThresholdMonths, defaultAgingThresholdMonths, minAgingThresholdMonths,
-        maxAgingThresholdMonths, overridden]
+        maxAgingThresholdMonths, overridden, responsibleLockDays, defaultResponsibleLockDays,
+        minResponsibleLockDays, maxResponsibleLockDays, responsibleLockDaysOverridden]
       properties:
         agingThresholdMonths:
           type: integer
@@ -680,6 +691,23 @@ components:
         overridden:
           type: boolean
           description: Whether the administration set its own value.
+        responsibleLockDays:
+          type: integer
+          format: int32
+          description: >
+            Days after which an agent or a document template without a responsible unit is
+            locked, in force.
+        defaultResponsibleLockDays:
+          type: integer
+          format: int32
+        minResponsibleLockDays:
+          type: integer
+          format: int32
+        maxResponsibleLockDays:
+          type: integer
+          format: int32
+        responsibleLockDaysOverridden:
+          type: boolean
 
     SuccessionStateResponse:
       type: object

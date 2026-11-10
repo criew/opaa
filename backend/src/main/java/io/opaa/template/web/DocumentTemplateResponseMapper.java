@@ -4,6 +4,7 @@ import io.opaa.api.dto.AssetReachResponse;
 import io.opaa.api.dto.DocumentTemplatePlaceholderKind;
 import io.opaa.api.dto.DocumentTemplateResponse;
 import io.opaa.api.dto.DocumentTemplateSettingsResponse;
+import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.web.SuccessionStateResponseMapper;
 import io.opaa.template.DocumentTemplate;
@@ -26,6 +27,7 @@ final class DocumentTemplateResponseMapper {
             template.getOwnerId(),
             toReachResponse(view.reach()),
             view.myRole(),
+            AssetResponsibilityResponseMapper.toResponse(view.responsibility()),
             template.getFileName(),
             template.getSizeBytes(),
             template.getPlaceholders().stream()

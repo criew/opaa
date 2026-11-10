@@ -321,6 +321,16 @@ nonPersonalTables:
   permission_history_retention_settings:
     [id, retention_months, last_cutoff, updated_at, account_state_complete_since]
   succession_settings: [id, aging_threshold_months, updated_at]
+  asset_responsibilities:
+    - asset_id
+    - organization_id
+    - responsible_group_id
+    - responsible_function
+    - missing_since
+    - locked_at
+    - lock_cause
+    - lock_reason
+  responsibility_lock_settings: [id, lock_after_days, updated_at]
   directory_sync_settings: [id, change_threshold_percent, updated_at]
   permission_transfer_objects: [id, transfer_id, organization_id, asset_type, asset_id, created_at]
 settings:
@@ -330,6 +340,20 @@ settings:
     range: 12 bis 120 Monate
     effect: Aufbewahrungshöchstdauer der Rechtehistorie
     bearings: [DATA, EVALUATION]
+  - key: responsibility_lock_settings.lock_after_days
+    source: DATABASE
+    defaultValue: "30"
+    range: 1 bis 365 Tage
+    effect: >-
+      Nach wie vielen Tagen ohne verantwortliche Stelle ein Agent oder eine Dokumentvorlage
+      gesperrt wird; gesperrt, nicht gelöscht
+    bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Ohne Zuständigkeit
+        keinen eigenen Wert setzt. Die verantwortliche Stelle ist eine Gruppe oder eine
+        Funktionsbezeichnung, keine Einzelperson; Stelle, Sperrgrund und Sperrzeitpunkt sehen alle,
+        die den Agenten oder die Vorlage sehen. Die Nutzung eines Agenten wird dafür nicht erfasst.
   - key: succession_settings.aging_threshold_months
     source: DATABASE
     defaultValue: "12"

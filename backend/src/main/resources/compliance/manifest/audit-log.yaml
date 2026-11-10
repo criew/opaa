@@ -446,6 +446,20 @@ auditEvents:
   - id: AGENT_DELETED
     trigger: Ein Agent wird gelöscht
     payloadKeys: [name]
+  - id: ASSET_RESPONSIBILITY_CHANGED
+    trigger: Die verantwortliche Stelle eines Agenten oder einer Dokumentvorlage ändert sich
+    details: Vorher/Nachher der Stelle, eine Gruppe nur als Kennung, eine Funktion als eingegebener Text
+    payloadKeys: [responsibleGroupId, responsibleFunction]
+  - id: ASSET_LOCKED
+    trigger: >-
+      Die Systemverwaltung sperrt einen Agenten oder eine Dokumentvorlage, oder die Installation
+      sperrt ihn nach Ablauf der Frist ohne verantwortliche Stelle
+    details: Ursache (MANUAL oder NO_RESPONSIBLE) und der Grund als Begründung des Eintrags
+    payloadKeys: [cause]
+  - id: ASSET_UNLOCKED
+    trigger: Die Systemverwaltung hebt die Sperre eines Agenten oder einer Dokumentvorlage auf
+    details: Ursache der aufgehobenen Sperre; die Nutzung eines Agenten erzeugt keinen Eintrag
+    payloadKeys: [cause]
   - id: DOCUMENT_TEMPLATE_CREATED
     trigger: Eine Dokumentvorlage wird angelegt
     payloadKeys: [name]
@@ -696,6 +710,12 @@ auditEvents:
   - id: FULL_SYNC_RHYTHM_CHANGED
     trigger: Der hausweite Vollabgleich-Rhythmus einer Quellart ändert sich
     payloadKeys: [intervalDays, overridden, sourceType]
+  - id: RESPONSIBILITY_LOCK_PERIOD_CHANGED
+    trigger: >-
+      Die Systemverwaltung ändert, nach wie vielen Tagen ohne verantwortliche Stelle ein Agent oder
+      eine Dokumentvorlage gesperrt wird
+    details: Vorher/Nachher der Tage und ob ein eigener Wert gilt
+    payloadKeys: [responsibleLockDays, overridden]
   - id: SUCCESSION_AGING_THRESHOLD_CHANGED
     trigger: >-
       Die Schwelle, ab der ein Eintrag der Liste „Ohne Zuständigkeit“ als lange offen hervorgehoben

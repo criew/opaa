@@ -58,8 +58,10 @@ paths:
           description: >
             The named chat's space is archived. Or agentId names an agent the caller cannot use,
             with code AGENT_NOT_AVAILABLE: unknown, of another organization, not visible to the
-            caller, not assigned to the chat's space, locked, or agents are switched off - all
-            alike, so a foreign id is never confirmed. Nothing is persisted.
+            caller, not assigned to the chat's space, or agents are switched off - all alike, so a
+            foreign id is never confirmed. An agent the caller may see that the system
+            administration or the installation locked answers with code AGENT_LOCKED and a message
+            saying so. Nothing is persisted.
           content:
             application/json:
               schema:
@@ -130,7 +132,8 @@ paths:
         "409":
           description: >
             As POST /api/v1/query: the named chat's space is archived, or agentId names an agent
-            the caller cannot use, with code AGENT_NOT_AVAILABLE.
+            the caller cannot use, with code AGENT_NOT_AVAILABLE, or a locked one, with code
+            AGENT_LOCKED.
           content:
             application/json:
               schema:
