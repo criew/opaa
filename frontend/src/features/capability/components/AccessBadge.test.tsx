@@ -26,7 +26,7 @@ describe('AccessBadge', () => {
     const reference = getComputedStyle(screen.getByText('Bezug'))
     for (const label of ['Alle Konten', '2 Gruppen', 'Nur Systemverwaltung']) {
       const style = getComputedStyle(screen.getByText(label))
-      expect(style.fontSize).toBe(`${fontSize.xs}px`)
+      expect(style.fontSize).toBe(`${fontSize.meta}px`)
       expect(style.fontWeight).toBe('500')
       expect(style.borderRadius).toBe(`${radius.pill}px`)
       expect(style.color).toBe(reference.color)

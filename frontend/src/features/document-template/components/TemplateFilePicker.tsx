@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const TEMPLATE_ACCEPT =
   '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -44,9 +45,11 @@ export default function TemplateFilePicker({
         >
           {label}
         </Button>
-        <Typography sx={{ fontSize: 13.5 }}>{file ? file.name : 'Keine Datei gewählt'}</Typography>
+        <Typography sx={{ fontSize: fontSize.text }}>
+          {file ? file.name : 'Keine Datei gewählt'}
+        </Typography>
       </Box>
-      <Typography id={hintId} sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+      <Typography id={hintId} sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
         Word-Dokument (.docx) bis 10 MB, ohne Makros. Platzhalter schreiben Sie als{' '}
         <code>{'{{ name }}'}</code>, Listen als <code>{'{% for e in liste %} … {% endfor %}'}</code>{' '}
         und Bedingungen als <code>{'{% if wert %} … {% endif %}'}</code>.

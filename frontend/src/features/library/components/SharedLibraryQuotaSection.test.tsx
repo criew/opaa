@@ -72,7 +72,7 @@ describe('SharedLibraryQuotaSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Gelöscht wird nichts.*nimmt nichts mehr auf/,
     )
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 2.5 * GIB }]))
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
@@ -113,7 +113,7 @@ describe('SharedLibraryQuotaSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'Es gilt dann die Obergrenze des Betriebs von 10 GB.',
     )
-    await answerConfirm(user, question, 'Grenze entfernen')
+    await answerConfirm(user, question, 'Entfernen')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: null }]))
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
@@ -164,7 +164,7 @@ describe('SharedLibraryQuotaSection', () => {
     await answerConfirm(
       user,
       'Speicherkontingent geteilter Bibliotheken auf 3 GB je Bibliothek ändern?',
-      'Grenze ändern',
+      'Ändern',
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -195,7 +195,7 @@ describe('SharedLibraryQuotaSection', () => {
       await user.clear(field)
       await user.type(field, '9,313226')
       await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
-      await answerConfirm(user, /Speicherkontingent geteilter Bibliotheken auf/, 'Grenze ändern')
+      await answerConfirm(user, /Speicherkontingent geteilter Bibliotheken auf/, 'Ändern')
 
       await waitFor(() => expect(sent).toEqual([{ quotaBytes: CAP }]))
     })

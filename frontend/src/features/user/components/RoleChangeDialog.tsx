@@ -20,6 +20,7 @@ import {
   SYSTEM_ROLE_LABEL,
   localUserErrorMessage,
 } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RoleChangeDialogProps {
   /** The account whose role is being changed; `null` keeps the dialog closed. */
@@ -82,7 +83,7 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
         <DialogTitle id="role-change-title">Rolle von „{name}“ ändern</DialogTitle>
         <DialogContent>
           {account && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
               Konto bei {accountOriginLabel(account)}
               {account.email ? ` · ${account.email}` : ''}. Die Rolle gilt für die ganze Anwendung;
               Rechte an Räumen und Bibliotheken werden dort vergeben.
@@ -97,7 +98,7 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
             <Typography
               id="role-change-role-label"
               component="span"
-              sx={{ display: 'block', fontSize: 12.5, fontWeight: 500, mb: 0.5 }}
+              sx={{ display: 'block', fontSize: fontSize.meta, fontWeight: 500, mb: 0.5 }}
             >
               Rolle
             </Typography>

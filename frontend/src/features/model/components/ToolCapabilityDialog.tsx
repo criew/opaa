@@ -19,7 +19,7 @@ import type {
   ToolCapability,
   ToolCapabilityBasis,
 } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import {
   TOOL_CAPABILITY_HINTS,
@@ -115,7 +115,7 @@ export default function ToolCapabilityDialog({
             {error}
           </Alert>
         )}
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
           Die Angabe gilt für diesen Endpunkt und diese Laufzeit geprüft:{' '}
           <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
             {model.modelIdentifier}
@@ -127,12 +127,12 @@ export default function ToolCapabilityDialog({
           . Ändern sich Basis-Adresse oder Modell-Kennung, ist sie wieder ungeprüft.
         </Typography>
         {current && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
             Bisher: {TOOL_CAPABILITY_LABELS[model.toolCapability.value]}, {current}
           </Typography>
         )}
         <FormControl>
-          <FormLabel id={choiceId} sx={{ fontSize: 13.5, mb: 0.5 }}>
+          <FormLabel id={choiceId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
             Ruft das Modell Werkzeuge zuverlässig auf?
           </FormLabel>
           <RadioGroup
@@ -148,10 +148,10 @@ export default function ToolCapabilityDialog({
                 sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
                 label={
                   <Box>
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {TOOL_CAPABILITY_LABELS[key]}
                     </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                       {TOOL_CAPABILITY_HINTS[key]}
                     </Typography>
                   </Box>
@@ -162,7 +162,7 @@ export default function ToolCapabilityDialog({
         </FormControl>
         {value !== 'UNVERIFIED' && (
           <FormControl sx={{ display: 'block', mt: 1.5 }}>
-            <FormLabel id={basisId} sx={{ fontSize: 13.5, mb: 0.5 }}>
+            <FormLabel id={basisId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
               Grundlage
             </FormLabel>
             <RadioGroup
@@ -174,12 +174,12 @@ export default function ToolCapabilityDialog({
               <FormControlLabel
                 value="MEASURED"
                 control={<Radio size="small" />}
-                label={<Typography sx={{ fontSize: 13.5 }}>Gemessen</Typography>}
+                label={<Typography sx={{ fontSize: fontSize.text }}>Gemessen</Typography>}
               />
               <FormControlLabel
                 value="MANUAL"
                 control={<Radio size="small" />}
-                label={<Typography sx={{ fontSize: 13.5 }}>Manuell gesetzt</Typography>}
+                label={<Typography sx={{ fontSize: fontSize.text }}>Manuell gesetzt</Typography>}
               />
             </RadioGroup>
             {basis === 'MEASURED' && (
@@ -195,7 +195,7 @@ export default function ToolCapabilityDialog({
                 sx={{ mt: 1 }}
               />
             )}
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
               Die Angabe trägt das heutige Datum. Wer sie ändert, steht im Protokoll, nicht am
               Modell.
             </Typography>

@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { StatusTone } from './StatusLine'
+import { fontSize } from '../theme/tokens'
 
 const TONE_COLOR: Record<StatusTone, string> = {
   neutral: 'text.disabled',
@@ -36,7 +37,7 @@ export default function StateDot({
           bgcolor: TONE_COLOR[tone],
         }}
       />
-      <Typography component="span" sx={{ fontSize: 13, fontWeight: strong ? 600 : 500 }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: strong ? 600 : 500 }}>
         {label}
       </Typography>
     </Box>

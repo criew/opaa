@@ -8,7 +8,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
-import { fontFamily, markHighlight } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, markHighlight } from '@/shared/theme/tokens'
 import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
 import { downloadBlob } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
@@ -138,9 +138,9 @@ export default function DocumentTextPreviewDialog({
         role="status"
         sx={
           markState === 'not-found'
-            ? { px: 3, pb: 1, fontSize: 13, color: 'warning.main', fontWeight: 600 }
+            ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
             : markState === 'no-anchor'
-              ? { px: 3, pb: 1, fontSize: 13, color: 'text.secondary' }
+              ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'text.secondary' }
               : visuallyHidden
         }
       >
@@ -163,7 +163,7 @@ export default function DocumentTextPreviewDialog({
             sx={{
               m: 0,
               fontFamily: fontFamily.mono,
-              fontSize: '0.875rem',
+              fontSize: fontSize.text,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
             }}

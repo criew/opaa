@@ -1,4 +1,4 @@
-/**
+import { formatNumber } from '@/shared/utils/formatDate' /**
  * German wording for the free-text halves of the retrieval explanation protocol - the stage notes
  * and the candidate list labels. The backend states both technically and in English by contract
  * (`StageExplanation#notes`, `CandidateList`); turning them into the operator's language is this
@@ -430,7 +430,7 @@ export function formatStageDuration(durationMs: number | null | undefined): stri
   if (durationMs < 1000) {
     return `${durationMs} ms`
   }
-  return `${(durationMs / 1000).toLocaleString('de-DE', {
+  return `${formatNumber(durationMs / 1000, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })} s`

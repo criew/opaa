@@ -71,8 +71,9 @@ export default function ModelRowMenu({
   async function remove() {
     if (
       !(await confirmAction({
-        question: `Modell „${model.displayName}“ löschen?`,
-        consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+        question: `„${model.displayName}“ löschen?`,
+        consequence:
+          'Das Modell und sein hinterlegter Schlüssel werden gelöscht; es steht danach nicht mehr zur Auswahl.',
         confirmLabel: 'Löschen',
         tone: 'danger',
       }))

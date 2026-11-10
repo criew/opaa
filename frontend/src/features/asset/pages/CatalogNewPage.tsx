@@ -10,6 +10,7 @@ import { creatableAssetTypes } from '../../../shared/assetTypes'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import type { AssetType } from '@/shared/api/types'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const QUESTION = 'Was möchten Sie anlegen?'
 
@@ -29,10 +30,13 @@ export default function CatalogNewPage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neuer Katalogeintrag
         </Typography>
-        <PageHeading title={QUESTION} sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} />
+        <PageHeading
+          title={QUESTION}
+          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
+        />
 
         {offered.length === 0 ? (
           <Alert severity="info">
@@ -50,7 +54,7 @@ export default function CatalogNewPage() {
                 value: definition.type,
                 label: definition.label,
                 description: definition.description,
-                icon: <Icon sx={{ fontSize: 22 }} />,
+                icon: <Icon sx={{ fontSize: iconSize.lg }} />,
               }
             })}
           />

@@ -28,7 +28,7 @@ interface LibraryConnectionPanelProps {
 
 /**
  * The profile of a library in the Bereich „Anbindung“, for its managers: which one it runs on and
- * the actions „Zugang zuordnen“, „Zugang wechseln“ and „Zugang lösen“ - the last one not where the
+ * the actions „Zugang zuordnen“, „Zugang wechseln“ and „Zuordnung entfernen“ - the last one not where the
  * type is usable only through profiles. A type without profiles shows nothing here.
  */
 export default function LibraryConnectionPanel({
@@ -52,19 +52,22 @@ export default function LibraryConnectionPanel({
   async function handleRelease() {
     if (!current) return
     const confirmed = await confirmAction({
-      question: `Bibliothek vom Zugang „${current.name}“ lösen?`,
+      question: `Zuordnung zu „${current.name}“ entfernen?`,
       consequence:
         'Die Bibliothek behält ihre Adresse und ihre Zugangsdaten und läuft mit ihnen als eigene Adresse weiter.',
-      confirmLabel: 'Lösen',
+      confirmLabel: 'Entfernen',
       tone: 'caution',
     })
     if (!confirmed) return
     setReleasing(true)
     try {
       await releaseLibraryFromProfile(libraryId)
-      notify(`Die Bibliothek ist vom Zugang „${current.name}“ gelöst.`, 'success')
+      notify(`Die Zuordnung zu „${current.name}“ ist entfernt.`, 'success')
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Der Zugang ließ sich nicht lösen.', 'error')
+      notify(
+        err instanceof Error ? err.message : 'Die Zuordnung ließ sich nicht entfernen.',
+        'error',
+      )
     } finally {
       setReleasing(false)
     }
@@ -99,7 +102,7 @@ export default function LibraryConnectionPanel({
           disabled={releasing}
           onClick={() => void handleRelease()}
         >
-          Zugang lösen
+          Zuordnung entfernen
         </Button>
       )}
       {descriptor && admitsProfiles && (

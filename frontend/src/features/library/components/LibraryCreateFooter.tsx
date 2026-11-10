@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface LibraryCreateFooterProps {
   activeStep: number
@@ -55,7 +56,7 @@ export default function LibraryCreateFooter({
       </Button>
       <Box sx={{ flex: 1 }} />
       {pendingGrantCount > 0 && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           {pendingGrantCount === 1
             ? '1 Freigabe vorgemerkt'
             : `${pendingGrantCount} Freigaben vorgemerkt`}

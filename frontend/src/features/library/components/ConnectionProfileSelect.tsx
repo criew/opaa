@@ -23,6 +23,7 @@ import {
   profileChoices,
 } from './connectionChoice'
 import { ownAddressAllowed } from './sourceCore/sourceConnection'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface ConnectionProfileSelectProps {
   descriptor: SourceTypeDescriptor
@@ -100,11 +101,11 @@ export default function ConnectionProfileSelect({
 
   const rowText = (row: (typeof rows)[number]) => (
     <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
-      <Box component="span" sx={{ fontSize: 14 }}>
+      <Box component="span" sx={{ fontSize: fontSize.text }}>
         {row.label}
       </Box>
       {row.detail && (
-        <Box component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+        <Box component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           {row.detail}
         </Box>
       )}
@@ -120,13 +121,13 @@ export default function ConnectionProfileSelect({
         <Box data-testid={`${idPrefix}-connection-sole`}>{rowText(rows[0])}</Box>
       )}
       {!state.loaded && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
           Zugänge werden geladen …
         </Typography>
       )}
       {state.error && (
         <Typography
-          sx={{ fontSize: 13.5, color: state.forbidden ? 'text.secondary' : 'error.main' }}
+          sx={{ fontSize: fontSize.text, color: state.forbidden ? 'text.secondary' : 'error.main' }}
           data-testid={`${idPrefix}-connection-error`}
         >
           {state.forbidden ? PROFILES_FORBIDDEN_NOTICE : state.error}

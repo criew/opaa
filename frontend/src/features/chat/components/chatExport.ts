@@ -3,17 +3,11 @@ import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { toChatMessage } from '../stores/chatDetail'
 import { chatTitle } from './chatListSections'
 import { answerWithSources, markdownWithNote } from './copyFormats'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** Date and time as the export prints them, in the browser's zone: "05.03.2026, 10:15 Uhr". */
 export function exportTimestamp(date: Date): string {
-  const text = date.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `${text} Uhr`
+  return `${formatDateTime(date)} Uhr`
 }
 
 /**

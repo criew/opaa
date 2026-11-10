@@ -5,6 +5,7 @@ import type {
 } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { ageSinceLabel, countLabel } from '@/features/principal'
+import { formatDate, formatTime } from '@/shared/utils/formatDate'
 
 /** How the sync of one provider stands, read from the provider row and its status line. */
 export type SyncStateKind = 'ON' | 'PAUSED' | 'TOKEN' | 'OFF'
@@ -131,11 +132,11 @@ export function intervalLabel(minutes: number): string {
   return `alle ${minutes} Minuten`
 }
 
-/** A coming time on the clock: „heute, 15:00" or „21.09., 06:05". */
+/** A coming time on the clock: „heute, 15:00" or „21.09.2026, 06:05". */
 export function clockLabel(at: Date, now: Date = new Date()): string {
-  const time = at.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  const time = formatTime(at)
   if (at.toDateString() === now.toDateString()) return `heute, ${time}`
-  const day = at.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+  const day = formatDate(at)
   return `${day}, ${time}`
 }
 

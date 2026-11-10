@@ -14,6 +14,7 @@ import { formatShare } from '@/shared/utils/labels'
 import type { LibraryBatchRun } from '../stores/searchAdminStore'
 import { plural } from '@/shared/utils/format'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
   EMPTY: 'Leer',
@@ -314,9 +315,7 @@ export default function LibraryStatusTable({
               </TableCell>
               <TableCell align="right">{library.lowChunkDocumentCount}</TableCell>
               <TableCell>
-                {library.lastIndexedAt
-                  ? new Date(library.lastIndexedAt).toLocaleString('de-DE')
-                  : 'noch nie'}
+                {library.lastIndexedAt ? formatDateTime(library.lastIndexedAt) : 'noch nie'}
               </TableCell>
               <TableCell>
                 <StateDot

@@ -6,7 +6,7 @@ import { alpha, keyframes, useTheme } from '@mui/material/styles'
 import BrandMark from '@/shared/ui/BrandMark'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { navyRoles } from '@/shared/theme/tokens'
+import { fontSize, navyRoles } from '@/shared/theme/tokens'
 import bundledBackdropUrl from '../assets/login-backdrop.webp'
 
 // One staged entrance for the form column (guidelines 4.5); the theme collapses it under
@@ -59,7 +59,7 @@ function BrandPanel() {
         <Typography
           sx={{
             mt: 2,
-            fontSize: { md: 17, lg: 19 },
+            fontSize: { md: fontSize.title, lg: fontSize.detailTitle },
             lineHeight: 1.5,
             color: alpha(navyRoles.fg1, LOGIN_CLAIM_OPACITY),
             maxWidth: '28ch',

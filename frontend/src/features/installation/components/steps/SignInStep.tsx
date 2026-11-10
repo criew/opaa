@@ -11,6 +11,7 @@ import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
 import FormField from '../FormField'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
+import { fontSize } from '@/shared/theme/tokens'
 
 const SIGN_IN_FIELDS = ['oidc.issuerUri', 'oidc.clientId', 'oidc.jwkSetUri', 'oidc.displayName']
 
@@ -84,7 +85,10 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
       onSkip={onSkip}
     >
       <Box>
-        <Typography id={legendId} sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
+        <Typography
+          id={legendId}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: '5px' }}
+        >
           Anmeldeverfahren
         </Typography>
         <RadioGroup
@@ -100,8 +104,10 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
               sx={{ alignItems: 'flex-start', mb: 1, '& .MuiRadio-root': { mt: -0.5 } }}
               label={
                 <Box>
-                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{option.label}</Typography>
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                    {option.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                     {option.detail}
                   </Typography>
                 </Box>

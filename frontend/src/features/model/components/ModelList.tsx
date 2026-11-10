@@ -12,7 +12,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { LlmModelResponse } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { MODEL_TABLE_SX } from './modelTableStyles'
 import ModelRowMenu from './ModelRowMenu'
 import { TOOL_CAPABILITY_LABELS, toolCapabilityBasisLine } from './toolCapability'
@@ -55,7 +55,9 @@ function ToolCapabilityCell({ model }: { model: LlmModelResponse }) {
     <Box>
       <Box component="span">{TOOL_CAPABILITY_LABELS[model.toolCapability.value]}</Box>
       {basis && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', overflowWrap: 'anywhere' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
+        >
           {basis}
         </Typography>
       )}
@@ -83,10 +85,12 @@ function ModelCard({
     <Box sx={{ py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{model.displayName}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
+            {model.displayName}
+          </Typography>
           <Typography
             sx={{
-              fontSize: 12,
+              fontSize: fontSize.meta,
               color: 'text.secondary',
               fontFamily: fontFamily.mono,
               overflowWrap: 'anywhere',
@@ -97,12 +101,12 @@ function ModelCard({
         </Box>
         <ModelRowMenu model={model} onEdit={onEdit} />
       </Box>
-      <Box sx={{ mt: 0.75, fontSize: 12.5 }}>
+      <Box sx={{ mt: 0.75, fontSize: fontSize.meta }}>
         <StateCell active={model.active} />
       </Box>
       <Typography
         sx={{
-          fontSize: 12,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
           fontFamily: fontFamily.mono,
           overflowWrap: 'anywhere',
@@ -111,10 +115,10 @@ function ModelCard({
       >
         {model.baseUrl}
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
         {model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'}
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
         Werkzeuge: {toolCapabilityText(model)}
       </Typography>
     </Box>
@@ -161,12 +165,12 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
           {models.map((model) => (
             <TableRow key={model.id}>
               <TableCell>
-                <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 600 }}>
+                <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                   {model.displayName}
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: 12,
+                    fontSize: fontSize.meta,
                     color: 'text.secondary',
                     fontFamily: fontFamily.mono,
                     overflowWrap: 'anywhere',
@@ -181,7 +185,7 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
                     component="span"
                     sx={{
                       fontFamily: fontFamily.mono,
-                      fontSize: 12,
+                      fontSize: fontSize.meta,
                       display: 'block',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',

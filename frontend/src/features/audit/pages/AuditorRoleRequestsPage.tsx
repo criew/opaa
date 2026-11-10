@@ -15,20 +15,21 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import type { AuditorRoleRequestResponse } from '@/shared/api/types'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import {
   confirmAuditorRoleRequest,
   declineAuditorRoleRequest,
   listAuditorRoleRequests,
 } from '../api/auditorRoleRequestApi'
 import AuditorSetupLinkDialog, { type AuditorSetupLink } from '../components/AuditorSetupLinkDialog'
+import { formatDate, formatDateTime } from '@/shared/utils/formatDate'
 
 function personOf(request: AuditorRoleRequestResponse): string {
   return request.displayName ?? request.email ?? 'Unbenanntes Konto'
 }
 
 function changedOn(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE')
+  return formatDate(iso)
 }
 
 /**
@@ -142,7 +143,7 @@ export default function AuditorRoleRequestsPage() {
                   <TableCell>
                     {personOf(request)}
                     {request.localAccount && (
-                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         Lokales Konto
                       </Typography>
                     )}
@@ -150,13 +151,13 @@ export default function AuditorRoleRequestsPage() {
                   <TableCell>
                     {request.email ?? '—'}
                     {request.emailChangedByAdministrationAt && (
-                      <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
+                      <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600 }}>
                         {`Von der Systemverwaltung geändert am ${changedOn(request.emailChangedByAdministrationAt)} – mit der Person prüfen`}
                       </Typography>
                     )}
                   </TableCell>
                   <TableCell>{request.requestedByDisplayName ?? 'Gelöschtes Konto'}</TableCell>
-                  <TableCell>{new Date(request.requestedAt).toLocaleString('de-DE')}</TableCell>
+                  <TableCell>{formatDateTime(request.requestedAt)}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
                       <Button

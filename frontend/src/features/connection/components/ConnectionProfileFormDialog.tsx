@@ -351,12 +351,12 @@ export default function ConnectionProfileFormDialog({
         if (!profile || !needsConfirmation(err)) throw err
         // the server's question names what is discarded - the same text the preview quotes
         const confirmed = await confirmAction({
-          question: `Änderung an „${profile.name}“ bestätigen?`,
+          question: `Änderung an „${profile.name}“ speichern?`,
           consequence:
             err instanceof Error
               ? err.message
               : 'Die Änderung verwirft Zugangsdaten oder Abgleichstände.',
-          confirmLabel: 'Bestätigen und speichern',
+          confirmLabel: 'Speichern',
           tone: 'danger',
         })
         if (!confirmed) return
