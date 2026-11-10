@@ -1207,6 +1207,44 @@ describe('UserManagementPage', () => {
     expect(await screen.findByText(/ist abgeschaltet/)).toBeInTheDocument()
   }, 20000)
 
+  /** The rules of the local sign-in change only after a recent sign-in, like a system role. */
+  it('confirms the sign-in before a rule of the local sign-in changes and then saves it', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        if (bodies.length === 1) {
+          return HttpResponse.json(
+            {
+              error: 'Bitte bestätigen Sie Ihre Identität.',
+              status: 403,
+              code: 'RECENT_LOGIN_REQUIRED',
+            },
+            { status: 403 },
+          )
+        }
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderSettings()
+
+    await user.click(await screen.findByRole('switch', { name: 'Passwort vergessen' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Regeln der lokalen Anmeldung/)).toBeInTheDocument()
+    await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
+    await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies[1].passwordResetEnabled).toBe(false)
+    expect(await screen.findByText(/ist abgeschaltet/)).toBeInTheDocument()
+  }, 20000)
+
   it('carries the typed domain list into the self-registration switch', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationAllowedDomains: [] })
     signInAs('SYSTEM_ADMIN')

@@ -68,7 +68,11 @@ paths:
         the administration, so every change is its usual audit event; all of them carry the same
         correlation reference as the one SETTINGS_IMPORTED entry that names the changed sections.
         Importing the same document again changes nothing and writes nothing. Secrets of this
-        installation stay as they are. Same body and call limits as the preview.
+        installation stay as they are. Same body and call limits as the preview. A document that
+        changes a security-relevant value (securityRelevant in the preview) requires a recent
+        sign-in: without one the import is refused with 403 and code RECENT_LOGIN_REQUIRED (see
+        the response RecentLoginRequired) and nothing is taken over; the preview does not require
+        one.
       requestBody:
         required: true
         content:

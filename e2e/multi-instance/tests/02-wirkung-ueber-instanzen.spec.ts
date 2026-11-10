@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   aiStubInternalUrl,
+  bootstrapAdmin,
   call,
   callOk,
   createActiveAccount,
@@ -123,7 +124,9 @@ test("Sperren auf A beendet die Sitzungen auf B, Entsperren auf B lässt wieder 
 
 test("Abschalten der lokalen Anmeldung auf B wirkt sofort auf A", async () => {
   expect(await sessionStatus(a, person.session.token)).toBe(200);
-  await setLocalAccounts(b, admin.token, false);
+  // the settings of the local sign-in demand a recent sign-in, which beforeAll's may have outlived
+  const recent = await loginOk(a, bootstrapAdmin.email, bootstrapAdmin.password);
+  await setLocalAccounts(b, recent.token, false);
   try {
     const config = await callOk<{ localAccounts: { enabled: boolean } }>(
       a,
@@ -134,7 +137,7 @@ test("Abschalten der lokalen Anmeldung auf B wirkt sofort auf A", async () => {
     expect(await sessionStatus(a, person.session.token)).toBe(401);
     expect(await login(a, person.email, PASSWORD)).toBeNull();
   } finally {
-    await setLocalAccounts(a, admin.token, true);
+    await setLocalAccounts(a, recent.token, true);
   }
   const config = await callOk<{ localAccounts: { enabled: boolean } }>(
     b,

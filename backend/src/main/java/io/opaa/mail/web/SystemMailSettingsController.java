@@ -5,6 +5,7 @@ import io.opaa.api.dto.MailSettingsResponse;
 import io.opaa.api.dto.MailSettingsUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import io.opaa.common.PublicBaseUrl;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
@@ -56,9 +57,11 @@ public class SystemMailSettingsController {
 
   /**
    * Replaces the configuration. Takes effect on the next message without a restart - the cached
-   * transport is dropped after this transaction commits.
+   * transport is dropped after this transaction commits. Demands a recent sign-in: the server
+   * chosen here carries every reset link.
    */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @RequiresRecentLogin
   @PutMapping
   public MailSettingsResponse updateMailSettings(
       @Valid @RequestBody MailSettingsUpdateRequest request, @Caller CurrentUser caller) {

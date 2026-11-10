@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.within;
 
 import io.opaa.account.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.account.LocalRefreshTokenService.RotationResult;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.UserService;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -43,6 +46,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class LocalRefreshTokenServiceIntegrationTest {
 
   @Autowired private LocalRefreshTokenService service;
+  @Autowired private UserService userService;
   @Autowired private LocalRefreshTokenRepository repository;
   @Autowired private LocalAuthProperties properties;
   @Autowired private JdbcTemplate jdbc;
@@ -131,6 +135,50 @@ class LocalRefreshTokenServiceIntegrationTest {
     LocalRefreshToken successor = service.findPresented(rotated.token().value()).orElseThrow();
     assertThat(successor.getExpiresAt()).isCloseTo(familyEnd, within(Duration.ofSeconds(1)));
     assertThat(rotated.token().maxAge()).isLessThanOrEqualTo(Duration.ofHours(1));
+  }
+
+  @Test
+  void aPromotionToSystemAdminCutsTheRunningFamilyToTheAdministratorsLifetime() {
+    IssuedRefreshToken first = service.issue(user.user());
+    jdbc.update("UPDATE users SET system_role = 'SYSTEM_ADMIN' WHERE id = ?", user.id());
+    Instant before = Instant.now();
+
+    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(first.value(), null);
+
+    LocalRefreshToken successor = service.findPresented(rotated.token().value()).orElseThrow();
+    assertThat(successor.getFamilyExpiresAt())
+        .isBeforeOrEqualTo(
+            before.plus(properties.adminSessionMaxLifetime()).plus(Duration.ofSeconds(5)));
+    assertThat(successor.getExpiresAt())
+        .isBeforeOrEqualTo(
+            before.plus(properties.adminRefreshTokenTtl()).plus(Duration.ofSeconds(5)));
+    assertThat(rotated.token().maxAge()).isLessThanOrEqualTo(properties.adminRefreshTokenTtl());
+  }
+
+  @Test
+  void aPromotionToSystemAdminEndsEverySessionOfThePromotedAccount() {
+    IssuedRefreshToken running = service.issue(user.user());
+    long generationBefore = sessionGenerationOf(user.id());
+    CurrentUser actor =
+        CurrentUser.of(
+            admin.id(), admin.user().getOrganizationId(), SystemRole.SYSTEM_ADMIN, "Verwaltung");
+
+    userService.updateRole(user.id(), SystemRole.SYSTEM_ADMIN, actor);
+
+    LocalRefreshToken row = service.findPresented(running.value()).orElseThrow();
+    assertThat(row.getRevokedAt()).isNotNull();
+    assertThat(row.getRevocationReason()).isEqualTo(RevocationReason.ADMIN);
+    assertThat(sessionGenerationOf(user.id())).isGreaterThan(generationBefore);
+    assertThat(service.rotate(running.value(), null)).isEqualTo(new RotationResult.Unknown());
+  }
+
+  private long sessionGenerationOf(UUID userId) {
+    Long generation =
+        jdbc.queryForObject(
+            "SELECT session_generation FROM local_credentials WHERE user_id = ?",
+            Long.class,
+            userId);
+    return generation == null ? 0 : generation;
   }
 
   @Test
