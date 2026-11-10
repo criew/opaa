@@ -4655,7 +4655,10 @@ der Originalablage noch im Index.</p>
   Grund. Über <code>MaxFileSize</code> und <code>MaxScanSize</code> hinaus prüft clamd eine Datei nur teilweise und meldet
   sie dennoch als sauber, solange <code>AlertExceedsMax</code> aus ist; verschlüsselte Archive meldet er nur
   mit <code>AlertEncrypted</code>. Beides stellt der Betrieb des Scanners ein.</li>
-<li><strong>Metrik:</strong> <code>opaa_malware_scans_total</code> nach Ergebnis (<code>clean</code>, <code>infected</code>, <code>failed</code>).</li>
+<li><strong>Metriken:</strong> <code>opaa_malware_scans_seconds_*</code> mit Dauer nach Ergebnis (<code>clean</code>, <code>infected</code>,
+  <code>failed</code>) und <code>opaa_malware_signatures_age_seconds</code>, das Alter der Signaturen
+  (<a href="ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>). Die frühere Anzahl
+  <code>opaa_malware_scans_total</code> heißt jetzt <code>opaa_malware_scans_seconds_count</code>.</li>
 <li><strong>Grenzen der Prüfung:</strong></li>
 <li>„Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
     seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim

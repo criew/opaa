@@ -4229,6 +4229,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Texterkennung eines Dokuments (<code>opaa_ocr_duration_seconds_bucket</code>)</td>
 </tr>
 <tr>
+<td><code>OPAA_METRICS_SLO_OUTBOUND</code></td>
+<td><code>100ms,250ms,500ms,1s,2500ms,5s,10s,30s,60s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines ausgehenden Aufrufs an Rerank, Transkription, Texterkennung, Konnektoren und andere Dienste (<code>opaa_outbound_requests_seconds_bucket</code>)</td>
+</tr>
+<tr>
 <td><code>OPAA_METRICS_SLO_SCHEDULED</code></td>
 <td><code>100ms,1s,10s,60s,300s,900s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>

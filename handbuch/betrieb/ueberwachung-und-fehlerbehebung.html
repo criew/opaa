@@ -3175,6 +3175,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Logs und Metriken">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ausgehende-aufrufe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ausgehende Aufrufe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3986,6 +4003,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Logs und Metriken">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ausgehende-aufrufe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ausgehende Aufrufe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4095,9 +4129,9 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
   Kubernetes den Namen des Pods. <code>opaa_build_info</code> nennt je Instanz <code>version</code> und <code>commit</code>; zwei
   Versionen nebeneinander zeigen einen laufenden oder hängengebliebenen Rolling Update.</li>
 <li><strong>Latenzen als Histogramm:</strong> Die Dauer von HTTP-Anfragen, Chat-Fragen bis zum ersten Wort und
-  bis zum Ende, Modellaufrufen, Texterkennung und geplanten Läufen hat Buckets an festen Schwellen
-  (<code>_bucket</code> mit <code>le</code>), aus denen Prometheus Perzentile über alle Pods rechnet, etwa das p95 der
-  Chat-Fragen:
+  bis zum Ende, Modellaufrufen, Texterkennung, ausgehenden Aufrufen und geplanten Läufen hat
+  Buckets an festen Schwellen (<code>_bucket</code> mit <code>le</code>), aus denen Prometheus Perzentile über alle Pods
+  rechnet, etwa das p95 der Chat-Fragen:
   <code>histogram_quantile(0.95, sum by (le) (rate(opaa_query_duration_seconds_bucket[5m])))</code>. Die
   Schwellen lassen sich je Timer über <code>OPAA_METRICS_SLO_*</code> an die eigenen Zielwerte anpassen; ein
   Zielwert sollte genau auf einer Schwelle liegen.</li>
@@ -4238,8 +4272,28 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Texterkennung gescannter Dokumente nach Ergebnis (<code>recognized</code>, <code>empty</code>, <code>reused</code>, <code>failed</code>, <code>blocked</code>, <code>pending</code>) und Verbindungstyp, gesendete Seiten und Dauer mit Buckets; <code>empty</code> heißt, der Dienst hat geantwortet, aber keinen Text erkannt; steigt <code>failed</code>, ist der Dienst nicht verfügbar (<a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>)</td>
 </tr>
 <tr>
-<td><code>opaa_malware_scans_total</code></td>
-<td>Virenprüfungen nach Ergebnis (<code>clean</code>, <code>infected</code>, <code>failed</code>; <a href="netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">Netz und Sicherheit</a>)</td>
+<td><code>opaa_outbound_requests_seconds_*</code></td>
+<td>Ausgehende Aufrufe mit Buckets nach Ziel (<code>target</code>), Art (<code>kind</code>), Ergebnis (<code>outcome</code>) und Pfad (<code>path_class</code>: <code>interactive</code>, wenn eine Person wartet, sonst <code>background</code>); erlaubte Werte und Lesart unter <a href="#ausgehende-aufrufe">Ausgehende Aufrufe</a>. Jeder Versuch zählt, auch eine Wiederholung nach 429. Chat- und Embedding-Aufrufe stehen nicht hier, sondern unter <code>gen_ai_client_operation_seconds_*</code></td>
+</tr>
+<tr>
+<td><code>opaa_outbound_throttled_total</code></td>
+<td>gedrosselte Antworten (429, 503 mit <code>Retry-After</code>) nach Ziel und Pfad; im Hintergrund bremst die Indexierung damit nur, interaktiv wartet eine Person</td>
+</tr>
+<tr>
+<td><code>opaa_model_role_available</code></td>
+<td><code>1</code> oder <code>0</code> je eingerichteter Modellrolle (<code>role</code>: <code>chat</code>, <code>embedding</code>, <code>rerank</code>, <code>transcription</code>, <code>ocr</code>, <code>vision</code>), alle 30 Sekunden aus dem Zustand gelesen, den die Health Groups zeigen, ohne eigenen Modellaufruf. Chat und Embedding gelten als verfügbar, solange der letzte echte Aufruf des Modells der Rolle auf dieser Instanz es erreicht hat, beim Embedding auch die Probe der Health Group; Aufrufe anderer Modelle (etwa eines eigenen Titelmodells) zählen nicht, und erst ein Wechsel des Modells der Rolle setzt den Wert auf <code>1</code> zurück; ein Verbindungsabbruch des Abgleichs zwischen den Instanzen ändert ihn nicht. Abgeschaltete oder nicht eingerichtete Rollen haben keine Reihe. <strong>Ein Alarm darauf braucht <code>for:</code> und Verkehr:</strong> Ohne Aufruf bleibt der letzte Stand stehen, ein einzelner Fehlschlag kippt den Wert bis zum nächsten erfolgreichen Aufruf</td>
+</tr>
+<tr>
+<td><code>opaa_transcription_requests_total</code>, <code>opaa_transcription_audio_seconds_total</code></td>
+<td>Aufnahmen der Spracheingabe nach Ergebnis (<code>success</code>; <code>refused</code> für jede Antwort des Dienstes ohne verwertbaren Text, auch einen Fehlerstatus; <code>failed</code>, wenn keine Antwort kam) und Sekunden verarbeiteten Audios; die Sekunden zählen nur, wenn der Transkriptionsdienst die Dauer in seiner Antwort nennt</td>
+</tr>
+<tr>
+<td><code>opaa_malware_scans_seconds_*</code></td>
+<td>Dauer und Anzahl der Virenprüfungen nach Ergebnis (<code>clean</code>, <code>infected</code>, <code>failed</code>; <a href="netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">Netz und Sicherheit</a>). <strong>Umbenannt:</strong> Bis zu dieser Version hieß die Anzahl <code>opaa_malware_scans_total</code>; sie steht jetzt in <code>opaa_malware_scans_seconds_count</code>, Abfragen und Alarme auf den alten Namen sind umzustellen</td>
+</tr>
+<tr>
+<td><code>opaa_malware_signatures_age_seconds</code></td>
+<td>Alter der Signaturen des Virenscanners, alle fünf Minuten von jeder Instanz beim Dienst erfragt und als UTC gelesen; ohne eingeschaltete Prüfung oder ohne Datum in der Antwort des Dienstes gibt es keine Reihe. Steigt der Wert über einen Tag, aktualisiert der Scanner seine Signaturen nicht</td>
 </tr>
 <tr>
 <td><code>opaa_siem_export_total</code></td>
@@ -4416,6 +4470,48 @@ Erfolg. Private Bibliotheken erscheinen bei Läufen, letztem Erfolg und Überfä
 zusammengefasst als <code>connector="private"</code>; <code>opaa_indexing_documents_total</code> zählt ihre Dokumente
 unter dem Quellentyp, installationsweit. Eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer
 Anlage, nicht ab dem Einschalten des Zeitplans, weil OPAA diesen Zeitpunkt nicht speichert.</p>
+<h3 id="ausgehende-aufrufe">Ausgehende Aufrufe<a class="headerlink" href="#ausgehende-aufrufe" title="Permanent link">&para;</a></h3>
+<p><code>opaa_outbound_requests_seconds_*</code> misst jeden Aufruf an einen fremden Dienst außer Chat und
+Embedding an einer Stelle, ohne Adresse, Host oder Bibliothek als Label. Die Labels nehmen nur
+diese Werte an:</p>
+<ul>
+<li><strong><code>target</code>:</strong> <code>rerank</code>, <code>transcription</code> (Aufnahmen und Verbindungsaufbau der
+  Live-Transkription), <code>ocr</code>, <code>vision</code>, <code>sandbox</code> (Code-Sandbox),
+  <code>connector</code> (Quellen und ihre Hilfsaufrufe), <code>oidc</code> (Discovery und Schlüssel des
+  Identitätsanbieters), <code>directory</code> (Verzeichnisdienst), <code>clamav</code> (Virenscanner),
+  <code>original_store</code> (S3-Ablage der hochgeladenen Originale) und <code>model_check</code> (Verbindungstest
+  und Modellsuche der Verwaltung für Chat- und Embedding-Modelle).</li>
+<li><strong><code>kind</code>:</strong> bei <code>connector</code> der Konnektortyp: <code>confluence</code>, <code>dropbox</code>, <code>google_drive</code>,
+  <code>http_directory</code>, <code>nextcloud</code>, <code>onedrive</code>, <code>rss_feed</code>, <code>s3</code>, <code>sharepoint</code>, <code>smb</code>. Hilfsaufrufe,
+  die keinem Konnektor allein gehören, tragen eine feste Zusatzart: <code>oauth</code> (Token-Endpunkt einer
+  OAuth-Verbindung), <code>service_account</code> (Token eines Dienstkontos) und <code>mcp</code> (Erkennung eines
+  MCP-Servers). Bei <code>directory</code> der Anbieter <code>keycloak</code>. Jedes andere Ziel trägt <code>none</code>.</li>
+<li><strong><code>outcome</code>:</strong> <code>success</code>; <code>client_error</code> (4xx); <code>auth_error</code> (401, 403, 407 vom Proxy, bei SMB
+  abgelehnte Anmeldung oder fehlendes Recht); <code>tls_error</code> (Zertifikat oder Handshake); <code>server_error</code>
+  (5xx); <code>timeout</code>; <code>throttled</code> (429 oder 503 mit <code>Retry-After</code>); <code>io_error</code> (keine Verbindung).</li>
+</ul>
+<p>So liest man die Werte:</p>
+<ul>
+<li><strong><code>timeout</code> umfasst Abbrüche.</strong> Bricht OPAA einen Aufruf ab, weil seine Frist abgelaufen ist,
+  zählt er als <code>timeout</code>, auch wenn eine Unterbrechung den Aufruf beendet. Das gilt ebenso, wenn
+  ein Lauf gestoppt wird oder die Instanz herunterfährt; eine Häufung von <code>timeout</code> während eines
+  Rolling Updates ist deshalb kein Ausfall des Dienstes.</li>
+<li><strong><code>client_error</code> aus Proben ist erwartbar.</strong> Die Probe des Rerankers versucht zuerst eine
+  Schreibweise der Anfrage und bei Ablehnung die andere; die erste Antwort zählt dann als
+  <code>client_error</code>. Die Probe der Texterkennung fragt bei docling-serve einen Pfad an, den nicht
+  jede Version kennt (404). Solche Werte im Pfad <code>background</code> sind kein Alarmgrund.</li>
+<li><strong><code>model_check</code> läuft im Pfad <code>background</code>,</strong> auch wenn eine Person in der Verwaltung wartet:
+  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen.</li>
+<li><strong>Die Live-Transkription zählt nur den Verbindungsaufbau,</strong> einmal je Aufnahme oder Probe;
+  die laufende Sitzung danach zählt nicht. Lehnt der Dienst den Aufbau ab, zählt sein Status.</li>
+<li><strong>S3 und SMB</strong> zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
+  S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als <code>io_error</code>. Bei SMB zählen
+  Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download
+  zählt also je Versuch. Eine Datei über der Größengrenze zählt als <code>client_error</code>.</li>
+<li><strong>Was OPAA vor dem Senden selbst ablehnt, zählt nicht.</strong> Ein Ziel, das die Zielprüfung sperrt,
+  oder ein Versuch über dem Anfragebudget eines Laufs verlässt die Instanz nicht und erscheint bei
+  keinem Ziel.</li>
+</ul>
 <p>Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
 unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln und Alarme unter Kubernetes:
