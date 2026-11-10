@@ -43,7 +43,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Create, read, change and delete document templates. Every rights question goes to the asset
@@ -53,7 +56,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Every path answers 404 while the switch "Vorlagen" is off.
  *
  * <p>An upload is admitted by {@link DocxTemplateInspector} and the malware scan before anything is
- * stored; the file is stored as received and never rendered here.
+ * stored, outside any transaction, so neither holds a database connection; the write then checks
+ * switch and rights again. The file is stored as received and never rendered here.
  */
 @Service
 @Transactional(readOnly = true)
@@ -75,6 +79,7 @@ public class DocumentTemplateService {
   private final AssetOwnerNames ownerNames;
   private final AssetSuccessionSource successionSource;
   private final AuditEventRecorder auditEventRecorder;
+  private final TransactionTemplate writes;
 
   DocumentTemplateService(
       DocumentTemplateRepository repository,
@@ -89,7 +94,9 @@ public class DocumentTemplateService {
       AssetShellService shellService,
       AssetOwnerNames ownerNames,
       AssetSuccessionSource successionSource,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      PlatformTransactionManager transactionManager) {
+    this.writes = new TransactionTemplate(transactionManager);
     this.repository = repository;
     this.files = files;
     this.inspector = inspector;
@@ -109,29 +116,41 @@ public class DocumentTemplateService {
    * Creates a template owned by the caller or, for {@link AssetOwnerType#GROUP}, by one of the
    * caller's groups. Needs {@link Capability#CREATE_TEMPLATE}.
    */
-  @Transactional
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public DocumentTemplateView create(DocumentTemplateCreation request, CurrentUser caller) {
-    settings.requireEnabled();
-    capabilityService.requireCapability(caller, Capability.CREATE_TEMPLATE);
+    requireMayCreate(request, caller);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
+    Admitted admitted = admit(request.file(), caller.organizationId());
+    return writes.execute(
+        status -> {
+          requireMayCreate(request, caller);
+          DocumentTemplate template =
+              request.ownerType() == AssetOwnerType.GROUP
+                  ? DocumentTemplate.ownedByGroup(
+                      caller.organizationId(),
+                      name,
+                      description,
+                      request.ownerId(),
+                      admitted.file())
+                  : DocumentTemplate.ownedByUser(
+                      caller.organizationId(), name, description, caller.id(), admitted.file());
+          DocumentTemplate saved = repository.saveAndFlush(template);
+          files.store(saved.getId(), admitted.content());
+          shellService.registerCreated(saved, caller.id(), auditPayload(saved));
+          return view(saved, AssetRole.OWNER);
+        });
+  }
+
+  private void requireMayCreate(DocumentTemplateCreation request, CurrentUser caller) {
+    settings.requireEnabled();
+    capabilityService.requireCapability(caller, Capability.CREATE_TEMPLATE);
     if (request.ownerType() == AssetOwnerType.GROUP && request.ownerId() == null) {
       throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
     }
     if (request.ownerType() == AssetOwnerType.GROUP) {
       grantService.requireOwnableGroup(request.ownerId(), DocumentTemplate.ASSET_TYPE, caller);
     }
-    Admitted admitted = admit(request.file(), caller.organizationId());
-    DocumentTemplate template =
-        request.ownerType() == AssetOwnerType.GROUP
-            ? DocumentTemplate.ownedByGroup(
-                caller.organizationId(), name, description, request.ownerId(), admitted.file())
-            : DocumentTemplate.ownedByUser(
-                caller.organizationId(), name, description, caller.id(), admitted.file());
-    DocumentTemplate saved = repository.saveAndFlush(template);
-    files.store(saved.getId(), admitted.content());
-    shellService.registerCreated(saved, caller.id(), auditPayload(saved));
-    return view(saved, AssetRole.OWNER);
   }
 
   /** Every template the caller may read by the formula, by name. */
@@ -206,18 +225,24 @@ public class DocumentTemplateService {
   }
 
   /** Replaces the file ({@code EDITOR}, the template's content), admitted like on creation. */
-  @Transactional
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public DocumentTemplateView replaceFile(
       UUID templateId, DocumentTemplateUpload upload, CurrentUser caller) {
-    DocumentTemplate template = load(templateId, caller);
-    AssetRole role =
-        authorization.requireRole(template, caller.id(), caller.isSystemAdmin(), AssetRole.EDITOR);
+    DocumentTemplate before = load(templateId, caller);
+    authorization.requireRole(before, caller.id(), caller.isSystemAdmin(), AssetRole.EDITOR);
     Admitted admitted = admit(upload, caller.organizationId());
-    template.replaceFile(admitted.file());
-    DocumentTemplate saved = repository.saveAndFlush(template);
-    files.store(saved.getId(), admitted.content());
-    recordChanged(saved, caller, List.of("file"));
-    return view(saved, role);
+    return writes.execute(
+        status -> {
+          DocumentTemplate template = load(templateId, caller);
+          AssetRole role =
+              authorization.requireRole(
+                  template, caller.id(), caller.isSystemAdmin(), AssetRole.EDITOR);
+          template.replaceFile(admitted.file());
+          DocumentTemplate saved = repository.saveAndFlush(template);
+          files.store(saved.getId(), admitted.content());
+          recordChanged(saved, caller, List.of("file"));
+          return view(saved, role);
+        });
   }
 
   /** Deletes the template ({@code OWNER}) with its file, grants and space associations. */
@@ -344,6 +369,9 @@ public class DocumentTemplateService {
     String normalized = fileName == null ? "" : fileName.strip();
     int slash = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'));
     normalized = normalized.substring(slash + 1);
+    if (normalized.chars().anyMatch(Character::isISOControl)) {
+      throw new ValidationException("Der Dateiname enthält Steuerzeichen.");
+    }
     if (normalized.isEmpty() || normalized.length() > MAX_NAME_LENGTH) {
       throw new ValidationException("Der Dateiname fehlt oder ist zu lang.");
     }

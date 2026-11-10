@@ -352,6 +352,7 @@ export default function DocumentTemplateDetailPage() {
             }
             return (
               <FileArea
+                key={template.id}
                 template={template}
                 canReplace={canReplace}
                 onReplaced={(next) => {

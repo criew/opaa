@@ -25,16 +25,21 @@ final class TemplateTagScanner {
 
   static final int MAX_PLACEHOLDERS = 200;
 
-  private static final Pattern TAG =
-      Pattern.compile("\\{\\{(.*?)}}|\\{%(.*?)%}|\\{#.*?#}", Pattern.DOTALL);
-  private static final Pattern MODIFIER = Pattern.compile("^(?:p|tr|tc|r)(?=\\s)");
+  /** Fields across all lists; each one is stored and sent with every template answer. */
+  static final int MAX_FIELDS = 1000;
+
+  /** The text a template may hold; a Word document of normal size stays far below. */
+  static final int MAX_TEXT_CHARS = 2_000_000;
+
+  private static final Pattern MODIFIER = Pattern.compile("^(?:p|tr|tc|r)(?=\\s+[a-z])");
   private static final Pattern STRING_LITERAL = Pattern.compile("'[^']*'|\"[^\"]*\"");
   private static final Pattern REFERENCE =
       Pattern.compile(
           "(\\|\\s*|\\bis\\s+(?:not\\s+)?)?([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)");
   private static final Pattern FOR =
       Pattern.compile(
-          "for\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s*,\\s*([A-Za-z_][A-Za-z0-9_]*))?\\s+in\\s+(.+)",
+          "for\\s+\\(?\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*,\\s*([A-Za-z_][A-Za-z0-9_]*))?\\s*\\)?"
+              + "\\s+in\\s+(.+)",
           Pattern.DOTALL);
   private static final Set<String> RESERVED =
       Set.of(
@@ -43,16 +48,48 @@ final class TemplateTagScanner {
 
   private TemplateTagScanner() {}
 
-  /** The placeholders of {@code text}, in the order they first appear. */
+  /**
+   * The placeholders of {@code text}, in the order they first appear. Reads in one pass, linear in
+   * the length of the text: an opening without its closing ends the scan, it is never retried.
+   */
   static List<TemplatePlaceholder> scan(String text) {
+    if (text.length() > MAX_TEXT_CHARS) {
+      throw new ValidationException("Die Vorlage enthält zu viel Text für eine Vorlage.");
+    }
     Collector collector = new Collector();
     Deque<Block> blocks = new ArrayDeque<>();
-    Matcher tag = TAG.matcher(text);
-    while (tag.find()) {
-      if (tag.group(1) != null) {
-        collector.references(stripModifier(tag.group(1)), PlaceholderKind.FIELD, blocks);
-      } else if (tag.group(2) != null) {
-        statement(stripModifier(tag.group(2)), collector, blocks);
+    boolean raw = false;
+    int from = 0;
+    while (true) {
+      int open = text.indexOf('{', from);
+      if (open < 0 || open + 1 >= text.length()) {
+        break;
+      }
+      char kind = text.charAt(open + 1);
+      String closing =
+          switch (kind) {
+            case '{' -> "}}";
+            case '%' -> "%}";
+            case '#' -> "#}";
+            default -> null;
+          };
+      if (closing == null) {
+        from = open + 1;
+        continue;
+      }
+      int close = text.indexOf(closing, open + 2);
+      if (close < 0) {
+        break;
+      }
+      String body = stripModifier(text.substring(open + 2, close));
+      from = close + 2;
+      if (raw) {
+        raw = !(kind == '%' && body.equals("endraw"));
+      } else if (kind == '{') {
+        collector.references(body, PlaceholderKind.FIELD, blocks);
+      } else if (kind == '%') {
+        raw = body.equals("raw");
+        statement(body, collector, blocks);
       }
     }
     if (!blocks.isEmpty()) {
@@ -76,14 +113,24 @@ final class TemplateTagScanner {
           throw new ValidationException(
               "Die Vorlage enthält eine ungültige Schleife: „{% " + body + " %}“.");
         }
-        String expression = loop.group(3).replaceAll("\\s+if\\s+.*$", "");
-        String listName = collector.references(expression, PlaceholderKind.LIST, blocks);
+        String[] source = loop.group(3).split("\\s+if\\s+", 2);
+        String listName =
+            source[0].strip().startsWith("range")
+                ? null
+                : collector.references(source[0], PlaceholderKind.LIST, blocks);
+        if (listName == null) {
+          collector.references(source[0], PlaceholderKind.FIELD, blocks);
+        }
         Set<String> variables = new LinkedHashSet<>();
         variables.add(loop.group(1));
         if (loop.group(2) != null) {
           variables.add(loop.group(2));
         }
-        blocks.push(new Block("for", variables, listName));
+        Block block = new Block("for", variables, listName);
+        blocks.push(block);
+        if (source.length > 1) {
+          collector.references(source[1], PlaceholderKind.CONDITION, blocks);
+        }
       }
       case "if" -> {
         collector.references(rest, PlaceholderKind.CONDITION, blocks);
@@ -117,8 +164,17 @@ final class TemplateTagScanner {
     }
   }
 
+  /**
+   * The tag body without Jinja's whitespace control ({@code -}, {@code +}) and docxtpl modifier.
+   */
   private static String stripModifier(String body) {
     String stripped = body.strip();
+    if (stripped.startsWith("-") || stripped.startsWith("+")) {
+      stripped = stripped.substring(1).strip();
+    }
+    if (stripped.endsWith("-") || stripped.endsWith("+")) {
+      stripped = stripped.substring(0, stripped.length() - 1).strip();
+    }
     Matcher modifier = MODIFIER.matcher(stripped);
     return modifier.find() ? stripped.substring(modifier.end()).strip() : stripped;
   }
@@ -130,6 +186,15 @@ final class TemplateTagScanner {
 
     private final Map<String, PlaceholderKind> kinds = new LinkedHashMap<>();
     private final Map<String, Set<String>> fields = new LinkedHashMap<>();
+    private int fieldCount;
+
+    private void field(String list, String name) {
+      if (fields.computeIfAbsent(list, key -> new LinkedHashSet<>()).add(name)
+          && ++fieldCount > MAX_FIELDS) {
+        throw new ValidationException(
+            "Die Vorlage enthält mehr als " + MAX_FIELDS + " Felder in Listen.");
+      }
+    }
 
     /**
      * Records the references of {@code expression} and returns the first top-level name it names,
@@ -154,13 +219,13 @@ final class TemplateTagScanner {
         Block loop = loopOf(parts[0], blocks);
         if (loop != null) {
           if (parts.length > 1 && loop.listName() != null) {
-            fields.computeIfAbsent(loop.listName(), name -> new LinkedHashSet<>()).add(parts[1]);
+            field(loop.listName(), parts[1]);
           }
           continue;
         }
         record(parts[0], kind);
         if (parts.length > 1) {
-          fields.computeIfAbsent(parts[0], name -> new LinkedHashSet<>()).add(parts[1]);
+          field(parts[0], parts[1]);
         }
         if (first == null) {
           first = parts[0];

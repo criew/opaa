@@ -15,8 +15,10 @@
 5. **Rechte:** auf Wunsch Rollen vormerken, dann „Vorlage anlegen“.
 
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
-liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, Makros oder ActiveX-Elemente
-enthalten, größer als 10 MB sind oder einen Block nicht schließen.
+liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht
+schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Objekte, eine
+verknüpfte Dokumentvorlage oder Felder wie DDE und INCLUDEPICTURE, die Inhalte nachladen. Links
+bleiben erlaubt.
 
 ## Platzhalter schreiben
 
@@ -27,7 +29,7 @@ enthalten, größer als 10 MB sind oder einen Block nicht schließen.
 | Bedingung | `{% if name %}` … `{% endif %}` | `{% if vertraulich %}VS – NUR FÜR DEN DIENSTGEBRAUCH{% endif %}` |
 
 Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
-`{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Namen bestehen
+`{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand eines Tags (`{%- if … -%}`) entfernt Leerraum wie gewohnt. Namen bestehen
 aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar `{# … #}` erscheint nicht im Ergebnis.
 
 **Rollen an der Vorlage:**

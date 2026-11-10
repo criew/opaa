@@ -5,15 +5,21 @@ import io.opaa.common.ValidationException;
 import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
+import org.apache.poi.openxml4j.opc.PackageRelationship;
+import org.apache.poi.openxml4j.opc.TargetMode;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.springframework.stereotype.Component;
@@ -24,8 +30,11 @@ import org.springframework.stereotype.Component;
  * alone, so no tag can run code in the backend.
  *
  * <p>Refused are files above {@link #MAX_BYTES}, anything but a Word document ({@code .docx}, the
- * plain WordprocessingML main part), packages with macros or ActiveX controls, packages whose XML
- * parts exceed the parser limits, and placeholders whose blocks are not closed in order.
+ * plain WordprocessingML main part), packages with macros, ActiveX controls, embedded objects,
+ * relationships that load content from outside the file (an attached template, a linked frame or
+ * sub-document, any external target but a hyperlink) and fields that pull in or execute content
+ * (DDE, INCLUDETEXT, INCLUDEPICTURE), packages whose XML parts exceed the parser limits, and
+ * placeholders whose blocks are not closed in order.
  */
 @Component
 class DocxTemplateInspector {
@@ -42,6 +51,19 @@ class DocxTemplateInspector {
       "application/vnd.ms-word.document.macroEnabled.main+xml";
   private static final String NOT_A_DOCX =
       "Die Datei ist kein gültiges Word-Dokument. Zulässig sind Word-Dateien im Format .docx.";
+
+  private static final String HYPERLINK =
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink";
+
+  /** Relationship types that embed or pull in content Word may load or run. */
+  private static final Set<String> ACTIVE_RELATIONSHIPS =
+      Set.of(
+          "attachedtemplate", "oleobject", "package", "subdocument", "afchunk", "frame", "control");
+
+  private static final Pattern ACTIVE_FIELD =
+      Pattern.compile(
+          "(?:<w:instrText[^>]*>|w:instr=\")\\s*(?:DDE|DDEAUTO|INCLUDETEXT|INCLUDEPICTURE)\\b",
+          Pattern.CASE_INSENSITIVE);
 
   private final ParserLimitProperties limits;
 
@@ -97,8 +119,17 @@ class DocxTemplateInspector {
         if (name.startsWith("/word/activex/")) {
           throw activeX();
         }
+        if (name.startsWith("/word/embeddings/")) {
+          throw activeContent();
+        }
       }
     }
+  }
+
+  private static ValidationException activeContent() {
+    return new ValidationException(
+        "Die Datei enthält eingebettete Objekte, verknüpfte Inhalte oder Felder, die Inhalte"
+            + " nachladen. Vorlagen dürfen nur Text, Tabellen, Bilder und Links enthalten.");
   }
 
   private static ValidationException macros() {
@@ -133,6 +164,37 @@ class DocxTemplateInspector {
       if (contentType.contains("activex") || name.startsWith("/word/activex/")) {
         throw activeX();
       }
+      if (part.isRelationshipPart()) {
+        continue;
+      }
+      try {
+        for (PackageRelationship relationship : part.getRelationships()) {
+          requirePassive(relationship);
+        }
+      } catch (InvalidFormatException e) {
+        throw new IOException("Unreadable relationships", e);
+      }
+      if (contentType.contains("wordprocessingml") && contentType.endsWith("+xml")) {
+        try (InputStream content = part.getInputStream()) {
+          if (ACTIVE_FIELD
+              .matcher(new String(content.readAllBytes(), StandardCharsets.UTF_8))
+              .find()) {
+            throw activeContent();
+          }
+        }
+      }
+    }
+    for (PackageRelationship relationship : pkg.getRelationships()) {
+      requirePassive(relationship);
+    }
+  }
+
+  private static void requirePassive(PackageRelationship relationship) {
+    String type = relationship.getRelationshipType();
+    String kind = type.substring(type.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+    if (ACTIVE_RELATIONSHIPS.contains(kind)
+        || (relationship.getTargetMode() == TargetMode.EXTERNAL && !HYPERLINK.equals(type))) {
+      throw activeContent();
     }
   }
 }

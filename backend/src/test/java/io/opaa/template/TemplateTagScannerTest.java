@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.common.ValidationException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class TemplateTagScannerTest {
 
@@ -81,5 +82,59 @@ class TemplateTagScannerTest {
     assertThatThrownBy(() -> TemplateTagScanner.scan(text.toString()))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Platzhalter");
+  }
+
+  @Test
+  @Timeout(5)
+  void unclosedOpeningsAreReadInLinearTime() {
+    String text = "{{".repeat(400_000);
+
+    assertThat(TemplateTagScanner.scan(text)).isEmpty();
+  }
+
+  @Test
+  void textBeyondTheLimitIsRefused() {
+    assertThatThrownBy(
+            () -> TemplateTagScanner.scan("x".repeat(TemplateTagScanner.MAX_TEXT_CHARS + 1)))
+        .isInstanceOf(ValidationException.class);
+  }
+
+  @Test
+  void whitespaceControlAndRowModifiersReadLikePlainTags() {
+    assertThat(
+            TemplateTagScanner.scan(
+                "{%- if eilig -%}EILT{%- endif %}"
+                    + "{%tr for m in massnahmen %}{{ m.titel }}{%tr endfor %}"
+                    + "{{ p | upper }}"))
+        .containsExactly(
+            new TemplatePlaceholder("eilig", PlaceholderKind.CONDITION, List.of()),
+            new TemplatePlaceholder("massnahmen", PlaceholderKind.LIST, List.of("titel")),
+            new TemplatePlaceholder("p", PlaceholderKind.FIELD, List.of()));
+  }
+
+  @Test
+  void rawBlocksTupleLoopsRangesAndLoopFiltersAreRead() {
+    assertThat(
+            TemplateTagScanner.scan(
+                "{% raw %}{{ kein }}{% endraw %}"
+                    + "{% for (k, v) in paare %}{{ k }}{% endfor %}"
+                    + "{% for i in range(anzahl) %}{{ i }}{% endfor %}"
+                    + "{% for z in zeilen if z.aktiv %}{{ z.text }}{% endfor %}"))
+        .containsExactly(
+            new TemplatePlaceholder("paare", PlaceholderKind.LIST, List.of()),
+            new TemplatePlaceholder("anzahl", PlaceholderKind.FIELD, List.of()),
+            new TemplatePlaceholder("zeilen", PlaceholderKind.LIST, List.of("aktiv", "text")));
+  }
+
+  @Test
+  void tooManyFieldsInListsAreRefused() {
+    StringBuilder text = new StringBuilder("{% for e in liste %}");
+    for (int i = 0; i <= TemplateTagScanner.MAX_FIELDS; i++) {
+      text.append("{{ e.f").append(i).append(" }}");
+    }
+    text.append("{% endfor %}");
+    assertThatThrownBy(() -> TemplateTagScanner.scan(text.toString()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Felder");
   }
 }

