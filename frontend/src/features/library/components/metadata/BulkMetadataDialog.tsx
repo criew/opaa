@@ -59,6 +59,7 @@ export default function BulkMetadataDialog({
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
   const [libraryFields, setLibraryFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [valueMissing, setValueMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<BulkMetadataValueResponse | null>(null)
   // Captured when the assignment is sent: the parent may clear its selection on onDone while the
@@ -137,6 +138,7 @@ export default function BulkMetadataDialog({
               onChange={(e) => {
                 setFieldKey(String(e.target.value))
                 setValue({})
+                setValueMissing(false)
               }}
             >
               {CORE_METADATA_FIELDS.map((field) => (
@@ -154,9 +156,13 @@ export default function BulkMetadataDialog({
           <MetadataValueForm
             fieldKey={fieldKey}
             value={value}
-            onChange={setValue}
+            onChange={(next) => {
+              setValue(next)
+              setValueMissing(false)
+            }}
             vocabulary={vocabulary}
             libraryField={libraryField}
+            error={valueMissing ? 'Bitte einen Wert angeben.' : undefined}
           />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             Der Wert wird für jedes ausgewählte Dokument als „manuell" gesetzt und ersetzt dort den
@@ -200,7 +206,7 @@ export default function BulkMetadataDialog({
         onSubmit={() => {
           if (step === 'confirm') void handleAssign()
           else if (complete) setStep('confirm')
-          else setError('Bitte einen Wert angeben.')
+          else setValueMissing(true)
         }}
         onClose={handleClose}
         busy={submitting}

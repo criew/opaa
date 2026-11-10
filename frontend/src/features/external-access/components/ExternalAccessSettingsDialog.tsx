@@ -107,8 +107,8 @@ function PanelSection({ id, title, children }: { id: string; title: string; chil
   )
 }
 
-interface ExternalAccessSettingsPanelProps {
-  /** The stored settings; null keeps the panel closed. */
+interface ExternalAccessSettingsDialogProps {
+  /** The stored settings; null keeps the dialog closed. */
   settings: ExternalAccessSettingsResponse | null
   onClose: () => void
   onSaved: (stored: ExternalAccessSettingsResponse) => void
@@ -123,11 +123,11 @@ interface ExternalAccessSettingsPanelProps {
  * switch, releases and tokens together - including the log that would prove the emergency
  * stop. A visible change date makes such a backdating recognizable.
  */
-export default function ExternalAccessSettingsPanel({
+export default function ExternalAccessSettingsDialog({
   settings,
   onClose,
   onSaved,
-}: ExternalAccessSettingsPanelProps) {
+}: ExternalAccessSettingsDialogProps) {
   // Mounted per stored state: the form's draft - and with it „unsaved" - ends whenever the
   // dialog closes or a save returns.
   if (!settings) return null

@@ -67,8 +67,8 @@ function PanelSection({ title, children }: { title: string; children: ReactNode 
   )
 }
 
-interface DirectorySyncPanelProps {
-  /** The provider to show; null keeps the panel closed. */
+interface DirectorySyncDialogProps {
+  /** The provider to show; null keeps the dialog closed. */
   provider: OidcProviderResponse | null
   status: DirectorySyncStatusResponse | undefined
   /** The provider's plan on this page; undefined while it is being loaded. */
@@ -77,7 +77,7 @@ interface DirectorySyncPanelProps {
   /** Loads the plan again after a failed attempt. */
   onPlanRetry: () => void
   onClose: () => void
-  /** Reloads providers and status; the panel reads the new state from its props afterwards. */
+  /** Reloads providers and status; the dialog reads the new state from its props afterwards. */
   onChanged: () => Promise<void>
 }
 
@@ -86,7 +86,7 @@ interface DirectorySyncPanelProps {
  * for a decision, then the last run with the manual runs, the schedule and the directory access.
  * The overview only shows; changes happen here.
  */
-export default function DirectorySyncPanel({
+export default function DirectorySyncDialog({
   provider,
   status,
   planState,
@@ -94,7 +94,7 @@ export default function DirectorySyncPanel({
   onPlanRetry,
   onClose,
   onChanged,
-}: DirectorySyncPanelProps) {
+}: DirectorySyncDialogProps) {
   const [result, setResult] = useState<{
     kind: ResultKind
     report: DirectorySyncReportResponse
@@ -160,6 +160,7 @@ export default function DirectorySyncPanel({
       title={provider.displayName}
       onClose={onClose}
       busy={busy}
+      width="editor"
     >
       <Stack spacing={3.5}>
         <Stack

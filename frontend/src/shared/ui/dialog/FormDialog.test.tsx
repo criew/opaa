@@ -187,6 +187,52 @@ describe('FormDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('does not submit through Enter while the action is hidden', async () => {
+    const onSubmit = vi.fn()
+    renderWithProviders(
+      <FormDialog
+        title="Zugang bearbeiten"
+        submitLabel="Speichern"
+        hideSubmit
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      >
+        <TextField label="Name" />
+      </FormDialog>,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Name'), 'Bauamt{Enter}')
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('moves the focus into a radio group that reports the missing choice', async () => {
+    function Choice() {
+      const [missing, setMissing] = useState(false)
+      return (
+        <FormDialog
+          title="Zugang zuordnen"
+          submitLabel="Zuordnen"
+          onSubmit={() => setMissing(true)}
+          onClose={vi.fn()}
+        >
+          <div role="radiogroup" aria-label="Zugang" aria-invalid={missing ? true : undefined}>
+            <label>
+              <input type="radio" name="zugang" /> Bauamt
+            </label>
+            <label>
+              <input type="radio" name="zugang" /> Archiv
+            </label>
+          </div>
+        </FormDialog>
+      )
+    }
+    renderWithProviders(<Choice />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zuordnen' }))
+    expect(screen.getByRole('radio', { name: 'Bauamt' })).toHaveFocus()
+  })
+
   it('puts the initial focus on „Abbrechen“ for a destroying confirmation', () => {
     renderWithProviders(
       <FormDialog

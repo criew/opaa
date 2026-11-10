@@ -108,7 +108,14 @@ export default function FormDialog({
   // After a submit the focus goes into the first field that reported an error.
   useEffect(() => {
     if (submits === 0) return
-    contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    const invalid = contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    // a radio group is not focusable itself: its chosen or first radio is
+    const radio =
+      invalid?.getAttribute('role') === 'radiogroup'
+        ? (invalid.querySelector<HTMLElement>('input:checked') ??
+          invalid.querySelector<HTMLElement>('input'))
+        : null
+    ;(radio ?? invalid)?.focus()
   }, [submits, contentRef])
 
   function handleSubmit(event: FormEvent) {
@@ -119,7 +126,8 @@ export default function FormDialog({
     // otherwise count as a submit button of the form.
     const submitter = (event.nativeEvent as SubmitEvent).submitter
     if (submitter && submitter.getAttribute('type') !== 'submit') return
-    if (busy) return
+    // Enter in a field must not run an action the dialog does not offer
+    if (busy || hideSubmit) return
     onSubmit()
     setSubmits((count) => count + 1)
   }

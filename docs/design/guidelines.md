@@ -672,7 +672,7 @@ Die Bestätigung bleibt das Overlay aus 5.10.
    des Chats (5.8): ✕ im Titel, Suche ohne Beschriftung, Stand unten.
 
 Geprüft in `frontend/src/shared/ui/dialog/*.test.tsx`; das Zählbudget `disabledSubmits` = 0 der
-[Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden im UI-Lab.
+[Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden in Dialogen im UI-Lab.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 

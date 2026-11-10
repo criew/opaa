@@ -54,6 +54,7 @@ export default function ToolCapabilityDialog({
   const [measurementRun, setMeasurementRun] = useState(stored.measurementRun ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [runError, setRunError] = useState(false)
   const titleId = useId()
   const choiceId = useId()
   const basisId = useId()
@@ -83,7 +84,7 @@ export default function ToolCapabilityDialog({
 
   async function save() {
     if (runMissing) {
-      setError('Bitte den Messlauf angeben, auf dem die gemessene Angabe beruht.')
+      setRunError(true)
       return
     }
     // nothing changed: there is nothing to save, the dialog just closes
@@ -194,9 +195,17 @@ export default function ToolCapabilityDialog({
               fullWidth
               size="small"
               value={measurementRun}
-              onChange={(e) => setMeasurementRun(e.target.value)}
+              onChange={(e) => {
+                setMeasurementRun(e.target.value)
+                setRunError(false)
+              }}
               slotProps={{ htmlInput: { maxLength: MEASUREMENT_RUN_MAX_LENGTH } }}
-              helperText="Kennung des Messlaufs aus dem Kopf des Berichts tool-calling.md."
+              error={runError && runMissing}
+              helperText={
+                runError && runMissing
+                  ? 'Bitte den Messlauf angeben, auf dem die gemessene Angabe beruht.'
+                  : 'Kennung des Messlaufs aus dem Kopf des Berichts tool-calling.md.'
+              }
               sx={{ mt: 1 }}
             />
           )}

@@ -118,6 +118,8 @@ describe('BulkMetadataDialog', () => {
     // Nothing chosen yet: „Weiter“ names what is missing and stays on the step.
     await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
     expect(within(dialog).getByText('Bitte einen Wert angeben.')).toBeVisible()
+    expect(within(dialog).getByRole('combobox', { name: /Dokumentart/ })).toHaveFocus()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     await user.click(await within(dialog).findByRole('combobox', { name: /Dokumentart/ }))
     await user.click(await screen.findByRole('option', { name: 'Satzung/Ordnung' }))
     await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))

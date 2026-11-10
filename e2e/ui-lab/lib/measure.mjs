@@ -67,17 +67,18 @@ const PAGE_METRICS = () => {
     clipped++
   }
   const SUBMIT =
-    /^(Weiter|Bibliothek anlegen|Anlegen|Erstellen|Speichern|Übernehmen|Prüfen|Zuordnen|Übertragen|Einsetzen|Ausstellen|Erzeugen|Umbenennen|Ergänzen|Verbinden)$/
+    /^(Weiter|Bibliothek anlegen|Anlegen|Erstellen|Speichern|Übernehmen|Prüfen|Zuordnen|Übertragen|Einsetzen|Ausstellen|Erzeugen|Umbenennen|Ergänzen|Verbinden|Ersetzen|Abbilden|Übergeben|Einschalten|Freigeben|Zuweisen|Löschen)$/
   const buttons = [...document.querySelectorAll('button, [role=button]')].filter(visible)
   // a submit that is unavailable only while its own request runs (aria-busy) is not counted
-  const disabledSubmits = buttons
-    .filter(
-      (b) =>
-        SUBMIT.test((b.innerText || '').trim()) &&
-        (b.disabled || b.getAttribute('aria-disabled') === 'true') &&
-        b.getAttribute('aria-busy') !== 'true',
-    )
-    .map((b) => b.innerText.trim())
+  const lockedSubmits = buttons.filter(
+    (b) =>
+      SUBMIT.test((b.innerText || '').trim()) &&
+      (b.disabled || b.getAttribute('aria-disabled') === 'true') &&
+      b.getAttribute('aria-busy') !== 'true',
+  )
+  const disabledSubmits = lockedSubmits.map((b) => b.innerText.trim())
+  // the budget counts the footer actions of dialogs; locked submits of a page are reported only
+  const disabledDialogSubmits = lockedSubmits.filter((b) => b.closest('[role=dialog]')).length
   const alerts = [...new Set([...document.querySelectorAll('[role=alert], .MuiAlert-root')].filter(visible))].map((el) => {
     const m = /MuiAlert-(?:standard|outlined|filled|color)(Error|Warning|Info|Success)/.exec(el.className)
     return m ? m[1].toLowerCase() : el.getAttribute('role') === 'alert' ? 'role-alert' : 'unknown'
@@ -130,6 +131,7 @@ const PAGE_METRICS = () => {
     docHeight,
     clippedText: clipped,
     disabledSubmits: disabledSubmits.length,
+    disabledDialogSubmits,
     disabledSubmitLabels: disabledSubmits,
     alertCount: alerts.length,
     alertSeverities: severities,
@@ -153,7 +155,7 @@ export function budgetViolations(metrics, width, scenario) {
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
   if (metrics.fontSizes > BUDGETS.fontSizes) over.push('fontSizes')
-  if (metrics.disabledSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
+  if (metrics.disabledDialogSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
   return over
 }
 

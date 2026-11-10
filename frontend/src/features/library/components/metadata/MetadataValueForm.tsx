@@ -1,6 +1,7 @@
 import Checkbox from '@mui/material/Checkbox'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import FormHelperText from '@mui/material/FormHelperText'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
@@ -24,6 +25,8 @@ interface MetadataValueFormProps {
   /** The definition of a library field (`lib:…`); null while it is still loading. */
   libraryField?: LibraryMetadataFieldResponse | null
   disabled?: boolean
+  /** Shown at the value input, e.g. when the form was sent without a value. */
+  error?: string
 }
 
 // The input for one field - free text for the title, a choice from the controlled
@@ -39,6 +42,7 @@ export default function MetadataValueForm({
   vocabulary,
   libraryField = null,
   disabled = false,
+  error,
 }: MetadataValueFormProps) {
   const notDeterminable = isNotDeterminable(value)
   return (
@@ -50,6 +54,7 @@ export default function MetadataValueForm({
         vocabulary={vocabulary}
         libraryField={libraryField}
         disabled={disabled || notDeterminable}
+        error={notDeterminable ? undefined : error}
       />
       <FormControlLabel
         control={
@@ -80,6 +85,7 @@ function ValueInput({
   vocabulary,
   libraryField,
   disabled,
+  error,
 }: MetadataValueFormProps & { disabled: boolean }) {
   if (isLibraryFieldKey(fieldKey) && libraryField?.type !== 'DATE') {
     if (!libraryField) return null
@@ -92,8 +98,10 @@ function ValueInput({
           fullWidth
           required
           disabled={disabled}
+          error={Boolean(error)}
           helperText={
-            libraryField.valuePattern ? `Muster: ${libraryField.valuePattern}` : undefined
+            error ??
+            (libraryField.valuePattern ? `Muster: ${libraryField.valuePattern}` : undefined)
           }
         />
       )
@@ -103,7 +111,7 @@ function ValueInput({
       (entry) => !entry.retiring || entry.code === value.textValue,
     )
     return (
-      <FormControl fullWidth required disabled={disabled}>
+      <FormControl fullWidth required disabled={disabled} error={Boolean(error)}>
         <InputLabel id="metadata-library-field-label">{libraryField.label}</InputLabel>
         <Select
           labelId="metadata-library-field-label"
@@ -117,6 +125,7 @@ function ValueInput({
             </MenuItem>
           ))}
         </Select>
+        {error && <FormHelperText>{error}</FormHelperText>}
       </FormControl>
     )
   }
@@ -129,13 +138,15 @@ function ValueInput({
         fullWidth
         required
         disabled={disabled}
+        error={Boolean(error)}
+        helperText={error}
         slotProps={{ htmlInput: { maxLength: 1000 } }}
       />
     )
   }
   if (fieldKey === 'document_type') {
     return (
-      <FormControl fullWidth required disabled={disabled}>
+      <FormControl fullWidth required disabled={disabled} error={Boolean(error)}>
         <InputLabel id="metadata-document-type-label">Dokumentart</InputLabel>
         <Select
           labelId="metadata-document-type-label"
@@ -149,6 +160,7 @@ function ValueInput({
             </MenuItem>
           ))}
         </Select>
+        {error && <FormHelperText>{error}</FormHelperText>}
       </FormControl>
     )
   }
@@ -161,13 +173,16 @@ function ValueInput({
         onChange={(e) => onChange({ ...value, dateValue: e.target.value })}
         required
         disabled={disabled}
+        error={Boolean(error)}
         slotProps={{ inputLabel: { shrink: true } }}
         helperText={
-          value.datePrecision === 'MONTH'
-            ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
-            : value.datePrecision === 'YEAR'
-              ? 'Bei Genauigkeit „Jahr" zählt nur das Jahr des Datums.'
-              : undefined
+          error
+            ? error
+            : value.datePrecision === 'MONTH'
+              ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
+              : value.datePrecision === 'YEAR'
+                ? 'Bei Genauigkeit „Jahr" zählt nur das Jahr des Datums.'
+                : undefined
         }
         sx={{ flexGrow: 1 }}
       />

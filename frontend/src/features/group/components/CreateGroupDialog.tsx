@@ -21,6 +21,8 @@ const EMPTY_VALUES: GroupFormValues = {
   protectedGroup: false,
 }
 
+const NAME_MISSING = 'Bitte einen Namen angeben.'
+
 /**
  * „Gruppe anlegen“, built like the „Bearbeiten“ dialog: the same fields for name,
  * description, sharing and protection, below them the stewards - here as a draft that
@@ -42,6 +44,7 @@ function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialog
     user ? [{ id: user.id, displayName: user.displayName, email: user.email }] : [],
   )
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   function handleClose() {
@@ -51,7 +54,7 @@ function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialog
   async function handleCreate() {
     const name = values.name.trim()
     if (!name) {
-      setError('Bitte einen Namen angeben.')
+      setNameMissing(true)
       return
     }
     setError(null)
@@ -87,7 +90,11 @@ function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialog
       )}
       <GroupFormFields
         values={values}
-        onChange={setValues}
+        onChange={(next) => {
+          setValues(next)
+          setNameMissing(false)
+        }}
+        nameError={nameMissing ? NAME_MISSING : undefined}
         idPrefix="group-create"
         canProtect={isSystemAdmin}
         autoFocusName

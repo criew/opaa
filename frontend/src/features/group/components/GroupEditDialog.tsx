@@ -63,6 +63,7 @@ function GroupEditDialogContent({
   })
   const { name, description, released, protectedGroup } = values
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const reason = groupStateReason(group)
@@ -73,7 +74,7 @@ function GroupEditDialogContent({
 
   async function save() {
     if (isInternal && name.trim() === '') {
-      setError('Bitte einen Namen angeben.')
+      setNameMissing(true)
       return
     }
     // nothing changed: there is nothing to save, the dialog just closes
@@ -130,7 +131,11 @@ function GroupEditDialogContent({
 
       <GroupFormFields
         values={values}
-        onChange={setValues}
+        onChange={(next) => {
+          setValues(next)
+          setNameMissing(false)
+        }}
+        nameError={nameMissing ? 'Bitte einen Namen angeben.' : undefined}
         idPrefix="group-edit"
         canProtect
         isInternal={isInternal}

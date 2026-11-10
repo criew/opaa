@@ -66,6 +66,7 @@ export default function EditMetadataValueDialog({
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
   const [libraryField, setLibraryField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [valueMissing, setValueMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function EditMetadataValueDialog({
   async function handleSave() {
     setError(null)
     if (!isMetadataValueComplete(field.fieldKey, value, libraryField)) {
-      setError('Bitte einen Wert angeben.')
+      setValueMissing(true)
       return
     }
     setSubmitting(true)
@@ -155,10 +156,14 @@ export default function EditMetadataValueDialog({
         <MetadataValueForm
           fieldKey={field.fieldKey}
           value={value}
-          onChange={setValue}
+          onChange={(next) => {
+            setValue(next)
+            setValueMissing(false)
+          }}
           vocabulary={vocabulary}
           libraryField={libraryField}
           disabled={submitting}
+          error={valueMissing ? 'Bitte einen Wert angeben.' : undefined}
         />
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           Ein von Hand gesetzter Wert wird als „manuell" gekennzeichnet und von keiner automatischen

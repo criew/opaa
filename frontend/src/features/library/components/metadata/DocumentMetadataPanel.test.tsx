@@ -317,6 +317,7 @@ describe('DocumentMetadataPanel', () => {
     expect(within(dialog).queryByLabelText(/Datum/)).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
     expect(within(dialog).getByText('Bitte einen Wert angeben.')).toBeVisible()
+    expect(within(dialog).getByRole('combobox', { name: /Fassung/ })).toHaveFocus()
     expect(mockSetDocumentMetadataValue).not.toHaveBeenCalled()
     await user.click(await within(dialog).findByRole('combobox', { name: /Fassung/ }))
     expect(screen.queryByRole('option', { name: 'Fassung 2023' })).not.toBeInTheDocument()

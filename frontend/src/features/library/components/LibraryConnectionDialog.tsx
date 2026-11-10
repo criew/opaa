@@ -91,6 +91,7 @@ export default function LibraryConnectionDialog({
   const [enteredAddress, setEnteredAddress] = useState<Record<string, string>>({})
   const [probe, setProbe] = useState<Probe | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [choiceMissing, setChoiceMissing] = useState(false)
   const [testing, setTesting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -175,7 +176,7 @@ export default function LibraryConnectionDialog({
       return
     }
     if (choice === null) {
-      setError('Bitte einen Zugang auswählen.')
+      setChoiceMissing(true)
       return
     }
     // the address field names the reason itself; the dialog moves the focus there
@@ -211,7 +212,9 @@ export default function LibraryConnectionDialog({
           onChange={(value) => {
             setChosen(value)
             setError(null)
+            setChoiceMissing(false)
           }}
+          error={choiceMissing ? 'Bitte einen Zugang auswählen.' : undefined}
           offerOwnAddress={false}
           excludeProfileId={current?.id}
           onlyOwnAccounts={privateLibrary}
