@@ -4,11 +4,11 @@ import com.openai.errors.OpenAIIoException;
 import com.openai.errors.OpenAIServiceException;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
-import io.opaa.instance.InvalidationSubscriber;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.ai.chat.observation.ChatModelObservationContext;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.embedding.EmbeddingOptions;
@@ -25,18 +25,21 @@ import org.springframework.stereotype.Component;
  * request or {@code 429} leaves it as it was: the model answered.
  *
  * <p>Outcomes are held per model identifier, so a call of another model (a title or decomposition
- * model of its own) never speaks for the role's model, and a model never called is available. A
- * change of the chat or embedding model drops everything held.
+ * model of its own) never speaks for the role's model, and a model never called is available. When
+ * the identifier asked for differs from the one asked for before, the role's model has changed and
+ * everything held for other models is dropped; a lost or rebuilt connection of the invalidation bus
+ * changes nothing here.
  */
 @Component
-public class ModelCallOutcomes
-    implements ObservationHandler<Observation.Context>, InvalidationSubscriber {
+public class ModelCallOutcomes implements ObservationHandler<Observation.Context> {
 
-  /** Models whose outcome is held per role; more are ignored until the next change drops all. */
+  /** Models whose outcome is held per role; more are ignored until the next change drops them. */
   static final int MAX_MODELS = 20;
 
   private final Map<String, Boolean> chat = new ConcurrentHashMap<>();
   private final Map<String, Boolean> embedding = new ConcurrentHashMap<>();
+  private final AtomicReference<String> chatModel = new AtomicReference<>();
+  private final AtomicReference<String> embeddingModel = new AtomicReference<>();
 
   @Override
   public boolean supportsContext(Observation.Context context) {
@@ -70,26 +73,28 @@ public class ModelCallOutcomes
     }
   }
 
-  /** Whether the last call of chat model {@code model} reached it, true before the first. */
+  /**
+   * Whether the last call of the role's chat model {@code model} reached it, true before the first.
+   */
   public boolean chatAvailable(String model) {
-    return chat.getOrDefault(model, true);
+    return available(chat, chatModel, model);
   }
 
-  /** Whether the last call of embedding model {@code model} reached it, true before the first. */
+  /**
+   * Whether the last call of the role's embedding model {@code model} reached it, true before the
+   * first.
+   */
   public boolean embeddingAvailable(String model) {
-    return embedding.getOrDefault(model, true);
+    return available(embedding, embeddingModel, model);
   }
 
-  @Override
-  public Set<String> invalidationTopics() {
-    return Set.of(
-        ActiveChatModelResolver.INVALIDATION_TOPIC, InstalledEmbeddingModel.INVALIDATION_TOPIC);
-  }
-
-  @Override
-  public void invalidateAll() {
-    chat.clear();
-    embedding.clear();
+  private static boolean available(
+      Map<String, Boolean> outcomes, AtomicReference<String> roleModel, String model) {
+    String previous = roleModel.getAndSet(model);
+    if (previous != null && !Objects.equals(previous, model)) {
+      outcomes.keySet().removeIf(held -> !held.equals(model));
+    }
+    return model == null || outcomes.getOrDefault(model, true);
   }
 
   /** Whether {@code failure} says the model could not be reached or refused the key. */

@@ -211,12 +211,26 @@ class ModelRoleAvailabilityTest {
     outcomes.onStop(failedChat);
     assertThat(outcomes.chatAvailable("gpt-role")).isFalse();
 
-    assertThat(outcomes.invalidationTopics())
-        .containsExactlyInAnyOrder(
-            ActiveChatModelResolver.INVALIDATION_TOPIC, InstalledEmbeddingModel.INVALIDATION_TOPIC);
-    outcomes.invalidateAll();
+    assertThat(outcomes.chatAvailable("gpt-other")).isTrue();
 
     assertThat(outcomes.chatAvailable("gpt-role")).isTrue();
+  }
+
+  @Test
+  void aLostOrRebuiltBusConnectionKeepsWhatWasHeld() {
+    ModelCallOutcomes outcomes = new ModelCallOutcomes();
+    ChatModelObservationContext failedChat = chatCall("gpt-role");
+    failedChat.setError(new java.net.ConnectException("refused"));
+    outcomes.onStop(failedChat);
+    EmbeddingModelObservationContext failedEmbedding = embeddingCall("bge-m3");
+    failedEmbedding.setError(new java.net.ConnectException("refused"));
+    outcomes.onStop(failedEmbedding);
+
+    assertThat(outcomes).isNotInstanceOf(io.opaa.instance.InvalidationSubscriber.class);
+    assertThat(outcomes.chatAvailable("gpt-role")).isFalse();
+    assertThat(outcomes.embeddingAvailable("bge-m3")).isFalse();
+    assertThat(outcomes.chatAvailable("gpt-role")).isFalse();
+    assertThat(outcomes.embeddingAvailable("bge-m3")).isFalse();
   }
 
   /**

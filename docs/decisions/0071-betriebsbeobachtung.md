@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -135,8 +135,10 @@ Jeder Aufruf über den JDK-`HttpClient` an Rerank, Transkription, Texterkennung 
 Code-Sandbox, Konnektoren, OIDC, Verzeichnisdienste und die Verbindungstests der Verwaltung für
 Chat- und Embedding-Modelle (`model_check`) geht durch `MeteredHttpClient`, den die Clients und
 Client-Fabriken um ihren Client legen. Was nicht über diesen Client geht, misst mit denselben
-`OutboundMetrics`: die Virenprüfung (`clamav`) und SMB je Austausch, das S3-SDK je Versuch über
-seine eigenen Metriken (Quellen als `connector`, die Originalablage als `original_store`).
+`OutboundMetrics`: die Virenprüfung (`clamav`), den Verbindungsaufbau der Live-Transkription
+(`transcription`) und SMB je Austausch, das S3-SDK je Versuch über seine eigenen Metriken (Quellen
+als `connector`, die Originalablage als `original_store`). Ein Versuch, den OPAA vor dem Senden
+ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
 `opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
 (`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
 ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
@@ -152,8 +154,10 @@ Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
 `opaa.model.role.available` liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für
 Chat und Embedding den letzten echten Aufruf des Modells der Rolle je Instanz; die Probe der
 Embedding-Health-Gruppe läuft über dasselbe beobachtete Modell und zählt mit. Aufrufe anderer
-Modelle zählen nicht, ein Modellwechsel setzt den Stand zurück. Es ruft kein Modell auf, und eine
-Rolle ohne Einrichtung hat keine Reihe.
+Modelle zählen nicht. Den Stand setzt nur ein Wechsel des Modells der Rolle zurück, erkannt am
+Bezeichner beim Lesen; ein Verbindungsverlust oder Wiederaufbau des Invalidierungsbusses lässt ihn
+stehen, sonst spränge eine ausgefallene Rolle bei jedem Abbruch auf verfügbar. Es ruft kein Modell
+auf, und eine Rolle ohne Einrichtung hat keine Reihe.
 
 Ein Decorator am Client misst jeden Versuch, auch Wiederholungen nach 429, ohne Code je Client und
 ohne die Zielprüfung zu berühren: Er reicht die fertig geprüfte Anfrage nur weiter. Die statisch

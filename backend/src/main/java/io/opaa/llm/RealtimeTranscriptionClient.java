@@ -1,7 +1,12 @@
 package io.opaa.llm;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundOutcome;
+import io.opaa.observability.OutboundPathClass;
+import io.opaa.observability.OutboundTarget;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.URI;
@@ -33,7 +38,8 @@ import tools.jackson.databind.ObjectMapper;
  * of its dialect (ADR-0072). Uses the JDK client like {@link TranscriptionClient}: the
  * installation-wide outbound proxy and the JVM truststore apply, and a redirect of the handshake is
  * never followed, so the key cannot be replayed elsewhere. The key goes as {@code Authorization:
- * Bearer} in the handshake only.
+ * Bearer} in the handshake only. Each handshake counts as one call of the {@code transcription}
+ * target in {@code opaa.outbound.requests}; the session after it does not.
  *
  * <p><b>Nothing but the audio, the language and the vocabulary leaves this class.</b> No message of
  * an exception, a {@link Listener#failed} reason or a log line carries audio, recognised text or a
@@ -58,6 +64,7 @@ public class RealtimeTranscriptionClient {
   private final Map<RealtimeTranscriptionProtocol, RealtimeTranscriptionAdapter> adapters =
       new EnumMap<>(RealtimeTranscriptionProtocol.class);
   private final ObjectMapper json;
+  private final OutboundMetrics metrics;
   private final HttpClient httpClient =
       HttpClient.newBuilder()
           .connectTimeout(CONNECT_TIMEOUT)
@@ -65,9 +72,10 @@ public class RealtimeTranscriptionClient {
           .build();
 
   public RealtimeTranscriptionClient(
-      List<RealtimeTranscriptionAdapter> adapters, ObjectMapper json) {
+      List<RealtimeTranscriptionAdapter> adapters, ObjectMapper json, MeterRegistry registry) {
     adapters.forEach(adapter -> this.adapters.put(adapter.protocol(), adapter));
     this.json = json;
+    this.metrics = new OutboundMetrics(registry, OutboundTarget.TRANSCRIPTION, null);
   }
 
   /** Aborts the open sessions: a live session would otherwise hold the shutdown for minutes. */
@@ -158,7 +166,7 @@ public class RealtimeTranscriptionClient {
         adapter.open(
             endpoint, language == null ? "" : language, vocabulary == null ? "" : vocabulary);
     Connection connection = new Connection(dialog, listener);
-    connection.connect(adapter, endpoint);
+    connection.connect(adapter, endpoint, CONNECT_TIMEOUT, OutboundPathClass.INTERACTIVE);
     dialog.opening().forEach(connection::send);
     return connection;
   }
@@ -187,7 +195,7 @@ public class RealtimeTranscriptionClient {
       RealtimeTranscriptionAdapter adapter = adapter(endpoint.protocol());
       connection = new Connection(adapter.open(endpoint, "", ""), listener);
       connection.probing = true;
-      connection.connect(adapter, endpoint, timeout);
+      connection.connect(adapter, endpoint, timeout, OutboundPathClass.ofCurrentThread());
       connection.dialog.opening().forEach(connection::send);
     } catch (RealtimeUnavailableException e) {
       return new ProbeFailure(e.getMessage(), e.timedOut());
@@ -235,14 +243,12 @@ public class RealtimeTranscriptionClient {
       this.listener = listener;
     }
 
-    void connect(RealtimeTranscriptionAdapter adapter, RealtimeTranscriptionEndpoint endpoint) {
-      connect(adapter, endpoint, CONNECT_TIMEOUT);
-    }
-
+    /** Opens the socket; a handshake that leaves the process counts once, an invalid URI not. */
     void connect(
         RealtimeTranscriptionAdapter adapter,
         RealtimeTranscriptionEndpoint endpoint,
-        Duration timeout) {
+        Duration timeout,
+        OutboundPathClass pathClass) {
       URI uri;
       try {
         uri = adapter.uri(endpoint);
@@ -253,15 +259,26 @@ public class RealtimeTranscriptionClient {
       if (StringUtils.hasText(endpoint.apiKey())) {
         builder.header("Authorization", "Bearer " + endpoint.apiKey());
       }
+      CompletableFuture<WebSocket> handshake;
       try {
-        socket = builder.buildAsync(uri, this).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        handshake = builder.buildAsync(uri, this);
+      } catch (IllegalArgumentException e) {
+        throw describe(e);
+      }
+      long start = System.nanoTime();
+      try {
+        socket = handshake.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        metrics.record(pathClass, OutboundOutcome.SUCCESS, System.nanoTime() - start);
       } catch (TimeoutException e) {
+        metrics.record(pathClass, OutboundOutcome.TIMEOUT, System.nanoTime() - start);
         throw new RealtimeUnavailableException("connection attempt timed out", true, false);
       } catch (InterruptedException e) {
+        metrics.record(pathClass, OutboundOutcome.TIMEOUT, System.nanoTime() - start);
         Thread.currentThread().interrupt();
         throw new RealtimeUnavailableException("the connection was interrupted", false, false);
-      } catch (ExecutionException | IllegalArgumentException e) {
-        throw describe(e instanceof ExecutionException ? e.getCause() : e);
+      } catch (ExecutionException e) {
+        metrics.record(pathClass, outcome(e.getCause()), System.nanoTime() - start);
+        throw describe(e.getCause());
       }
     }
 
@@ -410,6 +427,17 @@ public class RealtimeTranscriptionClient {
         }
       }
     }
+  }
+
+  /** The outcome of a handshake that failed with {@code cause}. */
+  static OutboundOutcome outcome(Throwable cause) {
+    Throwable failure =
+        cause instanceof CompletionException && cause.getCause() != null ? cause.getCause() : cause;
+    if (failure instanceof WebSocketHandshakeException handshake) {
+      return OutboundOutcome.ofStatus(
+          handshake.getResponse().statusCode(), handshake.getResponse().headers());
+    }
+    return OutboundOutcome.ofFailure(failure);
   }
 
   private static RealtimeUnavailableException describe(Throwable cause) {

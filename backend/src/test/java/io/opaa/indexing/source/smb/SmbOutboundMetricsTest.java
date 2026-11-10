@@ -10,8 +10,12 @@ import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.observability.OutboundMetrics;
 import io.opaa.observability.OutboundOutcome;
 import io.opaa.security.TargetAddressValidator;
+import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -51,6 +55,55 @@ class SmbOutboundMetricsTest {
     assertThat(timer.count()).isEqualTo(1);
     assertThat(timer.getId().getTags())
         .noneMatch(tag -> tag.getValue().contains("127.0.0.1") || tag.getValue().contains("Daten"));
+  }
+
+  @Test
+  void aServerThatAcceptsButNeverAnswersCountsAsATimeout() throws Exception {
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    List<Socket> held = new ArrayList<>();
+    try (ServerSocket silent = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+      Thread acceptor =
+          Thread.ofVirtual()
+              .start(
+                  () -> {
+                    try {
+                      while (true) {
+                        held.add(silent.accept());
+                      }
+                    } catch (java.io.IOException closed) {
+                      // the test is over
+                    }
+                  });
+      Metrics.globalRegistry.add(meterRegistry);
+      try (SmbShareClient client =
+          SmbShareClient.of(
+              SmbAddress.parse("smb://127.0.0.1:" + silent.getLocalPort() + "/Daten"),
+              SmbCredentials.parse("RATHAUS\\svc-opaa:geheim"),
+              TargetAddressValidator.disabled(),
+              RequestBudget.unbounded(),
+              Duration.ofMillis(500))) {
+        assertThat(catchThrowable(client::connect))
+            .isInstanceOfSatisfying(
+                SmbAccessException.Unreachable.class, e -> assertThat(e.timedOut()).isTrue());
+      } finally {
+        Metrics.globalRegistry.remove(meterRegistry);
+        silent.close();
+        acceptor.join();
+        for (Socket socket : held) {
+          socket.close();
+        }
+      }
+    }
+
+    assertThat(
+            meterRegistry
+                .get(OutboundMetrics.REQUESTS)
+                .tag("target", "connector")
+                .tag("kind", "smb")
+                .tag("outcome", "timeout")
+                .timer()
+                .count())
+        .isEqualTo(1);
   }
 
   @Test

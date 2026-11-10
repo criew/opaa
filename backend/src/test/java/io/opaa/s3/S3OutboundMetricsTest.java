@@ -9,10 +9,13 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.observability.OutboundMetrics;
 import io.opaa.observability.OutboundTarget;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,10 +25,12 @@ import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 /**
  * Every attempt of the SDK client counts in {@code opaa.outbound.requests} with target {@code
  * connector} and kind {@code s3}, a retry included, and with no bucket, host or address as a tag.
+ * An attempt the guard refuses never left the process and does not count.
  */
 class S3OutboundMetricsTest {
 
   private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+  private final CountDownLatch released = new CountDownLatch(1);
   private HttpServer server;
 
   @BeforeEach
@@ -34,11 +39,23 @@ class S3OutboundMetricsTest {
     status("/ok", 200);
     status("/denied", 403);
     status("/busy", 429);
+    server.createContext(
+        "/silent",
+        exchange -> {
+          try {
+            released.await();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    server.setExecutor(Executors.newCachedThreadPool());
     server.start();
   }
 
   @AfterEach
   void stopServer() {
+    released.countDown();
     server.stop(0);
   }
 
@@ -74,7 +91,49 @@ class S3OutboundMetricsTest {
     assertThat(registry.get(OutboundMetrics.THROTTLED).counter().count()).isEqualTo(2);
   }
 
+  @Test
+  void anAttemptWithoutAnAnswerInTimeCountsAsATimeout() {
+    headBucket("silent", S3RequestGuard.targetCheckOnly(request -> {}), Duration.ofMillis(300), 0);
+
+    assertThat(count("timeout")).isEqualTo(1);
+  }
+
+  @Test
+  void anAttemptTheTargetCheckRefusesDoesNotCount() {
+    headBucket(
+        "ok",
+        S3RequestGuard.targetCheckOnly(
+            request -> {
+              throw new IOException("blocked");
+            }),
+        Duration.ofSeconds(5),
+        1);
+
+    assertThat(registry.find(OutboundMetrics.REQUESTS).timers()).isEmpty();
+  }
+
+  @Test
+  void anAttemptBeyondTheRequestBudgetDoesNotCount() {
+    S3RequestGuard guard = new S3RequestGuard(request -> {}, new SourceRequestMeter(), 1, null);
+
+    headBucket("ok", guard, Duration.ofSeconds(5), 1);
+    headBucket("ok", guard, Duration.ofSeconds(5), 1);
+
+    assertThat(registry.find(OutboundMetrics.REQUESTS).timers())
+        .singleElement()
+        .satisfies(
+            timer -> {
+              assertThat(timer.getId().getTag("outcome")).isEqualTo("success");
+              assertThat(timer.count()).isEqualTo(1);
+            });
+  }
+
   private void headBucket(String bucket) {
+    headBucket(bucket, S3RequestGuard.targetCheckOnly(request -> {}), Duration.ofSeconds(5), 1);
+  }
+
+  private void headBucket(
+      String bucket, S3RequestGuard guard, Duration requestTimeout, int maxRetries) {
     try (S3SdkClient client =
         S3SdkClient.open(
             new S3ClientSettings(
@@ -84,10 +143,10 @@ class S3OutboundMetricsTest {
                 AwsBasicCredentials.create("AKIA", "geheim"),
                 null,
                 0,
-                Duration.ofSeconds(5),
-                1,
+                requestTimeout,
+                maxRetries,
                 Duration.ofMillis(10)),
-            S3RequestGuard.targetCheckOnly(request -> {}),
+            guard,
             new OutboundMetrics(registry, OutboundTarget.CONNECTOR, "s3"))) {
       catchThrowable(
           () -> client.s3().headBucket(HeadBucketRequest.builder().bucket(bucket).build()));

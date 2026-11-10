@@ -78,7 +78,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds_*` | Texterkennung gescannter Dokumente nach Ergebnis (`recognized`, `empty`, `reused`, `failed`, `blocked`, `pending`) und Verbindungstyp, gesendete Seiten und Dauer mit Buckets; `empty` heißt, der Dienst hat geantwortet, aber keinen Text erkannt; steigt `failed`, ist der Dienst nicht verfügbar ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
 | `opaa_outbound_requests_seconds_*` | Ausgehende Aufrufe mit Buckets nach Ziel (`target`), Art (`kind`), Ergebnis (`outcome`) und Pfad (`path_class`: `interactive`, wenn eine Person wartet, sonst `background`); erlaubte Werte und Lesart unter [Ausgehende Aufrufe](#ausgehende-aufrufe). Jeder Versuch zählt, auch eine Wiederholung nach 429. Chat- und Embedding-Aufrufe stehen nicht hier, sondern unter `gen_ai_client_operation_seconds_*` |
 | `opaa_outbound_throttled_total` | gedrosselte Antworten (429, 503 mit `Retry-After`) nach Ziel und Pfad; im Hintergrund bremst die Indexierung damit nur, interaktiv wartet eine Person |
-| `opaa_model_role_available` | `1` oder `0` je eingerichteter Modellrolle (`role`: `chat`, `embedding`, `rerank`, `transcription`, `ocr`, `vision`), alle 30 Sekunden aus dem Zustand gelesen, den die Health Groups zeigen, ohne eigenen Modellaufruf. Chat und Embedding gelten als verfügbar, solange der letzte echte Aufruf des Modells der Rolle auf dieser Instanz es erreicht hat, beim Embedding auch die Probe der Health Group; Aufrufe anderer Modelle (etwa eines eigenen Titelmodells) zählen nicht, und ein Modellwechsel setzt den Wert auf `1` zurück. Abgeschaltete oder nicht eingerichtete Rollen haben keine Reihe. **Ein Alarm darauf braucht `for:` und Verkehr:** Ohne Aufruf bleibt der letzte Stand stehen, ein einzelner Fehlschlag kippt den Wert bis zum nächsten erfolgreichen Aufruf |
+| `opaa_model_role_available` | `1` oder `0` je eingerichteter Modellrolle (`role`: `chat`, `embedding`, `rerank`, `transcription`, `ocr`, `vision`), alle 30 Sekunden aus dem Zustand gelesen, den die Health Groups zeigen, ohne eigenen Modellaufruf. Chat und Embedding gelten als verfügbar, solange der letzte echte Aufruf des Modells der Rolle auf dieser Instanz es erreicht hat, beim Embedding auch die Probe der Health Group; Aufrufe anderer Modelle (etwa eines eigenen Titelmodells) zählen nicht, und erst ein Wechsel des Modells der Rolle setzt den Wert auf `1` zurück; ein Verbindungsabbruch des Abgleichs zwischen den Instanzen ändert ihn nicht. Abgeschaltete oder nicht eingerichtete Rollen haben keine Reihe. **Ein Alarm darauf braucht `for:` und Verkehr:** Ohne Aufruf bleibt der letzte Stand stehen, ein einzelner Fehlschlag kippt den Wert bis zum nächsten erfolgreichen Aufruf |
 | `opaa_transcription_requests_total`, `opaa_transcription_audio_seconds_total` | Aufnahmen der Spracheingabe nach Ergebnis (`success`; `refused` für jede Antwort des Dienstes ohne verwertbaren Text, auch einen Fehlerstatus; `failed`, wenn keine Antwort kam) und Sekunden verarbeiteten Audios; die Sekunden zählen nur, wenn der Transkriptionsdienst die Dauer in seiner Antwort nennt |
 | `opaa_malware_scans_seconds_*` | Dauer und Anzahl der Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)). **Umbenannt:** Bis zu dieser Version hieß die Anzahl `opaa_malware_scans_total`; sie steht jetzt in `opaa_malware_scans_seconds_count`, Abfragen und Alarme auf den alten Namen sind umzustellen |
 | `opaa_malware_signatures_age_seconds` | Alter der Signaturen des Virenscanners, alle fünf Minuten von jeder Instanz beim Dienst erfragt und als UTC gelesen; ohne eingeschaltete Prüfung oder ohne Datum in der Antwort des Dienstes gibt es keine Reihe. Steigt der Wert über einen Tag, aktualisiert der Scanner seine Signaturen nicht |
@@ -114,7 +114,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 Embedding an einer Stelle, ohne Adresse, Host oder Bibliothek als Label. Die Labels nehmen nur
 diese Werte an:
 
-- **`target`:** `rerank`, `transcription`, `ocr`, `vision`, `sandbox` (Code-Sandbox),
+- **`target`:** `rerank`, `transcription` (Aufnahmen und Verbindungsaufbau der
+  Live-Transkription), `ocr`, `vision`, `sandbox` (Code-Sandbox),
   `connector` (Quellen und ihre Hilfsaufrufe), `oidc` (Discovery und Schlüssel des
   Identitätsanbieters), `directory` (Verzeichnisdienst), `clamav` (Virenscanner),
   `original_store` (S3-Ablage der hochgeladenen Originale) und `model_check` (Verbindungstest
@@ -140,9 +141,15 @@ So liest man die Werte:
   jede Version kennt (404). Solche Werte im Pfad `background` sind kein Alarmgrund.
 - **`model_check` läuft im Pfad `background`,** auch wenn eine Person in der Verwaltung wartet:
   Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen.
-- **S3 und SMB** zählen jeden Versuch wie die HTTP-Clients. Bei S3 erkennt OPAA einen
-  TLS-Fehler nicht gesondert, er erscheint als `io_error`. Bei SMB zählen Anmeldung, Öffnen eines
-  Ordners und jeder Download je einmal.
+- **Die Live-Transkription zählt nur den Verbindungsaufbau,** einmal je Aufnahme oder Probe;
+  die laufende Sitzung danach zählt nicht. Lehnt der Dienst den Aufbau ab, zählt sein Status.
+- **S3 und SMB** zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
+  S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als `io_error`. Bei SMB zählen
+  Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download
+  zählt also je Versuch. Eine Datei über der Größengrenze zählt als `client_error`.
+- **Was OPAA vor dem Senden selbst ablehnt, zählt nicht.** Ein Ziel, das die Zielprüfung sperrt,
+  oder ein Versuch über dem Anfragebudget eines Laufs verlässt die Instanz nicht und erscheint bei
+  keinem Ziel.
 
 Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
