@@ -88,6 +88,9 @@ läuft weiter.
 Ist der Schalter „Agenten“ eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
 ohne Quellstand und ohne Kommandozeile. Ist er aus, fehlt der Menüpunkt.
 
+Für Agenten braucht OPAA ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
+Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorher.
+
 1. Im Zeilenmenü „Werkzeuge prüfen“.
 2. Umfang wählen: „Schnell“ (jeder Fall einmal) für einen ersten Eindruck, „Gründlich“ (jeder Fall
    dreimal) für eine Angabe, die Sie festhalten wollen. „Prüfung starten“.

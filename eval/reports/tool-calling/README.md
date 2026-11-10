@@ -51,14 +51,10 @@ nur „nicht fähig“ tragen.
 
 Diese Lücken sind bewusst offen und gehören zu Issue #1753:
 
-- **Keine Kombination gemessen.** Die Fallbasis, der Harness und das Ergebnisformat stehen; Messläufe
-  gegen selbst betriebene Modelle brauchen Hardware mit und ohne Grafikbeschleunigung, die in der
-  Umgebung des Pull Requests nicht vorhanden war. Gefordert sind mindestens vier Kombinationen:
-  je eine ohne und eine mit Grafikbeschleunigung (eine einzelne mittlere Karte) und beide gängigen
-  Laufzeiten, Ollama und vLLM. Vorschlag: ein Modell der 7B-Klasse auf Ollama auf CPU, dasselbe auf
-  Ollama auf einer GPU, dasselbe und ein zweites Modell auf vLLM auf derselben GPU. Zwei Modelle auf
-  zwei Laufzeiten sagen mehr als drei Modelle auf einer.
-- **Keine Empfehlung für das Fähigkeitsfeld.** Sie folgt aus den Messläufen.
+- **Mindestklasse statt Messreihe.** Für Agenten setzt OPAA ein Modell der Klasse Gemma 4 31B
+  voraus (Entscheidung des Maintainers, 10.11.2026). Kleinere selbst betriebene Modelle der 7B-Klasse
+  werden nicht reihenweise gemessen; eine Installation, die eines betreiben will, misst es selbst mit
+  „Werkzeuge prüfen“. Die Messung der Mindestklasse steht in der Tabelle oben.
 - **Vergleich mit dem echten `search_knowledge`.** Die Messung kann es anbieten
   (`-Dopaa.eval.toolCalling.tool=production`); der Vergleich zur Attrappen-Messung folgt aus den
   Messläufen.

@@ -18,6 +18,8 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import type {
   LlmModelResponse,
   LlmModelToolCheckResponse,
@@ -60,6 +62,7 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const titleId = useId()
+  const narrow = useMediaQuery(useTheme().breakpoints.down('sm'))
   const repetitionsId = useId()
 
   // a tick re-reads the check: once on opening, then every TOOL_CHECK_POLL_MS while it runs
@@ -129,8 +132,15 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
   const canStart = loaded && !running
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth aria-labelledby={titleId}>
-      <DialogTitle id={titleId}>Werkzeuge prüfen: „{model.displayName}“</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      fullScreen={narrow}
+      aria-labelledby={titleId}
+    >
+      <DialogTitle id={titleId}>Werkzeuge prüfen</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -138,13 +148,13 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
           </Alert>
         )}
         <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          Die Prüfung stellt dem Modell{' '}
+          Die Prüfung stellt dem Modell „{model.displayName}“ (
           <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
             {model.modelIdentifier}
-          </Box>{' '}
-          erfundene Fragen mit dem Suchwerkzeug der Agenten und bewertet, ob es das Werkzeug richtig
-          aufruft. Sie misst nur und ändert die Werkzeugfähigkeit nicht. Sie dauert je nach Modell
-          einige Minuten und läuft weiter, wenn Sie den Dialog schließen.
+          </Box>
+          ) erfundene Fragen mit dem Suchwerkzeug der Agenten und bewertet, ob es das Werkzeug
+          richtig aufruft. Sie misst nur und ändert die Werkzeugfähigkeit nicht. Sie dauert je nach
+          Modell einige Minuten und läuft weiter, wenn Sie den Dialog schließen.
         </Typography>
 
         {running && check && <Progress check={check} />}

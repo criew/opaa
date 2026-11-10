@@ -12,7 +12,7 @@ const LATEST = `/api/v1/admin/models/${model.id}/tool-checks/latest`
 
 function renderDialog(onAdopt = vi.fn()) {
   renderWithProviders(<ToolCheckDialog model={model} open onClose={vi.fn()} onAdopt={onAdopt} />)
-  return { onAdopt, dialog: () => screen.getByRole('dialog', { name: /Werkzeuge prüfen/ }) }
+  return { onAdopt, dialog: () => screen.getByRole('dialog', { name: 'Werkzeuge prüfen' }) }
 }
 
 describe('ToolCheckDialog', () => {
