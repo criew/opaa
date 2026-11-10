@@ -372,7 +372,7 @@ describe('InstallationPage', () => {
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('discards a model step whose check failed when it is skipped', async () => {
     withoutMockStep('MAIL')

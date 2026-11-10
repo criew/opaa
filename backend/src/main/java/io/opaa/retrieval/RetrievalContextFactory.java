@@ -63,4 +63,21 @@ public class RetrievalContextFactory {
         queryProperties,
         RerankAvailability.of(rerankModelRole.currentStatus().state()));
   }
+
+  /**
+   * A context for a query searched as given: no conversation window, no Gesprächsnotiz, no
+   * sub-question decomposition - the search of a tool call, whose model formulates the query
+   * itself.
+   */
+  public RetrievalContext contextAsGiven(
+      String searchQuery, Set<UUID> searchScope, MetadataFilter metadataFilter) {
+    return new RetrievalContext(
+        searchQuery,
+        List.of(),
+        List.of(),
+        searchScope,
+        metadataFilter,
+        queryProperties.withoutDecomposition(),
+        RerankAvailability.of(rerankModelRole.currentStatus().state()));
+  }
 }

@@ -267,6 +267,16 @@ opaa:
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
   # behind it (io.opaa.query.spike) only exist while this is set.
+  # Limits of an agent run and of the runs at the same time (ADR-0070, Entscheidung 6). An agent may
+  # only lower the four run limits. workspace-capacity is the installation's absolute figure, the
+  # same on every instance; a request beyond it is refused before its run begins.
+  agent:
+    max-tool-calls: ${OPAA_AGENT_MAX_TOOL_CALLS:5}
+    max-search-calls: ${OPAA_AGENT_MAX_SEARCH_CALLS:3}
+    max-duration: ${OPAA_AGENT_MAX_DURATION:120s}
+    max-collected-chars: ${OPAA_AGENT_MAX_COLLECTED_CHARS:60000}
+    workspace-capacity: ${OPAA_AGENT_WORKSPACE_CAPACITY:2}
+    closing-call-allowance: ${OPAA_AGENT_CLOSING_CALL_ALLOWANCE:60s}
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
@@ -965,6 +975,7 @@ management:
         "[opaa.query.duration]": ${OPAA_METRICS_SLO_QUERY:1s,2500ms,5s,10s,20s,30s,60s,120s}
         "[opaa.query.time_to_first_token]": ${OPAA_METRICS_SLO_TTFT:500ms,1s,2s,3s,5s,10s,20s,30s}
         "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
+        "[opaa.agent.run.duration]": ${OPAA_METRICS_SLO_AGENT:5s,10s,30s,60s,120s,180s}
         "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
         "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
 

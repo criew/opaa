@@ -16,6 +16,7 @@ import { downloadChatAttachment } from '../api/chatAttachmentApi'
 import { notify } from '@/shared/stores/notificationStore'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
+import AgentRunSteps from './AgentRunSteps'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -247,6 +248,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Box>
           )}
 
+          {!isUser && message.agentRun && <AgentRunSteps run={message.agentRun} />}
           {!isUser && (
             <EvidenceFooter
               citations={citations}
