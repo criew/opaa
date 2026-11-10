@@ -4,8 +4,9 @@ at the key's own indentation), a bind variable that opens by default, the long p
 host_ip 127.0.0.1, ports or environment in flow style, network_mode: host, a bind address beyond
 loopback in an environment template, an enabled OPAA_AUTH_DEV_ALLOW_REMOTE, a frontend bind
 address the backend does not learn, a fixed secret in any spelling or in a service its exception
-does not name, an exception that no longer matches, and a port, even on loopback, of a service
-that must stay unpublished or an entry for such a service that is gone."""
+does not name, an exception that no longer matches, a port, even on loopback, of a service
+that must stay unpublished or an entry for such a service that is gone, and a hardened service
+without read-only root file system, cap_drop ALL or no-new-privileges, or whose entry is gone."""
 
 import shutil
 import subprocess
@@ -270,3 +271,46 @@ def test_an_unpublished_service_with_no_ports_passes(repo: Path) -> None:
 def test_an_unpublished_service_that_is_gone_fails(repo: Path) -> None:
     replace(repo, "docker-compose.ocr.yml", "  opaa-ocr:\n", "  ocr-renamed:\n")
     fails_with(run(repo), "UNPUBLISHED_SERVICES names the service opaa-ocr")
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "missing"),
+    [
+        ("    read_only: true\n", "    read_only: false\n", "read_only: true"),
+        ("    read_only: true\n", "", "read_only: true"),
+        ("    cap_drop:\n      - ALL\n", "    cap_drop:\n      - NET_RAW\n", "cap_drop: [ALL]"),
+        ("    cap_drop:\n      - ALL\n", "", "cap_drop: [ALL]"),
+        ("      - no-new-privileges:true\n", "      - no-new-privileges:false\n",
+         "security_opt: [no-new-privileges:true]"),
+        ("    security_opt:\n      - no-new-privileges:true\n", "",
+         "security_opt: [no-new-privileges:true]"),
+    ],
+)
+def test_a_hardened_service_without_one_of_its_settings_fails(
+    repo: Path, old: str, new: str, missing: str
+) -> None:
+    replace(repo, "docker-compose.sandbox.yml", old, new)
+    fails_with(run(repo), f"opensandbox-server lacks {missing}")
+
+
+def test_a_hardening_setting_of_another_service_does_not_count(repo: Path) -> None:
+    # The backend service of the same file follows; its settings belong to it alone.
+    replace(repo, "docker-compose.sandbox.yml", "    read_only: true\n", "")
+    replace(
+        repo,
+        "docker-compose.sandbox.yml",
+        "  backend:\n    environment:\n",
+        "  backend:\n    read_only: true\n    environment:\n",
+    )
+    fails_with(run(repo), "opensandbox-server lacks read_only: true")
+
+
+def test_a_hardened_service_in_flow_style_passes(repo: Path) -> None:
+    replace(repo, "docker-compose.sandbox.yml", "    cap_drop:\n      - ALL\n", "    cap_drop: [ALL]\n")
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+
+
+def test_a_hardened_service_that_is_gone_fails(repo: Path) -> None:
+    replace(repo, "docker-compose.sandbox.yml", "  opensandbox-server:\n", "  sandbox-server:\n")
+    fails_with(run(repo), "HARDENED_SERVICES names the service opensandbox-server")

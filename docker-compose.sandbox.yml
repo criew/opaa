@@ -22,6 +22,17 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox/config.toml:/etc/opensandbox/config.toml:ro
+      # The server's own state (SQLite store); the only path it writes besides /tmp.
+      - opensandbox-state:/root/.opensandbox
+    # The server talks to Docker through the socket only and needs no capability for that; the root
+    # file system stays read-only.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     # "default" carries the backend's calls; "sandboxes" is how the server reaches execd in each
     # sandbox. The backend never joins "sandboxes", so sandbox code cannot reach it. Sandbox code
     # can reach this server, though: its API needs the key (no default, so no guessable value),
@@ -58,3 +69,6 @@ networks:
   sandboxes:
     name: opaa-sandboxes
     internal: true
+
+volumes:
+  opensandbox-state:

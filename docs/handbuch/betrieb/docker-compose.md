@@ -623,7 +623,7 @@ selbst:
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 
 Die mitgelieferten Vorlagen (`.env.docker.example`, `.env.example` und jede `docker-compose*.yml`
-des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
+des Repositorys) halten vier Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
 durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
 gehören nicht dazu.
 
@@ -640,6 +640,10 @@ gehören nicht dazu.
   bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
   (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
   Prüfung einzeln begründet.
+- **Gehärtete Dienste bleiben gehärtet.** `frontend`, der Texterkennungsdienst, der Prometheus des
+  Monitorings und der Sandbox-Dienst laufen mit Read-only Filesystem, ohne Capabilities
+  (`cap_drop: [ALL]`) und mit `no-new-privileges`; fehlt eine der drei Angaben, schlägt die
+  Prüfung fehl.
 
 Eigene Dateien wie `.env.docker` oder eine `docker-compose.override.yml` prüft sie nicht.
 
