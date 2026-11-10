@@ -7,7 +7,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import type { LocalHandoverScope } from '@/shared/api/types'
 import { SYSTEM_ROLE_LABEL } from '@/features/user'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, radius } from '@/shared/theme/tokens'
 
 interface TileProps {
   icon: SvgIconComponent
@@ -47,14 +47,14 @@ function Tile({ icon: Icon, label, value, isCount = false, title }: TileProps) {
           color: 'primary.main',
         }}
       >
-        <Icon sx={{ fontSize: 20 }} />
+        <Icon sx={{ fontSize: iconSize.md }} />
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{label}</Box>
+        <Box sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>{label}</Box>
         <Box
           title={title}
           sx={{
-            fontSize: isCount ? 20 : 14.5,
+            fontSize: isCount ? fontSize.detailTitle : fontSize.text,
             lineHeight: isCount ? 1.2 : 1.4,
             fontWeight: 600,
             overflow: 'hidden',

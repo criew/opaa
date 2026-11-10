@@ -13,6 +13,7 @@ import {
   getMyTranscriptionVocabulary,
   updateMyTranscriptionVocabulary,
 } from '../api/transcriptionApi'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The person's own vocabulary list for dictation, in „Ihre Einstellungen“. Shown whenever the
@@ -67,7 +68,7 @@ function VocabularyForm() {
   return (
     <Box component="section" aria-labelledby="settings-transcription-head" sx={{ mt: 5 }}>
       <SectionHead id="settings-transcription-head">Spracheingabe</SectionHead>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
         Begriffe aus Ihrer Arbeit, etwa Namen, Aktenzeichen oder Abkürzungen, erkennt die
         Spracheingabe mit dieser Liste besser. Nur Sie sehen sie.
       </Typography>

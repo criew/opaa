@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { LocalUserResponse, MailDeliveryPath } from '@/shared/api/types'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { MAIL_DELIVERY_PATH_TEXT, SHOWN_ONCE_HINT } from './localUserLabels'
 import { copyOnce } from '@/shared/utils/copyOnce'
 
@@ -52,7 +52,7 @@ export default function SetupLinkDialog({
     >
       <DialogTitle id="setup-link-title">{title}</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
           {user.email}
         </Typography>
         {deliveryPath && (
@@ -64,7 +64,7 @@ export default function SetupLinkDialog({
           data-testid="setup-link-value"
           sx={{
             fontFamily: fontFamily.mono,
-            fontSize: 12.5,
+            fontSize: fontSize.meta,
             p: 1.25,
             border: 1,
             borderColor: 'divider',
@@ -75,7 +75,7 @@ export default function SetupLinkDialog({
           {url}
         </Box>
         {url.startsWith('/') && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
             Dies ist ein Pfad relativ zur Installation, weil keine öffentliche Basis-URL gesetzt ist
             – setzen Sie die Adresse Ihrer Installation davor.
           </Typography>

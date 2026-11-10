@@ -8,6 +8,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import type { ChatDictation } from './useChatDictation'
+import { iconSize } from '@/shared/theme/tokens'
 
 interface DictationControlProps {
   dictation: ChatDictation
@@ -47,7 +48,7 @@ export default function DictationControl({ dictation, disabled = false }: Dictat
               aria-label="Aufnahme verwerfen"
               sx={{ ...buttonSx, color: 'text.secondary' }}
             >
-              <CloseIcon sx={{ fontSize: 18 }} />
+              <CloseIcon sx={{ fontSize: iconSize.md }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Fertig, Text ins Eingabefeld">
@@ -62,7 +63,7 @@ export default function DictationControl({ dictation, disabled = false }: Dictat
                 '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.18) },
               }}
             >
-              <CheckIcon sx={{ fontSize: 18 }} />
+              <CheckIcon sx={{ fontSize: iconSize.md }} />
             </IconButton>
           </Tooltip>
         </>
@@ -76,7 +77,7 @@ export default function DictationControl({ dictation, disabled = false }: Dictat
               aria-label="Spracheingabe starten"
               sx={{ ...buttonSx, color: 'text.secondary' }}
             >
-              <MicNoneOutlinedIcon sx={{ fontSize: 18 }} />
+              <MicNoneOutlinedIcon sx={{ fontSize: iconSize.md }} />
             </IconButton>
           </Box>
         </Tooltip>

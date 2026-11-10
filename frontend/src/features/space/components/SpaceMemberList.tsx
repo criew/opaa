@@ -21,6 +21,7 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
 import { memberLabelOf } from './memberLabel'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -33,7 +34,7 @@ function OwnerLockIcon({ className }: { className?: string }) {
     <LockOutlinedIcon
       aria-hidden
       className={className}
-      sx={{ fontSize: 16, color: 'text.secondary' }}
+      sx={{ fontSize: iconSize.sm, color: 'text.secondary' }}
     />
   )
 }
@@ -153,7 +154,7 @@ export default function SpaceMemberList({
         />
       )}
       {showFilter && visible.length === 0 && (
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
           Kein Mitglied passt zu „{filter.trim()}“.
         </Typography>
       )}
@@ -180,7 +181,7 @@ export default function SpaceMemberList({
                   <Typography
                     data-testid="space-member-name"
                     sx={{
-                      fontSize: 13.5,
+                      fontSize: fontSize.text,
                       ...(namelessRow ? { fontFamily: 'monospace' } : {}),
                       ...(member.protectedGroup ? { fontStyle: 'italic' } : {}),
                     }}

@@ -40,6 +40,7 @@ import {
   type TestStageState,
   type TextRecognitionTestView,
 } from './textRecognitionStages'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
@@ -186,7 +187,7 @@ export default function TextRecognitionSection() {
   if (loadError) return <Alert severity="error">{loadError}</Alert>
   if (!settings) {
     return (
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         Einstellungen werden geladen …
       </Typography>
     )
@@ -195,7 +196,9 @@ export default function TextRecognitionSection() {
   if (!settings.textRecognitionAvailable) {
     return (
       <Box sx={{ maxWidth: '72ch' }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>{INTRO}</Typography>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+          {INTRO}
+        </Typography>
         <Alert severity="info">
           Der Betrieb hat die Texterkennung nicht freigegeben (OPAA_OCR_ENABLED). Gescannte PDFs
           ohne Textebene werden weiter abgewiesen.
@@ -209,8 +212,10 @@ export default function TextRecognitionSection() {
 
   return (
     <Box sx={{ maxWidth: '72ch' }}>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>{INTRO}</Typography>
-      <Typography role="status" sx={{ fontSize: 13, mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+        {INTRO}
+      </Typography>
+      <Typography role="status" sx={{ fontSize: fontSize.text, mb: 2 }}>
         Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
       {error && (
@@ -230,12 +235,12 @@ export default function TextRecognitionSection() {
             }
             label="Texterkennung einschalten"
           />
-          <Typography id={catchUpHintId} sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography id={catchUpHintId} sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             {CATCH_UP_HINT}
           </Typography>
         </Box>
         <FormControl>
-          <FormLabel id={connectionLabelId} sx={{ fontSize: 12.5, mb: 0.5 }}>
+          <FormLabel id={connectionLabelId} sx={{ fontSize: fontSize.meta, mb: 0.5 }}>
             Anbindung
           </FormLabel>
           <RadioGroup
@@ -256,10 +261,10 @@ export default function TextRecognitionSection() {
                 sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
                 label={
                   <Box>
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {CONNECTION_TYPES[key].label}
                     </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                       {CONNECTION_TYPES[key].description}
                     </Typography>
                   </Box>
@@ -346,13 +351,15 @@ function StagedTestResult({ result }: { result: TextRecognitionTestView }) {
             <Box component="li" key={stage} sx={{ mb: 0.75 }}>
               <StateDot tone={state.tone} label={`${TEST_STAGE_LABELS[stage]}: ${state.word}`} />
               {stage === failed && (
-                <Typography sx={{ fontSize: 12.5, pl: 2, mt: 0.25 }}>{message}</Typography>
+                <Typography sx={{ fontSize: fontSize.meta, pl: 2, mt: 0.25 }}>{message}</Typography>
               )}
             </Box>
           )
         })}
       </Box>
-      {failed === null && <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>{message}</Typography>}
+      {failed === null && (
+        <Typography sx={{ fontSize: fontSize.meta, mt: 0.5 }}>{message}</Typography>
+      )}
     </Box>
   )
 }

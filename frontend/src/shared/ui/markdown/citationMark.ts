@@ -1,7 +1,7 @@
 import type { Theme } from '@mui/material/styles'
 import { rgbToHex } from '@mui/material/styles'
 import { compositeOver, deriveAccentText } from '../../utils/contrast'
-import { fontFamily, radius } from '../../theme/tokens'
+import { fontFamily, fontSize, radius } from '../../theme/tokens'
 
 /** Accent share of a resting mark's tint - stronger in the dark scheme, where 10 % would vanish. */
 const TINT_ALPHA = { light: 0.1, dark: 0.22 } as const
@@ -41,7 +41,7 @@ export function citationMarkColors(theme: Theme): CitationMarkColors {
  * reader sees they point at the same Belege. The tint is opaque, so a mark overlapping its
  * neighbour covers it instead of blending into it.
  */
-export function citationMarkSx(theme: Theme, size: number, fontSize = Math.round(size * 0.5)) {
+export function citationMarkSx(theme: Theme, size: number) {
   const { tint, text } = citationMarkColors(theme)
   return {
     display: 'inline-grid',
@@ -51,7 +51,7 @@ export function citationMarkSx(theme: Theme, size: number, fontSize = Math.round
     px: '5px',
     borderRadius: `${radius.pill}px`,
     fontFamily: fontFamily.mono,
-    fontSize,
+    fontSize: fontSize.label,
     fontWeight: 600,
     lineHeight: 1,
     fontVariantNumeric: 'tabular-nums',

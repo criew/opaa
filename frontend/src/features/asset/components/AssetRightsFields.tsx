@@ -21,6 +21,7 @@ import type { AssetRole } from '@/shared/api/types'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { permissionSubjectTypeLabel } from './assetLabels'
 import type { PendingGrant } from './pendingGrants'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const GRANT_ROLES: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER']
 
@@ -70,7 +71,7 @@ export default function AssetRightsFields({
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
         Freigaben lassen sich auch später jederzeit auf der Detailseite ergänzen — dieser Schritt
         ist optional.
       </Typography>
@@ -123,10 +124,10 @@ export default function AssetRightsFields({
                 borderColor: 'divider',
               }}
             >
-              <Typography sx={{ fontSize: 13.5, flex: 1 }} noWrap>
+              <Typography sx={{ fontSize: fontSize.text, flex: 1 }} noWrap>
                 {grant.label}
               </Typography>
-              <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 {permissionSubjectTypeLabel(grant.subjectType)} · {assetRoleLabel(grant.role)}
               </Typography>
               <IconButton
@@ -141,7 +142,7 @@ export default function AssetRightsFields({
                   )
                 }
               >
-                <DeleteIcon sx={{ fontSize: 16 }} />
+                <DeleteIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </Box>
           ))}

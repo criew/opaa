@@ -39,6 +39,7 @@ import {
   localUserErrorMessage,
   toDateInputValue,
 } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const CREATED_REASON_HELP =
   'Dienstlicher Anlass des Kontos und Grund der Befristung, höchstens 200 Zeichen. Die Person kann ' +
@@ -344,7 +345,7 @@ export default function UserFormDialog({
                 }
                 label="Kein Ablaufdatum"
               />
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 {draft.noExpiry
                   ? isBootstrap
                     ? NO_EXPIRY_HELP_BOOTSTRAP
@@ -371,7 +372,7 @@ export default function UserFormDialog({
             {isEdit && <LocalUserChatCleanupSection user={user} />}
             {!isEdit && (
               <FormControl>
-                <FormLabel id="user-form-mode-label" sx={{ fontSize: 12, mb: '5px' }}>
+                <FormLabel id="user-form-mode-label" sx={{ fontSize: fontSize.meta, mb: '5px' }}>
                   Zugang einrichten
                 </FormLabel>
                 <RadioGroup
@@ -384,7 +385,7 @@ export default function UserFormDialog({
                       key={mode}
                       value={mode}
                       control={<Radio size="small" />}
-                      slotProps={{ typography: { sx: { fontSize: 13.5 } } }}
+                      slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                       label={MODE_LABEL[mode]}
                     />
                   ))}

@@ -1,13 +1,12 @@
 import type { ChatAutoCleanupResponse } from '@/shared/api/types'
-
-const dateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' })
+import { formatDate } from '@/shared/utils/formatDate'
 
 /**
  * When the space's automatic chat cleanup deletes an archived chat, as a
  * sentence for display on the chat; `null` when no deletion date is due.
  */
 export function deletionDueLabel(iso: string | null | undefined): string | null {
-  return iso ? `Wird am ${dateFormat.format(new Date(iso))} gelöscht` : null
+  return iso ? `Wird am ${formatDate(iso)} gelöscht` : null
 }
 
 /**

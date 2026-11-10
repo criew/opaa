@@ -15,6 +15,7 @@ import { testOidcProvider } from '../api/identityProviderApi'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import SectionHead from '@/shared/ui/SectionHead'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const ISSUER_HELP_TEXT =
   'Die Issuer-URI, wie der Anbieter sie in seinen Tokens prägt (bei Keycloak die Realm-Adresse). ' +
@@ -222,7 +223,7 @@ export default function OidcProviderFormDialog({
       <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 0.5 }}>{title}</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5 }}>
             Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen
             wirken ohne Neustart.
           </Typography>
@@ -325,7 +326,7 @@ export default function OidcProviderFormDialog({
             <SectionHead id="oidc-form-claims-title" component="h3">
               Claim-Zuordnung
             </SectionHead>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
               Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen
               liest. Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
             </Typography>

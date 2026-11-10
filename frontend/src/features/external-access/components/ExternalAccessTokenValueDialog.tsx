@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedExternalAccessTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { SHOWN_ONCE_HINT, clientSetupSnippets } from './tokenLabels'
 
 function Snippet({ label, value }: { label: string; value: string }) {
@@ -22,7 +22,7 @@ function Snippet({ label, value }: { label: string; value: string }) {
         spacing={1}
         sx={{ alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <Typography sx={{ fontSize: 12.5, fontWeight: 500 }}>{label}</Typography>
+        <Typography sx={{ fontSize: fontSize.meta, fontWeight: 500 }}>{label}</Typography>
         <IconButton
           size="small"
           aria-label={`${label} kopieren`}
@@ -35,7 +35,7 @@ function Snippet({ label, value }: { label: string; value: string }) {
         component="pre"
         sx={{
           fontFamily: fontFamily.mono,
-          fontSize: 12,
+          fontSize: fontSize.meta,
           m: 0,
           p: 1.25,
           border: 1,
@@ -76,12 +76,12 @@ export default function ExternalAccessTokenValueDialog({
     <Dialog open fullWidth maxWidth="sm" aria-labelledby="token-value-title">
       <DialogTitle id="token-value-title">Token erzeugt</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>Für „{created.name}“</Typography>
+        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>Für „{created.name}“</Typography>
         <Box
           data-testid="external-access-token-value"
           sx={{
             fontFamily: fontFamily.mono,
-            fontSize: 15,
+            fontSize: fontSize.title,
             fontWeight: 500,
             p: 1.5,
             border: 1,
@@ -106,10 +106,10 @@ export default function ExternalAccessTokenValueDialog({
           {SHOWN_ONCE_HINT}
         </Alert>
 
-        <Typography sx={{ fontSize: 13.5, fontWeight: 600, mt: 3 }}>
+        <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3 }}>
           So richten Sie Ihr Werkzeug ein
         </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
           Die Adresse ist {snippets.url}; der Wert geht als Kopfzeile „Authorization: Bearer …“ mit.
           Weicht die Adresse Ihrer Installation von dieser ab, tragen Sie dort die richtige ein. Den
           Wert im Klartext trägt nur der Claude-Code-Befehl, der ihn in Ihre benutzereigene

@@ -23,6 +23,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SettingText {
   name: string
@@ -284,7 +285,7 @@ export default function ConnectionLifecycleSection() {
           {loadError}
         </Alert>
       ) : entries === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Schwellen und Fristen werden geladen …
         </Typography>
       ) : (

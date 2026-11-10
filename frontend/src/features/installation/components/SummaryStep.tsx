@@ -14,6 +14,7 @@ import {
   stepStatus,
 } from '../utils/steps'
 import StepFrame, { type StepNavigationProps } from './StepFrame'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SummaryStepProps extends Pick<StepNavigationProps, 'onBack'> {
   installation: InstallationStatusResponse
@@ -130,14 +131,17 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
               }}
             >
               <Box>
-                <Typography sx={{ fontSize: 14 }}>
+                <Typography sx={{ fontSize: fontSize.text }}>
                   {STEP_INFO[s.step].label}
-                  <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography
+                    component="span"
+                    sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+                  >
                     {s.mandatory ? ' · Pflicht' : ' · optional'}
                   </Typography>
                 </Typography>
                 {s.step === 'MAIL' && s.checked && s.checkMessage && (
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+                  <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
                     {s.checkMessage}
                   </Typography>
                 )}

@@ -32,6 +32,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 import type { LocalHandoverPreviewResponse } from '@/shared/api/types'
 import { LINK_INVALID_MESSAGE, tooManyRequestsMessage } from '@/shared/session/authMessages'
+import { fontSize } from '@/shared/theme/tokens'
 
 const HEADING = 'Zugang an Ihre Anbieteridentität übergeben'
 
@@ -160,7 +161,7 @@ export default function HandoverPage() {
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 3, color: 'text.secondary' }}
         >
           <CircularProgress size={20} aria-hidden="true" />
-          <Typography role="status" sx={{ fontSize: 13.5 }}>
+          <Typography role="status" sx={{ fontSize: fontSize.text }}>
             {status === 'loading' ? 'Die Übergabe wird geprüft …' : 'Die Übergabe läuft …'}
           </Typography>
         </Box>
@@ -243,7 +244,7 @@ export default function HandoverPage() {
   return (
     <AuthLayout>
       <PageHeading title={HEADING} variant="h5" sx={{ mb: 2 }} />
-      <Typography sx={{ fontSize: 13.5, textAlign: 'left' }}>
+      <Typography sx={{ fontSize: fontSize.text, textAlign: 'left' }}>
         Ihre Systemverwaltung hat die Übergabe Ihres Zugangs „{displayName}“ an{' '}
         <strong>{provider.displayName}</strong> angestoßen. Melden Sie sich dort an, um sie
         abzuschließen.
@@ -265,7 +266,7 @@ export default function HandoverPage() {
       <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => void signInAtProvider()}>
         Bei {provider.displayName} anmelden und übergeben
       </Button>
-      <Typography sx={{ mt: 2, fontSize: 12, color: 'text.secondary' }}>
+      <Typography sx={{ mt: 2, fontSize: fontSize.meta, color: 'text.secondary' }}>
         Sie können diese Seite auch schließen — Ihr bisheriger Zugang bleibt bis zur Übergabe
         unverändert.
       </Typography>

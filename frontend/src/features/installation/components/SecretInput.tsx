@@ -10,6 +10,7 @@ import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 interface SecretInputProps {
   id: string
@@ -50,8 +51,10 @@ export default function SecretInput({
     return (
       <Box>
         <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
-          <Typography sx={{ fontSize: 13.5 }}>Gesetzt</Typography>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
+        >
+          <Typography sx={{ fontSize: fontSize.text }}>Gesetzt</Typography>
           {/* The stored state's one control carries the field's id and error, so the error is
               announced with it and the form's focus on the first invalid entry lands here. */}
           <Button
@@ -71,7 +74,10 @@ export default function SecretInput({
           </Button>
         </Box>
         {error && (
-          <Typography id={`${id}-error`} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+          <Typography
+            id={`${id}-error`}
+            sx={{ fontSize: fontSize.meta, color: 'error.main', mt: 0.5 }}
+          >
             {error}
           </Typography>
         )}

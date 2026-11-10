@@ -6,6 +6,7 @@ import type { DirectorySyncSettingsResponse } from '@/shared/api/types'
 import { getDirectorySyncSettings, updateDirectorySyncSettings } from '../api/directorySyncApi'
 import FactoryDefaultNumberSetting from '@/shared/ui/FactoryDefaultNumberSetting'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
 
 function percentLabel(percent: number): string {
   return `${percent} %`
@@ -60,7 +61,7 @@ export default function DirectorySyncThresholdSection() {
           {loadError}
         </Alert>
       ) : settings === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Plausibilitätsschwelle wird geladen …
         </Typography>
       ) : (

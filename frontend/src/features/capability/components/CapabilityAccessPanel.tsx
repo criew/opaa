@@ -27,6 +27,7 @@ import {
   type Access,
 } from './capabilityAccess'
 import { presentationOf } from './capabilityPresentation'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 function ScopeList({
   title,
@@ -43,7 +44,7 @@ function ScopeList({
       <Typography
         component="h3"
         sx={{
-          fontSize: 12,
+          fontSize: fontSize.meta,
           fontWeight: 600,
           color: 'text.secondary',
           letterSpacing: 0.4,
@@ -85,13 +86,13 @@ function ScopeList({
                   '&.Mui-focusVisible': { bgcolor: 'action.focus' },
                 }}
               >
-                <Typography sx={{ fontSize: 14, flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontSize: fontSize.text, flex: 1, minWidth: 0 }}>
                   {scopeShortLabel(entry)}
                 </Typography>
                 <AccessBadge tone={access.level} label={accessBadgeLabel(access)} />
                 <ChevronRightIcon
                   aria-hidden="true"
-                  sx={{ fontSize: 20, color: 'text.secondary' }}
+                  sx={{ fontSize: iconSize.md, color: 'text.secondary' }}
                 />
               </ButtonBase>
             </Box>
@@ -207,7 +208,7 @@ export default function CapabilityAccessPanel({
             ref={headingRef}
             tabIndex={-1}
             component="h2"
-            sx={{ fontSize: 18, fontWeight: 600, outline: 'none' }}
+            sx={{ fontSize: fontSize.title, fontWeight: 600, outline: 'none' }}
           >
             {heading}
           </Typography>
@@ -220,7 +221,7 @@ export default function CapabilityAccessPanel({
             </TextLink>
           )}
           {scoped && !entry && (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
               Für jede Quelle und jeden Zugang legen Sie getrennt fest, wer solche Bibliotheken
               anlegen darf. Die Freigabe eines Zugangs öffnet keinen anderen.
             </Typography>
