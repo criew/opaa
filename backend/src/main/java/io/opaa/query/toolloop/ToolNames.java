@@ -11,6 +11,7 @@ public final class ToolNames {
   public static final String LIST_SOURCES = "list_sources";
   public static final String RUN_CODE = "run_code";
   public static final String ASK_USER = "ask_user";
+  public static final String FILL_TEMPLATE = "fill_template";
 
   private ToolNames() {}
 }

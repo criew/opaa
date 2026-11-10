@@ -23,8 +23,9 @@ data:
             Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
             ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt), auch nicht die
             Zitate und der Abschnittspfad des gespeicherten Fundstellen-Ankers; agent_run nennt je
-            Werkzeugschritt die Unterfrage und bei run_code die Namen der erzeugten Dateien, dazu
-            Kennung und Namen des Agenten, den die Person für die Frage gewählt hat
+            Werkzeugschritt die Unterfrage, bei run_code die Namen der erzeugten Dateien und bei
+            fill_template den Namen der Vorlage mit den Namen der erzeugten Dateien, dazu Kennung und
+            Namen des Agenten, den die Person für die Frage gewählt hat
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -79,9 +80,10 @@ data:
     purpose: >-
       Dokumente, die die Person einer Chatfrage anhängt, damit die Antwort ihren Inhalt nutzt; Text
       und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek. Das Agentenwerkzeug
-      run_code (nur mit eingeschalteter Sandbox) legt die Dateien, die ein Skript im Lauf erzeugt,
-      ohne eigene Handlung der Person als ihre Anhänge an, durch dieselben Prüfungen wie ein
-      Hochladen, und bindet sie an die Antwortnachricht
+      run_code und fill_template (nur mit eingeschalteter Sandbox) legen die Dateien, die ein Skript
+      im Lauf erzeugt oder die eine befüllte Dokumentvorlage ergibt, ohne eigene Handlung der Person
+      als ihre Anhänge an, durch dieselben Prüfungen wie ein Hochladen, und binden sie an die
+      Antwortnachricht
     personalReference: EMPLOYEE
     tables:
       - name: chat_attachments
