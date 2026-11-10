@@ -4,10 +4,14 @@ import {
   readMarker,
   unwrapBracketedMarkers,
 } from '@/shared/ui/markdown/citations'
+import type { OutwardPolicy } from '@/shared/ui/markdown/outwardMarkdown'
+import { answerForOutside } from '@/shared/ui/markdown/outwardMarkdown'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
  * (`【source: <documentId>#<chunk> | <fileName>】`); none of the formats may let them through raw.
+ * Every format ends in {@link answerForOutside}, so no image, foreign link or raw HTML of the
+ * answer reaches the program the text is pasted into.
  */
 
 /**
@@ -32,22 +36,23 @@ function splitAtMarkers(content: string): { texts: string[]; markers: string[] }
 }
 
 /** The answer as Markdown, without footnote markers and without a source list - the default. */
-export function answerAsMarkdown(content: string): string {
-  return splitAtMarkers(unwrapBracketedMarkers(content)).texts.join('').trim()
+export function answerAsMarkdown(content: string, policy: OutwardPolicy = {}): string {
+  const markdown = splitAtMarkers(unwrapBracketedMarkers(content)).texts.join('').trim()
+  return answerForOutside(markdown, policy).trim()
 }
 
 /**
  * The answer as Markdown with its sources: each marker becomes a Markdown footnote (`[^1]`, the
  * same number the chat shows), repeated neighbours collapse, and the cited documents follow as a
  * footnote list with their Fundort where the pipeline knew one. `labelPrefix` goes in front of
- * every footnote label (`[^2-1]`), for documents that hold several answers; the answer's own text
- * is never touched.
+ * every footnote label (`[^2-1]`), for documents that hold several answers.
  */
 export function answerWithSources(
   answer: string,
   citations: CitationIndex,
-  labelPrefix = '',
+  options: OutwardPolicy & { labelPrefix?: string } = {},
 ): string {
+  const labelPrefix = options.labelPrefix ?? ''
   const { texts, markers } = splitAtMarkers(unwrapBracketedMarkers(answer))
   const fileNameByNumber = new Map<number, string>()
   const parts: string[] = []
@@ -67,14 +72,14 @@ export function answerWithSources(
   })
   parts.push(texts[texts.length - 1])
   const body = parts.join('').trim()
-  if (fileNameByNumber.size === 0) return body
+  if (fileNameByNumber.size === 0) return answerForOutside(body, options).trim()
   const notes = [...fileNameByNumber.entries()]
     .sort(([a], [b]) => a - b)
     .map(([number, fileName]) => {
       const location = citations.locationByNumber.get(number)
       return `[^${labelPrefix}${number}]: ${fileName}${location ? `, ${location}` : ''}`
     })
-  return `${body}\n\n${notes.join('\n')}`
+  return answerForOutside(`${body}\n\n${notes.join('\n')}`, options).trim()
 }
 
 // Each rule looks at most 300 characters ahead per position, so a line built to make them
@@ -87,6 +92,9 @@ const INLINE_RULES: [RegExp, string][] = [
   [/~~(.{1,300}?)~~/g, '$1'],
   [/(^|[^\w*])\*(?!\s)(.{1,300}?)(?<!\s)\*(?!\w)/g, '$1$2'],
   [/(^|[^\w_])_(?!\s)(.{1,300}?)(?<!\s)_(?!\w)/g, '$1$2'],
+  // Escapes are resolved, except before what could start an image, a link or HTML again when the
+  // text is pasted into a Markdown reader.
+  [/\\([\\`*_()>&|~:#.+-])/g, '$1'],
 ]
 
 function plainInline(line: string): string {
@@ -101,10 +109,10 @@ function plainInline(line: string): string {
  * lose their marks, bullets become "•", table rows become tab-separated cells (they paste into a
  * spreadsheet), code keeps its lines.
  */
-export function answerAsPlainText(content: string): string {
+export function answerAsPlainText(content: string, policy: OutwardPolicy = {}): string {
   const lines: string[] = []
   let inCode = false
-  for (const line of answerAsMarkdown(content).split('\n')) {
+  for (const line of answerAsMarkdown(content, policy).split('\n')) {
     if (/^\s*(```|~~~)/.test(line)) {
       inCode = !inCode
       continue

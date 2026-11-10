@@ -1,4 +1,5 @@
 import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
 import { notify, useNotificationStore } from '@/shared/stores/notificationStore'
 import { exportChatPdf, getChat } from '../api/chatApi'
 import { chatAsMarkdown, exportFileName } from './chatExport'
@@ -46,7 +47,8 @@ export async function exportChat(
       const { branding } = useBrandingStore.getState()
       const exportedAt = new Date()
       const note = copyNote(branding.aiNotice, branding.productName, exportedAt)
-      const markdown = chatAsMarkdown(detail, note, exportedAt)
+      const { allowedOrigins } = useLinkTargetsStore.getState()
+      const markdown = chatAsMarkdown(detail, note, exportedAt, { allowedOrigins })
       download(
         new Blob([markdown], { type: 'text/markdown;charset=utf-8' }),
         exportFileName(detail.title, 'md'),

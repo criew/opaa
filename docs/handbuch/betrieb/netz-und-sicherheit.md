@@ -95,6 +95,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - **Bilder** lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
   an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
   `Content-Security-Policy` fremde Bilder.
+- **Kopieren und Export** wenden dieselben Regeln an, in jedem Format: Ein Bild wird zu „[Bild: …]“
+  mit der Adresse als Text, ein Link zu einem nicht erlaubten Ziel zu Linktext mit Adresse, HTML in
+  der Antwort zu Text. Ein anderes Programm, in das die Antwort eingefügt wird, lädt so nichts nach.
 - **Bedienung:** Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
   Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
   Meldung und bleibt im Feld stehen.

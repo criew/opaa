@@ -10,6 +10,9 @@ import {
 } from './copyFormats'
 import type { SourceReference } from '@/shared/api/types'
 
+// The answers below link to this origin; the link stays a link only because it is allowed.
+const LINKS = { allowedOrigins: ['https://example.test'] }
+
 const ANSWER =
   '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro** 【source: doc-a#0 | 001_personalausweis.md】.\n' +
   '- Passbild 【source: doc-b#2 | 016_familie.md】【source: doc-b#2 | 016_familie.md】\n' +
@@ -41,7 +44,7 @@ const SOURCES: SourceReference[] = [
 
 describe('answerAsMarkdown', () => {
   test('keeps the Markdown and drops every marker with the space before it', () => {
-    expect(answerAsMarkdown(ANSWER)).toBe(
+    expect(answerAsMarkdown(ANSWER, LINKS)).toBe(
       '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro**.\n' +
         '- Passbild\n' +
         '- Termin im [Bürgerbüro](https://example.test/termin)',
@@ -53,7 +56,7 @@ describe('answerWithSources', () => {
   test('turns markers into Markdown footnotes and lists the cited documents with their Fundort', () => {
     const citations = buildCitationIndex(ANSWER, SOURCES)
 
-    expect(answerWithSources(ANSWER, citations)).toBe(
+    expect(answerWithSources(ANSWER, citations, LINKS)).toBe(
       '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro**[^1].\n' +
         '- Passbild[^2]\n' +
         '- Termin im [Bürgerbüro](https://example.test/termin)[^1]\n\n' +
@@ -101,7 +104,7 @@ describe('bracketed markers', () => {
 
   test('leave a Markdown link around a marker alone', () => {
     const link = 'Siehe [【source: doc-a#0 | 001_personalausweis.md】](https://example.test/a).'
-    expect(answerAsMarkdown(link)).toBe('Siehe [](https://example.test/a).')
+    expect(answerAsMarkdown(link, LINKS)).toBe('Siehe [](https://example.test/a).')
   })
 
   test('drop square brackets and doubled parentheses as well', () => {
@@ -129,7 +132,7 @@ describe('bracketed markers', () => {
 
 describe('answerAsPlainText', () => {
   test('removes the Markdown syntax but keeps structure readable', () => {
-    expect(answerAsPlainText(ANSWER)).toBe(
+    expect(answerAsPlainText(ANSWER, LINKS)).toBe(
       'Gebühren\n\nEin Personalausweis kostet 42,60 Euro.\n• Passbild\n• Termin im Bürgerbüro',
     )
   })
