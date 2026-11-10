@@ -7,6 +7,7 @@ import type {
 } from '@/shared/api/types'
 import { mockGroups } from '../../group/mocks/groupFixtures'
 import { mockMyCapabilities } from '../../capability/mocks/capabilityFixtures'
+import { mockDocumentTemplateState } from '../../document-template/mocks/documentTemplateFixtures'
 import { mockAgentSettings, mockAgents } from './agentFixtures'
 
 function notFound() {
@@ -62,6 +63,8 @@ export const agentHandlers = [
       instruction: '',
       libraries: [],
       hiddenLibraryCount: 0,
+      templates: [],
+      hiddenTemplateCount: 0,
       toolNames: ['search_knowledge', 'read_document'],
       planStep: 'OFF',
       limits: {},
@@ -100,6 +103,16 @@ export const agentHandlers = [
         (id) =>
           agent.libraries.find((library) => library.id === id) ?? { id, name: `Bibliothek ${id}` },
       ),
+      templates:
+        body.templateIds == null
+          ? agent.templates
+          : body.templateIds.map((id) => ({
+              id,
+              name:
+                agent.templates.find((template) => template.id === id)?.name ??
+                mockDocumentTemplateState.templates[id]?.name ??
+                `Vorlage ${id}`,
+            })),
       toolNames: body.toolNames,
       planStep: body.planStep,
       limits: body.limits,

@@ -176,6 +176,7 @@ export type PromptLibraryResponse = components['schemas']['PromptLibraryResponse
 export type AgentPlanStep = components['schemas']['AgentPlanStep']
 export type AgentLimits = components['schemas']['AgentLimits']
 export type AgentLibrary = components['schemas']['AgentLibrary']
+export type AgentTemplate = components['schemas']['AgentTemplate']
 export type AgentCreateRequest = components['schemas']['AgentCreateRequest']
 export type AgentUpdateRequest = components['schemas']['AgentUpdateRequest']
 export type AgentResponse = components['schemas']['AgentResponse']
