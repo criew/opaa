@@ -971,7 +971,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
-    expect(within(dialog).getByRole('status', { busy: true })).toBeInTheDocument()
+    expect(within(dialog).getByText('Wird geladen')).toBeInTheDocument()
     expect(within(dialog).queryByText(/liegen nicht vor/)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })

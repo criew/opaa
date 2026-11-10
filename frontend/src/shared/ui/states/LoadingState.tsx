@@ -94,7 +94,6 @@ export default function LoadingState({
     <Box
       component={shape === 'inline' ? 'span' : 'div'}
       role="status"
-      aria-busy="true"
       data-loading-state={shape}
       sx={{ display: shape === 'inline' ? 'inline-block' : 'block' }}
     >

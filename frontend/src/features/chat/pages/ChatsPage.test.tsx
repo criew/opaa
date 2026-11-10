@@ -258,7 +258,7 @@ describe('ChatsPage', () => {
     // The hint names the plus of the sidebar by its name (guidelines 5.13), not a "Neu" text.
     expect(
       screen.getByText(
-        'Keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste.',
+        'Noch keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste.',
       ),
     ).toBeInTheDocument()
     expect(Object.keys(mockChatArchive).sort()).toEqual(['chat-personal-1', 'chat-personal-2'])
@@ -394,10 +394,10 @@ describe('ChatsPage', () => {
       await screen.findByRole('tab', { name: 'Aktiv (2)' })
 
       fireEvent.change(searchField(), { target: { value: ANSWER_TERM } })
-      expect(screen.queryByRole('status', { busy: true })).not.toBeInTheDocument()
+      expect(screen.queryByText('Wird geladen')).not.toBeInTheDocument()
       fireEvent.keyDown(searchField(), { key: 'Enter' })
 
-      expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
+      expect(screen.getByText('Wird geladen')).toBeInTheDocument()
       expect(await screen.findByRole('link', { name: 'Deployment-Fragen' })).toBeInTheDocument()
     })
 

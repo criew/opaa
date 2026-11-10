@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, type ReactNode, type Ref } from 'react'
 import { Link as RouterLink } from 'react-router'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -145,7 +146,10 @@ export default function OverviewPage<T>({
   const narrowed = filtered || (search !== undefined && query.trim() !== '')
   const isEmpty = items.length === 0 && !narrowed
   const firstLoad = isLoading && items.length === 0 && !narrowed
-  const showList = visible.length > 0 && !error
+  // A failed first load replaces the content; a later failure (a further page, a refresh) leaves
+  // the loaded entries standing and is named below them.
+  const loadFailed = error !== null && items.length === 0
+  const showList = visible.length > 0
   const count = total ?? visible.length
   // Only a result that answers the text now in the field may be announced or called empty.
   const resultCurrent =
@@ -217,7 +221,11 @@ export default function OverviewPage<T>({
                   </InputAdornment>
                 ) : undefined,
               },
-              htmlInput: { 'aria-label': 'Suchen', maxLength: search?.maxLength },
+              htmlInput: {
+                'aria-label': 'Suchen',
+                'data-list-search': '',
+                maxLength: search?.maxLength,
+              },
             }}
           />
           {filters}
@@ -232,7 +240,7 @@ export default function OverviewPage<T>({
           : ''}
       </Box>
 
-      {error ? (
+      {loadFailed ? (
         <LoadError message={errorMessage} detail={error} onRetry={onRetry} />
       ) : firstLoad ? (
         <LoadingState shape="cards" count={6} />
@@ -269,6 +277,12 @@ export default function OverviewPage<T>({
             <Fragment key={itemKey(item)}>{renderCard(item)}</Fragment>
           ))}
         </Box>
+      )}
+
+      {error !== null && !loadFailed && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
       )}
 
       {showList && listFooter}

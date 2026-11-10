@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -38,12 +38,23 @@ export type EmptyStateProps = Common &
     | { kind: 'noAccess'; message: Sentence }
   )
 
+/** The search field nearest to `from`, the place a reset hands the focus back to. */
+function nearestSearchField(from: HTMLElement | null): HTMLElement | null {
+  for (let scope = from?.parentElement ?? null; scope; scope = scope.parentElement) {
+    const field = scope.querySelector<HTMLElement>('[data-list-search], input[type="search"]')
+    if (field) return field
+  }
+  return null
+}
+
 export default function EmptyState(props: EmptyStateProps) {
   const kind = props.kind ?? 'initial'
+  const rootRef = useRef<HTMLDivElement>(null)
   const message = props.kind === 'noMatch' ? NO_MATCH_MESSAGE : props.message
 
   return (
     <Box
+      ref={rootRef}
       data-empty-state={kind}
       sx={
         props.framed
@@ -77,7 +88,16 @@ export default function EmptyState(props: EmptyStateProps) {
       )}
       {props.kind === 'noMatch' && (
         <Box sx={{ mt: 1 }}>
-          <TextAction onClick={props.onReset}>Filter zurücksetzen</TextAction>
+          <TextAction
+            onClick={() => {
+              // Found before the reset: the list that replaces this state may unmount it.
+              const field = nearestSearchField(rootRef.current)
+              props.onReset()
+              field?.focus()
+            }}
+          >
+            Filter zurücksetzen
+          </TextAction>
         </Box>
       )}
       {(props.kind === undefined || props.kind === 'initial') && props.action && (

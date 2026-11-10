@@ -400,7 +400,7 @@ export default function ChatsPage() {
                 ) : (
                   <EmptyState
                     framed
-                    message="Keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
+                    message="Noch keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
                   />
                 )
               ) : (

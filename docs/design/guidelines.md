@@ -652,7 +652,8 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
    liest stattdessen, wer es kann: „Noch keine Dokumente. Hochladen kann, wer die Bibliothek
    verwaltet.“
 3. **Kein Treffer:** „Keine Treffer.“ plus „Filter zurücksetzen“, das Suche und Filter auf den
-   Ausgangsstand stellt. Suche und Filter bleiben dabei stehen.
+   Ausgangsstand stellt. Suche und Filter bleiben dabei stehen; der Fokus geht danach ins
+   Suchfeld.
 4. **Kein Zugriff:** was fehlt und wer zuständig ist, etwa „Zugänge kann nur abrufen, wer
    Konnektorbibliotheken anlegen darf. Dieses Anlegerecht erteilt die Systemverwaltung.“ Ein 403
    ist kein Ladefehler und bekommt kein „Erneut laden“.
@@ -661,8 +662,8 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
 6. **Ladefehler:** „<Objekte> konnten nicht geladen werden.“ (für ein Objekt „… konnte …“) als
    Hinweis mit „Erneut laden“ an der Stelle des Inhalts. Die Ursache des Servers darf folgen, wo
    sie mehr sagt. Nie roter Fließtext, nie zusammen mit einem Leertext: „fehlgeschlagen“ und „leer“
-   sind nicht zu verwechseln. Ist schon Inhalt geladen, bleibt er stehen; ein Fehler beim
-   Nachladen erscheint unter ihm.
+   sind nicht zu verwechseln. Nach „Erneut laden“ steht der Fokus auf dem Inhaltsbereich. Ist
+   schon Inhalt geladen, bleibt er stehen; ein Fehler beim Nachladen erscheint unter ihm.
 7. **„Erneut laden“ nach einem Ladefehler, „Erneut versuchen“ nach einer fehlgeschlagenen
    Aktion** (Speichern, Senden, Hochladen). „Neu laden“ gibt es nicht; die Fehlerseite der
    Anwendung bietet „Seite neu laden“.
@@ -672,7 +673,8 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
 
 **Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine`) zeigt einen Spinner mit kurzem Satz wie „Antwort wird geschrieben …“; sie
 beschreibt einen Vorgang, keinen ladenden Inhalt. Anmeldung und Installation stehen vor der
-Anwendung und folgen eigenen Mustern. Beide Ausnahmen stehen benannt im Quelltext-Test.
+Anwendung und folgen eigenen Mustern. Der Quelltext-Test nimmt die Statuszeile nur von der
+Spinner-Regel aus, Anmeldung und Installation von allen Regeln.
 
 Das Satzformat prüft schon der Compiler: `EmptyState` nimmt nur Texte mit Punkt, `LoadError` nur
 Sätze auf „… nicht geladen werden.“. Den Rest prüft der Quelltext-Test
@@ -684,7 +686,8 @@ eigene Snackbar.
 **Ansehen im Mock-Modus:** Die Szenarien `?mockScenario=empty`, `slow` und `failed` wirken auf
 alle Themen (`frontend/src/app/mocks/scenarioHandler.ts`): `empty` leert jede Liste, `failed`
 beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei Sekunden (länger mit
-`opaa.mockSlowMs` im sessionStorage). Anmeldung, Health und Branding bleiben unberührt.
+`opaa.mockSlowMs` im sessionStorage). Anmeldung, Health, Branding, Installation, die eigenen Rechte
+(`me/capabilities`) und die erlaubten Linkziele bleiben unberührt.
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 

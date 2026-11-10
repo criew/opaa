@@ -582,7 +582,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
       {chats === undefined && isLoading ? (
         <LoadingState shape="lines" count={4} />
-      ) : chats === undefined && error ? (
+      ) : (chats === undefined || chats.length === 0) && error ? (
         // Failed and empty never stand together: without a list there is only the notice.
         <LoadError
           message="Chats konnten nicht geladen werden."
@@ -598,7 +598,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
             </Alert>
           )}
           {!chats || chats.length === 0 ? (
-            <EmptyState message="Keine aktiven Chats in diesem Space." />
+            <EmptyState message="Noch keine aktiven Chats in diesem Space." />
           ) : (
             renderChats(chats)
           )}

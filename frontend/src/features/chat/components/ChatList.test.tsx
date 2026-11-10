@@ -40,7 +40,7 @@ describe('ChatList', () => {
     server.use(http.get('/api/v1/spaces/:spaceId/chats', () => HttpResponse.json([])))
     renderWithProviders(<ChatList spaceId="space-phoenix" />)
 
-    expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
+    expect(await screen.findByText('Noch keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
   // "Neu" must not eagerly persist an empty chat - it only navigates to

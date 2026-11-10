@@ -134,7 +134,7 @@ describe('installPreloadErrorReload', () => {
     installPreloadErrorReload(first.win, BUILD)
     const view = renderPage(first.win)
     await vi.waitFor(() => expect(first.reload).toHaveBeenCalledTimes(1))
-    expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
+    expect(screen.getByText('Wird geladen')).toBeInTheDocument()
     view.unmount()
 
     const second = fakeWindow(storage)

@@ -28,27 +28,22 @@ const PRODUKTIVDATEIEN = Object.keys(QUELLEN).filter(
 /** The three building blocks themselves; they alone may carry what the rules forbid elsewhere. */
 const BAUSTEINE = '/src/shared/ui/states/'
 
+/** Sign-in and installation stand before any application frame; no rule of 5.7 applies there. */
+const VOR_DER_ANWENDUNG = ['/features/auth/', '/features/installation/', '/app/ProtectedRoute.tsx']
+
+const CHAT_STATUSZEILE = '/features/chat/components/ChatStatusLine.tsx'
+
 /**
- * Named exceptions from guidelines 5.7, each with the paths it covers. The status line of the
- * running chat answer is the only one inside the application: a spinner with a short visible
- * sentence describes an ongoing process, not content that loads.
+ * The one named exception inside the application, and only from the spinner rule: the status line
+ * of the running chat answer shows a spinner with a short visible sentence about a process. Until
+ * that file exists, the spinner still lives in MessageList, which is exempt only for that time.
  */
-const AUSNAHMEN_JE_GRUND: Record<string, string[]> = {
-  'Statuszeile der laufenden Chat-Antwort': ['/features/chat/components/ChatStatusLine.tsx'],
-  // Interim until #3743 moves the running-answer spinner into ChatStatusLine; remove then.
-  'Statuszeile der laufenden Chat-Antwort, bisheriger Ort': [
-    '/features/chat/components/MessageList.tsx',
-  ],
-  'Anmeldung und Installation, vor jedem Anwendungsrahmen': [
-    '/features/auth/',
-    '/features/installation/',
-    '/app/ProtectedRoute.tsx',
-  ],
-}
-const AUSNAHMEN = Object.values(AUSNAHMEN_JE_GRUND).flat()
+const SPINNER_AUSNAHMEN = Object.keys(QUELLEN).some((pfad) => pfad.endsWith(CHAT_STATUSZEILE))
+  ? [CHAT_STATUSZEILE]
+  : [CHAT_STATUSZEILE, '/features/chat/components/MessageList.tsx']
 
 const imGeltungsbereich = (pfad: string) =>
-  !pfad.includes(BAUSTEINE) && !AUSNAHMEN.some((ausnahme) => pfad.includes(ausnahme))
+  !pfad.includes(BAUSTEINE) && !VOR_DER_ANWENDUNG.some((ausnahme) => pfad.includes(ausnahme))
 
 function treffer(muster: RegExp, filter: (pfad: string) => boolean = imGeltungsbereich) {
   return PRODUKTIVDATEIEN.filter((pfad) => filter(pfad) && muster.test(QUELLEN[pfad]))
@@ -62,7 +57,13 @@ describe('Leer-, Lade- und Fehlerzustände (guidelines 5.7)', () => {
   it('shows a spinner only inside the button that started the action', () => {
     // A busy button uses MUI's `loading` prop; a spinner of its own is a loading state that
     // belongs to LoadingState instead.
-    expect(treffer(/@mui\/material\/CircularProgress/)).toEqual([])
+    expect(
+      treffer(
+        /@mui\/material\/CircularProgress/,
+        (pfad) =>
+          imGeltungsbereich(pfad) && !SPINNER_AUSNAHMEN.some((ausnahme) => pfad.endsWith(ausnahme)),
+      ),
+    ).toEqual([])
   })
 
   it('shows a progress bar only where it measures progress', () => {

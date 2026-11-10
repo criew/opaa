@@ -278,7 +278,7 @@ describe('ChatInput: inserting a prompt', () => {
     const { onSend, input } = renderInput()
 
     await user.type(input, '/zu')
-    await screen.findByRole('status', { busy: true })
+    await screen.findByText('Wird geladen')
     await user.keyboard('{Enter}')
 
     expect(onSend).not.toHaveBeenCalled()

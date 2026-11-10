@@ -97,7 +97,12 @@ export default function ChatActionMenu({
           ) : error ? (
             // The input keeps focus while the retry is pressed, as for every option.
             <Box sx={{ p: 1 }} onMouseDown={(event) => event.preventDefault()}>
-              <LoadError message={texts.loadFailed} detail={error} onRetry={onRetry} />
+              <LoadError
+                message={texts.loadFailed}
+                detail={error}
+                onRetry={onRetry}
+                moveFocus={false}
+              />
             </Box>
           ) : message !== null ? (
             <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>

@@ -140,7 +140,7 @@ describe('OverviewPage (#1913)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
     expect(screen.queryByText(/Einträge/)).not.toBeInTheDocument()
-    expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
+    expect(screen.getByText('Wird geladen')).toBeInTheDocument()
   })
 
   it('hands a controlled search to the caller and filters nothing itself', async () => {
@@ -208,6 +208,17 @@ describe('OverviewPage (#1913)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
     expect(onResetFilters).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the loaded cards when a later load fails and names the failure below them', () => {
+    renderOverview({ error: 'Weitere Einträge ließen sich nicht abrufen.' })
+
+    expect(screen.getByRole('link', { name: 'Bauamt' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Widerspruchsstelle' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Weitere Einträge ließen sich nicht abrufen.',
+    )
+    expect(screen.queryByRole('button', { name: 'Erneut laden' })).not.toBeInTheDocument()
   })
 
   it('shows only the load notice with „Erneut laden" after a failed load', async () => {
