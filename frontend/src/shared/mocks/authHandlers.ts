@@ -122,8 +122,13 @@ export const authHandlers = [
     return HttpResponse.json({ ...mockLocalTokenResponse, passwordChangeRequired: false })
   }),
 
-  http.get('/api/v1/auth/me', () => {
+  // The signed-out profile knows nobody until a sign-in presents its token; then it is the
+  // regular fixture user, so the way from the sign-in page into the app can be walked.
+  http.get('/api/v1/auth/me', ({ request }) => {
     const user = mockProfileUser(currentMockProfile(), mockUser)
-    return user ? HttpResponse.json(user) : new HttpResponse(null, { status: 401 })
+    if (user) return HttpResponse.json(user)
+    return request.headers.has('Authorization')
+      ? HttpResponse.json(mockUser)
+      : new HttpResponse(null, { status: 401 })
   }),
 ]

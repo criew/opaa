@@ -27,7 +27,12 @@ describe('auth mocks by profile', () => {
     const me = await fetch('/api/v1/auth/me')
     const config = await (await fetch('/api/v1/auth/config')).json()
 
+    const afterSignIn = await fetch('/api/v1/auth/me', {
+      headers: { Authorization: 'Bearer mock-local-access-token' },
+    })
+
     expect(me.status).toBe(401)
+    expect(afterSignIn.status).toBe(200)
     expect(config.mode).toBe('oidc')
     expect(config.providers).toHaveLength(2)
     expect(config.localAccounts).toMatchObject({
