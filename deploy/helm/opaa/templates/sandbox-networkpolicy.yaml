@@ -6,6 +6,9 @@
 {{- if not $sandbox.serverPodSelector }}
 {{- fail "sandbox.serverPodSelector is required with sandbox.enabled" }}
 {{- end }}
+{{- if eq (toString $sandbox.namespace) .Release.Namespace }}
+{{- fail "sandbox.namespace must differ from the release namespace: the policy closes the network of every pod there" }}
+{{- end }}
 # The sandbox pods run code nobody has checked (ADR-0073): no egress at all, so they reach neither
 # the backend, the database nor the internet, and ingress only from the sandbox server, which
 # proxies the backend's calls to execd in the pod. Rendered whenever the sandbox is on, regardless

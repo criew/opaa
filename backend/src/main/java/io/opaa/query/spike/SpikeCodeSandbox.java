@@ -17,6 +17,9 @@ class SpikeCodeSandbox implements CodeSandbox {
   /** Lifetime beyond the script's own limit: start, upload, collecting and deleting. */
   private static final Duration MARGIN = Duration.ofMinutes(2);
 
+  private static final Duration READY_WITHIN = Duration.ofMinutes(1);
+  private static final Duration COLLECT_WITHIN = Duration.ofMinutes(1);
+
   private final Sandboxes sandboxes;
   private final Duration runTimeout;
 
@@ -27,14 +30,14 @@ class SpikeCodeSandbox implements CodeSandbox {
 
   @Override
   public Run run(String code) {
-    try (SandboxSession session = sandboxes.open(runTimeout.plus(MARGIN))) {
+    try (SandboxSession session = sandboxes.open(runTimeout.plus(MARGIN), READY_WITHIN)) {
       SandboxSession.ScriptRun run = session.run(code, runTimeout);
       return new Run(
           run.exitCode(),
           run.stdout(),
           run.stderr(),
           run.timedOut(),
-          session.collectOutput().stream()
+          session.collectOutput(name -> true, COLLECT_WITHIN).stream()
               .map(file -> new OutputFile(file.name(), file.content()))
               .toList());
     }

@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -102,7 +103,9 @@ class OpenSandboxClientTest {
 
     List<SandboxSession.OutputFile> files =
         OpenSandboxClient.outputFiles(
-            objectMapper.readTree(listing),
+            OpenSandboxClient.entries(objectMapper.readTree(listing)),
+            name -> true,
+            () -> false,
             path -> {
               fetched.add(path);
               return path.endsWith("geschummelt.pdf") ? null : new byte[] {1};
@@ -127,9 +130,75 @@ class OpenSandboxClientTest {
 
     List<SandboxSession.OutputFile> files =
         OpenSandboxClient.outputFiles(
-            objectMapper.readTree(listing.toString()), path -> new byte[] {1});
+            OpenSandboxClient.entries(objectMapper.readTree(listing.toString())),
+            name -> true,
+            () -> false,
+            path -> new byte[] {1});
 
     assertThat(files).hasSize(OpenSandboxClient.MAX_FILES);
+  }
+
+  @Test
+  void aRefusedFormatTakesNoPlaceAndNothingIsReadOnceTheTimeIsUp() {
+    List<String> fetched = new CopyOnWriteArrayList<>();
+    List<SandboxSession.OutputEntry> entries =
+        List.of(
+            new SandboxSession.OutputEntry("bild.png", 1),
+            new SandboxSession.OutputEntry("a.csv", 1),
+            new SandboxSession.OutputEntry("b.csv", 1));
+    AtomicInteger checks = new AtomicInteger();
+
+    List<SandboxSession.OutputFile> files =
+        OpenSandboxClient.outputFiles(
+            entries,
+            name -> !name.endsWith(".png"),
+            () -> checks.incrementAndGet() > 1,
+            path -> {
+              fetched.add(path);
+              return new byte[] {1};
+            });
+
+    assertThat(files).extracting(SandboxSession.OutputFile::name).containsExactly("a.csv");
+    assertThat(fetched).containsExactly("/workspace/out/a.csv");
+  }
+
+  @Test
+  void aSandboxThatIsNotReadyInTimeIsDeleted() throws IOException {
+    List<String> calls = new CopyOnWriteArrayList<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/",
+        exchange -> {
+          String call = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+          calls.add(call);
+          byte[] body = new byte[0];
+          int status = 503;
+          if (call.equals("POST /v1/sandboxes")) {
+            body = "{\"id\":\"sbx-1\"}".getBytes(StandardCharsets.UTF_8);
+            status = 202;
+          } else if (call.startsWith("DELETE")) {
+            status = 204;
+          }
+          exchange.sendResponseHeaders(status, status == 204 ? -1 : body.length);
+          if (status != 204) {
+            exchange.getResponseBody().write(body);
+          }
+          exchange.close();
+        });
+    server.start();
+    try {
+      OpenSandboxClient client =
+          new OpenSandboxClient(
+              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
+
+      assertThatThrownBy(() -> client.open(Duration.ofMinutes(5), Duration.ofMillis(600)))
+          .isInstanceOf(SandboxException.class)
+          .hasMessageContaining("in time");
+      assertThat(calls).last().isEqualTo("DELETE /v1/sandboxes/sbx-1");
+      client.close();
+    } finally {
+      server.stop(0);
+    }
   }
 
   @Test
@@ -163,7 +232,7 @@ class OpenSandboxClientTest {
           new OpenSandboxClient(
               properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
 
-      try (SandboxSession session = client.open(Duration.ofMinutes(5))) {
+      try (SandboxSession session = client.open(Duration.ofMinutes(5), Duration.ofSeconds(10))) {
         assertThatThrownBy(() -> session.run("print(1)", Duration.ofSeconds(10)))
             .isInstanceOf(SandboxException.class)
             .hasMessageContaining("502");
@@ -211,7 +280,7 @@ class OpenSandboxClientTest {
       OpenSandboxClient client =
           new OpenSandboxClient(
               properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
-      SandboxSession session = client.open(Duration.ofHours(3));
+      SandboxSession session = client.open(Duration.ofHours(3), Duration.ofSeconds(10));
 
       assertThat(session.run("print(1)", Duration.ofSeconds(5)).exitCode()).isZero();
       assertThat(session.run("print(2)", Duration.ofSeconds(5)).exitCode()).isZero();

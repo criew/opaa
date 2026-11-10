@@ -12,7 +12,7 @@ interface RunResource {
 
   /**
    * The files the resource produced for the asker, already taken as unbound attachments; the loop
-   * binds them to the answer's message. A failure fails the turn.
+   * binds them to the answer's message. Never fails the turn: what cannot be taken is left out.
    */
   default List<ChatAttachment> finish() {
     return List.of();

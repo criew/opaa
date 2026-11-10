@@ -2,6 +2,7 @@ package io.opaa.query.sandbox;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * One sandbox, opened by {@link Sandboxes#open}. Scripts run one after the other in the same
@@ -28,10 +29,11 @@ public interface SandboxSession extends AutoCloseable {
   List<OutputEntry> outputEntries();
 
   /**
-   * Reads the files directly in {@link Sandboxes#OUTPUT_DIR}, bounded in number and in size each;
-   * every other entry and every file beyond the bounds is skipped unread.
+   * Reads the files of {@link #outputEntries()} that {@link OutputSelection} takes under {@code
+   * accepted}; every other entry is skipped unread. Files not read when {@code within} has passed
+   * are left out.
    */
-  List<OutputFile> collectOutput();
+  List<OutputFile> collectOutput(Predicate<String> accepted, Duration within);
 
   @Override
   void close();

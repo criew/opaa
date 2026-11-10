@@ -40,7 +40,7 @@ import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.sandbox.SandboxProperties;
+import io.opaa.query.sandbox.SandboxException;
 import io.opaa.query.sandbox.SandboxSession.OutputEntry;
 import io.opaa.query.sandbox.SandboxSession.OutputFile;
 import io.opaa.retrieval.KnowledgeRetrieval;
@@ -537,6 +537,24 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void theAnswerIsKeptWhenTheSandboxFilesCannotBeCollected() {
+    RunCodeToolTest.FakeSandboxes sandboxes = new RunCodeToolTest.FakeSandboxes();
+    sandboxes.collectFailure = new SandboxException("download answered 502");
+    extraTools = List.of(runCodeTool(sandboxes, mock(ChatAttachmentService.class)));
+    withTools(ToolNames.RUN_CODE);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", ToolNames.RUN_CODE, "{\"skript\":\"print(1)\"}"), answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.generatedFiles()).isEmpty();
+    verify(chatService)
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), eq(List.of()), any());
+    assertThat(sandboxes.closed).isEqualTo(1);
+  }
+
+  @Test
   void theSandboxIsDeletedWhenTheRunFails() {
     RunCodeToolTest.FakeSandboxes sandboxes = new RunCodeToolTest.FakeSandboxes();
     extraTools = List.of(runCodeTool(sandboxes, mock(ChatAttachmentService.class)));
@@ -552,20 +570,8 @@ class AgentToolLoopTest {
 
   private static RunCodeTool runCodeTool(
       RunCodeToolTest.FakeSandboxes sandboxes, ChatAttachmentService attachmentService) {
-    return new RunCodeTool(
-        sandboxes,
-        new SandboxProperties(
-            true,
-            "http://sandbox:8090",
-            "key",
-            "img",
-            Duration.ofSeconds(60),
-            Duration.ofMinutes(15),
-            "1",
-            "1Gi"),
-        AgentToolCallbackTest.properties(),
-        attachmentService,
-        Clock.fixed(NOW, ZoneOffset.UTC));
+    return RunCodeToolTest.tool(
+        sandboxes, attachmentService, Clock.fixed(NOW, ZoneOffset.UTC), Duration.ofMinutes(15));
   }
 
   private void withTools(String... tools) {

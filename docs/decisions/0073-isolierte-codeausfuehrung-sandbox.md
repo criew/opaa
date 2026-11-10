@@ -41,17 +41,22 @@ geparkten Container.
 ### 3. Ergebnisse nur als Anhang der Antwort
 
 Am Ende des Laufs, bevor die Antwort gespeichert wird, liest das Backend die Dateien direkt in
-`/workspace/out` (höchstens fünf, je höchstens 10 MB) und nimmt jede durch alle Prüfungen eines
-gewöhnlichen Uploads als Anhang der fragenden Person in deren Chat. Der Endstand zählt, nicht jeder
-Zwischenstand. Alles aus der Sandbox gilt als feindlich: Name, Pfad, Größe und Dateityp werden geprüft,
-Unterordner und Verweise nicht gelesen. Ein abgewiesener Anhang fehlt, ohne den Lauf zu beenden.
+`/workspace/out` (höchstens fünf in einem Anhangsformat, je höchstens 10 MB, in einer festen Frist)
+und nimmt jede durch alle Prüfungen eines gewöhnlichen Uploads als Anhang der fragenden Person in
+deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als PDF oder eingebettet in ein
+Dokument. Der Endstand zählt, nicht jeder Zwischenstand. Alles aus der Sandbox gilt als feindlich:
+Name, Pfad, Größe und Dateityp werden geprüft, Unterordner und Verweise nicht gelesen, Ausgaben und
+Dateinamen erreichen das Modell nur als markierter Datenblock. Eine Datei, die sich nicht abholen
+oder anhängen lässt, fehlt, ohne die Antwort zu verwerfen; was dem Modell als angehängt gemeldet
+wird, folgt denselben Regeln wie das Abholen.
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
-Die Sandbox hat kein Netz: Unter Docker hängt sie an einem internen Netz ohne Ausgang, das Backend
-ist nicht darin; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy
+Die Sandbox hat keinen Ausgang: Unter Docker hängt sie an einem internen Netz ohne Ausgang, das
+Backend ist nicht darin, erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit
+Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy
 an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den übrigen
-Netzwerkregeln. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes Zufallstoken für
+Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes Zufallstoken für
 ihren Ausführungsagenten. Ein Ausgangstor mit Zulassungsliste kommt erst mit einem Werkzeug, das
 Netz braucht.
 

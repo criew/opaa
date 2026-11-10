@@ -348,6 +348,23 @@ if grep -qF "ocr-api-key:" "$work_dir/ocr-existing.yaml"; then
 fi
 echo "key from an existing secret as expected"
 
+echo "--- sandbox"
+sandbox_values="$CHART_DIR/ci/sandbox-values.yaml"
+policy="$(helm template opaa "$CHART_DIR" --values "$sandbox_values" --show-only templates/sandbox-networkpolicy.yaml)"
+if [[ "$policy" != *"namespace: opensandbox"* || "$policy" != *"egress: []"* ||
+  "$policy" != *"podSelector: {}"* || "$policy" != *"opensandbox-server"* ]]; then
+  echo "The sandbox namespace's NetworkPolicy must select every pod there, allow no egress and admit only the sandbox server:" >&2
+  echo "$policy" >&2
+  exit 1
+fi
+expect_refusal "must differ from the release namespace" --values "$sandbox_values" --set sandbox.namespace=default
+expect_refusal "must differ from the release namespace" --values "$sandbox_values" --namespace opaa \
+  --set sandbox.namespace=opaa
+expect_refusal "sandbox.namespace is required" --values "$sandbox_values" --set-string sandbox.namespace=
+expect_refusal "serverPodSelector is required" --values "$sandbox_values" --set sandbox.serverPodSelector=null
+expect_refusal "sandboxApiKey" --values "$sandbox_values" --set-string secrets.sandboxApiKey=
+echo "sandbox network policy and guards as expected"
+
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format
 # itself comes from release-version.sh, which the image release guard calls as well.

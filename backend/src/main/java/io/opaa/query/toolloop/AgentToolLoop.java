@@ -215,7 +215,12 @@ class AgentToolLoop implements AgentTurnHandler {
   private static List<ChatAttachment> finishResources(AgentRun run) {
     List<ChatAttachment> files = new ArrayList<>();
     for (RunResource resource : run.resources()) {
-      files.addAll(resource.finish());
+      try {
+        files.addAll(resource.finish());
+      } catch (RuntimeException e) {
+        // The answer is worth more than its files; the resource's own files stay unbound.
+        log.warn("Could not take the files of a resource of agent run {}", run.runId(), e);
+      }
     }
     return files;
   }

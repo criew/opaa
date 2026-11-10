@@ -253,7 +253,7 @@ die die Variable nennt, ebenso bei `OPAA_SUCCESSION_DETECTION_CRON`. Deshalb lä
 | `OPAA_SANDBOX_API_KEY` | – | aus dem Overlay | API-Schlüssel des Sandbox-Dienstes |
 | `OPAA_SANDBOX_IMAGE` | `opaa/sandbox-python:1` | wie Vorgabe | Image einer Sandbox |
 | `OPAA_SANDBOX_RUN_TIMEOUT` | `60s` | nicht gesetzt | Zeitgrenze eines Skripts; die Restzeit des Agentenlaufs kann sie verkürzen |
-| `OPAA_SANDBOX_MAX_LIFETIME` | `15m` | nicht gesetzt | Längste Lebensdauer einer Sandbox, mindestens `60s`; höchstens `max_sandbox_timeout_seconds` des Dienstes |
+| `OPAA_SANDBOX_MAX_LIFETIME` | `15m` | nicht gesetzt | Längste Lebensdauer einer Sandbox, mindestens Laufzeit eines Agentenlaufs plus zweimal Schlussaufruf plus 2 Minuten; höchstens `max_sandbox_timeout_seconds` des Dienstes |
 | `OPAA_SANDBOX_CPU`, `OPAA_SANDBOX_MEMORY` | `1`, `1Gi` | nicht gesetzt | Grenzen einer Sandbox |
 | **Texterkennung** | | | |
 | `OPAA_OCR_ENABLED` | `false` | nicht gesetzt (auskommentiert); das Overlay `docker-compose.ocr.yml` setzt `true` | Betriebsschalter der Texterkennung gescannter PDF-Dokumente: ohne ihn wird die Rolle Texterkennung der Modellverwaltung weder ausgewertet noch kontaktiert und lässt sich nur vorbereiten. Eingeschaltet muss zusätzlich die Rolle selbst eingeschaltet sein (siehe [„Texterkennung einschalten“](../betrieb/modell-endpunkte.md#texterkennung-einschalten)). Bei mehreren Instanzen auf allen gleich |

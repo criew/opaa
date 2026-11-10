@@ -2,7 +2,7 @@
 
 Ein Agent kann mit dem Werkzeug `run_code` ein Python-Skript schreiben und ausführen lassen, etwa
 für ein PDF, eine Tabelle oder ein Diagramm. Dieses Skript hat niemand geprüft. Es läuft deshalb
-nie im Backend, sondern in einer **Sandbox**: einem Wegwerf-Container ohne Netz, der nur seinen
+nie im Backend, sondern in einer **Sandbox**: einem Wegwerf-Container ohne Netzausgang, der nur seinen
 eigenen Arbeitsordner sieht. Ohne Sandbox bietet OPAA das Werkzeug nicht an.
 
 ```mermaid
@@ -23,9 +23,13 @@ flowchart LR
 - **Nur was das Skript enthält:** Die Sandbox sieht weder Wissensbasis noch Datenbank noch
   Dateiablage. Was sie verwenden soll, schreibt das Modell ins Skript.
 - **Ausgaben sind fremd:** Dateinamen, Größe und Dateityp prüft OPAA wie bei einem Upload. Je Lauf
-  werden höchstens fünf Dateien zu je 10 MB angehängt.
+  werden höchstens fünf Dateien zu je 10 MB angehängt, nur in den Formaten, die auch ein Upload
+  annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Lässt sich
+  eine Datei nicht abholen, fehlt sie; die Antwort bleibt.
 - **Grenzen:** Ein Skript läuft höchstens `OPAA_SANDBOX_RUN_TIMEOUT` und nie über das Laufende
-  hinaus; eine Sandbox lebt höchstens `OPAA_SANDBOX_MAX_LIFETIME`. Danach entfernt der
+  hinaus, der Start der Sandbox zählt mit; eine Sandbox lebt höchstens `OPAA_SANDBOX_MAX_LIFETIME`.
+  Dieser Wert muss die Laufzeit eines Agentenlaufs samt Schlussaufruf und zwei Minuten abdecken,
+  sonst startet das Backend nicht. Danach entfernt der
   Sandbox-Dienst sie selbst, auch wenn das Backend ausgefallen ist.
 - **Kein Nachinstallieren:** Das Image `opaa/sandbox-python` bringt Python mit reportlab, fpdf2,
   python-docx, openpyxl, pandas und matplotlib mit. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`.
@@ -43,7 +47,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build
 ```
 
 Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den
+Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token. Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den
 Host: Den Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor
 (`runsc`) als Laufzeit der Sandboxen.
 
@@ -58,11 +62,12 @@ OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa
 | `sandbox.enabled` | schaltet `run_code` frei |
 | `sandbox.baseUrl` | Adresse des Sandbox-Dienstes |
 | `secrets.sandboxApiKey` | derselbe Schlüssel wie beim Dienst (Schlüssel `OPAA_SANDBOX_API_KEY` im Secret) |
-| `sandbox.namespace` | Namespace der Sandbox-Pods |
+| `sandbox.namespace` | Namespace der Sandbox-Pods, nie der Namespace von OPAA |
 | `sandbox.serverNamespaceSelector`, `sandbox.serverPodSelector` | wo der Dienst läuft |
 
 Das Chart legt im Namespace der Sandboxen eine NetworkPolicy an, die **jeden Ausgang** sperrt und
-Eingang nur vom Dienst zulässt, unabhängig von `networkPolicy.*`. Das Backend bekommt mit
+Eingang nur vom Dienst zulässt, unabhängig von `networkPolicy.*`. Das Release braucht dafür das
+Recht, NetworkPolicies in diesem Namespace anzulegen. Das Backend bekommt mit
 `networkPolicy.egress.enabled` eine Regel zum Dienst.
 
 **Isolationsstufe:** Wie stark eine Sandbox vom Knoten getrennt ist, legt der Sandbox-Dienst über

@@ -22,7 +22,9 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,10 +34,10 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@link Sandboxes} on an OpenSandbox server (ADR-0073): each session is one sandbox, created with
- * its own random execd access token, reached only through the server's proxy route with the
- * server's API key and deleted on {@link SandboxSession#close()}; the server's TTL removes one this
- * process could not delete. The sandbox gets no network: in Docker its network has no gateway, on
- * Kubernetes a NetworkPolicy of the Helm chart closes its egress.
+ * its own random execd access token, reached only through the server's proxy route with that token
+ * and deleted on {@link SandboxSession#close()}; the server's TTL removes one this process could
+ * not delete. The sandbox gets no network: in Docker its network has no gateway, on Kubernetes a
+ * NetworkPolicy of the Helm chart closes its egress.
  */
 @DataFlow("code-sandbox")
 @Component
@@ -104,13 +106,14 @@ class OpenSandboxClient implements Sandboxes {
   }
 
   @Override
-  public SandboxSession open(Duration lifetime) {
+  public SandboxSession open(Duration lifetime, Duration readyWithin) {
+    long readyBy = System.nanoTime() + readyWithin.toNanos();
     String token = HexFormat.of().formatHex(randomBytes());
     long ttl = Math.max(MIN_TTL_SECONDS, Math.min(maxLifetime.toSeconds(), lifetime.toSeconds()));
     String sandboxId = create(token, ttl);
     Session session = new Session(sandboxId, token);
     try {
-      awaitReady(session.execd, token);
+      awaitReady(session.execd, token, readyBy);
     } catch (RuntimeException e) {
       session.close();
       throw e;
@@ -151,9 +154,15 @@ class OpenSandboxClient implements Sandboxes {
     }
 
     @Override
-    public synchronized List<OutputFile> collectOutput() {
+    public synchronized List<OutputFile> collectOutput(
+        Predicate<String> accepted, Duration within) {
       requireOpen();
-      return outputFiles(listOutput(execd, token), path -> download(execd, token, path));
+      long until = System.nanoTime() + within.toNanos();
+      return outputFiles(
+          entries(listOutput(execd, token)),
+          accepted,
+          () -> System.nanoTime() - until >= 0,
+          path -> download(execd, token, path));
     }
 
     @Override
@@ -195,12 +204,21 @@ class OpenSandboxClient implements Sandboxes {
     return id;
   }
 
-  private void awaitReady(String execd, String token) {
-    for (int attempt = 0; attempt < 20; attempt++) {
+  /** Pings execd until it answers or {@code readyBy} (a {@link System#nanoTime()}) has passed. */
+  private void awaitReady(String execd, String token, long readyBy) {
+    while (true) {
+      long left = readyBy - System.nanoTime();
+      if (left <= 0) {
+        throw new SandboxException("execd did not become ready in time");
+      }
+      Duration callTimeout =
+          Duration.ofNanos(
+              Math.max(Duration.ofMillis(100).toNanos(), Math.min(left, CALL_TIMEOUT.toNanos())));
       HttpResponse<String> response =
           send(
               HttpRequest.newBuilder(URI.create(execd + "/ping"))
                   .header(EXECD_TOKEN_HEADER, token)
+                  .timeout(callTimeout)
                   .GET(),
               HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
@@ -208,7 +226,6 @@ class OpenSandboxClient implements Sandboxes {
       }
       sleep(Duration.ofMillis(250));
     }
-    throw new SandboxException("execd did not become ready");
   }
 
   private void upload(String execd, String token, String code) {
@@ -379,22 +396,27 @@ class OpenSandboxClient implements Sandboxes {
   }
 
   /**
-   * The files of {@code listing} that lie directly in {@link #OUTPUT_DIR}, at most {@link
-   * #MAX_FILES} of at most {@link #MAX_FILE_BYTES} each; every other entry is skipped unread.
+   * The files of {@code entries} that {@link OutputSelection} takes under {@code accepted}, read
+   * until {@code expired} says the time is up; every other entry is skipped unread.
    */
-  static List<OutputFile> outputFiles(JsonNode listing, Function<String, byte[]> download) {
+  static List<OutputFile> outputFiles(
+      List<OutputEntry> entries,
+      Predicate<String> accepted,
+      BooleanSupplier expired,
+      Function<String, byte[]> download) {
+    List<OutputSelection.Verdict> verdicts = OutputSelection.of(entries, accepted);
     List<OutputFile> files = new ArrayList<>();
-    for (JsonNode entry : listing) {
-      String name = directFileName(entry);
-      if (name == null) {
+    for (int i = 0; i < entries.size(); i++) {
+      String name = entries.get(i).name();
+      if (verdicts.get(i) != OutputSelection.Verdict.TAKEN) {
+        log.info("Sandbox output file skipped: {}", verdicts.get(i));
         continue;
       }
-      String path = OUTPUT_DIR + "/" + name;
-      if (files.size() == MAX_FILES || entry.path("size").asLong() > MAX_FILE_BYTES) {
-        log.info("Sandbox output file skipped: limit of count or size reached");
+      if (expired.getAsBoolean()) {
+        log.info("Sandbox output file skipped: time to collect is up");
         continue;
       }
-      byte[] content = download.apply(path);
+      byte[] content = download.apply(OUTPUT_DIR + "/" + name);
       if (content == null) {
         log.info("Sandbox output file skipped: larger than announced");
         continue;
