@@ -353,8 +353,12 @@ export default function ChatInput({
       sendAfterDictationRef.current = false
       handleSend()
     } else if (wasDictating) {
-      // Discarded, failed or taken over: the field is back and gets the focus.
-      inputRef.current?.focus()
+      // Discarded, failed or taken over: the field is back and gets the focus, unless the person
+      // has moved on to another part of the page meanwhile.
+      const active = document.activeElement
+      if (!active || active === document.body || inputBoxEl?.contains(active)) {
+        inputRef.current?.focus()
+      }
     }
   })
 
