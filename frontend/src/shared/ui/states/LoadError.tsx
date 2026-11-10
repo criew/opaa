@@ -3,8 +3,7 @@ import Button from '@mui/material/Button'
 
 /** „<Objekte> konnten nicht geladen werden." or, for one object, „… konnte nicht geladen werden." */
 export type LoadErrorMessage =
-  | `${string} konnten nicht geladen werden.`
-  | `${string} konnte nicht geladen werden.`
+  `${string} konnten nicht geladen werden.` | `${string} konnte nicht geladen werden.`
 
 /**
  * The one load error of the application (guidelines 5.7): a notice with „Erneut laden" in place of
@@ -21,7 +20,8 @@ export default function LoadError({
   detail?: string | null
   onRetry: () => void
 }) {
-  const extra = detail && detail.trim() !== message ? ` ${detail.trim()}` : ''
+  // A detail that only says the same in other words (the store's fallback) adds nothing.
+  const extra = detail && !/nicht geladen werden/.test(detail) ? detail.trim() : null
   return (
     <Alert
       severity="error"
@@ -32,8 +32,9 @@ export default function LoadError({
         </Button>
       }
     >
-      {message}
-      {extra}
+      {/* Separate spans, so the sentence and the cause can each be found on their own. */}
+      <span>{message}</span>
+      {extra && <span>{` ${extra}`}</span>}
     </Alert>
   )
 }

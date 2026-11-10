@@ -5,12 +5,12 @@ import { describe, expect, it } from 'vitest'
  * guards below get by without Node types.
  */
 const QUELLEN = {
-  ...(import.meta.glob('../../../**/*.tsx', {
+  ...(import.meta.glob('/src/**/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('../../../**/*.ts', {
+  ...(import.meta.glob('/src/**/*.ts', {
     query: '?raw',
     import: 'default',
     eager: true,
@@ -26,18 +26,25 @@ const PRODUKTIVDATEIEN = Object.keys(QUELLEN).filter(
 )
 
 /** The three building blocks themselves; they alone may carry what the rules forbid elsewhere. */
-const BAUSTEINE = '/shared/ui/states/'
+const BAUSTEINE = '/src/shared/ui/states/'
 
 /**
- * Outside the scope of guidelines 5.7: the status line of the running chat answer (5.8) and the
- * sign-in and installation pages, which show a spinner before any application frame exists.
+ * Named exceptions from guidelines 5.7, each with the paths it covers. The status line of the
+ * running chat answer is the only one inside the application: a spinner with a short visible
+ * sentence describes an ongoing process, not content that loads.
  */
-const AUSNAHMEN = [
-  '/features/chat/components/MessageList.tsx',
-  '/features/auth/',
-  '/features/installation/',
-  '/app/ProtectedRoute.tsx',
-]
+const AUSNAHMEN_JE_GRUND: Record<string, string[]> = {
+  'Statuszeile der laufenden Chat-Antwort': [
+    '/features/chat/components/MessageList.tsx',
+    '/features/chat/components/ProvisionalAnswer.tsx',
+  ],
+  'Anmeldung und Installation, vor jedem Anwendungsrahmen': [
+    '/features/auth/',
+    '/features/installation/',
+    '/app/ProtectedRoute.tsx',
+  ],
+}
+const AUSNAHMEN = Object.values(AUSNAHMEN_JE_GRUND).flat()
 
 const imGeltungsbereich = (pfad: string) =>
   !pfad.includes(BAUSTEINE) && !AUSNAHMEN.some((ausnahme) => pfad.includes(ausnahme))
@@ -78,7 +85,7 @@ describe('Leer-, Lade- und Fehlerzustände (guidelines 5.7)', () => {
   it('ends every empty text with a full stop', () => {
     // A literal empty text up to its closing quote or tag; dynamic continuations are left out.
     const leertext = /["'`>]\s*((?:Noch keine|Keine Treffer)[^"'`<{}]*)(["'`<])/g
-    const ohnePunkt = PRODUKTIVDATEIEN.flatMap((pfad) =>
+    const ohnePunkt = PRODUKTIVDATEIEN.filter(imGeltungsbereich).flatMap((pfad) =>
       [...QUELLEN[pfad].matchAll(leertext)]
         .map((m) => m[1].trim())
         .filter((text) => !text.endsWith('.'))

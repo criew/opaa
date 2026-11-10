@@ -11,6 +11,8 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { updateLinkTargets } from '../api/linkTargetsApi'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * The allowed link targets of answers: links to the application's own address and to these origins
@@ -81,20 +83,13 @@ export default function LinkTargetsSection() {
       description="Links in Antworten und Dokumentvorschau sind nur zu OPAA selbst und zu diesen Zielen klickbar; andere erscheinen als Text, Bilder werden nie geladen."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die erlaubten Linkziele konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : origins === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Erlaubte Linkziele werden geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Stack spacing={2} sx={{ maxWidth: 560 }}>
           {origins.length === 0 ? (

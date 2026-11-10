@@ -154,9 +154,7 @@ describe('CatalogPage (ADR-0039)', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'nichts dergleichen')
 
-    expect(
-      await screen.findByText('Kein Eintrag passt zu „nichts dergleichen“.', { selector: 'p' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
     expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('nichts dergleichen')
     expect(screen.getByRole('searchbox', { name: 'Suchen' })).toBeInTheDocument()
   })

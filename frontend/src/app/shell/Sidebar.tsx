@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import ListItemText from '@mui/material/ListItemText'
@@ -33,6 +32,7 @@ import {
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 
@@ -199,7 +199,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                 noWrap
                 sx={{ display: 'block', fontSize: 14, fontWeight: 500 }}
               >
-                {activeSpace?.name ?? (isLoadingSpaces ? 'Wird geladen …' : 'Kein Space verfügbar')}
+                {activeSpace?.name ??
+                  (isLoadingSpaces ? <LoadingState shape="inline" /> : 'Kein Space verfügbar')}
               </Typography>
             </Box>
           </Button>
@@ -248,8 +249,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
               Zuletzt genutzt
             </ListSubheader>
             {isLoadingSpaces && spaces.length === 0 && (
-              <Box sx={{ py: 1.5, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress size={20} aria-label="Spaces werden geladen" />
+              <Box sx={{ px: 2, py: 1 }}>
+                <LoadingState shape="lines" count={3} />
               </Box>
             )}
             {menuSpaces.map((space) => (

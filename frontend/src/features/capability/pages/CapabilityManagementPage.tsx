@@ -11,6 +11,8 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import CapabilityRow from '../components/CapabilityRow'
 import CapabilityAccessPanel from '../components/CapabilityAccessPanel'
 import { contentWidth } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import LoadError from '@/shared/ui/states/LoadError'
 
 /** The entries of one right side by side, in the order of the overview. */
 function groupByCapability(overviews: CapabilityOverviewResponse[]) {
@@ -79,12 +81,6 @@ export default function CapabilityManagementPage() {
           description="Hier legen Sie fest, wer in OPAA neue Spaces, Bibliotheken und Gruppen anlegen darf. Auf Inhalte, die es schon gibt, hat das keinen Einfluss. Jede Änderung wirkt sofort und wird protokolliert."
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <Box component="section" aria-labelledby="capability-overview-heading">
           <Typography
             id="capability-overview-heading"
@@ -93,8 +89,14 @@ export default function CapabilityManagementPage() {
           >
             Wer darf was anlegen?
           </Typography>
-          {isLoading ? (
-            <Typography sx={{ color: 'text.secondary' }}>Anlegerechte werden geladen …</Typography>
+          {error ? (
+            <LoadError
+              message="Die Anlegerechte konnten nicht geladen werden."
+              detail={error}
+              onRetry={() => void load()}
+            />
+          ) : isLoading ? (
+            <LoadingState shape="rows" count={4} />
           ) : (
             <Box
               component="ul"

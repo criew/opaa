@@ -10,6 +10,7 @@ import {
 import { AssetTilePicker } from '@/features/asset'
 import { assetPickKey, type AssetPick, type AssetPickToggle } from '@/features/asset'
 import { successionAwareMessage } from '@/features/succession'
+import LoadError from '@/shared/ui/states/LoadError'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
 export const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'
@@ -155,7 +156,15 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
 
   return (
     <Stack spacing={2} ref={container}>
-      {storeError && <Alert severity="error">{storeError}</Alert>}
+      {storeError && !loaded ? (
+        <LoadError
+          message="Die Inhalte dieses Space konnten nicht geladen werden."
+          detail={storeError}
+          onRetry={() => void loadAssetAssociations(spaceId)}
+        />
+      ) : (
+        storeError && <Alert severity="error">{storeError}</Alert>
+      )}
       {hasUnreadable && loaded && <Alert severity="info">{NOT_ALL_READABLE}</Alert>}
       <AssetTilePicker
         // Another space starts afresh: the narrowing keeps every tile it has shown.
@@ -166,11 +175,10 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
         readOnly={!canManage}
         busyKeys={busyKeys}
         showSummary={false}
+        loading={!loaded && !storeError}
         noneChosenText={
           !loaded
-            ? storeError
-              ? null
-              : 'Inhalte werden geladen …'
+            ? null
             : // With unreadable associations, "nothing associated" would be false; the hint says it.
               hasUnreadable
               ? null

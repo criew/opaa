@@ -12,6 +12,8 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import { actionOptionId } from './chatActions'
 import type { ChatActionTexts } from './chatActions'
 import type { SourcedChatAction } from './useChatActions'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface ChatActionMenuProps {
   open: boolean
@@ -25,6 +27,7 @@ interface ChatActionMenuProps {
   highlightedIndex: number
   isLoading: boolean
   error: string | null
+  onRetry: () => void
   onHighlight: (index: number) => void
   onSelect: (action: SourcedChatAction) => void
   onClose: () => void
@@ -45,6 +48,7 @@ export default function ChatActionMenu({
   highlightedIndex,
   isLoading,
   error,
+  onRetry,
   onHighlight,
   onSelect,
   onClose,
@@ -57,15 +61,8 @@ export default function ChatActionMenu({
     }
   })
 
-  const message = error
-    ? error
-    : isLoading && actions.length === 0
-      ? texts.loading
-      : !hasActions
-        ? texts.none
-        : actions.length === 0
-          ? texts.noMatch
-          : null
+  const loading = !error && isLoading && actions.length === 0
+  const message = !hasActions ? texts.none : actions.length === 0 ? texts.noMatch : null
 
   return (
     <Popper
@@ -93,7 +90,16 @@ export default function ChatActionMenu({
           >
             {texts.heading}
           </Typography>
-          {message !== null ? (
+          {loading ? (
+            <Box sx={{ p: 1.5 }}>
+              <LoadingState shape="lines" count={3} />
+            </Box>
+          ) : error ? (
+            // The input keeps focus while the retry is pressed, as for every option.
+            <Box sx={{ p: 1 }} onMouseDown={(event) => event.preventDefault()}>
+              <LoadError message={texts.loadFailed} detail={error} onRetry={onRetry} />
+            </Box>
+          ) : message !== null ? (
             <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
               {message}
             </Typography>

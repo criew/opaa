@@ -248,12 +248,12 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
   })
 
-  it('loads the source types again on „Erneut versuchen"', async () => {
+  it('loads the source types again on „Erneut laden"', async () => {
     const user = userEvent.setup()
     mockListSourceTypes.mockRejectedValueOnce(new Error('HTTP 502'))
     renderWithProviders(<LibraryCreatePage />, { withRouter: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(await screen.findByRole('button', { name: 'Erneut laden' }))
 
     expect(await screen.findByRole('radiogroup')).toBeInTheDocument()
     expect(
@@ -1076,12 +1076,12 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = await openConfluenceStep()
       await connectDataCenter(user)
 
-      expect(await screen.findByText('Spaces ließen sich nicht laden.')).toBeInTheDocument()
+      expect(await screen.findByText('Spaces konnten nicht geladen werden.')).toBeInTheDocument()
       // the protocol code stays out of the sentence
       expect(screen.getByText('Confluence antwortete mit')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
       expect(await screen.findByRole('checkbox', { name: 'IT-Betrieb' })).toBeInTheDocument()
-      expect(screen.queryByText('Spaces ließen sich nicht laden.')).not.toBeInTheDocument()
+      expect(screen.queryByText('Spaces konnten nicht geladen werden.')).not.toBeInTheDocument()
     }, 20000)
   })
 

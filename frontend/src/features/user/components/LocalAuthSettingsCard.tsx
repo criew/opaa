@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Link from '@mui/material/Link'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
@@ -18,6 +17,8 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import PageSection from '@/shared/ui/PageSection'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { mailStatusOf } from '@/features/mail'
 import { localUserErrorMessage } from './localUserLabels'
 
@@ -197,7 +198,7 @@ function SmtpStatusLine() {
         }}
       />
       <Typography component="span" sx={{ fontSize: 12.5 }}>
-        E-Mail-Versand: {status ? status.headline : 'Status wird geladen …'}
+        E-Mail-Versand: {status ? status.headline : <LoadingState shape="inline" />}
       </Typography>
       <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
         ·{' '}
@@ -317,13 +318,21 @@ export default function LocalAuthSettingsCard() {
   }, [loadSettings])
 
   if (isLoading && !settings) {
-    return <Skeleton variant="rounded" height={260} sx={{ mb: 3 }} />
+    return (
+      <Box sx={{ mb: 3 }}>
+        <LoadingState shape="block" />
+      </Box>
+    )
   }
   if (!settings || !draft) {
     return (
-      <Alert severity="error" sx={{ mb: 3 }}>
-        {loadError ?? 'Die Einstellungen der lokalen Anmeldung konnten nicht geladen werden.'}
-      </Alert>
+      <Box sx={{ mb: 3 }}>
+        <LoadError
+          message="Die Einstellungen der lokalen Anmeldung konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void loadSettings()}
+        />
+      </Box>
     )
   }
 

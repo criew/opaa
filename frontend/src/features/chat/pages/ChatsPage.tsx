@@ -15,7 +15,10 @@ import SearchIcon from '@mui/icons-material/Search'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { chatAutoCleanupNotice } from '../components/deletionDueLabel'
-import { ListEmptyState, ListLoading, ListPager } from '@/shared/ui/list/AdminList'
+import { ListPager } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import ChatSearchResults from '../components/ChatSearchResults'
 import ChatTable from '../components/ChatTable'
 import { chatTitle, splitChats } from '../components/chatListSections'
@@ -212,6 +215,9 @@ export default function ChatsPage() {
   const activeCount = chats?.length ?? 0
   const archivedCount = archive?.totalElements ?? 0
   const isTabLoading = tab === 'active' ? chats === undefined && isLoading : isLoadingArchive
+  // The tab's list never arrived: only the load notice stands, never next to an empty text.
+  const tabFailed =
+    !isTabLoading && error !== null && (tab === 'active' ? chats === undefined : !archive)
   const tabPanelId = `${idPrefix}-panel`
   const tabId = (value: ChatsTab) => `${idPrefix}-tab-${value}`
   const selectedChats = rows.filter((chat) => selection.has(chat.id))
@@ -233,7 +239,7 @@ export default function ChatsPage() {
           )}
         </Box>
 
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && !tabFailed && <Alert severity="error">{error}</Alert>}
 
         <TextField
           type="search"
@@ -370,17 +376,27 @@ export default function ChatsPage() {
               </Stack>
 
               {isTabLoading ? (
-                <ListLoading label="Chats werden geladen …" />
+                <LoadingState />
+              ) : tabFailed ? (
+                <LoadError
+                  message="Chats konnten nicht geladen werden."
+                  detail={error}
+                  onRetry={() =>
+                    void (tab === 'active'
+                      ? loadChats(spaceId)
+                      : loadArchivedChats(spaceId, archive?.page ?? 0))
+                  }
+                />
               ) : rows.length === 0 ? (
                 tab === 'archive' ? (
-                  <ListEmptyState
-                    title="Das Chat-Archiv dieses Space ist leer."
-                    hint="Archivierte Chats bleiben lesbar; wer darin weiterschreibt, holt sie zurück."
+                  <EmptyState
+                    framed
+                    message="Noch keine archivierten Chats in diesem Space. Archivierte Chats bleiben lesbar; wer darin weiterschreibt, holt sie zurück."
                   />
                 ) : (
-                  <ListEmptyState
-                    title="Keine aktiven Chats in diesem Space."
-                    hint="Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
+                  <EmptyState
+                    framed
+                    message="Keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
                   />
                 )
               ) : (

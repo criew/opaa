@@ -109,12 +109,10 @@ export default function SpacesOverviewPage() {
       searchInputRef={searchInputRef}
       isLoading={isLoading}
       error={error}
+      errorMessage="Spaces konnten nicht geladen werden."
+      onRetry={() => void loadSpaces()}
       renderCard={(space) => <SpaceCard space={space} />}
-      emptyState={
-        <Typography sx={{ color: 'text.secondary' }}>
-          Noch kein Space — legen Sie über „Neuer Space“ den ersten an.
-        </Typography>
-      }
+      emptyMessage="Noch keine Spaces."
     />
   )
 }

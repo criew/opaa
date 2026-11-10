@@ -3,7 +3,6 @@ import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
@@ -23,6 +22,9 @@ import {
   profileChoices,
 } from './connectionChoice'
 import { ownAddressAllowed } from './sourceCore/sourceConnection'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface ConnectionProfileSelectProps {
   descriptor: SourceTypeDescriptor
@@ -120,17 +122,22 @@ export default function ConnectionProfileSelect({
         <Box data-testid={`${idPrefix}-connection-sole`}>{rowText(rows[0])}</Box>
       )}
       {!state.loaded && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-          Zugänge werden geladen …
-        </Typography>
+        <Box sx={{ mb: 1.5 }}>
+          <LoadingState shape="lines" count={2} />
+        </Box>
       )}
       {state.error && (
-        <Typography
-          sx={{ fontSize: 13.5, color: state.forbidden ? 'text.secondary' : 'error.main' }}
-          data-testid={`${idPrefix}-connection-error`}
-        >
-          {state.forbidden ? PROFILES_FORBIDDEN_NOTICE : state.error}
-        </Typography>
+        <Box data-testid={`${idPrefix}-connection-error`}>
+          {state.forbidden ? (
+            <EmptyState kind="noAccess" message={PROFILES_FORBIDDEN_NOTICE} />
+          ) : (
+            <LoadError
+              message="Die Zugänge konnten nicht geladen werden."
+              detail={state.error}
+              onRetry={() => state.retry?.()}
+            />
+          )}
+        </Box>
       )}
       {showList && (
         <RadioGroup

@@ -59,7 +59,7 @@ export default function UserPicker({
       getOptionLabel={optionLabel}
       loading={isLoading}
       noOptionsText={
-        error ?? (query.trim().length < 2 ? 'Mindestens zwei Zeichen eingeben' : 'Keine Treffer')
+        error ?? (query.trim().length < 2 ? 'Mindestens zwei Zeichen eingeben' : 'Keine Treffer.')
       }
       value={value}
       onChange={(_event, next) => onChange(next)}

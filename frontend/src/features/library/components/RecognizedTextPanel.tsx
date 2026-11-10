@@ -5,6 +5,7 @@ import type { ChunkAnchor } from '@/shared/api/types'
 import RecognizedTextNotice from '@/shared/ui/RecognizedTextNotice'
 import { getDocumentText } from '../api/libraryApi'
 import { comparableText } from '../utils/textPassage'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface RecognizedTextPanelProps {
   id: string
@@ -77,7 +78,7 @@ export default function RecognizedTextPanel({
         {[pageLabel(anchor), section].filter(Boolean).join(' · ')}
       </Typography>
       {pending ? (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>Text wird geladen …</Typography>
+        <LoadingState shape="lines" count={3} />
       ) : (
         <Typography
           component="blockquote"

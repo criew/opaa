@@ -50,7 +50,6 @@ const FALLBACK_EXPIRY_DAYS = 365
  * export, page size at most 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
-  const error = useUserAdminStore((s) => s.error)
   const summary = useUserAdminStore((s) => s.summary)
   const settings = useUserAdminStore((s) => s.settings)
   const loadAccounts = useUserAdminStore((s) => s.loadAccounts)
@@ -88,12 +87,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       {/* The primary action in the head of the area, not in the filter row: five filters and
          a button in one row wrap, and the wrap then puts the action
          below half a set of filters. To its left, flush with the table, the hint about the
@@ -142,6 +135,15 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
       <AccountFilterBar />
       <AccountList
         currentUserId={currentUserId}
+        createAction={
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
+          >
+            Konto anlegen
+          </Button>
+        }
         onEdit={(user) => setForm((f) => ({ open: true, user, opening: f.opening + 1 }))}
         onSetupLink={setHandover}
         onGeneratedPassword={(user, password) =>

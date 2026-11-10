@@ -52,7 +52,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button variant="contained" onClick={() => window.location.reload()}>
-              Neu laden
+              Seite neu laden
             </Button>
             <Button
               variant="outlined"

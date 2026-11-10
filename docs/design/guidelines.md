@@ -409,7 +409,7 @@ eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). 
 Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
 (5.12), zum Auf- und Zuklappen („alle anzeigen", „Mitglieder ausblenden") und für kleine Schritte
 in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehen", „Suche
-zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
+zurücksetzen", „Filter zurücksetzen"). Sie kommt aus `TextAction`
 (`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
 startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
 starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche. Ein Umschalter in einer
@@ -629,12 +629,60 @@ schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den T
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
-- **Leer:** ein Satz, was hier stünde, plus die eine Handlung, die ihn füllt. Keine
-  Illustrationsfriedhöfe.
-- **Laden:** Skeleton in `bg-3` ohne Layoutsprung; laufende Hintergrundvorgänge bleiben über
-  Seitenwechsel sichtbar (Muster Indizierung).
-- **Fehler:** deutsch, ruhig, mit nächstem Schritt. Signalfarbe nur am betroffenen Element,
-  nicht flächig.
+Jeder Bereich, der Daten lädt, kennt fünf Zustände: lädt, erstmals leer, kein Treffer, kein
+Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteinen unter
+`frontend/src/shared/ui/states/`, nicht aus einem Nachbau je Thema:
+
+| Baustein | Zustand |
+|---|---|
+| `LoadingState` | lädt: Skeleton in der Form des Inhalts (`rows`, `lines`, `cards`, `detail`, `block`, `inline`) |
+| `EmptyState` | erstmals leer (`initial`), kein Treffer (`noMatch`), kein Zugriff (`noAccess`) |
+| `LoadError` | Ladefehler mit „Erneut laden“ |
+
+1. **Laden:** ein Skeleton in der Form des Inhalts, das erst nach 300 ms erscheint; was schneller
+   da ist, flackert nicht. Ein Spinner steht nur im Knopf, der den Vorgang ausgelöst hat
+   (`Button`/`IconButton` mit `loading`), nie frei auf der Fläche. „Wird geladen“ ist nie als
+   Text sichtbar; Screenreader hören es aus der Statusregion des Skeletons. Ein Fortschrittsbalken
+   steht nur, wo er Fortschritt misst (`variant="determinate"`).
+2. **Erstmals leer:** „Noch keine <Objekte>.“ plus die Anlege-Handlung mit derselben Beschriftung
+   wie im Kopf, als Sekundär-Schaltfläche (die Primäre bleibt die im Kopf). Wer nichts anlegen darf,
+   liest stattdessen, wer es kann: „Noch keine Dokumente. Hochladen kann, wer die Bibliothek
+   verwaltet.“
+3. **Kein Treffer:** „Keine Treffer.“ plus „Filter zurücksetzen“, das Suche und Filter auf den
+   Ausgangsstand stellt. Suche und Filter bleiben dabei stehen.
+4. **Kein Zugriff:** was fehlt und wer zuständig ist, etwa „Zugänge kann nur abrufen, wer
+   Konnektorbibliotheken anlegen darf. Dieses Anlegerecht erteilt die Systemverwaltung.“ Ein 403
+   ist kein Ladefehler und bekommt kein „Erneut laden“.
+5. **Leertexte sind ganze Sätze mit Punkt** — auch in Auswahllisten, Menüs und Feldern. Keine
+   Illustrationen.
+6. **Ladefehler:** „<Objekte> konnten nicht geladen werden.“ (für ein Objekt „… konnte …“) als
+   Hinweis mit „Erneut laden“ an der Stelle des Inhalts. Die Ursache des Servers darf folgen, wo
+   sie mehr sagt. Nie roter Fließtext, nie zusammen mit einem Leertext: „fehlgeschlagen“ und „leer“
+   sind nicht zu verwechseln. Ist schon Inhalt geladen, bleibt er stehen; ein Fehler beim
+   Nachladen erscheint unter ihm.
+7. **„Erneut laden“ nach einem Ladefehler, „Erneut versuchen“ nach einer fehlgeschlagenen
+   Aktion** (Speichern, Senden, Hochladen). „Neu laden“ gibt es nicht; die Fehlerseite der
+   Anwendung bietet „Seite neu laden“.
+8. **Hintergrundvorgänge** (Indizierung, Export, Abgleich) melden Ende und Fehler über `notify`
+   (5.9), nie über eine eigene Snackbar; ihr laufender Zustand bleibt am Ort sichtbar und über
+   Seitenwechsel erhalten.
+
+**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (heute `MessageList` und
+`ProvisionalAnswer`) zeigt einen Spinner mit kurzem Satz wie „Antwort wird geschrieben …“; sie
+beschreibt einen Vorgang, keinen ladenden Inhalt. Anmeldung und Installation stehen vor der
+Anwendung und folgen eigenen Mustern. Beide Ausnahmen stehen benannt im Quelltext-Test.
+
+Das Satzformat prüft schon der Compiler: `EmptyState` nimmt nur Texte mit Punkt, `LoadError` nur
+Sätze auf „… nicht geladen werden.“. Den Rest prüft der Quelltext-Test
+`frontend/src/shared/ui/states/stateRules.test.ts` über alle Dateien unter `frontend/src/`: kein
+Skeleton und kein freier Spinner außerhalb der Bausteine, kein unbestimmter Fortschrittsbalken,
+kein sichtbares „wird geladen“, „Erneut laden“ nur über `LoadError`, Leertexte mit Punkt, keine
+eigene Snackbar.
+
+**Ansehen im Mock-Modus:** Die Szenarien `?mockScenario=empty`, `slow` und `failed` wirken auf
+alle Themen (`frontend/src/app/mocks/scenarioHandler.ts`): `empty` leert jede Liste, `failed`
+beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei Sekunden (länger mit
+`opaa.mockSlowMs` im sessionStorage). Anmeldung, Health und Branding bleiben unberührt.
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 

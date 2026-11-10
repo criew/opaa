@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
@@ -41,6 +39,9 @@ import {
   TOKEN_STATUS_LABEL,
   formatDate,
 } from './tokenLabels'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const STATUS_TONE: Record<ExternalAccessTokenStatus, StatusTone> = {
   ACTIVE: 'success',
@@ -136,7 +137,6 @@ export default function ExternalAccessTokenAdminSection({
           setError(null)
         })
         .catch((err: unknown) => {
-          setTokens([])
           setError(
             err instanceof Error ? err.message : 'Die Tokenliste konnte nicht geladen werden.',
           )
@@ -205,12 +205,6 @@ export default function ExternalAccessTokenAdminSection({
         </>
       }
     >
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
         <TextField
           select
@@ -234,12 +228,26 @@ export default function ExternalAccessTokenAdminSection({
         />
       </Stack>
 
-      {tokens === null ? (
-        <Skeleton variant="rounded" height={160} />
+      {error ? (
+        <LoadError
+          message="Die Zugangstokens konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void load()}
+        />
+      ) : tokens === null ? (
+        <LoadingState />
       ) : tokens.length === 0 ? (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-          Zu dieser Auswahl gibt es kein Zugangstoken.
-        </Typography>
+        status !== 'ALL' || expiringSoon ? (
+          <EmptyState
+            kind="noMatch"
+            onReset={() => {
+              setStatus('ALL')
+              setExpiringSoon(false)
+            }}
+          />
+        ) : (
+          <EmptyState message="Noch keine Zugangstokens." />
+        )
       ) : isDesktop ? (
         <TableContainer>
           <Table size="small" aria-label="Zugangstokens" sx={{ ...adminTableSx, minWidth: 760 }}>

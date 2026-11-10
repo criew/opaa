@@ -32,7 +32,7 @@ export function GoogleDriveConnectionFields({
       ? `Dienstkonto ${values.keyAccount}`
       : serves
         ? 'gesetzt'
-        : 'Noch keine Datei gewählt'
+        : 'Keine Datei gewählt'
 
   async function onFile(file: File | undefined) {
     if (!file) return

@@ -172,9 +172,43 @@ describe('ChatInput: inserting a prompt', () => {
     await user.type(input, '/')
 
     expect(
-      await screen.findByText('Diesem Space sind keine Prompts zugeordnet'),
+      await screen.findByText('Diesem Space sind keine Prompts zugeordnet.'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /\/anhoerung/ })).not.toBeInTheDocument()
+  })
+
+  it('shows a failed load as notice with „Erneut laden" and loads again from there', async () => {
+    let fail = true
+    server.use(
+      http.get('/api/v1/prompts/available', () =>
+        fail
+          ? HttpResponse.json({ message: 'Dienst nicht erreichbar' }, { status: 502 })
+          : HttpResponse.json([
+              {
+                id: 'prompt-anhoerung',
+                libraryId: 'prompt-library-organisation',
+                libraryName: 'Hausweite Vorlagen',
+                name: 'anhoerung',
+                title: 'Anhörung',
+                description: null,
+                hasVariables: false,
+              },
+            ]),
+      ),
+    )
+    const user = userEvent.setup()
+    const { input } = renderInput()
+
+    await user.type(input, '/')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Prompts konnten nicht geladen werden.',
+    )
+    fail = false
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
+
+    expect(await screen.findByRole('option', { name: /\/anhoerung/ })).toBeInTheDocument()
+    expect(input).toHaveFocus()
   })
 
   it('navigates with the arrow keys and closes on Escape until the fragment is left', async () => {
@@ -208,7 +242,7 @@ describe('ChatInput: inserting a prompt', () => {
     const { onSend, input } = renderInput()
 
     await user.type(input, '/zusamenfasung')
-    await screen.findByText('Kein passender Prompt gefunden')
+    await screen.findByText('Keine Treffer.')
     await user.keyboard('{Enter}')
 
     expect(onSend).not.toHaveBeenCalled()
@@ -244,7 +278,7 @@ describe('ChatInput: inserting a prompt', () => {
     const { onSend, input } = renderInput()
 
     await user.type(input, '/zu')
-    await screen.findByText('Prompts werden geladen …')
+    await screen.findByRole('status', { busy: true })
     await user.keyboard('{Enter}')
 
     expect(onSend).not.toHaveBeenCalled()

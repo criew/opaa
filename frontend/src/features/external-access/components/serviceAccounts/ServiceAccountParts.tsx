@@ -1,8 +1,5 @@
 import type { ReactNode } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type {
   ServiceAccountConsentedLibraryResponse,
@@ -24,6 +21,8 @@ import {
   formatDate,
   soonLabel,
 } from './serviceAccountLabels'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The responsible person, or „fehlt“ with a warning dot once it was locked or deleted. */
 export function ResponsiblePerson({ account }: { account: ServiceAccountResponse }) {
@@ -212,18 +211,13 @@ export function DetailFrame({
 }) {
   if (error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={onRetry}>
-            Erneut laden
-          </Button>
-        }
-      >
-        {error}
-      </Alert>
+      <LoadError
+        message="Das Dienstkonto konnte nicht geladen werden."
+        detail={error}
+        onRetry={onRetry}
+      />
     )
   }
-  if (loading) return <Skeleton variant="rounded" height={200} />
+  if (loading) return <LoadingState shape="detail" count={4} />
   return <>{children}</>
 }

@@ -15,6 +15,7 @@ import {
   withoutFormatField,
   withoutLibraryField,
 } from './metadataFilterText'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface ChatScopeChipBarProps {
   /** The action mark the next question carries, e.g. a prompt; null without one. */
@@ -118,11 +119,10 @@ export default function ChatScopeChipBar({
             return (
               <Chip
                 key={chip.libraryId}
-                label="Bibliothek wird geladen …"
+                label={<LoadingState shape="inline" />}
                 size="small"
                 variant="outlined"
                 disabled
-                aria-label="Bibliotheksreferenz wird geladen"
               />
             )
           }

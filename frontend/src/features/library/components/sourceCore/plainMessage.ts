@@ -16,7 +16,7 @@ export function plainMessage(message: string): string {
       .replace(/\s*\bHTTP \d{3}\b/g, '')
       .replace(/\s+([.,:;])/g, '$1')
       .replace(/:\s*:/g, ':')
-      // a sentence that only repeats a link next to the message („Erneut laden“, „Von Hand eintragen“)
+      // a sentence that only repeats a link next to the message (the retry link, „Von Hand eintragen“)
       .replace(/\s*(Bitte (später )?erneut (versuchen|laden)|Geben Sie [^.]* von Hand an)\.?/g, '')
       .replace(/^[\s:;,.]+/, '')
       .trim()

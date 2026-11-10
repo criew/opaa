@@ -14,6 +14,7 @@ import { deleteDocumentMetadataValue, getDocumentMetadata } from '../../api/libr
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { metadataOriginLabel } from './metadataLabels'
 import EditMetadataValueDialog from './EditMetadataValueDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface DocumentMetadataPanelProps {
   libraryId: string
@@ -139,9 +140,7 @@ export default function DocumentMetadataPanel({
           {withheld}
         </Alert>
       ) : fields === null && !error ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Metadaten werden geladen …
-        </Typography>
+        <LoadingState shape="lines" count={3} />
       ) : (
         <Stack spacing={0.5}>
           {(fields ?? []).map((field) => (

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Typography from '@mui/material/Typography'
 import type { SuccessionSettingsResponse } from '@/shared/api/types'
 import { getSuccessionSettings, updateSuccessionSettings } from '../api/successionApi'
 import FactoryDefaultNumberSetting from '@/shared/ui/FactoryDefaultNumberSetting'
 import PageSection from '@/shared/ui/PageSection'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Months in words: „1 Monat“, „12 Monate“. */
 function monthsLabel(months: number): string {
@@ -49,20 +48,13 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
       description="Ein Eintrag, der länger offen ist als diese Schwelle, wird in der Liste als „lange offen“ hervorgehoben. Die Schwelle hebt nur hervor: Sie setzt keine Frist, erinnert nicht und verschickt nichts."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Schwelle konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : settings === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Schwelle wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <FactoryDefaultNumberSetting
           key={`${settings.agingThresholdMonths}-${settings.overridden}`}

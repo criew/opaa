@@ -12,7 +12,6 @@ import FormHelperText from '@mui/material/FormHelperText'
 import FormLabel from '@mui/material/FormLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -39,6 +38,8 @@ import { toDateInputValue } from '../tokenLabels'
 import { Ending, ExpiredOn } from './ServiceAccountParts'
 import { useErrorTitle } from './serviceAccountHooks'
 import { REMOVE_CONSENT_CONSEQUENCE, formatDate, soonLabel } from './serviceAccountLabels'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Up to this many choices stand as a radio list without search (guidelines 5.11). */
 const DIRECT_CHOICES = 7
@@ -391,19 +392,14 @@ function AddConsentForm({
 
   if (loadError) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => void reload()}>
-            Erneut laden
-          </Button>
-        }
-      >
-        {loadError}
-      </Alert>
+      <LoadError
+        message="Die wählbaren Dienstkonten konnten nicht geladen werden."
+        detail={loadError}
+        onRetry={() => void reload()}
+      />
     )
   }
-  if (choices === null) return <Skeleton variant="rounded" height={96} />
+  if (choices === null) return <LoadingState shape="rows" count={2} />
   if (choices.length === 0) {
     return (
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
@@ -528,12 +524,13 @@ export default function LibraryServiceAccountsSection({ libraryId }: { libraryId
       title="Dienstkonten"
       value={
         error ? (
-          <Box component="span" sx={{ display: 'inline-flex', gap: 1.5, flexWrap: 'wrap' }}>
-            <span>{error}</span>
-            <TextAction onClick={() => void reload()}>Erneut laden</TextAction>
-          </Box>
+          <LoadError
+            message="Die Dienstkonten konnten nicht geladen werden."
+            detail={error}
+            onRetry={() => void reload()}
+          />
         ) : consents === null ? (
-          '…'
+          <LoadingState shape="inline" />
         ) : (
           summaryOf(consents)
         )

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -30,6 +30,9 @@ import { chatTitle, splitChats } from './chatListSections'
 import { RECENT_PAGE_SIZE } from '../stores/chatListStore'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -576,22 +579,29 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
         </Box>
       </Box>
 
-      {error && (
-        <Typography role="alert" variant="body2" sx={{ color: 'error.main', mb: 1 }}>
-          {error}
-        </Typography>
-      )}
-
       {chats === undefined && isLoading ? (
-        <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={20} />
-        </Box>
-      ) : !chats || chats.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }} variant="body2">
-          Keine aktiven Chats in diesem Space.
-        </Typography>
+        <LoadingState shape="lines" count={4} />
+      ) : chats === undefined && error ? (
+        // Failed and empty never stand together: without a list there is only the notice.
+        <LoadError
+          message="Chats konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadChats(spaceId)}
+        />
       ) : (
-        renderChats(chats)
+        <>
+          {/* An action on a loaded list failed; the list itself stays. */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 1 }}>
+              {error}
+            </Alert>
+          )}
+          {!chats || chats.length === 0 ? (
+            <EmptyState message="Keine aktiven Chats in diesem Space." />
+          ) : (
+            renderChats(chats)
+          )}
+        </>
       )}
     </Box>
   )

@@ -2,17 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import AddIcon from '@mui/icons-material/Add'
 import FingerprintOutlinedIcon from '@mui/icons-material/FingerprintOutlined'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
-import { contentWidth, radius } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -20,6 +16,9 @@ import ProviderList from '../components/ProviderList'
 import OidcProviderFormDialog from '../components/OidcProviderFormDialog'
 import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 import OidcProviderSetupInstructions from '../components/OidcProviderSetupInstructions'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 export default function OidcProviderManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -89,7 +88,7 @@ export default function OidcProviderManagementPage() {
           </Alert>
         )}
 
-        {error && (
+        {error && providers.length > 0 && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
@@ -107,40 +106,23 @@ export default function OidcProviderManagementPage() {
         <Box component="section" aria-labelledby="oidc-providers-title" sx={{ mb: 5 }}>
           <SectionHead id="oidc-providers-title">Anbieter in Anmeldereihenfolge</SectionHead>
           {isLoading ? (
-            // Loading without a layout jump (guidelines 5.7): two card-sized skeletons.
-            <Stack spacing={1.5} aria-busy="true">
-              <span style={visuallyHidden}>Anbieter werden geladen …</span>
-              <Skeleton variant="rounded" height={196} />
-              <Skeleton variant="rounded" height={196} />
-            </Stack>
+            <LoadingState shape="cards" count={2} />
+          ) : error && providers.length === 0 ? (
+            <LoadError
+              message="Die Identitätsanbieter konnten nicht geladen werden."
+              detail={error}
+              onRetry={() => void loadProviders()}
+            />
           ) : providers.length === 0 ? (
-            <Box
-              sx={{
-                border: 1,
-                borderStyle: 'dashed',
-                borderColor: 'divider',
-                borderRadius: `${radius.md}px`,
-                p: 3,
-                textAlign: 'center',
-              }}
-            >
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
-                Es sind noch keine Identitätsanbieter hinterlegt.
-              </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                Ohne Anbieter gibt es keine Anmeldeseite. Legen Sie zuerst den Anbieter Ihrer
-                Organisation an – er wird automatisch zum Standard.
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={openCreateDialog}
-                sx={{ mt: 2 }}
-              >
-                Neuer Anbieter
-              </Button>
-            </Box>
+            <EmptyState
+              framed
+              message="Noch keine Identitätsanbieter. Ohne Anbieter gibt es keine Anmeldeseite; der erste wird automatisch zum Standard."
+              action={
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={openCreateDialog}>
+                  Neuer Anbieter
+                </Button>
+              }
+            />
           ) : (
             <ProviderList
               providers={providers}

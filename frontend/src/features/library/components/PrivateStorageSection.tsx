@@ -28,6 +28,8 @@ import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** A size in words; 0 is unlimited. */
 function sizeOrUnlimited(bytes: number): string {
@@ -306,20 +308,13 @@ export default function PrivateStorageSection() {
       description="Die hausweite Grenze, die sich alle privaten Bibliotheken einer Person teilen, und wie viel sie insgesamt belegen."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Das Speicherkontingent konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : quota === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Speicherkontingent wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="private-storage-quota-current">

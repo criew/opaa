@@ -32,6 +32,8 @@ export type EmptyStateProps = Common &
         kind: 'noMatch'
         /** Clears search and filters; the action is always „Filter zurücksetzen". */
         onReset: () => void
+        /** Why this filter combination cannot match, where the reason is not obvious. */
+        hint?: Sentence
       }
     | { kind: 'noAccess'; message: Sentence }
   )
@@ -68,6 +70,11 @@ export default function EmptyState(props: EmptyStateProps) {
           {message}
         </Typography>
       </Stack>
+      {props.kind === 'noMatch' && props.hint && (
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+          {props.hint}
+        </Typography>
+      )}
       {props.kind === 'noMatch' && (
         <Box sx={{ mt: 1 }}>
           <TextAction onClick={props.onReset}>Filter zurücksetzen</TextAction>

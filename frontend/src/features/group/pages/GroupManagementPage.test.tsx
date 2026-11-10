@@ -266,9 +266,9 @@ describe('GroupManagementPage', () => {
     serve([])
     renderPage()
 
-    expect(
-      await screen.findByText('Keine Gruppe entspricht den gewählten Filtern.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Noch keine Gruppen.')).toBeInTheDocument()
+    // Head and empty state offer the same creation.
+    expect(screen.getAllByRole('button', { name: 'Gruppe anlegen' })).toHaveLength(2)
   })
 
   it('filters by origin and sorts on the server', async () => {
@@ -460,7 +460,7 @@ describe('GroupManagementPage', () => {
 
     expect(await within(dialog).findByText('Gruppe nicht gefunden')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Mitglieder werden geladen')).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Erneut laden' }))
 
     expect(await within(dialog).findByRole('table', { name: 'Mitglieder' })).toBeInTheDocument()
   })

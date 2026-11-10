@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -30,6 +28,8 @@ import ExternalAccessTokenAdminSection from './ExternalAccessTokenAdminSection'
 import OwnTokensLink from './OwnTokensLink'
 import ReleasedLibrariesSection from './ReleasedLibrariesSection'
 import { channelStateOf } from './externalToolsState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The query parameter that opens the settings panel, e.g. from a bookmark of the former page. */
 export const PANEL_PARAM = 'panel'
@@ -263,18 +263,13 @@ export default function ExternalToolsTab() {
 
       <Box sx={{ mb: 4 }}>
         {settingsError ? (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={() => void loadSettings()}>
-                Erneut laden
-              </Button>
-            }
-          >
-            {settingsError}
-          </Alert>
+          <LoadError
+            message="Die Einstellungen für externe KI-Werkzeuge konnten nicht geladen werden."
+            detail={settingsError}
+            onRetry={() => void loadSettings()}
+          />
         ) : !state || !settings ? (
-          <Skeleton variant="rounded" height={56} />
+          <LoadingState shape="lines" count={2} />
         ) : (
           <Box
             sx={{

@@ -142,10 +142,10 @@ describe('ScopePicker', () => {
     })
     renderWithProviders(<Harness src={src} />)
 
-    expect(await screen.findByText('Spaces ließen sich nicht laden.')).toBeInTheDocument()
+    expect(await screen.findByText('Spaces konnten nicht geladen werden.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
     expect(await screen.findAllByRole('checkbox')).toHaveLength(2)
-    expect(screen.queryByText('Spaces ließen sich nicht laden.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Spaces konnten nicht geladen werden.')).not.toBeInTheDocument()
   })
 
   it('says „Keine Spaces vorhanden.“ for an empty source', async () => {

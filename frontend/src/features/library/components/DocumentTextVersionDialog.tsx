@@ -1,9 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import IconButton from '@mui/material/IconButton'
@@ -25,6 +23,9 @@ import { getDocumentText } from '../api/libraryApi'
 import { downloadDocumentContent } from '../utils/documentContent'
 import type { TextVersionPreview } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import EmptyState from '@/shared/ui/states/EmptyState'
 
 /** Passages per request - the server's own upper bound. */
 const WINDOW = 40
@@ -72,6 +73,8 @@ export default function DocumentTextVersionDialog({
   // bottom after text was put in front of the view
   const pendingScroll = useRef<{ chunkIndex: number; focus: boolean } | null>(null)
   const keepFromBottom = useRef<number | null>(null)
+  // Raised by a retry after a failed load; the effect below asks again for the same preview.
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!preview) return
@@ -115,7 +118,7 @@ export default function DocumentTextVersionDialog({
     return () => {
       cancelled = true
     }
-  }, [preview])
+  }, [preview, attempt])
 
   const current = loaded?.of === preview ? loaded : null
   const failed = failure?.of === preview ? failure.message : null
@@ -267,16 +270,24 @@ export default function DocumentTextVersionDialog({
         sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 0, p: 0 }}
       >
         {failed ? (
-          <Alert severity="error" sx={{ m: 2, alignSelf: 'flex-start' }}>
-            {failed}
-          </Alert>
+          <Box sx={{ m: 2, alignSelf: 'flex-start' }}>
+            <LoadError
+              message="Die Textfassung konnte nicht geladen werden."
+              detail={failed}
+              onRetry={() => {
+                setFailure(null)
+                setAttempt((n) => n + 1)
+              }}
+            />
+          </Box>
         ) : !current ? (
-          <CircularProgress aria-label="Textfassung wird geladen" sx={{ m: 3 }} />
+          <Box sx={{ m: 3, flex: 1 }}>
+            <LoadingState shape="lines" count={8} />
+          </Box>
         ) : passages.length === 0 ? (
-          <Typography sx={{ m: 3 }}>
-            Für dieses Dokument liegt keine Textfassung vor. Das Original lässt sich oben
-            herunterladen.
-          </Typography>
+          <Box sx={{ m: 3 }}>
+            <EmptyState message="Für dieses Dokument liegt keine Textfassung vor. Das Original lässt sich oben herunterladen." />
+          </Box>
         ) : (
           <>
             {outlineOpen && (
@@ -336,7 +347,8 @@ export default function DocumentTextVersionDialog({
               {hasBefore && (
                 <Button
                   size="small"
-                  disabled={loadingMore != null}
+                  disabled={loadingMore === 'after'}
+                  loading={loadingMore === 'before'}
                   onClick={() =>
                     void loadWindow(
                       {
@@ -348,7 +360,7 @@ export default function DocumentTextVersionDialog({
                   }
                   sx={{ mb: 2 }}
                 >
-                  {loadingMore === 'before' ? 'Lädt …' : 'Vorherigen Text laden'}
+                  Vorherigen Text laden
                 </Button>
               )}
               {passages.map((passage) => (
@@ -399,12 +411,13 @@ export default function DocumentTextVersionDialog({
               {hasAfter && (
                 <Button
                   size="small"
-                  disabled={loadingMore != null}
+                  disabled={loadingMore === 'before'}
+                  loading={loadingMore === 'after'}
                   onClick={() =>
                     void loadWindow({ from: lastLoaded! + 1, to: lastLoaded! + WINDOW }, 'after')
                   }
                 >
-                  {loadingMore === 'after' ? 'Lädt …' : 'Weiteren Text laden'}
+                  Weiteren Text laden
                 </Button>
               )}
             </Box>

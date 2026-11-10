@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormHelperText from '@mui/material/FormHelperText'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -39,6 +38,7 @@ import {
   releaseEndsBeforeExpiry,
   toDateInputValue,
 } from './tokenLabels'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface CreateExternalAccessTokenDialogProps {
   /** The installation's maximum lifetime; it is also the default of the expiry date. */
@@ -293,7 +293,9 @@ export default function CreateExternalAccessTokenDialog({
               Bibliotheken
             </Typography>
             {libraries === null ? (
-              <Skeleton variant="rounded" height={96} sx={{ mt: 1 }} />
+              <Box sx={{ mt: 1 }}>
+                <LoadingState count={2} />
+              </Box>
             ) : hasLibraries ? (
               <>
                 <Box sx={{ mt: 1, mb: 1.5 }}>

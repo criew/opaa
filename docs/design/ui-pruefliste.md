@@ -127,10 +127,9 @@ zwei Einträgen.
     [guidelines.md](./guidelines.md), 5.11. Stresstest mit 300 Assets. – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader
 37. **„Alle auswählen“ nennt den Umfang**; ein Filter löscht nie die Auswahl. – Sicht
-38. **Drei Leerzustände** unterscheidbar: erstmals leer · 0 Treffer (mit „Filter zurücksetzen“)
-    · kein Zugriff. – Sicht in `empty` und `failed`
-39. **Kein Lade-Flackern** unter 300 ms; eine Aktion über 1 s zeigt Fortschritt im auslösenden
-    Knopf. – Video im Szenario `slow`
+38. **Leerzustände und Ladefehler:** [guidelines.md](./guidelines.md), 5.7, Regeln 2–7. – Sicht
+    in `empty` und `failed`
+39. **Laden:** [guidelines.md](./guidelines.md), 5.7, Regel 1. – Video im Szenario `slow`
 40. **Indizierungsstatus** überall gleich: Zustand, „n von m“, letzter Lauf, „Teilweise
     fehlgeschlagen“. – Sicht
 41. Popup-Benachrichtigungen: [guidelines.md](./guidelines.md), 5.9. – Sicht in `failed`

@@ -1,6 +1,5 @@
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import ListSubheader from '@mui/material/ListSubheader'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -14,6 +13,7 @@ import {
   transcriptionSuitable,
   type DiscoveryPurpose,
 } from './modelDiscovery'
+import LoadingState from '../states/LoadingState'
 
 const LABEL = 'Modell-Kennung'
 
@@ -121,7 +121,7 @@ export default function ModelIdentifierField({
         option.identifier === (typeof selected === 'string' ? selected : selected.identifier)
       }
       loading={loading}
-      loadingText="Modelle werden abgerufen …"
+      loadingText={<LoadingState shape="lines" count={2} />}
       value={value}
       inputValue={value}
       onInputChange={(_event, next, reason) => {
@@ -189,12 +189,7 @@ export default function ModelIdentifierField({
             },
             input: {
               ...params.slotProps.input,
-              endAdornment: (
-                <>
-                  {loading && <CircularProgress color="inherit" size={16} aria-hidden />}
-                  {params.slotProps.input.endAdornment}
-                </>
-              ),
+              endAdornment: params.slotProps.input.endAdornment,
             },
           }}
         />

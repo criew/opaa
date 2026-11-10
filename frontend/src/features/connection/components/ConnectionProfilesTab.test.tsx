@@ -906,7 +906,7 @@ describe('ConnectionProfilesTab', () => {
     await answerConfirm(user, /löschen\?/, 'Löschen')
 
     await waitForDialogClosed()
-    expect(await screen.findByText('Es sind noch keine Zugänge angelegt.')).toBeVisible()
+    expect(await screen.findByText(/^Noch keine Zugänge\./)).toBeVisible()
   })
 
   // Specification „Konnektor-Freigabe und Sperre“: locking a connection profile with a confirmation
@@ -971,7 +971,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
-    expect(within(dialog).getByText('Die Angaben der Quellart werden geladen …')).toBeVisible()
+    expect(within(dialog).getByRole('status', { busy: true })).toBeInTheDocument()
     expect(within(dialog).queryByText(/liegen nicht vor/)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })

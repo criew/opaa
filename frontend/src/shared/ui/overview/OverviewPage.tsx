@@ -1,10 +1,8 @@
 import { Fragment, useMemo, useState, type ReactNode, type Ref } from 'react'
 import { Link as RouterLink } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
@@ -16,6 +14,9 @@ import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
 import type { Theme } from '@mui/material/styles'
 import { blue } from '../../theme/tokens'
+import EmptyState, { type Sentence } from '../states/EmptyState'
+import LoadError, { type LoadErrorMessage } from '../states/LoadError'
+import LoadingState from '../states/LoadingState'
 
 export interface ControlledSearch {
   value: string
@@ -58,9 +59,18 @@ export interface OverviewPageProps<T> {
   /** The search field's input, e.g. to put the cursor into it when the page opens as a search. */
   searchInputRef?: Ref<HTMLInputElement>
   isLoading?: boolean
+  /** The cause of a failed load; the overview then shows only the load notice. */
   error?: string | null
-  /** Shown instead of the list when the overview holds no items at all. */
-  emptyState?: ReactNode
+  /** „<Objekte> konnten nicht geladen werden." for the load notice. */
+  errorMessage: LoadErrorMessage
+  onRetry: () => void
+  /**
+   * The first-time empty sentence („Noch keine Spaces."), shown when the overview holds no items
+   * at all, with the create button of the head below it.
+   */
+  emptyMessage: Sentence
+  /** Clears the `filters` beyond the search; „Filter zurücksetzen" calls it with the search reset. */
+  onResetFilters?: () => void
   renderCard: (item: T) => ReactNode
   /** Rendered below the list, e.g. a button that loads the next page. */
   listFooter?: ReactNode
@@ -113,7 +123,10 @@ export default function OverviewPage<T>({
   searchInputRef,
   isLoading = false,
   error = null,
-  emptyState,
+  errorMessage,
+  onRetry,
+  emptyMessage,
+  onResetFilters,
   renderCard,
   listFooter,
 }: OverviewPageProps<T>) {
@@ -132,7 +145,7 @@ export default function OverviewPage<T>({
   const narrowed = filtered || (search !== undefined && query.trim() !== '')
   const isEmpty = items.length === 0 && !narrowed
   const firstLoad = isLoading && items.length === 0 && !narrowed
-  const showList = visible.length > 0
+  const showList = visible.length > 0 && !error
   const count = total ?? visible.length
   // Only a result that answers the text now in the field may be announced or called empty.
   const resultCurrent =
@@ -166,12 +179,6 @@ export default function OverviewPage<T>({
           </Button>
         )}
       </Box>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       {!isEmpty && filterBar && <Box sx={{ mb: 2.5 }}>{filterBar}</Box>}
 
       {!isEmpty && !filterBar && (
@@ -225,16 +232,29 @@ export default function OverviewPage<T>({
           : ''}
       </Box>
 
-      {firstLoad ? (
-        <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={24} aria-label="Liste wird geladen" />
-        </Box>
+      {error ? (
+        <LoadError message={errorMessage} detail={error} onRetry={onRetry} />
+      ) : firstLoad ? (
+        <LoadingState shape="cards" count={6} />
       ) : isEmpty ? (
-        emptyState
+        <EmptyState
+          message={emptyMessage}
+          action={
+            createLabel && onCreate ? (
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={onCreate}>
+                {createLabel}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : visible.length === 0 && !isLoading && resultCurrent ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {searchResultMessage(0, query.trim())}
-        </Typography>
+        <EmptyState
+          kind="noMatch"
+          onReset={() => {
+            setQuery('')
+            onResetFilters?.()
+          }}
+        />
       ) : null}
 
       {showList && (

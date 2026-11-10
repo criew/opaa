@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import type { PdfViewerProps } from './PdfViewer'
 import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import Typography from '@mui/material/Typography'
@@ -10,6 +9,7 @@ import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import type { PdfPreviewResult } from '../utils/documentContent'
 import { downloadBlob, openInBrowserViewer } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 // pdf.js and the viewer load only when a PDF is opened, never with the page that offers it; a
 // chunk that fails to load falls back to the browser viewer like a file pdf.js cannot open
@@ -96,7 +96,7 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
             </Button>
           </Box>
         ) : buffer ? (
-          <Suspense fallback={<CircularProgress aria-label="Anzeige wird geladen" />}>
+          <Suspense fallback={<LoadingState shape="block" />}>
             <PdfViewer
               data={buffer}
               anchor={preview?.anchor}
@@ -107,7 +107,7 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
             />
           </Suspense>
         ) : (
-          <CircularProgress aria-label="PDF wird geladen" />
+          <LoadingState shape="block" />
         )}
       </DialogContent>
     </Dialog>

@@ -41,6 +41,8 @@ import {
 import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
 import RoleApiKeyField from './RoleApiKeyField'
 import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 export type { ModelRoleKind }
 
@@ -116,6 +118,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const texts = TEXTS[kind]
   const [settings, setSettings] = useState<RoleSettings | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [enabled, setEnabled] = useState(false)
   const [baseUrl, setBaseUrl] = useState('')
   const [model, setModel] = useState('')
@@ -192,7 +195,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     return () => {
       current = false
     }
-  }, [kind])
+  }, [kind, attempt])
 
   useEffect(() => {
     if (!checking) return
@@ -308,14 +311,19 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     }
   }
 
-  if (loadError) return <Alert severity="error">{loadError}</Alert>
-  if (!settings) {
+  if (loadError) {
     return (
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        Einstellungen werden geladen …
-      </Typography>
+      <LoadError
+        message="Die Einstellungen konnten nicht geladen werden."
+        detail={loadError}
+        onRetry={() => {
+          setLoadError(null)
+          setAttempt((n) => n + 1)
+        }}
+      />
     )
   }
+  if (!settings) return <LoadingState shape="lines" count={4} />
 
   const speechInputOff = kind === 'transcription' && settings.speechInputAvailable === false
   const prefix = `model-role-${kind}`

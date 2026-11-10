@@ -1,10 +1,10 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type { MailTemplatePreviewResponse } from '@/shared/api/types'
 import { radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface MailTemplatePreviewPaneProps {
   preview: MailTemplatePreviewResponse | null
@@ -34,11 +34,7 @@ export default function MailTemplatePreviewPane({
         </Alert>
       )}
 
-      {!preview && !error && (
-        <Box aria-busy={isLoading}>
-          <Skeleton variant="rounded" height={180} />
-        </Box>
-      )}
+      {!preview && !error && <LoadingState shape="block" />}
 
       {preview && (
         <Box sx={{ opacity: isLoading ? 0.6 : 1 }}>

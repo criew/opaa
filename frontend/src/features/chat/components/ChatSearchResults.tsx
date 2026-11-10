@@ -2,7 +2,6 @@ import { useEffect, useId, useRef } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -12,6 +11,8 @@ import type { ChatSearchHit } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
 import HighlightedExcerpt from './HighlightedExcerpt'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -28,7 +29,7 @@ function placeOf(hit: ChatSearchHit): string {
 }
 
 function statusText(hits: number, hasMore: boolean): string {
-  if (hits === 0) return 'Keine Treffer'
+  if (hits === 0) return 'Keine Treffer.'
   const found = hits === 1 ? '1 Chat gefunden' : `${hits} Chats gefunden`
   return hasMore ? `${found}, weitere vorhanden` : found
 }
@@ -68,9 +69,7 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
     return (
       <Box>
         {status}
-        <Box sx={{ py: 3, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={24} aria-label="Suche läuft" />
-        </Box>
+        <LoadingState shape="rows" count={3} />
       </Box>
     )
   }
@@ -81,8 +80,8 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
       {status}
       {hitCount === 0 && !result.error && (
         <Box sx={{ py: 1 }}>
-          <Typography>Kein Chat enthält „{result.term}“.</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+          <EmptyState kind="noMatch" onReset={() => search.changeQuery('')} />
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
             Durchsucht werden nur Ihre eigenen Chats in diesem Space – Titel, Fragen und Antworten,
             auch im Chat-Archiv.
           </Typography>
@@ -144,7 +143,7 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
           variant="outlined"
           size="small"
           sx={{ mt: 2 }}
-          disabled={isLoadingMore}
+          loading={isLoadingMore}
           onClick={() => {
             focusIndexRef.current = hitCount
             search.loadMore()

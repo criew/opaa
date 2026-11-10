@@ -25,6 +25,9 @@ function renderOverview(props: Partial<React.ComponentProps<typeof OverviewPage<
       itemKey={(item) => item.id}
       searchText={(item) => `${item.name} ${item.description}`}
       renderCard={(item) => <OverviewCard to={`/items/${item.id}`}>{item.name}</OverviewCard>}
+      errorMessage="Beispiele konnten nicht geladen werden."
+      onRetry={() => {}}
+      emptyMessage="Noch keine Beispiele."
       {...props}
     />,
     { withRouter: true },
@@ -82,14 +85,19 @@ describe('OverviewPage (#1913)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
   })
 
-  it('names the query when nothing matches', async () => {
+  it('shows „Keine Treffer." with „Filter zurücksetzen" when nothing matches', async () => {
     const user = userEvent.setup()
     renderOverview()
 
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Ordnungsamt')
 
-    // Twice: once visible, once in the status region for screen readers.
-    expect(screen.getAllByText(/Kein Eintrag passt zu „Ordnungsamt“/)).toHaveLength(2)
+    // The live region still names the query for screen readers.
+    expect(screen.getByRole('status')).toHaveTextContent('Kein Eintrag passt zu „Ordnungsamt“.')
+    expect(screen.getByText('Keine Treffer.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
+    expect(screen.getByRole('textbox', { name: 'Suchen' })).toHaveValue('')
+    expect(screen.getByRole('link', { name: 'Bauamt' })).toBeInTheDocument()
   })
 
   it('announces the filter result in a live region (accessibility.md 2.8)', async () => {
@@ -118,10 +126,12 @@ describe('OverviewPage (#1913)', () => {
     expect(screen.queryByRole('button', { name: 'Tabelle' })).not.toBeInTheDocument()
   })
 
-  it('shows the empty state without search when there is nothing to list', () => {
-    renderOverview({ items: [], emptyState: <p>Noch nichts da.</p> })
+  it('shows the first-time empty sentence with the create action and no search', () => {
+    renderOverview({ items: [] })
 
-    expect(screen.getByText('Noch nichts da.')).toBeInTheDocument()
+    expect(screen.getByText('Noch keine Beispiele.')).toBeInTheDocument()
+    // Head and empty state carry the same label (guidelines 5.1).
+    expect(screen.getAllByRole('button', { name: 'Neues Beispiel' })).toHaveLength(2)
     expect(screen.queryByRole('textbox', { name: 'Suchen' })).not.toBeInTheDocument()
   })
 
@@ -130,7 +140,7 @@ describe('OverviewPage (#1913)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
     expect(screen.queryByText(/Einträge/)).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Liste wird geladen')).toBeInTheDocument()
+    expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
   })
 
   it('hands a controlled search to the caller and filters nothing itself', async () => {
@@ -172,29 +182,43 @@ describe('OverviewPage (#1913)', () => {
         search={{ ...search, resultFor: 'bau' }}
         total={0}
         renderCard={() => null}
+        errorMessage="Beispiele konnten nicht geladen werden."
+        onRetry={() => {}}
+        emptyMessage="Noch keine Beispiele."
       />,
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('Kein Eintrag passt zu „bau“.')
   })
 
-  it('keeps search and filters in reach when a narrowed result is empty', () => {
+  it('keeps search and filters in reach when a narrowed result is empty', async () => {
+    const user = userEvent.setup()
+    const onResetFilters = vi.fn()
     renderOverview({
       items: [],
       filters: <button type="button">Nur Prompts</button>,
       filtered: true,
-      emptyState: <p>Noch nichts da.</p>,
+      onResetFilters,
     })
 
-    expect(screen.queryByText('Noch nichts da.')).not.toBeInTheDocument()
-    expect(screen.getByText('Kein Eintrag passt zu den Filtern.', { selector: 'p' })).toBeVisible()
+    expect(screen.queryByText('Noch keine Beispiele.')).not.toBeInTheDocument()
+    expect(screen.getByText('Keine Treffer.')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Suchen' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Nur Prompts' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
+    expect(onResetFilters).toHaveBeenCalledTimes(1)
   })
 
-  it('shows a load error above the list', () => {
-    renderOverview({ error: 'Laden fehlgeschlagen' })
+  it('shows only the load notice with „Erneut laden" after a failed load', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    renderOverview({ items: [], error: 'Laden fehlgeschlagen', onRetry })
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Laden fehlgeschlagen')
+    expect(screen.getByRole('alert')).toHaveTextContent('Beispiele konnten nicht geladen werden.')
+    // Never together with an empty text.
+    expect(screen.queryByText('Noch keine Beispiele.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
   })
 })

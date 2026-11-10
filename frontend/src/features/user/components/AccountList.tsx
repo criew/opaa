@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -12,11 +13,13 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '@/shared/api/types'
-import { useUserAdminStore } from '../stores/userAdminStore'
+import {
+  INITIAL_ACCOUNT_FILTERS,
+  useUserAdminStore,
+  type AccountFilters,
+} from '../stores/userAdminStore'
 import type { AccountSortField } from '../api/accountApi'
 import {
-  ListEmptyState,
-  ListLoading,
   ListPager,
   SortableHeadCell,
   StateLabel,
@@ -24,6 +27,9 @@ import {
 } from '@/shared/ui/list/AdminList'
 import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import AccountOriginTag from './AccountOriginTag'
 import LocalUserRowMenu from './LocalUserRowMenu'
 import ProviderAccountRowMenu from './ProviderAccountRowMenu'
@@ -299,18 +305,37 @@ function Pager() {
   )
 }
 
-function EmptyState() {
+/** Whether a search or filter narrows the list; sort and page do not. */
+function narrowed(filters: AccountFilters): boolean {
+  return (
+    filters.query.trim() !== '' ||
+    filters.providerType !== INITIAL_ACCOUNT_FILTERS.providerType ||
+    filters.providerId !== INITIAL_ACCOUNT_FILTERS.providerId ||
+    filters.status !== INITIAL_ACCOUNT_FILTERS.status ||
+    filters.role !== INITIAL_ACCOUNT_FILTERS.role ||
+    filters.review !== INITIAL_ACCOUNT_FILTERS.review
+  )
+}
+
+function AccountEmptyState({ createAction }: { createAction: ReactNode }) {
   const filters = useUserAdminStore((s) => s.filters)
+  const setFilters = useUserAdminStore((s) => s.setFilters)
+  if (!narrowed(filters)) {
+    return <EmptyState framed message="Noch keine Konten." action={createAction} />
+  }
+  const { query, providerType, providerId, status, role, review } = INITIAL_ACCOUNT_FILTERS
   const contradiction =
     filters.providerType === 'OIDC' && (filters.status !== null || filters.review !== 'ALL')
   return (
-    <ListEmptyState
-      title="Kein Konto entspricht den gewählten Filtern."
+    <EmptyState
+      framed
+      kind="noMatch"
       hint={
         contradiction
           ? 'Zustand und Auflage gelten nur für lokale Konten – bei Anbieterkonten führt der Anbieter den Lebenszyklus.'
-          : 'Lokale Konten und Konten der Identitätsanbieter stehen hier gemeinsam; die Herkunft steht an jeder Zeile.'
+          : undefined
       }
+      onReset={() => void setFilters({ query, providerType, providerId, status, role, review })}
     />
   )
 }
@@ -318,6 +343,8 @@ function EmptyState() {
 interface AccountListProps extends RowHandlers {
   /** The signed-in account, so its own row offers neither locking nor deletion. */
   currentUserId: string | null
+  /** The create button of the page header, repeated by the first-time empty state. */
+  createAction: ReactNode
 }
 
 /**
@@ -327,19 +354,35 @@ interface AccountListProps extends RowHandlers {
  * edit dialog, not in the list. The list does not show an account's activity;
  * it acts only as the filter „länger nicht genutzt".
  */
-export default function AccountList({ currentUserId, ...handlers }: AccountListProps) {
+export default function AccountList({
+  currentUserId,
+  createAction,
+  ...handlers
+}: AccountListProps) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const accounts = useUserAdminStore((s) => s.accounts)
   const isLoading = useUserAdminStore((s) => s.isLoading)
+  const error = useUserAdminStore((s) => s.error)
+  const loadAccounts = useUserAdminStore((s) => s.loadAccounts)
   const sort = useAccountSort()
 
+  if (error) {
+    return (
+      <LoadError
+        message="Konten konnten nicht geladen werden."
+        detail={error}
+        onRetry={() => void loadAccounts()}
+      />
+    )
+  }
+
   if (isLoading && accounts.length === 0) {
-    return <ListLoading label="Konten werden geladen …" />
+    return <LoadingState />
   }
 
   if (accounts.length === 0) {
-    return <EmptyState />
+    return <AccountEmptyState createAction={createAction} />
   }
 
   return (

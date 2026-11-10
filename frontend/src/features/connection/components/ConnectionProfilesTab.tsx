@@ -24,7 +24,6 @@ import {
   testConnectionProfileSignIn,
 } from '../api/connectionProfileApi'
 import StatusLine from '@/shared/ui/StatusLine'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectionProfileFormDialog from './ConnectionProfileFormDialog'
 import ConnectionProfileOverview, { type ProfileEntry } from './ConnectionProfileOverview'
 import ConnectionProfilePanel from './ConnectionProfilePanel'
@@ -33,6 +32,9 @@ import { confirmLock } from './connectorLock'
 import { admitsProfiles } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { accessOf, attentionOf, profileAccessEntry, signsInItself, summaryOf } from './profileState'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
@@ -293,44 +295,44 @@ export default function ConnectionProfilesTab() {
           bietet noch keine Quellart Zugänge an.
         </Alert>
       )}
-      {error && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={reload}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      )}
       {typeError && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {`Der Zustand der Quellarten konnte nicht geladen werden (${typeError}); eine Sperre der Quellart fehlt deshalb in der Liste.`}
         </Alert>
       )}
       {overviewError && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => void loadOverview()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {`Wer die Zugänge nutzen darf, konnte nicht geladen werden (${overviewError}).`}
-        </Alert>
+        <Box sx={{ mb: 2 }}>
+          <LoadError
+            message="Wer die Zugänge nutzen darf, konnte nicht geladen werden."
+            detail={overviewError}
+            onRetry={() => void loadOverview()}
+          />
+        </Box>
       )}
 
-      {loading ? (
-        <ListLoading label="Zugänge werden geladen" />
-      ) : profiles.length === 0 && !error ? (
-        <ListEmptyState
-          title="Es sind noch keine Zugänge angelegt."
-          hint="Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+      {error ? (
+        <LoadError
+          message="Zugänge konnten nicht geladen werden."
+          detail={error}
+          onRetry={reload}
+        />
+      ) : loading ? (
+        <LoadingState />
+      ) : profiles.length === 0 ? (
+        <EmptyState
+          framed
+          message="Noch keine Zugänge. Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+          action={
+            anyTypeAdmitsProfiles ? (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setForm({ open: true, profile: null })}
+              >
+                Neuer Zugang
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <ConnectionProfileOverview entries={entries} onOpen={openPanel} />

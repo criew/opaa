@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -12,11 +13,12 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { GroupEffectsResponse, GroupListResponse } from '@/shared/api/types'
 import type { GroupSortField } from '../api/groupAdminApi'
-import { useGroupAdminListStore } from '../stores/groupAdminListStore'
+import { INITIAL_GROUP_FILTERS, useGroupAdminListStore } from '../stores/groupAdminListStore'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import {
-  ListEmptyState,
-  ListLoading,
   ListPager,
   SortableHeadCell,
   StateLabel,
@@ -240,24 +242,56 @@ function Pager() {
  * What a group is used for is shown as a summary; the member list is not -
  * its retrieval is an audit event and happens only in the „Mitglieder" dialog (ADR-0036/4, /9).
  */
-export default function GroupList(handlers: GroupRowHandlers) {
+export default function GroupList({
+  createAction,
+  ...handlers
+}: GroupRowHandlers & {
+  /** The create button of the page header, repeated by the first-time empty state. */
+  createAction: ReactNode
+}) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const groups = useGroupAdminListStore((s) => s.groups)
   const effects = useGroupAdminListStore((s) => s.effects)
   const isLoading = useGroupAdminListStore((s) => s.isLoading)
+  const error = useGroupAdminListStore((s) => s.error)
+  const filters = useGroupAdminListStore((s) => s.filters)
+  const loadGroups = useGroupAdminListStore((s) => s.loadGroups)
+  const setFilters = useGroupAdminListStore((s) => s.setFilters)
   const sort = useGroupSort()
 
+  // After a loading error only the notice stands - an empty list below it would look like a
+  // filter without matches.
+  if (error) {
+    return (
+      <LoadError
+        message="Gruppen konnten nicht geladen werden."
+        detail={error}
+        onRetry={() => void loadGroups()}
+      />
+    )
+  }
+
   if (isLoading && groups.length === 0) {
-    return <ListLoading label="Gruppen werden geladen …" />
+    return <LoadingState />
   }
 
   if (groups.length === 0) {
-    return (
-      <ListEmptyState
-        title="Keine Gruppe entspricht den gewählten Filtern."
-        hint="Interne Gruppen und Gruppen der Identitätsanbieter stehen hier gemeinsam; die Herkunft steht an jeder Zeile."
+    const { query, origin, providerId, kind, state } = INITIAL_GROUP_FILTERS
+    const narrowed =
+      filters.query.trim() !== query ||
+      filters.origin !== origin ||
+      filters.providerId !== providerId ||
+      filters.kind !== kind ||
+      filters.state !== state
+    return narrowed ? (
+      <EmptyState
+        framed
+        kind="noMatch"
+        onReset={() => void setFilters({ query, origin, providerId, kind, state })}
       />
+    ) : (
+      <EmptyState framed message="Noch keine Gruppen." action={createAction} />
     )
   }
 

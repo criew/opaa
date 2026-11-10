@@ -191,7 +191,7 @@ describe('ChatRedirect', () => {
 
     renderWithProviders(<ChatRedirect />, { withRouter: true })
 
-    expect(await screen.findByText('Spaces konnten nicht geladen werden')).toBeInTheDocument()
+    expect(await screen.findByText('Spaces konnten nicht geladen werden.')).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
 
     // Escape route: a retry button, not a dead end.

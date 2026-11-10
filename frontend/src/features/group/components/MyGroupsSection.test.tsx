@@ -321,7 +321,7 @@ describe('MyGroupsSection', () => {
       'Verantwortung abgeben',
     )
 
-    expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Noch keine Gruppen in Ihrer Verantwortung/)).toBeInTheDocument()
     expect(screen.queryByText('Gruppe nicht gefunden')).not.toBeInTheDocument()
     expect(useGroupStore.getState().error).toBeNull()
   })
@@ -349,6 +349,6 @@ describe('MyGroupsSection', () => {
 
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
 
-    expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Noch keine Gruppen in Ihrer Verantwortung/)).toBeInTheDocument()
   })
 })

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
@@ -12,6 +11,8 @@ import {
   getDocumentTemplateSettings,
   updateDocumentTemplateSettings,
 } from '../api/documentTemplateApi'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function changedLine(settings: DocumentTemplateSettingsResponse): string | null {
   if (!settings.updatedAt) return null
@@ -72,20 +73,13 @@ export default function DocumentTemplateSettingsSection() {
       description="Word-Vorlagen mit Platzhaltern, die Agenten ausfüllen. Ab Werk aus."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Einstellung konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Einstellung wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <>
           <FormControlLabel

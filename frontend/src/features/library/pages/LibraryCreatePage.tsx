@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import visuallyHiddenSx from '@mui/utils/visuallyHidden'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
@@ -82,6 +81,8 @@ import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -586,24 +587,17 @@ export default function LibraryCreatePage() {
           )}
         </Box>
 
-        {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            Quellarten werden geladen …
-          </Typography>
+        {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && !sourceTypesError && (
+          <LoadingState shape="cards" count={4} />
         )}
 
         {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={reloadSourceTypes}>
-                Erneut versuchen
-              </Button>
-            }
-          >
-            Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
-          </Alert>
+          <Box sx={{ mb: 2 }}>
+            <LoadError
+              message="Die Quellarten konnten nicht geladen werden."
+              onRetry={reloadSourceTypes}
+            />
+          </Box>
         )}
 
         {currentStep === STEP_SOURCE_TYPE &&
