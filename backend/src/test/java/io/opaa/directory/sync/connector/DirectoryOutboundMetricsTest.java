@@ -12,15 +12,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.context.request.RequestContextHolder;
 
 /** The directory client counts as target {@code directory} with its provider as {@code kind}. */
 class DirectoryOutboundMetricsTest {
 
   @Test
   void aThrottledAnswerOfTheKeycloakDirectoryIsCounted() throws Exception {
-    // a request scope another test left on this worker thread would make the call interactive
-    RequestContextHolder.resetRequestAttributes();
     HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext(
         "/",

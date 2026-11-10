@@ -8,9 +8,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import io.opaa.group.GroupService;
 import io.opaa.group.web.MeController;
 import io.opaa.permission.CapabilityService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.request.RequestContextHolder;
 
 /**
  * Security regression guard: with {@link CurrentUserArgumentResolver} absent from the resolver
@@ -46,5 +48,15 @@ class CurrentUserFailClosedTest {
 
     // Never reached: had a CurrentUser been bound, groupService.listMyGroups(...) would have run.
     verifyNoInteractions(groupService);
+  }
+
+  /**
+   * MockMvc binds the request to the thread and restores the previous binding only when {@code
+   * perform} returns; the failure this test provokes would leave it on the worker thread for every
+   * later test.
+   */
+  @AfterEach
+  void releaseTheRequestScope() {
+    RequestContextHolder.resetRequestAttributes();
   }
 }
