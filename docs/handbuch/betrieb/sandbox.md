@@ -32,7 +32,10 @@ flowchart LR
   sonst startet das Backend nicht. Danach entfernt der
   Sandbox-Dienst sie selbst, auch wenn das Backend ausgefallen ist.
 - **Kein Nachinstallieren:** Das Image `opaa/sandbox-python` bringt Python mit reportlab, fpdf2,
-  python-docx, openpyxl, pandas und matplotlib mit. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`.
+  python-docx, openpyxl, pandas und matplotlib mit. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`;
+  es braucht `python3` und das Kommando `env`.
+- **Ohne Root-Rechte:** Ein Skript läuft als Benutzer ohne Root-Rechte und kennt das Token des
+  Ausführungsagenten seiner Sandbox nicht.
 
 Der Sandbox-Dienst ist OpenSandbox, ein gepflegter Baustein unter Apache-Lizenz 2.0. Er braucht einen eigenen API-Schlüssel; ohne Schlüssel
 oder Adresse startet das Backend mit eingeschalteter Sandbox nicht.

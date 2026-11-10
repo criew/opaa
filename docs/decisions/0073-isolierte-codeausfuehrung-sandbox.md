@@ -57,7 +57,10 @@ Backend ist nicht darin, erreichbar sind dort nur der Dienst und andere Sandboxe
 Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy
 an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den übrigen
 Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes Zufallstoken für
-ihren Ausführungsagenten. Ein Ausgangstor mit Zulassungsliste kommt erst mit einem Werkzeug, das
+ihren Ausführungsagenten. Das Skript läuft ohne Root-Rechte und startet ohne dieses Token in seiner
+Umgebung: Mit dem Token könnte es den Ausführungsagenten in der eigenen Sandbox ansprechen und
+Kommandos als Root ausführen. Der Container behält nur die Capabilities, die der Ausführungsagent
+braucht. Ein Ausgangstor mit Zulassungsliste kommt erst mit einem Werkzeug, das
 Netz braucht.
 
 ### 5. Isolationsstärke ist Einstellung des Dienstes
