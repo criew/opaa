@@ -38,4 +38,13 @@ public interface AgentTool {
    * an argument the tool cannot use is an outcome, not an exception.
    */
   ToolCallOutcome call(JsonNode arguments, AgentRun run);
+
+  /**
+   * What a call with {@code arguments} is about in the person's words, shown while it runs - the
+   * same text the outcome's detail will carry, never a raw argument such as an id. {@code null}
+   * when the tool knows it only after the call or has none.
+   */
+  default String startDetail(JsonNode arguments) {
+    return null;
+  }
 }

@@ -23,6 +23,14 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   über `proxy-buffering: "off"`, schalten es ausdrücklich ab. Komprimieren darf der Proxy den
   Strom nicht. Das Backend schickt alle 10 Sekunden ein Lebenszeichen, das Timeout begrenzt also
   die Pause zwischen zwei Ereignissen.
+- **Lange Läufe eines Agenten durchlassen:** Ein Agent arbeitet in mehreren Schritten und meldet
+  jeden im selben Antwortstrom, oft über Minuten. Solange Modell oder Werkzeug arbeiten, sendet
+  OPAA mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
+  die Schritte erscheinen, wenn sie geschehen; ein Lese-Timeout ab etwa 30 Sekunden genügt, auch
+  für Läufe über Minuten. Bricht die Person ab, schickt der Browser zusätzlich
+  `POST /api/v1/query/stream/cancel`; der Stopp liegt in der Datenbank und wirkt, gleich welche
+  Instanz ihn annimmt. Diese Anfrage zählt nicht gegen die Grenze für Fragen. Der Lauf endet vor
+  seinem nächsten Schritt, nichts davon wird gespeichert; ein Wiederaufnehmen gibt es nicht.
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.

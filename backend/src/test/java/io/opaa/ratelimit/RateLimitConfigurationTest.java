@@ -80,6 +80,22 @@ class RateLimitConfigurationTest {
   }
 
   @Test
+  void theStopOfAnAgentRunSpendsNoQuestionButCountsInABudgetOfItsOwn() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit query = new EndpointLimit(2, 60, 1000);
+    Filter filter =
+        filter(
+            new RateLimitProperties(
+                true, List.of(), query, wide, wide, wide, wide, wide, wide, null));
+
+    assertThat(statusAfter(filter, "/api/v1/query/stream", 2)).isEqualTo(200);
+    assertThat(statusAfter(filter, "/api/v1/query/stream", 1)).isEqualTo(429);
+    // the questions are used up, the stop of the run they started is not
+    assertThat(statusAfter(filter, "/api/v1/query/stream/cancel", 2)).isEqualTo(200);
+    assertThat(statusAfter(filter, "/api/v1/query/stream/cancel", 1)).isEqualTo(429);
+  }
+
+  @Test
   void theSearchAndItsHitsShareOneBudgetOfTheirOwn() throws Exception {
     EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
     EndpointLimit search = new EndpointLimit(3, 60, 1000);

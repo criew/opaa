@@ -10,8 +10,16 @@ import java.util.UUID;
  *
  * @param endState how the run ended; a limit is shown as a set-off state "nicht geprüft", never as
  *     an error; {@link EndState#ASK_USER} as a question back to the person.
+ * @param agentId the agent that ran; {@code null} in records kept before it was recorded.
+ * @param agentName the agent's name at the time of the run, shown at the answer.
  */
-public record AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
+public record AgentRunRecord(
+    UUID runId, EndState endState, List<Step> steps, UUID agentId, String agentName) {
+
+  /** A record without the agent named. */
+  public AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
+    this(runId, endState, steps, null, null);
+  }
 
   public AgentRunRecord {
     steps = steps == null ? List.of() : List.copyOf(steps);

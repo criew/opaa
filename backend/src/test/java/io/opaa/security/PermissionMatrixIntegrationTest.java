@@ -125,6 +125,7 @@ class PermissionMatrixIntegrationTest {
           "listAgents",
           "listSearchableLibraries",
           "listAvailablePrompts",
+          "listAvailableAgents",
           "searchKnowledge",
           "getMetadataFilterOptions");
 
