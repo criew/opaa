@@ -3,6 +3,7 @@ package io.opaa.account.web;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -34,6 +35,7 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
@@ -460,7 +462,39 @@ class LocalUserAdminControllerTest {
     return new LocalUserOverview(user, row, LocalAccountState.ACTIVE, LocalAccountActivity.NEVER);
   }
 
+  @Test
+  void changingTheSettingsWithoutARecentSignInIsRefusedBeforeTheServiceIsCalled() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/local-auth-settings")
+                .with(asAdminWithoutRecentSignIn())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"enabled\":true,\"selfRegistrationEnabled\":false,"
+                        + "\"selfRegistrationAllowedDomains\":[],"
+                        + "\"passwordResetEnabled\":true,\"passwordMinLength\":8,"
+                        + "\"invitationTokenTtlHours\":48,\"resetTokenTtlMinutes\":1440,"
+                        + "\"defaultExpiryDays\":180,\"inactiveDays\":60}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(RecentLoginPolicy.CODE));
+
+    verify(settingsService, never()).update(any(), any());
+  }
+
+  /** An administrator whose token names a sign-in of a moment ago. */
   private RequestPostProcessor asAdmin() {
+    return jwt()
+        .jwt(
+            builder ->
+                builder
+                    .subject(ADMIN_SUBJECT)
+                    .claim("iss", TEST_ISSUER)
+                    .claim(RecentLoginPolicy.AUTH_TIME_CLAIM, Instant.now().getEpochSecond()))
+        .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /** The same administrator with a token from a refresh: no {@code auth_time}. */
+  private RequestPostProcessor asAdminWithoutRecentSignIn() {
     return jwt()
         .jwt(builder -> builder.subject(ADMIN_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));

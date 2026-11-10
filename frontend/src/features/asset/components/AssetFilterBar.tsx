@@ -111,7 +111,7 @@ export default function AssetFilterBar({
               }}
               aria-label="Typ"
             >
-              <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 1, sm: 1.5 } }}>
+              <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 0.75, sm: 1.5 } }}>
                 Alle
               </ToggleButton>
               {types.offered.map((definition) => {
@@ -120,7 +120,7 @@ export default function AssetFilterBar({
                   <ToggleButton
                     key={definition.type}
                     value={definition.type}
-                    sx={{ px: { xs: 1, sm: 1.5 }, gap: 0.75 }}
+                    sx={{ px: { xs: 0.75, sm: 1.5 }, gap: 0.75 }}
                   >
                     <Icon
                       aria-hidden

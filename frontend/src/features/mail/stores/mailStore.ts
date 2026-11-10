@@ -19,6 +19,7 @@ import {
 } from '../api/mailApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
+import { isRecentLoginRequired } from '@/shared/session/recentLogin'
 
 /**
  * Monotone counter over `openTemplate` calls: clicking through the list faster than the answers
@@ -124,8 +125,11 @@ export const useMailStore = create<MailState>((set, get) => ({
       set({ settings, isSavingSettings: false })
       return settings
     } catch (err) {
+      // a refusal for want of a recent sign-in is the caller's to answer with the confirmation
       set({
-        settingsError: messageOf(err, 'Die E-Mail-Einstellungen konnten nicht gespeichert werden'),
+        settingsError: isRecentLoginRequired(err)
+          ? null
+          : messageOf(err, 'Die E-Mail-Einstellungen konnten nicht gespeichert werden'),
         isSavingSettings: false,
       })
       throw err
@@ -194,7 +198,9 @@ export const useMailStore = create<MailState>((set, get) => ({
       return template
     } catch (err) {
       set({
-        templateError: messageOf(err, 'Die Vorlage konnte nicht gespeichert werden'),
+        templateError: isRecentLoginRequired(err)
+          ? null
+          : messageOf(err, 'Die Vorlage konnte nicht gespeichert werden'),
         isSavingTemplate: false,
       })
       throw err

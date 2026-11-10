@@ -123,7 +123,11 @@ public class LocalAuthController {
             .authenticate(
                 request.getEmail(), request.getPassword(), clientIpResolver.resolve(httpRequest))
             .orElseThrow(() -> new UnauthorizedException(LOGIN_FAILED));
-    IssuedRefreshToken refresh = refreshTokens.issue(account.user());
+    // every session ended between the password check and here: this sign-in ended with them
+    IssuedRefreshToken refresh =
+        refreshTokens
+            .issueForSession(account.user(), account.credentials().getSessionGeneration())
+            .orElseThrow(() -> new UnauthorizedException(LOGIN_FAILED));
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookies.issue(refresh.value(), refresh.maxAge()).toString())
         .body(tokenResponse(account.user(), account.credentials(), true));
@@ -145,7 +149,7 @@ public class LocalAuthController {
       return sessionInvalid();
     }
     LocalCredentials row = credentials.findById(rotated.user().getId()).orElse(null);
-    if (row == null) {
+    if (row == null || row.getSessionGeneration() != rotated.sessionGeneration()) {
       return sessionInvalid();
     }
     return ResponseEntity.ok()
@@ -195,7 +199,10 @@ public class LocalAuthController {
                         "Das Passwort kann nur für ein lokales Konto geändert werden."));
     LocalCredentials changed =
         passwords.changePassword(user, request.getCurrentPassword(), request.getNewPassword());
-    IssuedRefreshToken refresh = refreshTokens.issue(user);
+    IssuedRefreshToken refresh =
+        refreshTokens
+            .issueForSession(user, changed.getSessionGeneration())
+            .orElseThrow(() -> new UnauthorizedException(SESSION_INVALID));
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookies.issue(refresh.value(), refresh.maxAge()).toString())
         .body(tokenResponse(user, changed, true));
