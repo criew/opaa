@@ -2,6 +2,7 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.connection.token.GrantRevocations;
+import io.opaa.externalaccess.ExternalAccessQuotaReset;
 import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.msgraph.FakeGraphServer;
 import java.time.Duration;
@@ -49,6 +50,7 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
         .getBeanProvider(FakeEmbeddingProbe.class)
         .ifAvailable(FakeEmbeddingProbe::reset);
     FakeGraphServer.resetShared();
+    ExternalAccessQuotaReset.reset(testContext.getApplicationContext());
     if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
         instanceof FakeEmbeddingModel embeddingModel) {
       embeddingModel.reset();

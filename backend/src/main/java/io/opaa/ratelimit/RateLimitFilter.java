@@ -80,7 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request that is not authenticated, or refused by the budget per account
      * behind the chain, gives back its client and global token; one authenticated by an access
      * token ({@link OwnQuotaAuthentication}) its client token; one a later limit refused ({@link
-     * RateLimitAuthentication#markRefusedByLaterLimit}) its global token. Rationale: ADR-0033, 9.
+     * RateLimitAuthentication#markRefusedByLaterLimit}) or answered {@code 403} or {@code 404} its
+     * global token. Rationale: ADR-0033, 9.
      */
     AUTHENTICATED,
 
@@ -117,8 +118,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * AuthenticatedRequestMarkerFilter} - whatever address the request came from.
    *
    * @param name the stable label of the rule in logs and metrics
-   * @param method the HTTP method the rule applies to, or {@code null} for every method; a request
-   *     with another method is matched against the rules after it
+   * @param method the HTTP method the rule applies to, several separated by {@code |}, or {@code
+   *     null} for every method; a request with another method is matched against the rules after it
    */
   public record Rule(
       String name,
@@ -185,7 +186,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
       String method) {
 
     boolean appliesTo(HttpServletRequest request) {
-      return method == null || method.equalsIgnoreCase(request.getMethod());
+      if (method == null) {
+        return true;
+      }
+      for (String one : method.split("\\|")) {
+        if (one.equalsIgnoreCase(request.getMethod())) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 
@@ -277,7 +286,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
     } finally {
       if (admission != null) {
-        settle(admission, request);
+        settle(admission, request, response);
       }
     }
   }
@@ -402,7 +411,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /** Gives back what the request's mark shows it did not owe - see {@link Counting}. */
-  private static void settle(Admission admission, HttpServletRequest request) {
+  private static void settle(
+      Admission admission, HttpServletRequest request, HttpServletResponse response) {
     CompiledRule rule = admission.rule();
     switch (rule.counting()) {
       case EVERY_REQUEST -> {}
@@ -416,7 +426,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             rule.perClient().release(admission.key(), admission.keyGrant());
           }
           if (RateLimitAuthentication.isMarked(
-              request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)) {
+                  request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)
+              || refusedByTheOperation(response)) {
             releaseGlobal(admission);
           }
         }
@@ -431,6 +442,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
       }
     }
+  }
+
+  /**
+   * An authenticated request the operation turned away as forbidden or not found did no work, so it
+   * owes the installation's ceiling nothing; its budgets per client and per account stay spent, so
+   * probing other ids buys nothing and the answer reveals nothing a {@code 403} or {@code 404} does
+   * not already say.
+   */
+  private static boolean refusedByTheOperation(HttpServletResponse response) {
+    int status = response.getStatus();
+    return status == HttpServletResponse.SC_FORBIDDEN || status == HttpServletResponse.SC_NOT_FOUND;
   }
 
   private static void releaseGlobal(Admission admission) {
