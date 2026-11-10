@@ -73,6 +73,13 @@ class OpenSandboxClient implements Sandboxes {
   private static final Pattern UPLOAD_PATH =
       Pattern.compile(Pattern.quote(WORKSPACE_DIR + "/") + "[A-Za-z0-9_][A-Za-z0-9._-]*");
 
+  /** A directory the backend reads back from: below the working directory, plain segments only. */
+  private static final Pattern READ_DIRECTORY =
+      Pattern.compile(Pattern.quote(WORKSPACE_DIR) + "(?:/[A-Za-z0-9_][A-Za-z0-9._-]*)+");
+
+  /** A plain file name, never a path. */
+  private static final Pattern PLAIN_NAME = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9._ -]*");
+
   /** A script of the image: directly in {@link #INSTALLED_DIR}, with a plain name. */
   private static final Pattern INSTALLED_SCRIPT =
       Pattern.compile(Pattern.quote(INSTALLED_DIR + "/") + "[A-Za-z0-9_][A-Za-z0-9._-]*\\.py");
@@ -199,9 +206,24 @@ class OpenSandboxClient implements Sandboxes {
     }
 
     @Override
+    public synchronized List<OutputEntry> listFiles(String directory) {
+      requireOpen();
+      return entries(listDirectory(execd, token, readDirectory(directory)), directory);
+    }
+
+    @Override
+    public synchronized byte[] readFile(String directory, String name) {
+      requireOpen();
+      if (!PLAIN_NAME.matcher(name).matches()) {
+        throw new IllegalArgumentException("Not a plain file name: " + name);
+      }
+      return download(execd, token, readDirectory(directory) + "/" + name);
+    }
+
+    @Override
     public synchronized List<OutputEntry> outputEntries() {
       requireOpen();
-      return entries(listOutput(execd, token));
+      return entries(listDirectory(execd, token, OUTPUT_DIR));
     }
 
     @Override
@@ -210,7 +232,7 @@ class OpenSandboxClient implements Sandboxes {
       requireOpen();
       long until = System.nanoTime() + within.toNanos();
       return outputFiles(
-          entries(listOutput(execd, token)),
+          entries(listDirectory(execd, token, OUTPUT_DIR)),
           accepted,
           () -> System.nanoTime() - until >= 0,
           path -> download(execd, token, path));
@@ -416,11 +438,19 @@ class OpenSandboxClient implements Sandboxes {
     return line.isEmpty() ? null : line.toString();
   }
 
-  private JsonNode listOutput(String execd, String token) {
+  private static String readDirectory(String directory) {
+    if (!READ_DIRECTORY.matcher(directory).matches()) {
+      throw new IllegalArgumentException(
+          "Not a directory below the working directory: " + directory);
+    }
+    return directory;
+  }
+
+  private JsonNode listDirectory(String execd, String token, String directory) {
     HttpResponse<InputStream> listing =
         send(
             HttpRequest.newBuilder(
-                    URI.create(execd + "/directories/list?path=" + encode(OUTPUT_DIR) + "&depth=1"))
+                    URI.create(execd + "/directories/list?path=" + encode(directory) + "&depth=1"))
                 .header(EXECD_TOKEN_HEADER, token)
                 .GET(),
             HttpResponse.BodyHandlers.ofInputStream());
@@ -441,9 +471,14 @@ class OpenSandboxClient implements Sandboxes {
 
   /** The plain files directly in {@link #OUTPUT_DIR}, at most {@link #MAX_LISTED} of them. */
   static List<OutputEntry> entries(JsonNode listing) {
+    return entries(listing, OUTPUT_DIR);
+  }
+
+  /** The plain files directly in {@code directory}, at most {@link #MAX_LISTED} of them. */
+  static List<OutputEntry> entries(JsonNode listing, String directory) {
     List<OutputEntry> entries = new ArrayList<>();
     for (JsonNode entry : listing) {
-      String name = directFileName(entry);
+      String name = directFileName(entry, directory);
       if (name != null && entries.size() < MAX_LISTED) {
         entries.add(new OutputEntry(name, Math.max(0, entry.path("size").asLong())));
       }
@@ -451,12 +486,12 @@ class OpenSandboxClient implements Sandboxes {
     return entries;
   }
 
-  /** The bare name of a plain file directly in {@link #OUTPUT_DIR}, otherwise {@code null}. */
-  private static String directFileName(JsonNode entry) {
+  /** The bare name of a plain file directly in {@code directory}, otherwise {@code null}. */
+  private static String directFileName(JsonNode entry, String directory) {
     String path = entry.path("path").asString();
     String name = path.substring(path.lastIndexOf('/') + 1);
     if (!"file".equals(entry.path("type").asString())
-        || !path.equals(OUTPUT_DIR + "/" + name)
+        || !path.equals(directory + "/" + name)
         || name.isBlank()) {
       return null;
     }

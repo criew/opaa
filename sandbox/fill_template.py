@@ -6,33 +6,73 @@ the image; the model only supplies the data, never code. Run as
     python3 -I /opt/opaa/fill_template.py /workspace/fill_template.json
 
 Job file (JSON, written by the backend):
-    template     path of the DOCX template inside the sandbox
-    data         the values for the placeholders: strings, numbers, booleans, lists and objects
-    output_name  base name of the result files, sanitized again here
-    formats      any of "docx", "pdf"
-    stamp        optional text the backend wants in every footer and in the document properties,
-                 e.g. a draft notice; never from the model
+    template             path of the DOCX template inside the sandbox
+    data                 the values for the placeholders: strings, numbers, booleans, lists, objects
+    output_dir           a directory that must not exist yet; the results are written there alone
+    output_name          base name of the result files, sanitized again here
+    formats              any of "docx", "pdf"
+    pdf_timeout_seconds  how long LibreOffice may convert, below the script's own time limit
+    stamp                optional text for every footer and the document properties, e.g. a draft
+                         notice; from the backend, never from the model, and never rendered
 
 The data are inserted as text: Jinja evaluates only the tags of the template, never a value, and
-autoescape keeps a value from becoming Word XML. The template's own tags run in Jinja's immutable
-sandbox, so a tag cannot reach Python internals either.
+autoescape turns every value into escaped XML text. A template cannot switch that off: the filters
+that mark text as raw markup (safe, urlize, xmlattr) and the global lipsum do not exist here, and
+a template with an autoescape block is refused before rendering. The tags run in Jinja's immutable
+sandbox, so they cannot reach Python internals. A missing value renders empty; a template that
+computes with one (round, +) fails and says so.
 
-Prints exactly one JSON line on stdout: {"files": [...], "errors": [...]}. Exit code 0 when at
-least one file was written, 2 when the template could not be filled, 1 on any other failure.
+Prints exactly one JSON line on stdout: {"files": [...], "errors": [...]}, the files as names in
+output_dir. Exit code 0 when at least one file was written, 2 when the template could not be
+filled, 1 on any other failure.
 """
 
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 
-OUTPUT_DIR = "/workspace/out"
+SOFFICE = "/usr/bin/soffice"
 MAX_NAME_CHARS = 80
-PDF_TIMEOUT_SECONDS = 120
+DEFAULT_PDF_TIMEOUT_SECONDS = 30
 FORMATS = ("docx", "pdf")
+
+# Filters and globals whose result Jinja treats as markup and would insert unescaped.
+RAW_MARKUP_FILTERS = ("safe", "urlize", "xmlattr")
+RAW_MARKUP_GLOBALS = ("lipsum",)
+
+
+def template_environment():
+    """Jinja's immutable sandbox with autoescape that no template can switch off."""
+    from jinja2 import ChainableUndefined, nodes
+    from jinja2.exceptions import TemplateSyntaxError
+    from jinja2.sandbox import ImmutableSandboxedEnvironment
+
+    class TemplateEnvironment(ImmutableSandboxedEnvironment):
+
+        def _parse(self, source, name, filename):
+            tree = super()._parse(source, name, filename)
+            for node in tree.find_all((nodes.EvalContextModifier, nodes.MarkSafe,
+                                       nodes.MarkSafeIfAutoescape)):
+                raise TemplateSyntaxError(
+                    "autoescape blocks are not allowed in a template", node.lineno, name, filename)
+            for node in tree.find_all((nodes.Filter, nodes.Test)):
+                if node.name in RAW_MARKUP_FILTERS:
+                    raise TemplateSyntaxError(
+                        f"the filter {node.name} is not allowed in a template", node.lineno, name,
+                        filename)
+            return tree
+
+    environment = TemplateEnvironment(autoescape=True, undefined=ChainableUndefined)
+    for name in RAW_MARKUP_FILTERS:
+        environment.filters.pop(name, None)
+    for name in RAW_MARKUP_GLOBALS:
+        environment.globals.pop(name, None)
+    return environment
 
 
 def safe_name(name):
@@ -42,23 +82,11 @@ def safe_name(name):
     return cleaned or "Dokument"
 
 
-def free_path(directory, base, extension):
-    """A path in directory that no earlier call of this run has taken."""
-    candidate = os.path.join(directory, f"{base}.{extension}")
-    counter = 2
-    while os.path.exists(candidate):
-        candidate = os.path.join(directory, f"{base}-{counter}.{extension}")
-        counter += 1
-    return candidate
-
-
 def render(template_path, data, target):
     from docxtpl import DocxTemplate
-    from jinja2.sandbox import ImmutableSandboxedEnvironment
 
     template = DocxTemplate(template_path)
-    environment = ImmutableSandboxedEnvironment(autoescape=True)
-    template.render(data, jinja_env=environment, autoescape=True)
+    template.render(data, jinja_env=template_environment(), autoescape=True)
     template.save(target)
 
 
@@ -82,13 +110,13 @@ def add_stamp(path, stamp):
     document.save(path)
 
 
-def convert_to_pdf(docx_path, work_dir):
-    """The PDF LibreOffice writes for docx_path, or None when the conversion failed."""
+def convert_to_pdf(docx_path, work_dir, timeout_seconds):
+    """The PDF LibreOffice writes for docx_path, or None when it failed or ran out of time."""
     profile = tempfile.mkdtemp(prefix="opaa-lo-")
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             [
-                "soffice",
+                SOFFICE,
                 f"-env:UserInstallation=file://{profile}",
                 "--headless",
                 "--norestore",
@@ -101,10 +129,16 @@ def convert_to_pdf(docx_path, work_dir):
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=PDF_TIMEOUT_SECONDS,
-            check=False,
+            start_new_session=True,
         )
-    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.wait(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            # soffice starts helper processes; the whole session goes.
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+            return None
+    except OSError:
         return None
     finally:
         shutil.rmtree(profile, ignore_errors=True)
@@ -112,11 +146,21 @@ def convert_to_pdf(docx_path, work_dir):
     return pdf if os.path.isfile(pdf) else None
 
 
-def fill(job, output_dir=OUTPUT_DIR):
-    """Fills the template of job into output_dir; returns (exit code, result)."""
+def pdf_timeout(job):
+    value = job.get("pdf_timeout_seconds")
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+        return float(value)
+    return DEFAULT_PDF_TIMEOUT_SECONDS
+
+
+def fill(job):
+    """Fills the template of job into its output directory; returns (exit code, result)."""
     data = job.get("data")
     if not isinstance(data, dict):
         return 2, {"files": [], "errors": ["Die Daten sind kein Objekt."]}
+    output_dir = job.get("output_dir")
+    if not isinstance(output_dir, str) or not os.path.isabs(output_dir):
+        return 1, {"files": [], "errors": ["Kein Ausgabeverzeichnis."]}
     formats = [f for f in job.get("formats") or FORMATS if f in FORMATS] or list(FORMATS)
     base = safe_name(job.get("output_name"))
     stamp = job.get("stamp")
@@ -135,19 +179,20 @@ def fill(job, output_dir=OUTPUT_DIR):
             }
         if isinstance(stamp, str) and stamp.strip():
             add_stamp(rendered, stamp.strip())
-        os.makedirs(output_dir, exist_ok=True)
+        pdf = None
         if "pdf" in formats:
-            pdf = convert_to_pdf(rendered, work_dir)
+            pdf = convert_to_pdf(rendered, work_dir, pdf_timeout(job))
             if pdf is None:
                 errors.append("Die PDF-Fassung ließ sich nicht erzeugen.")
-            else:
-                target = free_path(output_dir, base, "pdf")
-                shutil.move(pdf, target)
-                files.append(os.path.basename(target))
-        if "docx" in formats or not files:
-            target = free_path(output_dir, base, "docx")
-            shutil.move(rendered, target)
-            files.insert(0, os.path.basename(target))
+        # A directory of its own that did not exist before: nothing in it predates this call.
+        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+        os.mkdir(output_dir, 0o700)
+        if "docx" in formats or pdf is None:
+            shutil.move(rendered, os.path.join(output_dir, base + ".docx"))
+            files.append(base + ".docx")
+        if pdf is not None:
+            shutil.move(pdf, os.path.join(output_dir, base + ".pdf"))
+            files.append(base + ".pdf")
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
     return 0, {"files": files, "errors": errors}

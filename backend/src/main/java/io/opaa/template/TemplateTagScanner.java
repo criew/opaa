@@ -41,6 +41,17 @@ final class TemplateTagScanner {
           "for\\s+\\(?\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*,\\s*([A-Za-z_][A-Za-z0-9_]*))?\\s*\\)?"
               + "\\s+in\\s+(.+)",
           Pattern.DOTALL);
+
+  /**
+   * What would let a value reach the filled document as raw Word XML: the filters and the global
+   * that mark text as markup, also by name in {@code map}/{@code select}, and the autoescape block.
+   * The filling script refuses them too; refusing here tells the author at upload.
+   */
+  private static final Pattern RAW_MARKUP =
+      Pattern.compile(
+          "(?:\\|\\s*|^filter\\s+)(safe|urlize|xmlattr)\\b|['\"](safe|urlize|xmlattr)['\"]"
+              + "|\\b(lipsum)\\b|^(autoescape)\\b");
+
   private static final Set<String> RESERVED =
       Set.of(
           "and", "or", "not", "in", "is", "if", "else", "true", "false", "none", "True", "False",
@@ -85,7 +96,12 @@ final class TemplateTagScanner {
       from = close + 2;
       if (raw) {
         raw = !(kind == '%' && body.equals("endraw"));
-      } else if (kind == '{') {
+        continue;
+      }
+      if (kind != '#') {
+        requireNoRawMarkup(body);
+      }
+      if (kind == '{') {
         collector.references(body, PlaceholderKind.FIELD, blocks);
       } else if (kind == '%') {
         raw = body.equals("raw");
@@ -101,6 +117,21 @@ final class TemplateTagScanner {
               + " %}“ geschlossen.");
     }
     return collector.result();
+  }
+
+  private static void requireNoRawMarkup(String body) {
+    Matcher markup = RAW_MARKUP.matcher(body);
+    if (markup.find()) {
+      String name = markup.group(1);
+      for (int group = 2; name == null; group++) {
+        name = markup.group(group);
+      }
+      throw new ValidationException(
+          "Die Vorlage nutzt „"
+              + name
+              + "“. Vorlagen dürfen Werte nur als Text einsetzen; safe, urlize, xmlattr, lipsum und"
+              + " autoescape sind nicht erlaubt.");
+    }
   }
 
   private static void statement(String body, Collector collector, Deque<Block> blocks) {

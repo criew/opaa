@@ -131,6 +131,64 @@ class DocxTemplateInspectorTest {
         .hasMessageContaining("nachladen");
   }
 
+  @Test
+  void aFieldHiddenByACharacterReferenceAPrefixOrSplitRunsIsRefused() throws IOException {
+    List<String> hidden =
+        List.of(
+            "<w:p><w:fldSimple w:instr=\"&#73;NCLUDEPICTURE \\\\host\\x \\d\"/></w:p>",
+            "<w:p><w:r><w:instrText>INCL</w:instrText></w:r>"
+                + "<w:r><w:instrText>UDEPICTURE x</w:instrText></w:r></w:p>",
+            "<w:p><w:r><q:instrText xmlns:q=\"http://schemas.openxmlformats.org/wordprocessingml/"
+                + "2006/main\">INCLUDETEXT x</q:instrText></w:r></w:p>");
+    for (String field : hidden) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+  }
+
+  @Test
+  void aPlainDocumentIsPassiveAndAnUnreadableOneIsNot() throws IOException {
+    DocxActiveContent check = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
+    byte[] plain =
+        withBodyStart(
+            TestDocx.withParagraphs("Text"),
+            "<w:p><w:r><w:instrText>PAGE</w:instrText></w:r>"
+                + "<w:r><w:instrText> MERGEFIELD AddEntry</w:instrText></w:r></w:p>");
+
+    assertThat(check.isPassive(plain)).isTrue();
+    assertThat(check.isPassive("kein Word".getBytes(StandardCharsets.UTF_8))).isFalse();
+  }
+
+  /** {@code docx} with {@code xml} inserted at the start of the document body. */
+  private static byte[] withBodyStart(byte[] docx, String xml) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(docx));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        byte[] content = in.readAllBytes();
+        if (entry.getName().equals("word/document.xml")) {
+          String text = new String(content, StandardCharsets.UTF_8);
+          int body = text.indexOf("<w:body>") + "<w:body>".length();
+          content =
+              (text.substring(0, body) + xml + text.substring(body))
+                  .getBytes(StandardCharsets.UTF_8);
+        }
+        zip.write(content);
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
   private static byte[] withPackage(
       java.util.function.Consumer<org.apache.poi.xwpf.usermodel.XWPFDocument> change)
       throws IOException {

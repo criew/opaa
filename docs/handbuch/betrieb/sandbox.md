@@ -18,17 +18,25 @@ flowchart LR
 ## So arbeitet sie
 
 - **Eine Sandbox je Agentenlauf.** Der erste Aufruf von `run_code` oder `fill_template` in einem
-  Lauf startet sie, jeder weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am Ende des Laufs nimmt OPAA die
-  Dateien aus `/workspace/out` als Anhänge der fragenden Person an die Antwort und löscht die
-  Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.
+  Lauf startet sie, jeder weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am
+  Ende des Laufs nimmt OPAA die Dateien aus `/workspace/out` als Anhänge der fragenden Person an
+  die Antwort und löscht die Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.
+- **Eigenes Verzeichnis für Vorlagen:** `fill_template` schreibt in ein neues Verzeichnis mit
+  Zufallsnamen je Aufruf. OPAA liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
+  und das PDF; nur was gelesen und geprüft ist, meldet es dem Modell als angehängt.
 - **Nie geteilt:** Eine Sandbox gehört genau einem Lauf einer Person.
 - **Nur was das Skript enthält:** Die Sandbox sieht weder Wissensbasis noch Datenbank noch
   Dateiablage. Was sie verwenden soll, schreibt das Modell ins Skript.
 - **Ausgaben sind fremd:** Dateinamen, Größe und Dateityp prüft OPAA wie bei einem Upload. Je Lauf
   werden höchstens fünf Dateien zu je 10 MB angehängt, nur in den Formaten, die auch ein Upload
-  annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Nutzt ein
-  Lauf nur `fill_template`, nimmt OPAA nur Word-Dateien und PDF an. Lässt sich eine Datei nicht
-  abholen oder scheitert das Befüllen, fehlt sie; die Antwort bleibt.
+  annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Jede
+  Word-Datei prüft OPAA wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
+  Objekte, Felder, die Inhalte nachladen); eine solche wird nicht angehängt. Lässt sich eine Datei
+  nicht abholen oder scheitert das Befüllen, fehlt sie; die Antwort bleibt.
+- **Restrisiko:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann ein Prozess dieses
+  Codes eine Datei von `fill_template` verändern, bevor OPAA sie liest. Er kann damit nichts
+  anhängen, was `run_code` nicht auch selbst hätte anhängen können; die Prüfungen gelten
+  unverändert.
 - **Grenzen:** Ein Skript läuft höchstens `OPAA_SANDBOX_RUN_TIMEOUT` und nie über das Laufende
   hinaus, der Start der Sandbox zählt mit; eine Sandbox lebt höchstens `OPAA_SANDBOX_MAX_LIFETIME`.
   Dieser Wert muss die Laufzeit eines Agentenlaufs, zweimal die Dauer eines Schlussaufrufs und zwei Minuten abdecken,
@@ -39,7 +47,8 @@ flowchart LR
   Oberfläche für die PDF-Fassung, Schriften mit den Maßen von Arial, Times New Roman, Courier New
   und Calibri sowie das feste Skript für `fill_template`. LibreOffice macht das Image um mehrere
   hundert MB größer. Der Bau des Images prüft das Skript mit eigenen Tests und bricht ab, wenn
-  einer scheitert. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`; es braucht `python3` und das
+  einer scheitert. Die Umwandlung in PDF bekommt einen Teil des Zeitlimits eines Aufrufs; reicht
+  er nicht, bleibt die Word-Datei. Ein eigenes Image setzt `OPAA_SANDBOX_IMAGE`; es braucht `python3` und das
   Kommando `env`, für `fill_template` zusätzlich `/opt/opaa/fill_template.py` mit docxtpl und
   `soffice`. Fehlt das Skript, scheitert nur `fill_template`.
 - **Ohne Root-Rechte:** Ein Skript läuft als Benutzer ohne Root-Rechte und kennt das Token des

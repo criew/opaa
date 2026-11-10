@@ -280,10 +280,10 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
-  # The isolated execution environment behind the agent tools run_code and fill_template (ADR-0073):
-  # an OpenSandbox server that starts one sandbox without network per agent run. Off by default; switched on, the
-  # start fails without base-url and api-key. max-lifetime must not exceed the server's
-  # max_sandbox_timeout_seconds.
+  # The isolated execution environment behind the agent tools run_code and fill_template
+  # (ADR-0073): an OpenSandbox server that starts one sandbox without network per agent run. Off by
+  # default; switched on, the start fails without base-url and api-key. max-lifetime must not
+  # exceed the server's max_sandbox_timeout_seconds.
   sandbox:
     enabled: ${OPAA_SANDBOX_ENABLED:false}
     base-url: ${OPAA_SANDBOX_BASE_URL:http://opensandbox-server:8090}

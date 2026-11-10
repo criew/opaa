@@ -1,8 +1,8 @@
 """Tests of the fixed fill_template script, run while the sandbox image is built.
 
 The Dockerfile runs them with docxtpl and LibreOffice of the image (OPAA_REQUIRE_SOFFICE=1, so the
-PDF case cannot be skipped there); outside the image they need docxtpl and python-docx and skip
-only the PDF case when soffice is missing.
+PDF cases cannot be skipped there); outside the image they need docxtpl and python-docx and skip
+only the PDF cases when LibreOffice is missing.
 """
 
 import importlib.util
@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 
@@ -44,6 +45,11 @@ def document_text(path):
     return "\n".join(paragraph.text for paragraph in document.paragraphs)
 
 
+def document_xml(path):
+    with zipfile.ZipFile(path) as archive:
+        return archive.read("word/document.xml").decode("utf-8")
+
+
 def footer_text(path):
     import docx
 
@@ -51,21 +57,29 @@ def footer_text(path):
     return "\n".join(p.text for p in document.sections[0].footer.paragraphs)
 
 
+def require_soffice(test):
+    if not os.path.exists(fill_template.SOFFICE) and not REQUIRE_SOFFICE:
+        test.skipTest("LibreOffice is only part of the sandbox image")
+
+
 class FillTemplateTest(unittest.TestCase):
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
-        self.out = os.path.join(self.dir, "out")
+        self.out = os.path.join(self.dir, "fill", "a1b2")
         self.template = os.path.join(self.dir, "vorlage.docx")
 
     def tearDown(self):
         shutil.rmtree(self.dir, ignore_errors=True)
 
     def job(self, data, **extra):
-        job = {"template": self.template, "data": data, "output_name": "Bericht",
-               "formats": ["docx"]}
+        job = {"template": self.template, "data": data, "output_dir": self.out,
+               "output_name": "Bericht", "formats": ["docx"]}
         job.update(extra)
         return job
+
+    def result_docx(self):
+        return os.path.join(self.out, "Bericht.docx")
 
     def test_fields_lists_and_conditions_are_filled(self):
         make_template(self.template, [
@@ -78,11 +92,11 @@ class FillTemplateTest(unittest.TestCase):
             "betreff": "Haushalt 2027",
             "posten": [{"titel": "Personal"}, {"titel": "Sachmittel"}],
             "dringend": True,
-        }), self.out)
+        }))
 
         self.assertEqual(0, code, result)
         self.assertEqual(["Bericht.docx"], result["files"])
-        text = document_text(os.path.join(self.out, "Bericht.docx"))
+        text = document_text(self.result_docx())
         self.assertIn("Betreff: Haushalt 2027", text)
         self.assertIn("Personal;Sachmittel;", text)
         self.assertIn("DRINGEND", text)
@@ -94,79 +108,121 @@ class FillTemplateTest(unittest.TestCase):
             "b": "{% for x in range(3) %}x{% endfor %}",
             "c": f"__import__('os').system('touch {marker}')",
             "d": "{{ ''.__class__.__mro__[1].__subclasses__() }}",
-            "e": "</w:t></w:r><w:r><w:t>eingeschleust & <b>",
+            "e": "</w:t></w:r><w:fldSimple w:instr=\"INCLUDEPICTURE x\"/><w:r><w:t>",
             "f": "{_{ 7*7 }_}",
         }
         make_template(self.template, [f"{key}=[{{{{ {key} }}}}]" for key in values])
 
-        code, result = fill_template.fill(self.job(values), self.out)
+        code, result = fill_template.fill(self.job(values))
 
         self.assertEqual(0, code, result)
-        path = os.path.join(self.out, "Bericht.docx")
-        text = document_text(path)
+        text = document_text(self.result_docx())
         for key, value in values.items():
             if key != "f":
                 self.assertIn(f"{key}=[{value}]", text)
         self.assertNotIn("[49]", text)
         self.assertNotIn("[xxx]", text)
         self.assertFalse(os.path.exists(marker))
-        with zipfile.ZipFile(path) as archive:
-            body = archive.read("word/document.xml").decode("utf-8")
+        body = document_xml(self.result_docx())
         self.assertIn("&lt;/w:t&gt;", body)
+        self.assertNotIn("<w:fldSimple", body)
+
+    def test_no_template_can_insert_raw_markup(self):
+        field = ("{{ (('%c'|format(60)) ~ 'w:fldSimple w:instr=\"INCLUDEPICTURE x\"/' ~ "
+                 "('%c'|format(62)))FILTER }}")
+        templates = [
+            field.replace("FILTER", "|safe"),
+            "{% filter safe %}{{ x }}{% endfilter %}",
+            "{% autoescape false %}{{ x }}{% endautoescape %}",
+            "{{ [x]|map('safe')|join }}",
+            "{{ x|urlize }}",
+            "{{ {'a': x}|xmlattr }}",
+            "{{ lipsum(1, true) }}",
+        ]
+        for template in templates:
+            with self.subTest(template=template):
+                shutil.rmtree(self.out, ignore_errors=True)
+                make_template(self.template, [template])
+
+                code, result = fill_template.fill(self.job({"x": "<w:br/>"}))
+
+                if code == 0:
+                    self.assertNotIn("<w:fldSimple", document_xml(self.result_docx()))
+                    self.assertNotIn("<w:br/>", document_xml(self.result_docx()))
+                else:
+                    self.assertEqual(2, code, result)
+                    self.assertEqual([], result["files"])
+        make_template(self.template, [field.replace("FILTER", "")])
+        shutil.rmtree(self.out, ignore_errors=True)
+        code, result = fill_template.fill(self.job({}))
+        self.assertEqual(0, code, result)
+        self.assertNotIn("<w:fldSimple", document_xml(self.result_docx()))
 
     def test_a_tag_of_the_template_cannot_reach_python_internals(self):
         make_template(self.template, ["{{ ''.__class__.__mro__[1].__subclasses__() }}"])
 
-        code, result = fill_template.fill(self.job({}), self.out)
+        code, result = fill_template.fill(self.job({}))
 
         self.assertEqual(2, code)
         self.assertEqual([], result["files"])
         self.assertIn("SecurityError", result["errors"][0])
 
+    def test_missing_values_render_empty(self):
+        make_template(self.template, [
+            "[{{ betreff }}][{{ firma.name }}][{% for p in posten %}{{ p.titel }}{% endfor %}]",
+            "[{% if dringend %}DRINGEND{% endif %}][{{ firma.ort|default('-') }}]",
+        ])
+
+        code, result = fill_template.fill(self.job({"posten": []}))
+
+        self.assertEqual(0, code, result)
+        text = document_text(self.result_docx())
+        self.assertIn("[][][]", text)
+        self.assertIn("[][-]", text)
+
     def test_a_broken_template_is_reported_not_raised(self):
         make_template(self.template, ["{% if offen %}kein Ende"])
 
-        code, result = fill_template.fill(self.job({"offen": True}), self.out)
+        code, result = fill_template.fill(self.job({"offen": True}))
 
         self.assertEqual(2, code)
         self.assertIn("ließ sich nicht befüllen", result["errors"][0])
+        self.assertFalse(os.path.exists(self.out))
 
     def test_the_stamp_goes_into_the_footer_and_the_properties(self):
         import docx
 
         make_template(self.template, ["{{ x }}"], footer="Seite")
 
-        code, result = fill_template.fill(
-            self.job({"x": "1"}, stamp="ENTWURF – Fassung 3"), self.out)
+        code, result = fill_template.fill(self.job({"x": "1"}, stamp="ENTWURF – Fassung 3"))
 
         self.assertEqual(0, code, result)
-        path = os.path.join(self.out, "Bericht.docx")
-        self.assertIn("ENTWURF – Fassung 3", footer_text(path))
-        self.assertEqual("ENTWURF – Fassung 3", docx.Document(path).core_properties.comments)
+        self.assertIn("ENTWURF – Fassung 3", footer_text(self.result_docx()))
+        self.assertEqual("ENTWURF – Fassung 3",
+                         docx.Document(self.result_docx()).core_properties.comments)
 
     def test_the_stamp_is_not_rendered_as_a_template(self):
         make_template(self.template, ["{{ x }}"])
 
-        code, result = fill_template.fill(self.job({"x": "1"}, stamp="{{ 7*7 }}"), self.out)
+        code, result = fill_template.fill(self.job({"x": "1"}, stamp="{{ 7*7 }}"))
 
         self.assertEqual(0, code, result)
-        self.assertIn("{{ 7*7 }}", footer_text(os.path.join(self.out, "Bericht.docx")))
+        self.assertIn("{{ 7*7 }}", footer_text(self.result_docx()))
 
-    def test_the_output_name_stays_in_the_output_directory_and_never_overwrites(self):
+    def test_the_output_name_is_plain_and_the_output_directory_must_be_new(self):
         make_template(self.template, ["{{ x }}"])
 
-        first = fill_template.fill(self.job({"x": "1"}, output_name="../../etc/passwd"), self.out)
-        second = fill_template.fill(self.job({"x": "2"}, output_name="../../etc/passwd"), self.out)
+        first = fill_template.fill(self.job({"x": "1"}, output_name="../../etc/passwd"))
 
         self.assertEqual(["_.._etc_passwd.docx"], first[1]["files"])
-        self.assertEqual(["_.._etc_passwd-2.docx"], second[1]["files"])
-        self.assertEqual(sorted(os.listdir(self.out)), ["_.._etc_passwd-2.docx",
-                                                        "_.._etc_passwd.docx"])
+        self.assertEqual(["_.._etc_passwd.docx"], os.listdir(self.out))
+        with self.assertRaises(FileExistsError):
+            fill_template.fill(self.job({"x": "2"}))
 
     def test_data_that_is_no_object_is_refused(self):
         make_template(self.template, ["{{ x }}"])
 
-        code, result = fill_template.fill(self.job(["x"]), self.out)
+        code, result = fill_template.fill(self.job(["x"]))
 
         self.assertEqual(2, code)
         self.assertFalse(os.path.exists(self.out))
@@ -186,18 +242,37 @@ class FillTemplateTest(unittest.TestCase):
         self.assertEqual([], json.loads(lines[0])["files"])
 
     def test_docx_and_pdf_are_written(self):
-        if shutil.which("soffice") is None and not REQUIRE_SOFFICE:
-            self.skipTest("LibreOffice is only part of the sandbox image")
+        require_soffice(self)
         make_template(self.template, ["Betreff: {{ betreff }}"])
 
         code, result = fill_template.fill(
-            self.job({"betreff": "Test"}, formats=["docx", "pdf"]), self.out)
+            self.job({"betreff": "Test"}, formats=["docx", "pdf"], pdf_timeout_seconds=60))
 
         self.assertEqual(0, code, result)
         self.assertEqual(["Bericht.docx", "Bericht.pdf"], result["files"])
         self.assertEqual([], result["errors"])
         with open(os.path.join(self.out, "Bericht.pdf"), "rb") as pdf:
             self.assertEqual(b"%PDF-", pdf.read(5))
+
+    def test_a_conversion_beyond_its_time_keeps_the_docx(self):
+        make_template(self.template, ["{{ x }}"])
+        hanging = os.path.join(self.dir, "soffice")
+        with open(hanging, "w", encoding="utf-8") as script:
+            script.write("#!/bin/sh\nsleep 30\n")
+        os.chmod(hanging, 0o755)
+        original = fill_template.SOFFICE
+        fill_template.SOFFICE = hanging
+        try:
+            started = time.monotonic()
+            code, result = fill_template.fill(
+                self.job({"x": "1"}, formats=["pdf"], pdf_timeout_seconds=1))
+        finally:
+            fill_template.SOFFICE = original
+
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual(0, code, result)
+        self.assertEqual(["Bericht.docx"], result["files"])
+        self.assertIn("PDF", result["errors"][0])
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ describe('AgentRunSteps', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: /1 Schritt/ }))
     expect(screen.getByRole('listitem')).toHaveTextContent(
-      'Vorlage befüllt: Vermerk – Vermerk.docx, Vermerk.pdf',
+      'Vorlage: Vermerk – Vermerk.docx, Vermerk.pdf',
     )
   })
 

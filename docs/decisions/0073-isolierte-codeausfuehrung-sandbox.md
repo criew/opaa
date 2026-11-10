@@ -31,7 +31,8 @@ und Plattformkorrekturen nach, die ein Eigenbau selbst leisten müsste.
 ### 2. Eine Sandbox je Agentenlauf, nie geteilt
 
 Der erste Aufruf von `run_code` oder `fill_template` in einem Lauf öffnet eine Sandbox, weitere
-Aufrufe desselben Laufs, auch des jeweils anderen Werkzeugs, arbeiten im selben Ordner weiter. Das Lauf-Ende schließt sie in jedem Ausgang. Ihre Lebensdauer beim
+Aufrufe desselben Laufs, auch des jeweils anderen Werkzeugs, arbeiten im selben Ordner weiter. Das
+Lauf-Ende schließt sie in jedem Ausgang. Ihre Lebensdauer beim
 Dienst ist die Restzeit des Laufs plus Antwortaufrufe, gedeckelt durch `opaa.sandbox.max-lifetime`;
 fällt eine Instanz aus, löscht der Dienst sie selbst. Eine Sandbox gehört genau einem Lauf einer
 Person. Begründung: Ein Lauf lebt eine Anfrage lang (ADR-0070, Entscheidung 1); eine Korrekturrunde
@@ -40,16 +41,19 @@ geparkten Container.
 
 ### 3. Ergebnisse nur als Anhang der Antwort
 
-Am Ende des Laufs, bevor die Antwort gespeichert wird, liest das Backend die Dateien direkt in
-`/workspace/out` (höchstens fünf, je höchstens 10 MB, in einer festen Frist) in einem Format, das
-ein Werkzeug des Laufs zulässt: `run_code` jedes Anhangsformat, `fill_template` nur DOCX und PDF,
-und nimmt jede durch alle Prüfungen eines gewöhnlichen Uploads als Anhang der fragenden Person in
-deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als PDF oder eingebettet in ein
+Am Ende des Laufs, bevor die Antwort gespeichert wird, liest das Backend nach einem Aufruf von
+`run_code` die Dateien direkt in `/workspace/out` (höchstens fünf, je höchstens 10 MB, in einer
+festen Frist) in einem Anhangsformat. `fill_template` schreibt in ein eigenes, frisch angelegtes
+Verzeichnis je Aufruf, dessen Namen das Backend zufällig wählt; direkt nach dem Skript liest das
+Backend dort nur die Dateien, die das Skript gemeldet hat, nur DOCX und PDF, und behält sie bis zum
+Lauf-Ende. Jede Datei geht durch alle Prüfungen eines gewöhnlichen Uploads, ein DOCX zusätzlich
+durch die Prüfung auf aktive Inhalte wie beim Hochladen einer Vorlage (Entscheidung 8), und wird
+Anhang der fragenden Person in deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als PDF oder eingebettet in ein
 Dokument. Der Endstand zählt, nicht jeder Zwischenstand. Alles aus der Sandbox gilt als feindlich:
 Name, Pfad, Größe und Dateityp werden geprüft, Unterordner und Verweise nicht gelesen, Ausgaben und
 Dateinamen erreichen das Modell nur als markierter Datenblock. Eine Datei, die sich nicht abholen
-oder anhängen lässt, fehlt, ohne die Antwort zu verwerfen; was dem Modell als angehängt gemeldet
-wird, folgt denselben Regeln wie das Abholen.
+oder anhängen lässt, fehlt, ohne die Antwort zu verwerfen; `fill_template` meldet dem Modell nur
+Dateien, die es schon gelesen und geprüft hat.
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
@@ -97,13 +101,20 @@ mitgelieferte Konfiguration.
 geprüft gegen die beim Hochladen gelesenen Platzhalter der Vorlage. Das Backend lädt Vorlage und
 Werte in die Sandbox des Laufs und startet ein festes Skript aus dem Image (`/opt/opaa`, gehört
 Root, mit `python3 -I`, damit Dateien im Arbeitsordner kein Modul ersetzen). Das Skript füllt mit
-docxtpl in Jinjas Sandbox-Umgebung mit Autoescape, sodass ein Wert nie als Vorlage oder XML
-ausgewertet wird, und erzeugt das PDF mit LibreOffice ohne Oberfläche. Die Tests des Skripts laufen
-beim Bau des Images; scheitert einer, entsteht kein Image. Im Backend rendert nichts eine Vorlage:
-Jinja dort hieße Template-Injection im Prozess mit allen Daten. Ein Stempel- oder Entwurfstext für
-Fußzeile und Dokumenteigenschaften kommt als Parameter vom Backend, nie vom Modell. Scheitert das
-Skript oder ist die Sandbox nicht erreichbar, bekommt das Modell eine Meldung und antwortet im Chat;
-der Lauf endet nicht mit einem Fehler.
+docxtpl in Jinjas Sandbox-Umgebung mit Autoescape, sodass ein Wert nie als Vorlage ausgewertet und
+immer als Text eingesetzt wird, und erzeugt das PDF mit LibreOffice ohne Oberfläche, in einer Frist,
+die das Backend aus dem Zeitlimit des Aufrufs ableitet. Autoescape hebelt keine Vorlage aus: Die
+Umgebung kennt die Filter `safe`, `urlize`, `xmlattr` und die Funktion `lipsum` nicht, und das
+Skript weist eine Vorlage mit `autoescape`-Block oder einem dieser Namen ab, bevor es rendert; schon
+beim Hochladen lehnt das Backend sie ab. Zusätzlich prüft das Backend jedes DOCX aus der Sandbox auf
+aktive Inhalte (Makros, eingebettete Objekte, externe Verknüpfungen, Felder wie INCLUDEPICTURE oder
+DDE), bevor es Anhang wird, auch eines aus `run_code`. Fehlt ein Wert oder ist er `null`, setzt das
+Backend eine Liste leer und eine Bedingung auf nein; ein Text bleibt leer, und ein `default` der
+Vorlage greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer, entsteht kein
+Image. Im Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im Prozess mit
+allen Daten. Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt als
+Parameter vom Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht erreichbar,
+bekommt das Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler.
 
 ## Konsequenzen
 
@@ -114,6 +125,10 @@ der Lauf endet nicht mit einem Fehler.
   dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
   Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts.
+- **Restrisiko der geteilten Sandbox:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann
+  ein zurückgelassener Prozess die Ergebnisdatei von `fill_template` zwischen Schreiben und Lesen
+  ändern. Ein eigenes Verzeichnis mit Zufallsnamen je Aufruf, das sofortige Lesen und die Prüfung
+  auf aktive Inhalte begrenzen das auf Inhalte, die auch `run_code` selbst hätte anhängen können.
 
 ## Verworfene Alternativen
 
@@ -131,6 +146,7 @@ der Lauf endet nicht mit einem Fehler.
 - Vorlage im Backend füllen (Jinja-Engine im Prozess): Template-Injection mit Zugriff auf alle
   Daten (8).
 - Vorlage über `run_code` füllen lassen: Das Ergebnis hinge an ungeprüftem Modellcode (8).
+- Fehlende Textwerte als leere Zeichenkette setzen: `default` der Vorlage griffe dann nie (8).
 
 ## Offen
 

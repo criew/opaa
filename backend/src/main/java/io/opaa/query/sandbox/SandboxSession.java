@@ -38,6 +38,22 @@ public interface SandboxSession extends AutoCloseable {
   ScriptRun runInstalled(String scriptPath, List<String> arguments, Duration timeout);
 
   /**
+   * The plain files directly in {@code directory} with the size the sandbox reports, without
+   * reading them; bounded in number.
+   *
+   * @param directory below {@link Sandboxes#WORKSPACE_DIR}, plain segments only.
+   */
+  List<OutputEntry> listFiles(String directory);
+
+  /**
+   * One file of {@code directory}, read as it is now; {@code null} when it is larger than {@link
+   * Sandboxes#MAX_OUTPUT_FILE_BYTES}.
+   *
+   * @param name a plain file name as {@link #listFiles} listed it.
+   */
+  byte[] readFile(String directory, String name);
+
+  /**
    * The files directly in {@link Sandboxes#OUTPUT_DIR} with the size the sandbox reports, without
    * reading them; bounded in number.
    */

@@ -11,6 +11,7 @@ import io.opaa.query.sandbox.SandboxSession;
 import io.opaa.query.sandbox.SandboxSession.OutputEntry;
 import io.opaa.query.sandbox.SandboxSession.ScriptRun;
 import io.opaa.query.sandbox.Sandboxes;
+import io.opaa.template.DocxActiveContent;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -65,6 +66,7 @@ class RunCodeTool implements AgentTool {
   private final ChatAttachmentService attachmentService;
   private final SupportedDocumentFormats supportedFormats;
   private final AgentRunLogWriter runLogWriter;
+  private final DocxActiveContent docxActiveContent;
   private final Clock clock;
 
   /**
@@ -78,6 +80,7 @@ class RunCodeTool implements AgentTool {
       ChatAttachmentService attachmentService,
       SupportedDocumentFormats supportedFormats,
       AgentRunLogWriter runLogWriter,
+      DocxActiveContent docxActiveContent,
       Clock clock) {
     this.sandboxes = sandboxes;
     this.sandboxProperties = sandboxProperties;
@@ -85,6 +88,7 @@ class RunCodeTool implements AgentTool {
     this.attachmentService = attachmentService;
     this.supportedFormats = supportedFormats;
     this.runLogWriter = runLogWriter;
+    this.docxActiveContent = docxActiveContent;
     this.clock = clock;
     RunSandbox.requireLifetime(sandboxProperties, loopProperties);
   }
@@ -152,7 +156,8 @@ class RunCodeTool implements AgentTool {
                     attachmentService,
                     runLogWriter,
                     run,
-                    name()));
+                    name(),
+                    docxActiveContent::isPassive));
     sandbox.admit(name(), this::attachable);
     SandboxSession session = sandbox.session();
     // Starting the sandbox took part of the run's time; the script gets only what is left.

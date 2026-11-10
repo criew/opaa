@@ -18,7 +18,9 @@ OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welc
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht
 schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Objekte, eine
 verknüpfte Dokumentvorlage oder Felder wie DDE und INCLUDEPICTURE, die Inhalte nachladen. Links
-bleiben erlaubt.
+bleiben erlaubt. Abgelehnt werden auch Vorlagen, die einen Wert als Word-Code statt als Text
+einsetzen würden: die Filter `safe`, `urlize`, `xmlattr`, die Funktion `lipsum` und
+`{% autoescape %}`.
 
 ## Platzhalter schreiben
 
@@ -38,7 +40,10 @@ Ein Agent mit dem Werkzeug `fill_template` bekommt in jedem Lauf die Vorlagen an
 fragende Person lesen darf, jeweils mit ihren Platzhaltern. Das Modell liefert nur die Werte, etwa
 Aktenzeichen und Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
 [Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
-Schritte der Antwort zeigen „Vorlage befüllt“ mit Vorlage und Dateien. Fehlende Werte bleiben leer.
+Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert
+nicht, bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste hat keine Einträge,
+und eine Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert
+das Befüllen.
 
 Sind Vorlagen ausgeschaltet, darf die Person keine Vorlage lesen oder ist die Sandbox nicht
 erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt das dazu.

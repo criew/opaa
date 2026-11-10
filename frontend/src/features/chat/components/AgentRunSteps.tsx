@@ -10,7 +10,7 @@ const TOOL_LABELS: Record<string, string> = {
   read_document: 'Dokument gelesen',
   list_sources: 'Quellen aufgelistet',
   run_code: 'Code ausgeführt',
-  fill_template: 'Vorlage befüllt',
+  fill_template: 'Vorlage',
   ask_user: 'Rückfrage',
   unknown: 'Unbekanntes Werkzeug',
 }

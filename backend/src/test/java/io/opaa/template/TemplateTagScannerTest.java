@@ -31,6 +31,29 @@ class TemplateTagScannerTest {
   }
 
   @Test
+  void whatWouldInsertAValueAsRawWordXmlIsRefused() {
+    for (String template :
+        List.of(
+            "{{ (('%c'|format(60)) ~ 'w:fldSimple w:instr=\"INCLUDEPICTURE x\"/' ~ "
+                + "('%c'|format(62)))|safe }}",
+            "{{ x | safe }}",
+            "{% filter safe %}{{ x }}{% endfilter %}",
+            "{%- autoescape false -%}{{ x }}{% endautoescape %}",
+            "{{ [x]|map('safe')|join }}",
+            "{{ x|urlize }}",
+            "{{ d|xmlattr }}",
+            "{{ lipsum(1, true) }}")) {
+      assertThatThrownBy(() -> TemplateTagScanner.scan(template))
+          .as(template)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nur als Text");
+    }
+    assertThat(TemplateTagScanner.scan("{{ safety }}{# |safe #}{% raw %}{{ x|safe }}{% endraw %}"))
+        .extracting(TemplatePlaceholder::name)
+        .containsExactly("safety");
+  }
+
+  @Test
   void aValueUsedOnlyInAConditionIsACondition() {
     assertThat(TemplateTagScanner.scan("{% if eilig %}EILT{% else %}normal{% endif %}"))
         .containsExactly(new TemplatePlaceholder("eilig", PlaceholderKind.CONDITION, List.of()));

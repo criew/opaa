@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
 import org.slf4j.Logger;
@@ -24,9 +25,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The one sandbox of a run (ADR-0073), shared by every sandbox tool of the run: {@code run_code}
- * and {@code fill_template} work in the same directory. {@link #finish()} takes the files of the
- * output directory as the asker's attachments - only a file whose name a tool that ran here admits
- * ({@link #admit}), and only through every check of an ordinary upload; a file that cannot be read
+ * and {@code fill_template} work in the same directory. {@link #finish()} takes as the asker's
+ * attachments the files of the output directory whose name a tool that ran here admits ({@link
+ * #admit}), and the files a tool read back itself ({@link #claim}); each one through every check of
+ * an ordinary upload, a DOCX also through the check for active content. A file that cannot be read
  * back or that a check refuses is left out and counted in the log, without name, and never fails
  * the answer. {@link #close()} deletes the sandbox and appends one entry to the sandbox log: counts
  * and sizes, no script and no file name.
@@ -52,7 +54,9 @@ final class RunSandbox implements RunResource {
   private final AgentRunLogWriter runLogWriter;
   private final AgentRun run;
   private final String openedBy;
+  private final Predicate<byte[]> passiveDocx;
   private final Map<String, Predicate<String>> admitted = new LinkedHashMap<>();
+  private final List<SandboxSession.OutputFile> claimed = new ArrayList<>();
   private final long openedNanos = System.nanoTime();
   private int scriptRuns;
   private boolean timedOut;
@@ -66,8 +70,10 @@ final class RunSandbox implements RunResource {
       ChatAttachmentService attachmentService,
       AgentRunLogWriter runLogWriter,
       AgentRun run,
-      String openedBy) {
+      String openedBy,
+      Predicate<byte[]> passiveDocx) {
     this.session = session;
+    this.passiveDocx = passiveDocx;
     this.attachmentService = attachmentService;
     this.runLogWriter = runLogWriter;
     this.run = run;
@@ -85,11 +91,17 @@ final class RunSandbox implements RunResource {
       ChatAttachmentService attachmentService,
       AgentRunLogWriter runLogWriter,
       AgentRun run,
-      String tool) {
+      String tool,
+      Predicate<byte[]> passiveDocx) {
     long started = System.nanoTime();
     try {
       return new RunSandbox(
-          sandboxes.open(lifetime, readyWithin), attachmentService, runLogWriter, run, tool);
+          sandboxes.open(lifetime, readyWithin),
+          attachmentService,
+          runLogWriter,
+          run,
+          tool,
+          passiveDocx);
     } catch (RuntimeException e) {
       runLogWriter.writeSandbox(
           run.organizationId(),
@@ -146,6 +158,23 @@ final class RunSandbox implements RunResource {
     return admitted.values().stream().anyMatch(accepted -> accepted.test(fileName));
   }
 
+  /**
+   * Keeps a file a tool read back itself for the asker; {@code false} when the run already keeps
+   * {@link Sandboxes#MAX_OUTPUT_FILES} of them.
+   */
+  synchronized boolean claim(SandboxSession.OutputFile file) {
+    if (claimed.size() >= Sandboxes.MAX_OUTPUT_FILES) {
+      return false;
+    }
+    claimed.add(file);
+    return true;
+  }
+
+  /** Whether {@code content} may be attached as a DOCX: without active content. */
+  boolean passiveDocx(byte[] content) {
+    return passiveDocx.test(content);
+  }
+
   synchronized void scriptRan(ScriptRun result) {
     scriptRuns++;
     timedOut |= result.timedOut();
@@ -153,17 +182,24 @@ final class RunSandbox implements RunResource {
 
   @Override
   public synchronized List<ChatAttachment> finish() {
-    List<SandboxSession.OutputFile> files;
-    try {
-      files = session.collectOutput(this::admits, COLLECT_WITHIN);
-    } catch (RuntimeException e) {
-      collectFailed = true;
-      log.warn("Agent run {}: sandbox files could not be collected", run.runId(), e);
-      return List.of();
+    List<SandboxSession.OutputFile> files = new ArrayList<>();
+    if (!admitted.isEmpty()) {
+      try {
+        files.addAll(session.collectOutput(this::admits, COLLECT_WITHIN));
+      } catch (RuntimeException e) {
+        collectFailed = true;
+        log.warn("Agent run {}: sandbox files could not be collected", run.runId(), e);
+      }
     }
+    files.addAll(claimed);
     List<ChatAttachment> attachments = new ArrayList<>();
     int refused = 0;
     for (SandboxSession.OutputFile file : files) {
+      if (file.name().toLowerCase(Locale.ROOT).endsWith(".docx")
+          && !passiveDocx.test(file.content())) {
+        refused++;
+        continue;
+      }
       try {
         attachments.add(
             attachmentService
