@@ -1,6 +1,8 @@
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
@@ -40,7 +42,9 @@ export default function AssetFilterChips({
 }: AssetFilterChipsProps) {
   const chipSx = (theme: Theme) =>
     compact ? { [compact(theme)]: { '& .MuiChip-label': { px: 1 } } } : {}
-  // Narrow, the favourites chip shows its star alone; the label stays as its accessible name.
+  // Narrow, the favourites chip shows its star alone; the label stays as its accessible name and
+  // a tooltip names it, as for every icon-only control (guidelines 5.1).
+  const starOnly = useMediaQuery((theme: Theme) => (compact ? compact(theme) : '(width < 0px)'))
   const favoritesSx = (theme: Theme) =>
     compact
       ? {
@@ -69,15 +73,17 @@ export default function AssetFilterChips({
           })}
         />
       )}
-      <Chip
-        label="Favoriten"
-        icon={value.favorites ? <StarIcon /> : <StarBorderIcon />}
-        color={value.favorites ? 'primary' : 'default'}
-        variant={value.favorites ? 'filled' : 'outlined'}
-        aria-pressed={value.favorites}
-        onClick={() => onToggle('favorites')}
-        sx={favoritesSx}
-      />
+      <Tooltip title={starOnly ? 'Favoriten' : ''}>
+        <Chip
+          label="Favoriten"
+          icon={value.favorites ? <StarIcon /> : <StarBorderIcon />}
+          color={value.favorites ? 'primary' : 'default'}
+          variant={value.favorites ? 'filled' : 'outlined'}
+          aria-pressed={value.favorites}
+          onClick={() => onToggle('favorites')}
+          sx={favoritesSx}
+        />
+      </Tooltip>
       {value.selectedOnly !== undefined && (
         <Chip
           label={selectedOnlyLabel}
