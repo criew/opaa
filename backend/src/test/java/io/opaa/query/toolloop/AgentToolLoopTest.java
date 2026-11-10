@@ -28,6 +28,7 @@ import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
@@ -37,6 +38,7 @@ import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.AgentTurn;
 import io.opaa.query.QueryResult;
+import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.citation.ChatSourceAssembler;
@@ -87,6 +89,7 @@ import tools.jackson.databind.json.JsonMapper;
 class AgentToolLoopTest {
 
   private final AgentRunLogWriter runLogWriter = mock(AgentRunLogWriter.class);
+  private final ActiveAnswerStreams activeStreams = new ActiveAnswerStreams();
 
   private static final Instant NOW = Instant.parse("2026-11-10T08:00:00Z");
 
@@ -176,6 +179,7 @@ class AgentToolLoopTest {
         provider(null),
         JsonMapper.builder().build(),
         runLogWriter,
+        activeStreams,
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -398,6 +402,338 @@ class AgentToolLoopTest {
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
     verify(workspace).release(any());
     assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aStreamedRunReportsEachStepAndItsEndThenTheProvisionalAnswerBeforeKeepingIt()
+      throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    String text = "Regel 【source: doc-1#0 | regeln.pdf】, Frist 【source: doc-2#0 | fristen.pdf】.";
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer(text));
+
+    loop().handle(turn(stream));
+
+    var order = org.mockito.Mockito.inOrder(stream, chatService);
+    order.verify(stream).started();
+    order.verify(stream).stepStarted(0, ToolNames.SEARCH_KNOWLEDGE, "Regeln");
+    order
+        .verify(stream)
+        .stepFinished(
+            0, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, "Regeln", 1, StepStatus.DONE));
+    order.verify(stream).stepStarted(1, ToolNames.SEARCH_KNOWLEDGE, "Fristen");
+    order
+        .verify(stream)
+        .stepFinished(
+            1, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, "Fristen", 1, StepStatus.DONE));
+    order.verify(stream).runFinished(EndState.COMPLETED);
+    order.verify(stream).provisional(text, true);
+    order.verify(stream).beforeKeeping();
+    order
+        .verify(chatService)
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(stream, never()).limitReached(any());
+  }
+
+  @Test
+  void aStopAskedDuringAModelCallEndsTheRunBeforeTheToolEvenThoughEveryWriteSucceeds()
+      throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.atomic.AtomicBoolean stopped =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    when(workspace.cancelRequested(any())).thenAnswer(call -> stopped.get());
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              // the person presses stop while the model works; the connection still takes writes
+              stopped.set(true);
+              return toolCall("call-1", "{\"frage\":\"Regeln\"}");
+            });
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval, never()).retrieveAsGiven(any(), anySet(), any());
+    verify(stream, never()).stepStarted(anyInt(), any(), any());
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theRunStartsWithTheTokenThatStopsIt() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+
+    QueryResult result = loop().handle(turn(stream));
+
+    ArgumentCaptor<String> token = ArgumentCaptor.captor();
+    verify(stream).runStarted(eq(result.agentRun().runId()), token.capture());
+    verify(workspace).armCancel(eq(result.agentRun().runId()), any(), eq(token.getValue()));
+    assertThat(token.getValue()).hasSizeGreaterThanOrEqualTo(32);
+  }
+
+  @Test
+  void aStreamedRunPingsItsReaderWhileTheModelWorks() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              Thread.sleep(300);
+              return answer("Fertig.");
+            });
+    AgentToolLoop pinging = loop();
+    pinging.heartbeat = Duration.ofMillis(40);
+
+    pinging.handle(turn(stream));
+
+    // one sign of life before the model call, the pings from the clock while the model works
+    verify(stream).idle();
+    verify(stream, org.mockito.Mockito.atLeast(3)).ping();
+  }
+
+  @Test
+  void aPingThatFindsTheReaderGoneEndsTheRunBeforeTheTool() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    org.mockito.Mockito.doThrow(new java.io.IOException("gone")).when(stream).ping();
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              Thread.sleep(300);
+              return toolCall("call-1", "{\"frage\":\"Regeln\"}");
+            });
+    AgentToolLoop pinging = loop();
+    pinging.heartbeat = Duration.ofMillis(40);
+
+    assertThatThrownBy(() -> pinging.handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval, never()).retrieveAsGiven(any(), anySet(), any());
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void theStopOfTheInstanceEndsAWaitingRunAtOnceWithShuttingDown() throws Exception {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.CountDownLatch modelCalled = new java.util.concurrent.CountDownLatch(1);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              modelCalled.countDown();
+              try {
+                new java.util.concurrent.CountDownLatch(1).await();
+              } catch (InterruptedException e) {
+                // as the HTTP client of a model call reports an interrupted wait
+                throw new IllegalStateException("model call interrupted", e);
+              }
+              return answer("Nie.");
+            });
+    Thread stopper =
+        Thread.ofPlatform()
+            .start(
+                () -> {
+                  try {
+                    modelCalled.await();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  }
+                  activeStreams.stop();
+                });
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOfSatisfying(
+            ServiceUnavailableException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ActiveAnswerStreams.SHUTTING_DOWN));
+
+    stopper.join();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theStopOfTheInstanceDuringAToolInterruptsNothingAndEndsTheRunBeforeTheNextModelCall() {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.atomic.AtomicBoolean interruptedInTool =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    when(retrieval.retrieveAsGiven(eq("Regeln"), anySet(), any()))
+        .thenAnswer(
+            call -> {
+              activeStreams.stop();
+              interruptedInTool.set(Thread.currentThread().isInterrupted());
+              return result(passageOne);
+            });
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer("Nie."));
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOfSatisfying(
+            ServiceUnavailableException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ActiveAnswerStreams.SHUTTING_DOWN));
+
+    assertThat(interruptedInTool).isFalse();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    verify(chatModel, times(1)).call(any(Prompt.class));
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aTurnKeptWhileTheInstanceStopsIsReportedKeptAndItsThreadIsNotInterrupted() {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+    when(chatService.appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              // the stop arrives after the last checkpoint, while the turn is being kept
+              activeStreams.stop();
+              return "Titel";
+            });
+    // what follows the commit must not meet an interrupt that turns a kept turn into a failure
+    java.util.concurrent.atomic.AtomicBoolean interruptedAfterKeeping =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    org.mockito.Mockito.doAnswer(
+            call -> {
+              interruptedAfterKeeping.compareAndSet(false, Thread.currentThread().isInterrupted());
+              return null;
+            })
+        .when(chatMemory)
+        .add(any(), any(Message.class));
+
+    QueryResult result = loop().handle(turn(stream));
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    assertThat(interruptedAfterKeeping).isFalse();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    assertThat(runs("custom", "aborted")).isZero();
+  }
+
+  @Test
+  void aStopAfterTheRunEndedNeverReachesItsThread() {
+    activeStreams.start();
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+    loop().handle(turn(mock(AnswerStreamListener.class)));
+
+    activeStreams.stop();
+
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+  }
+
+  @Test
+  void theStepsStayOutOfTheConversationWindowOfLaterQuestions() {
+    when(retrieval.retrieveAsGiven(eq("Dienstvereinbarung"), anySet(), any()))
+        .thenReturn(result(passageOne));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Dienstvereinbarung\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps()).hasSize(2);
+    ArgumentCaptor<Message> window = ArgumentCaptor.captor();
+    verify(chatMemory, times(2)).add(eq("key"), window.capture());
+    assertThat(window.getAllValues())
+        .extracting(Message::getText)
+        .containsExactly("Wie lauten Regel und Frist?", "Fertig.");
+  }
+
+  @Test
+  void aStepStartShowsNoRawArgumentSuchAsADocumentId() throws Exception {
+    withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.READ_DOCUMENT);
+    when(chunkLookup.findRange(eq("doc-1"), eq(0), eq(2), anySet()))
+        .thenReturn(List.of(passageOne));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall(
+                "call-2",
+                ToolNames.READ_DOCUMENT,
+                "{\"dokument\":\"doc-1\",\"abschnitt\":0,\"umfang\":\"umgebung\"}"),
+            answer("Fertig."));
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+
+    loop().handle(turn(stream));
+
+    verify(stream).stepStarted(1, ToolNames.READ_DOCUMENT, null);
+    verify(stream)
+        .stepFinished(
+            1, new AgentRunRecord.Step(ToolNames.READ_DOCUMENT, "regeln.pdf", 1, StepStatus.DONE));
+  }
+
+  @Test
+  void aReaderThatLeavesDuringARunEndsItBeforeTheNextToolCallAndKeepsNothing() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    org.mockito.Mockito.doThrow(new java.io.IOException("gone"))
+        .when(stream)
+        .stepStarted(eq(1), any(), any());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(
+                List.of(
+                    new Generation(
+                        AssistantMessage.builder()
+                            .toolCalls(
+                                List.of(
+                                    new AssistantMessage.ToolCall(
+                                        "call-1",
+                                        "function",
+                                        ToolNames.SEARCH_KNOWLEDGE,
+                                        "{\"frage\":\"Regeln\"}"),
+                                    new AssistantMessage.ToolCall(
+                                        "call-2",
+                                        "function",
+                                        ToolNames.SEARCH_KNOWLEDGE,
+                                        "{\"frage\":\"Fristen\"}")))
+                            .build()))),
+            answer("Nie gelesen."));
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval).retrieveAsGiven(eq("Regeln"), anySet(), any());
+    verify(retrieval, never()).retrieveAsGiven(eq("Fristen"), anySet(), any());
+    verify(chatModel, times(1)).call(any(Prompt.class));
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(chatMemory, never()).add(any(), any(Message.class));
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aStreamedRunAnnouncesTheLimitOnceWhenItReachesIt() throws Exception {
+    List<ChatResponse> script = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      script.add(toolCall("call-" + i, "{\"frage\":\"Regeln\"}"));
+    }
+    script.add(answer("Bisher gefunden."));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(script.get(0), script.subList(1, script.size()).toArray(ChatResponse[]::new));
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+
+    loop().handle(turn(stream));
+
+    var order = org.mockito.Mockito.inOrder(stream);
+    order.verify(stream).limitReached(EndState.LIMIT_CALLS);
+    order
+        .verify(stream)
+        .stepFinished(
+            3, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, null, null, StepStatus.LIMIT));
+    order.verify(stream).runFinished(EndState.LIMIT_CALLS);
+    verify(stream, times(1)).limitReached(any());
+    verify(stream, never()).stepStarted(eq(3), any(), any());
   }
 
   @Test

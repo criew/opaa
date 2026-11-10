@@ -501,6 +501,70 @@ class ChatServiceIntegrationTest {
     assertThat(detail.getMessages().get(1).getEvidence()).isEqualTo(evidence);
   }
 
+  /**
+   * An agent run's steps stay with the answer's message in the history (ADR-0070, Bestand a) and
+   * nowhere else: not in the conversation window of later questions, not in the title and not in
+   * the chat's full-text search.
+   */
+  @Test
+  void theStepsOfAnAgentRunAreShownInTheHistoryButReachNoPromptTitleOrSearch() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    List<Prompt> titlePrompts = new java.util.concurrent.CopyOnWriteArrayList<>();
+    doAnswer(
+            call -> {
+              titlePrompts.add(call.getArgument(0));
+              return new ChatResponse(
+                  List.of(new Generation(new AssistantMessage("Kündigungsfrist"))));
+            })
+        .when(chatModel)
+        .call(any(Prompt.class));
+    AgentRunRecord run =
+        new AgentRunRecord(
+            UUID.randomUUID(),
+            AgentRunRecord.EndState.COMPLETED,
+            List.of(
+                new AgentRunRecord.Step(
+                    "search_knowledge",
+                    "Dienstvereinbarung Rufbereitschaft",
+                    2,
+                    AgentRunRecord.StepStatus.DONE)));
+
+    chatService.appendTurn(
+        chat,
+        "Wie lang ist die Kündigungsfrist?",
+        null,
+        "Sie beträgt drei Monate.",
+        List.of(),
+        null,
+        List.of(),
+        List.of(),
+        run);
+
+    ChatConversation detail = chatService.getChat(chat.getId(), author);
+    assertThat(detail.getMessages().get(1).getAgentRun()).isEqualTo(run);
+    assertThat(detail.getMessages().get(1).getContent()).isEqualTo("Sie beträgt drei Monate.");
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 10))
+        .extracting(Message::getText)
+        .containsExactly("Wie lang ist die Kündigungsfrist?", "Sie beträgt drei Monate.");
+    await().atMost(5, TimeUnit.SECONDS).until(() -> !titlePrompts.isEmpty());
+    assertThat(titlePrompts.getFirst().getContents())
+        .doesNotContain("Dienstvereinbarung")
+        .doesNotContain("Rufbereitschaft");
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(chatService.getChat(chat.getId(), author).getTitle())
+                    .isEqualTo("Kündigungsfrist"));
+    assertThat(chatService.searchChats(spaceId, author, "Dienstvereinbarung", null, null).matches())
+        .isEmpty();
+    assertThat(chatService.searchChats(spaceId, author, "Rufbereitschaft", null, null).matches())
+        .isEmpty();
+    assertThat(chatService.searchChats(spaceId, author, "Monate", null, null).matches()).hasSize(1);
+  }
+
   @Test
   void appendTurnDoesNotOverwriteAnExplicitlySetTitle() {
     UUID author = createUser();
