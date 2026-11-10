@@ -16,6 +16,7 @@
 # than GET and HEAD that a backend has received is never sent to a second one, neither when that
 # backend closes the connection without an answer nor when the answer outlasts
 # OPAA_BACKEND_READ_TIMEOUT; next to an address that refuses connections it is still answered.
+# The access log names neither the token of a mail link nor the code of a callback.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -181,6 +182,23 @@ grep -q '"PUT /api/v1/me/quick-tour-control ' <<<"$access_lines" &&
 [[ "$(grep -c 'quick-tour-marker-id' <<<"$access_lines" || true)" == 1 ]] &&
   echo "logged as expected: the request id of the control request only" ||
   fail "the request id of the quick-tour marker is in the access log, or the control's is not"
+# The token of a mail link and the code of a callback stay out of the access log, in the request
+# line and in the Referer of the page's own asset requests; the page itself is logged.
+link_secret="maillinksentinel0123456789"
+for page in /set-password /verify-email /handover /auth/callback /connections/callback; do
+  curl -sS -o /dev/null --max-time 10 "$base$page?token=$link_secret&state=x" || true
+  curl -sS -o /dev/null --max-time 10 -H "Referer: $base$page/?token=$link_secret" \
+    "$base/runtime-config.js" || true
+done
+access_lines="$(docker logs "$frontend" 2>/dev/null | grep '" [0-9][0-9][0-9] ' || true)"
+if grep -q "$link_secret" <<<"$access_lines"; then
+  fail "the access log carries the token of a mail link or the code of a callback"
+else
+  echo "left out as expected: the token of a mail link and the code of a callback"
+fi
+grep -q '"GET /set-password HTTP' <<<"$access_lines" &&
+  echo "logged as expected: the page of a mail link without its query" ||
+  fail "the access log lacks the page of a mail link"
 
 echo "--- request id"
 # A valid X-Request-Id reaches the upstream and the access log unchanged; any other is replaced
