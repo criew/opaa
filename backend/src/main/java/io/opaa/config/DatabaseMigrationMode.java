@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.CoreErrorCode;
 import org.flywaydb.core.api.FlywayException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,8 +125,10 @@ public final class DatabaseMigrationMode {
   }
 
   /**
-   * Polls until the database records every migration {@code flyway} resolves; returns 0 then, or 1
-   * when interrupted. An unreachable database or a missing schema history counts as "not yet".
+   * Polls until the database records every migration {@code flyway} resolves; returns 0 then, 1
+   * when interrupted, or 2 when a recorded migration differs from this version's script (a history
+   * from before a baseline rewrite): no migration step can bring such a database up to date. An
+   * unreachable database or a missing schema history counts as "not yet".
    */
   static int await(Flyway flyway) {
     long lastPending = -1;
@@ -140,6 +143,12 @@ public final class DatabaseMigrationMode {
         pending = -1;
       }
       if (pending == 0) {
+        if (checksumMismatch(flyway)) {
+          log.error(
+              "The database records migrations whose checksums differ from this version's scripts;"
+                  + " it predates a baseline rewrite and has to be set up anew");
+          return 2;
+        }
         log.info("The database holds all migrations of this version");
         return 0;
       }
@@ -164,6 +173,15 @@ public final class DatabaseMigrationMode {
    */
   static long pending(Flyway flyway) {
     return flyway.info().pending().length;
+  }
+
+  /** Whether a recorded migration's checksum differs from the script of this version. */
+  static boolean checksumMismatch(Flyway flyway) {
+    return flyway.validateWithResult().invalidMigrations.stream()
+        .anyMatch(
+            invalid ->
+                invalid.errorDetails != null
+                    && invalid.errorDetails.errorCode == CoreErrorCode.CHECKSUM_MISMATCH);
   }
 
   /**

@@ -7,8 +7,8 @@ Das Werkzeug ist Flyway Community (Apache-2.0); warum nicht Liquibase, steht in
 ## Baselines
 
 Die Historie wurde mehrfach zu einer Baseline zusammengefasst: beim Umstieg von Liquibase auf
-Flyway (ADR-0056) und zuletzt im November 2026, als die Flyway-Migrationen seitdem in die Baselines
-eingingen. Jedes Modul hat genau eine Baseline `V1.<n>__<modul>_baseline.sql`, die den Endstand der
+Flyway (ADR-0056) und im November 2026, als die seither entstandenen Flyway-Migrationen in die
+Baselines eingingen. Jedes Modul hat genau eine Baseline `V1.<n>__<modul>_baseline.sql`, die den Endstand der
 vorherigen Historie wiedergibt. Schema, Eigentümer, Rechte, Partitionen und gelieferte Zeilen einer
 frischen Datenbank sind dabei unverändert geblieben (Abgleich per `pg_dump`), bis auf entfallene
 Spalten, deren Contract-Schritt die Zusammenfassung übernimmt. Jede bestehende Installation wird
@@ -254,7 +254,7 @@ Instanz DDL ausführt. Indextyp und Distanz kommen aus `spring.ai.vectorstore.pg
 Keine Migration legt `vector_store` an; `MigrationSchema` führt die Tabelle mit den Spalten, die
 `VectorTableCreator` anlegt.
 
-Eine bestehende Installation übernimmt beim ersten Start ihr bisher konfiguriertes Embedding-Modell
+Nur der Modus `dev` richtet sein Embedding-Modell selbst ein: Er übernimmt das konfigurierte Modell
 einmalig nach `embedding_model` (`EmbeddingModelService#adoptIfMissing`, aufgerufen von der
 Startentscheidung der Installation). Mit vorhandener Tabelle nur, wenn die Konfiguration das Modell
 nennt, das `embedding_index` verzeichnet (bei laufender Neueinbettung das Ziel), und mit der

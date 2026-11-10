@@ -12,9 +12,8 @@
  * applied together through {@link io.opaa.migration.Migrations#baselines()}. {@link
  * io.opaa.migration.MigrationBaselineTest} asserts what spans all modules; each module's invariants
  * live in its own subclass of {@link io.opaa.migration.AbstractBaselineTest} ({@code
- * IdentityBaselineTest}, {@code RightsBaselineTest}, ...), next to the privilege models, the
- * retention deletion and the guarded {@code vector_store} migrations, which keep classes of their
- * own.
+ * IdentityBaselineTest}, {@code RightsBaselineTest}, ...), next to the privilege models and the
+ * retention deletion, which keep classes of their own.
  *
  * <p><b>Every later migration gets its own delta test here</b>, except purely additive DDL that
  * touches no existing row (new table, nullable column without default, non-unique index); that

@@ -802,9 +802,9 @@ CREATE TABLE installation_steps (
 );
 
 -- The embedding model of the installation (ADR-0060, Entscheidung 10), one row once it is chosen:
--- written when the installation is completed, or once at the start of an installation that
--- predates it. dimensions is what a probe embedding returned or what the existing vector column
--- declares; vector_store is created with it. The key is encrypted with the settings key.
+-- written when the installation is completed, or by the dev mode at its start. dimensions is what a
+-- probe embedding returned or what the existing vector column declares; vector_store is created
+-- with it. The key is encrypted with the settings key.
 CREATE TABLE embedding_model (
     id smallint NOT NULL,
     base_url character varying(500) NOT NULL,

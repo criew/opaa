@@ -801,8 +801,7 @@ CREATE TABLE audit_chat_cleanup_hold_monthly_counts (
     CONSTRAINT fk_audit_chat_cleanup_hold_monthly_counts_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
--- The requests for the AUDITOR role (docs/features/access-control.md, Trennung von
--- Systemverwaltung und Revision): a system administrator or a provider's roles claim asks, an
+-- The requests for the AUDITOR role (separation of system administration and audit): a system administrator or a provider's roles claim asks, an
 -- auditor confirms or declines. One request per account. A decided request of the administration
 -- is deleted, its trace is the audit log; a declined request of a provider stays as declined_at, so
 -- the claim the next sign-in carries again does not reopen it, and ends once the claim no longer

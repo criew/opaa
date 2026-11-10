@@ -14,8 +14,8 @@ Speicherkontingent privater Bibliotheken (`PersonalStorageQuota`) oder der Volla
 Confluence, Google Drive, SharePoint/OneDrive und Dropbox. Für Betrieb und Verwaltung ist so schwer
 zu erkennen, welcher Wert gilt; `OPAA_OIDC_BOOTSTRAP=force` existiert nur als Notbehelf dafür.
 
-Die Vektordimension steht als Flyway-Platzhalter (`VectorStoreMigrationPlaceholders`) in der
-Migration, die `vector_store` anlegt. Das Schema entsteht damit, bevor jemand ein Embedding-Modell
+Die Vektordimension steht als Flyway-Platzhalter in der Migration, die `vector_store` anlegt.
+Das Schema entsteht damit, bevor jemand ein Embedding-Modell
 gewählt hat. Die Erstinstallation verlangt eine `.env` mit Startwerten, deren Wirkung nach dem
 ersten Start endet.
 
