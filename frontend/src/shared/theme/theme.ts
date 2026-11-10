@@ -415,7 +415,17 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         },
         MuiToggleButton: {
           styleOverrides: {
-            root: { fontSize: fontSize.text },
+            // Same heights as buttons: 36 px, compact 32 px around a 20 px line and a 1 px border.
+            root: {
+              fontSize: fontSize.text,
+              lineHeight: `${CONTROL_LINE_PX}px`,
+              paddingTop: (controlHeight.regular - CONTROL_LINE_PX - 2) / 2,
+              paddingBottom: (controlHeight.regular - CONTROL_LINE_PX - 2) / 2,
+            },
+            sizeSmall: {
+              paddingTop: (controlHeight.compact - CONTROL_LINE_PX - 2) / 2,
+              paddingBottom: (controlHeight.compact - CONTROL_LINE_PX - 2) / 2,
+            },
           },
         },
         MuiSelect: {

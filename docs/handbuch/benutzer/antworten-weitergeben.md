@@ -9,7 +9,8 @@
    „Nur Text“.
 2. In Word oder E-Mail einfügen.
 
-Kopierte Antworten enthalten einen KI-Vermerk mit Datum.
+Kopierte Antworten enthalten einen KI-Vermerk mit Datum. Bilder und Links zu nicht erlaubten
+Zielen kommen wie in der Anzeige als Text mit ihrer Adresse mit.
 
 ## Chat exportieren
 

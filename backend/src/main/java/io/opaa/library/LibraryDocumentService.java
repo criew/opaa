@@ -831,40 +831,21 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       documentRepository.delete(descendant);
     }
 
-    // Row first, chunks after commit: a racing upload task's conditional markIndexed then affects
-    // zero rows and removes the chunks it just wrote itself.
+    // Row first, then the chunks in the same transaction: a racing upload task's conditional
+    // markIndexed affects zero rows once this commits and removes the chunks it just wrote itself.
     documentRepository.delete(document);
     noteRevisit(document);
     assetRepository.markContentChanged(document.getLibraryId(), Instant.now(clock));
+    // The row deletes must hold their locks before the chunk deletes run over JDBC.
+    documentRepository.flush();
 
-    // Chunks and file go only after commit, so a rollback keeps them. Each step is guarded on its
-    // own: a failed chunk delete neither fails the committed request nor skips the file, and leaves
-    // orphaned chunks without a retry (accepted).
-    deleteAfterCommit(
-        () -> {
-          for (UUID attachmentId : attachmentChunkFilterIds) {
-            try {
-              vectorChunkStore.deleteByDocumentId(attachmentId);
-            } catch (RuntimeException e) {
-              log.error(
-                  "Failed to remove vector store chunks for deleted attachment {} of document {} -"
-                      + " orphaned chunks may remain",
-                  attachmentId,
-                  chunkFilterDocumentId,
-                  e);
-            }
-          }
-          try {
-            vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
-          } catch (RuntimeException e) {
-            log.error(
-                "Failed to remove vector store chunks for deleted document {} - orphaned chunks may"
-                    + " remain",
-                chunkFilterDocumentId,
-                e);
-          }
-          ownOriginal.ifPresent(uploadedOriginalStore::delete);
-        });
+    // A failed chunk delete fails the whole deletion, so the row stays and no chunk outlives its
+    // document; the stored original goes only after commit, so a rollback keeps it.
+    for (UUID attachmentId : attachmentChunkFilterIds) {
+      vectorChunkStore.deleteByDocumentId(attachmentId);
+    }
+    vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
+    deleteAfterCommit(() -> ownOriginal.ifPresent(uploadedOriginalStore::delete));
   }
 
   /**

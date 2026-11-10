@@ -10,7 +10,7 @@ import { delay } from 'msw'
  * - `scale`: hundreds of entries, deep folder trees and 80-120 character names
  * - `empty`: listings answer with zero entries
  * - `slow`: listings and connection tests answer after three seconds; the chat answer starts
- *   after two seconds and arrives word by word
+ *   after two seconds and arrives word by word, an agent's steps (question "@test …") one by one
  * - `failed`: listings fail (HTTP 403/502), connection tests report a refused sign-in
  * - `partial`: listings are incomplete, connection tests fail for some scopes
  */

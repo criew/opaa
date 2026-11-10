@@ -47,6 +47,7 @@ class DocumentSelfDisclosureExporterIntegrationTest {
   @Test
   void listsOwnUploadsAndPrivateLibraryDocumentsOnlyAsDirectory() throws Exception {
     UUID shared = data.library("Gemeinsame Ablage", other, false, "UPLOAD");
+    data.grant(shared, person, "EDITOR");
     UUID ownUpload =
         data.document(
             shared, "antrag.pdf", "SD-LOCATOR-shared", "SD-FOLDER-shared", "UPLOAD", person, "SD1");
@@ -113,5 +114,28 @@ class DocumentSelfDisclosureExporterIntegrationTest {
         .doesNotContain(ownUpload.toString())
         .doesNotContain("otto")
         .doesNotContain(other.toString());
+  }
+
+  /**
+   * An upload into a library the person no longer reads stays in her directory, but the library's
+   * name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void anUploadIntoALibraryWithoutReadRightAppearsWithoutTheLibraryName() throws Exception {
+    UUID left = data.library("Neuer Name ohne Leserecht", other, false, "UPLOAD");
+    data.document(left, "alter-antrag.pdf", "SD-LOCATOR-left", null, "UPLOAD", person, "SD7");
+
+    CapturingSelfDisclosureSink sink =
+        new CapturingSelfDisclosureSink(DocumentSelfDisclosureExporter.CATEGORY);
+    exporter.export(new SelfDisclosureSubject(person, data.organizationId()), sink);
+
+    assertThat(sink.records("uploads"))
+        .singleElement()
+        .satisfies(
+            record -> {
+              assertThat(record).containsEntry("fileName", "alter-antrag.pdf");
+              assertThat(record).containsEntry("library", "(kein Leserecht)");
+            });
+    assertThat(sink.text()).doesNotContain("Neuer Name ohne Leserecht");
   }
 }

@@ -1,5 +1,6 @@
 package io.opaa.prompt;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -68,6 +69,27 @@ class PromptServiceSaveTest {
 
     assertThatThrownBy(() -> promptService.create(library.getId(), content(), caller))
         .isSameAs(foreignKey);
+  }
+
+  /** A shared prompt holds nothing its readers cannot see: invisible characters are not stored. */
+  @Test
+  void invisibleCharactersAreNotStored() {
+    when(promptRepository.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
+    String tags = "\uDB40\uDC49\uDB40\uDC47";
+    PromptContent hidden =
+        new PromptContent(
+            "vermerk",
+            "Vermerk\u200B",
+            "Kurz\u202E",
+            "Bitte formulieren." + tags + "\u2066",
+            List.of(),
+            0);
+
+    Prompt saved = promptService.create(library.getId(), hidden, caller);
+
+    assertThat(saved.getText()).isEqualTo("Bitte formulieren.");
+    assertThat(saved.getTitle()).isEqualTo("Vermerk");
+    assertThat(saved.getDescription()).isEqualTo("Kurz");
   }
 
   private static DataIntegrityViolationException violation(String constraint) {

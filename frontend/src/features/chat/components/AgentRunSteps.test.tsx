@@ -23,8 +23,8 @@ describe('AgentRunSteps', () => {
     await userEvent.click(toggle)
 
     const items = screen.getAllByRole('listitem')
-    expect(items[0]).toHaveTextContent('Wissen durchsucht: Reisekosten Inland · 4 Treffer')
-    expect(items[1]).toHaveTextContent('Tagegeld · 0 Treffer · nichts gefunden')
+    expect(items[0]).toHaveTextContent('Suche: Reisekosten Inland · 4 Treffer')
+    expect(items[1]).toHaveTextContent('Suche: Tagegeld · 0 Treffer · Leer')
     expect(screen.queryByText('nicht geprüft')).not.toBeInTheDocument()
     expect(
       screen.getByText(/Laufkennung für die Fehlersuche: 00000000-0000-0000-0000-000000000001/),
@@ -37,9 +37,51 @@ describe('AgentRunSteps', () => {
     expect(screen.getByText(/Höchstzahl an Schritten/)).toBeInTheDocument()
   })
 
+  it('names a filled template with its files', async () => {
+    render(
+      <AgentRunSteps
+        run={{
+          ...RUN,
+          steps: [
+            {
+              tool: 'fill_template',
+              detail: 'Vermerk – Vermerk.docx, Vermerk.pdf',
+              hits: null,
+              status: 'DONE',
+            },
+          ],
+        }}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /1 Schritt/ }))
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'Vorlage: Vermerk – Vermerk.docx, Vermerk.pdf',
+    )
+  })
+
   it('marks a run that asked back as a question, not as unchecked', () => {
     render(<AgentRunSteps run={{ ...RUN, endState: 'ASK_USER' }} />)
     expect(screen.getByText('Rückfrage')).toBeInTheDocument()
     expect(screen.queryByText('nicht geprüft')).not.toBeInTheDocument()
+  })
+
+  it('never shows a tool name or a raw argument, also not for an unknown tool', async () => {
+    render(
+      <AgentRunSteps
+        run={{
+          ...RUN,
+          steps: [
+            { tool: 'unknown', hits: null, status: 'UNKNOWN_TOOL' },
+            { tool: 'read_document', detail: 'regeln.pdf', hits: 2, status: 'DONE' },
+          ],
+        }}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /2 Schritte/ }))
+
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent(/^Werkzeug · Unbekannt$/)
+    expect(items[1]).toHaveTextContent(/^Lesen: regeln.pdf · 2 Treffer$/)
+    expect(screen.queryByText(/unknown|read_document/)).not.toBeInTheDocument()
   })
 })

@@ -17,5 +17,6 @@ steht der Titel an der Frage.
 
 - „Diesem Space sind keine Prompts zugeordnet“: Wer den Space kuratiert, kann eine
   Prompt-Bibliothek zuordnen ([Katalog nutzen](katalog.md#in-einem-space-verwenden)).
-- Für Suche und Antwort macht ein Prompt keinen Unterschied; er ist nur Text.
+- Für Suche und Antwort macht ein Prompt keinen Unterschied; er ist nur Text. Mit einem Agenten
+  zusammen bearbeitet der Agent den Prompttext ([Agenten verwenden](agenten-verwenden.md)).
 - Wer welchen Prompt wie oft nutzt, wird weder protokolliert noch gezählt.

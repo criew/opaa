@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { responseStatus } from '../stores/chatRefusals'
+import type { LiveAgentRun } from '../types/chat'
 import { STREAM_BROKEN_MESSAGE, streamQuery } from './queryStream'
 
 const FINAL_RESPONSE = {
@@ -79,6 +80,154 @@ describe('streamQuery', () => {
     expect(seen).toEqual(['Die Frist ', 'Die Frist beträgt', 'Neu: ', 'Neu: einen Monat.'])
     expect(response.answer).toBe('Die Frist beträgt einen Monat.')
     expect(response.chatId).toBe('chat-1')
+  })
+
+  it("tells an agent run's steps, its limit and its end as they arrive", async () => {
+    server.use(
+      http.post('/api/v1/query/stream', () =>
+        streamOf([
+          event({ type: 'started' }),
+          event({
+            type: 'step_started',
+            step: { index: 0, tool: 'search_knowledge', detail: 'Dienstvereinbarung' },
+          }),
+          ': ping\n\n',
+          event({
+            type: 'step_finished',
+            step: {
+              index: 0,
+              tool: 'search_knowledge',
+              detail: 'Dienstvereinbarung',
+              hits: 3,
+              status: 'DONE',
+            },
+          }),
+          event({ type: 'limit_reached', endState: 'LIMIT_CALLS' }),
+          event({
+            type: 'step_finished',
+            step: { index: 1, tool: 'search_knowledge', detail: null, hits: null, status: 'LIMIT' },
+          }),
+          event({ type: 'run_finished', endState: 'LIMIT_CALLS' }),
+          event({ type: 'reset', text: 'Die Frist beträgt einen Monat.' }),
+          event({ type: 'final', response: FINAL_RESPONSE }),
+        ]),
+      ),
+    )
+    const runs: LiveAgentRun[] = []
+    const texts: string[] = []
+
+    await streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+      onProvisional: (text) => texts.push(text),
+      onAgentRun: (run) => runs.push(run),
+    })
+
+    expect(runs.map((run) => run.steps.map((step) => step.status ?? 'RUNNING'))).toEqual([
+      ['RUNNING'],
+      ['DONE'],
+      ['DONE'],
+      ['DONE', 'LIMIT'],
+      ['DONE', 'LIMIT'],
+    ])
+    expect(runs.map((run) => [run.limitReached, run.ended])).toEqual([
+      [false, false],
+      [false, false],
+      [true, false],
+      [true, false],
+      [true, true],
+    ])
+    expect(texts).toEqual(['Die Frist beträgt einen Monat.'])
+  })
+
+  it('stops an agent run over its token when the person cancels', async () => {
+    let release: () => void = () => {}
+    const cancelled: unknown[] = []
+    server.use(
+      http.post('/api/v1/query/stream', () => {
+        const encoder = new TextEncoder()
+        return new HttpResponse(
+          new ReadableStream({
+            async start(controller) {
+              controller.enqueue(encoder.encode(event({ type: 'started' })))
+              controller.enqueue(
+                encoder.encode(
+                  event({
+                    type: 'run_started',
+                    runId: '00000000-0000-4000-8000-000000000001',
+                    cancelToken: 'geheim',
+                  }),
+                ),
+              )
+              await new Promise<void>((resolve) => {
+                release = resolve
+              })
+              controller.close()
+            },
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        )
+      }),
+      http.post('/api/v1/query/stream/cancel', async ({ request }) => {
+        cancelled.push(await request.json())
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const runs: LiveAgentRun[] = []
+    const abort = new AbortController()
+
+    const asked = streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+      onProvisional: () => {},
+      onAgentRun: (run) => runs.push(run),
+      signal: abort.signal,
+    })
+    await expect.poll(() => runs.length).toBe(1)
+    abort.abort()
+    await expect(asked).rejects.toBeDefined()
+    release()
+
+    await expect.poll(() => cancelled).toEqual([{ cancelToken: 'geheim' }])
+    expect(runs[0].runId).toBe('00000000-0000-4000-8000-000000000001')
+  })
+
+  it('asks no stop for an ordinary answer that is cancelled', async () => {
+    const cancelled: unknown[] = []
+    server.use(
+      http.post('/api/v1/query/stream', () => streamOf([event({ type: 'started' })])),
+      http.post('/api/v1/query/stream/cancel', () => {
+        cancelled.push(true)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const abort = new AbortController()
+    abort.abort()
+
+    await expect(
+      streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+        onProvisional: () => {},
+        signal: abort.signal,
+      }),
+    ).rejects.toBeDefined()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(cancelled).toEqual([])
+  })
+
+  it('tells no agent run for an ordinary answer', async () => {
+    server.use(
+      http.post('/api/v1/query/stream', () =>
+        streamOf([
+          event({ type: 'started' }),
+          event({ type: 'delta', text: 'Antwort' }),
+          event({ type: 'final', response: FINAL_RESPONSE }),
+        ]),
+      ),
+    )
+    const runs: LiveAgentRun[] = []
+
+    await streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+      onProvisional: () => {},
+      onAgentRun: (run) => runs.push(run),
+    })
+
+    expect(runs).toEqual([])
   })
 
   it('rejects an error event like the status it names, so that a refusal is recognised', async () => {

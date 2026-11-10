@@ -15,6 +15,7 @@ import java.util.UUID;
  * @param builtin {@code true} only for an agent the installation ships; the metric tag {@code
  *     kind}.
  * @param confirmPlan whether the agent asks for confirmation of a plan before it works.
+ * @param name the agent's name as the person chose it, kept with the answer; {@code null} for none.
  */
 public record AgentRunSpec(
     UUID agentId,
@@ -24,7 +25,21 @@ public record AgentRunSpec(
     Set<String> toolNames,
     AgentLimits limits,
     boolean confirmPlan,
-    boolean builtin) {
+    boolean builtin,
+    String name) {
+
+  /** A spec without a name to show at the answer. */
+  public AgentRunSpec(
+      UUID agentId,
+      int version,
+      String instruction,
+      Set<UUID> libraryIds,
+      Set<String> toolNames,
+      AgentLimits limits,
+      boolean confirmPlan,
+      boolean builtin) {
+    this(agentId, version, instruction, libraryIds, toolNames, limits, confirmPlan, builtin, null);
+  }
 
   public AgentRunSpec {
     libraryIds = libraryIds == null ? Set.of() : Set.copyOf(libraryIds);
