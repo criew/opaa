@@ -7847,7 +7847,10 @@ Konfigurationsabdrucks ab oder lässt die neue Version die laufende nicht in ihr
 verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die alten Pods antworten
 weiter.</p>
 <p>Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
-weiter. Das Protokoll des Jobs nennt den Grund (<code>kubectl -n opaa logs job/&lt;Name&gt;</code>). Nach der
+weiter. Das Protokoll des Jobs nennt den Grund (<code>kubectl -n opaa logs job/&lt;Name&gt;</code>). Nennt es
+„Migration checksum mismatch“, stammt die Datenbank aus der Zeit vor einer neuen Baseline und wird
+neu aufgesetzt; was dabei verloren geht, steht unter
+<a href="docker-compose.html#neu-aufsetzen-statt-aktualisieren">Neu aufsetzen statt aktualisieren</a>. Nach der
 Behebung den gescheiterten Job löschen (<code>kubectl -n opaa delete job &lt;Name&gt;</code>) und <code>helm upgrade</code>
 wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update oder lässt
 die neue Version die laufende nicht zu, gehört <code>--set backend.updateStrategy=Recreate</code> an diesen
