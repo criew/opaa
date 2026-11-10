@@ -18,6 +18,8 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DocxTemplateInspectorTest {
 
@@ -129,6 +131,75 @@ class DocxTemplateInspectorTest {
     assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("nachladen");
+  }
+
+  /**
+   * A field instruction counts as Word reads it: joined across runs, under any namespace prefix,
+   * with character references resolved, and in a simple field with either quote.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+            + "<w:r><w:instrText xml:space=\"preserve\"> INCLUDE</w:instrText></w:r>"
+            + "<w:r><w:instrText>PICTURE \"https://x.example/p.png\" \\d</w:instrText></w:r>"
+            + "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>x</w:t></w:r>"
+            + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>",
+        "<x:p xmlns:x=\""
+            + W
+            + "\"><x:r><x:instrText> DDEAUTO cmd \"/c calc\"</x:instrText>"
+            + "</x:r></x:p>",
+        "<w:p><w:r><w:instrText>&#73;NCLUDETEXT \"c:/geheim.docx\"</w:instrText></w:r></w:p>",
+        "<w:p><w:fldSimple w:instr=' INCLUDETEXT \"c:/geheim.docx\" '><w:r><w:t>x</w:t></w:r>"
+            + "</w:fldSimple></w:p>"
+      })
+  void aFieldThatPullsInContentIsRefusedHoweverItIsWritten(String field) throws IOException {
+    Path file = write(withDocumentXml(field));
+
+    assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nachladen");
+  }
+
+  @Test
+  void aMergeFieldSplitAcrossRunsStaysAllowed() throws IOException {
+    Path file =
+        write(
+            withDocumentXml(
+                "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+                    + "<w:r><w:instrText> MERGE</w:instrText></w:r>"
+                    + "<w:r><w:instrText>FIELD Name</w:instrText></w:r>"
+                    + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"));
+
+    assertThat(inspector.inspect(file, "vorlage.docx", Files.size(file))).isNotEmpty();
+  }
+
+  private static final String W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+  /** A valid template whose main part is replaced by a body with a placeholder and {@code xml}. */
+  private static byte[] withDocumentXml(String xml) throws IOException {
+    String document =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            + "<w:document xmlns:w=\""
+            + W
+            + "\"><w:body><w:p><w:r><w:t>{{ a }}</w:t></w:r></w:p>"
+            + xml
+            + "</w:body></w:document>";
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in =
+            new ZipInputStream(new ByteArrayInputStream(TestDocx.withParagraphs("{{ a }}")));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        if (entry.getName().equals("word/document.xml")) {
+          zip.write(document.getBytes(StandardCharsets.UTF_8));
+        } else {
+          in.transferTo(zip);
+        }
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
   }
 
   private static byte[] withPackage(

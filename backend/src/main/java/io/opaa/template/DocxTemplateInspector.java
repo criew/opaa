@@ -6,8 +6,9 @@ import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
@@ -15,6 +16,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
@@ -60,10 +65,13 @@ class DocxTemplateInspector {
       Set.of(
           "attachedtemplate", "oleobject", "package", "subdocument", "afchunk", "frame", "control");
 
+  private static final String WORDPROCESSING_ML =
+      "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+  /** A field instruction that pulls in or executes content, by its field name. */
   private static final Pattern ACTIVE_FIELD =
       Pattern.compile(
-          "(?:<w:instrText[^>]*>|w:instr=\")\\s*(?:DDE|DDEAUTO|INCLUDETEXT|INCLUDEPICTURE)\\b",
-          Pattern.CASE_INSENSITIVE);
+          "^\\s*(?:DDE|DDEAUTO|INCLUDETEXT|INCLUDEPICTURE)\\b", Pattern.CASE_INSENSITIVE);
 
   private final ParserLimitProperties limits;
 
@@ -176,11 +184,11 @@ class DocxTemplateInspector {
       }
       if (contentType.contains("wordprocessingml") && contentType.endsWith("+xml")) {
         try (InputStream content = part.getInputStream()) {
-          if (ACTIVE_FIELD
-              .matcher(new String(content.readAllBytes(), StandardCharsets.UTF_8))
-              .find()) {
+          if (hasActiveField(content)) {
             throw activeContent();
           }
+        } catch (XMLStreamException e) {
+          throw new IOException("Unreadable part " + name, e);
         }
       }
     }
@@ -196,5 +204,83 @@ class DocxTemplateInspector {
         || (relationship.getTargetMode() == TargetMode.EXTERNAL && !HYPERLINK.equals(type))) {
       throw activeContent();
     }
+  }
+
+  /**
+   * Whether the WordprocessingML {@code xml} holds a field of {@link #ACTIVE_FIELD}. Read as XML,
+   * not as text: an instruction counts with any namespace prefix and any character references, the
+   * text of all {@code instrText} runs of one field (from its {@code fldChar} begin to its
+   * separator) is joined before the check, and a simple field counts by its {@code instr}
+   * attribute.
+   */
+  static boolean hasActiveField(InputStream xml) throws XMLStreamException {
+    XMLInputFactory factory = XMLInputFactory.newInstance();
+    factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+    factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, true);
+    XMLStreamReader reader = factory.createXMLStreamReader(xml);
+    try {
+      // One instruction per open field; the innermost is on top. Instruction text outside any
+      // field is checked on its own.
+      Deque<StringBuilder> fields = new ArrayDeque<>();
+      StringBuilder loose = new StringBuilder();
+      boolean inInstruction = false;
+      while (reader.hasNext()) {
+        int event = reader.next();
+        if (event == XMLStreamConstants.START_ELEMENT) {
+          if (hasActiveInstrAttribute(reader)) {
+            return true;
+          }
+          if (!WORDPROCESSING_ML.equals(reader.getNamespaceURI())) {
+            continue;
+          }
+          String local = reader.getLocalName();
+          if ("instrText".equals(local)) {
+            inInstruction = true;
+            loose.setLength(0);
+          } else if ("fldChar".equals(local)) {
+            String type = reader.getAttributeValue(WORDPROCESSING_ML, "fldCharType");
+            if ("begin".equals(type)) {
+              fields.push(new StringBuilder());
+            } else if (("separate".equals(type) || "end".equals(type)) && !fields.isEmpty()) {
+              if (isActive(fields.pop().toString())) {
+                return true;
+              }
+              if ("separate".equals(type)) {
+                // The field's result follows: what its end closes is no instruction any more.
+                fields.push(new StringBuilder());
+              }
+            }
+          }
+        } else if (event == XMLStreamConstants.CHARACTERS && inInstruction) {
+          (fields.isEmpty() ? loose : fields.peek()).append(reader.getText());
+        } else if (event == XMLStreamConstants.END_ELEMENT
+            && WORDPROCESSING_ML.equals(reader.getNamespaceURI())
+            && "instrText".equals(reader.getLocalName())) {
+          inInstruction = false;
+          if (fields.isEmpty() && isActive(loose.toString())) {
+            return true;
+          }
+        }
+      }
+      return fields.stream().anyMatch(open -> isActive(open.toString()));
+    } finally {
+      reader.close();
+    }
+  }
+
+  private static boolean hasActiveInstrAttribute(XMLStreamReader reader) {
+    for (int i = 0; i < reader.getAttributeCount(); i++) {
+      if (WORDPROCESSING_ML.equals(reader.getAttributeNamespace(i))
+          && "instr".equals(reader.getAttributeLocalName(i))
+          && isActive(reader.getAttributeValue(i))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isActive(String instruction) {
+    return ACTIVE_FIELD.matcher(instruction).find();
   }
 }
