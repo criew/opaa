@@ -201,6 +201,41 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     assertThat(records(entries.get("favorites.json"), "asset")).isEqualTo(1);
   }
 
+  /**
+   * A favorite and a space assignment of an asset the person no longer reads keep their record, but
+   * the asset's name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void anAssetThePersonNoLongerReadsAppearsWithoutItsName() throws IOException {
+    UUID unreadable = asset("PROMPT_LIBRARY", "sd2991 Nicht mehr lesbar", other);
+    jdbc.update(
+        "INSERT INTO asset_favorites (asset_id, user_id, organization_id) VALUES (?, ?, ?)",
+        unreadable,
+        person,
+        organization);
+    UUID ownSpace =
+        jdbc.queryForObject(
+            "SELECT id FROM spaces WHERE name = 'sd2991 Mein Space' AND organization_id = ?",
+            UUID.class,
+            organization);
+    jdbc.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id) VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        ownSpace,
+        unreadable,
+        organization,
+        person);
+
+    Map<String, String> entries = export(person);
+
+    assertThat(String.join("\n", entries.values())).doesNotContain("sd2991 Nicht mehr lesbar");
+    assertThat(entries.get("favorites.json"))
+        .contains("\"asset\":\"sd2991 Geteiltes Asset\"", "\"asset\":\"(kein Leserecht)\"");
+    assertThat(entries.get("spaces.json"))
+        .contains("\"asset\":\"sd2991 Meine Prompts\"", "\"asset\":\"(kein Leserecht)\"");
+  }
+
   @Test
   void aSuccessionCaseGoesToWhoOwnedTheAssetWhenItWasFirstSeenNotToTheSuccessor()
       throws IOException {

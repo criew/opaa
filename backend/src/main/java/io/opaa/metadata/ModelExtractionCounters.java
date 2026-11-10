@@ -15,7 +15,9 @@ import org.springframework.stereotype.Component;
  * counting row is upserted with additive increments, so two concurrent ingests of the same library
  * cannot lose a call; the rejection log is capped per library ({@link #REJECTION_CAP}) and rotates,
  * because its purpose is the current confidence distribution, not a permanent archive of every
- * value the model ever proposed.
+ * value the model ever proposed. A rejection keeps field, confidence and reason but never the
+ * proposed value: {@code proposed_value} stays empty, so text taken from a document cannot outlive
+ * the document's deletion in this log.
  */
 @Component
 public class ModelExtractionCounters {
@@ -71,12 +73,11 @@ public class ModelExtractionCounters {
     for (ModelExtractionTally.ModelExtractionRejection rejection : tally.rejections()) {
       jdbcTemplate.update(
           "INSERT INTO metadata_model_rejections (id, library_id, document_id, field_key,"
-              + " proposed_value, confidence, reason) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              + " confidence, reason) VALUES (?, ?, ?, ?, ?, ?)",
           UUID.randomUUID(),
           libraryId,
           documentId,
           rejection.fieldKey(),
-          truncate(rejection.proposedValue()),
           rejection.confidence(),
           rejection.reason().name());
     }
@@ -94,6 +95,11 @@ public class ModelExtractionCounters {
         libraryId,
         libraryId,
         REJECTION_CAP);
+    // Values written before the log stopped keeping them leave with the library's next rotation.
+    jdbcTemplate.update(
+        "UPDATE metadata_model_rejections SET proposed_value = NULL"
+            + " WHERE library_id = ? AND proposed_value IS NOT NULL",
+        libraryId);
   }
 
   /** The Zählwerk of every library in {@code libraryIds}; a library without one reads as zero. */
@@ -133,12 +139,5 @@ public class ModelExtractionCounters {
   /** {@link #statsFor(Collection)} for one library. */
   public ModelExtractionStats statsFor(UUID libraryId) {
     return statsFor(List.of(libraryId)).get(libraryId);
-  }
-
-  private static String truncate(String value) {
-    if (value == null) {
-      return null;
-    }
-    return value.length() <= 200 ? value : value.substring(0, 200);
   }
 }

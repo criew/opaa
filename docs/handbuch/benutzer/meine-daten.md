@@ -22,7 +22,9 @@ Vergessen? „Passwort vergessen“ auf der Anmeldeseite, sonst hilft die System
    maschinenlesbare Datei.
 
 Dokumentinhalte, Passwörter und Tokens fehlen darin. Darüber gibt die oder der
-Datenschutzbeauftragte Auskunft.
+Datenschutzbeauftragte Auskunft. Ein Asset, das Sie nicht mehr lesen dürfen, steht bei Favoriten,
+Zuordnungen zu Spaces, eigenen Uploads und Quellen Ihrer Chats als „(kein Leserecht)“ statt mit
+seinem heutigen Namen.
 
 **Gut zu wissen:**
 

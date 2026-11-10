@@ -84,6 +84,12 @@ public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
 
+  /**
+   * Separates the conversation key of an ephemeral conversation from that of a stored chat with the
+   * same id: a stored chat's key is {@code userId:chatId}, an ephemeral one never is.
+   */
+  static final String EPHEMERAL_KEY_INFIX = ":ephemeral:";
+
   private final KnowledgeRetrieval knowledgeRetrieval;
   private final RetrievalContextFactory retrievalContextFactory;
   private final SearchScopeResolver searchScopeResolver;
@@ -319,13 +325,15 @@ public class QueryService {
           // A chatId that does not resolve to an owned persisted chat (including "none
           // given") runs ephemerally rather than being rejected, reused as the in-memory
           // conversation-cache key when the caller supplied one, or freshly generated
-          // otherwise. Always qualified with currentUserId: without this, an unresolved
-          // chatId (unknown, or another user's real chat id) would collide with the cache
-          // key that chat's owner's own persisted-chat path uses, leaking one user's
-          // conversation history into another's prompt.
+          // otherwise. Always qualified with currentUserId, so one account never reads
+          // another's window, and an ephemeral key never equals a stored chat's key, so the id
+          // of a deleted chat never reads the window that chat left in this process.
           UUID effectiveChatId =
               chat.map(Chat::getId).orElseGet(() -> chatId != null ? chatId : UUID.randomUUID());
-          String conversationKey = currentUserId + ":" + effectiveChatId;
+          String conversationKey =
+              chat.isPresent()
+                  ? currentUserId + ":" + effectiveChatId
+                  : currentUserId + EPHEMERAL_KEY_INFIX + effectiveChatId;
           boolean historyCut = seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
           // The Gesprächsnotiz as it stands *before* this turn - the state that goes into

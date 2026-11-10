@@ -47,6 +47,7 @@ class DocumentSelfDisclosureExporterIntegrationTest {
   @Test
   void listsOwnUploadsAndPrivateLibraryDocumentsOnlyAsDirectory() throws Exception {
     UUID shared = data.library("Gemeinsame Ablage", other, false, "UPLOAD");
+    data.grant(shared, person, "EDITOR");
     UUID ownUpload =
         data.document(
             shared, "antrag.pdf", "SD-LOCATOR-shared", "SD-FOLDER-shared", "UPLOAD", person, "SD1");

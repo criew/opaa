@@ -899,6 +899,9 @@ components:
           format: uuid
         name:
           type: string
+          description: >
+            The library's name. In the caller's own list only while the caller may still read the
+            library, otherwise the neutral placeholder "(kein Leserecht)".
         suspended:
           type: boolean
           description: >

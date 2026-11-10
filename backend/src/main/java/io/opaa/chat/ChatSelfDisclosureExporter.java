@@ -7,6 +7,8 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSink.RecordWriter;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -99,13 +102,16 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
   private final ChatMessageRepository messageRepository;
+  private final ReadableAssetNames assetNames;
   private final JsonMapper json = JsonMapper.builder().build();
 
   public ChatSelfDisclosureExporter(
       JdbcTemplate jdbc,
       PlatformTransactionManager transactionManager,
-      ChatMessageRepository messageRepository) {
+      ChatMessageRepository messageRepository,
+      ReadableAssetNames assetNames) {
     this.jdbc = jdbc;
+    this.assetNames = assetNames;
     this.messageRepository = messageRepository;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
@@ -166,7 +172,8 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     int afterSequence = Integer.MIN_VALUE;
     while (true) {
       int after = afterSequence;
-      List<Map<String, Object>> page = readOnly.execute(s -> messagePage(chat, after));
+      List<Map<String, Object>> page =
+          readOnly.execute(s -> messagePage(chat, subject.accountId(), after));
       if (page == null || page.isEmpty()) {
         return;
       }
@@ -243,7 +250,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
         CHAT_PAGE_SIZE);
   }
 
-  private List<Map<String, Object>> messagePage(ChatHead chat, int afterSequence) {
+  private List<Map<String, Object>> messagePage(ChatHead chat, UUID accountId, int afterSequence) {
     List<StoredMessage> stored =
         messageRepository
             .findByChatIdAndSequenceGreaterThanOrderBySequenceAsc(
@@ -261,7 +268,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                         agentRunOf(message.getAgentRun()),
                         sourcesOf(message.getSources())))
             .toList();
-    Map<UUID, String> libraries = libraryNames(stored, chat.organizationId());
+    Map<UUID, String> libraries = libraryNames(stored, chat.organizationId(), accountId);
     List<Map<String, Object>> page = new ArrayList<>(stored.size());
     for (StoredMessage message : stored) {
       boolean answer = "ASSISTANT".equals(message.role());
@@ -286,8 +293,12 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     return page;
   }
 
-  /** The current library name of every document a source of {@code messages} names. */
-  private Map<UUID, String> libraryNames(List<StoredMessage> messages, UUID organizationId) {
+  /**
+   * The current library name of every document a source of {@code messages} names, only while
+   * {@code accountId} may still read the library ({@link ReadableAssetNames}).
+   */
+  private Map<UUID, String> libraryNames(
+      List<StoredMessage> messages, UUID organizationId, UUID accountId) {
     Set<UUID> documents = new LinkedHashSet<>();
     messages.forEach(
         m ->
@@ -299,14 +310,25 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     if (documents.isEmpty()) {
       return names;
     }
+    Map<UUID, UUID> libraryOf = new HashMap<>();
     jdbc.query(
-        "SELECT d.id, a.name FROM documents d JOIN assets a ON a.id = d.library_id"
+        "SELECT d.id, d.library_id, a.name FROM documents d JOIN assets a ON a.id = d.library_id"
             + " WHERE d.id = ANY (?) AND d.organization_id = ?",
         rs -> {
           names.put(rs.getObject("id", UUID.class), rs.getString("name"));
+          libraryOf.put(rs.getObject("id", UUID.class), rs.getObject("library_id", UUID.class));
         },
         documents.toArray(UUID[]::new),
         organizationId);
+    Set<UUID> readable =
+        assetNames.readableAmong(
+            KnowledgeLibrary.ASSET_TYPE.value(), new HashSet<>(libraryOf.values()), accountId);
+    libraryOf.forEach(
+        (document, library) -> {
+          if (!readable.contains(library)) {
+            names.put(document, ReadableAssetNames.UNREADABLE);
+          }
+        });
     return names;
   }
 

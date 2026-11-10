@@ -10,17 +10,20 @@ import io.opaa.compliance.SelfDisclosureCategory.Section;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The category {@code spaces} of the self-disclosure: the spaces the person owns with their model
- * instruction, her own memberships and the assets she assigned to a space. Memberships through a
- * group are not hers and stay out; her group memberships are in the category {@code groups}.
+ * instruction, her own memberships and the assets she assigned to a space, an asset's name only
+ * while she may still read it ({@link ReadableAssetNames}). Memberships through a group are not
+ * hers and stay out; her group memberships are in the category {@code groups}.
  */
 @Component
 public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -61,10 +64,12 @@ public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public SpaceSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -123,25 +128,30 @@ public class SpaceSelfDisclosureExporter implements SelfDisclosureExporter {
         sink,
         "assignments",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT x.id, s.name AS space_name, a.asset_type, a.name AS asset_name,"
-                    + " x.created_at FROM space_asset_associations x"
-                    + " LEFT JOIN spaces s ON s.id = x.space_id"
-                    + " LEFT JOIN assets a ON a.id = x.asset_id"
-                    + " WHERE x.created_by_user_id = ? AND x.organization_id = ?"
-                    + " AND (x.created_at, x.id) > (?, ?) ORDER BY x.created_at, x.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "id");
-                  record.put("space", rs.getString("space_name"));
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("asset_name"));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  return record;
-                },
+            names.apply(
                 subject.accountId(),
-                subject.organizationId(),
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT x.id, x.asset_id, s.name AS space_name, a.asset_type, a.name AS asset_name,"
+                        + " x.created_at FROM space_asset_associations x"
+                        + " LEFT JOIN spaces s ON s.id = x.space_id"
+                        + " LEFT JOIN assets a ON a.id = x.asset_id"
+                        + " WHERE x.created_by_user_id = ? AND x.organization_id = ?"
+                        + " AND (x.created_at, x.id) > (?, ?) ORDER BY x.created_at, x.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "id");
+                      record.put("space", rs.getString("space_name"));
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("asset_name"));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      return record;
+                    },
+                    subject.accountId(),
+                    subject.organizationId(),
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
   }
 }

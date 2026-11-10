@@ -16,7 +16,8 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
    Ausschnitten für einige Werkzeuge.
 
 Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
-anzeigen: neues Token erzeugen, altes widerrufen.
+anzeigen: neues Token erzeugen, altes widerrufen. Eine Bibliothek, die Sie nicht mehr lesen dürfen,
+steht in der Liste als „(kein Leserecht)“ statt mit ihrem Namen.
 
 ## Beispiel OpenCode
 
