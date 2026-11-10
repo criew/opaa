@@ -74,6 +74,7 @@ export default function ChatsPage() {
   const isLoading = useChatListStore((s) => s.isLoading)
   const isLoadingArchive = useChatListStore((s) => s.isLoadingArchive)
   const error = useChatListStore((s) => s.error)
+  const loadError = useChatListStore((s) => s.loadError)
   const loadChats = useChatListStore((s) => s.loadChats)
   const loadArchivedChats = useChatListStore((s) => s.loadArchivedChats)
   const applyBulkAction = useChatListStore((s) => s.applyBulkAction)
@@ -219,9 +220,11 @@ export default function ChatsPage() {
   const activeCount = chats?.length ?? 0
   const archivedCount = archive?.totalElements ?? 0
   const isTabLoading = tab === 'active' ? chats === undefined && isLoading : isLoadingArchive
-  // The tab's list never arrived: only the load notice stands, never next to an empty text.
+  // Nothing to show and the load failed: only the load notice stands, never next to an empty text.
   const tabFailed =
-    !isTabLoading && error !== null && (tab === 'active' ? chats === undefined : !archive)
+    !isTabLoading &&
+    loadError !== null &&
+    (tab === 'active' ? !chats?.length : !archive?.items.length)
   const tabPanelId = `${idPrefix}-panel`
   const tabId = (value: ChatsTab) => `${idPrefix}-tab-${value}`
   const selectedChats = rows.filter((chat) => selection.has(chat.id))
@@ -243,7 +246,8 @@ export default function ChatsPage() {
           )}
         </Box>
 
-        {error && !tabFailed && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error">{error}</Alert>}
+        {loadError && !tabFailed && <Alert severity="error">{loadError}</Alert>}
 
         <TextField
           type="search"
@@ -384,7 +388,7 @@ export default function ChatsPage() {
               ) : tabFailed ? (
                 <LoadError
                   message="Chats konnten nicht geladen werden."
-                  detail={error}
+                  detail={loadError}
                   onRetry={() =>
                     void (tab === 'active'
                       ? loadChats(spaceId)

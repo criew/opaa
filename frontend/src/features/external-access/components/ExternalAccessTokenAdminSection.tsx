@@ -213,6 +213,8 @@ export default function ExternalAccessTokenAdminSection({
           label="Zustand"
           value={status}
           onChange={(e) => setStatus(e.target.value as ExternalAccessTokenStatus | 'ALL')}
+          // The first filter of the list, where „Filter zurücksetzen" hands the focus back.
+          slotProps={{ select: { SelectDisplayProps: { 'data-list-search': '' } as object } }}
           sx={{ minWidth: 200 }}
         >
           {STATUS_OPTIONS.map((option) => (

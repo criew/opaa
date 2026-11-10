@@ -156,7 +156,7 @@ export default function OverviewPage<T>({
     !search || search.resultFor === undefined || (search.resultFor === query.trim() && !isLoading)
 
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
+    <Box data-list-scope="" sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box
         sx={{
           display: 'flex',

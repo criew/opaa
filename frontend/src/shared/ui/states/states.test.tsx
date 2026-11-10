@@ -84,6 +84,30 @@ describe('EmptyState', () => {
     expect(screen.getByText('Bauamt')).toBeInTheDocument()
   })
 
+  it('looks for the search field only inside its own list', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <>
+        <section aria-label="Andere Liste">
+          <ListSearch
+            value=""
+            onChange={() => {}}
+            placeholder="z. B. Bauamt"
+            label="Andere Suche"
+          />
+        </section>
+        <section aria-label="Diese Liste">
+          <EmptyState kind="noMatch" onReset={() => {}} />
+        </section>
+      </>,
+    )
+
+    const reset = screen.getByRole('button', { name: 'Filter zurücksetzen' })
+    await user.click(reset)
+
+    expect(screen.getByRole('textbox', { name: 'Andere Suche' })).not.toHaveFocus()
+  })
+
   it('tells the three empty states apart', () => {
     const { container } = renderWithProviders(
       <>

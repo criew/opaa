@@ -38,11 +38,18 @@ export type EmptyStateProps = Common &
     | { kind: 'noAccess'; message: Sentence }
   )
 
-/** The search field nearest to `from`, the place a reset hands the focus back to. */
+/** Where a list ends: the search is looked for inside it, never in a neighbouring list. */
+const LIST_SCOPE = '[data-list-scope], section, [role="dialog"], [role="region"], main'
+
+/**
+ * The search field (`data-list-search`) of the list `from` belongs to, the place a reset hands
+ * the focus back to; null if that list has none.
+ */
 function nearestSearchField(from: HTMLElement | null): HTMLElement | null {
   for (let scope = from?.parentElement ?? null; scope; scope = scope.parentElement) {
-    const field = scope.querySelector<HTMLElement>('[data-list-search], input[type="search"]')
+    const field = scope.querySelector<HTMLElement>('[data-list-search]')
     if (field) return field
+    if (scope.matches(LIST_SCOPE)) return null
   }
   return null
 }

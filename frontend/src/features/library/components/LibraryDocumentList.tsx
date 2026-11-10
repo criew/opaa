@@ -347,7 +347,7 @@ export default function LibraryDocumentList({
   }
 
   return (
-    <Box>
+    <Box data-list-scope="">
       {breadcrumb}
 
       {(showSearch || filters) && (
@@ -383,7 +383,7 @@ export default function LibraryDocumentList({
                     </InputAdornment>
                   ) : undefined,
                 },
-                htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
+                htmlInput: { 'aria-label': 'Dokumente durchsuchen', 'data-list-search': '' },
               }}
             />
           )}
