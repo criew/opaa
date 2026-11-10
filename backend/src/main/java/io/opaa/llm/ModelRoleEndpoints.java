@@ -1,11 +1,14 @@
 package io.opaa.llm;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.instance.BusBoundCache;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.MeteredCaches;
 import io.opaa.security.CipherBinding;
 import io.opaa.security.SettingsEncryptor;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +25,7 @@ import org.springframework.stereotype.Component;
  * refuses the call, which the role reports as its state.
  */
 @Component
-public class ModelRoleEndpoints implements InvalidationSubscriber {
+public class ModelRoleEndpoints implements InvalidationSubscriber, MeteredCaches {
 
   /** The topic the trigger on {@code rerank_model} announces. */
   public static final String RERANK_TOPIC = "rerank-model";
@@ -53,9 +56,12 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
     this.transcriptionRows = transcriptionRows;
     this.textRecognitionRows = textRecognitionRows;
     this.settingsEncryptor = settingsEncryptor;
-    this.rerank = new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).build(), bus);
-    this.transcription = new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).build(), bus);
-    this.textRecognition = new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).build(), bus);
+    this.rerank =
+        new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).recordStats().build(), bus);
+    this.transcription =
+        new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).recordStats().build(), bus);
+    this.textRecognition =
+        new BusBoundCache<>(Caffeine.newBuilder().maximumSize(1).recordStats().build(), bus);
   }
 
   /** The rerank endpoint in force; never blocks on the network. */
@@ -181,5 +187,16 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
           e.getClass().getSimpleName());
       return "";
     }
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of(
+        "rerank_endpoint",
+        rerank.statistics(),
+        "transcription_endpoint",
+        transcription.statistics(),
+        "text_recognition_endpoint",
+        textRecognition.statistics());
   }
 }

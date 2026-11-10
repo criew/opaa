@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -95,6 +95,17 @@ Metriken gegen Entscheidung 2 und die Metriktabelle des Handbuchs, und eine wöc
 lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboards und Alarmen. Eine
 Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
 gebraucht worden wäre.
+
+### 7. Hintergrundläufe zentral gemessen, installationsweite Werte von jeder Instanz
+
+Letzter Erfolg, Fehler und erwartetes Intervall jedes geplanten Laufs (`opaa.scheduled.*` mit
+`job`, dem Namen seiner Sperre) misst ein Handler an der Observation, die Spring um jeden Lauf
+legt, nicht Code im Lauf; ein Lauf zählt nur dort als erfolgreich, wo er seine Sperre bekam, und ein
+abgeschalteter Lauf hat keine Reihe. Werte der ganzen Installation (Warteschlangen, Bestand,
+Instanzregister, Sperren) liest jede Instanz selbst in festen Abständen aus vorhandenen Tabellen
+und meldet sie gleich; ein Dashboard fasst sie mit `max by` zusammen, Zähler je Instanz mit `sum`.
+Eine eigene Instanz, die solche Werte für alle meldet, bräuchte eine Wahl und fiele mit ihr aus.
+Zahlen über private Bibliotheken unterliegen derselben Mindestgruppengröße wie in der Oberfläche.
 
 ## Konsequenzen
 

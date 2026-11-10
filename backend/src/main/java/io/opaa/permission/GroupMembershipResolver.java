@@ -7,9 +7,11 @@ import io.opaa.auth.UserRepository;
 import io.opaa.instance.BusBoundCache;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.MeteredCaches;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
@@ -35,7 +37,7 @@ import org.springframework.stereotype.Component;
  * instance, and while the bus does not listen it is read past.
  */
 @Component
-public class GroupMembershipResolver implements InvalidationSubscriber {
+public class GroupMembershipResolver implements InvalidationSubscriber, MeteredCaches {
 
   /** The topic the triggers on the group, membership and grant tables announce. */
   public static final String RIGHTS_TOPIC = "rights";
@@ -62,7 +64,11 @@ public class GroupMembershipResolver implements InvalidationSubscriber {
     // net for eviction paths this class does not yet know about (e.g. a future bulk directory
     // sync).
     Cache<UUID, Set<UUID>> cache =
-        Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
+        Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .recordStats()
+            .build();
     this.groupIdsByUser = new BusBoundCache<>(cache, bus);
   }
 
@@ -181,5 +187,10 @@ public class GroupMembershipResolver implements InvalidationSubscriber {
 
   private void notifyListeners(Collection<UUID> userIds) {
     changeListeners.orderedStream().forEach(listener -> listener.onMembershipChanged(userIds));
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("group_memberships", groupIdsByUser.statistics());
   }
 }

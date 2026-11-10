@@ -54,6 +54,10 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 - **Ohne Personenbezug:** Keine Metrik nennt Person, Space, Bibliothek, Dokument, Datei, Adresse
   oder Suchbegriff; Werte stammen aus festen kleinen Mengen wie Ergebnis, Modell oder Konnektortyp.
   Zählungen gelten für die ganze Installation.
+- **Je Instanz oder für die Installation:** Warteschlangen, Bestand, Instanzregister und Sperren
+  liest jede Instanz selbst aus der Datenbank und meldet denselben Wert; eine Abfrage fasst sie mit
+  `max by (…)` zusammen, nicht mit `sum`. Zähler, Zwischenspeicher und Thread-Pools gelten je
+  Instanz und werden summiert.
 
 | Metrik | Bedeutung |
 |---|---|
@@ -90,8 +94,20 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
 | `opaa_chat_search_duration_seconds_*` | Dauer und Anzahl der Chatsuchen, ohne Suchbegriff und Person |
 | `opaa_chat_note_extraction_total` | Verdichtungen der Gesprächsnotiz nach Ausgang (`applied`, `empty`, `failed`, `discarded`, `rejected`) |
+| `opaa_scheduled_last_success`, `opaa_scheduled_expected_interval_seconds`, `opaa_scheduled_failures_total` | je geplantem Lauf (`job`, der Name seiner Sperre oder Klasse und Methode): Unix-Zeit des letzten erfolgreichen Laufs auf dieser Instanz (`NaN`, bis er hier gelaufen ist), Abstand zweier Termine und Läufe, die mit einem Fehler endeten. Ein abgeschalteter Lauf hat keine Reihe. Unter der Sperre läuft jeder Termin auf einer Instanz: überfällig ist ein Lauf, wenn `time() - max by (job) (opaa_scheduled_last_success)` ein Mehrfaches seines Abstands übersteigt. Fehler, die ein Lauf selbst abfängt und protokolliert, zählen nicht |
+| `opaa_scheduled_locks_held`, `opaa_scheduled_locks_oldest_age_seconds` | Sperren geplanter Läufe, deren Frist noch läuft (auch die Mindestfrist nach dem Ende eines Laufs), und Alter der ältesten; ein Alter über Stunden heißt, ein Lauf hängt oder seine Instanz ist ausgefallen |
+| `opaa_queue_depth`, `opaa_queue_oldest_age_seconds` | Warteschlangen nach `queue`: `mail_outbox` (Mails, auch die mit späterem Wiederholungsversuch), `source_events` (gemeldete Änderungen der Quellen), `ocr_backlog` (hochgeladene Scans, die auf die Texterkennung warten; `NaN`, solange sie aus ist): Einträge und Alter des ältesten, `0` bei leerer Schlange. Ein stetig wachsendes Alter heißt, die Schlange wird nicht abgearbeitet |
+| `opaa_mail_sent_total` | Zustellversuche der Mails nach Ergebnis (`sent`, `retry` für einen Fehlschlag mit späterem Versuch, `failed` für eine endgültig verworfene Mail), ohne Empfänger und Vorlage |
+| `opaa_instances_active`, `opaa_instances_versions`, `opaa_instance_heartbeat_age_seconds` | laufende Instanzen nach dem Instanzregister, Zahl ihrer verschiedenen Versionen (über `1` während eines Rolling Updates) und Alter des eigenen Herzschlags dieser Instanz ([Mehrere Instanzen](mehrere-instanzen.md#instanzen-beobachten)) |
+| `opaa_invalidation_bus_connected` | `1`, solange die Instanz die Meldungen zu geänderten Zwischenspeichern hört; bei `0` lesen ihre Zwischenspeicher an sich vorbei direkt aus der Datenbank |
+| `cache_gets_total`, `cache_evictions_total`, `cache_size` | Treffer und Fehlgriffe (`result`), Verdrängungen und Größe je Zwischenspeicher dieser Instanz nach festem Namen (`cache`), etwa `group_memberships`, `asset_grants`, `chat_memory`; die Trefferquote ist `hit` geteilt durch alle Abrufe |
+| `opaa_inventory_libraries`, `opaa_inventory_documents`, `opaa_inventory_chunks`, `opaa_inventory_storage_used_bytes` | Bestand der ganzen Installation nach Art (`kind`: `shared`, `private`), alle 15 Minuten aus der Datenbank gelesen. Die Werte privater Bibliotheken sind `NaN`, solange weniger Personen eine besitzen als die Mindestgruppengröße |
+| `opaa_inventory_storage_limit_bytes`, `opaa_inventory_spaces` | Speichergrenze je geteilter Bibliothek und je Person für private Bibliotheken (`0` ohne Grenze) und Zahl der nicht archivierten geteilten Spaces, ohne persönliche Bereiche |
+| `opaa_auth_logins_total` | Anmeldungen nach `method` und `result`: lokale Konten mit `success`, `bad_credentials`, `locked`, `other`; beim Identitätsanbieter (`oidc`) nur abgewiesene Tokens: `bad_credentials`, `idp_error`, wenn der Anbieter ein Token nicht bestätigen kann, etwa weil er seine Schlüssel nicht herausgibt oder nicht antwortet, und `other`. Ohne Konto, Adresse und Anbieter |
+| `opaa_external_access_alarms_total` | ausgelöste Alarme für Massenabrufe über den Zugang externer KI-Werkzeuge, ohne Token |
+| `opaa_health_group_status` | Zustand jeder Health-Gruppe nach `health_group`, alle fünf Minuten gelesen: `1` bereit, `0` gestört oder außer Betrieb, `-1` unbekannt (nicht eingerichtet) |
 | `tasks_scheduled_execution_seconds_*` | Dauer und Ausgang der geplanten Läufe nach Methode, mit Buckets |
-| `executor_*` | Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (`name`), etwa Indexierung und Uploads |
+| `executor_*` | Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (`name`), etwa Indexierung und Uploads, die Zustellung der Cache-Meldungen (`cache-invalidation`), die Neueinbettung (`embedding-reindex`) und die Aufsicht der SIEM-Ausleitung (`siem-export-watchdog`) |
 | `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 

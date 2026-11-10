@@ -4,11 +4,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.observability.MeteredCaches;
 import io.opaa.search.AccessTokenQuota;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.IntSupplier;
@@ -37,7 +39,7 @@ import org.springframework.stereotype.Component;
  * is read at most every {@link #LIVE_COUNT_REFRESH}.
  */
 @Component
-public class ExternalAccessQuota implements AccessTokenQuota {
+public class ExternalAccessQuota implements AccessTokenQuota, MeteredCaches {
 
   private static final Duration WINDOW = Duration.ofHours(1);
 
@@ -85,6 +87,7 @@ public class ExternalAccessQuota implements AccessTokenQuota {
             // Twice the window, so timestamps still inside it survive an idle stretch.
             .expireAfterAccess(WINDOW.multipliedBy(2))
             .maximumSize(MAX_TRACKED_TOKENS)
+            .recordStats()
             .build();
   }
 
@@ -143,5 +146,10 @@ public class ExternalAccessQuota implements AccessTokenQuota {
   /** Forgets every window - for a test, and for nothing else. */
   void reset() {
     windows.invalidateAll();
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("external_access_quota", windows);
   }
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.mail.MailOutbox.Batch;
 import io.opaa.mail.MailOutbox.Claimed;
 import java.time.Duration;
@@ -35,7 +36,8 @@ class MailOutboxWorkerTest {
           senderProvider,
           new ConcurrentTaskScheduler(),
           java.time.Clock.systemUTC(),
-          LEASE);
+          LEASE,
+          new MailDeliveryMetrics(new SimpleMeterRegistry()));
 
   @Test
   void theRetryDelayDoublesFromOneMinuteUpToOneHour() {

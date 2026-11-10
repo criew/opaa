@@ -15,6 +15,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalCredentials;
@@ -23,6 +24,7 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import java.time.Clock;
 import java.time.Duration;
@@ -62,6 +64,7 @@ class LocalLoginServiceTest {
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final LocalLoginAttemptListener listener = mock(LocalLoginAttemptListener.class);
   private final LocalAdminNetworkPolicy networkPolicy = mock(LocalAdminNetworkPolicy.class);
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private LocalLoginService service;
   private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
   private Logger logger;
@@ -88,7 +91,8 @@ class LocalLoginServiceTest {
             List.of(listener),
             networkPolicy,
             Clock.fixed(NOW, ZoneOffset.UTC),
-            TransactionOperations.withoutTransaction());
+            TransactionOperations.withoutTransaction(),
+            new AuthMetrics(meters));
     when(registry.localAccountsEnabled()).thenReturn(true);
     when(networkPolicy.permitsAdminSignIn(any())).thenReturn(true);
     user = localUser(SystemRole.USER);
@@ -125,6 +129,35 @@ class LocalLoginServiceTest {
     verify(listener).onPasswordRejected(user, row, NOW);
     verify(listener, never()).onLoginSucceeded(any(), any(), any());
     assertFailedAttemptLoggedOnce();
+  }
+
+  @Test
+  void everySignInIsCountedByItsOutcomeWithoutNamingTheAccount() {
+    service.authenticate(EMAIL, "richtig", CLIENT);
+    service.authenticate(EMAIL, "falsch", CLIENT);
+    service.authenticate(" ", "falsch", CLIENT);
+    row.lock(LockReason.ADMIN, NOW.minus(Duration.ofHours(1)), null);
+    service.authenticate(EMAIL, "richtig", CLIENT);
+
+    assertThat(logins("success")).isEqualTo(1.0);
+    assertThat(logins("bad_credentials")).isEqualTo(2.0);
+    assertThat(logins("locked")).isEqualTo(1.0);
+    assertThat(logins("other")).isZero();
+    assertThat(meters.get(AuthMetrics.LOGINS_METRIC).meters())
+        .allSatisfy(
+            meter ->
+                assertThat(meter.getId().getTags())
+                    .extracting(io.micrometer.core.instrument.Tag::getKey)
+                    .containsExactlyInAnyOrder("method", "result"));
+  }
+
+  private double logins(String result) {
+    return meters
+        .get(AuthMetrics.LOGINS_METRIC)
+        .tag("method", "local")
+        .tag("result", result)
+        .counter()
+        .count();
   }
 
   @Test

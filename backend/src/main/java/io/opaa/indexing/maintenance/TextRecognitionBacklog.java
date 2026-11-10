@@ -120,6 +120,13 @@ public class TextRecognitionBacklog {
     }
   }
 
+  /** The uploaded scans waiting for text recognition; empty while text recognition is off. */
+  public Optional<DocumentTextRecognitionStore.UploadBacklog> backlog() {
+    return textRecognition
+        .active()
+        .map(active -> store.uploadBacklog(PdfOcrDocumentFormat.VERSION, active.configurationId()));
+  }
+
   /** One pass over the uploaded scans still waiting; nothing while text recognition is off. */
   public PassResult catchUp() {
     Optional<ActiveTextRecognition> active = textRecognition.active();

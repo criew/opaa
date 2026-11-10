@@ -6,8 +6,10 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.PrivateLibraryErased;
+import io.opaa.observability.MeteredCaches;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +33,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Spring calls, marked {@link Autowired} because more than one constructor exists.
  */
 @Service
-public class CaffeineChatMemoryRepository implements ChatMemoryRepository, InvalidationSubscriber {
+public class CaffeineChatMemoryRepository
+    implements ChatMemoryRepository, InvalidationSubscriber, MeteredCaches {
 
   /**
    * The topic {@link ChatMemoryErasureAnnouncement} sends when a private library was erased on any
@@ -81,6 +84,7 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository, Inval
         Caffeine.newBuilder()
             .maximumSize(maxConversations)
             .expireAfterAccess(ttlMinutes, TimeUnit.MINUTES)
+            .recordStats()
             .evictionListener(
                 (key, value, cause) ->
                     log.debug("Evicted conversation '{}' due to {}", key, cause));
@@ -159,5 +163,10 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository, Inval
   /** Forces pending evictions to run synchronously. Intended for testing. */
   void cleanUp() {
     cache.cleanUp();
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("chat_memory", cache);
   }
 }

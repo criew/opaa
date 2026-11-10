@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.instance.InvalidationBus;
+import io.opaa.observability.AuthMetrics;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,8 +36,10 @@ public class OidcProviderConfiguration {
       OidcJwtDecoderFactory decoderFactory,
       OidcAddressPolicy addressPolicy,
       Clock clock,
-      InvalidationBus bus) {
-    return new OidcProviderRegistry(repository, decoderFactory, addressPolicy, clock, bus);
+      InvalidationBus bus,
+      AuthMetrics authMetrics) {
+    return new OidcProviderRegistry(
+        repository, decoderFactory, addressPolicy, clock, bus, authMetrics);
   }
 
   @Bean

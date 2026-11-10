@@ -11,9 +11,11 @@ import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.LibraryChanged;
 import io.opaa.library.PrivateLibraryErased;
 import io.opaa.metadata.LibraryMetadataSchemaChanged;
+import io.opaa.observability.MeteredCaches;
 import io.opaa.permission.GroupMembershipChangeListener;
 import io.opaa.permission.GroupMembershipResolver;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -37,7 +39,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  */
 @Component
 public class MetadataFilterOptionsCache
-    implements GroupMembershipChangeListener, InvalidationSubscriber {
+    implements GroupMembershipChangeListener, InvalidationSubscriber, MeteredCaches {
 
   /** The topic of the changes this cache announces itself. */
   public static final String INVALIDATION_TOPIC = "metadata-filter-options";
@@ -50,6 +52,7 @@ public class MetadataFilterOptionsCache
         Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(properties.optionsCacheTtl())
+            .recordStats()
             .build();
     this.options = new BusBoundCache<>(cache, bus);
     this.bus = bus;
@@ -152,4 +155,9 @@ public class MetadataFilterOptionsCache
   }
 
   private record Key(UUID userId, Set<UUID> searchScope) {}
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("metadata_filter_options", options.statistics());
+  }
 }

@@ -22,6 +22,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
+import io.opaa.observability.MeteredCaches;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -53,7 +54,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @Transactional(readOnly = true)
-public class SpaceService {
+public class SpaceService implements MeteredCaches {
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
@@ -125,7 +126,7 @@ public class SpaceService {
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     // Same bound as GroupMembershipResolver's per-user cache; unlike that one this needs no
     // expireAfterWrite, see the field Javadoc above.
-    this.personalSpaceProvisioned = Caffeine.newBuilder().maximumSize(50_000).build();
+    this.personalSpaceProvisioned = Caffeine.newBuilder().maximumSize(50_000).recordStats().build();
     this.clock = clock;
   }
 
@@ -1215,5 +1216,10 @@ public class SpaceService {
             .attributionsById(List.of(membership.getGroupId()))
             .get(membership.getGroupId()),
         activeMemberCount(membership));
+  }
+
+  @Override
+  public Map<String, Cache<?, ?>> meteredCaches() {
+    return Map.of("personal_space_provisioned", personalSpaceProvisioned);
   }
 }

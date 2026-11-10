@@ -9,6 +9,9 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.observability.AuthMetrics;
+import io.opaa.observability.AuthMetrics.LoginMethod;
+import io.opaa.observability.AuthMetrics.LoginResult;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -67,6 +70,7 @@ public class LocalLoginService {
   private final LocalAdminNetworkPolicy networkPolicy;
   private final Clock clock;
   private final TransactionOperations transactions;
+  private final AuthMetrics metrics;
 
   @Autowired
   public LocalLoginService(
@@ -77,7 +81,8 @@ public class LocalLoginService {
       List<LocalLoginAttemptListener> listeners,
       LocalAdminNetworkPolicy networkPolicy,
       Clock clock,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      AuthMetrics metrics) {
     this(
         users,
         credentials,
@@ -86,7 +91,8 @@ public class LocalLoginService {
         listeners,
         networkPolicy,
         clock,
-        new TransactionTemplate(transactionManager));
+        new TransactionTemplate(transactionManager),
+        metrics);
   }
 
   LocalLoginService(
@@ -97,7 +103,8 @@ public class LocalLoginService {
       List<LocalLoginAttemptListener> listeners,
       LocalAdminNetworkPolicy networkPolicy,
       Clock clock,
-      TransactionOperations transactions) {
+      TransactionOperations transactions,
+      AuthMetrics metrics) {
     this.users = users;
     this.credentials = credentials;
     this.passwordEncoder = passwordEncoder;
@@ -106,6 +113,7 @@ public class LocalLoginService {
     this.networkPolicy = networkPolicy;
     this.clock = clock;
     this.transactions = transactions;
+    this.metrics = metrics;
   }
 
   /**
@@ -122,7 +130,7 @@ public class LocalLoginService {
         "LocalLoginService#authenticate must not run inside a transaction");
     String normalized = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     if (normalized.isEmpty() || password == null || password.isEmpty()) {
-      return Optional.empty();
+      return refused(LoginResult.BAD_CREDENTIALS);
     }
     Instant now = clock.instant();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, normalized).orElse(null);
@@ -130,7 +138,7 @@ public class LocalLoginService {
     String hash = row == null || row.getPasswordHash() == null ? DUMMY_HASH : row.getPasswordHash();
     boolean passwordMatches = passwordEncoder.matches(password, hash);
     if (row == null || row.getPasswordHash() == null) {
-      return Optional.empty();
+      return refused(LoginResult.BAD_CREDENTIALS);
     }
     // the network gate comes before the count: an administrator's account must not be lockable
     // by failed attempts from a network it can never sign in from (ADR-0033, Entscheidung 9)
@@ -140,27 +148,30 @@ public class LocalLoginService {
           "Sign-in of local SYSTEM_ADMIN account {} refused: client address outside"
               + " OPAA_LOCAL_ADMIN_ALLOWED_CIDRS",
           user.getId());
-      return Optional.empty();
+      return refused(LoginResult.OTHER);
     }
     if (!passwordMatches) {
       // the one log line of a failed attempt (ADR-0033, Entscheidung 9): account id, never the
       // address, whether or not the attempt is counted
       log.info("Local sign-in of account {} refused: wrong password", user.getId());
       // already locked when read: nothing to count, and no row lock taken during a lockout flood
-      if (row.state(now) != LocalAccountState.LOCKED) {
-        transactions.executeWithoutResult(status -> countFailedAttempt(user, now));
+      if (row.state(now) == LocalAccountState.LOCKED) {
+        return refused(LoginResult.LOCKED);
       }
-      return Optional.empty();
+      transactions.executeWithoutResult(status -> countFailedAttempt(user, now));
+      return refused(LoginResult.BAD_CREDENTIALS);
     }
     if (!LocalAccountAccess.isLoginCapable(row, now)
         || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
-      return Optional.empty();
+      return refused(
+          row.state(now) == LocalAccountState.LOCKED ? LoginResult.LOCKED : LoginResult.OTHER);
     }
     LocalCredentials current = transactions.execute(status -> admitSignIn(user, row, now));
     if (current == null) {
-      return Optional.empty();
+      return refused(LoginResult.OTHER);
     }
     listeners.forEach(listener -> listener.onLoginSucceeded(user, current, now));
+    metrics.recordLogin(LoginMethod.LOCAL, LoginResult.SUCCESS);
     return Optional.of(new AuthenticatedLocalAccount(user, current));
   }
 
@@ -198,5 +209,11 @@ public class LocalLoginService {
   }
 
   /** A local account whose password was just verified. */
+  /** Counts a refused local sign-in by its reason; the caller learns nothing more than before. */
+  private Optional<AuthenticatedLocalAccount> refused(LoginResult result) {
+    metrics.recordLogin(LoginMethod.LOCAL, result);
+    return Optional.empty();
+  }
+
   public record AuthenticatedLocalAccount(User user, LocalCredentials credentials) {}
 }

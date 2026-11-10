@@ -43,7 +43,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -131,12 +133,22 @@ public class EmbeddingReindexService {
   private final InstanceRegistry instanceRegistry;
 
   private final ExecutorService executor =
-      Executors.newSingleThreadExecutor(
+      new ThreadPoolExecutor(
+          1,
+          1,
+          0L,
+          TimeUnit.MILLISECONDS,
+          new LinkedBlockingQueue<>(),
           runnable -> {
             Thread thread = new Thread(runnable, "embedding-reindex");
             thread.setDaemon(true);
             return thread;
           });
+
+  /** The worker thread of the re-indexing, for its executor metrics. */
+  ExecutorService executor() {
+    return executor;
+  }
 
   /** Workers submitted or working in this process. */
   private final AtomicInteger active = new AtomicInteger();

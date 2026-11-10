@@ -229,6 +229,27 @@ public class DocumentTextRecognitionStore {
   }
 
   /**
+   * How many uploaded scans of every library wait for text recognition, and the seconds since the
+   * oldest of them was uploaded ({@code 0} without one), by the database clock.
+   */
+  public UploadBacklog uploadBacklog(int pipelineVersion, String configurationId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) AS waiting,"
+            + " coalesce(extract(epoch FROM clock_timestamp() - min(d.created_at)), 0) AS age"
+            + " FROM documents d WHERE d.source_type = 'UPLOAD' AND "
+            + PENDING_CONDITION,
+        (rs, row) -> new UploadBacklog(rs.getLong("waiting"), rs.getDouble("age")),
+        DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+        PDF_CONTENT_TYPE,
+        (short) pipelineVersion,
+        configurationId,
+        configurationId);
+  }
+
+  /** The uploaded scans waiting for text recognition, without any document named. */
+  public record UploadBacklog(long waiting, double oldestAgeSeconds) {}
+
+  /**
    * Uploaded scans of every library still waiting for text recognition, in a stable order after
    * {@code afterId} ({@code null} from the start).
    */
