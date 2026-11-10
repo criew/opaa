@@ -55,6 +55,19 @@ describe('Dokumentvorlagen', () => {
 
   it('creates a template from a Word file and shows its placeholders', async () => {
     holdCapabilities(['CREATE_TEMPLATE'])
+    // Node's multipart parser refuses jsdom's File, so the answer does not read the form.
+    server.use(
+      http.post('/api/v1/document-templates', () => {
+        const created = {
+          ...mockDocumentTemplateState.templates['document-template-vermerk'],
+          id: 'document-template-neu',
+          name: 'Vermerk Referat 12',
+          placeholders: [{ name: 'betreff', kind: 'FIELD' as const, fields: [] }],
+        }
+        mockDocumentTemplateState.templates[created.id] = created
+        return HttpResponse.json(created, { status: 201 })
+      }),
+    )
     const user = userEvent.setup()
     renderTemplates('/templates/new')
 
