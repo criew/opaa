@@ -8,8 +8,8 @@ import java.util.UUID;
  * Entscheidung 4, Bestand a): the run's id, how it ended, and each step with its sub-question and
  * hit count. It lives and is deleted with the chat.
  *
- * @param endState how the run ended; anything but {@link EndState#COMPLETED} is shown as a set-off
- *     state "nicht geprüft", never as an error.
+ * @param endState how the run ended; a limit is shown as a set-off state "nicht geprüft", never as
+ *     an error; {@link EndState#ASK_USER} as a question back to the person.
  */
 public record AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
 
@@ -22,7 +22,9 @@ public record AgentRunRecord(UUID runId, EndState endState, List<Step> steps) {
     COMPLETED,
     LIMIT_CALLS,
     LIMIT_DURATION,
-    LIMIT_VOLUME
+    LIMIT_VOLUME,
+    /** The agent asked the person back; the answer is the question, the run ended there. */
+    ASK_USER
   }
 
   /** The outcome of one step as the person reads it. */

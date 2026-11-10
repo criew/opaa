@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link NeighborChunkLookup} against a real Postgres: it loads exactly the requested positions,
- * and never one whose library lies outside the scope it is given.
+ * {@link NeighborChunkLookup} against a real Postgres: it loads exactly the requested positions or
+ * range, and never one whose library lies outside the scope it is given.
  */
 @OpaaIntegrationTest
 class NeighborChunkLookupIntegrationTest {
@@ -69,6 +69,27 @@ class NeighborChunkLookupIntegrationTest {
     insert(document, 0, library, "Abschnitt 0");
 
     assertThat(lookup.find(List.of(new ChunkPosition(document, 1)), Set.of(library))).isEmpty();
+  }
+
+  @Test
+  void readsARangeOfOneDocumentInIndexOrderWithinTheScope() {
+    insert(document, 3, library, "Abschnitt 3");
+    insert(document, 1, library, "Abschnitt 1");
+    insert(document, 2, library, "Abschnitt 2");
+    insert(document, 9, library, "Abschnitt 9");
+    insert(otherDocument, 2, library, "anderes Dokument");
+
+    assertThat(lookup.findRange(document, 1, 3, Set.of(library)))
+        .extracting(Document::getText)
+        .containsExactly("Abschnitt 1", "Abschnitt 2", "Abschnitt 3");
+  }
+
+  @Test
+  void neverReadsARangeWhoseLibraryIsOutsideTheScope() {
+    insert(document, 0, foreignLibrary, "fremde Bibliothek");
+
+    assertThat(lookup.findRange(document, 0, 10, Set.of(library))).isEmpty();
+    assertThat(lookup.findRange(document, 0, 10, Set.of())).isEmpty();
   }
 
   private void insert(String documentId, int chunkIndex, UUID libraryId, String content) {

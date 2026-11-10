@@ -33,4 +33,10 @@ describe('AgentRunSteps', () => {
     expect(screen.getByText('nicht geprüft')).toBeInTheDocument()
     expect(screen.getByText(/Höchstzahl an Schritten/)).toBeInTheDocument()
   })
+
+  it('marks a run that asked back as a question, not as unchecked', () => {
+    render(<AgentRunSteps run={{ ...RUN, endState: 'ASK_USER' }} />)
+    expect(screen.getByText('Rückfrage')).toBeInTheDocument()
+    expect(screen.queryByText('nicht geprüft')).not.toBeInTheDocument()
+  })
 })
