@@ -4014,6 +4014,10 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <li><strong>Ohne Personenbezug:</strong> Keine Metrik nennt Person, Space, Bibliothek, Dokument, Datei, Adresse
   oder Suchbegriff; Werte stammen aus festen kleinen Mengen wie Ergebnis, Modell oder Konnektortyp.
   Zählungen gelten für die ganze Installation.</li>
+<li><strong>Je Instanz oder für die Installation:</strong> Warteschlangen, Bestand, Instanzregister und Sperren
+  liest jede Instanz selbst aus der Datenbank und meldet denselben Wert; eine Abfrage fasst sie mit
+  <code>max by (…)</code> zusammen, nicht mit <code>sum</code>. Zähler, Zwischenspeicher und Thread-Pools gelten je
+  Instanz und werden summiert.</li>
 </ul>
 <table>
 <thead>
@@ -4070,10 +4074,6 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <tr>
 <td><code>gen_ai_client_token_usage_total</code></td>
 <td>Tokens nach Operation, Modell und Art (<code>input</code>, <code>output</code>, <code>total</code>), ohne Person und Inhalt</td>
-</tr>
-<tr>
-<td><code>opaa_conversations_active</code></td>
-<td>Gespräche, die diese Instanz im Speicher hält</td>
 </tr>
 <tr>
 <td><code>opaa_installation_pending</code></td>
@@ -4200,12 +4200,60 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Verdichtungen der Gesprächsnotiz nach Ausgang (<code>applied</code>, <code>empty</code>, <code>failed</code>, <code>discarded</code>, <code>rejected</code>)</td>
 </tr>
 <tr>
+<td><code>opaa_scheduled_last_success</code>, <code>opaa_scheduled_expected_interval_seconds</code>, <code>opaa_scheduled_failures_total</code></td>
+<td>je geplantem Lauf (<code>job</code>, der Name seiner Sperre oder Klasse und Methode): Unix-Zeit des letzten erfolgreichen Laufs auf dieser Instanz, frühestens ihr Start, Abstand zweier Termine und Läufe, die mit einem Fehler endeten. Ein abgeschalteter Lauf hat keine Reihe. Unter der Sperre läuft jeder Termin auf einer Instanz: überfällig ist ein Lauf, wenn <code>time() - max by (job) (opaa_scheduled_last_success)</code> ein Mehrfaches seines Abstands übersteigt; das gilt auch für einen Lauf, der seit dem Start nie gelang. Als Fehler zählt auch ein Lauf, der einen Fehler selbst abfängt und protokolliert, etwa um mit dem nächsten Eintrag weiterzumachen</td>
+</tr>
+<tr>
+<td><code>opaa_scheduled_locks_held</code>, <code>opaa_scheduled_locks_oldest_age_seconds</code></td>
+<td>Sperren geplanter Läufe, deren Frist noch läuft (auch die Mindestfrist nach dem Ende eines Laufs), und Alter der ältesten; ein Alter über Stunden heißt, ein Lauf hängt oder seine Instanz ist ausgefallen</td>
+</tr>
+<tr>
+<td><code>opaa_queue_depth</code>, <code>opaa_queue_oldest_age_seconds</code></td>
+<td>Warteschlangen nach <code>queue</code>: <code>mail_outbox</code> (Mails, auch die mit späterem Wiederholungsversuch), <code>source_events</code> (gemeldete Änderungen der Quellen), <code>indexing</code> (angenommene und noch nicht beendete Indizierungsläufe, wartend oder laufend, Alter seit der Annahme; das Alter ist damit auch die Dauer des längsten laufenden Laufs, ein Alarm darauf greift erst oberhalb der üblichen Laufdauer), <code>ocr_backlog</code> (hochgeladene Scans, die auf die Texterkennung warten; <code>NaN</code>, solange sie aus ist): Einträge und Alter des ältesten, <code>0</code> bei leerer Schlange. Ein stetig wachsendes Alter heißt, die Schlange wird nicht abgearbeitet</td>
+</tr>
+<tr>
+<td><code>opaa_mail_sent_total</code></td>
+<td>Zustellversuche der Mails nach Ergebnis (<code>sent</code>, <code>retry</code> für einen Fehlschlag mit späterem Versuch, <code>failed</code> für eine endgültig verworfene Mail), ohne Empfänger und Vorlage</td>
+</tr>
+<tr>
+<td><code>opaa_instances_active</code>, <code>opaa_instances_versions</code>, <code>opaa_instance_heartbeat_age_seconds</code></td>
+<td>laufende Instanzen nach dem Instanzregister, Zahl ihrer verschiedenen Versionen (über <code>1</code> während eines Rolling Updates) und Alter des eigenen Herzschlags dieser Instanz (<a href="mehrere-instanzen.html#instanzen-beobachten">Mehrere Instanzen</a>)</td>
+</tr>
+<tr>
+<td><code>opaa_invalidation_bus_connected</code></td>
+<td><code>1</code>, solange die Instanz die Meldungen zu geänderten Zwischenspeichern hört; bei <code>0</code> lesen ihre Zwischenspeicher an sich vorbei direkt aus der Datenbank</td>
+</tr>
+<tr>
+<td><code>cache_gets_total</code>, <code>cache_evictions_total</code>, <code>cache_size</code></td>
+<td>Treffer und Fehlgriffe (<code>result</code>), Verdrängungen und Größe je Zwischenspeicher dieser Instanz nach festem Namen (<code>cache</code>), nämlich <code>asset_grants</code> und die Adressen der Modellrollen (<code>rerank_endpoint</code>, <code>transcription_endpoint</code>, <code>text_recognition_endpoint</code>); die Trefferquote ist <code>hit</code> geteilt durch alle Abrufe. Aus Datenschutzgründen gar nicht gemessen werden die Zwischenspeicher, deren Schlüssel eine Person, ein Token oder ein Gespräch ist: gesperrte Anmeldungen, Gruppenmitgliedschaften, angelegte persönliche Bereiche, Filterwerte der Suche, Kontingente externer Zugänge und das Gesprächsgedächtnis. Ihre Treffer, Fehlgriffe und Größen zeigten, wie viele Personen gerade arbeiten oder ein Gespräch beginnen</td>
+</tr>
+<tr>
+<td><code>opaa_inventory_libraries</code>, <code>opaa_inventory_documents</code>, <code>opaa_inventory_chunks</code>, <code>opaa_inventory_storage_used_bytes</code></td>
+<td>Bestand der ganzen Installation nach Art (<code>kind</code>: <code>shared</code>, <code>private</code>), alle 15 Minuten aus der Datenbank gelesen. Die Werte privater Bibliotheken sind <code>NaN</code>, solange weniger Personen eine besitzen als die Mindestgruppengröße</td>
+</tr>
+<tr>
+<td><code>opaa_inventory_storage_limit_bytes</code>, <code>opaa_inventory_spaces</code></td>
+<td>Speichergrenze je geteilter Bibliothek und je Person für private Bibliotheken (<code>0</code> ohne Grenze) und Zahl der nicht archivierten geteilten Spaces, ohne persönliche Bereiche</td>
+</tr>
+<tr>
+<td><code>opaa_auth_logins_total</code></td>
+<td>abgewiesene Anmeldungen nach <code>method</code> und <code>result</code>: lokale Konten mit <code>bad_credentials</code>, <code>locked</code>, <code>other</code>; beim Identitätsanbieter (<code>oidc</code>) abgewiesene Tokens mit <code>bad_credentials</code>, <code>idp_error</code>, wenn die Signaturschlüssel (JWKS) des Anbieters nicht abgerufen werden konnten, und <code>other</code>. Erfolgreiche Anmeldungen zählt OPAA bei keiner Methode. Ohne Konto, Adresse und Anbieter</td>
+</tr>
+<tr>
+<td><code>opaa_external_access_alarms_total</code></td>
+<td>ausgelöste Alarme für Massenabrufe über den Zugang externer KI-Werkzeuge, ohne Token</td>
+</tr>
+<tr>
+<td><code>opaa_health_group_status</code></td>
+<td>Zustand jeder Health-Gruppe nach <code>health_group</code>, alle fünf Minuten gelesen (<code>NaN</code>, wenn eine Gruppe nicht binnen zehn Sekunden antwortet): <code>1</code> bereit, <code>0</code> gestört oder außer Betrieb, <code>-1</code> unbekannt. <code>embedding-model</code> und <code>vector-store</code> kosten bei jeder Prüfung einen Modellaufruf; für sie prüft die Metrik nicht selbst, sondern zeigt das Ergebnis der letzten Prüfung von außen aus den letzten zehn Minuten, ohne eine solche <code>-1</code></td>
+</tr>
+<tr>
 <td><code>tasks_scheduled_execution_seconds_*</code></td>
 <td>Dauer und Ausgang der geplanten Läufe nach Methode, mit Buckets</td>
 </tr>
 <tr>
 <td><code>executor_*</code></td>
-<td>Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (<code>name</code>), etwa Indexierung und Uploads</td>
+<td>Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (<code>name</code>), etwa Indexierung und Uploads, die Zustellung der Cache-Meldungen (<code>cache-invalidation</code>), die Neueinbettung (<code>embedding-reindex</code>) und die Aufsicht der SIEM-Ausleitung (<code>siem-export-watchdog</code>)</td>
 </tr>
 <tr>
 <td><code>hikaricp_connections_*</code></td>

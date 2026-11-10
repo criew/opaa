@@ -3108,6 +3108,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#instanzen-beobachten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instanzen beobachten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#was-man-wissen-sollte" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4152,6 +4163,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#instanzen-beobachten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instanzen beobachten
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#was-man-wissen-sollte" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4784,6 +4806,25 @@ bleibt eine Instanz die Vorgabe.</p>
 <p>Mehr Instanzen brauchen mehr Datenbankverbindungen: Jede Instanz hält ihren Connection Pool und dazu
 die Hörverbindung für die Benachrichtigungen, und während eines Updates läuft kurz eine Instanz mehr.
 Die Rechnung steht unter <a href="datenbank.html#verbindungen-bei-mehreren-instanzen">Verbindungen bei mehreren Instanzen</a>.</p>
+<h2 id="instanzen-beobachten">Instanzen beobachten<a class="headerlink" href="#instanzen-beobachten" title="Permanent link">&para;</a></h2>
+<p>Jede Instanz gibt ihre eigenen Metriken aus, Prometheus fragt jede einzeln ab
+(<a href="ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Überwachung</a>). Für den Mehrinstanzbetrieb
+sind drei Fragen wichtig:</p>
+<ul>
+<li><strong>Laufen alle Instanzen, und in welcher Version?</strong> <code>opaa_instances_active</code> zählt die laufenden
+  Instanzen nach dem Register, <code>opaa_instances_versions</code> ihre verschiedenen Versionen. Jede Instanz
+  meldet denselben Wert; <code>max(opaa_instances_active)</code> unter der Zahl der gewünschten Instanzen
+  heißt, eine fehlt, <code>opaa_instances_versions</code> dauerhaft über <code>1</code>, ein Rolling Update hängt.
+  <code>opaa_instance_heartbeat_age_seconds</code> ist das Alter des eigenen Herzschlags; nähert es sich der
+  Frist <code>OPAA_INSTANCE_DEAD_AFTER</code>, droht der Selbstschutz.</li>
+<li><strong>Hört jede Instanz die Änderungen?</strong> <code>opaa_invalidation_bus_connected</code> ist je Instanz <code>1</code>, solange
+  sie mithört, und <code>0</code>, solange ihre Zwischenspeicher an sich vorbei lesen.</li>
+<li><strong>Laufen die geplanten Läufe?</strong> Unter der Sperre führt nur eine Instanz einen Termin aus; den
+  letzten Erfolg eines Laufs zeigt deshalb <code>max by (job) (opaa_scheduled_last_success)</code> über alle
+  Instanzen, die Fehler <code>sum by (job) (opaa_scheduled_failures_total)</code>. Bis ein Lauf auf einer
+  Instanz gelingt, zeigt sie ihren eigenen Start als letzten Erfolg. Die gehaltenen Sperren und das
+  Alter der ältesten zeigt <code>opaa_scheduled_locks_held</code> und <code>opaa_scheduled_locks_oldest_age_seconds</code>.</li>
+</ul>
 <h2 id="was-man-wissen-sollte">Was man wissen sollte<a class="headerlink" href="#was-man-wissen-sollte" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
