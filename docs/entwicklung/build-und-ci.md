@@ -36,6 +36,15 @@ beliebigen URL wählt den Fixture-Satz, z. B. viele Einträge mit langen Namen (
 die Gruppen dem Szenario. Tabelle und Erweiterung um weitere Bereiche:
 [e2e/ui-lab/README.md](../../e2e/ui-lab/README.md#mock-szenarien).
 
+**Mock-Profile.** `?mockProfile=admin|user|auditor|signed-out` wählt, wer im Mock angemeldet ist;
+die Wahl bleibt wie das Szenario für den Tab bestehen, `?mockProfile=admin` setzt zurück. `user` ist
+ein Konto ohne Verwaltung, `auditor` die Rolle Revision mit ihren Seiten unter `/revision/…`, und
+`signed-out` meldet niemanden an und bietet zwei Identitätsanbieter sowie lokale Konten mit
+Selbstregistrierung und Passwort-Rücksetzung an, sodass Anmelde-, Registrier- und Passwortseiten
+erreichbar sind. Den Einrichtungs-Assistenten öffnet `?mockInstallation=pending`, mit allen
+optionalen Schritten `?mockInstallation=embedding`; `?mockInstallation=done` kehrt zurück. Im
+Szenario `slow` läuft die Chat-Antwort nach zwei Sekunden Wort für Wort ein.
+
 **UI-Lab.** Werkzeuge für Screenshots, Kennzahlen, Videos und Variantenvergleiche gegen dieses
 Frontend liegen unter [`e2e/ui-lab/`](../../e2e/ui-lab/README.md); den Ablauf für die
 Neugestaltung eines Bereichs beschreibt der Skill `.claude/skills/ui-lab/SKILL.md`, den

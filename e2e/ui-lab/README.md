@@ -139,6 +139,23 @@ Ein neuer Bereich bekommt seine Szenarien, indem seine Mock-Handler `currentMock
 `mockScenario.ts` abfragen und je Szenario andere Fixtures liefern; die Vorlage ist
 `frontend/src/features/library/mocks/sourceScenarioMock.ts`.
 
+## Mock-Profile
+
+`?mockProfile=<name>` wählt, wer angemeldet ist, und bleibt wie das Szenario im Tab. Quelle:
+`frontend/src/shared/mocks/mockProfile.ts`.
+
+| Profil | Angemeldet | Erreichbar wird |
+|---|---|---|
+| `admin` | Systemverwaltung (Vorgabe) | alles außer Revision |
+| `user` | Konto ohne Verwaltung | die Sicht ohne Bereich „Admin“ |
+| `auditor` | Rolle Revision | `/revision/rechtehistorie`, `/revision/verbindungsprotokoll`, `/revision/rollenantraege` |
+| `signed-out` | niemand; zwei Identitätsanbieter und lokale Konten mit Selbstregistrierung und Passwort-Rücksetzung | `/login`, `/register`, `/forgot-password`, `/set-password` |
+
+Der Einrichtungs-Assistent hängt nicht am Profil: `?mockInstallation=pending` öffnet ihn mit den
+Pflichtschritten, `?mockInstallation=embedding` mit allen optionalen Schritten; das Token der Mocks
+ist `opaa-installation-demo-0000000001`. Die laufende Chat-Antwort hält das Szenario `slow` fest:
+zwei Sekunden bis zum ersten Wort, danach Wort für Wort.
+
 ## capture.mjs
 
 ```bash

@@ -3,6 +3,13 @@ import { getRandomMockResponse, mockErrorResponse } from './queryFixtures'
 import { mockChatDetails, mockChatArchive } from './chatFixtures'
 import { mockSpaceAssetAssociations } from '../../asset/mocks/assetFixtures'
 import type { QueryRequest } from '@/shared/api/types'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
+
+/** Pace of the answer stream in the `slow` scenario: a pause before the first word, then word by word. */
+const SLOW_STREAM_FIRST_WORD_MS = 2000
+const SLOW_STREAM_WORD_MS = 120
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * Mirrors ChatRepository#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitleIfGenerated
@@ -59,9 +66,14 @@ function eventStreamOf(response: { answer?: string }): ReadableStream<Uint8Array
     encoder.encode(`event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`)
   const parts = mockAnswerDeltas ? ((response.answer ?? '').match(/\S+\s*/g) ?? []) : []
   return new ReadableStream({
-    start(controller) {
+    async start(controller) {
+      const slow = currentMockScenario() === 'slow'
       controller.enqueue(frame({ type: 'started' }))
-      for (const part of parts) controller.enqueue(frame({ type: 'delta', text: part }))
+      if (slow) await pause(SLOW_STREAM_FIRST_WORD_MS)
+      for (const part of parts) {
+        controller.enqueue(frame({ type: 'delta', text: part }))
+        if (slow) await pause(SLOW_STREAM_WORD_MS)
+      }
       controller.enqueue(frame({ type: 'final', response }))
       controller.close()
     },
