@@ -32,6 +32,17 @@ Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile
 `{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand eines Tags (`{%- if … -%}`) entfernt Leerraum wie gewohnt. Namen bestehen
 aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar `{# … #}` erscheint nicht im Ergebnis.
 
+## So nutzt ein Agent die Vorlage
+
+Ein Agent mit dem Werkzeug `fill_template` bekommt in jedem Lauf die Vorlagen angeboten, die die
+fragende Person lesen darf, jeweils mit ihren Platzhaltern. Das Modell liefert nur die Werte, etwa
+Aktenzeichen und Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
+[Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
+Schritte der Antwort zeigen „Vorlage befüllt“ mit Vorlage und Dateien. Fehlende Werte bleiben leer.
+
+Sind Vorlagen ausgeschaltet, darf die Person keine Vorlage lesen oder ist die Sandbox nicht
+erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt das dazu.
+
 **Rollen an der Vorlage:**
 
 | Rolle | Darf |

@@ -37,6 +37,28 @@ describe('AgentRunSteps', () => {
     expect(screen.getByText(/Höchstzahl an Schritten/)).toBeInTheDocument()
   })
 
+  it('names a filled template with its files', async () => {
+    render(
+      <AgentRunSteps
+        run={{
+          ...RUN,
+          steps: [
+            {
+              tool: 'fill_template',
+              detail: 'Vermerk – Vermerk.docx, Vermerk.pdf',
+              hits: null,
+              status: 'DONE',
+            },
+          ],
+        }}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /1 Schritt/ }))
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'Vorlage befüllt: Vermerk – Vermerk.docx, Vermerk.pdf',
+    )
+  })
+
   it('marks a run that asked back as a question, not as unchecked', () => {
     render(<AgentRunSteps run={{ ...RUN, endState: 'ASK_USER' }} />)
     expect(screen.getByText('Rückfrage')).toBeInTheDocument()

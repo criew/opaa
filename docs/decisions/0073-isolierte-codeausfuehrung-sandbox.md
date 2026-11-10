@@ -30,8 +30,8 @@ und Plattformkorrekturen nach, die ein Eigenbau selbst leisten müsste.
 
 ### 2. Eine Sandbox je Agentenlauf, nie geteilt
 
-Der erste Aufruf von `run_code` in einem Lauf öffnet eine Sandbox, weitere Aufrufe desselben Laufs
-arbeiten im selben Ordner weiter. Das Lauf-Ende schließt sie in jedem Ausgang. Ihre Lebensdauer beim
+Der erste Aufruf von `run_code` oder `fill_template` in einem Lauf öffnet eine Sandbox, weitere
+Aufrufe desselben Laufs, auch des jeweils anderen Werkzeugs, arbeiten im selben Ordner weiter. Das Lauf-Ende schließt sie in jedem Ausgang. Ihre Lebensdauer beim
 Dienst ist die Restzeit des Laufs plus Antwortaufrufe, gedeckelt durch `opaa.sandbox.max-lifetime`;
 fällt eine Instanz aus, löscht der Dienst sie selbst. Eine Sandbox gehört genau einem Lauf einer
 Person. Begründung: Ein Lauf lebt eine Anfrage lang (ADR-0070, Entscheidung 1); eine Korrekturrunde
@@ -41,7 +41,8 @@ geparkten Container.
 ### 3. Ergebnisse nur als Anhang der Antwort
 
 Am Ende des Laufs, bevor die Antwort gespeichert wird, liest das Backend die Dateien direkt in
-`/workspace/out` (höchstens fünf in einem Anhangsformat, je höchstens 10 MB, in einer festen Frist)
+`/workspace/out` (höchstens fünf, je höchstens 10 MB, in einer festen Frist) in einem Format, das
+ein Werkzeug des Laufs zulässt: `run_code` jedes Anhangsformat, `fill_template` nur DOCX und PDF,
 und nimmt jede durch alle Prüfungen eines gewöhnlichen Uploads als Anhang der fragenden Person in
 deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als PDF oder eingebettet in ein
 Dokument. Der Endstand zählt, nicht jeder Zwischenstand. Alles aus der Sandbox gilt als feindlich:
@@ -74,9 +75,10 @@ eigene VM.
 ### 6. Abschaltbar, ohne Dienst nicht angeboten
 
 `opaa.sandbox.enabled` ist aus. Eingeschaltet ohne Adresse oder Schlüssel startet das Backend nicht.
-Ohne Schalter gibt es weder Client noch Werkzeug als Bean; die Werkzeug-Registry kennt `run_code`
-dann nicht, und kein Agent kann es aufrufen. Eingeschaltet entscheiden der Werkzeugschalter und die
-Zuordnung am Agenten (ADR-0070, Entscheidung 6).
+Ohne Schalter gibt es weder Client noch Werkzeuge als Bean; die Werkzeug-Registry kennt `run_code`
+und `fill_template` dann nicht, und kein Agent kann sie aufrufen. Eingeschaltet entscheiden der
+Werkzeugschalter und die Zuordnung am Agenten (ADR-0070, Entscheidung 6), bei `fill_template`
+zusätzlich der Schalter „Vorlagen“ und die Leserechte der fragenden Person an der Vorlage.
 
 ### 7. Sandboxprotokoll als eigener Bestand neben dem Schrittprotokoll
 
@@ -89,12 +91,27 @@ wird beim Schließen der Sandbox, auch wenn sie nicht startet. Der Dienst selbst
 Stufe `INFO` oder höher, also ohne Anfragekörper, und Compose rotiert sein Log; ein Test prüft die
 mitgelieferte Konfiguration.
 
+### 8. Feste Skripte des Images für Werkzeuge ohne Modellcode
+
+`fill_template` lässt das Modell keinen Code schreiben: Es liefert nur die Werte der Platzhalter,
+geprüft gegen die beim Hochladen gelesenen Platzhalter der Vorlage. Das Backend lädt Vorlage und
+Werte in die Sandbox des Laufs und startet ein festes Skript aus dem Image (`/opt/opaa`, gehört
+Root, mit `python3 -I`, damit Dateien im Arbeitsordner kein Modul ersetzen). Das Skript füllt mit
+docxtpl in Jinjas Sandbox-Umgebung mit Autoescape, sodass ein Wert nie als Vorlage oder XML
+ausgewertet wird, und erzeugt das PDF mit LibreOffice ohne Oberfläche. Die Tests des Skripts laufen
+beim Bau des Images; scheitert einer, entsteht kein Image. Im Backend rendert nichts eine Vorlage:
+Jinja dort hieße Template-Injection im Prozess mit allen Daten. Ein Stempel- oder Entwurfstext für
+Fußzeile und Dokumenteigenschaften kommt als Parameter vom Backend, nie vom Modell. Scheitert das
+Skript oder ist die Sandbox nicht erreichbar, bekommt das Modell eine Meldung und antwortet im Chat;
+der Lauf endet nicht mit einem Fehler.
+
 ## Konsequenzen
 
-- **Einfacher:** Ein weiteres isoliertes Werkzeug, etwa das Füllen einer Dokumentvorlage, nutzt
-  dieselbe Sandbox des Laufs. Der Baustein lässt sich tauschen, ohne Werkzeuge zu ändern.
+- **Einfacher:** Ein weiteres isoliertes Werkzeug nutzt dieselbe Sandbox des Laufs, wie
+  `fill_template` neben `run_code`. Der Baustein lässt sich tauschen, ohne Werkzeuge zu ändern.
 - **Schwieriger:** Der Betrieb installiert und aktualisiert einen weiteren Dienst mit eigenem Chart.
-  Das Sandbox-Image ist ein weiteres Image mit Paketliste.
+  Das Sandbox-Image ist ein weiteres Image mit Paketliste; LibreOffice macht es deutlich größer, und
+  dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
   Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts.
 
@@ -111,6 +128,9 @@ mitgelieferte Konfiguration.
 - Jede erzeugte Datei sofort als Anhang: Zwischenstände einer Korrektur würden doppelt angehängt (3).
 - Netzregel nur, wenn `networkPolicy.*` eingeschaltet ist: Eine Sandbox hätte bis dahin das offene
   Clusternetz (4).
+- Vorlage im Backend füllen (Jinja-Engine im Prozess): Template-Injection mit Zugriff auf alle
+  Daten (8).
+- Vorlage über `run_code` füllen lassen: Das Ergebnis hinge an ungeprüftem Modellcode (8).
 
 ## Offen
 
