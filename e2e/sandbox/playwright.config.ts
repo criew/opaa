@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright configuration for the sandbox target: the agent spike with the tool run_code against
+ * Playwright configuration for the sandbox target: an agent with the tool run_code against
  * a stack with OpenSandbox (docker-compose.sandbox.yml). Its own testDir, so these specs never run
  * in the regular suite or in CI. scripts/run-e2e.mjs --target sandbox brings the stack up; against
  * an already running local installation, run `pnpm exec playwright test --config

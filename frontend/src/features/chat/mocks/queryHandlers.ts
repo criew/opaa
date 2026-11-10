@@ -11,7 +11,7 @@ const SLOW_STREAM_WORD_MS = 120
 /** Pace of an agent's steps in the `slow` scenario. */
 const SLOW_STREAM_STEP_MS = 1500
 
-/** The steps of the mock agent run, given to a question with agentId or the spike prefix "@test ". */
+/** The steps of the mock agent run, given to a question with agentId. */
 const MOCK_AGENT_RUN: AgentRun = {
   runId: '00000000-0000-4000-8000-0000000a9e47',
   endState: 'COMPLETED',
@@ -219,7 +219,7 @@ export const queryHandlers = [
       })
     }
     const mockResponse = getRandomMockResponse()
-    const agentTurn = Boolean(body.agentId) || body.question.startsWith('@test ')
+    const agentTurn = Boolean(body.agentId)
     return HttpResponse.json({
       ...mockResponse,
       ...(agentTurn ? { agentRun: MOCK_AGENT_RUN } : {}),
