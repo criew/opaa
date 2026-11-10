@@ -37,17 +37,27 @@ prompts:
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
     sha256: "91af4169c942a12372b950ab4611af05805377f17a883a7f23071857d78c688e"
-  - id: tool-loop-spike
-    purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
+  - id: agent-run
+    purpose: >-
+      Regeln für einen Agentenlauf: Werkzeuge in Schritten nutzen, Belegpflicht, Antwortsprache,
+      Anweisung des Agenten und des Space, Gesprächsnotiz; dazu die Beschreibungen der Werkzeuge,
+      nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
+      dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
-      - io.opaa.query.spike.SpikeToolLoopQueryHandler
-      - io.opaa.query.spike.SpikeSearchKnowledgeTool
-      - io.opaa.query.spike.RunCodeTool
+      - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.toolloop.SearchKnowledgeTool
+      - io.opaa.query.toolloop.ReadDocumentTool
+      - io.opaa.query.toolloop.ListSourcesTool
+      - io.opaa.query.toolloop.RunCodeTool
+      - io.opaa.query.toolloop.FillTemplateTool
+      - io.opaa.query.toolloop.AskUserTool
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock
+      - io.opaa.query.answer.SpaceInstructionBlock
+      - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "6ab84bcaad76f246ec19d833ff66cd6658d2a0cca00e2b7fbc100b5d7c2b2498"
+    sha256: "5a02fff3778c95ed9295d83f50dff18b942f5acba71953bbe38719fe446ef162"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
@@ -100,13 +110,17 @@ aiFunctions:
     prompts: [metadata-extraction]
     notes:
       - Der Prompt verbietet Personennamen als Schlagworte
-  - id: tool-loop-spike
-    purpose: Erprobung, nur mit Präfix „@test “ und eingeschaltetem Schalter
+  - id: agent-run
+    purpose: >-
+      Bearbeitet eine Frage im Chat in mehreren Schritten mit Werkzeugen, wenn die Person einen
+      Agenten mit @ wählt; nur bei eingeschalteten Agenten der Installation
     outputKind: TEXT
     interactsWithPersons: true
     assessesPersons: false
-    labelling: Wie die Chat-Antwort
-    prompts: [tool-loop-spike]
+    labelling: >-
+      Wie die Chat-Antwort; zusätzlich nennt die Frage den gewählten Agenten und die Antwort zeigt
+      die Schritte des Laufs
+    prompts: [agent-run]
   - id: speech-transcription
     purpose: Wandelt eine Sprachaufnahme der Person in Text für die Eingabe um (Diktat)
     outputKind: TEXT
