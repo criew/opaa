@@ -30,6 +30,7 @@ import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
+import io.opaa.query.runlog.AgentRunLogWriter;
 import io.opaa.retrieval.ChunkGroupingKey;
 import java.io.IOException;
 import java.time.Clock;
@@ -112,6 +113,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private final QueryMetrics queryMetrics;
   private final ObservationRegistry observationRegistry;
   private final ObjectMapper objectMapper;
+  private final AgentRunLogWriter runLogWriter;
   private final Clock clock;
 
   AgentToolLoop(
@@ -131,6 +133,7 @@ class AgentToolLoop implements AgentTurnHandler {
       QueryMetrics queryMetrics,
       ObjectProvider<ObservationRegistry> observationRegistry,
       ObjectMapper objectMapper,
+      AgentRunLogWriter runLogWriter,
       Clock clock) {
     this.specResolver = specResolver;
     this.toolSwitches = toolSwitches;
@@ -148,6 +151,7 @@ class AgentToolLoop implements AgentTurnHandler {
     this.queryMetrics = queryMetrics;
     this.observationRegistry = observationRegistry.getIfAvailable(() -> ObservationRegistry.NOOP);
     this.objectMapper = objectMapper;
+    this.runLogWriter = runLogWriter;
     this.clock = clock;
   }
 
@@ -196,6 +200,7 @@ class AgentToolLoop implements AgentTurnHandler {
       throw e;
     } finally {
       closeResources(run);
+      runLogWriter.writeSteps(run.organizationId(), run.runId(), run.trace());
       release(run);
     }
   }

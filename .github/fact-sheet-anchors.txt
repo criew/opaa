@@ -4,6 +4,7 @@
 datenkatalog
 datenkatalog#account-state-history
 datenkatalog#accounts
+datenkatalog#agent-run-logs
 datenkatalog#application-log
 datenkatalog#audit-incident-scopes
 datenkatalog#audit-log
@@ -54,6 +55,7 @@ protokollereignisse
 protokollereignisse#account-deactivated
 protokollereignisse#account-erased
 protokollereignisse#account-reauthentication-forced
+protokollereignisse#agent-run-log-retention-changed
 protokollereignisse#api-token-expired
 protokollereignisse#api-token-issued
 protokollereignisse#api-token-revoked
@@ -287,6 +289,8 @@ datenfluesse#transcription-model
 datenfluesse#transcription-realtime
 datenfluesse#uebersicht
 voreinstellungen
+voreinstellungen#agent-run-log-retention-settings-sandbox-log-retention-days
+voreinstellungen#agent-run-log-retention-settings-step-log-retention-days
 voreinstellungen#audit-incident-scope-retention-settings-retention-years
 voreinstellungen#audit-retention-settings-retention-months
 voreinstellungen#bereich-accounts
@@ -411,6 +415,8 @@ voreinstellungen#transcription-model-realtime-model
 voreinstellungen#transcription-model-realtime-protocol
 voreinstellungen#transcription-model-realtime-url
 fristen
+fristen#agent-run-log-retention-settings-sandbox-log-retention-days
+fristen#agent-run-log-retention-settings-step-log-retention-days
 fristen#audit-incident-scope-retention-settings-retention-years
 fristen#audit-retention-settings-retention-months
 fristen#chat-auto-cleanup-settings-archive-after-days

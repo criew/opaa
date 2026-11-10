@@ -49,6 +49,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
           Map.entry("chat_locked_account_cleanup_state", 1L),
           Map.entry("connection_log_retention_settings", 1L),
           Map.entry("diagnostic_context_retention_settings", 1L),
+          Map.entry("agent_run_log_retention_settings", 1L),
           Map.entry("document_type_suffix_exclusions", 14L),
           Map.entry("document_type_suffixes", 7L),
           Map.entry("document_type_synonyms", 34L),
@@ -231,7 +232,10 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "space_memberships",
             "spaces",
             // assistant
+            "agent_run_log_retention_settings",
             "agent_run_reservations",
+            "agent_sandbox_log",
+            "agent_step_log",
             "agent_workspace",
             "chat_attachment_chunks",
             "chat_attachments",

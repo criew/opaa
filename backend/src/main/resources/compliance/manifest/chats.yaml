@@ -220,6 +220,54 @@ data:
     evaluations: Keine; weder protokolliert noch gezählt
     notes:
       - Von der Person selbst gepflegt; die Verwaltung sieht die Liste nicht
+  - id: agent-run-logs
+    title: Schritt- und Sandboxprotokoll der Agentenläufe
+    purpose: >-
+      Fehlersuche in Agentenläufen: welches Werkzeug ein Schritt mit welchem Ergebnis und welcher
+      Dauer lief, und wie viele Skripte, Dateien und Bytes eine Sandbox hatte
+    personalReference: EMPLOYEE
+    tables:
+      - name: agent_step_log
+        personalColumns: [run_id, recorded_at]
+        nonPersonalColumns:
+          [step_index, organization_id, tool, status, hit_count, duration_ms, abort_reason]
+        person:
+          excluded: >-
+            Kein Konto, keine Suchanfrage; der Lauf ist nur über die Laufkennung im Chat seines
+            Autors einer Person zuzuordnen
+      - name: agent_sandbox_log
+        personalColumns: [run_id, recorded_at]
+        nonPersonalColumns:
+          - session_ref
+          - organization_id
+          - tool
+          - status
+          - script_runs
+          - duration_ms
+          - file_count
+          - file_bytes
+          - abort_reason
+        person:
+          excluded: >-
+            Kein Konto, kein Skript, kein Dateiinhalt; der Lauf ist nur über die Laufkennung im
+            Chat seines Autors einer Person zuzuordnen
+    storage: Anwendungsdatenbank, nur anfügend, Tagespartitionen
+    retention:
+      rule: >-
+        Voreinstellung 7 Tage, einstellbar 1 bis 30 Tage; das Sandboxprotokoll nie länger als das
+        Schrittprotokoll
+      settings:
+        - agent_run_log_retention_settings.step_log_retention_days
+        - agent_run_log_retention_settings.sandbox_log_retention_days
+    visibility: [SYSTEM_ADMIN mit Laufkennung und Begründung]
+    accessPaths: [API, DATABASE]
+    deletion: Täglicher Lauf verwirft abgelaufene Tagespartitionen; nicht abschaltbar
+    evaluations: >-
+      Keine; kein Personenfilter, keine Liste der Läufe, kein Export, nur ein Lauf je Abruf
+    notes:
+      - Jeder Abruf, auch ein verweigerter oder gescheiterter, steht als AUDIT_LOG_ACCESSED im
+        Revisionsprotokoll
+      - Ein fremder Lauf antwortet wie ein unbekannter
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]
   chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]
@@ -227,6 +275,8 @@ nonPersonalTables:
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   agent_workspace: [id]
   agent_run_reservations: [run_id, expires_at]
+  agent_run_log_retention_settings:
+    [id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
   document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
@@ -328,3 +378,15 @@ settings:
       - >-
         Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
         eigenen Wert setzt
+  - key: agent_run_log_retention_settings.step_log_retention_days
+    source: DATABASE
+    defaultValue: "7"
+    range: 1 bis 30 Tage
+    effect: Aufbewahrungsfrist des Schrittprotokolls der Agentenläufe
+    bearings: [DATA]
+  - key: agent_run_log_retention_settings.sandbox_log_retention_days
+    source: DATABASE
+    defaultValue: "7"
+    range: 1 Tag bis zur Frist des Schrittprotokolls
+    effect: Aufbewahrungsfrist des Sandboxprotokolls der Agentenläufe
+    bearings: [DATA]

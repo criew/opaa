@@ -16,6 +16,7 @@ max_sandbox_timeout_seconds = 900
 resolve_internal = true
 
 [log]
+# INFO or above: DEBUG would log request bodies, i.e. the scripts of agent runs.
 level = "INFO"
 
 [runtime]

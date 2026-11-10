@@ -292,6 +292,7 @@ export type LockedAccountChatRetention = components['schemas']['LockedAccountCha
 export type LockedAccountChatRetentionUpdate =
   components['schemas']['LockedAccountChatRetentionUpdate']
 export type IncidentScopeRetention = components['schemas']['IncidentScopeRetention']
+export type AgentRunLogRetention = components['schemas']['AgentRunLogRetention']
 export type IncidentScopeRetentionUpdate = components['schemas']['IncidentScopeRetentionUpdate']
 export type RetentionPause = components['schemas']['RetentionPause']
 export type LinkTargets = components['schemas']['LinkTargets']
