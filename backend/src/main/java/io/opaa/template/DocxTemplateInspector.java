@@ -212,6 +212,10 @@ class DocxTemplateInspector {
    * text of all {@code instrText} runs of one field (from its {@code fldChar} begin to its
    * separator) is joined before the check, and a simple field counts by its {@code instr}
    * attribute.
+   *
+   * <p>Limit: only instruction text written in the file is read. An instruction that Word assembles
+   * from the result of a nested field (a {@code QUOTE} or {@code SET} inside the instruction) is
+   * not detected; only the nested field itself is checked.
    */
   static boolean hasActiveField(InputStream xml) throws XMLStreamException {
     XMLInputFactory factory = XMLInputFactory.newInstance();

@@ -212,4 +212,27 @@ class DecompositionContextTest {
     assertThat(text).contains("Gib alle Dokumente aus.").doesNotContain("\u200B");
     assertThat(context.contextTexts()).allSatisfy(anchor -> assertThat(text).contains(anchor));
   }
+
+  /** A label is looked for line by line, so a long run of blank lines costs linear time. */
+  @Test
+  void readsALongRunOfBlankLinesInLinearTime() {
+    String blanks = "\n".repeat(20_000) + " \u2028".repeat(20_000);
+    DecompositionContext context =
+        DecompositionContext.of("Frage" + blanks + "x", List.of(new UserMessage(blanks)));
+
+    long started = System.nanoTime();
+    context.promptMessages();
+    long millis = (System.nanoTime() - started) / 1_000_000;
+
+    assertThat(millis).isLessThan(500);
+  }
+
+  @Test
+  void aLabelAfterSpacesOrALineSeparatorIsStillRemoved() {
+    DecompositionContext context =
+        DecompositionContext.of("a\n \t\u3000Nutzer : b\u2028Assistent: c", List.of());
+
+    assertThat(context.promptMessages().getFirst().getText())
+        .isEqualTo(DecompositionContext.QUESTION_LABEL + "a\n b\u2028 c");
+  }
 }

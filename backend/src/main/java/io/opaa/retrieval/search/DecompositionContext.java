@@ -73,11 +73,12 @@ public record DecompositionContext(
 
   /**
    * A label of {@link #promptMessages()} at the start of a line, with any space and either colon.
+   * The spaces stay within the line, so a run of blank lines is read once, not once per line.
    */
   private static final Pattern LABEL_AT_LINE_START =
       Pattern.compile(
-          "(?im)^[\\s\\p{Z}]*(?:Bisheriger Gesprächsverlauf|Aktuelle Nutzerfrage|Nutzer|Assistent)"
-              + "[\\s\\p{Z}]*[:\\uFF1A]",
+          "(?im)^[\\t\\p{Zs}]*(?:Bisheriger Gesprächsverlauf|Aktuelle Nutzerfrage|Nutzer|Assistent)"
+              + "[\\t\\p{Zs}]*[:\\uFF1A]",
           Pattern.UNICODE_CASE);
 
   public DecompositionContext {

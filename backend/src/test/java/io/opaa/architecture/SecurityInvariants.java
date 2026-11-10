@@ -173,7 +173,7 @@ final class SecurityInvariants {
           "org.springframework.ai.chat.messages.SystemMessage",
           Set.of("<init>", "builder"),
           "org.springframework.ai.chat.prompt.Prompt",
-          Set.of("<init>"),
+          Set.of("<init>", "builder"),
           "org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec",
           Set.of("system", "user"));
 
@@ -277,20 +277,31 @@ final class SecurityInvariants {
   }
 
   /**
-   * Code units that build a prompt ({@link #PROMPT_BUILDING_MEMBERS}) in a class that never calls
-   * one of {@link #PROMPT_TEXT_BLOCKS}. Which text flows into a message is not visible in bytecode;
-   * the rule makes every new place that writes a prompt either clean its text itself or name where
-   * that text was cleaned.
+   * Methods that build a prompt ({@link #PROMPT_BUILDING_MEMBERS}) without calling one of {@link
+   * #PROMPT_TEXT_BLOCKS} themselves; a lambda counts as part of the method it is written in. Which
+   * text flows into a message is not visible in bytecode: the rule makes every method that writes a
+   * prompt either clean its text in the same method or name where that text was cleaned. It cannot
+   * tell whether the cleaned text is the one that reaches the message.
    */
   static Map<String, String> promptBuildingUnits(JavaClasses classes) {
-    return offenders(
-        classes,
-        access -> matches(access, PROMPT_BUILDING_MEMBERS),
-        type ->
-            type.getCodeUnits().stream()
-                .flatMap(SecurityInvariants::accessesOf)
-                .anyMatch(
-                    access -> PROMPT_TEXT_BLOCKS.contains(access.getTargetOwner().getName())));
+    Map<String, String> building = new TreeMap<>();
+    Set<String> cleaning = new TreeSet<>();
+    for (JavaClass type : classes) {
+      for (JavaCodeUnit unit : type.getCodeUnits()) {
+        accessesOf(unit)
+            .forEach(
+                access -> {
+                  if (matches(access, PROMPT_BUILDING_MEMBERS)) {
+                    building.putIfAbsent(keyOf(unit), describe(access));
+                  }
+                  if (PROMPT_TEXT_BLOCKS.contains(access.getTargetOwner().getName())) {
+                    cleaning.add(keyOf(unit));
+                  }
+                });
+      }
+    }
+    building.keySet().removeAll(cleaning);
+    return building;
   }
 
   /** Lines for the entries of {@code current} that {@code allowed} does not name. */

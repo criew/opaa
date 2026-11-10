@@ -485,10 +485,11 @@ Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
   `PromptText` (unsichtbare Zeichen und Marker bis zum Fixpunkt entfernen, zwischen Marker setzen)
   oder `ContentFence` (Zaun mit Kennung je Aufruf) in einen Prompt. Als Prompt-Bau zählen
   `UserMessage`, `SystemMessage` und `Prompt` (Konstruktor und Builder) sowie `system` und `user`
-  einer `ChatClient`-Anfrage; gemeldet wird eine Methode, deren Klasse keinen der beiden Bausteine
-  aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
+  einer `ChatClient`-Anfrage; gemeldet wird eine Methode (samt ihrer Lambdas), die selbst keinen
+  der beiden Bausteine aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
   (`PROMPTS_PAST_THE_BLOCKS`) nennt je Methode, wo ihr Text bereinigt wurde, eine neue Stelle muss
-  diese Entscheidung ausdrücklich treffen.
+  diese Entscheidung ausdrücklich treffen. Grenze: Ruft eine Methode einen Baustein auf, prüft die
+  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet.
 
 Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
 wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat

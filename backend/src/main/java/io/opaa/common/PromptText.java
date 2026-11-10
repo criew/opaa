@@ -6,18 +6,24 @@ import java.util.regex.Pattern;
 /**
  * The one way text that a person, a document or an earlier answer controls enters a model prompt.
  * {@link #clean} removes invisible characters - control and format characters such as tag
- * characters (U+E0000-E007F), zero-width and direction controls - and then every given marker,
- * repeated until nothing changes, so no removal can reassemble a marker. {@link #between} sets the
- * cleaned text between a start and an end marker, {@link ContentFence#wrap} between the markers of
- * a fence with a fresh id. Tab and line breaks stay; a zero-width joiner stays only inside an
- * emoji.
+ * characters (U+E0000-E007F), zero-width and direction controls, Hangul fillers, the combining
+ * grapheme joiner and the supplementary variation selectors (U+E0100-E01EF) - and then every given
+ * marker, repeated until nothing changes, so no removal can reassemble a marker. {@link #between}
+ * sets the cleaned text between a start and an end marker, {@link ContentFence#wrap} between the
+ * markers of a fence with a fresh id. Tab and line breaks stay. What writing needs stays too: a
+ * zero-width non-joiner or joiner between two letters of a script shaped by them (not Latin, where
+ * it would only hide a label such as "Dokument:" from a check), a joiner between two emoji symbols
+ * and a single variation selector (U+FE00-FE0F) directly after the character it selects.
  */
 public final class PromptText {
 
-  /** Control and format characters except tab, line break and the joiner inside emoji. */
+  /** Characters that never show and are removed wherever they stand. */
   private static final Pattern INVISIBLE =
-      Pattern.compile("[\\p{Cc}&&[^\\t\\n\\r]]|[\\p{Cf}&&[^\\u200D]]");
+      Pattern.compile(
+          "[\\p{Cc}&&[^\\t\\n\\r]]|[\\p{Cf}&&[^\\u200C\\u200D]]"
+              + "|[\\u034F\\u115F\\u1160\\u3164\\uFFA0\\x{E0100}-\\x{E01EF}]");
 
+  private static final int NON_JOINER = 0x200C;
   private static final int JOINER = 0x200D;
 
   private PromptText() {}
@@ -61,36 +67,80 @@ public final class PromptText {
     if (text == null) {
       return null;
     }
-    return withoutStrayJoiners(INVISIBLE.matcher(text).replaceAll(""));
+    return withoutStrayJoinersAndSelectors(INVISIBLE.matcher(text).replaceAll(""));
   }
 
   /**
-   * Keeps a joiner only between two symbols, where it joins an emoji; anywhere else it only hides a
-   * word from a check. Works on code points, since emoji lie outside the BMP.
+   * Keeps a joiner, a non-joiner or a variation selector only where it shapes what is written
+   * around it; anywhere else it only hides a word from a check. Works on code points, since emoji
+   * lie outside the BMP; the character before is the last one kept.
    */
-  private static String withoutStrayJoiners(String text) {
-    if (text.indexOf(JOINER) < 0) {
+  private static String withoutStrayJoinersAndSelectors(String text) {
+    if (text.chars().noneMatch(c -> c == NON_JOINER || c == JOINER || isSelector(c))) {
       return text;
     }
     int[] codePoints = text.codePoints().toArray();
     StringBuilder kept = new StringBuilder(text.length());
+    int before = -1;
     for (int i = 0; i < codePoints.length; i++) {
       int cp = codePoints[i];
-      if (cp == JOINER
-          && !(i > 0
-              && i + 1 < codePoints.length
-              && joinsAfter(codePoints[i - 1])
-              && Character.getType(codePoints[i + 1]) == Character.OTHER_SYMBOL)) {
-        continue;
+      int after = i + 1 < codePoints.length ? codePoints[i + 1] : -1;
+      boolean keep =
+          switch (cp) {
+            case NON_JOINER -> joinsLetters(before, after);
+            case JOINER -> joinsLetters(before, after) || joinsEmoji(before, after);
+            default -> !isSelector(cp) || selects(before);
+          };
+      if (keep) {
+        kept.appendCodePoint(cp);
+        before = cp;
       }
-      kept.appendCodePoint(cp);
     }
     return kept.toString();
   }
 
-  /** A symbol, a skin-tone modifier or the emoji presentation selector before a joiner. */
-  private static boolean joinsAfter(int cp) {
-    int type = Character.getType(cp);
-    return type == Character.OTHER_SYMBOL || type == Character.MODIFIER_SYMBOL || cp == 0xFE0F;
+  private static boolean isSelector(int cp) {
+    return cp >= 0xFE00 && cp <= 0xFE0F;
+  }
+
+  /** A character a variation selector can follow: none of the invisible ones, no blank. */
+  private static boolean selects(int before) {
+    return before >= 0
+        && !isSelector(before)
+        && before != JOINER
+        && before != NON_JOINER
+        && !Character.isWhitespace(before);
+  }
+
+  /**
+   * A letter, or a letter's combining mark such as a virama, before; a letter after; neither of
+   * them Latin or common to all scripts.
+   */
+  private static boolean joinsLetters(int before, int after) {
+    if (before < 0 || after < 0) {
+      return false;
+    }
+    int type = Character.getType(before);
+    return (Character.isLetter(before)
+            || type == Character.NON_SPACING_MARK
+            || type == Character.COMBINING_SPACING_MARK)
+        && Character.isLetter(after)
+        && shapedByJoiners(before)
+        && shapedByJoiners(after);
+  }
+
+  private static boolean shapedByJoiners(int cp) {
+    Character.UnicodeScript script = Character.UnicodeScript.of(cp);
+    return script != Character.UnicodeScript.LATIN && script != Character.UnicodeScript.COMMON;
+  }
+
+  /** A symbol, a skin-tone modifier or the emoji presentation selector before; a symbol after. */
+  private static boolean joinsEmoji(int before, int after) {
+    if (before < 0 || after < 0) {
+      return false;
+    }
+    int type = Character.getType(before);
+    return (type == Character.OTHER_SYMBOL || type == Character.MODIFIER_SYMBOL || before == 0xFE0F)
+        && Character.getType(after) == Character.OTHER_SYMBOL;
   }
 }

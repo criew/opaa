@@ -4,7 +4,6 @@ import io.opaa.api.types.ChatRole;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
-import io.opaa.common.PromptText;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.MetadataFilter;
@@ -451,9 +450,8 @@ public class ChatService {
   /**
    * The last {@code maxMessages} persisted messages as Spring AI messages, in turn order - ordered
    * by the application-assigned {@code sequence} (see {@link ChatMessage}'s Javadoc), not {@code
-   * created_at}. The content is the persisted text without invisible characters ({@link
-   * PromptText}); the conversation window's own normalization happens at its entrance, in {@code
-   * QueryService}.
+   * created_at}. The content is the persisted text as is; the conversation window normalizes it at
+   * its entrance, {@code ConversationWindowMessages#reloaded}.
    */
   @Transactional(readOnly = true)
   public List<Message> historyAsSpringAiMessages(UUID chatId, int maxMessages) {
@@ -466,8 +464,8 @@ public class ChatService {
         .<Message>map(
             m ->
                 m.getRole() == ChatRole.USER
-                    ? new UserMessage(PromptText.withoutInvisible(m.getContent()))
-                    : new AssistantMessage(PromptText.withoutInvisible(m.getContent())))
+                    ? new UserMessage(m.getContent())
+                    : new AssistantMessage(m.getContent()))
         .toList();
   }
 

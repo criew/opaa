@@ -266,13 +266,22 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.query.toolloop.AgentToolLoop#runAndKeep",
               "the user message is the question QueryService#query cleaned with PromptText; the"
-                  + " history comes from ChatService#historyAsSpringAiMessages, cleaned there"),
+                  + " history is the conversation window, whose entrances in"
+                  + " ConversationWindowMessages clean every message"),
+          Map.entry(
+              "io.opaa.chat.ChatService#historyAsSpringAiMessages",
+              "the persisted history enters the conversation window only through"
+                  + " ConversationWindowMessages#reloaded, which cleans every message"),
           Map.entry(
               "io.opaa.query.spike.SpikeToolLoopQueryHandler#handle",
               "the user message is the question QueryService#query cleaned with PromptText"),
           Map.entry(
               "io.opaa.retrieval.search.QueryDecompositionService#requestDecomposition",
               "question and window come as messages of DecompositionContext, cleaned there"),
+          Map.entry(
+              "io.opaa.retrieval.search.DecompositionContext#promptMessages",
+              "question and window texts go through DecompositionContext#material, which cleans"
+                  + " them with PromptText"),
           Map.entry(
               "io.opaa.metadata.ModelMetadataExtractor#askModel",
               "the prompt is ModelExtractionPrompt's, which fences title and text with"

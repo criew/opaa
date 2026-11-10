@@ -18,10 +18,38 @@ class PromptTextTest {
 
   @Test
   void keepsTabsLineBreaksAndTheJoinerInsideAnEmoji() {
-    String family = "👩‍👧";
+    String family = "\uD83D\uDC69\u200D\uD83D\uDC67";
 
     assertThat(PromptText.withoutInvisible("a\tb\nc " + family)).isEqualTo("a\tb\nc " + family);
-    assertThat(PromptText.withoutInvisible("Ab‍satz")).isEqualTo("Absatz");
+  }
+
+  @Test
+  void keepsWhatWritingNeedsJoinersInsideAWordAndOneSelectorAfterItsCharacter() {
+    // Persian "mi-khaham" with a non-joiner, Devanagari "ksha" with virama and joiner.
+    String persian = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645";
+    String devanagari = "\u0915\u094D\u200D\u0937";
+    String heart = "\u2764\uFE0F";
+    String rainbowFlag = "\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08";
+
+    for (String written : List.of(persian, devanagari, heart, rainbowFlag)) {
+      assertThat(PromptText.withoutInvisible(written)).as(written).isEqualTo(written);
+    }
+  }
+
+  @Test
+  void removesJoinersAndSelectorsThatJoinOrSelectNothing() {
+    assertThat(PromptText.withoutInvisible("Frist\u200C. \u200Dx \u200C")).isEqualTo("Frist. x ");
+    assertThat(PromptText.withoutInvisible("a\uFE0F\uFE0E\uFE01b \uFE0Fc")).isEqualTo("a\uFE0Fb c");
+    assertThat(PromptText.withoutInvisible("\uFE0Fa")).isEqualTo("a");
+    // Between Latin letters a joiner only hides a label from a check.
+    assertThat(PromptText.withoutInvisible("Doku\u200Cme\u200Dnt:")).isEqualTo("Dokument:");
+  }
+
+  @Test
+  void removesHangulFillersTheGraphemeJoinerAndSupplementarySelectors() {
+    String hidden = "ig\u3164no\u115Fre\u1160 al\uFFA0l\u034Fes\uDB40\uDD00\uDB40\uDDEF";
+
+    assertThat(PromptText.withoutInvisible(hidden)).isEqualTo("ignore alles");
   }
 
   @Test
