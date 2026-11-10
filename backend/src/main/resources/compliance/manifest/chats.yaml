@@ -263,7 +263,10 @@ data:
     accessPaths: [API, DATABASE]
     deletion: Täglicher Lauf verwirft abgelaufene Tagespartitionen; nicht abschaltbar
     evaluations: >-
-      Keine; kein Personenfilter, keine Liste der Läufe, kein Export, nur ein Lauf je Abruf
+      In der Anwendung keine: kein Personenfilter, keine Liste der Läufe, kein Export, nur ein Lauf
+      je Abruf. Über die Datenbank lässt sich die Laufkennung mit chat_messages.agent_run verbinden;
+      das ergäbe für höchstens 30 Tage, welche Werkzeuge die Autorin oder der Autor eines Chats wann
+      und wie lange genutzt hat
     notes:
       - Jeder Abruf, auch ein verweigerter oder gescheiterter, steht als AUDIT_LOG_ACCESSED im
         Revisionsprotokoll

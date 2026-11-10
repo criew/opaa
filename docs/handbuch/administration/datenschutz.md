@@ -31,7 +31,7 @@ Suchtext, Skript und Dateiinhalt stehen nicht darin.
 
 Einsehen kann es nur die Systemverwaltung der eigenen Organisation, über die Schnittstelle
 `GET /api/v1/admin/agent-runs/{Laufkennung}/log?reason=…`: genau ein Lauf, nur mit Begründung.
-Die Laufkennung nennt die Person, die den Fehler meldet. Jeder Abruf, auch ein abgelehnter, steht im
+Die Laufkennung steht an der Antwort, wenn die Person die Schritte aufklappt, und bei einem abgebrochenen Lauf im Anwendungslog. Ein Tag wird frühestens nach der eingestellten Frist gelöscht, spätestens am Tag darauf. Jeder Abruf, auch ein abgelehnter, steht im
 Revisionsprotokoll. Eine Liste der Läufe, eine Suche nach Personen oder einen Export gibt es nicht.
 
 **Gut zu wissen:**

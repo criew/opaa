@@ -162,7 +162,9 @@ class AgentRunLogPrivilegeModelTest extends AbstractMigrationTest {
   }
 
   @Test
-  void theMaintenanceDropsADayPastTheRetentionWithItsRows() throws Exception {
+  void theMaintenanceDropsADayPastTheRetentionAndCreatesTheMissingComingDays() throws Exception {
+    String coming = "agent_sandbox_log_" + day(30);
+    execute(connection, "DROP TABLE " + coming);
     String expired = "agent_step_log_" + day(-10);
     execute(
         connection,
@@ -192,6 +194,7 @@ class AgentRunLogPrivilegeModelTest extends AbstractMigrationTest {
     assertThat(dropped).containsExactly(expired);
     assertThat(count(connection, "agent_step_log", runId)).isZero();
     assertThat(partitionsOf("agent_step_log")).contains("agent_step_log_" + day(30));
+    assertThat(partitionsOf("agent_sandbox_log")).contains(coming);
   }
 
   private String day(int offset) throws SQLException {

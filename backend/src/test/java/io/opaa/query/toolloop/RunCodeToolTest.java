@@ -78,6 +78,18 @@ class RunCodeToolTest {
   }
 
   @Test
+  void aSandboxThatCannotBeDeletedIsStillLogged() {
+    AgentRun run = run();
+    tool(START).call(args("print(1)"), run);
+    sandboxes.closeFailure = new SandboxException("delete sandbox answered 500");
+
+    assertThatThrownBy(() -> run.resources().getFirst().close())
+        .isInstanceOf(SandboxException.class);
+
+    verify(RUN_LOG).writeSandbox(eq(run.organizationId()), eq(run.runId()), any());
+  }
+
+  @Test
   void aSandboxThatDoesNotStartIsLoggedAsSuch() {
     AgentRun run = run();
     sandboxes.onOpen =
@@ -358,6 +370,7 @@ class RunCodeToolTest {
     List<OutputFile> files = List.of();
     RuntimeException collectFailure;
     Runnable onOpen = () -> {};
+    RuntimeException closeFailure;
 
     @Override
     public SandboxSession open(Duration lifetime, Duration readyWithin) {
@@ -393,6 +406,9 @@ class RunCodeToolTest {
         @Override
         public void close() {
           closed++;
+          if (closeFailure != null) {
+            throw closeFailure;
+          }
         }
       };
     }

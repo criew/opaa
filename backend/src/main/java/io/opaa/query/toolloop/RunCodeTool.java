@@ -403,7 +403,14 @@ class RunCodeTool implements AgentTool {
         return;
       }
       closed = true;
-      session.close();
+      try {
+        session.close();
+      } finally {
+        writeLog();
+      }
+    }
+
+    private void writeLog() {
       String abortReason = collectFailed ? "COLLECT_FAILED" : timedOut ? "SCRIPT_TIMEOUT" : null;
       runLogWriter.writeSandbox(
           run.organizationId(),

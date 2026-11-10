@@ -193,10 +193,15 @@ class AgentToolLoop implements AgentTurnHandler {
           Duration.between(started, clock.instant()));
       return result;
     } catch (RuntimeException e) {
+      boolean aborted = e instanceof AnswerReaderGoneException;
       metrics.recordRun(
           spec.builtin(),
-          e instanceof AnswerReaderGoneException ? AgentRunResult.ABORTED : AgentRunResult.ERROR,
+          aborted ? AgentRunResult.ABORTED : AgentRunResult.ERROR,
           Duration.between(started, clock.instant()));
+      if (!aborted) {
+        // the run id is the only key into the step log of a run that left no answer behind
+        log.warn("Agent run {} failed: {}", run.runId(), e.getClass().getSimpleName());
+      }
       throw e;
     } finally {
       closeResources(run);

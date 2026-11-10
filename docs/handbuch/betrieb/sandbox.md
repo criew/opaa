@@ -91,8 +91,8 @@ Skripte, Dateinamen oder Inhalte. Die Schritte eines Laufs sieht die Person an i
 
 Je Sandbox hält das **Sandboxprotokoll** in der Datenbank fest: Lauf, technische Kennung der
 Sandbox, Ergebnis, Dauer, Zahl der Skripte, Zahl und Größe der Dateien und gegebenenfalls den
-Abbruchgrund. Kein Konto, kein Skript, kein Dateiinhalt. Es wird nach 7 Tagen gelöscht, einstellbar
-1 bis 30 Tage, nie länger als das Schrittprotokoll; Frist und Einsicht beschreibt
+Abbruchgrund. Kein Konto, kein Skript, kein Dateiinhalt. Es wird frühestens nach 7 Tagen und spätestens am Tag
+darauf gelöscht, einstellbar 1 bis 30 Tage, nie länger als das Schrittprotokoll; Frist und Einsicht beschreibt
 [Datenschutz einstellen](../administration/datenschutz.md).
 
 Der Sandbox-Dienst führt ein eigenes Log. Damit keine Skripte darin landen:

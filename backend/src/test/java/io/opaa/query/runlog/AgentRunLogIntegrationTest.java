@@ -36,7 +36,6 @@ class AgentRunLogIntegrationTest {
   @Autowired private AgentRunLogWriter writer;
   @Autowired private AgentRunLogQueryService queryService;
   @Autowired private AgentRunLogRetentionService retentionService;
-  @Autowired private AgentRunLogMaintenance maintenance;
   @Autowired private AuditActorPseudonymService pseudonyms;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
@@ -137,22 +136,6 @@ class AgentRunLogIntegrationTest {
                 + " event_type = 'AGENT_RUN_LOG_RETENTION_CHANGED'",
             organizationId);
     assertThat(event.get("after").toString()).contains("\"stepLogRetentionDays\":14");
-  }
-
-  @Test
-  void theMaintenanceKeepsTheComingDaysAndRecordsItsRun() {
-    maintenance.maintain();
-
-    Integer days =
-        jdbc.queryForObject(
-            "SELECT count(*)::int FROM pg_inherits WHERE inhparent = 'agent_step_log'::regclass",
-            Integer.class);
-    assertThat(days).isGreaterThanOrEqualTo(31);
-    assertThat(
-            jdbc.queryForObject(
-                "SELECT last_run_day IS NOT NULL FROM agent_run_log_retention_settings",
-                Boolean.class))
-        .isTrue();
   }
 
   private void writeRun(UUID organization) {
