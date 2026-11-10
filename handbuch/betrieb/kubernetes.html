@@ -8076,6 +8076,12 @@ den Labels, die Prometheus selbst setzt (<code>pod</code>, <code>namespace</code
 Namen des Pods; die Latenzen haben Buckets für p95 und SLO-Auswertungen. Eigene Schwellen der
 Buckets kommen als <code>OPAA_METRICS_SLO_*</code> über <code>backend.extraEnv</code>
 (<a href="../referenz/konfiguration.html">Konfiguration</a>).</p>
+<p>Mit mehreren Backend-Pods melden Gauges, die jede Instanz aus der Datenbank liest, auf jedem Pod
+denselben Wert, etwa <code>opaa_indexing_run_last_success_seconds</code>,
+<code>opaa_indexing_libraries_overdue</code> und die Gauges des Verzeichnisabgleichs. Eigene Dashboards und
+Alarme fassen sie mit <code>max by (…)</code> über die Pods zusammen, nicht mit <code>sum</code>; sonst zählt jede
+Bibliothek so oft, wie Pods laufen. Zähler, Timer und Gauges einer einzelnen Instanz wie
+<code>opaa_indexing_runs_active</code> werden über die Pods summiert.</p>
 <h3 id="alarme">Alarme<a class="headerlink" href="#alarme" title="Permanent link">&para;</a></h3>
 <p><code>metrics.prometheusRule.enabled</code> legt eine <code>PrometheusRule</code> mit neun Alarmen an. Mit mehreren
 Backend-Pods melden fehlende Metriken, voller Heap und hängende Indexierung schon einen einzelnen Pod;

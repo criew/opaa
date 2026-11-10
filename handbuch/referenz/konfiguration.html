@@ -4205,6 +4205,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer der geplanten Läufe (<code>tasks_scheduled_execution_seconds_bucket</code>)</td>
 </tr>
 <tr>
+<td><code>OPAA_METRICS_SLO_INDEXING_RUN</code></td>
+<td><code>10s,60s,300s,900s,1800s,3600s,7200s,14400s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Indizierungslaufs (<code>opaa_indexing_run_duration_seconds_bucket</code>)</td>
+</tr>
+<tr>
 <td><code>OPAA_CORS_ALLOWED_ORIGINS</code></td>
 <td><code>http://localhost:5173</code></td>
 <td><code>http://localhost:3000</code></td>

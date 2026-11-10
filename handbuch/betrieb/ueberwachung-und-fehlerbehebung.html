@@ -4141,7 +4141,59 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_indexing_documents_total</code></td>
-<td>verarbeitete Dokumente nach Ergebnis</td>
+<td>verarbeitete Dokumente nach Konnektortyp (<code>connector</code>, der Schlüssel des Quellentyps klein geschrieben, etwa <code>confluence</code>, <code>sharepoint</code>, <code>upload</code>) und Ergebnis (<code>processed</code>, <code>skipped</code>, <code>failed</code>)</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_runs_total</code></td>
+<td>beendete Indizierungsläufe nach <code>connector</code> (<code>private</code> für jede private Bibliothek, <code>none</code> für eine gelöschte), Betriebsart (<code>mode</code>: <code>full</code>, <code>delta</code>, <code>event</code>), Ergebnis (<code>result</code>: <code>completed</code>, <code>incomplete</code>, <code>failed</code>) und Grund (<code>failure_category</code>, etwa <code>credentials_rejected</code>, <code>not_connected</code> oder <code>quota_exhausted</code>; <code>abandoned</code> für einen Lauf, den Neustart, Ausfall oder Zeitüberschreitung beendet hat; sonst <code>none</code>; bei einer privaten Bibliothek bleiben nur <code>none</code>, <code>abandoned</code> und die Sperren der Verwaltung <code>type_locked</code>, <code>profile_locked</code>, <code>profile_required</code>, jeder andere Grund heißt dort <code>private</code>)</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_run_duration_seconds_*</code></td>
+<td>Dauer eines Laufs vom Start bis zum Ende nach <code>connector</code> und <code>result</code>, mit Buckets</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_run_last_success_seconds</code></td>
+<td>Unix-Zeit des jüngsten erfolgreichen Laufs je <code>connector</code>, zur Übersicht; eine einzelne Bibliothek ohne Erfolg verdeckt er, solange eine andere desselben Typs läuft</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_libraries_overdue</code></td>
+<td>Bibliotheken mit Zeitplan je <code>connector</code>, deren letzter erfolgreicher Lauf länger als zwei ihrer Intervalle zurückliegt; eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer Anlage, eine ohne Zeitplan nie. Steigt der Wert über <code>0</code>, steht im Laufprotokoll der Bibliothek der Grund</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_runs_active</code>, <code>opaa_indexing_runs_queued</code></td>
+<td>Läufe, die diese Instanz gerade ausführt, und Läufe, die auf einen ihrer Threads warten</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_stage_duration_seconds_*</code></td>
+<td>Zeit je Dokument und Schritt (<code>stage</code>): <code>fetch</code> Herunterladen bei Konnektoren mit Datei-Abgleich, <code>parse</code> Lesen und Schneiden im Format ohne Anhänge, <code>ocr</code> Texterkennung eines Scans, <code>chunk</code> Metadaten und Kontextpräfix der Abschnitte, <code>embed</code> Aufrufe des Embedding-Modells, <code>store</code> Schreiben in den Index</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_chunks_total</code></td>
+<td>Abschnitte, die indizierte Dokumente in den Index geschrieben haben</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_bytes_total</code></td>
+<td>Bytes, die Läufe von ihren Quellen heruntergeladen haben, nach <code>connector</code>; gezählt am Ende eines Laufs</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_parse_failures_total</code></td>
+<td>Dokumente ohne verwertbaren Text nach Dateiklasse (<code>mime_class</code>: <code>pdf</code>, <code>office</code>, <code>text</code>, <code>image</code>, <code>mail</code>, <code>archive</code>, <code>audio</code>, <code>video</code>, <code>other</code>) und Grund (<code>reason</code>: <code>parse_failed</code> nicht lesbar, <code>no_content</code> leer, <code>no_text</code> kein brauchbarer Text)</td>
+</tr>
+<tr>
+<td><code>opaa_indexing_reindex_remaining</code></td>
+<td>Abschnitte, die ein Wechsel des Embedding-Modells noch einbetten muss, <code>0</code> ohne Wechsel (<a href="modell-endpunkte.html">Modelle</a>)</td>
+</tr>
+<tr>
+<td><code>opaa_directory_sync_runs_total</code>, <code>opaa_directory_sync_duration_seconds_*</code></td>
+<td>Läufe des Verzeichnisabgleichs und ihre Dauer nach Typ des Verzeichniszugangs (<code>provider</code>: <code>keycloak</code>, <code>none</code> ohne Zugang) und Ergebnis (<code>result</code>: <code>applied</code>, <code>dry_run</code>, <code>pending_confirmation</code>, <code>aborted_threshold</code>, <code>aborted_empty_result</code>, <code>unreachable</code>, <code>failed</code>)</td>
+</tr>
+<tr>
+<td><code>opaa_directory_sync_last_success_seconds</code></td>
+<td>Unix-Zeit des letzten angewendeten Abgleichs je <code>provider</code>; steht still, solange ein Plan auf Bestätigung wartet</td>
+</tr>
+<tr>
+<td><code>opaa_directory_sync_plan_pending_age_seconds</code></td>
+<td>wie lange die älteste Entscheidung über einen Abgleichplan je <code>provider</code> schon aussteht, <code>0</code> ohne Plan; ersetzt ein neuer Lauf den Plan, zählt die Zeit weiter</td>
 </tr>
 <tr>
 <td><code>opaa_indexing_embedding_inputs_total</code></td>
@@ -4325,6 +4377,15 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 </tbody>
 </table>
+<p>Die Werte zu letztem Erfolg, überfälligen Bibliotheken und Verzeichnisabgleich liest jede Instanz
+jede Minute aus der Datenbank, den Rückstand eines Modellwechsels alle fünf Minuten. Jeder Pod
+meldet denselben Wert, über Pods gilt deshalb <code>max</code>; nur <code>opaa_indexing_runs_active</code> und
+<code>opaa_indexing_runs_queued</code> zählen je Pod und werden summiert. Kann eine Instanz nicht lesen,
+meldet sie <code>NaN</code> statt eines veralteten Werts und warnt im Log. Ein unvollständiger Lauf (<code>incomplete</code>) zählt als
+Erfolg. Private Bibliotheken erscheinen bei Läufen, letztem Erfolg und Überfälligkeit nur
+zusammengefasst als <code>connector="private"</code>; <code>opaa_indexing_documents_total</code> zählt ihre Dokumente
+unter dem Quellentyp, installationsweit. Eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer
+Anlage, nicht ab dem Einschalten des Zeitplans, weil OPAA diesen Zeitpunkt nicht speichert.</p>
 <p>Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
 unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln und Alarme unter Kubernetes:
