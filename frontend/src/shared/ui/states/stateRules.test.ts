@@ -34,9 +34,10 @@ const BAUSTEINE = '/src/shared/ui/states/'
  * sentence describes an ongoing process, not content that loads.
  */
 const AUSNAHMEN_JE_GRUND: Record<string, string[]> = {
-  'Statuszeile der laufenden Chat-Antwort': [
+  'Statuszeile der laufenden Chat-Antwort': ['/features/chat/components/ChatStatusLine.tsx'],
+  // Interim until #3743 moves the running-answer spinner into ChatStatusLine; remove then.
+  'Statuszeile der laufenden Chat-Antwort, bisheriger Ort': [
     '/features/chat/components/MessageList.tsx',
-    '/features/chat/components/ProvisionalAnswer.tsx',
   ],
   'Anmeldung und Installation, vor jedem Anwendungsrahmen': [
     '/features/auth/',

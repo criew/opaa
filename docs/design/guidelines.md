@@ -670,8 +670,7 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
    (5.9), nie über eine eigene Snackbar; ihr laufender Zustand bleibt am Ort sichtbar und über
    Seitenwechsel erhalten.
 
-**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (heute `MessageList` und
-`ProvisionalAnswer`) zeigt einen Spinner mit kurzem Satz wie „Antwort wird geschrieben …“; sie
+**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine`) zeigt einen Spinner mit kurzem Satz wie „Antwort wird geschrieben …“; sie
 beschreibt einen Vorgang, keinen ladenden Inhalt. Anmeldung und Installation stehen vor der
 Anwendung und folgen eigenen Mustern. Beide Ausnahmen stehen benannt im Quelltext-Test.
 
