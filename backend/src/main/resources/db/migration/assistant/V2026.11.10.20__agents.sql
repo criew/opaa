@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- Agents (#3670): an asset type on the shell with its instruction, assigned libraries and tools,
+-- Agents: an asset type on the shell with its instruction, assigned libraries and tools,
 -- plan step and limits; the installation-wide switch with the tools switched on as a single row;
 -- and per organization the record that the delivered agent "Recherche" was provisioned, so
 -- deleting it never brings it back. seed_key marks that delivered agent.

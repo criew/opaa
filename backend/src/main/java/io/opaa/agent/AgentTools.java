@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * The tools an agent may be given in the first cut (#1747, ADR-0070). Stored by name; the tool loop
- * offers a run only the tools it has registered and switched on.
+ * The tools an agent may be given in the first cut (ADR-0070). Stored by name; the tool loop offers
+ * a run only the tools it has registered and switched on.
  */
 public final class AgentTools {
 

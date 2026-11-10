@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- An agent (#3670) and a document template (#3673) are objects of the audit log of their own. Only
+-- An agent and a document template are objects of the audit log of their own. Only
 -- values join the list, so the running release keeps writing what it wrote before; both values
 -- stand here and in the document template's migration, so either order leaves both. audit_log
 -- belongs to opaa_audit_owner (ADR-0015): the migration account takes the membership for these

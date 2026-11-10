@@ -15,11 +15,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Provisions the delivered agent "Recherche" (#3674) for an organization the first time agents are
- * switched on there: an ordinary agent, owned by the administrator who switched them on, readable
- * for all accounts and changeable like any other. Provisioned at most once per organization - the
- * row in {@code agent_seeds} is taken first, so a deleted "Recherche" never comes back and two
- * instances switching at once create one.
+ * Provisions the delivered agent "Recherche" for an organization the first time agents are switched
+ * on there: an ordinary agent, owned by the administrator who switched them on, readable for all
+ * accounts and changeable like any other. Provisioned at most once per organization - the row in
+ * {@code agent_seeds} is taken first, so a deleted "Recherche" never comes back and two instances
+ * switching at once create one.
  */
 @Component
 class AgentResearchProvisioner {

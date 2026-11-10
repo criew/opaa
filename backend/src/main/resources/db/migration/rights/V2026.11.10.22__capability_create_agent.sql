@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- The capabilities CREATE_AGENT (#3670) and CREATE_TEMPLATE (#3673) join the closed list. Only
+-- The capabilities CREATE_AGENT and CREATE_TEMPLATE join the closed list. Only
 -- values join, so the running release keeps writing what it wrote before; both values stand here
 -- and in the document template's migration, so either order leaves both. Neither is delivered:
 -- no organization gets a grant, the system administration hands them out.
