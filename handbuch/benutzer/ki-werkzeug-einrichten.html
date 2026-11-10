@@ -4060,6 +4060,9 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
 </ol>
 <p>Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
 anzeigen: neues Token erzeugen, altes widerrufen.</p>
+<p>Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein
+altes widerrufen (<a href="../referenz/konfiguration.html">Konfiguration</a>). Das Kontingent an Anfragen je
+Stunde gilt je Token und zugleich für alle Ihre Tokens zusammen.</p>
 <h2 id="beispiel-opencode">Beispiel OpenCode<a class="headerlink" href="#beispiel-opencode" title="Permanent link">&para;</a></h2>
 <p>In <code>~/.config/opencode/opencode.json</code>, den Tokenwert in der Umgebungsvariablen <code>OPAA_TOKEN</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>

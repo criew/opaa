@@ -4163,7 +4163,10 @@ Nutzungsdatum und ohne Filter nach Person; auch die Tokens der Dienstkonten steh
 Dienstkonto als Besitzer. Sie können ein einzelnes Token oder alle Tokens einer Person oder eines
 Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe
 an einen Identitätsanbieter beenden die Tokens eines Kontos von selbst. Die Zahl der Tokens an
-einer Bibliothek zählt die Tokens der Dienstkonten mit.</p>
+einer Bibliothek zählt die Tokens der Dienstkonten mit. Wie viele gültige Tokens ein Konto
+höchstens hat, legt <code>OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT</code> fest.</p>
+<p>„Anfragen je Token und Stunde“ gilt je Token und zusätzlich für alle Tokens einer Person zusammen:
+Ein weiteres Token bringt ihr keine weiteren Anfragen.</p>
 <p>Der <strong>Abflussalarm</strong> zählt die Abrufe des ganzen Kanals je Stunde und meldet eine Überschreitung
 einmal an die Systemverwaltung. Die Meldung führt zur Tokenliste und dient Vorfall und Sperre, nicht
 Leistungs- oder Disziplinarfragen.</p>
@@ -4285,7 +4288,7 @@ Fundstellen protokolliert, klärt die Behörde vor der Anbindung.</p>
 </tr>
 <tr>
 <td><code>429</code>, am MCP-Server Fehler <code>-32000</code> oder ein Ergebnis mit „Kontingent“</td>
-<td>Anfragen je Token und Stunde erschöpft (schon das Verbinden zählt); bei Suche und Trefferabruf auch die Grenze je Konto oder der Suche insgesamt</td>
+<td>Anfragen je Token und Stunde erschöpft, auch über alle Tokens der Person zusammen (schon das Verbinden zählt); bei Suche und Trefferabruf auch die Grenze je Konto oder der Suche insgesamt</td>
 <td>warten, bei Bedarf Grenze anheben</td>
 </tr>
 <tr>

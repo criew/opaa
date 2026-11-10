@@ -4829,10 +4829,16 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Tage, die die letzte Anmeldung eines Kontos eines Identitätsanbieters zurückliegen darf, damit seine Zugangstokens für externe KI-Werkzeuge wirken; danach ruhen sie bis zur nächsten Anmeldung. Lokale Konten sind ausgenommen. Muss positiv sein, der Start bricht sonst ab. Siehe <a href="../administration/externe-ki-werkzeuge.html">Externe KI-Werkzeuge</a></td>
 </tr>
 <tr>
+<td><code>OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT</code></td>
+<td><code>10</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Höchstzahl gültiger (weder widerrufener noch abgelaufener) persönlicher Zugangstokens je Konto; darüber lehnt OPAA ein weiteres Token mit <code>400</code> ab, bis eines widerrufen oder abgelaufen ist. Muss positiv sein, der Start bricht sonst ab. Siehe <a href="../administration/externe-ki-werkzeuge.html">Externe KI-Werkzeuge</a></td>
+</tr>
+<tr>
 <td>— (Systemeinstellung)</td>
 <td><code>60</code> Anfragen/Stunde</td>
 <td>—</td>
-<td>Das <strong>Kontingent je Zugangstoken</strong> ist keine Umgebungsvariable, sondern eine Systemeinstellung unter <em>Administration → Anbindungen → Externe KI-Werkzeuge → Einstellungen</em> (1–10.000). Es gilt <strong>zusätzlich</strong> zu den Grenzen je Netzadresse, nicht an ihrer Stelle: Hinter einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse. Es ist eine <strong>Lastbremse, kein Schutz vor Massenabfluss</strong> — ein überschrittenes Kontingent führt zu einer klaren Ablehnung (<code>429</code>) mit Wartehinweis, nicht zu einer langsamen Antwort. Der Zähler läuft nur im Arbeitsspeicher, wird nicht historisiert, nicht je Person ausgewertet und nicht angezeigt; eine Ablehnung erzeugt keinen Protokolleintrag</td>
+<td>Das <strong>Kontingent je Zugangstoken</strong> ist keine Umgebungsvariable, sondern eine Systemeinstellung unter <em>Administration → Anbindungen → Externe KI-Werkzeuge → Einstellungen</em> (1–10.000). Es gilt <strong>zusätzlich</strong> zu den Grenzen je Netzadresse, nicht an ihrer Stelle: Hinter einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse. Es ist eine <strong>Lastbremse, kein Schutz vor Massenabfluss</strong> — ein überschrittenes Kontingent führt zu einer klaren Ablehnung (<code>429</code>) mit Wartehinweis, nicht zu einer langsamen Antwort. Es gilt je Token und in gleicher Höhe zugleich für alle persönlichen Tokens einer Person zusammen, damit weitere Tokens kein weiteres Kontingent bringen. Beide Zähler laufen nur im Arbeitsspeicher, werden nicht gespeichert, nicht historisiert und nicht angezeigt; eine Ablehnung erzeugt keinen Protokolleintrag</td>
 </tr>
 <tr>
 <td>— (Systemeinstellung)</td>
@@ -5684,7 +5690,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_RATE_LIMIT_ENABLED</code></td>
 <td><code>true</code></td>
 <td><code>true</code></td>
-<td>Rate Limiting aktivieren/deaktivieren. Die Grenzen „über alle IPs“ bzw. „über alle Adressen“ (<code>…_GLOBAL_MAX_REQUESTS</code>) zählt die Datenbank für die ganze Installation; die übrigen zählt jede Instanz für sich, ihr Wert ist bei mehreren Instanzen die Grenze der Installation geteilt durch die Zahl der Instanzen (siehe <a href="../betrieb/mehrere-instanzen.html#grenzen-und-budgets">„Grenzen und Budgets“</a>)</td>
+<td>Rate Limiting aktivieren/deaktivieren. Jede Grenze über alle IPs hat eine Grenze pro Konto darunter (außer Webhook und lokaler Anmeldung), damit ein Konto allein sie nicht für alle ausschöpft. Weist eine Operation eine Anfrage vor ihrer Arbeit ab, weil das Konto nicht darf oder das Objekt fehlt, zählt sie nicht über alle IPs, wohl aber pro IP und pro Konto. Die Grenzen „über alle IPs“ bzw. „über alle Adressen“ (<code>…_GLOBAL_MAX_REQUESTS</code>) zählt die Datenbank für die ganze Installation; die übrigen zählt jede Instanz für sich, ihr Wert ist bei mehreren Instanzen die Grenze der Installation geteilt durch die Zahl der Instanzen (siehe <a href="../betrieb/mehrere-instanzen.html#grenzen-und-budgets">„Grenzen und Budgets“</a>)</td>
 </tr>
 <tr>
 <td><code>OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS</code></td>
@@ -5708,7 +5714,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS_PER_ACCOUNT</code></td>
 <td><code>10</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Max. Abfrageanfragen pro Konto pro Fenster, gleich von welcher IP; eine hier abgewiesene Anfrage zählt weder pro IP noch über alle IPs (siehe <a href="#grenzwerte-im-überblick">Grenzwerte</a>)</td>
+<td>Max. Abfrageanfragen pro Konto pro Fenster, gleich von welcher IP; eine hier abgewiesene Anfrage zählt weder pro IP noch über alle IPs (siehe <a href="#grenzwerte-im-überblick">Grenzwerte</a>).</td>
 </tr>
 <tr>
 <td><code>OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS</code></td>
@@ -5729,6 +5735,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Max. Indizierungsanfragen über alle IPs pro Fenster; Anfragen, die nicht angemeldet durchkommen, zählen weder hier noch pro IP mit</td>
 </tr>
 <tr>
+<td><code>OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT</code></td>
+<td><code>3</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Indizierungsanfragen pro Konto pro Fenster, über alle Bibliotheken und IPs zusammen</td>
+</tr>
+<tr>
 <td><code>OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS</code></td>
 <td><code>10</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
@@ -5747,6 +5759,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Max. Verbindungstests über alle IPs pro Fenster; Anfragen, die nicht angemeldet durchkommen, zählen weder hier noch pro IP mit</td>
 </tr>
 <tr>
+<td><code>OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS_PER_ACCOUNT</code></td>
+<td><code>10</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Verbindungstests pro Konto pro Fenster, gleich von welcher IP</td>
+</tr>
+<tr>
 <td><code>OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS</code></td>
 <td><code>20</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
@@ -5763,6 +5781,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>100</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
 <td>Max. Aufrufe von <code>GET /api/v1/documents/{documentId}/content</code> über alle IPs pro Fenster; Anfragen, die nicht angemeldet durchkommen, zählen weder hier noch pro IP mit</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS_PER_ACCOUNT</code></td>
+<td><code>20</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Aufrufe von <code>GET /api/v1/documents/{documentId}/content</code> pro Konto pro Fenster, gleich von welcher IP</td>
 </tr>
 <tr>
 <td><code>OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS</code></td>
@@ -5877,6 +5901,48 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>60</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
 <td>Max. Uploads pro Konto pro Fenster, gleich von welcher IP; bremst, wie schnell eine Person Dateien schickt. Einen vollen Upload-Pool beantwortet OPAA unabhängig davon mit <code>429</code>, bevor etwas gespeichert ist (<code>OPAA_UPLOAD_THREAD_POOL_*</code>), ebenso ein Konto, das schon so viele Plätze belegt, wie es darf (<code>OPAA_UPLOAD_MAX_PLACES_PER_ACCOUNT</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS</code></td>
+<td><code>10</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Starts der Live-Transkription (WebSocket <code>GET /api/v1/transcriptions/stream</code>) pro IP pro Fenster; jeder Start öffnet eine Sitzung beim Transkriptionsdienst. Eine Sitzung endet außerdem, sobald Audio mehr als doppelt so schnell wie Echtzeit eintrifft</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_WINDOW_SECONDS</code></td>
+<td><code>60</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Fenster dieser Grenze in Sekunden</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_GLOBAL_MAX_REQUESTS</code></td>
+<td><code>100</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Starts der Live-Transkription über alle IPs pro Fenster; Anfragen, die nicht angemeldet durchkommen, zählen weder hier noch pro IP mit</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS_PER_ACCOUNT</code></td>
+<td><code>10</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. Starts der Live-Transkription pro Konto pro Fenster, gleich von welcher IP</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS</code></td>
+<td><code>600</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. schreibende Aufrufe (<code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> unter <code>/api/v1</code>) pro IP pro Fenster, für alle, die keine eigene Grenze oben haben, zusammen. Ohne Grenze über alle IPs: Eine gemeinsame Grenze über alle Änderungen ließe wenige Konten alle anderen aussperren</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_WRITE_WINDOW_SECONDS</code></td>
+<td><code>60</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Fenster der Schreibgrenze in Sekunden</td>
+</tr>
+<tr>
+<td><code>OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT</code></td>
+<td><code>120</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Max. schreibende Aufrufe pro Konto pro Fenster, gleich von welcher IP; bremst, wie schnell ein Konto Objekte ändert und das Revisionsprotokoll füllt. Muss mindestens <code>1</code> sein</td>
 </tr>
 <tr>
 <td><code>OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS</code></td>
@@ -6819,12 +6885,12 @@ feste Grenzen stehen hier mit ihrem Wert.</p>
 </tr>
 <tr>
 <td>Suchen ohne Antwort, Zugriff externer KI-Werkzeuge</td>
-<td>Treffer und Auszugslänge, Freigabedauer</td>
+<td>Treffer und Auszugslänge, Freigabedauer, gültige Zugangstokens je Konto</td>
 <td><code>OPAA_SEARCH_*</code>, <code>OPAA_MCP_*</code>, <code>OPAA_EXTERNAL_ACCESS_*</code>; Kontingente in der Oberfläche (<a href="../administration/externe-ki-werkzeuge.html#einstellungen">Externe KI-Werkzeuge</a>)</td>
 </tr>
 <tr>
 <td>Rate-Limits</td>
-<td>Anfragen je Client (je Instanz), Fenster und Gesamtgrenze (für die Installation) für Fragen, Indexierungsanstoß, Verbindungstest, Originalabruf, Webhooks, Chatsuche, Suche, Spracheingabe, Upload und lokale Anmeldung</td>
+<td>Anfragen je Client (je Instanz), Fenster und Gesamtgrenze (für die Installation) für Fragen, Indexierungsanstoß, Verbindungstest, Originalabruf, Webhooks, Chatsuche, Suche, Spracheingabe und Live-Transkription, Upload, alle übrigen schreibenden Aufrufe und lokale Anmeldung; je Konto</td>
 <td><code>OPAA_RATE_LIMIT_*</code>; darüber <code>429</code> mit <code>Retry-After</code> (<a href="../betrieb/mehrere-instanzen.html#grenzen-und-budgets">mehrere Instanzen</a>)</td>
 </tr>
 <tr>
