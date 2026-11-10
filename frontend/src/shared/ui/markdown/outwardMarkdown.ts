@@ -18,6 +18,7 @@ export interface OutwardPolicy {
  * text neither loads nor links them. Markdown without links, images or HTML comes back unchanged.
  */
 export function answerForOutside(markdown: string, policy: OutwardPolicy = {}): string {
+  if (!CAN_LINK_OR_LOAD.test(markdown)) return markdown
   // Text spliced back in can form new syntax with its neighbours (a link text that becomes a
   // definition), so the rewrite runs until nothing changes; what does not settle is all text.
   let current = markdown
@@ -30,6 +31,12 @@ export function answerForOutside(markdown: string, policy: OutwardPolicy = {}): 
 }
 
 const MAX_PASSES = 4
+
+/**
+ * What every link, image, reference, autolink and piece of HTML needs: a closing bracket, an
+ * angle bracket, or the start of a bare address. Text without any of them is returned unparsed.
+ */
+const CAN_LINK_OR_LOAD = /[\]<]|:\/\/|www\.|@/i
 
 function rewriteOnce(markdown: string, policy: OutwardPolicy): string {
   const tree = fromMarkdown(markdown, {
