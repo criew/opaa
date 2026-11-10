@@ -6,6 +6,9 @@ import type {
   TextRecognitionTestRequest,
   TextRecognitionTestResponse,
   TranscriptionModelSettingsRequest,
+  TranscriptionRealtimeSettingsRequest,
+  TranscriptionRealtimeSettingsResponse,
+  TranscriptionRealtimeTestRequest,
 } from '@/shared/api/types'
 import { mockModelRoles, resetMockModelRoles } from './modelRoleFixtures'
 
@@ -54,6 +57,63 @@ function testOutcome(body: ModelRoleTestRequest) {
   return body.baseUrl.includes('unerreichbar')
     ? { success: false, message: 'Die Verbindung wurde vom Server abgelehnt.' }
     : { success: true, message: 'Verbindung erfolgreich, der Endpunkt hat geantwortet.' }
+}
+
+/** The backend's rules of a live upstream, as field errors under `transcription.realtime`. */
+function realtimeErrors(body: TranscriptionRealtimeSettingsRequest | null | undefined) {
+  if (!body?.enabled) return []
+  const errors = []
+  if (!body.protocol) {
+    errors.push({
+      field: 'transcription.realtime.protocol',
+      code: 'REQUIRED',
+      message: 'Das Protokoll fehlt.',
+    })
+  }
+  if (!/^wss?:\/\//i.test(body.url?.trim() ?? '')) {
+    errors.push({
+      field: 'transcription.realtime.url',
+      code: 'INVALID',
+      message: 'Die Live-Adresse muss mit ws:// oder wss:// beginnen.',
+    })
+  }
+  if (!body.model?.trim()) {
+    errors.push({
+      field: 'transcription.realtime.model',
+      code: 'REQUIRED',
+      message: 'Das Live-Modell fehlt.',
+    })
+  }
+  return errors
+}
+
+function storedRealtime(
+  current: TranscriptionRealtimeSettingsResponse,
+  body: TranscriptionRealtimeSettingsRequest | null | undefined,
+): TranscriptionRealtimeSettingsResponse {
+  if (!body) return current
+  if (!body.enabled) {
+    return {
+      ...current,
+      enabled: false,
+      protocol: null,
+      url: null,
+      model: null,
+      apiKeySet: false,
+      state: 'DISABLED',
+    }
+  }
+  const apiKeySet =
+    body.apiKey === undefined || body.apiKey === null ? current.apiKeySet : body.apiKey !== ''
+  return {
+    enabled: true,
+    protocol: body.protocol ?? null,
+    url: body.url?.trim() ?? null,
+    model: body.model?.trim() ?? null,
+    apiKeySet,
+    maxSessions: body.maxSessions ?? current.maxSessions,
+    state: 'ACTIVE',
+  }
 }
 
 const TEXT_RECOGNITION_OFF =
@@ -147,7 +207,7 @@ export const modelRoleHandlers = [
 
   http.put('/api/v1/admin/models/transcription', async ({ request }) => {
     const body = (await request.json()) as TranscriptionModelSettingsRequest
-    const errors = requiredErrors('transcription', body)
+    const errors = [...requiredErrors('transcription', body), ...realtimeErrors(body.realtime)]
     if (errors.length > 0) {
       return HttpResponse.json({ error: errors[0].message, fieldErrors: errors }, { status: 400 })
     }
@@ -155,6 +215,7 @@ export const modelRoleHandlers = [
       ...stored(mockModelRoles.transcription, body),
       language: body.language?.trim().toLowerCase() ?? '',
       vocabulary: body.vocabulary?.trim() ?? mockModelRoles.transcription.vocabulary,
+      realtime: storedRealtime(mockModelRoles.transcription.realtime, body.realtime),
     }
     return HttpResponse.json(mockModelRoles.transcription)
   }),
@@ -162,6 +223,18 @@ export const modelRoleHandlers = [
   http.post('/api/v1/admin/models/transcription/test', async ({ request }) =>
     HttpResponse.json(testOutcome((await request.json()) as ModelRoleTestRequest)),
   ),
+
+  http.post('/api/v1/admin/models/transcription/realtime/test', async ({ request }) => {
+    const body = (await request.json()) as TranscriptionRealtimeTestRequest
+    return HttpResponse.json(
+      body.url.includes('unerreichbar')
+        ? { success: false, message: 'Die Verbindung wurde vom Server abgelehnt.' }
+        : {
+            success: true,
+            message: 'Verbindung erfolgreich, der Live-Dienst hat eine Sitzung angenommen.',
+          },
+    )
+  }),
 
   http.get('/api/v1/admin/models/text-recognition', () =>
     HttpResponse.json(mockModelRoles.textRecognition),

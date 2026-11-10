@@ -13,6 +13,7 @@ import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
 import io.opaa.api.dto.InstallationTextRecognitionModel;
 import io.opaa.api.dto.InstallationTranscriptionModel;
+import io.opaa.api.dto.InstallationTranscriptionRealtime;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
@@ -137,8 +138,19 @@ final class InstallationRequestMapper {
     if (model == null) {
       throw missing("transcriptionModel");
     }
+    InstallationTranscriptionRealtime realtime = model.getRealtime();
     return new StepInput.TranscriptionModel(
-        model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getLanguage());
+        model.getBaseUrl(),
+        model.getModel(),
+        model.getApiKey(),
+        model.getLanguage(),
+        realtime == null
+            ? null
+            : new StepInput.TranscriptionRealtime(
+                realtime.getProtocol(),
+                realtime.getUrl(),
+                realtime.getModel(),
+                realtime.getApiKey()));
   }
 
   private static StepInput textRecognitionModel(InstallationTextRecognitionModel model) {

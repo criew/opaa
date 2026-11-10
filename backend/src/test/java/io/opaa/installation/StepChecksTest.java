@@ -254,7 +254,8 @@ class StepChecksTest {
   void aBlockedTranscriptionAddressFailsTheCheckWithoutAnyRequest() {
     String payload =
         json.writeValueAsString(
-            new StepRules.TranscriptionModelPayload("http://169.254.169.254/v1", "whisper", "de"));
+            new StepRules.TranscriptionModelPayload(
+                "http://169.254.169.254/v1", "whisper", "de", null));
 
     StepChecks.Outcome outcome =
         checks.check(InstallationStep.TRANSCRIPTION_MODEL, payload, null, null);
@@ -281,7 +282,8 @@ class StepChecksTest {
                 true, "Verbindung erfolgreich, der Endpunkt hat geantwortet."));
     String payload =
         json.writeValueAsString(
-            new StepRules.TranscriptionModelPayload("http://speaches:8000/v1", "whisper", "de"));
+            new StepRules.TranscriptionModelPayload(
+                "http://speaches:8000/v1", "whisper", "de", null));
 
     StepChecks.Outcome outcome =
         open.check(

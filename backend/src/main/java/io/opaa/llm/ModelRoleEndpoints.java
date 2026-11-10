@@ -103,19 +103,51 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
     return transcriptionRows
         .findStored()
         .map(
-            row ->
-                new TranscriptionEndpoint(
-                    row.isEnabled(),
-                    row.getBaseUrl(),
-                    row.getModelIdentifier(),
-                    decrypt(
-                        row.getApiKeyCiphertext(),
-                        LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(
-                            TranscriptionModelSettings.SINGLETON_ID),
-                        "transcription"),
-                    row.getLanguage(),
-                    row.getVocabulary()))
+            row -> {
+              String key =
+                  decrypt(
+                      row.getApiKeyCiphertext(),
+                      LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(
+                          TranscriptionModelSettings.SINGLETON_ID),
+                      "transcription");
+              return new TranscriptionEndpoint(
+                  row.isEnabled(),
+                  row.getBaseUrl(),
+                  row.getModelIdentifier(),
+                  key,
+                  row.getLanguage(),
+                  row.getVocabulary(),
+                  realtimeOf(row, key));
+            })
         .orElse(TranscriptionEndpoint.FACTORY_DEFAULT);
+  }
+
+  /**
+   * The live upstream of {@code row}; without a key of its own it sends {@code batchKey}, but only
+   * to the origin of the batch address ({@link RealtimeTranscriptionEndpoint#sharesOrigin}).
+   */
+  private RealtimeTranscriptionEndpoint realtimeOf(
+      TranscriptionModelSettings row, String batchKey) {
+    if (row.getRealtimeProtocol() == null) {
+      return RealtimeTranscriptionEndpoint.NONE;
+    }
+    String key =
+        row.getRealtimeApiKeyCiphertext() == null
+            ? RealtimeTranscriptionEndpoint.sharesOrigin(row.getRealtimeUrl(), row.getBaseUrl())
+                ? batchKey
+                : ""
+            : decrypt(
+                row.getRealtimeApiKeyCiphertext(),
+                LlmEncryptedColumns.transcriptionRealtimeKey(),
+                "live transcription");
+    return new RealtimeTranscriptionEndpoint(
+        row.getRealtimeProtocol(),
+        row.getRealtimeUrl(),
+        row.getRealtimeModel(),
+        key,
+        row.getRealtimeMaxSessions() == null
+            ? RealtimeTranscriptionEndpoint.DEFAULT_MAX_SESSIONS
+            : row.getRealtimeMaxSessions());
   }
 
   private TextRecognitionEndpoint loadTextRecognition() {

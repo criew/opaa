@@ -277,6 +277,7 @@ datenfluesse#source-smb
 datenfluesse#source-web
 datenfluesse#text-recognition-model
 datenfluesse#transcription-model
+datenfluesse#transcription-realtime
 datenfluesse#uebersicht
 voreinstellungen
 voreinstellungen#audit-incident-scope-retention-settings-retention-years
@@ -391,6 +392,10 @@ voreinstellungen#text-recognition-model-model-identifier
 voreinstellungen#transcription-model-base-url
 voreinstellungen#transcription-model-enabled
 voreinstellungen#transcription-model-model-identifier
+voreinstellungen#transcription-model-realtime-max-sessions
+voreinstellungen#transcription-model-realtime-model
+voreinstellungen#transcription-model-realtime-protocol
+voreinstellungen#transcription-model-realtime-url
 fristen
 fristen#audit-incident-scope-retention-settings-retention-years
 fristen#audit-retention-settings-retention-months

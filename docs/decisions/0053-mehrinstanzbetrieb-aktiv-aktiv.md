@@ -3,7 +3,7 @@
 ## Status
 
 Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
-ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061, ADR-0064, ADR-0070 und [ADR-0071](0071-betriebsbeobachtung.md)
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061, ADR-0064, ADR-0070, [ADR-0071](0071-betriebsbeobachtung.md) und ADR-0072
 
 ## Kontext
 
@@ -319,7 +319,7 @@ Instanzen. Handbuch und Compose nennen die Formel, der Helm-Chart rechnet sie au
 Installation je Variable (`backend.installationBudgets`). Das Kontingent je Token ist eine
 Einstellung der Oberfläche ohne Wert je Instanz; deshalb teilt die Instanz selbst.
 
-Der Zustand der Modellrollen Rerank und Transkription liegt in der Datenbank
+Der Zustand der Modellrollen Rerank und Transkription, auch des Live-Transkripts, liegt in der Datenbank
 (`model_role_observations`): Die Instanz mit der Sondierungssperre (7) und jede, die den Endpunkt
 aufruft, schreibt einen geänderten Zustand, jede Instanz hält ihn am Invalidierungsbus (5) und
 entscheidet auf ihm über die Umsortierung. Ein erfolgreicher Aufruf verlängert die Beobachtung

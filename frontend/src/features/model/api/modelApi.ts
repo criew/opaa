@@ -18,6 +18,7 @@ import type {
   TextRecognitionTestRequest,
   TextRecognitionTestResponse,
   TranscriptionModelSettingsRequest,
+  TranscriptionRealtimeTestRequest,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
@@ -169,6 +170,21 @@ export async function testTranscriptionModel(
   try {
     const { data } = await client.post<LlmModelTestResponse>(
       '/v1/admin/models/transcription/test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Opens a session of the draft live service without audio and closes it again. */
+export async function testTranscriptionRealtimeModel(
+  request: TranscriptionRealtimeTestRequest,
+): Promise<LlmModelTestResponse> {
+  try {
+    const { data } = await client.post<LlmModelTestResponse>(
+      '/v1/admin/models/transcription/realtime/test',
       request,
     )
     return data
