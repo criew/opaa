@@ -16,7 +16,7 @@ export async function confirmAccess(
   const plan = planAccessChange(entry, target)
   if (plan.withdrawsAllAccounts) {
     const confirmed = await confirmAction({
-      question: 'Nicht mehr für alle Konten?',
+      question: 'Recht für alle Konten einschränken?',
       consequence: `${resultSentence(target, phrase)} Für alle anderen Konten gilt das sofort, auch für Personen, die gerade angemeldet sind. Die Änderung wird protokolliert.`,
       confirmLabel: 'Einschränken',
       tone: 'danger',

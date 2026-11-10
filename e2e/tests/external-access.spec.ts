@@ -455,7 +455,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     await adminPage
       .getByRole('button', { name: `Weitere Aktionen für „${PERSON_DISPLAY_NAME}“` })
       .click()
-    await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
+    await adminPage.getByRole('menuitem', { name: 'Widerrufen' }).click()
     const confirmRevoke = adminPage
       .getByRole('dialog')
       .filter({ has: adminPage.locator('#confirm-question') })

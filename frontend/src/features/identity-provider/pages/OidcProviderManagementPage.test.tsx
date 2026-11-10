@@ -375,7 +375,7 @@ describe('OidcProviderManagementPage', () => {
 
     await clickRowAction(user, 'Partnerportal', 'Zum Standard machen')
     const standardfrage = await screen.findByRole('dialog', {
-      name: /zum Standardanbieter machen\?/,
+      name: /zum Standard machen\?/,
     })
     expect(standardfrage).toHaveTextContent(/weder deaktiviert noch gelöscht/)
     await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
@@ -391,7 +391,7 @@ describe('OidcProviderManagementPage', () => {
     ).toBeInTheDocument()
 
     await clickRowAction(user, 'Landesportal', 'Zum Standard machen')
-    await answerConfirm(user, /zum Standardanbieter machen\?/, 'Zum Standard machen')
+    await answerConfirm(user, /zum Standard machen\?/, 'Zum Standard machen')
     await waitFor(() => {
       expect(within(rowOf('Landesportal')).getByLabelText('Standardanbieter')).toBeInTheDocument()
     })

@@ -80,7 +80,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
     verifiziert“. – Sicht
 17. Schaltflächen tragen das Verb: [guidelines.md](./guidelines.md), 5.1 und 5.10.
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
-    werden ein Satz. – Sicht
+    werden ein Satz. Bestätigungen: Frage, Folge und Verb nach [guidelines.md](./guidelines.md),
+    5.10 und Verbliste in 6; geprüft durch `confirmTexts.test.ts`. – Sicht
 19. **Begriffsregel** (eigener Begriff oder Herstellerbegriff): [guidelines.md](./guidelines.md), 6,
     und das [Glossar](../handbuch/referenz/glossar.md). – Sicht über alle Arten einer Variante
 

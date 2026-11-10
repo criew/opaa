@@ -176,7 +176,7 @@ describe('ServiceAccountsTab', () => {
     const production = within(tokens).getByText('Produktion').closest('li')!
     await user.click(within(production).getByRole('button', { name: /Produktion/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Widerrufen' }))
-    await answerConfirm(user, 'Token „Produktion“ widerrufen?', 'Widerrufen')
+    await answerConfirm(user, '„Produktion“ widerrufen?', 'Widerrufen')
 
     await waitFor(() =>
       expect(
@@ -194,7 +194,7 @@ describe('ServiceAccountsTab', () => {
     render('/admin/connections/service-accounts?account=sa-bauantrag')
 
     await user.click(await screen.findByRole('button', { name: 'Dienstkonto deaktivieren' }))
-    await answerConfirm(user, 'Dienstkonto „Bauantrag-Portal“ deaktivieren?', 'Deaktivieren')
+    await answerConfirm(user, '„Bauantrag-Portal“ deaktivieren?', 'Deaktivieren')
 
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Dienstkonto deaktivieren' })).toBeNull(),

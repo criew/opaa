@@ -335,7 +335,7 @@ describe('SpaceCreatePage (#594)', () => {
 
     await user.type(screen.getByLabelText(/Name/), 'W')
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
-    await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
+    await answerConfirm(user, 'Eingaben verwerfen?', 'Abbrechen')
 
     expect(mockNavigate).not.toHaveBeenCalled()
   })

@@ -71,11 +71,7 @@ describe('ExternalAccessTokenAdminSection', () => {
       }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Token sperren' }))
-    await answerConfirm(
-      user,
-      'Token „Claude Code (Dienst-PC)“ von Maria Musterfrau sperren?',
-      'Sperren',
-    )
+    await answerConfirm(user, '„Claude Code (Dienst-PC)“ von Maria Musterfrau sperren?', 'Sperren')
 
     await waitFor(() => expect(screen.getAllByText('gesperrt').length).toBe(1))
   })
@@ -98,7 +94,7 @@ describe('ExternalAccessTokenAdminSection', () => {
     expect(
       within(confirmation).getByText(/noch wirksamen Tokens dieser Person/),
     ).toBeInTheDocument()
-    await answerConfirm(user, 'Alle Zugangstokens von Maria Musterfrau sperren?', 'Alle sperren')
+    await answerConfirm(user, 'Alle Zugangstokens von Maria Musterfrau sperren?', 'Sperren')
 
     await waitFor(() => expect(screen.getAllByText('gesperrt').length).toBe(2))
   })

@@ -107,9 +107,9 @@ export default function AssetSpacesList({
 
   async function handleDetach(spaceId: string, spaceName: string) {
     const confirmed = await confirmAction({
-      question: `Zuordnung zum Space „${spaceName}“ lösen?`,
+      question: `Aus „${spaceName}“ entfernen?`,
       consequence: `Die ${noun} steht in diesem Space danach nicht mehr zur Verfügung.`,
-      confirmLabel: 'Lösen',
+      confirmLabel: 'Entfernen',
       tone: 'neutral',
     })
     if (!confirmed) return
@@ -121,7 +121,7 @@ export default function AssetSpacesList({
       )
       onChanged?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
+      setError(err instanceof Error ? err.message : 'Entfernen fehlgeschlagen')
     }
   }
 
@@ -221,7 +221,7 @@ export default function AssetSpacesList({
                       context={`Zuordnung zum Space „${association.spaceName}“`}
                       sx={{ flex: 'none' }}
                     >
-                      Lösen
+                      Entfernen
                     </TextAction>
                   )}
                 </Box>

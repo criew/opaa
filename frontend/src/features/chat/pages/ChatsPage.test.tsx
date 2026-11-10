@@ -192,7 +192,7 @@ describe('ChatsPage', () => {
 
     const menu = await openRowMenu(user, 'Deployment-Fragen')
     await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, '„Deployment-Fragen“ wirklich löschen?', 'Löschen')
+    await answerConfirm(user, '„Deployment-Fragen“ löschen?', 'Löschen')
 
     expect(await screen.findByRole('status')).toHaveTextContent('1 Chat gelöscht')
     expect(mockChatDetails['chat-personal-2']).toBeUndefined()
@@ -343,7 +343,7 @@ describe('ChatsPage', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
     await user.click(screen.getByRole('button', { name: 'Löschen' }))
-    await answerConfirm(user, '2 Chats wirklich löschen?', 'Löschen')
+    await answerConfirm(user, '2 Chats löschen?', 'Löschen')
 
     expect(await screen.findByRole('status')).toHaveTextContent('2 Chats gelöscht')
     expect(mockChatDetails['chat-personal-1']).toBeUndefined()

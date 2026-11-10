@@ -472,7 +472,7 @@ describe('confirmExternalSubject', () => {
     expect(proceed).toBe(false)
     expect(confirmSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        question: expect.stringContaining('externen Anbieters'),
+        question: expect.stringMatching(/^Für „.*“ freigeben\?$/),
       }),
     )
     vi.restoreAllMocks()
