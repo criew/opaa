@@ -4172,6 +4172,22 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war</td>
 </tr>
 <tr>
+<td><code>opaa_agent_runs_total</code>, <code>opaa_agent_run_duration_seconds_*</code></td>
+<td>Agentenläufe nach Art (<code>kind</code>: <code>builtin</code> für den mitgelieferten, <code>custom</code> für angelegte Agenten) und Ergebnis (<code>completed</code>, <code>limit_calls</code>, <code>limit_duration</code>, <code>limit_volume</code>, <code>model_not_capable</code>, <code>aborted</code>, <code>error</code>), Dauer mit Buckets; ohne Agentennamen</td>
+</tr>
+<tr>
+<td><code>opaa_agent_tool_calls_total</code></td>
+<td>Werkzeugaufrufe nach Werkzeug und Ergebnis (<code>success</code>, <code>empty</code>, <code>argument_ignored</code>, <code>invalid_arguments</code>, <code>unknown_tool</code>, <code>denied</code>, <code>timeout</code>, <code>error</code>)</td>
+</tr>
+<tr>
+<td><code>opaa_agent_workspace_occupied</code>, <code>opaa_agent_workspace_capacity</code>, <code>opaa_agent_workspace_rejected_total</code></td>
+<td>belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe; steigt <code>rejected</code> stetig, <code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben</td>
+</tr>
+<tr>
+<td><code>opaa_agent_citations_unverifiable_total</code></td>
+<td>Quellenangaben in Agentenantworten, die zu keiner gefundenen Stelle passen; sie erscheinen nicht als Quelle</td>
+</tr>
+<tr>
 <td><code>opaa_query_evidence_total</code></td>
 <td>Antworten je Belegstand (<code>supported</code>, <code>partially_supported</code>, <code>unsupported</code>), ohne Person, Chat oder Space</td>
 </tr>

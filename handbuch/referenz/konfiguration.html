@@ -4115,6 +4115,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer einer Chat-Frage (<code>opaa_query_duration_seconds_bucket</code>)</td>
 </tr>
 <tr>
+<td><code>OPAA_METRICS_SLO_AGENT</code></td>
+<td><code>5s,10s,30s,60s,120s,180s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Agentenlaufs (<code>opaa_agent_run_duration_seconds_bucket</code>)</td>
+</tr>
+<tr>
 <td><code>OPAA_METRICS_SLO_TTFT</code></td>
 <td><code>500ms,1s,2s,3s,5s,10s,20s,30s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
@@ -4545,6 +4551,48 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>5m</code></td>
 <td><code>5m</code></td>
 <td>Wie lange die Filteroptionen einer Person (Füllstand, vorkommende Werte) zwischengespeichert bleiben, bevor sie über den aktuellen Bestand neu gezählt werden. Begrenzt nur die Veraltung des Bestands: Eine Rechteänderung der Person verwirft ihren Eintrag sofort</td>
+</tr>
+<tr>
+<td><strong>Agenten</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_MAX_TOOL_CALLS</code></td>
+<td><code>5</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Höchstzahl der Werkzeugaufrufe eines Agentenlaufs. Ein Agent kann den Wert für sich nur senken. Ist er erreicht, antwortet der Agent mit dem bis dahin Gefundenen und sagt, dass er die Grenze erreicht hat</td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_MAX_SEARCH_CALLS</code></td>
+<td><code>3</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_AGENT_MAX_TOOL_CALLS</code>, nur für Suchen im Wissen (<code>search_knowledge</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_MAX_DURATION</code></td>
+<td><code>120s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Höchstdauer eines Agentenlaufs; danach folgt nur noch der abschließende Antwortaufruf</td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_MAX_COLLECTED_CHARS</code></td>
+<td><code>60000</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Höchstmenge der Zeichen, die die Werkzeuge eines Laufs zusammentragen dürfen; begrenzt die Größe des Prompts. Geprüft wird vor jedem Aufruf, das Ergebnis, das die Grenze überschreitet, kommt noch vollständig an</td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_WORKSPACE_CAPACITY</code></td>
+<td><code>2</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Agentenläufe, die in der ganzen Installation gleichzeitig laufen dürfen, über alle Instanzen. Ein weiterer Lauf wird mit <code>429</code> abgewiesen, die Person sieht „Gerade arbeiten zu viele Agenten gleichzeitig"</td>
+</tr>
+<tr>
+<td><code>OPAA_AGENT_CLOSING_CALL_ALLOWANCE</code></td>
+<td><code>60s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Höchstdauer eines einzelnen Aufrufs des Chat-Modells im Agentenlauf. Ein Platz im Arbeitsbereich verfällt nach <code>OPAA_AGENT_MAX_DURATION</code> plus zweimal diesem Wert (der Aufruf, der an der Grenze noch läuft, und der abschließende Antwortaufruf), auch wenn eine Instanz mitten im Lauf ausfällt</td>
 </tr>
 <tr>
 <td><strong>Suchen und Abrufen ohne Antwort</strong></td>
@@ -6496,6 +6544,11 @@ feste Grenzen stehen hier mit ihrem Wert.</p>
 <td>Suche und Antwort</td>
 <td>Treffer, Abrufbreite, Teilfragen, Chunks je Dokument, Nachbarabschnitte, Kandidaten und Timeout des Rerankings, Gesprächsverlauf</td>
 <td><code>OPAA_QUERY_*</code>, <code>OPAA_RERANK_TIMEOUT</code>, <code>OPAA_CHAT_NOTE_MAX_ITEMS</code> (<a href="wie-die-suche-arbeitet.html">Wie die Suche arbeitet</a>)</td>
+</tr>
+<tr>
+<td>Agenten</td>
+<td>Werkzeugaufrufe und Suchen je Lauf, Dauer, gesammelte Zeichen, gleichzeitige Läufe in der Installation</td>
+<td><code>OPAA_AGENT_*</code>; ein Agent kann seine Grenzen nur senken</td>
 </tr>
 <tr>
 <td>Chat-Anhänge</td>
