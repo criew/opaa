@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MessageList, { ANSWER_ARRIVED_ANNOUNCEMENT } from './MessageList'
 import { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
-import type { ChatMessage } from '../types/chat'
+import type { ChatMessage, LiveAgentRun } from '../types/chat'
 
 describe('MessageList', () => {
   it('renders empty state when no messages', () => {
@@ -216,6 +216,75 @@ describe('MessageList', () => {
 
       expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
       expect(screen.queryByTestId('provisional-answer')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('while an agent works', () => {
+    const question: ChatMessage = {
+      id: '1',
+      role: 'user',
+      content: 'Was regelt die Dienstvereinbarung?',
+      timestamp: new Date(),
+    }
+    const running: LiveAgentRun = {
+      steps: [
+        { index: 0, tool: 'search_knowledge', detail: 'Rufbereitschaft', hits: 4, status: 'DONE' },
+        { index: 1, tool: 'search_knowledge', detail: 'Dienstvereinbarung' },
+      ],
+      limitReached: false,
+      ended: false,
+    }
+
+    it('names the running step in the one status and lists the steps outside any live region', () => {
+      render(<MessageList messages={[question]} isLoading streamingRun={running} />)
+
+      const status = screen
+        .getByText('Sucht nach „Dienstvereinbarung“ …')
+        .closest('[role="status"]')
+      expect(status).not.toBeNull()
+      expect(screen.getAllByRole('progressbar', { hidden: true })).toHaveLength(1)
+      const list = screen.getByRole('list', { name: 'Schritte' })
+      expect(
+        within(list)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      ).toEqual(['Suche: Rufbereitschaft · 4 Treffer', 'Suche: Dienstvereinbarung · Läuft'])
+      expect(list.closest('[aria-live], [role="status"]')).toBeNull()
+      expect(screen.queryByText(/search_knowledge/)).not.toBeInTheDocument()
+    })
+
+    it('names a reached limit, then marks the answer as provisional in the same status', () => {
+      const atLimit: LiveAgentRun = {
+        steps: [{ ...running.steps[0] }],
+        limitReached: true,
+        ended: true,
+      }
+      const { rerender } = render(
+        <MessageList messages={[question]} isLoading streamingRun={atLimit} />,
+      )
+      const status = screen.getByText(/Grenze erreicht/).closest('[role="status"]')
+
+      rerender(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={atLimit}
+          streamingAnswer="Die Dienstvereinbarung regelt die Rufbereitschaft."
+        />,
+      )
+
+      expect(screen.getByText(PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(status)
+      expect(PROVISIONAL_ANSWER_LABEL).toContain('Belege noch nicht geprüft')
+      expect(screen.getByRole('list', { name: 'Schritte' })).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('provisional-answer')).queryByRole('button'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows no steps once the answer is complete', () => {
+      render(<MessageList messages={[question]} isLoading={false} streamingRun={running} />)
+
+      expect(screen.queryByRole('list', { name: 'Schritte' })).not.toBeInTheDocument()
     })
   })
 })

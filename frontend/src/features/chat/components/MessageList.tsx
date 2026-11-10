@@ -6,12 +6,13 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
-import type { ChatMessage } from '../types/chat'
+import type { ChatMessage, LiveAgentRun } from '../types/chat'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
 import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
+import { stepActivity, stepText } from './agentStepText'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
 interface MessageListProps {
@@ -24,6 +25,20 @@ interface MessageListProps {
   targetMessageId?: string | null
   /** The provisional answer while the model writes it, null before its first part. */
   streamingAnswer?: string | null
+  /** The agent run this answer waits for while it works, null for an ordinary answer. */
+  streamingRun?: LiveAgentRun | null
+}
+
+export const THINKING_STATUS = 'Denkt nach …'
+export const LIMIT_REACHED_STATUS = 'Grenze erreicht, antwortet mit dem Gefundenen …'
+
+/** The status line of an agent run: its running step, its limit, or null for "Denkt nach …". */
+function runStatus(run: LiveAgentRun | null): string | null {
+  if (!run) return null
+  const running = run.steps.find((step) => !step.status)
+  if (running && !run.ended) return stepActivity(running)
+  if (run.limitReached) return LIMIT_REACHED_STATUS
+  return null
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -40,6 +55,7 @@ export default function MessageList({
   isLoading,
   targetMessageId,
   streamingAnswer = null,
+  streamingRun = null,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const targetRef = useRef<HTMLDivElement>(null)
@@ -182,9 +198,9 @@ export default function MessageList({
           )
         })}
 
-        {/* One status from "Denkt nach …" to the end of the answer: its text changes once the
-            first part arrives, which a screen reader announces; a region inserted with its text
-            would not be. */}
+        {/* One status from "Denkt nach …" to the end of the answer: its text changes with each
+            step of an agent and once the first part arrives, which a screen reader announces; a
+            region inserted with its text would not be. */}
         {isLoading && (
           <Box
             role="status"
@@ -193,8 +209,22 @@ export default function MessageList({
           >
             <CircularProgress size={streaming ? 16 : 20} aria-hidden />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {streaming ? PROVISIONAL_ANSWER_LABEL : 'Denkt nach …'}
+              {streaming ? PROVISIONAL_ANSWER_LABEL : (runStatus(streamingRun) ?? THINKING_STATUS)}
             </Typography>
+          </Box>
+        )}
+        {/* The steps so far stay readable at the reader's pace below the status line; they are no
+            live region, the status line announces each one. The kept answer carries them. */}
+        {isLoading && streamingRun && streamingRun.steps.length > 0 && (
+          <Box
+            component="ol"
+            aria-label="Schritte"
+            data-testid="live-agent-steps"
+            sx={{ m: 0, mb: 1, pl: 7, pr: 2, color: 'text.secondary', typography: 'body2' }}
+          >
+            {streamingRun.steps.map((step) => (
+              <li key={step.index}>{stepText(step)}</li>
+            ))}
           </Box>
         )}
         {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}

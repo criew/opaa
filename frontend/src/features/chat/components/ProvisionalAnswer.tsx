@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 
 export const PROVISIONAL_ANSWER_LABEL =
-  'Antwort wird geschrieben … Vorläufig: Die Belege werden geprüft, sobald sie fertig ist.'
+  'Antwort wird geschrieben … Vorläufig, Belege noch nicht geprüft.'
 
 /** A citation marker the model has begun but not yet closed, at the end of the text. */
 const OPEN_MARKER_AT_END = /【[^】]*$/

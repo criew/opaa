@@ -4,13 +4,17 @@ import type { ErrorResponse, MetadataFilter, QueryResponse } from '@/shared/api/
 import { isErrorResponse } from '@/shared/api/types'
 import type { components } from '@/shared/api/generated/api'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
+import type { LiveAgentRun } from '../types/chat'
 import { queryRequest, sendQuery } from './queryApi'
 
 type QueryStreamEvent = components['schemas']['QueryStreamEvent']
+type AgentRunStreamStep = components['schemas']['AgentRunStreamStep']
 
 export interface StreamQueryOptions {
   /** The provisional answer so far - unvalidated, citation markers included. */
   onProvisional: (text: string) => void
+  /** An agent turn's run as it works, after each of its step and run events; never called otherwise. */
+  onAgentRun?: (run: LiveAgentRun) => void
   signal?: AbortSignal
   /** The chat attachments sent with this question. */
   attachmentIds?: string[]
@@ -87,17 +91,23 @@ export async function streamQuery(
     }
     normalizeError(err)
   }
-  return readEvents(response.data, options.onProvisional)
+  return readEvents(response.data, options.onProvisional, options.onAgentRun)
 }
 
 async function readEvents(
   body: ReadableStream<Uint8Array>,
   onProvisional: (text: string) => void,
+  onAgentRun: ((run: LiveAgentRun) => void) | undefined,
 ): Promise<QueryResponse> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let provisional = ''
+  let run: LiveAgentRun = { steps: [], limitReached: false, ended: false }
+  const tellRun = (next: LiveAgentRun) => {
+    run = next
+    onAgentRun?.(run)
+  }
   try {
     while (true) {
       const { value, done } = await reader.read()
@@ -117,6 +127,16 @@ async function readEvents(
             provisional = event.text ?? ''
             onProvisional(provisional)
             break
+          case 'step_started':
+          case 'step_finished':
+            if (event.step) tellRun({ ...run, steps: withStep(run.steps, event.step) })
+            break
+          case 'limit_reached':
+            tellRun({ ...run, limitReached: true })
+            break
+          case 'run_finished':
+            tellRun({ ...run, ended: true })
+            break
           case 'final':
             if (event.response) return event.response as QueryResponse
             break
@@ -131,6 +151,13 @@ async function readEvents(
     // is not read any further, and the connection is given up rather than drained.
     reader.cancel().catch(() => {})
   }
+}
+
+/** The steps with `step` put at its index: a finished step replaces its start. */
+function withStep(steps: AgentRunStreamStep[], step: AgentRunStreamStep): AgentRunStreamStep[] {
+  const next = steps.filter((known) => known.index !== step.index)
+  next.push(step)
+  return next.sort((a, b) => a.index - b.index)
 }
 
 function frameBoundary(buffer: string): { index: number; length: number } | null {
