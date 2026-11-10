@@ -10,12 +10,12 @@ Ein Agent soll Dateien erzeugen: ein PDF nach Vorgabe, eine Tabellenauswertung, 
 schreibt das Modell Code, den niemand vorher prüft ([ADR-0070](0070-werkzeugaufrufe-im-chat.md),
 Werkzeug `run_code` der Rechteklasse *isoliert*). Dieser Code darf weder auf den Knoten ausbrechen
 noch Opaa-Daten außer den übergebenen sehen noch ungeprüft ins Netz. Wettbewerber zeigen, wo es
-schiefgeht: Sprach-Sandboxen im Serverprozess (vm2, Flowise, n8n), Sandbox-APIs ohne Anmeldung (Dify,
-OpenHands), Dateinamen aus der Sandbox als Pfad auf dem Server (LibreChat), ein Egress-Proxy, der bei
-Fehlern öffnet (E2B). Die Recherche und der Spike (#3584) haben OpenSandbox im Docker-Modus
+schiefgeht: Sprach-Sandboxen im Serverprozess (vm2, Flowise, n8n), Sandbox-APIs ohne Anmeldung
+(Dify, OpenHands), Dateinamen aus der Sandbox als Pfad auf dem Server (LibreChat), ein Egress-Proxy,
+der bei Fehlern öffnet (E2B). Die Recherche und der Spike (#3584) haben OpenSandbox im Docker-Modus
 durchgespielt. Behörden betreiben Kubernetes, OpenShift oder Docker; gVisor ist auf OpenShift nicht
-unterstützt, Kata braucht dort Bare Metal. Die Plattform entscheidet also über die
-Isolationsstärke, nicht der Code.
+unterstützt, Kata braucht dort Bare Metal. Die Plattform entscheidet also über die Isolationsstärke,
+nicht der Code.
 
 ## Entscheidung
 
@@ -48,25 +48,25 @@ Verzeichnis je Aufruf, dessen Namen das Backend zufällig wählt; direkt nach de
 Backend dort nur die Dateien, die das Skript gemeldet hat, nur DOCX und PDF, und behält sie bis zum
 Lauf-Ende. Jede Datei geht durch alle Prüfungen eines gewöhnlichen Uploads, ein DOCX zusätzlich
 durch die Prüfung auf aktive Inhalte wie beim Hochladen einer Vorlage (Entscheidung 8), und wird
-Anhang der fragenden Person in deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als PDF oder eingebettet in ein
-Dokument. Der Endstand zählt, nicht jeder Zwischenstand. Alles aus der Sandbox gilt als feindlich:
-Name, Pfad, Größe und Dateityp werden geprüft, Unterordner und Verweise nicht gelesen, Ausgaben und
-Dateinamen erreichen das Modell nur als markierter Datenblock. Eine Datei, die sich nicht abholen
-oder anhängen lässt, fehlt, ohne die Antwort zu verwerfen; `fill_template` meldet dem Modell nur
-Dateien, die es schon gelesen und geprüft hat.
+Anhang der fragenden Person in deren Chat. Bilder sind kein Anhangsformat; ein Diagramm kommt als
+PDF oder eingebettet in ein Dokument. Der Endstand zählt, nicht jeder Zwischenstand. Alles aus der
+Sandbox gilt als feindlich: Name, Pfad, Größe und Dateityp werden geprüft, Unterordner und Verweise
+nicht gelesen, Ausgaben und Dateinamen erreichen das Modell nur als markierter Datenblock. Eine
+Datei, die sich nicht abholen oder anhängen lässt, fehlt, ohne die Antwort zu verwerfen;
+`fill_template` meldet dem Modell nur Dateien, die es schon gelesen und geprüft hat.
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
 Die Sandbox hat keinen Ausgang: Unter Docker hängt sie an einem internen Netz ohne Ausgang, das
 Backend ist nicht darin, erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit
-Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy
-an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den übrigen
-Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes Zufallstoken für
-ihren Ausführungsagenten. Das Skript läuft ohne Root-Rechte und startet ohne dieses Token in seiner
-Umgebung: Mit dem Token könnte es den Ausführungsagenten in der eigenen Sandbox ansprechen und
-Kommandos als Root ausführen. Der Container behält nur die Capabilities, die der Ausführungsagent
-braucht. Ein Ausgangstor mit Zulassungsliste kommt erst mit einem Werkzeug, das
-Netz braucht.
+Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine
+NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den
+übrigen Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen
+Schlüssel, jede Sandbox ein eigenes Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne
+Root-Rechte und startet ohne dieses Token in seiner Umgebung: Mit dem Token könnte es den
+Ausführungsagenten in der eigenen Sandbox ansprechen und Kommandos als Root ausführen. Der Container
+behält nur die Capabilities, die der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
+kommt erst mit einem Werkzeug, das Netz braucht.
 
 ### 5. Isolationsstärke ist Einstellung des Dienstes
 
@@ -90,10 +90,10 @@ Je Sandbox hält eine eigene Tabelle Lauf-Kennung, technische Kennung der Sandbo
 Ergebnis, Dauer, Zahl der Skripte, Zahl und Größe der Dateien und den Abbruchgrund fest; kein Konto,
 kein Skript, kein Dateiinhalt. Sie folgt der Bauart des Schrittprotokolls (ADR-0070, Entscheidung 4,
 Bestand b): Tagespartitionen im Besitz von `opaa_audit_owner`, derselbe Leseweg mit Lauf-Kennung und
-Anlass, eigene Frist (Vorgabe 7, höchstens 30 Tage, nie länger als das Schrittprotokoll). Geschrieben
-wird beim Schließen der Sandbox, auch wenn sie nicht startet. Der Dienst selbst protokolliert auf
-Stufe `INFO` oder höher, also ohne Anfragekörper, und Compose rotiert sein Log; ein Test prüft die
-mitgelieferte Konfiguration.
+Anlass, eigene Frist (Vorgabe 7, höchstens 30 Tage, nie länger als das Schrittprotokoll).
+Geschrieben wird beim Schließen der Sandbox, auch wenn sie nicht startet. Der Dienst selbst
+protokolliert auf Stufe `INFO` oder höher, also ohne Anfragekörper, und Compose rotiert sein Log;
+ein Test prüft die mitgelieferte Konfiguration.
 
 ### 8. Feste Skripte des Images für Werkzeuge ohne Modellcode
 
@@ -102,19 +102,29 @@ geprüft gegen die beim Hochladen gelesenen Platzhalter der Vorlage. Das Backend
 Werte in die Sandbox des Laufs und startet ein festes Skript aus dem Image (`/opt/opaa`, gehört
 Root, mit `python3 -I`, damit Dateien im Arbeitsordner kein Modul ersetzen). Das Skript füllt mit
 docxtpl in Jinjas Sandbox-Umgebung mit Autoescape, sodass ein Wert nie als Vorlage ausgewertet und
-immer als Text eingesetzt wird, und erzeugt das PDF mit LibreOffice ohne Oberfläche, in einer Frist,
-die das Backend aus dem Zeitlimit des Aufrufs ableitet. Autoescape hebelt keine Vorlage aus: Die
-Umgebung kennt die Filter `safe`, `urlize`, `xmlattr` und die Funktion `lipsum` nicht, und das
-Skript weist eine Vorlage mit `autoescape`-Block oder einem dieser Namen ab, bevor es rendert; schon
-beim Hochladen lehnt das Backend sie ab. Zusätzlich prüft das Backend jedes DOCX aus der Sandbox auf
-aktive Inhalte (Makros, eingebettete Objekte, externe Verknüpfungen, Felder wie INCLUDEPICTURE oder
-DDE), bevor es Anhang wird, auch eines aus `run_code`. Fehlt ein Wert oder ist er `null`, setzt das
-Backend eine Liste leer und eine Bedingung auf nein; ein Text bleibt leer, und ein `default` der
-Vorlage greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer, entsteht kein
-Image. Im Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im Prozess mit
-allen Daten. Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt als
-Parameter vom Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht erreichbar,
-bekommt das Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler.
+immer als Text eingesetzt wird, und erzeugt das PDF mit LibreOffice ohne Oberfläche, bis zu einer
+Frist ab Skriptstart, die das Backend aus dem Zeitlimit des Aufrufs ableitet; LibreOffice endet
+spätestens mit dem Skript. Eine Vorlage darf nur, was Feld, Liste und Bedingung brauchen, nach einer
+Zulassungsliste statt einer Sperrliste: Text, Ausgabe, Namen, Teile der Daten über Attribut oder
+festen Schlüssel, `for` und `if`, Vergleiche, Rechnen, Verketten und eine kleine Liste von Filtern,
+die nur Text, Zahlen oder Listen liefern (`default`, `upper`, `lower`, `title`, `capitalize`,
+`trim`, `round`, `int`, `float`, `abs`, `join`, `length`, `count`, `first`, `last`) mit festen
+Argumenten. Kein Aufruf einer Funktion oder Methode, keine Zuweisung, kein Makro, Block,
+Filterblock, `autoescape`, Ausschnitt oder Name mit Unterstrich am Anfang; die Umgebung hat keine
+globalen Funktionen, und eine Zeichenkette gibt kein Attribut heraus. So entsteht in einer Vorlage
+kein Wert, den Jinja als Markup ungeschützt einsetzt. Das Skript prüft das am Syntaxbaum vor dem
+Füllen, das Backend dieselben Regeln schon beim Hochladen. Zusätzlich prüft das Backend jedes DOCX
+aus der Sandbox wie eine hochgeladene Vorlage auf aktive Inhalte, bevor es Anhang wird, auch eines
+aus `run_code`: Makros, eingebettete Objekte, externe Verknüpfungen und jedes Feld, das nicht auf
+einer Liste harmloser Felder steht (Seitenzahl, Datum, Verweis, Verzeichnis u. a.) oder ein anderes
+Feld in seinem Code trägt. Fehlt ein Wert oder ist er `null`, setzt das Backend eine Liste leer,
+eine Bedingung auf nein und einen leeren Listeneintrag als leeren Text; ein Text bleibt leer, und
+ein `default` der Vorlage greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer,
+entsteht kein Image. Im Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im
+Prozess mit allen Daten. Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt
+als Parameter vom Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht
+erreichbar, bekommt das Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem
+Fehler.
 
 ## Konsequenzen
 
@@ -140,13 +150,17 @@ bekommt das Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit 
 - Eine Sandbox je Aufruf: Korrekturen eines Laufs müssten jedes Mal alles neu erzeugen (2).
 - Sandbox über Läufe hinweg je Chat: Zustand über eine Anfrage hinaus, der beim Pod-Tausch verloren
   ginge (2).
-- Jede erzeugte Datei sofort als Anhang: Zwischenstände einer Korrektur würden doppelt angehängt (3).
+- Jede erzeugte Datei sofort als Anhang: Zwischenstände einer Korrektur würden doppelt angehängt
+  (3).
 - Netzregel nur, wenn `networkPolicy.*` eingeschaltet ist: Eine Sandbox hätte bis dahin das offene
   Clusternetz (4).
 - Vorlage im Backend füllen (Jinja-Engine im Prozess): Template-Injection mit Zugriff auf alle
   Daten (8).
 - Vorlage über `run_code` füllen lassen: Das Ergebnis hinge an ungeprüftem Modellcode (8).
 - Fehlende Textwerte als leere Zeichenkette setzen: `default` der Vorlage griffe dann nie (8).
+- Gefährliche Filter und Blöcke einzeln sperren: Jinja liefert Markup auf vielen Wegen (Escape-
+  Filter mit Methoden von Markup, `set`-Blöcke, Makros); nur eine Zulassungsliste schließt sie
+  alle (8).
 
 ## Offen
 

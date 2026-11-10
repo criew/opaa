@@ -11,16 +11,19 @@ Job file (JSON, written by the backend):
     output_dir           a directory that must not exist yet; the results are written there alone
     output_name          base name of the result files, sanitized again here
     formats              any of "docx", "pdf"
-    pdf_timeout_seconds  how long LibreOffice may convert, below the script's own time limit
+    pdf_deadline_seconds seconds after the script's start by which the PDF must be done, below
+                         the script's own time limit
     stamp                optional text for every footer and the document properties, e.g. a draft
                          notice; from the backend, never from the model, and never rendered
 
 The data are inserted as text: Jinja evaluates only the tags of the template, never a value, and
-autoescape turns every value into escaped XML text. A template cannot switch that off: the filters
-that mark text as raw markup (safe, urlize, xmlattr) and the global lipsum do not exist here, and
-a template with an autoescape block is refused before rendering. The tags run in Jinja's immutable
-sandbox, so they cannot reach Python internals. A missing value renders empty; a template that
-computes with one (round, +) fails and says so.
+autoescape turns every value into escaped XML text. A template may use only what fields, lists and
+conditions need (ALLOWED_NODES, ALLOWED_FILTERS, ALLOWED_TESTS): no call of any function or method,
+no assignment, macro, block, filter block or autoescape block, no slice and no name or key that
+starts with an underscore. Everything else is refused before rendering, so no template can produce
+text Jinja treats as markup. The tags run in Jinja's immutable sandbox without globals, and a string
+exposes no attribute. A missing value renders empty; a template that computes with one (round, +)
+fails and says so.
 
 Prints exactly one JSON line on stdout: {"files": [...], "errors": [...]}, the files as names in
 output_dir. Exit code 0 when at least one file was written, 2 when the template could not be
@@ -35,43 +38,105 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 SOFFICE = "/usr/bin/soffice"
 MAX_NAME_CHARS = 80
-DEFAULT_PDF_TIMEOUT_SECONDS = 30
+DEFAULT_PDF_DEADLINE_SECONDS = 30
 FORMATS = ("docx", "pdf")
 
-# Filters and globals whose result Jinja treats as markup and would insert unescaped.
-RAW_MARKUP_FILTERS = ("safe", "urlize", "xmlattr")
-RAW_MARKUP_GLOBALS = ("lipsum",)
+# When the script started; the PDF deadline of the job counts from here.
+STARTED = time.monotonic()
+
+# The node types a template may contain: text, output, names, parts of the data, loops,
+# conditions, comparisons, arithmetic and concatenation. docxtpl's own tags ({%p %}, {%tr %},
+# {%tc %}, {%r %}, vm, hm, colspan, cellbg) become exactly these before Jinja parses the template.
+ALLOWED_NODES = (
+    "Template", "Output", "TemplateData", "Const", "Name", "Getattr", "Getitem", "For", "If",
+    "CondExpr", "Compare", "Operand", "And", "Or", "Not", "Neg", "Pos", "Add", "Sub", "Mul", "Div",
+    "FloorDiv", "Mod", "Concat", "Filter", "Test", "Tuple", "List",
+)
+
+# Filters that give text, a number or a list of values and never mark anything as markup.
+ALLOWED_FILTERS = (
+    "default", "d", "upper", "lower", "title", "capitalize", "trim", "round", "int", "float", "abs",
+    "join", "length", "count", "first", "last",
+)
+
+ALLOWED_TESTS = (
+    "defined", "undefined", "none", "number", "string", "boolean", "true", "false", "odd", "even",
+    "divisibleby", "eq", "ne", "lt", "le", "gt", "ge", "in",
+)
+
+# Names that only exist inside constructs a template may not use or that reach the template object.
+FORBIDDEN_NAMES = ("self", "caller", "varargs", "kwargs")
+
+
+def check_template(tree, name=None, filename=None):
+    """Refuses a parsed template that uses anything beyond ALLOWED_NODES and the allowed names."""
+    from jinja2 import nodes
+    from jinja2.exceptions import TemplateSyntaxError
+
+    def refuse(node, what):
+        raise TemplateSyntaxError(f"{what} is not allowed in a template", node.lineno, name,
+                                  filename)
+
+    def plain(value):
+        return not isinstance(value, str) or not value.startswith("_")
+
+    for node in [tree, *tree.find_all(nodes.Node)]:
+        kind = type(node).__name__
+        if kind not in ALLOWED_NODES:
+            refuse(node, kind)
+        if isinstance(node, nodes.Name) and (node.name.startswith("_")
+                                             or node.name in FORBIDDEN_NAMES):
+            refuse(node, f"the name {node.name}")
+        if isinstance(node, nodes.Getattr) and node.attr.startswith("_"):
+            refuse(node, f"the attribute {node.attr}")
+        if isinstance(node, nodes.Getitem) and not (isinstance(node.arg, nodes.Const)
+                                                    and plain(node.arg.value)):
+            refuse(node, "a key that is not a plain constant")
+        if isinstance(node, nodes.For) and node.recursive:
+            refuse(node, "a recursive loop")
+        if isinstance(node, nodes.Filter) and node.name not in ALLOWED_FILTERS:
+            refuse(node, f"the filter {node.name}")
+        if isinstance(node, nodes.Test) and node.name not in ALLOWED_TESTS:
+            refuse(node, f"the test {node.name}")
+        if isinstance(node, (nodes.Filter, nodes.Test)) and (
+                node.kwargs or node.dyn_args or node.dyn_kwargs
+                or not all(isinstance(arg, nodes.Const) and plain(arg.value)
+                           for arg in node.args)):
+            refuse(node, f"an argument of {node.name} that is not a plain constant")
 
 
 def template_environment():
-    """Jinja's immutable sandbox with autoescape that no template can switch off."""
-    from jinja2 import ChainableUndefined, nodes
-    from jinja2.exceptions import TemplateSyntaxError
+    """Jinja's immutable sandbox with autoescape and without globals; templates are checked."""
+    from jinja2 import ChainableUndefined
     from jinja2.sandbox import ImmutableSandboxedEnvironment
 
     class TemplateEnvironment(ImmutableSandboxedEnvironment):
 
         def _parse(self, source, name, filename):
             tree = super()._parse(source, name, filename)
-            for node in tree.find_all((nodes.EvalContextModifier, nodes.MarkSafe,
-                                       nodes.MarkSafeIfAutoescape)):
-                raise TemplateSyntaxError(
-                    "autoescape blocks are not allowed in a template", node.lineno, name, filename)
-            for node in tree.find_all((nodes.Filter, nodes.Test)):
-                if node.name in RAW_MARKUP_FILTERS:
-                    raise TemplateSyntaxError(
-                        f"the filter {node.name} is not allowed in a template", node.lineno, name,
-                        filename)
+            check_template(tree, name, filename)
             return tree
 
+        def is_safe_attribute(self, obj, attr, value):
+            # A string (and Markup) exposes nothing: no method, no format, no translate.
+            if isinstance(obj, str):
+                return False
+            return super().is_safe_attribute(obj, attr, value)
+
+        def getattr(self, obj, attribute):
+            # The data are JSON objects: a.b is the member b, never a method of dict.
+            if isinstance(obj, dict):
+                return self.getitem(obj, attribute)
+            return super().getattr(obj, attribute)
+
     environment = TemplateEnvironment(autoescape=True, undefined=ChainableUndefined)
-    for name in RAW_MARKUP_FILTERS:
-        environment.filters.pop(name, None)
-    for name in RAW_MARKUP_GLOBALS:
-        environment.globals.pop(name, None)
+    environment.globals.clear()
+    environment.filters = {name: environment.filters[name] for name in ALLOWED_FILTERS}
+    environment.tests = {name: environment.tests[name] for name in ALLOWED_TESTS}
     return environment
 
 
@@ -110,9 +175,52 @@ def add_stamp(path, stamp):
     document.save(path)
 
 
+def descendants(pid):
+    """The ids of all processes below pid, read from /proc."""
+    children = {}
+    for entry in os.listdir("/proc"):
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f"/proc/{entry}/stat", encoding="utf-8") as stat:
+                parent = int(stat.read().rsplit(")", 1)[1].split()[1])
+        except (OSError, ValueError, IndexError):
+            continue
+        children.setdefault(parent, []).append(int(entry))
+    found, pending = [], [pid]
+    while pending:
+        for child in children.get(pending.pop(), []):
+            found.append(child)
+            pending.append(child)
+    return found
+
+
+def kill_tree(pid):
+    """Kills pid and every process it started, so no converter outlives the script."""
+    for target in [pid, *descendants(pid)]:
+        try:
+            os.kill(target, signal.SIGKILL)
+        except OSError:
+            pass
+
+
 def convert_to_pdf(docx_path, work_dir, timeout_seconds):
-    """The PDF LibreOffice writes for docx_path, or None when it failed or ran out of time."""
+    """The PDF LibreOffice writes for docx_path, or None when it failed or ran out of time.
+
+    LibreOffice stays in the script's process group, so stopping the script's group stops it too;
+    at its own time limit, and on SIGTERM, the script kills it with every helper it started.
+    """
+    if timeout_seconds <= 0:
+        return None
     profile = tempfile.mkdtemp(prefix="opaa-lo-")
+    process = None
+
+    def stop(signum, frame):
+        if process is not None:
+            kill_tree(process.pid)
+        raise SystemExit(128 + signum)
+
+    previous = signal.signal(signal.SIGTERM, stop)
     try:
         process = subprocess.Popen(
             [
@@ -129,28 +237,28 @@ def convert_to_pdf(docx_path, work_dir, timeout_seconds):
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True,
         )
         try:
             process.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
-            # soffice starts helper processes; the whole session goes.
-            os.killpg(process.pid, signal.SIGKILL)
+            kill_tree(process.pid)
             process.wait()
             return None
     except OSError:
         return None
     finally:
+        signal.signal(signal.SIGTERM, previous)
         shutil.rmtree(profile, ignore_errors=True)
     pdf = os.path.splitext(docx_path)[0] + ".pdf"
     return pdf if os.path.isfile(pdf) else None
 
 
 def pdf_timeout(job):
-    value = job.get("pdf_timeout_seconds")
-    if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
-        return float(value)
-    return DEFAULT_PDF_TIMEOUT_SECONDS
+    """What is left of the job's PDF deadline, counted from the script's start."""
+    value = job.get("pdf_deadline_seconds")
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        value = DEFAULT_PDF_DEADLINE_SECONDS
+    return float(value) - (time.monotonic() - STARTED)
 
 
 def fill(job):

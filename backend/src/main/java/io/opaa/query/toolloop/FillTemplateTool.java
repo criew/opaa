@@ -372,7 +372,7 @@ class FillTemplateTool implements AgentTool {
       SandboxSession session = sandbox.session();
       String outputDir = OUTPUT_PARENT + "/" + UUID.randomUUID();
       session.upload(TEMPLATE_PATH, template.content());
-      session.upload(JOB_PATH, job(data, template, formats, outputDir, pdfTimeout(timeout)));
+      session.upload(JOB_PATH, job(data, template, formats, outputDir, pdfDeadline(timeout)));
       result = session.runInstalled(SCRIPT, List.of(JOB_PATH), timeout);
       sandbox.scriptRan(result);
       reported = ScriptResult.read(result.stdout(), objectMapper);
@@ -389,8 +389,11 @@ class FillTemplateTool implements AgentTool {
     return outcome(result, reported, attached, run, detail);
   }
 
-  /** The seconds of a script call's {@code timeout} the PDF conversion may take. */
-  static long pdfTimeout(Duration timeout) {
+  /**
+   * The seconds after the script's start by which the PDF conversion must be done, within a script
+   * call's {@code timeout}; the script subtracts the time it already used.
+   */
+  static long pdfDeadline(Duration timeout) {
     Duration reserve = timeout.dividedBy(3);
     if (reserve.compareTo(PDF_RESERVE) > 0) {
       reserve = PDF_RESERVE;
@@ -455,10 +458,11 @@ class FillTemplateTool implements AgentTool {
     }
     reported.errors().forEach(error -> lines.add("Hinweis: " + bounded(error, MAX_MESSAGE_CHARS)));
     if (result.exitCode() == 0 && !attached.isEmpty()) {
-      lines.addFirst("Angehängt werden: " + String.join(", ", attached));
+      lines.addFirst("Zum Anhängen vorgesehen: " + String.join(", ", attached));
       return new ToolCallOutcome(
-          "Die Vorlage wurde befüllt; die Dateien hängen an deiner Antwort. Nenne sie kurz, statt"
-              + " den Inhalt zu wiederholen.\n"
+          "Die Vorlage wurde befüllt. Die Dateien werden am Ende des Laufs an deine Antwort"
+              + " gehängt, sofern sie die Prüfungen für Anhänge bestehen (etwa die Höchstzahl je"
+              + " Chat). Nenne sie kurz, statt den Inhalt zu wiederholen.\n"
               + DocumentBlock.renderIndentedLines(run.blockId(), lines),
           ToolCallResult.SUCCESS,
           bounded(detail + " – " + String.join(", ", attached), MAX_DETAIL_CHARS),
@@ -482,13 +486,13 @@ class FillTemplateTool implements AgentTool {
       TemplateToFill template,
       List<String> formats,
       String outputDir,
-      long pdfTimeoutSeconds) {
+      long pdfDeadlineSeconds) {
     ObjectNode job = objectMapper.createObjectNode();
     job.put("template", TEMPLATE_PATH);
     job.set("data", data);
     job.put("output_dir", outputDir);
     job.put("output_name", baseName(template));
-    job.put("pdf_timeout_seconds", pdfTimeoutSeconds);
+    job.put("pdf_deadline_seconds", pdfDeadlineSeconds);
     ArrayNode formatList = job.putArray("formats");
     formats.forEach(formatList::add);
     // Version stamp and draft notice come from the backend, never from the model; none is set yet.
@@ -613,8 +617,9 @@ class FillTemplateTool implements AgentTool {
 
     /**
      * {@code data}, already checked, with every placeholder it leaves out or sets to {@code null}
-     * filled by kind: a list as an empty list, a condition as {@code false}. A text or a part of an
-     * object stays out, so the template shows it empty and its {@code default} still applies.
+     * filled by kind: a list as an empty list, a condition as {@code false}, a {@code null} entry
+     * of a list as empty text. A text or a part of an object stays out, so the template shows it
+     * empty and its {@code default} still applies.
      */
     static ObjectNode completed(JsonNode data, List<TemplatePlaceholder> placeholders) {
       ObjectNode completed = withoutNulls((ObjectNode) data);
@@ -622,8 +627,13 @@ class FillTemplateTool implements AgentTool {
         JsonNode value = completed.get(placeholder.name());
         if (value != null && value.isArray()) {
           ArrayNode entries = completed.putArray(placeholder.name());
-          value.forEach(
-              entry -> entries.add(entry.isObject() ? withoutNulls((ObjectNode) entry) : entry));
+          for (JsonNode entry : value) {
+            if (entry.isNull()) {
+              entries.add("");
+            } else {
+              entries.add(entry.isObject() ? withoutNulls((ObjectNode) entry) : entry);
+            }
+          }
         } else if (value == null && placeholder.kind() == PlaceholderKind.LIST) {
           completed.putArray(placeholder.name());
         } else if (value == null && placeholder.kind() == PlaceholderKind.CONDITION) {

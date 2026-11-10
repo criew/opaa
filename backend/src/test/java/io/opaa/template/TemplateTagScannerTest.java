@@ -31,18 +31,40 @@ class TemplateTagScannerTest {
   }
 
   @Test
-  void whatWouldInsertAValueAsRawWordXmlIsRefused() {
+  void anythingBeyondFieldsListsConditionsAndTheAllowedFiltersIsRefused() {
     for (String template :
         List.of(
             "{{ (('%c'|format(60)) ~ 'w:fldSimple w:instr=\"INCLUDEPICTURE x\"/' ~ "
                 + "('%c'|format(62)))|safe }}",
+            "{{ ('X/w:tYXw:fldSimple w:instr=QINCLUDEPICTURE xQ/YXw:tY'|e)"
+                + ".translate({88: 60, 89: 62, 81: 34, 90: 92}) }}",
+            "{{ (x|e).translate(t) }}",
+            "{{ x|forceescape }}",
+            "{{ x|tojson }}",
             "{{ x | safe }}",
+            "{% set y %}{{ x }}{% endset %}",
+            "{% set y = x %}",
+            "{% macro m() %}X{% endmacro %}",
+            "{% call m() %}{% endcall %}",
+            "{% with y = x %}{{ y }}{% endwith %}",
+            "{% include 'a' %}",
             "{% filter safe %}{{ x }}{% endfilter %}",
             "{%- autoescape false -%}{{ x }}{% endautoescape %}",
             "{{ [x]|map('safe')|join }}",
+            "{{ x|join(attribute='a') }}",
+            "{{ x|default(y) }}",
             "{{ x|urlize }}",
             "{{ d|xmlattr }}",
-            "{{ lipsum(1, true) }}")) {
+            "{{ lipsum(1, true) }}",
+            "{% for i in range(anzahl) %}{{ i }}{% endfor %}",
+            "{{ x.upper() }}",
+            "{{ x[::-1] }}",
+            "{{ x[k] }}",
+            "{{ x['__class__'] }}",
+            "{{ x.__class__ }}",
+            "{{ {'a': x} }}",
+            "{{ self }}",
+            "{% if x is sameas y %}{% endif %}")) {
       assertThatThrownBy(() -> TemplateTagScanner.scan(template))
           .as(template)
           .isInstanceOf(ValidationException.class)
@@ -51,6 +73,13 @@ class TemplateTagScannerTest {
     assertThat(TemplateTagScanner.scan("{{ safety }}{# |safe #}{% raw %}{{ x|safe }}{% endraw %}"))
         .extracting(TemplatePlaceholder::name)
         .containsExactly("safety");
+    assertThat(
+            TemplateTagScanner.scan(
+                "{{ a|default('-')|trim|title }}{{ b|round(1) }}{{ c|join(', ') }}{{ c|length }}"
+                    + "{{ d['x'] ~ '!' }}{{ (a or b) and not c }}{{ 'j' if d.x else 'n' }}"
+                    + "{% if b is not none and b > 1 %}{% endif %}{%tc vm %}{% colspan 2 %}"))
+        .extracting(TemplatePlaceholder::name)
+        .containsExactly("a", "b", "c", "d");
   }
 
   @Test
@@ -136,16 +165,16 @@ class TemplateTagScannerTest {
   }
 
   @Test
-  void rawBlocksTupleLoopsRangesAndLoopFiltersAreRead() {
+  void rawBlocksTupleLoopsAndLoopFiltersAreRead() {
     assertThat(
             TemplateTagScanner.scan(
                 "{% raw %}{{ kein }}{% endraw %}"
                     + "{% for (k, v) in paare %}{{ k }}{% endfor %}"
-                    + "{% for i in range(anzahl) %}{{ i }}{% endfor %}"
+                    + "{% for i in anzahl %}{{ i }}{% endfor %}"
                     + "{% for z in zeilen if z.aktiv %}{{ z.text }}{% endfor %}"))
         .containsExactly(
             new TemplatePlaceholder("paare", PlaceholderKind.LIST, List.of()),
-            new TemplatePlaceholder("anzahl", PlaceholderKind.FIELD, List.of()),
+            new TemplatePlaceholder("anzahl", PlaceholderKind.LIST, List.of()),
             new TemplatePlaceholder("zeilen", PlaceholderKind.LIST, List.of("aktiv", "text")));
   }
 

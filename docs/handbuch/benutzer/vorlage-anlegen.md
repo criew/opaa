@@ -17,10 +17,9 @@
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht
 schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Objekte, eine
-verknüpfte Dokumentvorlage oder Felder wie DDE und INCLUDEPICTURE, die Inhalte nachladen. Links
-bleiben erlaubt. Abgelehnt werden auch Vorlagen, die einen Wert als Word-Code statt als Text
-einsetzen würden: die Filter `safe`, `urlize`, `xmlattr`, die Funktion `lipsum` und
-`{% autoescape %}`.
+verknüpfte Dokumentvorlage oder Felder, die Inhalte nachladen. Erlaubt sind Links und einfache
+Felder wie Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eines
+anderen Feldes (etwa in einer WENN-Bedingung).
 
 ## Platzhalter schreiben
 
@@ -29,6 +28,12 @@ einsetzen würden: die Filter `safe`, `urlize`, `xmlattr`, die Funktion `lipsum`
 | Feld | `{{ name }}` | `Az.: {{ aktenzeichen }}` |
 | Liste | `{% for e in name %}` … `{% endfor %}` | `{% for m in massnahmen %}{{ m.titel }} bis {{ m.frist }}{% endfor %}` |
 | Bedingung | `{% if name %}` … `{% endif %}` | `{% if vertraulich %}VS – NUR FÜR DEN DIENSTGEBRAUCH{% endif %}` |
+
+Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (`{% if betrag > 0 %}`), `~`
+zum Verketten und die Filter `default`, `upper`, `lower`, `title`, `capitalize`, `trim`, `round`,
+`int`, `float`, `abs`, `join`, `length`, `count`, `first` und `last` mit festen Werten als
+Argument, etwa `{{ name|default('unbekannt') }}`. Funktionsaufrufe, `set`, `macro`, andere Filter
+und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.
 
 Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
 `{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand eines Tags (`{%- if … -%}`) entfernt Leerraum wie gewohnt. Namen bestehen

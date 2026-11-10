@@ -178,7 +178,7 @@ class FillTemplateToolTest {
         .startsWith(FillTemplateTool.OUTPUT_PARENT + "/")
         .hasSize(FillTemplateTool.OUTPUT_PARENT.length() + 37);
     assertThat(sandboxes.listedDirectories).containsExactly(job.path("output_dir").asString());
-    assertThat(job.path("pdf_timeout_seconds").asLong()).isEqualTo(45);
+    assertThat(job.path("pdf_deadline_seconds").asLong()).isEqualTo(45);
     assertThat(outcome.modelText()).contains(run.blockId()).contains("Bericht.pdf");
   }
 
@@ -197,17 +197,18 @@ class FillTemplateToolTest {
     expected.put("dringend", false);
     assertThat(job.path("data")).isEqualTo(expected);
     ObjectNode entries = JSON.createObjectNode();
-    entries.putArray("posten").addObject().put("titel", "A").putNull("betrag");
-    assertThat(
-            FillTemplateTool.DataCheck.completed(entries, bericht.placeholders()).at("/posten/0"))
-        .isEqualTo(JSON.createObjectNode().put("titel", "A"));
+    entries.putArray("posten").addNull().addObject().put("titel", "A").putNull("betrag");
+    JsonNode completed = FillTemplateTool.DataCheck.completed(entries, bericht.placeholders());
+    assertThat(completed.at("/posten/0").asString()).isEmpty();
+    assertThat(completed.at("/posten/0").isString()).isTrue();
+    assertThat(completed.at("/posten/1")).isEqualTo(JSON.createObjectNode().put("titel", "A"));
   }
 
   @Test
   void thePdfConversionLeavesTimeForTheRestOfTheScript() {
-    assertThat(FillTemplateTool.pdfTimeout(Duration.ofSeconds(60))).isEqualTo(45);
-    assertThat(FillTemplateTool.pdfTimeout(Duration.ofSeconds(30))).isEqualTo(20);
-    assertThat(FillTemplateTool.pdfTimeout(Duration.ofSeconds(1))).isEqualTo(1);
+    assertThat(FillTemplateTool.pdfDeadline(Duration.ofSeconds(60))).isEqualTo(45);
+    assertThat(FillTemplateTool.pdfDeadline(Duration.ofSeconds(30))).isEqualTo(20);
+    assertThat(FillTemplateTool.pdfDeadline(Duration.ofSeconds(1))).isEqualTo(1);
   }
 
   @Test

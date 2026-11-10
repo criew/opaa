@@ -155,6 +155,54 @@ class DocxTemplateInspectorTest {
   }
 
   @Test
+  void aFieldInsideTheCodeOfAnotherFieldOrAFieldOffTheListIsRefused() throws IOException {
+    String begin = "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>";
+    String separate = "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
+    String end = "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>";
+    String quote = "QUOTE 73 78 67 76 85 68 69 80 73 67 84 85 82 69";
+    List<String> active =
+        List.of(
+            "<w:p>" + begin + begin + instr(quote) + end + instr(" x \\d") + end + "</w:p>",
+            "<w:p>" + begin + instr(quote) + end + "</w:p>",
+            "<w:p>" + begin + instr("REF ") + begin + instr("PAGE") + end + end + "</w:p>",
+            "<w:p>" + begin + instr("REF ") + "<w:fldSimple w:instr=\"PAGE\"/>" + end + "</w:p>",
+            "<w:p>" + begin + instr("IF 1 = 1 x") + separate + end + "</w:p>",
+            "<w:p><w:fldSimple w:instr=\" MACROBUTTON x \"/></w:p>");
+    for (String field : active) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+    String toc =
+        "<w:p>"
+            + begin
+            + instr(" TOC \\o \"1-3\" \\h ")
+            + separate
+            + begin
+            + instr(" PAGEREF _Toc1 \\h ")
+            + separate
+            + "<w:r><w:t>3</w:t></w:r>"
+            + end
+            + end
+            + "</w:p><w:p><w:fldSimple w:instr=\" NUMPAGES \\* MERGEFORMAT \"/></w:p>";
+    assertThat(
+            new DocxActiveContent(ParserLimitProperties.DEFAULTS)
+                .isPassive(withBodyStart(TestDocx.withParagraphs("Text"), toc)))
+        .isTrue();
+  }
+
+  private static String instr(String code) {
+    return "<w:r><w:instrText xml:space=\"preserve\">" + code + "</w:instrText></w:r>";
+  }
+
+  @Test
   void aPlainDocumentIsPassiveAndAnUnreadableOneIsNot() throws IOException {
     DocxActiveContent check = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
     byte[] plain =

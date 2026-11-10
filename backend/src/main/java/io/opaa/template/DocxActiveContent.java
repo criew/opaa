@@ -32,10 +32,12 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Whether a Word package carries content Word may load or run: macros, ActiveX controls, embedded
- * objects, relationships to content outside the file but hyperlinks, and fields that pull in or
- * execute content (DDE, DDEAUTO, INCLUDETEXT, INCLUDEPICTURE). Field codes are read with an XML
- * parser, so neither a namespace prefix, a character reference nor a code split over several runs
- * hides one. Checks an uploaded template and every DOCX an agent run attaches.
+ * objects, relationships to content outside the file but hyperlinks, and any field but those of
+ * {@link #PASSIVE_FIELDS}. A field is passive only when the first word of its code is on that list
+ * and no other field stands inside its code, as Word would evaluate such an inner field (QUOTE, a
+ * nested field name) to build the outer one. Field codes are read with an XML parser, so neither a
+ * namespace prefix, a character reference nor a code split over several runs hides one. Checks an
+ * uploaded template and every DOCX an agent run attaches.
  */
 @Component
 public class DocxActiveContent {
@@ -53,7 +55,60 @@ public class DocxActiveContent {
       Set.of(
           "attachedtemplate", "oleobject", "package", "subdocument", "afchunk", "frame", "control");
 
-  /** A field instruction that loads or runs content; codes may be split over several runs. */
+  /**
+   * Fields that only show what the document itself holds: page and section numbers, dates, document
+   * properties, references, tables of contents and indexes, numbering, symbols, links, merge fields
+   * and legacy form fields.
+   */
+  static final Set<String> PASSIVE_FIELDS =
+      Set.of(
+          "PAGE",
+          "NUMPAGES",
+          "SECTIONPAGES",
+          "SECTION",
+          "DATE",
+          "TIME",
+          "CREATEDATE",
+          "SAVEDATE",
+          "PRINTDATE",
+          "EDITTIME",
+          "HYPERLINK",
+          "TOC",
+          "TOA",
+          "TC",
+          "TA",
+          "XE",
+          "INDEX",
+          "REF",
+          "PAGEREF",
+          "NOTEREF",
+          "SEQ",
+          "STYLEREF",
+          "AUTHOR",
+          "TITLE",
+          "SUBJECT",
+          "KEYWORDS",
+          "COMMENTS",
+          "LASTSAVEDBY",
+          "NUMWORDS",
+          "NUMCHARS",
+          "MERGEFIELD",
+          "LISTNUM",
+          "AUTONUM",
+          "AUTONUMLGL",
+          "AUTONUMOUT",
+          "SYMBOL",
+          "ADVANCE",
+          "FORMTEXT",
+          "FORMCHECKBOX",
+          "FORMDROPDOWN",
+          "BIBLIOGRAPHY",
+          "CITATION");
+
+  /** The first word of a field code: the field's name. */
+  private static final Pattern FIELD_NAME = Pattern.compile("^[\\s\\u00A0]*([^\\s\\u00A0\\\\]*)");
+
+  /** Field names that load or run content, also searched across all codes of a part. */
   private static final Pattern ACTIVE_FIELD =
       Pattern.compile(
           "INCLUDEPICTURE|INCLUDETEXT|DDEAUTO|(?<![A-Z])DDE(?![A-Z])", Pattern.CASE_INSENSITIVE);
@@ -159,8 +214,9 @@ public class DocxActiveContent {
   }
 
   /**
-   * Reads every {@code instrText} of the part as one field code, as Word joins the runs of a field,
-   * and every {@code instr} attribute of a simple field.
+   * Reads the fields of the part: a complex field from {@code fldChar begin} over its {@code
+   * instrText} runs to {@code separate} or {@code end}, a simple field from its {@code instr}
+   * attribute; {@code instrText} outside a field is read per paragraph.
    */
   static void requireNoActiveField(InputStream xml) throws IOException {
     FieldCodes codes = new FieldCodes();
@@ -209,22 +265,65 @@ public class DocxActiveContent {
     }
   }
 
-  /** Collects the field instructions of one part. */
+  /** Whether {@code code} names a field of {@link #PASSIVE_FIELDS}; an empty code is passive. */
+  static boolean passiveField(CharSequence code) {
+    java.util.regex.Matcher name = FIELD_NAME.matcher(code);
+    String field = name.find() ? name.group(1).toUpperCase(Locale.ROOT) : "";
+    return field.isEmpty() || PASSIVE_FIELDS.contains(field);
+  }
+
+  /** Reads the fields of one part and notes whether any of them is active. */
   private static final class FieldCodes extends DefaultHandler {
 
+    /** A complex field; while {@code inCode}, its code is still being read. */
+    private static final class Field {
+      private final StringBuilder code = new StringBuilder();
+      private boolean inCode = true;
+    }
+
     private final StringBuilder instructions = new StringBuilder();
+    private final java.util.Deque<Field> fields = new java.util.ArrayDeque<>();
+    private final StringBuilder loose = new StringBuilder();
     private int instrTextDepth;
     private boolean active;
+
+    private boolean readingCode() {
+      return !fields.isEmpty() && fields.peek().inCode;
+    }
+
+    private void check(CharSequence code) {
+      if (!passiveField(code)) {
+        active = true;
+      }
+    }
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) {
       if ("instrText".equals(localName) || "delInstrText".equals(localName)) {
         instrTextDepth++;
       }
-      for (int i = 0; i < attributes.getLength(); i++) {
-        if ("instr".equals(attributes.getLocalName(i))
-            && ACTIVE_FIELD.matcher(attributes.getValue(i)).find()) {
-          active = true;
+      if ("fldChar".equals(localName)) {
+        fieldChar(attribute(attributes, "fldCharType"));
+      }
+      String instr = attribute(attributes, "instr");
+      if (instr != null) {
+        // A simple field inside the code of another field is a nested field as well.
+        active |= readingCode() || ACTIVE_FIELD.matcher(instr).find();
+        check(instr);
+      }
+    }
+
+    private void fieldChar(String type) {
+      if ("begin".equals(type)) {
+        active |= readingCode();
+        fields.push(new Field());
+      } else if ("separate".equals(type) && readingCode()) {
+        check(fields.peek().code);
+        fields.peek().inCode = false;
+      } else if ("end".equals(type) && !fields.isEmpty()) {
+        Field field = fields.pop();
+        if (field.inCode) {
+          check(field.code);
         }
       }
     }
@@ -235,13 +334,37 @@ public class DocxActiveContent {
           && instrTextDepth > 0) {
         instrTextDepth--;
       }
+      if ("p".equals(localName) && !loose.isEmpty()) {
+        check(loose);
+        loose.setLength(0);
+      }
     }
 
     @Override
     public void characters(char[] ch, int start, int length) {
       if (instrTextDepth > 0) {
         instructions.append(ch, start, length);
+        (readingCode() ? fields.peek().code : loose).append(ch, start, length);
       }
+    }
+
+    @Override
+    public void endDocument() {
+      for (Field field : fields) {
+        if (field.inCode) {
+          check(field.code);
+        }
+      }
+      check(loose);
+    }
+
+    private static String attribute(Attributes attributes, String localName) {
+      for (int i = 0; i < attributes.getLength(); i++) {
+        if (localName.equals(attributes.getLocalName(i))) {
+          return attributes.getValue(i);
+        }
+      }
+      return null;
     }
   }
 }
