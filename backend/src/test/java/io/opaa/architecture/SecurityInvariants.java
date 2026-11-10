@@ -7,7 +7,9 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaCodeUnitAccess;
+import com.tngtech.archunit.core.domain.JavaFieldAccess;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.domain.JavaParameter;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
@@ -17,6 +19,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -24,13 +27,14 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 /**
- * Four security invariants over compiled classes. Each rule answers what breaks it now, keyed by
+ * Five security invariants over compiled classes. Each rule answers what breaks it now, keyed by
  * code unit ({@code <class>#<method>}, a lambda counted to the method it is written in) or handler
  * operation, with the first offending call or method reference as value. An allowlist names
  * justified exceptions with their reason: {@link #unlisted} answers what is neither a building
@@ -161,6 +165,29 @@ final class SecurityInvariants {
           "java.lang.String", Set.of("matches", "replaceAll", "replaceFirst", "split"),
           "java.util.regex.Pattern", Set.of("matches"));
 
+  /** The repository members that write the whole row of an entity they are handed. */
+  static final Set<String> SAVING_MEMBERS =
+      Set.of("save", "saveAll", "saveAndFlush", "saveAllAndFlush");
+
+  /**
+   * Field names that carry security state: who may act (role), whether an account, token or grant
+   * still counts (locked, deactivated, revoked, consumed, ended, erased, dissolved, enabled), and
+   * until when (session generation, expiry, validity).
+   */
+  static final Pattern SECURITY_STATE_FIELD =
+      Pattern.compile(
+          "(?i).*role|revoked.*|locked.*|lockout.*|deactivated.*|disabled|enabled|active"
+              + "|dissolved|erasedAt|consumedAt|endedAt|sessionGeneration|validUntil|.*expiresAt");
+
+  private static final String SPRING_DATA_REPOSITORY =
+      "org.springframework.data.repository.Repository";
+
+  private static final String ENTITY = "jakarta.persistence.Entity";
+
+  private static final String VERSION = "jakarta.persistence.Version";
+
+  private static final String DYNAMIC_UPDATE = "org.hibernate.annotations.DynamicUpdate";
+
   private static final String CONTROLLER = "org.springframework.stereotype.Controller";
 
   private static final Pattern PATH_VARIABLE_REGEX = Pattern.compile("\\{([^}:]+):[^}]*}");
@@ -254,6 +281,120 @@ final class SecurityInvariants {
       }
     }
     return found;
+  }
+
+  /**
+   * Code units outside {@code entities} that may write a stale whole row of one of them. Without
+   * {@code @Version} that is a call or reference to one of {@link #SAVING_MEMBERS} on a Spring Data
+   * repository of the entity, since a save merges a detached instance and writes back every column
+   * that differs; without {@code @DynamicUpdate} as well, also a call to one of its {@link
+   * #mutators}, since Hibernate flushes a changed instance as a whole row without any save.
+   */
+  static Map<String, String> wholeRowWriters(JavaClasses classes, Collection<String> entities) {
+    Set<String> saved = new TreeSet<>();
+    Set<String> mutators = new TreeSet<>();
+    for (String entity : entities) {
+      JavaClass type = classes.get(entity);
+      if (hasVersion(type)) {
+        continue;
+      }
+      saved.add(entity);
+      if (!writesChangedColumnsOnly(type)) {
+        mutators.addAll(mutators(type));
+      }
+    }
+    return offenders(
+        classes,
+        access ->
+            mutators.contains(access.getTarget().getFullName())
+                || (SAVING_MEMBERS.contains(access.getTarget().getName())
+                    && domainTypeOf(access.getTargetOwner()).filter(saved::contains).isPresent()),
+        type -> entities.contains(topLevel(type).getName()));
+  }
+
+  /**
+   * The full names of the instance methods of {@code entity} that assign one of its fields,
+   * directly or through another such method of it.
+   */
+  static Set<String> mutators(JavaClass entity) {
+    Set<String> found = new TreeSet<>();
+    boolean grown = true;
+    while (grown) {
+      grown = false;
+      for (JavaMethod method : entity.getMethods()) {
+        if (method.getModifiers().contains(JavaModifier.STATIC)
+            || found.contains(method.getFullName())) {
+          continue;
+        }
+        boolean assigns =
+            method.getFieldAccesses().stream()
+                .anyMatch(
+                    access ->
+                        access.getAccessType() == JavaFieldAccess.AccessType.SET
+                            && access.getTargetOwner().equals(entity));
+        boolean delegates =
+            method.getMethodCallsFromSelf().stream()
+                .anyMatch(call -> found.contains(call.getTarget().getFullName()));
+        if (assigns || delegates) {
+          found.add(method.getFullName());
+          grown = true;
+        }
+      }
+    }
+    return found;
+  }
+
+  /** Whether an optimistic lock refuses every stale write of a row of {@code entity}. */
+  static boolean hasVersion(JavaClass entity) {
+    return entity.getAllFields().stream().anyMatch(field -> field.isAnnotatedWith(VERSION));
+  }
+
+  /**
+   * Whether Hibernate writes only the changed columns of a loaded instance of {@code entity}
+   * ({@code @DynamicUpdate} on it or a superclass), so a column changed concurrently stays.
+   */
+  static boolean writesChangedColumnsOnly(JavaClass entity) {
+    return entity.isAnnotatedWith(DYNAMIC_UPDATE)
+        || entity.getAllRawSuperclasses().stream()
+            .anyMatch(superclass -> superclass.isAnnotatedWith(DYNAMIC_UPDATE));
+  }
+
+  /**
+   * The persistent types in {@code classes} - {@code @Entity} classes and the domain types of
+   * Spring Data repositories - with a field named like security state ({@link
+   * #SECURITY_STATE_FIELD}).
+   */
+  static Set<String> typesWithSecurityStateFields(JavaClasses classes) {
+    Set<String> persistent = new TreeSet<>();
+    for (JavaClass type : classes) {
+      if (type.isAnnotatedWith(ENTITY)) {
+        persistent.add(type.getName());
+      }
+      if (type.isInterface()) {
+        domainTypeOf(type).ifPresent(persistent::add);
+      }
+    }
+    Set<String> found = new TreeSet<>();
+    for (String name : persistent) {
+      if (classes.contain(name)
+          && classes.get(name).getAllFields().stream()
+              .anyMatch(field -> SECURITY_STATE_FIELD.matcher(field.getName()).matches())) {
+        found.add(name);
+      }
+    }
+    return found;
+  }
+
+  /** The domain type of a Spring Data repository, empty for any other type. */
+  private static Optional<String> domainTypeOf(JavaClass owner) {
+    if (!owner.isAssignableTo(SPRING_DATA_REPOSITORY)) {
+      return Optional.empty();
+    }
+    return Optional.ofNullable(
+            ResolvableType.forClass(owner.reflect())
+                .as(org.springframework.data.repository.Repository.class)
+                .resolveGeneric(0))
+        .map(Class::getName);
   }
 
   /** Lines for the entries of {@code current} that {@code allowed} does not name. */

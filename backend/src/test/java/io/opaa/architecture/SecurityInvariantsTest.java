@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -15,6 +16,13 @@ import org.yaml.snakeyaml.Yaml;
  * The security invariants of {@link SecurityInvariants} over the backend, each with its allowlist
  * of justified exceptions; an entry the code outgrew fails as well, so every list only shrinks.
  * {@link SecurityInvariantsFixtureTest} proves that each rule fires.
+ *
+ * <p>The whole-row rule sees calls, not data flow: an entry covers every write of its code unit,
+ * and whether an instance is new, loaded or detached is the reason's claim, not the rule's. A type
+ * enters {@link #SECURITY_STATE_ENTITIES} by hand; the field names of {@code
+ * SecurityInvariants#SECURITY_STATE_FIELD} only keep a new one from going unclassified, so a type
+ * whose state hides behind another name, or that is only inserted and deleted ({@code
+ * GroupMembership}, {@code CapabilityGrant}), is not asked about.
  */
 class SecurityInvariantsTest {
 
@@ -241,6 +249,293 @@ class SecurityInvariantsTest {
               "io.opaa.format.file.markdown.MarkdownDocumentFormat#toEvents",
               "splits on one plain character: String's fast path, no pattern"));
 
+  /**
+   * The persistent types that carry security state, with that state. A save or change of one of
+   * them stands in {@link #WHOLE_ROW_WRITERS} unless {@code @Version} guards its rows.
+   */
+  static final Map<String, String> SECURITY_STATE_ENTITIES =
+      Map.ofEntries(
+          Map.entry("io.opaa.auth.User", "system role, directory lock, erasure"),
+          Map.entry(
+              "io.opaa.auth.LocalCredentials",
+              "lock, failed-login lockout, expiry, session generation"),
+          Map.entry(
+              "io.opaa.auth.OidcProvider",
+              "whether the provider signs anyone in, the claims that decide role and groups"),
+          Map.entry("io.opaa.account.LocalRefreshToken", "revocation and end of a session family"),
+          Map.entry("io.opaa.account.LocalActionToken", "consumption and expiry of a mailed link"),
+          Map.entry("io.opaa.account.LocalRevokedToken", "the denylist of access tokens"),
+          Map.entry("io.opaa.account.LocalAuthSettings", "the lockout rules of the local sign-in"),
+          Map.entry(
+              "io.opaa.externalaccess.ExternalAccessSettings",
+              "the installation switch of the external access"),
+          Map.entry("io.opaa.externalaccess.token.ExternalAccessToken", "revocation, expiry"),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccountToken", "revocation, expiry"),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccount", "deactivation"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountLibraryConsent",
+              "end and expiry of a consent"),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrant",
+              "revocation and validity of an impersonation grant"),
+          Map.entry(
+              "io.opaa.group.Group", "deactivation, dissolution, release, protection of a group"),
+          Map.entry("io.opaa.permission.AssetGrant", "role and expiry of a grant"),
+          Map.entry("io.opaa.space.SpaceMembership", "role in a space"),
+          Map.entry(
+              "io.opaa.knowledge.KnowledgeLibrary", "release for external access and its end"),
+          Map.entry(
+              "io.opaa.connection.oauth.ConnectionAuthorization",
+              "consumption and expiry of a pending sign-in"),
+          Map.entry("io.opaa.connection.profile.ConnectorTypePolicy", "lock of a connector type"),
+          Map.entry("io.opaa.connection.profile.ConnectionProfile", "lock of a profile"),
+          Map.entry("io.opaa.connection.profile.LibraryConnection", "end of a connection"),
+          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"));
+
+  /**
+   * Persistent types with a field named like security state that carry none, each with what the
+   * field means instead.
+   */
+  static final Map<String, String> NOT_SECURITY_STATE =
+      Map.ofEntries(
+          Map.entry("io.opaa.agent.AgentSettings", "enabled switches a feature, grants no access"),
+          Map.entry(
+              "io.opaa.asset.AssetVisibilityHistory",
+              "history of the external access for the audit; no decision reads it"),
+          Map.entry(
+              "io.opaa.permission.AssetGrantHistory",
+              "history of grants for the audit; no decision reads it"),
+          Map.entry(
+              "io.opaa.space.SpaceMembershipHistory",
+              "history of memberships for the audit; no decision reads it"),
+          Map.entry("io.opaa.chat.ChatMessage", "role is the author of a chat message"),
+          Map.entry(
+              "io.opaa.chat.LockedAccountChatCleanupSetting",
+              "enabled switches the deletion of chats of locked accounts"),
+          Map.entry(
+              "io.opaa.connection.account.ConnectionPersonState",
+              "when the reconciler last saw the account deactivated or dormant; the account's own"
+                  + " state decides access"),
+          Map.entry(
+              "io.opaa.knowledge.MalwareScanSettings",
+              "enabled switches the virus scan; one administrator form, written only as a whole"),
+          Map.entry(
+              "io.opaa.mail.MailSettings",
+              "enabled switches sending; one administrator form, written only as a whole"),
+          Map.entry("io.opaa.llm.LlmModel", "active marks the model in use"),
+          Map.entry("io.opaa.llm.OptionalRoleSettings", "enabled switches a model role"),
+          Map.entry("io.opaa.llm.rerank.RerankModelSettings", "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionModelSettings",
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionModelSettings",
+              "enabled switches a model role"));
+
+  private static final String NEW_ROW =
+      "inserts an instance it constructed itself; there is no earlier read to write back";
+
+  private static final String CHANGED_COLUMNS_IN_TRANSACTION =
+      "loads and saves the instance in one transaction; @DynamicUpdate writes only the columns it"
+          + " changed";
+
+  private static final String TOWARD_REVOKED =
+      "only moves the row toward revoked or ended; what it may write back stale (use day, lapse or"
+          + " reminder marker) grants no access";
+
+  private static final String ROLE_ONLY =
+      "the role is the only state that changes after creation, so the whole row is that write; a"
+          + " row deleted meanwhile fails the update instead of returning";
+
+  /**
+   * Code units that may write a stale whole row of {@link #SECURITY_STATE_ENTITIES}, each with why
+   * no security state committed by another transaction is lost.
+   */
+  static final Map<String, String> WHOLE_ROW_WRITERS =
+      Map.ofEntries(
+          Map.entry(
+              "io.opaa.account.AccountErasureService#erase",
+              "locks the users and local_credentials rows FOR UPDATE first and reads the row afresh"
+                  + " under that lock"),
+          Map.entry("io.opaa.account.InitialAdministrator#createBootstrapUser", NEW_ROW),
+          Map.entry("io.opaa.account.InitialAdministrator#ensureLocalProviderRow", NEW_ROW),
+          Map.entry(
+              "io.opaa.account.LocalActionTokenService#issue",
+              NEW_ROW + "; consumption is a conditional update"),
+          Map.entry(
+              "io.opaa.account.LocalActionTokenService#issueHandover",
+              NEW_ROW + "; consumption is a conditional update"),
+          Map.entry("io.opaa.account.LocalAdminReset#reset", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.account.LocalHandoverAccountService#redeem", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.account.LocalPasswordService#confirmRegistration",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.account.LocalRefreshTokenService#insert",
+              NEW_ROW + "; revocation and rotation are targeted updates"),
+          Map.entry("io.opaa.account.LocalSelfServiceAccountService#register", NEW_ROW),
+          Map.entry("io.opaa.account.LocalTokenRevocationService#revokeAccessToken", NEW_ROW),
+          Map.entry("io.opaa.account.LocalUserService#create", NEW_ROW),
+          Map.entry("io.opaa.account.LocalUserService#update", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.asset.AssetGrantService#grantAtCreation", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetGrantService#upsertGrant", ROLE_ONLY),
+          Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#giveOwnerGrant", ROLE_ONLY),
+          Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#moveOwnerGrant", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.auth.UserService#applyRole",
+              CHANGED_COLUMNS_IN_TRANSACTION + " (updateRole, confirmAuditorRequest)"),
+          Map.entry("io.opaa.auth.UserService#insertUser", NEW_ROW),
+          Map.entry(
+              "io.opaa.connection.LibraryConnectionService#connect",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.connection.LibraryConnectionService#disconnect",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.connection.oauth.ConnectionAuthorizationService#start", NEW_ROW),
+          Map.entry(
+              "io.opaa.connection.profile.ConnectionProfileService#update",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.connection.profile.ConnectorLockService#lockType",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.connection.profile.ProfileRequirementService#require",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#grant", NEW_ROW),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#revoke",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#revokeGrantsIssuedBy",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.diagnosticaccess.LibraryDiagnosticsLockService#setLocked",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.directory.OidcProviderService#createInitialProvider", NEW_ROW),
+          Map.entry("io.opaa.directory.OidcProviderService#createProvider", NEW_ROW),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#enableLocalAccountsForInstallation",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#makeDefault", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#renameLocalRow",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#reorder", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#setDirectorySync",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#setEnabled", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#setExternal", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#setLocalAccountsEnabled",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#switchLocalAccounts",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.OidcProviderService#updateProvider",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.directory.sync.DirectorySyncPlanExecutor#applyAccountStates",
+              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run"),
+          Map.entry(
+              "io.opaa.directory.sync.DirectorySyncPlanExecutor#applyPlan",
+              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run; new groups are inserted"),
+          Map.entry(
+              "io.opaa.directory.sync.DirectorySyncPlanExecutor#resolveAndApplyParentLinks",
+              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService#block", TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService#blockAllOf",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService"
+                  + "#blockAllOfServiceAccount",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService"
+                  + "#blockServiceAccountToken",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenLapseService#endTokensOfAccount",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenLapseService#recordLapse",
+              "reads the token FOR UPDATE (findForLapse) and only moves it toward revoked"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenScopeService#effectiveLibraryIds",
+              "changes only the library selection, rows of a collection table; no column of the"
+                  + " token row changes, so Hibernate writes none"),
+          Map.entry("io.opaa.externalaccess.token.ExternalAccessTokenService#issue", NEW_ROW),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenService#revokeOwn", TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountConsentService#revoke", TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountConsentService#set",
+              TOWARD_REVOKED + "; the replacing consent is a new row"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountService#deactivate", TOWARD_REVOKED),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccountService#issueToken", NEW_ROW),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountService#revokeToken", TOWARD_REVOKED),
+          Map.entry("io.opaa.group.GroupDeactivation#deactivate", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.group.GroupDeactivation#reactivate", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.group.GroupService#addMember",
+              CHANGED_COLUMNS_IN_TRANSACTION + "; only the membership collection changes"),
+          Map.entry("io.opaa.group.GroupService#createGroup", NEW_ROW),
+          Map.entry(
+              "io.opaa.group.GroupService#removeMember",
+              CHANGED_COLUMNS_IN_TRANSACTION + "; only the membership collection changes"),
+          Map.entry("io.opaa.group.GroupService#setProtection", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.group.GroupService#setRelease", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.group.GroupService#updateGroup", CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.group.TokenGroupSynchronizer#findOrCreate", NEW_ROW),
+          Map.entry("io.opaa.library.KnowledgeLibraryService#createLibrary", NEW_ROW),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#generatePushSecret",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#removePushSecret",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#updateLibrary",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessExpiryService#runOnce",
+              "locks the due rows FOR UPDATE first; " + CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessReminderService#runOnce",
+              "locks the due rows FOR UPDATE first; " + CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessService#setExternalAccess",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.library.PrivateLibraryCreation#create", NEW_ROW),
+          Map.entry(
+              "io.opaa.metadata.LibraryMetadataExtractionService#updateSettings",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.metadata.LibraryMetadataFieldService#updateCoreContextPrefix",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.permission.PermissionTransferService#transferGrants", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.space.GroupSpaceMembershipDirectoryAdapter#transferSpaceMemberships",
+              ROLE_ONLY),
+          Map.entry(
+              "io.opaa.space.Space#addMembership",
+              "links a new membership to its space; no existing membership is written"),
+          Map.entry(
+              "io.opaa.space.Space#removeMembership",
+              "detaches a membership that orphan removal deletes; no row is written back"),
+          Map.entry("io.opaa.space.SpaceService#updateMemberRole", ROLE_ONLY));
+
   /** The allowlist of operations without a session and without a handler check. */
   static final String OPERATION_ALLOWLIST = "/security/anonymous-allowlist.yaml";
 
@@ -297,8 +592,57 @@ class SecurityInvariantsTest {
   }
 
   @Test
+  void securityStateIsNeverWrittenBackAsAStaleWholeRow() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.wholeRowWriters(
+                    MainClasses.get(), SECURITY_STATE_ENTITIES.keySet()),
+                WHOLE_ROW_WRITERS))
+        .as(
+            "a loaded row with security state is changed or saved as a whole and may write back"
+                + " what another transaction changed meanwhile (a role, a lock, a revocation):"
+                + " write the changed column with a targeted @Modifying update, load under a row"
+                + " lock, or add @DynamicUpdate and save the instance in the transaction that"
+                + " loaded it; then name the code unit with its reason in WHOLE_ROW_WRITERS")
+        .isEmpty();
+  }
+
+  @Test
+  void everyPersistentTypeWithASecurityStateFieldIsClassified() {
+    var classes = MainClasses.get();
+    Set<String> classified = new TreeSet<>(SECURITY_STATE_ENTITIES.keySet());
+    classified.addAll(NOT_SECURITY_STATE.keySet());
+
+    assertThat(SecurityInvariants.typesWithSecurityStateFields(classes))
+        .as(
+            "a persistent type has a field named like security state (role, lock, revocation,"
+                + " expiry ...): add it to SECURITY_STATE_ENTITIES, or to NOT_SECURITY_STATE with"
+                + " what the field means instead")
+        .isSubsetOf(classified);
+    assertThat(SECURITY_STATE_ENTITIES.keySet())
+        .doesNotContainAnyElementsOf(NOT_SECURITY_STATE.keySet());
+    assertThat(classified)
+        .as("classified types that are no persistent type of the backend any more")
+        .allMatch(classes::contain);
+  }
+
+  @Test
   void everyExceptionStillBreaksItsRule() {
     var classes = MainClasses.get();
+
+    assertThat(
+            SecurityInvariants.stale(
+                WHOLE_ROW_WRITERS.keySet(),
+                SecurityInvariants.wholeRowWriters(classes, SECURITY_STATE_ENTITIES.keySet())
+                    .keySet()))
+        .as("WHOLE_ROW_WRITERS entries that no longer write a whole row")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                NOT_SECURITY_STATE.keySet(),
+                SecurityInvariants.typesWithSecurityStateFields(classes)))
+        .as("NOT_SECURITY_STATE entries without a field named like security state")
+        .isEmpty();
 
     assertThat(
             SecurityInvariants.stale(
