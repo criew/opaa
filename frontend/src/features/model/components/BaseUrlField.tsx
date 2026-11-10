@@ -5,7 +5,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import {
   ENDPOINT_PRESETS,
   presetOf,
@@ -84,20 +84,22 @@ export default function BaseUrlField({
               {PRESET_ICONS[preset.key]}
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500, lineHeight: 1.4 }}>
                 {preset.label}
               </Typography>
               <Typography
                 sx={{
                   fontFamily: fontFamily.mono,
-                  fontSize: 12,
+                  fontSize: fontSize.meta,
                   color: 'text.secondary',
                   lineHeight: 1.4,
                 }}
               >
                 {preset.pattern}
               </Typography>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
+              <Typography
+                sx={{ fontSize: fontSize.meta, color: 'text.secondary', lineHeight: 1.4 }}
+              >
                 {preset.description}
               </Typography>
             </Box>

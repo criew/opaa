@@ -4,7 +4,9 @@ import { createAppTheme, createRailTheme } from './theme'
 import {
   blue,
   carbon,
+  controlHeight,
   darkRoles,
+  fontSize,
   gray,
   lightRoles,
   markHighlight,
@@ -412,5 +414,57 @@ describe('createAppTheme', () => {
     >
 
     expect(reduced['*, *::before, *::after'].scrollBehavior).toBe('auto !important')
+  })
+})
+
+describe('type steps and control heights (guidelines 3.2, 5.1, 5.2)', () => {
+  const STEPS = [11, 12, 14, 16, 20, 24]
+
+  test('the type scale has exactly the six named steps in whole pixels', () => {
+    expect(fontSize).toEqual({
+      label: 11,
+      meta: 12,
+      text: 14,
+      title: 16,
+      detailTitle: 20,
+      wizardTitle: 24,
+    })
+  })
+
+  test.each(['light', 'dark'] as const)('every typography variant sits on a step (%s)', (mode) => {
+    const theme = createAppTheme(mode)
+    const variants = [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'subtitle1',
+      'subtitle2',
+      'body1',
+      'body2',
+      'caption',
+      'overline',
+      'button',
+    ] as const
+    for (const variant of variants) {
+      expect(STEPS, variant).toContain(theme.typography[variant].fontSize)
+    }
+  })
+
+  test('buttons are 36 px, compact 32 px; fields have one height of 36 px', () => {
+    expect(controlHeight).toEqual({ regular: 36, compact: 32 })
+    const overrides = createAppTheme('light').components
+    const button = overrides?.MuiButton?.styleOverrides as Record<string, Record<string, unknown>>
+    expect(button.root.minHeight).toBe(controlHeight.regular)
+    expect(button.sizeSmall.minHeight).toBe(controlHeight.compact)
+    const input = overrides?.MuiOutlinedInput?.styleOverrides as Record<
+      string,
+      Record<string, number>
+    >
+    expect(input.input.height + input.input.paddingTop + input.input.paddingBottom).toBe(
+      controlHeight.regular,
+    )
   })
 })

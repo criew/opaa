@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material/styles'
 import BrandMark from '@/shared/ui/BrandMark'
 import PageHeading, { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, lightRoles } from '@/shared/theme/tokens'
 import { STEP_RHYTHM } from './stepLayout'
 
 interface InstallationLayoutProps {
@@ -49,7 +49,9 @@ export default function InstallationLayout({
       >
         <BrandMark variant="h6" logoHeight={28} />
         {progress && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{progress}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            {progress}
+          </Typography>
         )}
       </Box>
       <Box
@@ -86,7 +88,7 @@ export default function InstallationLayout({
               title={`${productName} einrichten`}
               variant="h5"
               sx={{
-                fontSize: 13,
+                fontSize: fontSize.text,
                 fontWeight: 500,
                 color: 'text.secondary',
                 mb: STEP_RHYTHM.pageToStep,

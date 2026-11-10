@@ -11,11 +11,11 @@ export interface ConfirmOptions {
   /** The question, as a question - short, with the object named. */
   question: string
   /**
-   * What happens on confirmation. This is the main content, not a footnote: it carries the
-   * information the decision rests on.
+   * What happens on confirmation: what is lost or whom it affects (guidelines 5.10). This is the
+   * main content, not a footnote: it carries the information the decision rests on.
    */
-  consequence?: ReactNode
-  /** The verb of the action ("Löschen", "Abschalten", "Verwerfen") - never "OK". */
+  consequence: ReactNode
+  /** The verb of the action ("Löschen", "Ausschalten", "Verwerfen") - never "OK". */
   confirmLabel: string
   /** Only where "Abbrechen" would be wrong. */
   cancelLabel?: string

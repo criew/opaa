@@ -32,6 +32,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Schrittname | 1 | Sicht (P9) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
+| Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
 
 ## Visuell
@@ -58,9 +59,9 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
     „Alle zurücksetzen“ ohne Bedarf. Ein Filter erscheint nur, wenn er kürzt
     ([guidelines.md](./guidelines.md), 5.3). Filterzeile für Assets: [guidelines.md](./guidelines.md),
     5.11. – Sicht
-11. Hierarchie über Größe und Gewicht: [guidelines.md](./guidelines.md), 1 und 3. Messbar
-    begrenzt durch `fontSizes` und `colors` (verschiedene Werte im Hauptbereich), im Vergleich
-    zwischen Varianten. – gemessen
+11. Hierarchie über Größe und Gewicht: [guidelines.md](./guidelines.md), 1 und 3. Höchstens die
+    sechs Schriftstufen aus 3.2 im Hauptbereich (`fontSizes` ≤ 6, Zählbudget), dazu `colors` im
+    Vergleich zwischen Varianten. – gemessen
 
 ## Text
 
@@ -79,7 +80,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
     verifiziert“. – Sicht
 17. Schaltflächen tragen das Verb: [guidelines.md](./guidelines.md), 5.1 und 5.10.
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
-    werden ein Satz. – Sicht
+    werden ein Satz. Bestätigungen: Frage, Folge und Verb nach [guidelines.md](./guidelines.md),
+    5.10 und Verbliste in 6; geprüft durch `confirmTexts.test.ts`. – Sicht
 19. **Begriffsregel** (eigener Begriff oder Herstellerbegriff): [guidelines.md](./guidelines.md), 6,
     und das [Glossar](../handbuch/referenz/glossar.md). – Sicht über alle Arten einer Variante
 

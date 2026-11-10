@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /** The accessible name of the notice region; screen readers announce it before the text. */
 const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
@@ -26,7 +27,7 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         // the full text stays in the DOM (screen readers, title); the line itself shows two rows
         title={notice}
         sx={{
-          fontSize: 12,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
           display: '-webkit-box',
           WebkitBoxOrient: 'vertical',
@@ -57,7 +58,10 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         textAlign: 'left',
       }}
     >
-      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: 20, mt: '1px', color: 'text.secondary' }} />
+      <SmartToyOutlinedIcon
+        aria-hidden
+        sx={{ fontSize: iconSize.md, mt: '1px', color: 'text.secondary' }}
+      />
       <Typography variant="body2">{notice}</Typography>
     </Box>
   )
@@ -75,13 +79,13 @@ export function AiAnswerMark() {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
-        fontSize: 12,
+        fontSize: fontSize.meta,
         fontWeight: 500,
         color: 'text.secondary',
         whiteSpace: 'nowrap',
       }}
     >
-      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: 14 }} />
+      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
       KI-erzeugt
     </Typography>
   )

@@ -1,5 +1,6 @@
 import type { ServiceAccountResponse } from '@/shared/api/types'
 import { daysUntil, formatDate } from '../tokenLabels'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 /** From when a coming end is named in words - like the first reminder email. */
 export const SOON_DAYS = 14
@@ -38,7 +39,7 @@ export function tokenCountLabel(count: number): string {
 }
 
 export function rateLimitLabel(account: ServiceAccountResponse): string {
-  const value = `${account.effectiveRateLimitPerHour.toLocaleString('de-DE')} je Stunde`
+  const value = `${formatNumber(account.effectiveRateLimitPerHour)} je Stunde`
   return account.rateLimitPerHour == null ? `${value} (Vorgabe)` : value
 }
 

@@ -4,6 +4,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
+import { iconSize } from '../theme/tokens'
 
 interface CollapsibleSectionHeadProps {
   /** Key under which the folded state is remembered (uiStore). */
@@ -61,7 +62,7 @@ export default function CollapsibleSectionHead({
           <ChevronRightIcon
             aria-hidden
             sx={{
-              fontSize: 16,
+              fontSize: iconSize.sm,
               flexShrink: 0,
               transform: collapsed ? 'none' : 'rotate(90deg)',
               transition: 'transform 120ms',

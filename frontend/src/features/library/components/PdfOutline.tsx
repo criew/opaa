@@ -4,6 +4,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** One entry of a PDF's outline: its title, where it points, its sub-entries. */
 export interface OutlineNode {
@@ -78,7 +79,7 @@ function OutlineEntry({
             bgcolor: active ? 'action.selected' : undefined,
             justifyContent: 'flex-start',
             textAlign: 'left',
-            fontSize: 13,
+            fontSize: fontSize.text,
             py: 0.5,
             px: 0.5,
             borderRadius: 1,

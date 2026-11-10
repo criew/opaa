@@ -16,6 +16,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The access with which this provider's directory run reads. The realm is never
@@ -64,7 +65,7 @@ export default function DirectoryConnectorSection({
           ]}
         />
       ) : (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
           Noch kein Zugang hinterlegt. Ohne ihn meldet jeder Lauf das Verzeichnis als nicht
           erreichbar — und entzieht damit nichts.
         </Typography>

@@ -103,7 +103,7 @@ describe('ConnectionLifecycleSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Revisionsprotokoll/,
     )
-    await answerConfirm(user, question, 'Wert ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() =>
       expect(sent).toEqual([{ setting: 'INACTIVITY_THRESHOLD_DAYS', body: { value: 120 } }]),
@@ -127,7 +127,7 @@ describe('ConnectionLifecycleSection', () => {
     await answerConfirm(
       user,
       'Löschfrist privater Bibliotheken auf die Werkseinstellung von 30 zurücksetzen?',
-      'Werkseinstellung wiederherstellen',
+      'Zurücksetzen',
     )
 
     await waitFor(() =>
@@ -213,7 +213,7 @@ describe('ConnectionLifecycleSection', () => {
     expect(sent).toEqual([])
 
     await user.click(screen.getByRole('button', { name: 'Angezeigten Wert festlegen' }))
-    await answerConfirm(user, question, 'Wert festlegen')
+    await answerConfirm(user, question, 'Festlegen')
     await waitFor(() =>
       expect(sent).toEqual([{ setting: 'PRIVATE_LIBRARY_DELETION_DAYS', body: { value: 30 } }]),
     )

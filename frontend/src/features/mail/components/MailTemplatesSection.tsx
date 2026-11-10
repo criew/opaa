@@ -11,7 +11,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../stores/mailStore'
 import SectionHead from '@/shared/ui/SectionHead'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 
 /** What a template is used for — the purpose in one sentence, in the administration's language. */
@@ -101,14 +101,14 @@ export default function MailTemplatesSection() {
                       width: '100%',
                     }}
                   >
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {summary.label}
                     </Typography>
                     <MetaBadge>
                       {summary.source === 'DATABASE' ? 'angepasst' : 'Standard'}
                     </MetaBadge>
                   </Box>
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {templatePurposes[summary.key] ?? summary.subject}
                   </Typography>
                 </ListItemButton>
@@ -135,10 +135,10 @@ export default function MailTemplatesSection() {
                 textAlign: 'center',
               }}
             >
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                 Keine Vorlage ausgewählt.
               </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                 Wählen Sie links eine Vorlage, um Betreff und Wortlaut anzupassen.
               </Typography>
             </Box>

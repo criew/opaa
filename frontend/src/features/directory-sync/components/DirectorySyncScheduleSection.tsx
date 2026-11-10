@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import { clockLabel, intervalLabel, nextRunOf, switchOnBlocker } from './directorySyncState'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The bounds the backend enforces (OidcProviderService), and its default of six hours. */
 const MIN_INTERVAL_MINUTES = 5
@@ -63,7 +64,7 @@ export default function DirectorySyncScheduleSection({
           }
           label="Abgleich eingeschaltet"
         />
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 0.5 }}>
           {switchHint}
         </Typography>
         {blocker && (
@@ -100,14 +101,14 @@ export default function DirectorySyncScheduleSection({
           </Button>
         </Stack>
         {!enabled && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             Das Intervall gilt ab dem Einschalten.
           </Typography>
         )}
       </Box>
 
       {next.kind !== 'NONE' && (
-        <Typography sx={{ fontSize: 13 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           Nächster Lauf:{' '}
           <strong>{next.kind === 'DUE' ? 'jetzt fällig' : clockLabel(next.at)}</strong>
         </Typography>

@@ -8,8 +8,8 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
 import { SubjectPicker } from '@/features/principal'
 import {
-  confirmExternalSubject,
   emptySubjectSelection,
+  externalGroupConsequence,
   groupLabel,
   selectedSubjectId,
   type SubjectSelection,
@@ -19,6 +19,7 @@ import { successionAwareMessage } from '@/features/succession'
 import { transferAssetOwnership } from '../api/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
 import { assetTypeLabel } from '../../../shared/assetTypes'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface AssetOwnerSectionProps {
   assetType: AssetType
@@ -75,12 +76,15 @@ export default function AssetOwnerSection({
           ? groupLabel(subject.group)
           : targetId
         : (subject.user?.displayName ?? subject.user?.email ?? targetId)
-    if (!(await confirmExternalSubject(subject))) return
+    const handover =
+      `Die Zuständigkeit für diese ${noun} geht damit über. Sie behalten Ihre Rolle nur, wenn ` +
+      'sie Ihnen gesondert eingeräumt wird — die Eigentümerrolle geht mit.'
     const confirmed = await confirmAction({
-      question: `Eigentum an „${targetLabel}" übergeben?`,
+      question: `Eigentum an „${targetLabel}“ übergeben?`,
       consequence:
-        `Die Zuständigkeit für diese ${noun} geht damit über. Sie behalten Ihre Rolle nur, wenn ` +
-        'sie Ihnen gesondert eingeräumt wird — die Eigentümerrolle geht mit.',
+        subject.type === 'GROUP' && subject.group?.provider?.external
+          ? `${externalGroupConsequence(subject.group)}\n\n${handover}`
+          : handover,
       confirmLabel: 'Übergeben',
       tone: 'danger',
     })
@@ -126,7 +130,7 @@ export default function AssetOwnerSection({
     >
       {open && (
         <Stack spacing={2}>
-          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+          <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
             Eigentum übergeben
           </Typography>
           {error && <Alert severity="error">{error}</Alert>}

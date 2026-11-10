@@ -39,6 +39,7 @@ import { toDateInputValue } from '../tokenLabels'
 import { Ending, ExpiredOn } from './ServiceAccountParts'
 import { useErrorTitle } from './serviceAccountHooks'
 import { REMOVE_CONSENT_CONSEQUENCE, formatDate, soonLabel } from './serviceAccountLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Up to this many choices stand as a radio list without search (guidelines 5.11). */
 const DIRECT_CHOICES = 7
@@ -179,10 +180,10 @@ function ConsentRows({
           }}
         >
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
               {consent.serviceAccountName}
             </Typography>
-            <Typography component="div" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               <ConsentState consent={consent} />
             </Typography>
           </Box>
@@ -297,7 +298,7 @@ function ChangeDateForm({
       <form noValidate onSubmit={(event) => void submit(event)}>
         <DialogTitle id="consent-date-title">Frist ändern</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13.5, mb: 2, overflowWrap: 'anywhere' }}>
+          <Typography sx={{ fontSize: fontSize.text, mb: 2, overflowWrap: 'anywhere' }}>
             {consent.serviceAccountName}
           </Typography>
           <UntilField
@@ -406,7 +407,7 @@ function AddConsentForm({
   if (choices === null) return <Skeleton variant="rounded" height={96} />
   if (choices.length === 0) {
     return (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         Kein weiteres aktives Dienstkonto. Dienstkonten legt die Systemverwaltung an.
       </Typography>
     )
@@ -418,14 +419,16 @@ function AddConsentForm({
         {formError && <Alert severity="error">{formError}</Alert>}
         {single ? (
           <Box>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Dienstkonto</Typography>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+              Dienstkonto
+            </Typography>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
               {single.name}
             </Typography>
           </Box>
         ) : (
           <FormControl error={Boolean(errors.choice)}>
-            <FormLabel id="consent-choice-label" sx={{ fontSize: 12, mb: 0.75 }}>
+            <FormLabel id="consent-choice-label" sx={{ fontSize: fontSize.meta, mb: 0.75 }}>
               Dienstkonto
             </FormLabel>
             {choices.length > DIRECT_CHOICES && (
@@ -450,12 +453,16 @@ function AddConsentForm({
                   key={choice.id}
                   value={choice.id}
                   control={<Radio size="small" />}
-                  label={<Box sx={{ fontSize: 13.5, overflowWrap: 'anywhere' }}>{choice.name}</Box>}
+                  label={
+                    <Box sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}>
+                      {choice.name}
+                    </Box>
+                  }
                 />
               ))}
             </RadioGroup>
             {filtered.length === 0 && (
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Keine Treffer.
               </Typography>
             )}
@@ -579,7 +586,7 @@ export default function LibraryServiceAccountsSection({ libraryId }: { libraryId
               onChanged={changed}
             />
           ) : (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Kein Dienstkonto hat Zugriff auf diese Bibliothek.
             </Typography>
           )}

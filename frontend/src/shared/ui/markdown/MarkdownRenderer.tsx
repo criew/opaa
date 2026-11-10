@@ -23,7 +23,7 @@ import {
   unwrapBracketedMarkers,
 } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
-import { fontFamily, motion } from '../../theme/tokens'
+import { fontFamily, fontSize, motion } from '../../theme/tokens'
 import { useLinkTargetsStore } from '../../linkTargets/linkTargetsStore'
 import { isAllowedLinkTarget } from './linkPolicy'
 import 'highlight.js/styles/github-dark.css'
@@ -43,6 +43,8 @@ interface MarkdownRendererProps {
    *  indexed, not a citation marker, so silently mutating it in DocumentTextPreviewDialog would be
    *  wrong. Set to render `content` completely unprocessed by the citation-marker logic. */
   preserveCitationMarkers?: boolean
+  /** Reading text of the chat: paragraphs and list items one type step up (16 px, guidelines 3.2). */
+  reading?: boolean
 }
 
 const CITATION_RE = new RegExp(CLAIMED_MARKER_RE.source)
@@ -61,7 +63,6 @@ interface ResolvedCitation {
 
 /** Diameter of a footnote mark in running text, in px - small enough to keep the line height. */
 const INLINE_MARK_SIZE = 15
-const INLINE_MARK_FONT_SIZE = 9
 
 function CitationTooltipContent({ citations }: { citations: ResolvedCitation[] }) {
   return (
@@ -136,7 +137,7 @@ function renderCitationGroup(
               }
               onClick={() => onCitationClick?.(segment.map((c) => c.number))}
               sx={(theme) => ({
-                ...citationMarkSx(theme, INLINE_MARK_SIZE, INLINE_MARK_FONT_SIZE),
+                ...citationMarkSx(theme, INLINE_MARK_SIZE),
                 px: '4px',
                 // Superscript: the circle sits above the x-height. Shifted with a relative offset
                 // rather than vertical-align, so the line box - and the line spacing - stay put.
@@ -251,7 +252,9 @@ function linkAsText(children: React.ReactNode, href: string | undefined): React.
 function makeComponents(
   processChildren: (children: React.ReactNode) => React.ReactNode,
   allowedOrigins: readonly string[],
+  reading: boolean,
 ): Components {
+  const textSx = reading ? { fontSize: fontSize.title } : {}
   // The element level comes from rehypeNormalizeHeadings (per-message rank compression
   // starting at h2); the visual variant keeps following the ORIGINAL Markdown level, carried in
   // MD_LEVEL_PROPERTY - "## Zusammenfassung" looks exactly as before, whatever element it gets.
@@ -271,7 +274,12 @@ function makeComponents(
           component={tag}
           variant={variant}
           gutterBottom
-          sx={bold ? { fontWeight: 'bold' } : undefined}
+          sx={{
+            ...(bold ? { fontWeight: 'bold' } : {}),
+            ...(reading
+              ? { fontSize: mdLevel === '1' ? fontSize.detailTitle : fontSize.title }
+              : {}),
+          }}
         >
           {children}
         </Typography>
@@ -284,7 +292,7 @@ function makeComponents(
     h5: heading('h5'),
     h6: heading('h6'),
     p: ({ children }) => (
-      <Typography variant="body1" sx={{ mb: 1, '&:last-child': { mb: 0 } }}>
+      <Typography variant="body1" sx={{ ...textSx, mb: 1, '&:last-child': { mb: 0 } }}>
         {processChildren(children)}
       </Typography>
     ),
@@ -321,7 +329,7 @@ function makeComponents(
             px: 0.5,
             py: 0.25,
             borderRadius: 0.5,
-            fontSize: '0.875em',
+            fontSize: 'inherit',
             fontFamily: 'monospace',
           }}
         >
@@ -339,7 +347,7 @@ function makeComponents(
           borderRadius: 1,
           overflowX: 'auto',
           my: 1,
-          fontSize: '0.875rem',
+          fontSize: fontSize.text,
           '& code': {
             bgcolor: 'transparent',
             p: 0,
@@ -360,7 +368,7 @@ function makeComponents(
       </Box>
     ),
     li: ({ children }) => (
-      <Typography component="li" variant="body1">
+      <Typography component="li" variant="body1" sx={textSx}>
         {processChildren(children)}
       </Typography>
     ),
@@ -392,6 +400,7 @@ export default function MarkdownRenderer({
   citations,
   onCitationClick,
   preserveCitationMarkers = false,
+  reading = false,
 }: MarkdownRendererProps) {
   const allowedOrigins = useLinkTargetsStore((s) => s.allowedOrigins)
   const loadLinkTargets = useLinkTargetsStore((s) => s.loadLinkTargets)
@@ -403,8 +412,9 @@ export default function MarkdownRenderer({
       makeComponents(
         makeProcessChildren(citations, onCitationClick, preserveCitationMarkers),
         allowedOrigins,
+        reading,
       ),
-    [citations, onCitationClick, preserveCitationMarkers, allowedOrigins],
+    [citations, onCitationClick, preserveCitationMarkers, allowedOrigins, reading],
   )
   return (
     <ReactMarkdown

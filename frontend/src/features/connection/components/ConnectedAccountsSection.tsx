@@ -30,10 +30,8 @@ import StateDot from '@/shared/ui/StateDot'
 import { AUTH_METHOD_LABELS } from './connectionProfileLabels'
 import ConnectAccountDialog, { type ConnectTarget } from './ConnectAccountDialog'
 import { accountStateLabel, secretFormLabel } from './connectedAccountLabels'
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', { dateStyle: 'medium' })
-}
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 
 /** How far ahead of its end a consent is flagged, as the notification warns. */
 const EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000
@@ -107,7 +105,7 @@ function AccountItem({
         useFlexGap
         sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}
       >
-        <Typography component="h3" sx={{ fontSize: 14.5, fontWeight: 600 }}>
+        <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
           {account.profileName}
         </Typography>
         <StateDot tone={state.tone} label={state.label} />
@@ -117,7 +115,7 @@ function AccountItem({
           <StateDot tone="warning" label={`Zustimmung endet am ${formatDate(account.expiresAt)}`} />
         )}
       </Stack>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         Quellart: {sourceTypeName} ·{' '}
         {account.accountLabel ? `Konto: ${account.accountLabel} · ` : ''}
         Anmeldung: {signInLine(account)}
@@ -132,7 +130,7 @@ function AccountItem({
           ? ` · Zustimmung gültig bis ${formatDate(account.expiresAt)}`
           : ''}
       </Typography>
-      <Typography component="div" sx={{ fontSize: 13, mt: 0.5 }}>
+      <Typography component="div" sx={{ fontSize: fontSize.text, mt: 0.5 }}>
         {account.usedBy.length === 0 ? (
           <Box component="span" sx={{ color: 'text.secondary' }}>
             Von keiner Ihrer Bibliotheken genutzt.
@@ -152,7 +150,7 @@ function AccountItem({
         )}
       </Typography>
       {account.notice && (
-        <Typography sx={{ fontSize: 13, mt: 1 }} data-testid="connected-account-notice">
+        <Typography sx={{ fontSize: fontSize.text, mt: 1 }} data-testid="connected-account-notice">
           {account.notice}
           {account.responsible ? ` Zuständig: ${account.responsible}.` : ''}
         </Typography>
@@ -203,7 +201,7 @@ function AccountItem({
         )}
       </Stack>
       {!account.secretForm && !oauth && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
           Diese Anmeldeart lässt sich hier noch nicht neu verbinden.
         </Typography>
       )}
@@ -240,8 +238,8 @@ function ConnectableItem({
       }}
     >
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{profile.name}</Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>{profile.name}</Typography>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Quellart: {sourceTypeName} · Anmeldung: {signInLine(profile)}
         </Typography>
       </Box>
@@ -274,7 +272,7 @@ function ConnectableItem({
           Verbinden
         </BusyButton>
       ) : (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           In dieser Version noch nicht verbindbar.
         </Typography>
       )}
@@ -331,7 +329,7 @@ export default function ConnectedAccountsSection() {
     const confirmed = await confirmAction({
       question: reconnect ? `Konto bei „${name}“ neu verbinden?` : `Konto bei „${name}“ verbinden?`,
       consequence: AUTHORIZE_CONSEQUENCE,
-      confirmLabel: 'Weiter zum Anbieter',
+      confirmLabel: reconnect ? 'Neu verbinden' : 'Verbinden',
     })
     if (!confirmed) return
     setAuthorizing(profileId)
@@ -401,14 +399,17 @@ export default function ConnectedAccountsSection() {
         {overview === null ? (
           !error && (
             <Box aria-busy="true">
-              <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1 }}>
+              <Typography
+                role="status"
+                sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1 }}
+              >
                 Verbundene Konten werden geladen …
               </Typography>
               <Skeleton variant="rounded" height={120} />
             </Box>
           )
         ) : overview.accounts.length === 0 ? (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Sie haben kein Konto verbunden. Ein verbundenes Konto braucht nur, wer Inhalte aus einem
             eigenen Konto bei einem Anbieter in einer privaten Bibliothek durchsuchen möchte; alles
             andere in OPAA funktioniert ohne.
@@ -438,7 +439,7 @@ export default function ConnectedAccountsSection() {
             description="Zugänge, auf denen Sie ein Konto verbinden können."
           >
             {overview.connectable.length === 0 ? (
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 {noPersonalConnector
                   ? 'In dieser Installation bietet noch keine Quellart verbundene Konten an. Deshalb gibt es hier noch nichts zu verbinden.'
                   : 'Derzeit gibt es keinen weiteren Zugang, auf dem Sie ein Konto verbinden können.'}
@@ -460,8 +461,8 @@ export default function ConnectedAccountsSection() {
           </PageSection>
 
           <PageSection title="Warum fehlt mein Zugang?">
-            <Typography sx={{ fontSize: 13.5 }}>{overview.missingAccess.text}</Typography>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+            <Typography sx={{ fontSize: fontSize.text }}>{overview.missingAccess.text}</Typography>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
               Zuständig: {overview.missingAccess.responsible}
             </Typography>
           </PageSection>

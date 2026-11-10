@@ -8,6 +8,7 @@ import { SuccessionStateNote } from '@/features/succession'
 import { useSpaceStore } from '../stores/spaceStore'
 import type { SpaceListResponse } from '@/shared/api/types'
 import { handsOverSpaceSearch } from '../utils/spaceSearchHandover'
+import { fontSize } from '@/shared/theme/tokens'
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count === 1 ? singular : pluralForm}`
@@ -27,7 +28,13 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
             running out of its card. */}
         <Typography
           component="span"
-          sx={{ fontSize: 16.5, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+          sx={{
+            fontSize: fontSize.title,
+            fontWeight: 600,
+            flex: 1,
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+          }}
         >
           {space.name}
         </Typography>
@@ -36,7 +43,7 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
       <Typography
         component="p"
         sx={{
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
           m: 0,
           flex: 1,
@@ -49,7 +56,7 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
         {space.description ?? ''}
       </Typography>
       {space.chatCount !== undefined && (
-        <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           {plural(space.chatCount, 'Chat', 'Chats')}
         </Typography>
       )}

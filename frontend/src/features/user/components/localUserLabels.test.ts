@@ -54,9 +54,9 @@ describe('localUserLabels', () => {
     )
   })
 
-  it('shows an account without an expiry date as a dash', () => {
-    expect(formatExpiry(null)).toBe('—')
-    expect(formatExpiry(undefined)).toBe('—')
+  it('shows a missing date as a dash', () => {
+    expect(formatExpiry(null)).toBe('–')
+    expect(formatExpiry(undefined)).toBe('–')
     expect(formatExpiry('2026-12-31T22:59:59Z')).toMatch(/2026/)
   })
 

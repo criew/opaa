@@ -4,6 +4,7 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import { SummaryValue } from './setup/SummaryRow'
 import { ROW_GRID } from './setup/rowStyles'
 import type { RowSummary } from './sourceCore/setupTypes'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface ReviewEntry {
   label: string
@@ -25,7 +26,7 @@ export default function LibraryReviewStep({ entries }: { entries: ReviewEntry[] 
           key={entry.label}
           sx={{ ...ROW_GRID, py: 2, borderBottom: 1, borderColor: 'divider' }}
         >
-          <Typography component="span" sx={{ fontSize: 15, fontWeight: 600 }}>
+          <Typography component="span" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
             {entry.label}
           </Typography>
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>

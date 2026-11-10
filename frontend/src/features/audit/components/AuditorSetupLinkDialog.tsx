@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { copyOnce } from '@/shared/utils/copyOnce'
 
 export interface AuditorSetupLink {
@@ -38,7 +38,9 @@ export default function AuditorSetupLinkDialog({
       <DialogTitle id="auditor-setup-link-title">Link zum Passwort für „{person}“</DialogTitle>
       <DialogContent>
         {email && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>{email}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
+            {email}
+          </Typography>
         )}
         <Alert severity="warning" sx={{ mb: 2 }}>
           Übergeben Sie den Link der Person selbst, persönlich oder auf einem Weg, den die
@@ -48,7 +50,7 @@ export default function AuditorSetupLinkDialog({
           data-testid="auditor-setup-link-value"
           sx={{
             fontFamily: fontFamily.mono,
-            fontSize: 12.5,
+            fontSize: fontSize.meta,
             p: 1.25,
             border: 1,
             borderColor: 'divider',
@@ -59,7 +61,7 @@ export default function AuditorSetupLinkDialog({
           {url}
         </Box>
         {url.startsWith('/') && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
             Dies ist ein Pfad relativ zur Installation, weil keine öffentliche Basis-URL gesetzt ist
             – setzen Sie die Adresse Ihrer Installation davor.
           </Typography>

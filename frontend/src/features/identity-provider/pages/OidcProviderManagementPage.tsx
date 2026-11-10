@@ -12,7 +12,7 @@ import type { OidcProviderResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
-import { contentWidth, radius } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, radius } from '@/shared/theme/tokens'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -124,10 +124,10 @@ export default function OidcProviderManagementPage() {
                 textAlign: 'center',
               }}
             >
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                 Es sind noch keine Identitätsanbieter hinterlegt.
               </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                 Ohne Anbieter gibt es keine Anmeldeseite. Legen Sie zuerst den Anbieter Ihrer
                 Organisation an – er wird automatisch zum Standard.
               </Typography>

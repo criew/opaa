@@ -41,15 +41,14 @@ export function useLibraryFolderActions(
     } catch {
       // Falls back to the (possibly stale) count already shown in the row above.
     }
-    const question =
-      documentCount > 0
-        ? `Ordner "${folder.name}" und ${documentCount} ${
-            documentCount === 1 ? 'Dokument' : 'Dokumente'
-          } löschen?`
-        : `Ordner "${folder.name}" löschen?`
     const confirmed = await confirmAction({
-      question,
-      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${folder.name}“ löschen?`,
+      consequence:
+        documentCount > 0
+          ? `Der Ordner wird mit ${documentCount} ${
+              documentCount === 1 ? 'Dokument' : 'Dokumenten'
+            } darin gelöscht.`
+          : 'Der leere Ordner wird gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

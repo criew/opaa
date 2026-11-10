@@ -10,6 +10,7 @@ import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import type { ConfirmTone } from '../../stores/confirmStore'
 import { useConfirmStore } from '../../stores/confirmStore'
+import { fontSize, iconSize } from '../../theme/tokens'
 
 const TONE_COLOR: Record<ConfirmTone, string> = {
   danger: 'error.main',
@@ -32,7 +33,7 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
  *
  * - **The consequence is the main content.** The question is the title above, the consequence
  *   below it at reading width — not both as one wall.
- * - **The button carries the verb.** „Löschen", „Abschalten", „Verwerfen": whoever reads only it
+ * - **The button carries the verb.** „Löschen", „Ausschalten", „Verwerfen": whoever reads only it
  *   still knows what they agree to.
  * - **For an irreversible action focus is on „Abbrechen".** An Enter out of
  *   reflex then cancels instead of deleting.
@@ -70,12 +71,18 @@ export default function ConfirmHost() {
     >
       <DialogTitle
         id="confirm-question"
-        sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, fontSize: 17, pb: 1 }}
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 1.25,
+          fontSize: fontSize.title,
+          pb: 1,
+        }}
       >
         {Icon && (
           <Icon
             aria-hidden
-            sx={{ fontSize: 20, color: TONE_COLOR[tone], flex: 'none', mt: '2px' }}
+            sx={{ fontSize: iconSize.md, color: TONE_COLOR[tone], flex: 'none', mt: '2px' }}
           />
         )}
         <Box component="span">{request?.question}</Box>
@@ -87,7 +94,7 @@ export default function ConfirmHost() {
             // `pre-line`: a consequence of two sentences of different weight sets them apart
             // with a blank line. Automatic wrapping is not affected.
             sx={{
-              fontSize: 13.5,
+              fontSize: fontSize.text,
               color: 'text.secondary',
               maxWidth: '60ch',
               whiteSpace: 'pre-line',

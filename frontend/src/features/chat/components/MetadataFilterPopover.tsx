@@ -24,6 +24,7 @@ import {
   type MetadataFilterScope,
 } from '../stores/metadataFilterOptionsStore'
 import { fillLevelText, notOfferedText } from './metadataFilterText'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface MetadataFilterPopoverProps {
   /** The scope the next question would search - the options are loaded for exactly this scope. */
@@ -225,7 +226,7 @@ export default function MetadataFilterPopover({
         aria-controls={open ? popoverId : undefined}
         // Contains the visible "Filter" word for word (WCAG 2.5.3).
         aria-label="Filter für Metadaten setzen"
-        sx={{ textTransform: 'none', fontSize: 12, py: 0.25 }}
+        sx={{ textTransform: 'none', fontSize: fontSize.meta, py: 0.25 }}
       >
         Filter
       </Button>
@@ -238,7 +239,7 @@ export default function MetadataFilterPopover({
         transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         slotProps={{ paper: { sx: { p: 2, width: 360, maxWidth: '90vw' } } }}
       >
-        <Typography component="h2" sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+        <Typography component="h2" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
           Nach Kernfeldern filtern
         </Typography>
         <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1.5 }}>
@@ -258,7 +259,7 @@ export default function MetadataFilterPopover({
         {optionsCurrent && (
           <Stack spacing={2}>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Dokumentart</Typography>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Dokumentart</Typography>
               {typeField?.offered ? (
                 <>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
@@ -287,7 +288,7 @@ export default function MetadataFilterPopover({
                             />
                           }
                           label={`${type.label} (${type.documentCount})`}
-                          slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                          slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                         />
                       ))}
                     </FormGroup>
@@ -309,7 +310,7 @@ export default function MetadataFilterPopover({
               )}
             </Box>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Datum/Stand</Typography>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Datum/Stand</Typography>
               {dateField?.offered ? (
                 <>
                   <Typography
@@ -366,7 +367,9 @@ export default function MetadataFilterPopover({
               .filter((field) => field.offered)
               .map((field) => (
                 <Box key={field.fieldKey} data-testid="filter-format-field">
-                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                    {field.label}
+                  </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                     {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
                     {field.valuesCapped && ` · die ${field.values.length} häufigsten Werte`}
@@ -393,7 +396,7 @@ export default function MetadataFilterPopover({
                           />
                         }
                         label={`${value.label} (${value.documentCount})`}
-                        slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                        slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                       />
                     ))}
                   </FormGroup>
@@ -416,7 +419,7 @@ export default function MetadataFilterPopover({
               ))}
             {libraryFields.map((field) => (
               <Box key={libraryFieldKey(field)} data-testid="filter-library-field">
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                   {field.label} · {field.libraryName}
                 </Typography>
                 {field.offered ? (
@@ -459,7 +462,7 @@ export default function MetadataFilterPopover({
                               />
                             }
                             label={`${value.label} (${value.documentCount})`}
-                            slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                            slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                           />
                         ))}
                       </FormGroup>

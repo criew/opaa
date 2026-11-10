@@ -33,7 +33,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Passwort festlegen'
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
@@ -189,7 +189,7 @@ export default function SetPasswordPage() {
         sx={{ mt: 3 }}
       >
         <SectionEyebrow id="set-password-title">Neues Passwort wählen</SectionEyebrow>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           {passwordPolicyText(minLength)}
         </Typography>
         <Stack spacing={2}>
@@ -224,7 +224,7 @@ export default function SetPasswordPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
+      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
         <SignInLink>Zurück zur Anmeldung</SignInLink>
       </Typography>
     </AuthLayout>

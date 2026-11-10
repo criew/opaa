@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * What a self-service page shows while the installation's configuration is still on its way
@@ -15,7 +16,7 @@ export default function AuthLoading({ heading }: { heading: string }) {
       <PageHeading title={heading} variant="h5" />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 3, color: 'text.secondary' }}>
         <CircularProgress size={20} aria-hidden="true" />
-        <Typography role="status" sx={{ fontSize: 13.5 }}>
+        <Typography role="status" sx={{ fontSize: fontSize.text }}>
           Wird geladen …
         </Typography>
       </Box>

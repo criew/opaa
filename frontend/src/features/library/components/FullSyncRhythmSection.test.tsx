@@ -83,7 +83,7 @@ describe('FullSyncRhythmSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /ohne eigenen Rhythmus.*Revisionsprotokoll/,
     )
-    await answerConfirm(user, question, 'Rhythmus ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ type: 'CONFLUENCE', body: { intervalDays: 14 } }]))
     expect(
@@ -105,7 +105,7 @@ describe('FullSyncRhythmSection', () => {
     await answerConfirm(
       user,
       'Vollabgleich-Rhythmus von SharePoint auf die Werkseinstellung von 1 Tag zurücksetzen?',
-      'Werkseinstellung wiederherstellen',
+      'Zurücksetzen',
     )
 
     await waitFor(() =>
@@ -146,11 +146,7 @@ describe('FullSyncRhythmSection', () => {
     await user.clear(field)
     await user.type(field, '14')
     await user.click(screen.getByRole('button', { name: 'Rhythmus von Confluence speichern' }))
-    await answerConfirm(
-      user,
-      'Vollabgleich-Rhythmus von Confluence auf 14 Tage ändern?',
-      'Rhythmus ändern',
-    )
+    await answerConfirm(user, 'Vollabgleich-Rhythmus von Confluence auf 14 Tage ändern?', 'Ändern')
 
     expect(
       await within(row('Confluence')).findByText(
