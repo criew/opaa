@@ -1,6 +1,6 @@
 package io.opaa.llm.web;
 
-import io.opaa.api.dto.ErrorResponse;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +47,7 @@ class TranscriptionMultipartGuard extends OncePerRequestFilter {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
     objectMapper.writeValue(
-        response.getOutputStream(), new ErrorResponse(MESSAGE, status.value(), Instant.now(clock)));
+        response.getOutputStream(),
+        RequestIds.errorResponse(MESSAGE, status.value(), Instant.now(clock)));
   }
 }

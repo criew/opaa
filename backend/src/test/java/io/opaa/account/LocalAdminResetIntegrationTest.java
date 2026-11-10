@@ -448,6 +448,7 @@ class LocalAdminResetIntegrationTest {
   }
 
   private static String stripTimestamp(String body) {
-    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"");
+    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"-\"")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "\"requestId\":\"-\"");
   }
 }

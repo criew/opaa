@@ -94,6 +94,10 @@ expect_refusal "must be greater than backend.shutdownTimeoutSeconds (60)" \
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
+# Tracing switched on needs the collector's address; the backend would refuse to start without it.
+expect_refusal "otlpEndpoint" --set tracing.enabled=true
+expect_refusal "otlpEndpoint" --set tracing.enabled=true --set-string 'tracing.otlpEndpoint=collector:4318'
+expect_refusal "samplingProbability" --set-string tracing.samplingProbability=1.5
 # CSP keywords such as 'self' are quoted; quotes would break the nginx configuration. The schema
 # admits what frontend/docker-entrypoint.d/05-opaa-runtime.sh admits at start, nothing else.
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"

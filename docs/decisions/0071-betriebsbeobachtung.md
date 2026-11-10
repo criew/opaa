@@ -1,4 +1,4 @@
-# ADR-0071: Betriebsbeobachtung — Metriken und Health ohne eigene Datenhaltung
+# ADR-0071: Betriebsbeobachtung — Metriken, Health und Korrelation ohne eigene Datenhaltung
 
 ## Status
 
@@ -96,6 +96,29 @@ lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboard
 Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
 gebraucht worden wäre.
 
+### 7. Korrelation durchgängig, Tracing optional und an der Installation endend
+
+Jede Anfrage trägt eine Request-ID: nginx und `RequestIdFilter` übernehmen eine mitgeschickte
+`X-Request-Id` nur bei 8 bis 64 Zeichen aus `[A-Za-z0-9_-]` und erzeugen sonst eine. Sie steht im
+Zugriffslog, im MDC jeder Logzeile der Anfrage und ihrer Hintergrundaufgaben in Spring-Executoren
+(`MdcTaskDecorator`), im
+Antwort-Header, in `ErrorResponse.requestId` und, wo ein Eintrag keine eigene Vorgangskennung hat,
+als `request:<id>` in `correlation_ref` des Revisionsprotokolls; die Ausleitung an das
+Sicherheitsmonitoring (ADR-0055) sendet `correlation_ref` nicht. Tracing über OpenTelemetry ist ab
+Werk aus; eingeschaltet trägt ein Span nur Attribute einer Positivliste (`AllowlistedSpanExporter`),
+keine Ereignisse und Links, und die Vorgabe der Stichprobe ist 5 %. Ein Trace endet an der
+Installation: Frontend und Backend verwerfen `traceparent`, `tracestate`, `baggage` und B3 des
+Aufrufers, kein ausgehender Aufruf trägt einen `traceparent`, keine Trace-ID wird Exemplar einer
+Metrik.
+
+Die Request-ID nennt niemanden, ist aber personenbeziehbar über Verknüpfung: Zugriffslog mit
+Client-Adresse, Logzeilen mit Konto und Revisionsprotokoll lassen sich über sie verbinden. Die
+Netzadresse bleibt aus dem Protokollsatz (ADR-0068 Entscheidung 4); den Weg über die Verknüpfung
+regelt die Dienstvereinbarung, und das SIEM bekommt die Kennung nicht, damit dort niemand selbst
+verknüpft. Eine Positivliste bleibt dicht, wenn eine Bibliothek neue Attribute einführt. Ein
+Trace-Kontext von außen ließe den Aufrufer die Trace-ID und damit die Stichprobe wählen, einer nach
+außen gäbe Modellanbietern und Quellen eine Kennung, die das eigene Log einer Anfrage zuordnet.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
@@ -107,6 +130,9 @@ gebraucht worden wäre.
   der Zwischenspeicherung. Werden die `gen_ai.*`-Namen umbenannt, brechen Dashboards darauf, bis sie
   nachgezogen sind. In sehr kleinen Installationen kann auch eine installationsweite Zahl auf wenige
   Personen deuten; feine Zeitauflösung und Kanalaufteilung bleiben deshalb aus Dashboards heraus.
+  Eine vom Aufrufer gewählte gültige Request-ID kann Einträge verschiedener Anfragen in der Abfrage
+  des Revisionsprotokolls nach Vorgang zusammenlegen; das wird hingenommen, weil die Kennung nichts
+  freischaltet und nur die Suche betrifft. Traces über Dienstgrenzen hinweg gibt es nicht.
 
 ## Verworfene Alternativen
 
@@ -115,3 +141,5 @@ gebraucht worden wäre.
 - Perzentile im Prozess (Summaries) — nicht über Pods aggregierbar.
 - Gemeinsames Tag `instance` — kollidiert mit dem Label, das Prometheus jedem Ziel gibt.
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
+- Sperrliste der Span-Attribute — lässt jedes neue Attribut einer Bibliothek durch, Entscheidung 7.
+- `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.

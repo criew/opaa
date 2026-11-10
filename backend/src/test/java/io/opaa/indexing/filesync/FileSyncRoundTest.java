@@ -7,15 +7,18 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.spi.SourceSyncState;
+import io.opaa.observability.RequestIds;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.MDC;
 
 /**
  * What {@link FileSync} does with a full sync that spans several runs, beyond the contract
@@ -424,6 +427,41 @@ class FileSyncRoundTest {
     }
 
     assertThat(taken).as("the new files are taken up under a fixed budget").isTrue();
+  }
+
+  @Test
+  void aDownloadOnThePoolLogsWithTheRunsIdsAndLeavesNothingOnItsThread() {
+    harness.downloadConcurrency(2);
+    InMemoryFileStore store = new InMemoryFileStore().container("A");
+    for (int i = 1; i <= 6; i++) {
+      store.put("A", "f" + i + ".txt", "Text " + i);
+    }
+    List<Map<String, String>> seen = new CopyOnWriteArrayList<>();
+    store.onFetch(
+        () -> {
+          Map<String, String> context = MDC.getCopyOfContextMap();
+          seen.add(context == null ? Map.of() : context);
+          MDC.put("left-by-a-download", Thread.currentThread().getName());
+        });
+    MDC.put(RequestIds.MDC_KEY, "4bf92f3577b34da6a3ce929d0e0e4736");
+    try {
+      harness.fullSync(store);
+    } finally {
+      MDC.clear();
+    }
+
+    // the run binds its own indexing run id; with more downloads than threads, threads are
+    // reused, and no download sees what an earlier one left on its thread
+    assertThat(seen)
+        .hasSize(6)
+        .allSatisfy(
+            context ->
+                assertThat(context)
+                    .containsOnlyKeys(RequestIds.MDC_KEY, RequestIds.INDEXING_RUN_MDC_KEY)
+                    .containsEntry(RequestIds.MDC_KEY, "4bf92f3577b34da6a3ce929d0e0e4736"));
+    assertThat(seen)
+        .extracting(context -> context.get(RequestIds.INDEXING_RUN_MDC_KEY))
+        .containsOnly(seen.getFirst().get(RequestIds.INDEXING_RUN_MDC_KEY));
   }
 
   @Test
