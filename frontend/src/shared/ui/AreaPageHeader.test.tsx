@@ -32,6 +32,7 @@ const BEREICHSSEITEN = [
   'MalwareScanSettingsPage.tsx',
   'SettingsTransferPage.tsx',
   'SuccessionPage.tsx',
+  'AgentSettingsPage.tsx',
 ]
 
 const REVISIONSSEITEN = [

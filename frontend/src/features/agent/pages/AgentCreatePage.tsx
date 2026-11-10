@@ -45,7 +45,7 @@ export default function AgentCreatePage() {
 
   if (isMissing('CREATE_AGENT')) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Neuer Agent" gutterBottom />
         <Alert severity="info">{capabilityMissingMessage('CREATE_AGENT')}</Alert>
       </Box>
@@ -126,7 +126,7 @@ export default function AgentCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box component="form" noValidate onSubmit={handleSubmit} sx={{ maxWidth: 640 }}>
+      <Box component="form" noValidate onSubmit={handleSubmit} sx={{ maxWidth: contentWidth.form }}>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neuer Katalogeintrag
         </Typography>

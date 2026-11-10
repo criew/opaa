@@ -1,4 +1,4 @@
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { useEffect, useMemo, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -199,7 +199,7 @@ export function KnowledgeAndToolsArea({
               </Typography>
             )}
             {libraries !== null && libraries.length >= FILTER_FROM && (
-              <Box sx={{ mb: 1, maxWidth: 360 }}>
+              <Box sx={{ mb: 1, maxWidth: fieldWidth.medium }}>
                 <ListSearch
                   value={filter}
                   onChange={setFilter}
