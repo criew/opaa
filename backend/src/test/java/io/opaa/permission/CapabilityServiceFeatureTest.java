@@ -12,6 +12,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.FeatureFlags;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
@@ -61,7 +62,40 @@ class CapabilityServiceFeatureTest {
         .contains(Capability.CREATE_PROMPT_LIBRARY);
   }
 
+  @Test
+  void aRuntimeSwitchWithholdsItsCapabilityWhileOff() {
+    CurrentUser admin =
+        CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Verwaltung");
+    assertThat(service(true, templateSwitch(false)).capabilitiesOf(admin))
+        .doesNotContain(Capability.CREATE_TEMPLATE)
+        .contains(Capability.CREATE_PROMPT_LIBRARY);
+    assertThat(service(true, templateSwitch(true)).capabilitiesOf(admin))
+        .contains(Capability.CREATE_TEMPLATE);
+    assertThat(service(true, templateSwitch(false)).overview(organizationId))
+        .extracting(CapabilityOverview::capability)
+        .doesNotContain(Capability.CREATE_TEMPLATE);
+  }
+
+  private static RuntimeCapabilitySwitch templateSwitch(boolean offered) {
+    return new RuntimeCapabilitySwitch() {
+      @Override
+      public Capability capability() {
+        return Capability.CREATE_TEMPLATE;
+      }
+
+      @Override
+      public boolean offered() {
+        return offered;
+      }
+    };
+  }
+
   private CapabilityService service(boolean promptLibraries) {
+    return service(promptLibraries, templateSwitch(true));
+  }
+
+  private CapabilityService service(
+      boolean promptLibraries, RuntimeCapabilitySwitch runtimeSwitch) {
     return new CapabilityService(
         grants,
         mock(GroupMembershipResolver.class),
@@ -73,6 +107,7 @@ class CapabilityServiceFeatureTest {
         new FeatureFlags(
             new MockEnvironment()
                 .withProperty(
-                    "opaa.features.prompt-libraries.enabled", String.valueOf(promptLibraries))));
+                    "opaa.features.prompt-libraries.enabled", String.valueOf(promptLibraries))),
+        List.of(runtimeSwitch));
   }
 }

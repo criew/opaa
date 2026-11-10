@@ -95,6 +95,7 @@ class DataCollectionDisclosureIntegrationTest {
         "DELETE FROM asset_ownership_history WHERE owner_user_id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM llm_models WHERE id = ?", modelId);
+    jdbcTemplate.update("DELETE FROM document_template_settings");
     // the suite shares one database: other classes read the delivered retention period
     jdbcTemplate.update("UPDATE audit_retention_settings SET retention_months = 36 WHERE id = 1");
   }
@@ -235,6 +236,7 @@ class DataCollectionDisclosureIntegrationTest {
           "audit_incident_scope_retention_settings.retention_years",
           "succession_settings.aging_threshold_months",
           "malware_scan_settings.enabled",
+          "document_template_settings.enabled",
           "malware_scan_settings.host",
           "malware_scan_settings.on_unavailable",
           "rerank_model.enabled",
@@ -357,6 +359,8 @@ class DataCollectionDisclosureIntegrationTest {
         "INSERT INTO malware_scan_settings (id, enabled, host, port, timeout_seconds,"
             + " on_unavailable, updated_at) VALUES (1, true, 'clamav.example', 3310, 30, 'ACCEPT',"
             + " now())");
+    jdbcTemplate.update(
+        "INSERT INTO document_template_settings (id, enabled, updated_at) VALUES (1, true, now())");
 
     JsonNode export = exportAsAdmin();
 
@@ -384,7 +388,8 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("text_recognition_model.model_identifier", "paddle-vl"),
             Map.entry("malware_scan_settings.enabled", "true"),
             Map.entry("malware_scan_settings.host", "clamav.example"),
-            Map.entry("malware_scan_settings.on_unavailable", "ACCEPT"));
+            Map.entry("malware_scan_settings.on_unavailable", "ACCEPT"),
+            Map.entry("document_template_settings.enabled", "true"));
     assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {

@@ -1,12 +1,14 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { useMemo } from 'react'
-import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
+import { CATALOG_ROUTE, documentTemplateRoute, promptLibraryRoute } from '@/shared/routes'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { AssetType, Capability } from '@/shared/api/types'
 import type { FeatureFlags } from '@/shared/session/types'
-import { isAssetTypeOffered } from '@/shared/session/installationFeatures'
+import { isAssetTypeOffered, type RuntimeSwitches } from '@/shared/session/installationFeatures'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 
 /** Everything the interface needs to know about one asset type. */
 export interface AssetTypeDefinition {
@@ -73,14 +75,28 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     createCapabilities: ['CREATE_PROMPT_LIBRARY'],
     extentLabel: (count) => (count === 1 ? '1 Prompt' : `${count} Prompts`),
   },
+  {
+    type: 'DOCUMENT_TEMPLATE',
+    slug: 'templates',
+    label: 'Vorlagen',
+    title: 'Vorlage',
+    noun: 'Vorlage',
+    description: 'Word-Vorlagen mit Platzhaltern, nach denen Agenten Dateien erstellen.',
+    Icon: DescriptionOutlinedIcon,
+    routePrefix: '/templates',
+    detailRoute: (assetId) => documentTemplateRoute(assetId),
+    createRoute: '/templates/new',
+    createCapabilities: ['CREATE_TEMPLATE'],
+    extentLabel: (count) => (count === 1 ? '1 Platzhalter' : `${count} Platzhalter`),
+  },
 ]
 
 /**
  * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) is on; a type behind
  * a switched-off feature is offered nowhere - no filter, tile, "Neuer Katalogeintrag" option, picker or page.
  */
-function activeIn(features: FeatureFlags): AssetTypeDefinition[] {
-  return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features))
+function activeIn(features: FeatureFlags, switches?: RuntimeSwitches): AssetTypeDefinition[] {
+  return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features, switches))
 }
 
 /** The types the installation offers, for code outside React; components use the hook. */
@@ -91,7 +107,8 @@ export function activeAssetTypes(): AssetTypeDefinition[] {
 /** The types the installation offers; re-renders when the feature flags are read again. */
 export function useActiveAssetTypes(): AssetTypeDefinition[] {
   const features = useAuthStore((state) => state.features)
-  return useMemo(() => activeIn(features), [features])
+  const documentTemplates = useRuntimeSwitchStore((state) => state.documentTemplates)
+  return useMemo(() => activeIn(features, { documentTemplates }), [features, documentTemplates])
 }
 
 /** The definition of an offered type; a type behind a switched-off feature has none. */

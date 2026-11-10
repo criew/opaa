@@ -436,6 +436,20 @@ auditEvents:
   - id: PROMPT_LIBRARY_DELETED
     trigger: Eine Prompt-Bibliothek wird mit ihren Prompts gelöscht
     payloadKeys: [name, promptsRemoved]
+  - id: DOCUMENT_TEMPLATE_CREATED
+    trigger: Eine Dokumentvorlage wird angelegt
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_CHANGED
+    trigger: Name, Beschreibung oder Datei einer Dokumentvorlage ändert sich
+    details: Nur die Namen der geänderten Felder, nie der Inhalt der Datei
+    payloadKeys: [changedFields]
+  - id: DOCUMENT_TEMPLATE_DELETED
+    trigger: Eine Dokumentvorlage wird mit ihrer Datei gelöscht
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_SETTINGS_CHANGED
+    trigger: Der Schalter „Vorlagen“ wird ein- oder ausgeschaltet
+    details: Vorher/Nachher des Schalters
+    payloadKeys: [enabled]
   - id: PROMPT_CREATED
     trigger: Ein Prompt wird einer Bibliothek hinzugefügt
     details: Bibliothek und Kurzname des Prompts, nie Titel oder Text

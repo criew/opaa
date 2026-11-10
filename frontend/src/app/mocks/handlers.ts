@@ -20,6 +20,8 @@ import { sharedLibraryQuotaHandlers } from '@/features/library/mocks/sharedLibra
 import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmHandlers'
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
+// document-template
+import { documentTemplateHandlers } from '@/features/document-template/mocks/documentTemplateHandlers'
 // group
 import { groupHandlers } from '@/features/group/mocks/groupHandlers'
 import { groupAdminHandlers } from '@/features/group/mocks/groupAdminHandlers'
@@ -107,6 +109,8 @@ export const handlers = [
   ...fullSyncRhythmHandlers,
   // prompt
   ...promptLibraryHandlers,
+  // document-template
+  ...documentTemplateHandlers,
   // group
   ...groupHandlers,
   ...groupAdminHandlers,

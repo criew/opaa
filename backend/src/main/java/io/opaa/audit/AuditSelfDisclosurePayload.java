@@ -132,6 +132,9 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
     put(keys, Set.of("name"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields"), PROMPT_LIBRARY_CHANGED, PROMPT_CHANGED);
+    put(keys, Set.of("name"), DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED);
+    put(keys, Set.of("changedFields"), DOCUMENT_TEMPLATE_CHANGED);
+    put(keys, Set.of("enabled"), DOCUMENT_TEMPLATE_SETTINGS_CHANGED);
     put(keys, Set.of("provider"), GROUP_CREATED);
     put(keys, Set.of("changedFields"), GROUP_CHANGED);
     put(keys, Set.of("name", "memberCount"), GROUP_DELETED);

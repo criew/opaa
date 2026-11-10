@@ -65,7 +65,8 @@ public class CapabilityService {
           Capability.CREATE_LIBRARY, "Bibliotheken für Uploads anlegen",
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken anlegen",
           Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen",
-          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen");
+          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen",
+          Capability.CREATE_TEMPLATE, "Vorlagen anlegen");
 
   /**
    * What each capability creates, as the object of a sentence - the piece the overview's plain-text
@@ -78,7 +79,8 @@ public class CapabilityService {
           Capability.CREATE_LIBRARY, "Bibliotheken für Uploads",
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken",
           Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
-          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken");
+          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken",
+          Capability.CREATE_TEMPLATE, "Vorlagen");
 
   /**
    * The capabilities that belong to an installation-wide feature (ADR-0044): while it is off, the
@@ -98,6 +100,7 @@ public class CapabilityService {
   private final AuditEventRecorder auditEventRecorder;
   private final CapabilityScopeCatalog scopeCatalog;
   private final FeatureFlags featureFlags;
+  private final List<RuntimeCapabilitySwitch> runtimeSwitches;
 
   CapabilityService(
       CapabilityGrantRepository grantRepository,
@@ -107,7 +110,8 @@ public class CapabilityService {
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       CapabilityScopeCatalog scopeCatalog,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      List<RuntimeCapabilitySwitch> runtimeSwitches) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
     this.groupDirectory = groupDirectory;
@@ -116,12 +120,24 @@ public class CapabilityService {
     this.auditEventRecorder = auditEventRecorder;
     this.scopeCatalog = scopeCatalog;
     this.featureFlags = featureFlags;
+    this.runtimeSwitches = List.copyOf(runtimeSwitches);
   }
 
-  /** Whether the installation offers {@code capability}: its feature, if any, is switched on. */
+  /**
+   * Whether the installation offers {@code capability}: its feature, if any, is switched on, and so
+   * is every {@link RuntimeCapabilitySwitch} for it.
+   */
   private boolean isOffered(Capability capability) {
     Feature feature = FEATURES.get(capability);
-    return feature == null || featureFlags.isEnabled(feature);
+    if (feature != null && !featureFlags.isEnabled(feature)) {
+      return false;
+    }
+    for (RuntimeCapabilitySwitch runtimeSwitch : runtimeSwitches) {
+      if (runtimeSwitch.capability() == capability && !runtimeSwitch.offered()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Whether {@code capability} is granted per scope. */

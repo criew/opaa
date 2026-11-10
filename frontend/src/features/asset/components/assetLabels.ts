@@ -51,6 +51,12 @@ const assetRoleDescriptions: Record<AssetType, Record<AssetRole, string>> = {
     MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Prompt-Bibliothek ändern.',
     OWNER: 'Darf zusätzlich die Prompt-Bibliothek samt ihrer Prompts löschen.',
   },
+  DOCUMENT_TEMPLATE: {
+    VIEWER: 'Darf die Vorlage herunterladen und Agenten mit ihr arbeiten lassen.',
+    EDITOR: 'Darf zusätzlich die Datei der Vorlage ersetzen.',
+    MANAGER: 'Darf zusätzlich Name und Beschreibung ändern und Rechte vergeben.',
+    OWNER: 'Darf zusätzlich die Vorlage löschen und das Eigentum übertragen.',
+  },
 }
 
 export function assetRoleDescription(
@@ -66,6 +72,7 @@ const assetGrantScopeHints: Record<AssetType, string> = {
     'Eine Freigabe gewährt Zugriff auf alle Dokumente dieser Bibliothek, nicht auf eine Auswahl.',
   PROMPT_LIBRARY:
     'Eine Freigabe gewährt Zugriff auf alle Prompts dieser Prompt-Bibliothek, nicht auf eine Auswahl.',
+  DOCUMENT_TEMPLATE: 'Eine Freigabe gewährt Zugriff auf die Vorlage und ihre Datei.',
 }
 
 /** What one grant opens on an asset of this type - the first sentence of the rights dialog. */
