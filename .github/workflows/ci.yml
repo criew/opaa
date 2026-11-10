@@ -198,6 +198,10 @@ jobs:
               - '.env.docker.example'
               - '.env.example'
               - '**/Dockerfile'
+              - '**/Dockerfile.*'
+              - '**/*.Dockerfile'
+              - '**/Containerfile'
+              - '**/Containerfile.*'
               - 'sandbox/config.toml'
             # Filter of the action pin guard in the `changes` job.
             workflows:
@@ -239,6 +243,10 @@ jobs:
               - 'docker-compose*.yml'
               - '.env*.example'
               - '**/Dockerfile'
+              - '**/Dockerfile.*'
+              - '**/*.Dockerfile'
+              - '**/Containerfile'
+              - '**/Containerfile.*'
               - 'backend/gradle/**'
               - 'backend/*.gradle.kts'
               - 'opaa-api/*.gradle.kts'
