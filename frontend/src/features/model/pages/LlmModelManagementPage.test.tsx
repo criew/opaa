@@ -6,6 +6,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import LlmModelManagementPage from './LlmModelManagementPage'
 
@@ -944,5 +945,50 @@ describe('LlmModelManagementPage', () => {
     await user.type(kennung, 'qwen2.5:14b')
 
     expect(within(dialog).getByText(/wieder ungeprüft/)).toBeInTheDocument()
+  })
+  it('offers „Werkzeuge prüfen“ only while agents are switched on', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useRuntimeSwitchStore.setState({ agents: false })
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Ollama lokal')
+
+    expect(within(menu).queryByRole('menuitem', { name: 'Werkzeuge prüfen' })).toBeNull()
+  })
+
+  it('records the result of a tool check as a measured statement', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useRuntimeSwitchStore.setState({ agents: true })
+    onTestFinished(() => useRuntimeSwitchStore.setState({ agents: false }))
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Ollama lokal')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Werkzeuge prüfen' }))
+    const check = await screen.findByRole('dialog', { name: 'Werkzeuge prüfen' })
+    await user.click(await within(check).findByRole('button', { name: 'Prüfung starten' }))
+    await user.click(await within(check).findByRole('button', { name: 'Ergebnis übernehmen' }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Werkzeugfähigkeit von „Ollama lokal“',
+    })
+    expect(within(dialog).getByRole('radio', { name: /^Fähig/ })).toBeChecked()
+    expect(within(dialog).getByRole('radio', { name: 'Gemessen' })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(aufrufe.some((aufruf) => aufruf.path.endsWith('/tool-capability'))).toBe(true),
+    )
+    const gesendet = aufrufe.find((aufruf) => aufruf.path.endsWith('/tool-capability'))!
+    expect(gesendet.body).toMatchObject({
+      ...OLLAMA_COMBINATION,
+      value: 'CAPABLE',
+      basis: 'MEASURED',
+      measurementRun: expect.stringMatching(/^tc-20261110T200000Z-mock, /),
+    })
   })
 })

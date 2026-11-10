@@ -4,6 +4,7 @@ import RowMenu from '@/shared/ui/RowMenu'
 import { testLlmModel } from '../api/modelApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import ToolCapabilityDialog from './ToolCapabilityDialog'
 import ToolCheckDialog from './ToolCheckDialog'
@@ -14,8 +15,6 @@ export const ACTIVE_DELETE_HINT =
 interface ModelRowMenuProps {
   model: LlmModelResponse
   onEdit: (model: LlmModelResponse) => void
-  /** Whether „Werkzeuge prüfen“ is offered: only while agents are switched on. */
-  toolCheckOffered?: boolean
 }
 
 /**
@@ -25,11 +24,9 @@ interface ModelRowMenuProps {
  * The menu closes before a confirmation opens: two stacked layers with their own
  * focus trap could be left neither with the keyboard nor with a screen reader.
  */
-export default function ModelRowMenu({
-  model,
-  onEdit,
-  toolCheckOffered = false,
-}: ModelRowMenuProps) {
+export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
+  // „Werkzeuge prüfen“ only while agents are switched on; the server answers 404 otherwise
+  const toolCheckOffered = useRuntimeSwitchStore((s) => s.agents)
   const activateExistingModel = useLlmModelStore((s) => s.activateExistingModel)
   const deleteExistingModel = useLlmModelStore((s) => s.deleteExistingModel)
   const [busy, setBusy] = useState(false)
