@@ -45,6 +45,7 @@ prompts:
       dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.toolloop.AgentToolCallback
       - io.opaa.query.toolloop.SearchKnowledgeTool
       - io.opaa.query.toolloop.ReadDocumentTool
       - io.opaa.query.toolloop.ListSourcesTool
@@ -57,7 +58,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "5a02fff3778c95ed9295d83f50dff18b942f5acba71953bbe38719fe446ef162"
+    sha256: "1555ab192c5129629c0eb33b172f0c91f68d6fad362d7e822a302fd8f5cdce63"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
