@@ -377,6 +377,14 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
   `docker-compose.multi.yml` gehören `backend-a` und `backend-b` in einer eigenen Override-Datei
   ebenfalls in die Netze `default` und `ocr`, mit denselben beiden Variablen.
 
+## Monitoring im Compose-Stapel
+
+Das Overlay `docker-compose.monitoring.yml` startet Prometheus mit den Alarmen und Grafana mit den
+Dashboards unter `/grafana/` an der Adresse des Frontends, ohne eigenen Port. Das Admin-Passwort
+`OPAA_GRAFANA_ADMIN_PASSWORD` ist Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell
+oder `.env`. Einrichtung und Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
+[Dashboards und Alarme](dashboards-und-alarme.md#compose).
+
 ## Mehrere Backend-Instanzen
 
 `docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt

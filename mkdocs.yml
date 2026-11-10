@@ -153,6 +153,8 @@ nav:
       - betrieb/aktualisierung.md
       - betrieb/sicherung-und-wiederherstellung.md
       - betrieb/ueberwachung-und-fehlerbehebung.md
+      - betrieb/dashboards-und-alarme.md
+      - betrieb/alarme.md
       - betrieb/nachvollziehbarkeit.md
       - betrieb/releases-und-nachweise.md
   - Referenz:

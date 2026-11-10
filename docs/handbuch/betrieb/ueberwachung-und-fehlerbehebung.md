@@ -121,11 +121,15 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `executor_*` | Auslastung, Warteschlange und erledigte Aufgaben der Thread-Pools nach Name (`name`), etwa Indexierung und Uploads, die Zustellung der Cache-Meldungen (`cache-invalidation`), die Neueinbettung (`embedding-reindex`) und die Aufsicht der SIEM-Ausleitung (`siem-export-watchdog`) |
 | `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
+| `jvm_gc_live_data_size_bytes`, `jvm_gc_max_data_size_bytes` | Heap, der nach der letzten Speicherbereinigung belegt blieb, und sein Höchstwert; ihr Verhältnis zeigt, ob der Heap wirklich knapp wird |
+| `process_start_time_seconds` | Startzeit der Instanz als Unix-Zeit; zeigt Neustarts |
 
 Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
-unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln und Alarme unter Kubernetes:
-[Betriebsüberwachung](kubernetes.md#betriebsüberwachung).
+unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln unter Kubernetes:
+[Betriebsüberwachung](kubernetes.md#betriebsüberwachung); Dashboards und Alarme für Kubernetes und
+Compose: [Dashboards und Alarme](dashboards-und-alarme.md), was bei einem Alarm zu tun ist:
+[Alarme](alarme.md).
 
 ## Ausleitung an ein Sicherheitsmonitoring
 

@@ -151,6 +151,28 @@ Zugänge, Gesprächsgedächtnis): Treffer, Fehlgriffe und Größe zeigten aktive
 Gesprächsanfänge. Eine Health-Gruppe, deren Prüfung ein
 Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis einer Prüfung von außen.
 
+### 11. Alarmmodell: Schweregrad, Bereich, Runbook und eine Quelle der Schwellen
+
+Jeder mitgelieferte Alarm trägt `severity` mit genau drei Stufen (`critical` weckt, `warning` wird
+ein Ticket, `info` zeigt nur), `component` mit dem betroffenen Bereich als Schlüssel der Verteilung
+und `runbook_url` auf seinen Abschnitt im Handbuch; die CI prüft alle drei, den Abschnitt und einen
+Testfall je Alarm. Quoten zählen erst ab einem Mindestvolumen im Fenster, damit wenig Verkehr in der
+Nacht keinen Fehlalarm auslöst. Weckende Alarme stehen nur auf Metriken von OPAA selbst
+(`opaa.*`, HTTP-Status, Bereitschaft der Pods), nicht auf `gen_ai.*`, deren Namen sich ändern
+(Entscheidung 3). Die Fehlerquote der Fragen ist `success / (success + error)`; abgewiesene Fragen
+und Client-Fehler ausgehender Aufrufe zählen nicht. Ein Wert, den eine Instanz nicht aus der
+Datenbank lesen kann, meldet `NaN` (Entscheidung 10); ein Vergleich darauf ist nie wahr, deshalb
+meldet ein eigener Alarm jeden dauerhaft unlesbaren Wert, und die Alarme des Revisionsprotokolls
+werten `NaN` selbst als Befund. Die Alarme stehen in Gruppen je Bereich, jede einzeln abschaltbar.
+
+Die Dashboards bestehen aus einer Startseite mit einer Ampel je Baustein und einem Dashboard je
+Bereich; sie zeigen nichts je Person, keine aktiven Personen und keine Chats je Zeitraum
+(Entscheidung 1). Chart und Compose-Overlay liefern dieselben Dateien aus, und die Schwellen der
+Alarme und der Ampelfarben stammen aus denselben Vorgaben der Chart-Werte; die Compose-Regeln sind
+aus dem Chart gerendert, nicht nachgeschrieben. Ein eigener Grafana oder Alertmanager kommt nicht in
+den Chart: Ein Cluster hat seine Überwachung, und Compose ohne Alertmanager zeigt Alarme, stellt
+sie aber nicht zu.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
@@ -158,6 +180,9 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - Schwieriger: Eine Frage, die nur eine Kennung je Objekt beantworten könnte („welche Bibliothek
   löst die meisten Funde aus?“), beantwortet das Laufprotokoll der Bibliothek, nicht die Metrik.
   `opaa.indexing.suspicious.patterns` zählt deshalb nur nach Art des Musters.
+- Mit jedem neuen Alarm entsteht ein Runbook-Abschnitt und ein Testfall, sonst bricht die CI ab.
+  Eine im Chart geänderte Schwelle wirkt nur auf den Alarm, die Farben der Dashboards folgen den
+  Vorgaben.
 - Restrisiken: Ein Modellwechsel zeigt sich in `embedding-model` und `vector-store` erst nach Ablauf
   der Zwischenspeicherung. Werden die `gen_ai.*`-Namen umbenannt, brechen Dashboards darauf, bis sie
   nachgezogen sind. In sehr kleinen Installationen kann auch eine installationsweite Zahl auf wenige
@@ -175,3 +200,5 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
 - Sperrliste der Span-Attribute — lässt jedes neue Attribut einer Bibliothek durch, Entscheidung 7.
 - `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.
+- Alarme auf `gen_ai.*` oder Modellnamen — Namen ändern sich, ein weckender Alarm bräche still, Entscheidung 11.
+- Eigenes Grafana und Alertmanager im Chart — doppelt zur Überwachung des Clusters, Entscheidung 11.
