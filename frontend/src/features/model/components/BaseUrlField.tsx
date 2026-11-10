@@ -112,7 +112,7 @@ export default function BaseUrlField({
           label="Basis-Adresse"
           required
           inputRef={inputRef}
-          placeholder="Vorlage wählen oder Adresse eintragen"
+          placeholder="z. B. http://ollama:11434/v1"
           helperText={BASE_URL_HELP_TEXT}
           slotProps={{
             ...params.slotProps,

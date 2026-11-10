@@ -410,7 +410,6 @@ export function ProcedureArea({
                       onChange={(e) =>
                         setLimitDraft((draft) => ({ ...draft, [field.key]: e.target.value }))
                       }
-                      placeholder="wie Installation"
                       fullWidth
                       error={Boolean(errors[`limits.${field.key}`])}
                       helperText={errors[`limits.${field.key}`]}

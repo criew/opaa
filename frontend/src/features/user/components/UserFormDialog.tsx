@@ -292,12 +292,6 @@ export default function UserFormDialog({
                 select
                 fullWidth
                 size="small"
-                // A <label for> names only real form elements; MUI's select renders a
-                // display with role="combobox" that needs its name via aria-labelledby (axe
-                // aria-input-field-name, serious). Pattern as in AssetGrantsDialog.
-                slotProps={{
-                  select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
-                }}
                 value={draft.systemRole}
                 disabled={roleLocked}
                 onChange={(e) => update({ systemRole: e.target.value as SystemRole })}

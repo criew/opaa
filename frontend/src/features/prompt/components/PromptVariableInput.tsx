@@ -35,8 +35,9 @@ export default function PromptVariableInput({
   const field = {
     size: 'small',
     fullWidth: true,
-    label: label ?? ariaLabel,
-    hideLabel: label === undefined,
+    ...(label === undefined
+      ? { label: ariaLabel ?? (variable.label || variable.name), hideLabel: true as const }
+      : { label }),
     value,
     required,
   } as const

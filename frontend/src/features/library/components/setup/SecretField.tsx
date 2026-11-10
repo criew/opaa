@@ -40,7 +40,6 @@ export default function SecretField({
 }: SecretFieldProps) {
   const [replacing, setReplacing] = useState(false)
   const [shown, setShown] = useState(false)
-  const helperId = `${id}-helper`
 
   if (stored && !replacing && value === '') {
     return (
@@ -102,7 +101,6 @@ export default function SecretField({
           )
         }
         slotProps={{
-          formHelperText: { id: helperId },
           input: {
             endAdornment: (
               <InputAdornment position="end">

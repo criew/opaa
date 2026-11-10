@@ -5,19 +5,12 @@ import { useId, type ReactNode } from 'react'
 import { formWidth } from '../../theme/tokens'
 import FormFieldLabel from './FormFieldLabel'
 
-export interface FormFieldProps extends Omit<
+interface FormFieldOwnProps extends Omit<
   OutlinedTextFieldProps,
   'label' | 'variant' | 'rows' | 'hiddenLabel'
 > {
-  /** The field's name: shown above the field, or its accessible name with `hideLabel`. */
-  label: ReactNode
   /** Appends „(optional)“ to the label. Required fields carry no mark. */
   optional?: boolean
-  /**
-   * Filter and search fields above a list: no visible label, the label becomes the `aria-label`
-   * and the default value or placeholder names the content. Needs a string `label`.
-   */
-  hideLabel?: boolean
   /**
    * A field holding only a number: its box is 160 px wide, label and helper text keep the width
    * of the column; with `fullWidth={false}` (beside its pair in a row) the whole field is 160 px
@@ -30,6 +23,14 @@ export interface FormFieldProps extends Omit<
    */
   action?: ReactNode
 }
+
+/**
+ * `label` is the field's name, shown above the field. With `hideLabel` (filter and search fields
+ * above a list) nothing is shown: the label becomes the `aria-label` and must be a string, the
+ * default value or placeholder names the content.
+ */
+export type FormFieldProps = FormFieldOwnProps &
+  ({ label: ReactNode; hideLabel?: false } | { label: string; hideLabel: true })
 
 /** Marks a field with a visible label, so that `FormFieldRow` can align what stands beside it. */
 export const LABELLED_FIELD_CLASS = 'OpaaFormField-labelled'

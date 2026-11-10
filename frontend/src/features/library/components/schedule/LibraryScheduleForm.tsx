@@ -1,8 +1,6 @@
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import FormField from '@/shared/ui/form/FormField'
 import type { ScheduleFrequency, ScheduleWeekday } from '@/shared/api/types'
 import {
@@ -37,11 +35,11 @@ export default function LibraryScheduleForm({
   return (
     <Stack spacing={2}>
       <Box>
-        <FormFieldLabel id={`${idPrefix}-frequency-label`}>Häufigkeit</FormFieldLabel>
-        <Select
+        <FormField
+          select
+          label="Häufigkeit"
           size="small"
           fullWidth
-          labelId={`${idPrefix}-frequency-label`}
           value={values.frequency}
           onChange={(e) => onChange({ frequency: e.target.value as ScheduleFrequency })}
         >
@@ -50,18 +48,18 @@ export default function LibraryScheduleForm({
               {scheduleFrequencyLabel(option)}
             </MenuItem>
           ))}
-        </Select>
+        </FormField>
       </Box>
 
       {timed && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           {weekly && (
             <Box sx={{ flex: 1 }}>
-              <FormFieldLabel id={`${idPrefix}-weekday-label`}>Wochentag</FormFieldLabel>
-              <Select
+              <FormField
+                select
+                label="Wochentag"
                 size="small"
                 fullWidth
-                labelId={`${idPrefix}-weekday-label`}
                 value={values.weekday}
                 onChange={(e) => onChange({ weekday: e.target.value as ScheduleWeekday })}
               >
@@ -70,7 +68,7 @@ export default function LibraryScheduleForm({
                     {scheduleWeekdayLabel(option)}
                   </MenuItem>
                 ))}
-              </Select>
+              </FormField>
             </Box>
           )}
           <Box sx={{ flex: 1 }}>

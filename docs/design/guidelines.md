@@ -442,6 +442,13 @@ Jedes Eingabefeld – Text, Auswahl, Autocomplete, Datum – kommt aus dem Baust
 (`frontend/src/shared/ui/form/`). Kein Thema setzt `label=` direkt an ein MUI-Feld; das prüft
 `FormField.test.tsx` am Quelltext.
 
+Bewusste Ausnahmen: Felder ohne sichtbare Beschriftung, die ihren Namen über `aria-label` tragen
+und in einer Tabellenzeile, einer Titelzeile oder einem Such-Baustein stehen (`ListSearch`,
+`SubjectPicker`, `UserPicker`, `GroupPicker`, die Gruppenwahl in `AssetOwnerFields` unter der
+Beschriftung „Eigentümer"), bleiben MUI-Felder. Anmelde- und Installationsseiten liegen außerhalb
+dieser Umstellung; sie setzen die Beschriftung bis zu ihrer eigenen Umstellung mit
+`FormFieldLabel` über das Feld.
+
 **Beschriftung.** Oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
 schwebendes Label im Feld), mit dem Feld verbunden (`htmlFor`, bei einer Auswahl
 `aria-labelledby`). Pflichtfelder tragen kein Sternchen, auch nicht über `required`; optionale

@@ -324,7 +324,7 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
           </FormControl>
           <FormField
             label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
-            placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+            helperText={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
             size="small"

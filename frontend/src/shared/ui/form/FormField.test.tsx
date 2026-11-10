@@ -250,6 +250,22 @@ describe('form fields in the source text (guidelines 5.2)', () => {
     expect(offenders).toEqual([])
   })
 
+  it('builds no field by hand from FormFieldLabel and a MUI field', () => {
+    // A label directly before a MUI field is a FormField written out. FormFieldLabel is for
+    // controls FormField cannot wrap. Sign-in and installation pages follow in their own
+    // packages of the consistency epic and are left out until then.
+    const handBuilt =
+      /<\/FormFieldLabel>\s*<(TextField|Select|NativeSelect|Autocomplete|OutlinedInput)[\s/>]/
+    expect(handBuilt.test('<FormFieldLabel id="a">Typ</FormFieldLabel>\n  <Select value="">')).toBe(
+      true,
+    )
+    const offenders = Object.entries(SOURCES)
+      .filter(([path]) => !/\/features\/(auth|installation)\//.test(path))
+      .filter(([, source]) => handBuilt.test(source))
+      .map(([path]) => path)
+    expect(offenders).toEqual([])
+  })
+
   it('marks no field with an asterisk', () => {
     // „Name *“ as a string or as JSX text; a required field carries no mark, an optional one
     // „(optional)“.
