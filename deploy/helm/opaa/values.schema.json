@@ -1002,6 +1002,213 @@
             "indexingStallMinutes": {
               "type": "integer",
               "minimum": 1
+            },
+            "groups": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "platform": {
+                  "type": "boolean"
+                },
+                "chat": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "boolean"
+                },
+                "indexing": {
+                  "type": "boolean"
+                },
+                "directory": {
+                  "type": "boolean"
+                },
+                "background": {
+                  "type": "boolean"
+                },
+                "audit": {
+                  "type": "boolean"
+                },
+                "security": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "errorRateCriticalThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "retrievalEmptyShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "outboundAuthErrorShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "identityProviderAuthErrorShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "throttledShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "indexingRunFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "mailFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "malwareScanFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "chatSloObjective": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            },
+            "errorRateCriticalMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chatSloMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retrievalEmptyMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outboundAuthErrorMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityProviderMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "throttledMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indexingRunFailureMinRuns": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mailFailureMinAttempts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "malwareScanMinScans": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "loginFailureMin": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "monthlyTokenBudget": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncMaxAgeHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncPlanPendingHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueMinMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "malwareSignatureMaxAgeDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "siemExportLagMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonWarningDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonCriticalHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "heartbeatMaxAgeSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "loginFailureFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "queueMaxAgeMinutes": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[a-z_]+$"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "runbookBaseUrl": {
+          "type": "string",
+          "pattern": "^https?://[^#\\s]+$",
+          "description": "Address of the runbook page without anchor"
+        },
+        "grafanaDashboards": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "labelValue": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "object"
+            },
+            "annotations": {
+              "type": "object"
             }
           }
         }

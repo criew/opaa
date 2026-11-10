@@ -1,0 +1,30 @@
+{{- if .Values.metrics.grafanaDashboards.enabled }}
+{{- $dashboards := .Values.metrics.grafanaDashboards }}
+{{- /* The files carry the default runbook address; an own runbookBaseUrl replaces it. */}}
+{{- $defaultRunbook := "https://opaa.io/handbuch/betrieb/alarme.html" | quote }}
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opaa.fullname" $ }}-dashboard-{{ base $path | trimSuffix ".json" | trimPrefix "opaa-" }}
+  labels:
+    {{- include "opaa.labels" $ | nindent 4 }}
+    {{ $dashboards.label }}: {{ $dashboards.labelValue | quote }}
+    {{- with $dashboards.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $dashboards.folder $dashboards.annotations }}
+  annotations:
+    {{- with $dashboards.folder }}
+    grafana_folder: {{ . | quote }}
+    {{- end }}
+    {{- with $dashboards.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | replace $defaultRunbook ($.Values.metrics.runbookBaseUrl | quote) | indent 4 }}
+{{- end }}
+{{- end }}

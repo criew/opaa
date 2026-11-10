@@ -61,6 +61,12 @@ jobs:
               - 'docs/upgrade-notes/**'
               - 'docs/handbuch/betrieb/kubernetes.md'
               - 'docs/handbuch/betrieb/docker-compose.md'
+              # Runbook anchors of the alerts, the metric table the dashboards are checked against
+              # and the Compose monitoring built from the chart.
+              - 'docs/handbuch/betrieb/alarme.md'
+              - 'docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md'
+              - 'deploy/monitoring/**'
+              - 'docker-compose.monitoring.yml'
             # The chart relies on the images' contract: user, port, writable paths, entrypoint.
             install:
               - 'deploy/helm/**'
@@ -121,6 +127,16 @@ jobs:
       # yq comes with the runner image.
       - name: Alarmregeln testen
         run: deploy/helm/ci/rule-test.sh
+
+      # Dashboards and the Compose rule file match the chart, every query parses and names only
+      # metrics of the handbook's metric table.
+      - name: Dashboards und Compose-Monitoring prüfen
+        run: |
+          deploy/monitoring/render.sh --check
+          yq -o json '.' deploy/monitoring/prometheus/opaa-rules.yaml >"$RUNNER_TEMP/compose-rules.json"
+          python3 deploy/monitoring/check_queries.py --dashboards deploy/helm/opaa/dashboards \
+            --rules "$RUNNER_TEMP/compose-rules.json" --promtool
+          promtool check config --syntax-only deploy/monitoring/prometheus/prometheus.yml
 
       # v2.9.0 or later: older releases, which the floating v2 tag still points to, cannot verify the
       # signature of current ct.
