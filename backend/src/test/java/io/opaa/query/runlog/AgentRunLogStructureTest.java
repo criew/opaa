@@ -80,8 +80,7 @@ class AgentRunLogStructureTest {
   void theSchemaBoundsMatchTheJavaBounds() throws IOException {
     String migration =
         Files.readString(
-            Path.of(
-                "src/main/resources/db/migration/assistant/V2026.11.10.61__agent_run_logs.sql"));
+            Path.of("src/main/resources/db/migration/assistant/V1.8__assistant_baseline.sql"));
     assertThat(migration)
         .contains(
             "step_log_retention_days >= "

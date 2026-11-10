@@ -167,16 +167,12 @@ public final class DatabaseMigrationMode {
   }
 
   /**
-   * The data source, the start guards that precede Flyway, the vector table's placeholders and
-   * Flyway itself - nothing of the application. No {@code @Configuration}: component scanning of
-   * the application must not pick it up.
+   * The data source, the start guards that precede Flyway and Flyway itself - nothing of the
+   * application. No {@code @Configuration}: component scanning of the application must not pick it
+   * up.
    */
   @ImportAutoConfiguration({DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class})
-  @Import({
-    DatabaseSchemaGuard.class,
-    DatabasePrerequisiteCheck.class,
-    VectorStoreMigrationPlaceholders.class
-  })
+  @Import({DatabaseSchemaGuard.class, DatabasePrerequisiteCheck.class})
   static class Migration {}
 
   /**
@@ -184,7 +180,6 @@ public final class DatabaseMigrationMode {
    * pool opens its connections only when the first poll asks, and Flyway's info needs two.
    */
   @ImportAutoConfiguration({DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class})
-  @Import(VectorStoreMigrationPlaceholders.class)
   static class Await {
 
     @Bean

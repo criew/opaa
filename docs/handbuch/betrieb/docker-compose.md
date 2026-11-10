@@ -790,17 +790,21 @@ unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jeman
 ### Neu aufsetzen statt aktualisieren
 
 Fassen die Notizen eines Release die Schemahistorie zu einer neuen Baseline zusammen, lässt sich eine
-ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Wechsel der
-Migrationsbibliothek von Liquibase zu Flyway (Oktober 2026): Die Historie beginnt dort neu mit einer
-Baseline je Modul, und eine Datenbank, die noch Liquibase migriert hat, startet nicht. Ob eine
-Installation betroffen ist, zeigt vor dem Update:
+ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. Das war zweimal so:
 
-```bash
-docker compose exec postgres psql -U opaa -d opaa -tAc \
-  "SELECT to_regclass('flyway_schema_history') IS NOT NULL"
-```
+- **Wechsel von Liquibase zu Flyway (Oktober 2026):** Eine Datenbank, die noch Liquibase migriert
+  hat, startet nicht. Betroffen ist, wo diese Abfrage `f` liefert:
 
-`t` heißt: nicht betroffen. `f` heißt: neu aufsetzen. Neu aufsetzen:
+  ```bash
+  docker compose exec postgres psql -U opaa -d opaa -tAc \
+    "SELECT to_regclass('flyway_schema_history') IS NOT NULL"
+  ```
+
+- **Zweite Zusammenfassung (November 2026):** Jede Datenbank, die vor diesem Stand angelegt wurde,
+  ist betroffen. Der Start bricht mit „Validate failed: Migrations have failed validation“ und
+  „Migration checksum mismatch for migration version 1.1“ ab.
+
+Neu aufsetzen:
 
 1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
    Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands

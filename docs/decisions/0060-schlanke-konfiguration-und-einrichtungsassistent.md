@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0071](0071-betriebsbeobachtung.md), [ADR-0072](0072-live-transkript-ueber-websocket.md)
+Akzeptiert · zuletzt geändert 2026-11-10 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0071](0071-betriebsbeobachtung.md), [ADR-0072](0072-live-transkript-ueber-websocket.md)
 
 ## Kontext
 
@@ -174,9 +174,8 @@ Spracheingabe, Entscheidung 16, die Texterkennung nur mit `OPAA_OCR_ENABLED`, En
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
 die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
 übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
-([ADR-0061](0061-wechsel-des-embedding-modells.md), Entscheidung 8). `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
-`vector_store` weiterhin an, weil ein ausgeführtes Skript unverändert bleibt; eine spätere Migration
-entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
+([ADR-0061](0061-wechsel-des-embedding-modells.md), Entscheidung 8). `OPAA_PGVECTOR_DIMENSIONS` entfällt. Keine Migration legt
+`vector_store` an, auch nicht vorläufig mit fester Dimension. Eine
 Übernahme des Embedding-Modells aus der Umgebung gibt es nicht: Das Update von `v0.1.0-rc.4` setzt die
 Datenbank ohnehin neu auf (ADR-0056), jede Installation danach wählt ihr Modell in der Installation.
 Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). Nach dem Abschluss

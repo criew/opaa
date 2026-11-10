@@ -6,9 +6,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The session generation of a local account: a new account starts at zero, setting only {@code
- * password_invalidated_before} raises it, a raise written with the cutoff counts once, and no write
- * lowers it (ADR-0053, Entscheidung 6).
+ * The session generation of a local account: a new account starts at zero, only the application
+ * raises it, and no write lowers it (ADR-0053, Entscheidung 6).
  */
 class SessionGenerationTest extends AbstractBaselineTest {
 
@@ -17,39 +16,6 @@ class SessionGenerationTest extends AbstractBaselineTest {
     UUID account = insertCredentials();
 
     assertThat(generationOf(account)).isZero();
-  }
-
-  @Test
-  void aCutoffWrittenWithoutTheGenerationRaisesIt() throws Exception {
-    UUID account = insertCredentials();
-
-    execute(
-        "UPDATE local_credentials SET password_invalidated_before = now(), updated_at = now()"
-            + " WHERE user_id = '"
-            + account
-            + "'");
-    execute(
-        "UPDATE local_credentials SET password_invalidated_before = now() + interval '1 second'"
-            + " WHERE user_id = '"
-            + account
-            + "'");
-
-    assertThat(generationOf(account)).isEqualTo(2);
-  }
-
-  @Test
-  void aRaiseThatComesWithTheCutoffCountsOnceAndOtherWritesCountNone() throws Exception {
-    UUID account = insertCredentials();
-
-    execute(
-        "UPDATE local_credentials SET password_invalidated_before = now(),"
-            + " session_generation = session_generation + 1 WHERE user_id = '"
-            + account
-            + "'");
-    execute(
-        "UPDATE local_credentials SET failed_login_attempts = 3 WHERE user_id = '" + account + "'");
-
-    assertThat(generationOf(account)).isEqualTo(1);
   }
 
   @Test
