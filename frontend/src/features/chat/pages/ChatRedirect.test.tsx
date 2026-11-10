@@ -201,7 +201,7 @@ describe('ChatRedirect', () => {
       }),
     )
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     await waitFor(() => {
       expect(screen.getByText('Kein Arbeitsraum verfügbar.')).toBeInTheDocument()
