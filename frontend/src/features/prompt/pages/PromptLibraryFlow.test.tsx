@@ -67,14 +67,19 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(screen.getByRole('radio', { name: 'Eine Gruppe' }))
     await user.click(await screen.findByLabelText('Gruppe'))
     await user.click(await screen.findByRole('option', { name: 'Projektbeteiligte Phoenix' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
-    // Rights
+    // Rights, on the same step „Freigaben“
     await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
     await user.click(referat)
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
-    await user.click(screen.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    // Review: every answer with „Ändern“
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+    expect(screen.getByText('Gruppe Projektbeteiligte Phoenix')).toBeInTheDocument()
+    expect(screen.getByText('1 vorgemerkt')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     // Detail page of the new library
     expect(
@@ -129,6 +134,22 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     ])
   }, 60000)
 
+  it('nennt eine fehlende Gruppe am Feld und setzt den Fokus hinein, „Weiter“ bleibt aktiv', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.type(screen.getByLabelText(/^Name/), 'Formulierungshilfen Referat 50')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('radio', { name: 'Eine Gruppe' }))
+    const group = await screen.findByLabelText('Gruppe')
+    await waitFor(() => expect(group).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(group).toHaveFocus()
+    expect(group).toHaveAccessibleDescription('Bitte eine Gruppe auswählen')
+    expect(screen.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeInTheDocument()
+  })
+
   it('führt nach einer abgelehnten Freigabe zur angelegten Bibliothek, statt ein zweites Anlegen anzubieten', async () => {
     const captured = captureRequests()
     server.use(
@@ -141,12 +162,12 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
 
     await user.type(screen.getByLabelText(/^Name/), 'Vorlagen')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
     await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
     await user.click(referat)
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
-    await user.click(screen.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Vorlagen' })).toBeInTheDocument()
     expect(await screen.findByText(/nicht gespeichert werden: Referat 50/)).toBeInTheDocument()

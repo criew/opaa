@@ -1,6 +1,7 @@
-import { useId, useRef } from 'react'
+import { useId, useRef, type Ref } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import FormHelperText from '@mui/material/FormHelperText'
 import Typography from '@mui/material/Typography'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 
@@ -13,14 +14,20 @@ export default function TemplateFilePicker({
   onFileChange,
   label = 'Word-Datei auswählen',
   disabled = false,
+  error = null,
+  buttonRef,
 }: {
   file: File | null
   onFileChange: (file: File | null) => void
   label?: string
   disabled?: boolean
+  /** A missing file, said under the button, which then takes the focus (guidelines 5.14). */
+  error?: string | null
+  buttonRef?: Ref<HTMLButtonElement>
 }) {
   const input = useRef<HTMLInputElement>(null)
   const hintId = useId()
+  const errorId = useId()
   return (
     <Box>
       <input
@@ -40,12 +47,18 @@ export default function TemplateFilePicker({
           startIcon={<UploadFileOutlinedIcon />}
           onClick={() => input.current?.click()}
           disabled={disabled}
-          aria-describedby={hintId}
+          ref={buttonRef}
+          aria-describedby={error ? `${errorId} ${hintId}` : hintId}
         >
           {label}
         </Button>
         <Typography sx={{ fontSize: 13.5 }}>{file ? file.name : 'Keine Datei gewählt'}</Typography>
       </Box>
+      {error && (
+        <FormHelperText id={errorId} error>
+          {error}
+        </FormHelperText>
+      )}
       <Typography id={hintId} sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
         Word-Dokument (.docx) bis 10 MB, ohne Makros. Platzhalter schreiben Sie als{' '}
         <code>{'{{ name }}'}</code>, Listen als <code>{'{% for e in liste %} … {% endfor %}'}</code>{' '}
