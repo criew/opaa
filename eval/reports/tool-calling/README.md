@@ -54,7 +54,7 @@ Diese Lücken sind bewusst offen und gehören zu Issue #1753:
 - **Mindestklasse statt Messreihe.** Für Agenten setzt OPAA ein Modell der Klasse Gemma 4 31B
   voraus (Entscheidung des Maintainers, 10.11.2026). Kleinere selbst betriebene Modelle der 7B-Klasse
   werden nicht reihenweise gemessen; eine Installation, die eines betreiben will, misst es selbst mit
-  „Werkzeuge prüfen“. Die Messung der Mindestklasse steht in der Tabelle oben.
+  „Werkzeuge prüfen“. Die Mindestklasse ist gesetzt, nicht mit einem Lauf hier belegt.
 - **Vergleich mit dem echten `search_knowledge`.** Die Messung kann es anbieten
   (`-Dopaa.eval.toolCalling.tool=production`); der Vergleich zur Attrappen-Messung folgt aus den
   Messläufen.
