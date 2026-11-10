@@ -81,7 +81,7 @@ final class NextcloudDav implements AutoCloseable {
       long maxResponseBytes) {
     this.connection = connection;
     this.authorization = authorization;
-    this.httpClient = SourceHttpClientFactory.buildHttpClient();
+    this.httpClient = SourceHttpClientFactory.buildHttpClient("nextcloud");
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
     this.budget = budget;

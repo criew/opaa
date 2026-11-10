@@ -979,6 +979,7 @@ management:
         "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
         "[opaa.agent.run.duration]": ${OPAA_METRICS_SLO_AGENT:5s,10s,30s,60s,120s,180s}
         "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
+        "[opaa.outbound.requests]": ${OPAA_METRICS_SLO_OUTBOUND:100ms,250ms,500ms,1s,2500ms,5s,10s,30s,60s}
         "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
         "[opaa.indexing.run.duration]": ${OPAA_METRICS_SLO_INDEXING_RUN:10s,60s,300s,900s,1800s,3600s,7200s,14400s}
 

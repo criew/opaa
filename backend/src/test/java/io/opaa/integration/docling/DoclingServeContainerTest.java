@@ -88,7 +88,7 @@ class DoclingServeContainerTest {
             .waitingFor(Wait.forHttp("/health").forPort(PORT).forStatusCode(200))
             .withStartupTimeout(Duration.ofMinutes(10));
     container.start();
-    client = new TextRecognitionClient(JsonMapper.builder().build());
+    client = new TextRecognitionClient(JsonMapper.builder().build(), new SimpleMeterRegistry());
   }
 
   @AfterAll

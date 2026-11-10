@@ -1,10 +1,14 @@
 package io.opaa.directory.sync.connector;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.compliance.DataFlow;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.EncryptedColumns;
 import java.net.http.HttpClient;
@@ -17,7 +21,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Wires the directory connectors. The {@link HttpClient} is one shared instance that never follows
  * a redirect: every address it is given has passed {@link OidcAddressPolicy}, a redirect target
- * would not have.
+ * would not have. Its requests count in {@code opaa.outbound.requests} with target {@code
+ * directory} and the provider as {@code kind}.
  */
 @DataFlow("directory-sync")
 @Configuration
@@ -25,11 +30,14 @@ import org.springframework.context.annotation.Configuration;
 public class DirectoryConnectorConfiguration {
 
   @Bean
-  HttpClient directoryHttpClient(KeycloakDirectoryProperties properties) {
-    return HttpClient.newBuilder()
-        .connectTimeout(properties.connectTimeout())
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build();
+  HttpClient directoryHttpClient(
+      KeycloakDirectoryProperties properties, MeterRegistry meterRegistry) {
+    return MeteredHttpClient.of(
+        HttpClient.newBuilder()
+            .connectTimeout(properties.connectTimeout())
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build(),
+        new OutboundMetrics(meterRegistry, OutboundTarget.DIRECTORY, "keycloak"));
   }
 
   @Bean

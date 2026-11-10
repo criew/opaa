@@ -1,6 +1,7 @@
 package io.opaa.s3;
 
 import io.opaa.compliance.DataFlowCarrier;
+import io.opaa.observability.OutboundMetrics;
 import java.net.URI;
 import java.time.Duration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -24,7 +25,8 @@ import software.amazon.awssdk.services.s3.S3Client;
  * where the protocol requires them, because S3-compatible stores do not all understand the SDK's
  * newer checksums; the Apache 5 client with one timeout for connection, socket and attempt; a proxy
  * when asked; the SDK's full certificate check; and an exponential, capped retry strategy without a
- * circuit breaker. Holds the HTTP connection pool and must be closed.
+ * circuit breaker. Every attempt counts in {@code opaa.outbound.requests} ({@link
+ * S3OutboundMetrics}). Holds the HTTP connection pool and must be closed.
  */
 @DataFlowCarrier
 public final class S3SdkClient implements AutoCloseable {
@@ -41,18 +43,23 @@ public final class S3SdkClient implements AutoCloseable {
 
   /**
    * Builds the client; sends nothing. {@code guard} sees every wire attempt before it leaves and
-   * every answer that comes back.
+   * every answer that comes back; {@code metrics} counts every attempt.
    */
-  public static S3SdkClient open(S3ClientSettings settings, ExecutionInterceptor guard) {
-    return open(settings, StaticCredentialsProvider.create(settings.credentials()), guard);
+  public static S3SdkClient open(
+      S3ClientSettings settings, ExecutionInterceptor guard, OutboundMetrics metrics) {
+    return open(settings, StaticCredentialsProvider.create(settings.credentials()), guard, metrics);
   }
 
   /**
-   * As {@link #open(S3ClientSettings, ExecutionInterceptor)}, signing every request with what
-   * {@code credentials} answers then instead of the credentials in {@code settings}.
+   * As {@link #open(S3ClientSettings, ExecutionInterceptor, OutboundMetrics)}, signing every
+   * request with what {@code credentials} answers then instead of the credentials in {@code
+   * settings}.
    */
   public static S3SdkClient open(
-      S3ClientSettings settings, AwsCredentialsProvider credentials, ExecutionInterceptor guard) {
+      S3ClientSettings settings,
+      AwsCredentialsProvider credentials,
+      ExecutionInterceptor guard,
+      OutboundMetrics metrics) {
     SdkHttpClient httpClient = buildHttpClient(settings);
     try {
       S3Client s3 =
@@ -69,7 +76,8 @@ public final class S3SdkClient implements AutoCloseable {
                       override
                           .retryStrategy(retryStrategy(settings))
                           .apiCallAttemptTimeout(settings.requestTimeout())
-                          .addExecutionInterceptor(guard))
+                          .addExecutionInterceptor(guard)
+                          .addMetricPublisher(new S3OutboundMetrics(metrics)))
               .build();
       return new S3SdkClient(httpClient, s3);
     } catch (RuntimeException e) {

@@ -58,6 +58,15 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.indexing.source.smb.SmbShareClient$ValidatingSocketFactory#createSocket",
               "runs TargetAddressValidator#validateHost before it connects"),
+          Map.entry(
+              "io.opaa.observability.MeteredHttpClient#send",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures, its callers stand in this list or send through"
+                  + " the blocks"),
+          Map.entry(
+              "io.opaa.observability.MeteredHttpClient#sendAsync",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures"),
           Map.entry("io.opaa.llm.embedding.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.query.sandbox.OpenSandboxClient#send",

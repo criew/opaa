@@ -138,7 +138,7 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String url = crawlStartUrl(requireHttpUrl(HttpDirectorySourceConnector.TYPE, settings));
     BasicCredentials config = basicCredentials(settings);
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("http_directory");
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     Map<String, String> headers = requestPolicy.headers(authHeader);

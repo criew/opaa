@@ -1,8 +1,12 @@
 package io.opaa.llm.textrecognition;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ModelRoleHttp;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -94,8 +98,31 @@ public class TextRecognitionClient {
   /** Runs each call so it can be abandoned at its deadline, body read included. */
   private final ExecutorService callExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-  public TextRecognitionClient(ObjectMapper objectMapper) {
+  /**
+   * {@link #httpClient} measured in {@code opaa.outbound.requests}: target {@code ocr} for
+   * docling-serve, {@code vision} for a vision model, one view per path class.
+   */
+  private final MeteredHttpClient.ByPathClass ocr;
+
+  private final MeteredHttpClient.ByPathClass vision;
+
+  public TextRecognitionClient(ObjectMapper objectMapper, MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
+    this.ocr =
+        MeteredHttpClient.ByPathClass.of(
+            httpClient, new OutboundMetrics(meterRegistry, OutboundTarget.OCR, null));
+    this.vision =
+        MeteredHttpClient.ByPathClass.of(
+            httpClient, new OutboundMetrics(meterRegistry, OutboundTarget.VISION, null));
+  }
+
+  /**
+   * The measured client of {@code endpoint}'s connection type and the calling thread's path class;
+   * decided before the call moves to {@link #callExecutor}.
+   */
+  private HttpClient clientFor(TextRecognitionEndpoint endpoint) {
+    return (endpoint.connectionType() == TextRecognitionConnectionType.OPENAI_VISION ? vision : ocr)
+        .ofCallingThread();
   }
 
   @PreDestroy
@@ -221,7 +248,9 @@ public class TextRecognitionClient {
    */
   public DoclingConversion convertWithDocling(
       TextRecognitionEndpoint endpoint, Duration timeout, byte[] pdf) {
-    Answer answer = withinDeadline(timeout, () -> exchange(doclingConversion(endpoint, pdf)));
+    HttpClient client = clientFor(endpoint);
+    Answer answer =
+        withinDeadline(timeout, () -> exchange(client, doclingConversion(endpoint, pdf)));
     requireOk(answer);
     JsonNode root = parse(answer.body());
     String status = root.path("status").asString("");
@@ -246,9 +275,10 @@ public class TextRecognitionClient {
    */
   public String recognizePageWithVision(
       TextRecognitionEndpoint endpoint, Duration timeout, byte[] pageImage, String mediaType) {
+    HttpClient client = clientFor(endpoint);
     Answer answer =
         withinDeadline(
-            timeout, () -> exchange(visionRequest(endpoint, pageImage, mediaType).build()));
+            timeout, () -> exchange(client, visionRequest(endpoint, pageImage, mediaType).build()));
     requireOk(answer);
     return visionText(parse(answer.body()));
   }
@@ -273,14 +303,16 @@ public class TextRecognitionClient {
    * 404 with an accepted key and 401 without.
    */
   private Answer probeExchange(TextRecognitionEndpoint endpoint, long deadlineNanos) {
+    HttpClient client = clientFor(endpoint);
     Answer reachable =
-        withinDeadline(remaining(deadlineNanos), () -> exchange(probeRequest(endpoint).build()));
+        withinDeadline(
+            remaining(deadlineNanos), () -> exchange(client, probeRequest(endpoint).build()));
     if (reachable.status() != 200
         || endpoint.connectionType() != TextRecognitionConnectionType.DOCLING_SERVE) {
       return reachable;
     }
     Answer key =
-        withinDeadline(remaining(deadlineNanos), () -> exchange(keyCheckRequest(endpoint)));
+        withinDeadline(remaining(deadlineNanos), () -> exchange(client, keyCheckRequest(endpoint)));
     return key.status() == 404 || key.status() == 200 ? reachable : key;
   }
 
@@ -317,7 +349,9 @@ public class TextRecognitionClient {
           FailedStage.RECOGNITION);
     }
     try {
-      Answer page = withinDeadline(remaining(deadline), () -> exchange(testPageRequest(endpoint)));
+      HttpClient client = clientFor(endpoint);
+      Answer page =
+          withinDeadline(remaining(deadline), () -> exchange(client, testPageRequest(endpoint)));
       return testResult(endpoint, page);
     } catch (TextRecognitionUnavailableException e) {
       return new TestResult(
@@ -510,9 +544,10 @@ public class TextRecognitionClient {
   }
 
   /** The status and at most {@link #MAX_RESPONSE_BYTES} of the body; never throws on a status. */
-  private Answer exchange(HttpRequest request) throws IOException, InterruptedException {
+  private Answer exchange(HttpClient client, HttpRequest request)
+      throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        client.send(request, HttpResponse.BodyHandlers.ofInputStream());
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
         return new Answer(response.statusCode(), new byte[0]);

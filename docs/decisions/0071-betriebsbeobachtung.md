@@ -63,12 +63,13 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
 `http.server.requests`, `opaa.query.duration`, `opaa.query.time_to_first_token`,
-`opaa.ocr.duration`, `gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen
-Histogramm-Buckets an festen SLO-Schwellen (`management.metrics.distribution.slo`), je Timer über
-eine `OPAA_METRICS_SLO_*`-Variable einstellbar; die Long-Task-Timer daneben (`….active`) bleiben
-ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg
-aggregieren lassen, und statt des vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die
-Zahl der Reihen klein halten. Jede Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
+`opaa.ocr.duration`, `opaa.outbound.requests`, `gen_ai.client.operation` und
+`tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
+(`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
+einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
+Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
+vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
+Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
 (immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
 während eines Rolling Updates.
@@ -127,6 +128,42 @@ regelt die Dienstvereinbarung, und das SIEM bekommt die Kennung nicht, damit dor
 verknüpft. Eine Positivliste bleibt dicht, wenn eine Bibliothek neue Attribute einführt. Ein
 Trace-Kontext von außen ließe den Aufrufer die Trace-ID und damit die Stichprobe wählen, einer nach
 außen gäbe Modellanbietern und Quellen eine Kennung, die das eigene Log einer Anfrage zuordnet.
+
+### 8. Ausgehende Aufrufe: ein Messpunkt am Client, Ergebnisklassen statt Adressen
+
+Jeder Aufruf über den JDK-`HttpClient` an Rerank, Transkription, Texterkennung (`ocr`, `vision`),
+Code-Sandbox, Konnektoren, OIDC, Verzeichnisdienste und die Verbindungstests der Verwaltung für
+Chat- und Embedding-Modelle (`model_check`) geht durch `MeteredHttpClient`, den die Clients und
+Client-Fabriken um ihren Client legen. Was nicht über diesen Client geht, misst mit denselben
+`OutboundMetrics`: die Virenprüfung (`clamav`), den Verbindungsaufbau der Live-Transkription
+(`transcription`) und SMB je Austausch, das S3-SDK je Versuch über seine eigenen Metriken (Quellen
+als `connector`, die Originalablage als `original_store`). Ein Versuch, den OPAA vor dem Senden
+ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
+`opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
+(`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
+ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
+`opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein
+Label, Chat und Embedding misst Spring AI. `kind` nimmt nur feste Werte aus dem Code an: bei
+`connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`, `dropbox`,
+`google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`),
+für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`, `service_account` und `mcp`, bei
+`directory` den Anbieter (`keycloak`), sonst `none`. Damit bleibt die Zahl der Reihen begrenzt:
+höchstens rund 370 Kombinationen aus Ziel, Art, Ergebnis und Pfad, je mit den SLO-Buckets aus
+Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
+
+`opaa.model.role.available` liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für
+Chat und Embedding den letzten echten Aufruf des Modells der Rolle je Instanz; die Probe der
+Embedding-Health-Gruppe läuft über dasselbe beobachtete Modell und zählt mit. Aufrufe anderer
+Modelle zählen nicht. Den Stand setzt nur ein Wechsel des Modells der Rolle zurück, erkannt am
+Bezeichner beim Lesen; ein Verbindungsverlust oder Wiederaufbau des Invalidierungsbusses lässt ihn
+stehen, sonst spränge eine ausgefallene Rolle bei jedem Abbruch auf verfügbar. Es ruft kein Modell
+auf, und eine Rolle ohne Einrichtung hat keine Reihe.
+
+Ein Decorator am Client misst jeden Versuch, auch Wiederholungen nach 429, ohne Code je Client und
+ohne die Zielprüfung zu berühren: Er reicht die fertig geprüfte Anfrage nur weiter. Die statisch
+gebauten Clients des Quellzugriffs messen über die globale Registry, an die Spring Boot die
+Registry der Anwendung bindet. Ob ein 429 stört, hängt am Pfad: Im Hintergrund drosselt die
+Indexierung adaptiv, interaktiv wartet eine Person.
 
 ### 9. Indizierung und Verzeichnisabgleich: Konnektortyp als Label, Zustand aus der Datenbank
 
@@ -213,4 +250,6 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
 - Sperrliste der Span-Attribute — lässt jedes neue Attribut einer Bibliothek durch, Entscheidung 7.
 - `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.
+- Micrometer-Observation je ausgehendem Aufruf — legt je Reihe einen Long-Task-Timer und ein `error`-Tag dazu, Entscheidung 8.
+- Eigene Probe für `opaa.model.role.available` — kostete Modellaufrufe je Abruf, Entscheidung 8.
 - Letzter Erfolg je Bibliothek als eigene Reihe — Bibliothekskennung im Label, Entscheidung 9.

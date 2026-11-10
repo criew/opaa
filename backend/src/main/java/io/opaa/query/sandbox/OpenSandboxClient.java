@@ -1,6 +1,11 @@
 package io.opaa.query.sandbox;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.MeteredHttpClient;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundPathClass;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.query.sandbox.SandboxSession.OutputEntry;
 import io.opaa.query.sandbox.SandboxSession.OutputFile;
 import io.opaa.query.sandbox.SandboxSession.ScriptRun;
@@ -89,7 +94,11 @@ class OpenSandboxClient implements Sandboxes {
           .proxy(HttpClient.Builder.NO_PROXY)
           .build();
 
-  OpenSandboxClient(SandboxProperties properties, ObjectMapper objectMapper) {
+  /** {@link #httpClient} measured in {@code opaa.outbound.requests}; a run answers a question. */
+  private final HttpClient measuredClient;
+
+  OpenSandboxClient(
+      SandboxProperties properties, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
     String url = properties.baseUrl();
     this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     this.apiKey = properties.apiKey();
@@ -98,6 +107,11 @@ class OpenSandboxClient implements Sandboxes {
     this.cpu = properties.cpu();
     this.memory = properties.memory();
     this.objectMapper = objectMapper;
+    this.measuredClient =
+        MeteredHttpClient.of(
+            httpClient,
+            new OutboundMetrics(meterRegistry, OutboundTarget.SANDBOX, null),
+            OutboundPathClass.INTERACTIVE);
   }
 
   @PreDestroy
@@ -474,7 +488,7 @@ class OpenSandboxClient implements Sandboxes {
       built = HttpRequest.newBuilder(built, (name, value) -> true).timeout(CALL_TIMEOUT).build();
     }
     try {
-      return httpClient.send(built, handler);
+      return measuredClient.send(built, handler);
     } catch (IOException e) {
       throw new SandboxException("sandbox server unreachable", e);
     } catch (InterruptedException e) {
