@@ -274,7 +274,7 @@ describe('clockLabel and agoLabel', () => {
   it('says „heute" for a time later today and the date otherwise', () => {
     const now = new Date(2026, 8, 20, 9, 0)
     expect(clockLabel(new Date(2026, 8, 20, 15, 0), now)).toBe('heute, 15:00')
-    expect(clockLabel(new Date(2026, 8, 21, 6, 5), now)).toBe('21.09., 06:05')
+    expect(clockLabel(new Date(2026, 8, 21, 6, 5), now)).toBe('21.09.2026, 06:05')
   })
 
   it('reads a past time as its age', () => {

@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import { fontSize } from '../../theme/tokens'
 
 interface WizardStepBarProps {
   steps: readonly string[]
@@ -23,7 +24,7 @@ export default function WizardStepBar({ steps, active }: WizardStepBarProps) {
         m: 0,
         mb: 3.5,
         p: 0,
-        fontSize: 12.5,
+        fontSize: fontSize.meta,
         borderBottom: 1,
         borderColor: 'divider',
       }}

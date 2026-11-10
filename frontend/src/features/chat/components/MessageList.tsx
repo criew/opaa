@@ -18,6 +18,7 @@ import ProvisionalAnswer, {
 } from './ProvisionalAnswer'
 import { stepActivity, stepText } from './agentStepText'
 import { useCopyAnnouncement } from './copyAnnouncer'
+import { iconSize } from '@/shared/theme/tokens'
 
 interface MessageListProps {
   messages: ChatMessage[]
@@ -161,7 +162,7 @@ export default function MessageList({
           color: 'text.secondary',
         }}
       >
-        <SmartToyIcon sx={{ fontSize: 48 }} />
+        <SmartToyIcon sx={{ fontSize: iconSize.xl }} />
         {/* Level 2: this heading follows the page's h1 directly; the h6 look is only visual. */}
         <Typography variant="h6" component="h2">
           Womit kann ich Ihnen heute helfen?

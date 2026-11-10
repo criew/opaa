@@ -9,6 +9,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import { fontSize, iconSize } from '../theme/tokens'
 
 export interface RowMenuItem {
   label: string
@@ -29,7 +30,7 @@ function moreActionsLabel(name: string, detail?: string): string {
 }
 
 const HINT_SX = { px: 2, py: 1, maxWidth: 340 } as const
-const HINT_TEXT_SX = { fontSize: 12, color: 'text.secondary' } as const
+const HINT_TEXT_SX = { fontSize: fontSize.meta, color: 'text.secondary' } as const
 
 /**
  * „⋯": the further actions of a row, tile or detail page, the same everywhere. Trigger, names
@@ -118,7 +119,7 @@ export default function RowMenu({
               ...(Array.isArray(triggerSx) ? triggerSx : triggerSx ? [triggerSx] : []),
             ]}
           >
-            <MoreHorizIcon sx={{ fontSize: dense ? 16 : 20 }} />
+            <MoreHorizIcon sx={{ fontSize: dense ? iconSize.sm : iconSize.md }} />
           </IconButton>
         </Box>
       </Tooltip>
@@ -152,7 +153,7 @@ export default function RowMenu({
                 setOpen(null)
                 item.onClick?.()
               }}
-              sx={{ fontSize: 14, ...(danger && { color: 'error.main' }) }}
+              sx={{ fontSize: fontSize.text, ...(danger && { color: 'error.main' }) }}
             >
               {item.label}
             </MenuItem>,

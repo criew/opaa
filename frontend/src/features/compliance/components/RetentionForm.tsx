@@ -13,6 +13,7 @@ import {
   type RetentionToggle,
   type RetentionValues,
 } from '../utils/retentionPeriod'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RetentionFormProps {
   fields: RetentionField[]
@@ -131,7 +132,7 @@ export default function RetentionForm({
             </Button>
           )}
         </Stack>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           {overridden
             ? `Es gilt ein eigener Wert. Werkseinstellung: ${defaultText}.`
             : 'Es gilt die Werkseinstellung.'}

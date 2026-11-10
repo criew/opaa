@@ -3,6 +3,8 @@ import Typography from '@mui/material/Typography'
 import type { PendingSourceConnection } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatTime } from '@/shared/utils/formatDate'
 
 interface SourceConsentPanelProps {
   profileName: string
@@ -17,7 +19,7 @@ interface SourceConsentPanelProps {
 }
 
 function clockTime(value: string): string {
-  return new Date(value).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return formatTime(value)
 }
 
 /**
@@ -36,11 +38,14 @@ export default function SourceConsentPanel({
 }: SourceConsentPanelProps) {
   return (
     <Box data-testid="source-consent">
-      <Typography component="h4" sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
+      <Typography
+        component="h4"
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: '5px' }}
+      >
         Quelle verbinden
       </Typography>
       {pending ? (
-        <Typography sx={{ fontSize: 13.5, color: 'text.primary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }}>
           {pending.accountLabel ? `Verbunden als „${pending.accountLabel}“` : 'Verbunden'}
           {` · bis ${clockTime(pending.expiresAt)} Uhr anlegen`}
         </Typography>

@@ -148,7 +148,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await openDeleteAction(user, 'Sofort löschen')
-    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Löschen')
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(CATALOG_ROUTE))
     expect(await screen.findByText('„Meine Ablage“ ist gelöscht.')).toBeInTheDocument()
@@ -166,7 +166,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await openDeleteAction(user, 'Sofort löschen')
-    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Löschen')
 
     // the head's one state word says it, with the day it was marked and no promise of an end
     await waitFor(() =>
@@ -197,7 +197,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await openDeleteAction(user, 'Sofort löschen')
-    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Löschen')
 
     expect(
       await screen.findByText(/„Meine Ablage“ ist zur Löschung vorgemerkt/),
@@ -222,7 +222,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await openDeleteAction(user, 'Sofort löschen')
-    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
+    await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Löschen')
     await waitForDialogClosed()
     await waitFor(() => expect(requests).toBe(1))
 

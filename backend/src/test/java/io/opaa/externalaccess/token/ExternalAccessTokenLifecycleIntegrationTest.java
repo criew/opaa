@@ -1,6 +1,7 @@
 package io.opaa.externalaccess.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +20,10 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -28,6 +33,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +71,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
   @Autowired private AuditRetentionSettingsService retention;
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private Clock clock;
+  @Autowired private ExternalAccessTokenService tokenService;
+  @Autowired private DataSource dataSource;
 
   private User owner;
   private User administrator;
@@ -155,6 +163,58 @@ class ExternalAccessTokenLifecycleIntegrationTest {
             clock.instant(),
             expiresAt,
             List.of(libraryId)));
+  }
+
+  /**
+   * A use recorded while a revocation of the same token commits writes only the day of use and
+   * never brings the token back: the revocation holds the row while the use waits behind it.
+   */
+  @Test
+  void aUseRecordedAlongsideARevocationLeavesTheTokenRevoked() throws Exception {
+    ExternalAccessToken token = store("Widerrufen", clock.instant().plus(Duration.ofDays(30)));
+    Thread use;
+    try (Connection revoking = dataSource.getConnection()) {
+      revoking.setAutoCommit(false);
+      try (PreparedStatement lock =
+          revoking.prepareStatement(
+              "SELECT id FROM external_access_tokens WHERE id = ? FOR UPDATE")) {
+        lock.setObject(1, token.getId());
+        lock.executeQuery().close();
+      }
+      int revokingPid = pidOf(revoking);
+      use = Thread.ofPlatform().start(() -> tokenService.recordUse(token.getId()));
+      await().atMost(Duration.ofSeconds(20)).until(() -> waitsBehind(revokingPid));
+      try (PreparedStatement revoke =
+          revoking.prepareStatement(
+              "UPDATE external_access_tokens SET revoked_at = now(), revocation_reason = 'OWNER'"
+                  + " WHERE id = ?")) {
+        revoke.setObject(1, token.getId());
+        revoke.executeUpdate();
+      }
+      revoking.commit();
+    }
+    use.join(Duration.ofSeconds(30));
+
+    ExternalAccessToken stored = tokens.findById(token.getId()).orElseThrow();
+    assertThat(stored.getRevokedAt()).isNotNull();
+    assertThat(stored.getRevocationReason()).isEqualTo(ExternalAccessTokenRevocationReason.OWNER);
+  }
+
+  private static int pidOf(Connection connection) throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement("SELECT pg_backend_pid()");
+        ResultSet rows = statement.executeQuery()) {
+      rows.next();
+      return rows.getInt(1);
+    }
+  }
+
+  private boolean waitsBehind(int pid) {
+    Integer waiting =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM pg_stat_activity WHERE ? = ANY(pg_blocking_pids(pid))",
+            Integer.class,
+            pid);
+    return waiting != null && waiting > 0;
   }
 
   @Test

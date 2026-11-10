@@ -18,6 +18,10 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
 Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
 anzeigen: neues Token erzeugen, altes widerrufen.
 
+Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein
+altes widerrufen ([Konfiguration](../referenz/konfiguration.md)). Das Kontingent an Anfragen je
+Stunde gilt je Token und zugleich für alle Ihre Tokens zusammen.
+
 ## Beispiel OpenCode
 
 In `~/.config/opencode/opencode.json`, den Tokenwert in der Umgebungsvariablen `OPAA_TOKEN`:
@@ -41,7 +45,7 @@ Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse `https://<host>
 **Gut zu wissen:**
 
 - Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.
-- Ein neues Passwort beendet alle Ihre Tokens.
+- Ein neues Passwort beendet alle Ihre Tokens, ebenso die Systemverwaltung als neue Rolle.
 - Jedes neue Token meldet OPAA per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
   informieren.
 - Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein

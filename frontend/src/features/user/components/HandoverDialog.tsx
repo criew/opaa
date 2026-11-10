@@ -16,6 +16,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { PRIVILEGED_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The same limit the creation reason has - and the same purpose binding (ADR-0033, E. 11). */
 const REASON_MAX_LENGTH = 200
@@ -103,14 +104,14 @@ export default function HandoverDialog({
       <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="handover-title">
         <DialogTitle id="handover-title">An Identitätsanbieter übergeben</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
             Für „{user.displayName}“ ({user.email})
           </Typography>
-          <Typography sx={{ fontSize: 13.5, mb: 1 }}>{HANDOVER_EXPLANATION}</Typography>
-          <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, mb: 1 }}>{HANDOVER_EXPLANATION}</Typography>
+          <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
             So läuft es ab
           </Typography>
-          <Box component="ol" sx={{ m: 0, mb: 2, pl: 2.5, fontSize: 13.5 }}>
+          <Box component="ol" sx={{ m: 0, mb: 2, pl: 2.5, fontSize: fontSize.text }}>
             {HANDOVER_STEPS.map((step) => (
               <Box component="li" key={step} sx={{ mb: 0.25 }}>
                 {step}

@@ -99,7 +99,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
 
     await waitFor(() =>
       expect(calls).toEqual([
@@ -115,7 +115,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Abbrechen')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Abbrechen')
 
     expect(calls).toEqual([])
   })
@@ -127,12 +127,8 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 50', /Verzeichnis Partner/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
-    await answerConfirm(
-      user,
-      'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?',
-      'Abbrechen',
-    )
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
+    await answerConfirm(user, /^Für „.*“ freigeben\?$/, 'Abbrechen')
 
     expect(calls).toEqual([])
   })
@@ -175,7 +171,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     const panel = await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
 
     const alert = await within(panel).findByRole('alert')
     expect(alert).toHaveTextContent('Ausgeführt wurden 1 von 2 Schritten')

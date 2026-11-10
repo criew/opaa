@@ -7,6 +7,7 @@ import type {
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { sourceBlockWord } from '@/features/asset'
 import type { LibraryDetailTab } from './libraryDetailAccess'
+import { formatDate, formatNumber } from '@/shared/utils/formatDate'
 
 /** Where the cause of a state lives: a tab and, inside it, the anchor of its row or a filter. */
 export interface StateTarget {
@@ -41,11 +42,7 @@ export type RunWord =
 
 export function formatDay(value: string | null | undefined): string | null {
   if (!value) return null
-  return new Date(value).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return formatDate(value)
 }
 
 /** Events that are errors; removals, throttling and summaries are notes and count as nothing. */
@@ -178,7 +175,7 @@ function stateOf(input: StateInput): LibraryState {
       return {
         word: 'Teilweise fehlgeschlagen',
         tone: 'warning',
-        detail: `${failed.toLocaleString('de-DE')} Fehler`,
+        detail: `${formatNumber(failed)} Fehler`,
         target: { tab: 'dokumente', status: 'FAILED' },
       }
     }

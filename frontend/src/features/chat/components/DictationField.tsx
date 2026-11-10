@@ -3,6 +3,7 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import { LEVEL_HISTORY } from '../hooks/useDictation'
 import type { ChatDictation } from './useChatDictation'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** RMS that fills a bar; normal speech with gain control sits around 0.05-0.2. */
 const FULL_SCALE_RMS = 0.2
@@ -46,7 +47,12 @@ export default function DictationField({ dictation, draft }: DictationFieldProps
       {(draft || interim) && (
         <Typography
           component="div"
-          sx={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+          sx={{
+            fontSize: fontSize.text,
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+          }}
         >
           {draft}
           {draft && interim && !/\s$/.test(draft) ? ' ' : ''}
@@ -90,7 +96,11 @@ export default function DictationField({ dictation, draft }: DictationFieldProps
           <Typography
             component="span"
             aria-hidden="true"
-            sx={{ fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}
+            sx={{
+              fontSize: fontSize.meta,
+              color: 'text.secondary',
+              fontVariantNumeric: 'tabular-nums',
+            }}
           >
             {formatDuration(dictation.elapsedSeconds)}
           </Typography>
@@ -101,7 +111,7 @@ export default function DictationField({ dictation, draft }: DictationFieldProps
           aria-label="Text wird erkannt"
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 24 }}
         >
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Text wird erkannt …
           </Typography>
           <LinearProgress aria-hidden="true" sx={{ flex: 1 }} />

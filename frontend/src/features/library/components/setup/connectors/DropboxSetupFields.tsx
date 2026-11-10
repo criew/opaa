@@ -15,6 +15,7 @@ import {
 import ScopePicker from '../ScopePicker'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import FolderScope from './FolderScope'
+import { fontSize } from '@/shared/theme/tokens'
 
 export function DropboxConnectionFields({
   values,
@@ -24,7 +25,7 @@ export function DropboxConnectionFields({
 }: SetupFieldsProps<DropboxSourceValues>) {
   if (isDropboxTeamApp(context.connection)) {
     return (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         Der Zugang ist eine Team-App: Die Bibliothek liest Team-Ordner des Teams als
         Team-Administration, auch solche, die kein einzelnes Mitgliedskonto sieht.
       </Typography>

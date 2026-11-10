@@ -1,13 +1,19 @@
 package io.opaa.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.auth.RecentLoginPolicy;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.mail.MailTemplateKey;
+import io.opaa.organization.Organization;
 import io.opaa.ratelimit.InstallationCounters;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -774,6 +784,67 @@ class SettingsTransferIntegrationTest {
         .andExpect(jsonPath("$.changes[0].securityRelevant").value(true))
         .andExpect(jsonPath("$.changes[1].keyLabel").value("Tagesgrenze"))
         .andExpect(jsonPath("$.changes[1].securityRelevant").value(false));
+  }
+
+  /**
+   * An import that changes a security-relevant value - here the sender of every mail - demands a
+   * recent sign-in like the administration does; a token from a refresh changes nothing.
+   */
+  @Test
+  void aSecurityRelevantImportWithoutARecentSignInIsRefusedAndChangesNothing() throws Exception {
+    assertImportRefusedWithoutRecentSignIn(
+        Map.of("mail", Map.of("fromAddress", "absender@fremd.example")));
+  }
+
+  /**
+   * Mail access, templates and the rules of the local sign-in demand a recent sign-in for every
+   * change in the administration, so the import does too, also for keys not marked
+   * security-relevant.
+   */
+  @Test
+  void anyChangeOfTheMailOrLocalSignInSectionsWithoutARecentSignInIsRefused() throws Exception {
+    Boolean resetEnabled =
+        jdbc.queryForObject(
+            "SELECT password_reset_enabled FROM local_auth_settings LIMIT 1", Boolean.class);
+    assertImportRefusedWithoutRecentSignIn(
+        Map.of(
+            "localAccounts", Map.of("passwordResetEnabled", !Boolean.TRUE.equals(resetEnabled))));
+    assertImportRefusedWithoutRecentSignIn(Map.of("mail", Map.of("fromName", "Fremder Absender")));
+  }
+
+  private void assertImportRefusedWithoutRecentSignIn(Map<String, Map<String, Object>> sections)
+      throws Exception {
+    String before = export();
+    UUID adminId =
+        jdbc.queryForObject(
+            "SELECT id FROM users WHERE subject = ? AND system_role = 'SYSTEM_ADMIN'"
+                + " ORDER BY created_at LIMIT 1",
+            UUID.class,
+            ADMIN);
+    CurrentUser actor =
+        CurrentUser.of(adminId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Verwaltung");
+    SettingsDocument document =
+        new SettingsDocument(
+            SettingsTransferService.FORMAT, SettingsTransferService.FORMAT_VERSION, null, sections);
+    Jwt refreshed =
+        Jwt.withTokenValue("refreshed")
+            .header("alg", "none")
+            .subject(ADMIN)
+            .claim("iss", "test-issuer")
+            .build();
+
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(refreshed));
+    try {
+      assertThatThrownBy(() -> transfer.importDocument(actor, document))
+          .isInstanceOfSatisfying(
+              AccessDeniedException.class,
+              refusal -> assertThat(refusal.getCode()).isEqualTo(RecentLoginPolicy.CODE));
+    } finally {
+      SecurityContextHolder.clearContext();
+    }
+
+    assertThat(export()).isEqualTo(withoutExportedAt(before));
+    assertThat(auditEventTypes()).isEmpty();
   }
 
   /** Duplicate keys, unknown fields at any level and {@code null} for a list are refused. */

@@ -14,6 +14,7 @@ import {
   transcriptionSuitable,
   type DiscoveryPurpose,
 } from './modelDiscovery'
+import { fontSize } from '../../theme/tokens'
 
 const LABEL = 'Modell-Kennung'
 
@@ -155,12 +156,19 @@ export default function ModelIdentifierField({
           <Box component="li" key={key} {...optionProps}>
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                sx={{ fontFamily: fontFamily.mono, fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}
+                sx={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize.text,
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
               >
                 {model.identifier}
               </Typography>
               {facts.length > 0 && (
-                <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
+                <Typography
+                  sx={{ fontSize: fontSize.meta, color: 'text.secondary', lineHeight: 1.4 }}
+                >
                   {facts.join(' · ')}
                 </Typography>
               )}

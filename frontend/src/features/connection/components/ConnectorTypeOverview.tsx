@@ -15,6 +15,7 @@ import StateDot from '@/shared/ui/StateDot'
 import SourceTypeIcon from './sourceTypeIcon'
 import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { profileRuleLabel } from './connectorTypeState'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 export interface ConnectorTypeEntry {
   state: ConnectorTypeStateResponse
@@ -31,9 +32,9 @@ function NameCell({ state }: { state: ConnectorTypeStateResponse }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
       <Box aria-hidden="true" sx={{ display: 'flex', color: 'text.secondary' }}>
-        <SourceTypeIcon sourceType={state.sourceType as SourceTypeKey} fontSize={18} />
+        <SourceTypeIcon sourceType={state.sourceType as SourceTypeKey} fontSize={iconSize.md} />
       </Box>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
         {state.displayName}
       </Typography>
     </Box>

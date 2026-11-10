@@ -303,6 +303,22 @@ nonPersonalTables:
     [id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
+  agents:
+    - id
+    - asset_type
+    - organization_id
+    - instruction
+    - plan_step
+    - max_tool_calls
+    - max_search_calls
+    - max_duration_seconds
+    - max_collected_chars
+    - revision
+    - seed_key
+  agent_libraries: [agent_id, library_id]
+  agent_tools: [agent_id, tool_name]
+  agent_settings_tools: [settings_id, tool_name]
+  agent_seeds: [organization_id, seed_key, created_at]
   document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
   document_template_files: [template_id, content]
   prompts:

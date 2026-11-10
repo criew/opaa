@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /** The note under a scope: everything indexed from it is visible to every reader of the library. */
 export default function ScopeConsequence({
@@ -21,9 +22,9 @@ export default function ScopeConsequence({
     >
       <InfoOutlinedIcon
         aria-hidden
-        sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
+        sx={{ fontSize: iconSize.sm, color: 'primary.main', mt: '2px', flexShrink: 0 }}
       />
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{children}</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>{children}</Typography>
     </Stack>
   )
 }

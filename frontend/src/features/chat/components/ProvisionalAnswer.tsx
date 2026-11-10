@@ -33,7 +33,7 @@ export default function ProvisionalAnswer({ text, run }: ProvisionalAnswerProps)
       <Box sx={{ borderLeft: 3, borderColor: 'divider', borderLeftStyle: 'dashed', pl: 2 }}>
         {/* Without a citation index the renderer drops every marker; the open one at the end it
             cannot recognise yet. */}
-        <MarkdownRenderer content={text.replace(OPEN_MARKER_AT_END, '')} />
+        <MarkdownRenderer reading content={text.replace(OPEN_MARKER_AT_END, '')} />
       </Box>
       {run && <AgentRunSteps run={run} />}
     </Box>

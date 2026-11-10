@@ -17,6 +17,7 @@ import {
   realtimePresetOf,
   type RealtimeDraft,
 } from '@/shared/ui/transcription/realtimeTranscription'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RealtimeTranscriptionFieldsProps {
   idPrefix: string
@@ -68,7 +69,7 @@ export default function RealtimeTranscriptionFields({
 
   return (
     <Stack spacing={2}>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         {REALTIME_TEXTS.alwaysDictation}
       </Typography>
       <FormControlLabel
@@ -84,7 +85,7 @@ export default function RealtimeTranscriptionFields({
       {value.live && (
         <>
           <Stack spacing={1}>
-            <Typography id={protocolLabelId} sx={{ fontSize: 13 }}>
+            <Typography id={protocolLabelId} sx={{ fontSize: fontSize.text }}>
               {REALTIME_TEXTS.protocolLabel}
             </Typography>
             <ChoiceTileGroup<RealtimeTranscriptionProtocol>

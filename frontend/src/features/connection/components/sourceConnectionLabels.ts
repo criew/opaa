@@ -4,6 +4,7 @@ import type {
   SourceConnectionResponsible,
 } from '@/shared/api/types'
 import { endCauseLabel } from '@/features/audit'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** Who answers for a library's source connection; a name the server withholds stays unnamed. */
 export function responsibleLabel(responsible: SourceConnectionResponsible): string {
@@ -35,5 +36,5 @@ export function sourceBlockReasonLabel(reason: SourceBlockReason): string {
 }
 
 export function formatConsentTime(value: string): string {
-  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+  return formatDateTime(value)
 }

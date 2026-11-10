@@ -14,6 +14,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import GroupStewardsSection from './GroupStewardsSection'
 import GroupFormFields, { type GroupFormValues } from './GroupFormFields'
 import { groupStateReason } from './groupListLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 const SOURCE_NOTICE: Record<string, string> = {
   ORG_UNIT:
@@ -98,7 +99,7 @@ function GroupEditDialogContent({
     <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="group-edit-title">
       <DialogTitle id="group-edit-title">„{group.name}“ bearbeiten</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
           {group.provider ? group.provider.displayName : 'Interne Gruppe'}
           {group.sourcePath ? ` · ${group.sourcePath}` : ''}
         </Typography>

@@ -21,6 +21,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import PageSection from '@/shared/ui/PageSection'
 import PublicBaseUrlMissingAlert from '@/shared/ui/smtp/PublicBaseUrlMissingAlert'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import {
   SMTP_ENCRYPTION_OPTIONS,
   SMTP_LABELS,
@@ -30,6 +31,8 @@ import {
 } from '@/shared/ui/smtp/smtpSettings'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
+import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Mirrors `MailSettingsService.PASSWORD_MASK`: sending it back means „unverändert". */
 const PASSWORD_MASK = '***'
@@ -82,6 +85,8 @@ export default function MailServerSection() {
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
   const [isTesting, setIsTesting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const gate = useRecentLoginGate(MAIL_CONFIRM_PURPOSE)
 
   useEffect(() => {
     void loadSettings()
@@ -134,7 +139,7 @@ export default function MailServerSection() {
     return currentSettings.passwordSet ? PASSWORD_MASK : ''
   }
 
-  async function handleSave() {
+  async function handleSave(afterConfirmation = false) {
     const request: MailSettingsUpdateRequest = {
       enabled: currentForm.enabled,
       host: currentForm.host.trim() || null,
@@ -146,12 +151,19 @@ export default function MailServerSection() {
       fromName: currentForm.fromName.trim() || null,
     }
     setPasswordError(null)
+    setRefusal(null)
     try {
       await saveSettings(request)
+      gate.settled()
       setForm((current) => (current ? { ...current, password: '' } : current))
       setClearPassword(false)
       notify('Die E-Mail-Einstellungen wurden gespeichert.', 'success')
     } catch (err) {
+      const refused = gate.refusal(err, () => void handleSave(true), afterConfirmation)
+      if (refused !== null) {
+        if (refused) setRefusal(refused)
+        return
+      }
       // the store holds the message for the alert above; a refusal of the password goes to its field
       setPasswordError(
         apiFieldErrors(err).find((fieldError) => fieldError.field === 'password')?.message ?? null,
@@ -181,9 +193,9 @@ export default function MailServerSection() {
 
       {!settings.publicBaseUrlConfigured && <PublicBaseUrlMissingAlert sx={{ mb: 2.5 }} />}
 
-      {error && (
+      {(refusal ?? error) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {refusal ?? error}
         </Alert>
       )}
 
@@ -316,7 +328,7 @@ export default function MailServerSection() {
               Testmail an mich senden
             </Button>
           </Stack>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
             sich hier bewusst nicht eintragen.
           </Typography>
@@ -328,6 +340,7 @@ export default function MailServerSection() {
           )}
         </Stack>
       </PageSection>
+      {gate.dialog}
     </Box>
   )
 }

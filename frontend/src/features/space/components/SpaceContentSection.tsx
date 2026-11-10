@@ -102,7 +102,7 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
     } catch (err) {
       failure = successionAwareMessage(
         err,
-        associated ? 'Zuordnung fehlgeschlagen' : 'Lösen fehlgeschlagen',
+        associated ? 'Zuordnung fehlgeschlagen' : 'Entfernen fehlgeschlagen',
       )
     }
     pending.current.delete(key)

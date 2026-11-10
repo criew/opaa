@@ -68,7 +68,7 @@ export function useBulkDocumentActions({
       question:
         ids.length === 1 ? '1 Dokument löschen?' : `${ids.length} ausgewählte Dokumente löschen?`,
       consequence:
-        'Die Dokumente werden mit ihren Anhängen aus dieser Bibliothek entfernt. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Die Dokumente werden mit ihren Anhängen aus dieser Bibliothek gelöscht; Antworten finden sie nicht mehr.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

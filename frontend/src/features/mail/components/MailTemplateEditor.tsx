@@ -12,12 +12,14 @@ import { useMailStore } from '../stores/mailStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useMailTemplatePreview } from '../hooks/useMailTemplatePreview'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import MailTemplatePreviewPane from './MailTemplatePreviewPane'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
+import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 
 /** What a placeholder inserts into the finished message — wording as in the backend's sample. */
 const placeholderDescriptions: Record<string, string> = {
@@ -53,6 +55,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   const [showComparison, setShowComparison] = useState(false)
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const gate = useRecentLoginGate(MAIL_CONFIRM_PURPOSE)
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   /** Which field a placeholder chip inserts into - the one that had the caret last. */
@@ -93,14 +97,19 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
     })
   }
 
-  async function handleSave() {
+  async function handleSave(afterConfirmation = false) {
+    setRefusal(null)
     try {
       // bodyHtml unchanged: the PUT is a full replacement, so leaving the field out would quietly
       // drop an HTML override somebody stored through the API.
       await saveTemplate(template.key, { subject, bodyPlain, bodyHtml: template.bodyHtml })
+      gate.settled()
       notify(`„${template.label}“ wurde gespeichert.`, 'success')
-    } catch {
-      // the store holds the backend's field error; the alert below renders it
+    } catch (err) {
+      // a refusal for want of a recent sign-in opens the confirmation; any other refusal is the
+      // store's backend field error, which the alert below renders
+      const refused = gate.refusal(err, () => void handleSave(true), afterConfirmation)
+      if (refused) setRefusal(refused)
     }
   }
 
@@ -141,21 +150,21 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
-        <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600 }}>
+        <Typography component="h2" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
           {template.label}
         </Typography>
         <MetaBadge>{template.source === 'DATABASE' ? 'angepasst' : 'Standard'}</MetaBadge>
         <Typography
           component="code"
-          sx={{ fontFamily: 'monospace', fontSize: 12, color: 'text.secondary' }}
+          sx={{ fontFamily: 'monospace', fontSize: fontSize.meta, color: 'text.secondary' }}
         >
           {template.key}
         </Typography>
       </Box>
 
-      {error && (
+      {(refusal ?? error) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {refusal ?? error}
         </Alert>
       )}
 
@@ -194,7 +203,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             <SectionHead id="mail-placeholders-head" underline={false}>
               Zulässige Platzhalter
             </SectionHead>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, mb: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, mb: 1 }}>
               Ein Klick fügt den Platzhalter an der Schreibmarke ein. Ein anderer Name wird beim
               Speichern abgewiesen — eine Vorlage, die erst beim Versand scheitert, scheitert,
               während jemand auf seine Einladung wartet.
@@ -254,7 +263,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
           </Stack>
 
           {isDirty && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Zum Testen zuerst speichern: Die Testmail verschickt die gespeicherte Fassung, nicht
               den Entwurf im Editor.
             </Typography>
@@ -286,6 +295,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         error={preview.error}
         isLoading={preview.isLoading}
       />
+      {gate.dialog}
     </Box>
   )
 }
@@ -301,17 +311,19 @@ function ComparisonColumn({
 }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
         {heading}
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Betreff</Typography>
-      <Typography sx={{ fontSize: 13.5, mb: 1.5, wordBreak: 'break-word' }}>{subject}</Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Textfassung</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>Betreff</Typography>
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5, wordBreak: 'break-word' }}>
+        {subject}
+      </Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>Textfassung</Typography>
       <Typography
         component="pre"
         sx={{
           fontFamily: 'monospace',
-          fontSize: 12,
+          fontSize: fontSize.meta,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           border: 1,

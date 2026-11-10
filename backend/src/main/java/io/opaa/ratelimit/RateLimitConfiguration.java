@@ -11,6 +11,7 @@ import io.opaa.ratelimit.RateLimitFilter.Rule;
 import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
+import io.opaa.ratelimit.RateLimitProperties.WriteLimit;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -76,6 +77,17 @@ public class RateLimitConfiguration {
 
   /** The dictation; the availability next to it stays outside. */
   static final String TRANSCRIPTION_PATTERN = "^/api/v1/transcriptions$";
+
+  /** Opening a live dictation: the WebSocket upgrade, which opens an upstream session. */
+  static final String TRANSCRIPTION_STREAM_PATTERN = "^/api/v1/transcriptions/stream$";
+
+  /**
+   * Every writing call under {@code /api/v1}; matched last, so a rule with a budget of its own
+   * comes first. Keyed by the client alone: another object buys no fresh budget.
+   */
+  static final String WRITE_PATTERN = "^/api/v1/";
+
+  static final String WRITE_METHODS = "POST|PUT|PATCH|DELETE";
 
   /**
    * The upload into a library, keyed by the client alone and for {@code POST} only: another library
@@ -197,6 +209,13 @@ public class RateLimitConfiguration {
             properties.documentUpload(),
             AUTHENTICATED,
             "POST"));
+    rules.add(
+        rule(
+            counters,
+            "transcription-stream",
+            TRANSCRIPTION_STREAM_PATTERN,
+            properties.transcriptionStream(),
+            AUTHENTICATED));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule(counters, "local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule(counters, "local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
@@ -231,6 +250,18 @@ public class RateLimitConfiguration {
             LOCAL_CONFIRM_REGISTRATION_PATTERN,
             localAuth.verifyEmail()));
     rules.add(rule(counters, "local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
+    // Last: only what no rule above covers. Without a ceiling for the installation (WriteLimit).
+    WriteLimit write = properties.write();
+    rules.add(
+        new Rule(
+            "write",
+            WRITE_PATTERN,
+            new RateLimitService(write.maxRequests(), write.windowSeconds()),
+            null,
+            RateLimitFilter.ALWAYS_SERVED,
+            AUTHENTICATED,
+            new RateLimitService(write.maxRequestsPerAccount(), write.windowSeconds()),
+            WRITE_METHODS));
 
     var registration =
         new FilterRegistrationBean<>(
