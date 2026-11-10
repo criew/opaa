@@ -1,6 +1,7 @@
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import type { Theme } from '@mui/material/styles'
@@ -39,6 +40,16 @@ export default function AssetFilterChips({
 }: AssetFilterChipsProps) {
   const chipSx = (theme: Theme) =>
     compact ? { [compact(theme)]: { '& .MuiChip-label': { px: 1 } } } : {}
+  // Narrow, the favourites chip shows its star alone; the label stays as its accessible name.
+  const favoritesSx = (theme: Theme) =>
+    compact
+      ? {
+          [compact(theme)]: {
+            '& .MuiChip-icon': { mx: 0.75 },
+            '& .MuiChip-label': visuallyHidden,
+          },
+        }
+      : {}
   return (
     <Stack
       direction="row"
@@ -48,7 +59,16 @@ export default function AssetFilterChips({
       aria-label="Filter"
       sx={{ flexWrap: 'wrap', alignItems: 'center' }}
     >
-      {separated && <Divider orientation="vertical" flexItem sx={{ mr: 0.5 }} />}
+      {separated && (
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={(theme) => ({
+            mr: 0.5,
+            ...(compact ? { [compact(theme)]: { display: 'none' } } : {}),
+          })}
+        />
+      )}
       <Chip
         label="Favoriten"
         icon={value.favorites ? <StarIcon /> : <StarBorderIcon />}
@@ -56,7 +76,7 @@ export default function AssetFilterChips({
         variant={value.favorites ? 'filled' : 'outlined'}
         aria-pressed={value.favorites}
         onClick={() => onToggle('favorites')}
-        sx={chipSx}
+        sx={favoritesSx}
       />
       {value.selectedOnly !== undefined && (
         <Chip
