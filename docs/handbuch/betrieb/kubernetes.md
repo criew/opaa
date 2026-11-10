@@ -1731,10 +1731,10 @@ Backend weiter.
 | `metrics.serviceMonitor.labels` | leer | Labels, nach denen der Prometheus seine ServiceMonitors auswählt |
 | `metrics.serviceMonitor.interval`, `scrapeTimeout` | `30s`, `10s` | Abfrageintervall und Timeout |
 | `metrics.podAnnotations` | `false` | setzt `prometheus.io/scrape`, `port` und `path` am Backend-Pod, für Prometheus ohne Operator |
-| `metrics.scrapeFrom` | Pods mit `app.kubernetes.io/name: prometheus` in jedem Namespace | wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind |
+| `metrics.scrapeFrom` | Pods mit `app.kubernetes.io/name: prometheus` im Namespace `monitoring` | wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind |
 
-Mit **kube-prometheus-stack** genügen zwei Werte. Der Prometheus dieses Charts wählt ServiceMonitors
-nach dem Label `release` mit dem Namen seines Releases aus:
+Mit **kube-prometheus-stack** im Namespace `monitoring` genügen zwei Werte. Der Prometheus dieses
+Charts wählt ServiceMonitors nach dem Label `release` mit dem Namen seines Releases aus:
 
 ```yaml
 metrics:
@@ -1745,7 +1745,21 @@ metrics:
 ```
 
 Seine Pods tragen `app.kubernetes.io/name: prometheus`, die Vorgabe von `metrics.scrapeFrom` lässt
-sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nach `metrics.scrapeFrom`.
+sie also durch. Der Management-Port antwortet ohne Anmeldung; die Vorgabe öffnet ihn deshalb nur
+einem Namespace, nicht jedem Pod mit diesem Label im Cluster. Läuft der Prometheus in einem anderen
+Namespace oder ist er anders beschriftet, gehört sein Selektor nach `metrics.scrapeFrom`:
+
+```yaml
+metrics:
+  scrapeFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: observability
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+```
+
 Fehlen dort die passenden Labels, sieht man das am Alarm `OpaaBackendMetricsMissing`.
 
 Welche Metriken das Backend liefert, steht unter
