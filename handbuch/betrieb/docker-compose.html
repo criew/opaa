@@ -2626,6 +2626,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2917,6 +2921,17 @@
     <span class="md-ellipsis">
       
         Texterkennung im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring im Compose-Stapel
       
     </span>
   </a>
@@ -3560,6 +3575,62 @@
     
   
     Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
   
 
     
@@ -4470,6 +4541,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#monitoring-im-compose-stapel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring im Compose-Stapel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mehrere-backend-instanzen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5131,6 +5213,13 @@ weitere Befehl für diesen Stapel nennt beide Dateien.</p>
   <code>docker-compose.multi.yml</code> gehören <code>backend-a</code> und <code>backend-b</code> in einer eigenen Override-Datei
   ebenfalls in die Netze <code>default</code> und <code>ocr</code>, mit denselben beiden Variablen.</li>
 </ul>
+<h2 id="monitoring-im-compose-stapel">Monitoring im Compose-Stapel<a class="headerlink" href="#monitoring-im-compose-stapel" title="Permanent link">&para;</a></h2>
+<p>Das Overlay <code>docker-compose.monitoring.yml</code> startet Prometheus mit den Alarmen und Grafana mit den
+Dashboards auf einem eigenen Port an <code>127.0.0.1</code>, für eine eigene Subdomain hinter dem
+Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort <code>OPAA_GRAFANA_ADMIN_PASSWORD</code> ist
+Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder <code>.env</code>. Einrichtung und
+Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
+<a href="dashboards-und-alarme.html#compose">Dashboards und Alarme</a>.</p>
 <h2 id="mehrere-backend-instanzen">Mehrere Backend-Instanzen<a class="headerlink" href="#mehrere-backend-instanzen" title="Permanent link">&para;</a></h2>
 <p><code>docker-compose.multi.yml</code> ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
 eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen. Wie die Instanzen
@@ -5353,10 +5442,12 @@ des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung
 durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
 gehören nicht dazu.</p>
 <ul>
-<li><strong>Ports nur an Loopback.</strong> Jeder veröffentlichte Port bindet an <code>127.0.0.1</code>. Nur <code>frontend</code> und
-  <code>keycloak</code> lassen sich über <code>OPAA_FRONTEND_BIND_ADDRESS</code> bzw. <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> öffnen,
-  beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; <code>network_mode: host</code> kommt
-  nicht vor. Der Texterkennungsdienst veröffentlicht gar keinen Port, auch nicht an Loopback.</li>
+<li><strong>Ports nur an Loopback.</strong> Jeder veröffentlichte Port bindet an <code>127.0.0.1</code>. Nur <code>frontend</code>,
+  <code>keycloak</code> und <code>grafana</code> lassen sich über <code>OPAA_FRONTEND_BIND_ADDRESS</code>,
+  <code>OPAA_KEYCLOAK_BIND_ADDRESS</code> bzw. <code>OPAA_GRAFANA_BIND_ADDRESS</code> öffnen, alle mit Loopback als
+  Vorgabe, die keine Umgebungsvorlage ändert; <code>network_mode: host</code> kommt nicht vor. Der
+  Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar keinen Port, auch
+  nicht an Loopback.</li>
 <li><strong>Keine anonyme Systemverwaltung jenseits von Loopback.</strong> Keine Vorlage setzt
   <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code>, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus <code>dev</code> den Start verweigern kann.</li>

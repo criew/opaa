@@ -12,7 +12,7 @@
         <link rel="prev" href="sicherung-und-wiederherstellung.html">
       
       
-        <link rel="next" href="nachvollziehbarkeit.html">
+        <link rel="next" href="dashboards-und-alarme.html">
       
       
         
@@ -2626,6 +2626,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3242,6 +3246,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4397,7 +4457,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_scheduled_last_success</code>, <code>opaa_scheduled_expected_interval_seconds</code>, <code>opaa_scheduled_failures_total</code></td>
-<td>je geplantem Lauf (<code>job</code>, der Name seiner Sperre oder Klasse und Methode): Unix-Zeit des letzten erfolgreichen Laufs auf dieser Instanz, frühestens ihr Start, Abstand zweier Termine und Läufe, die mit einem Fehler endeten. Ein abgeschalteter Lauf hat keine Reihe. Unter der Sperre läuft jeder Termin auf einer Instanz: überfällig ist ein Lauf, wenn <code>time() - max by (job) (opaa_scheduled_last_success)</code> ein Mehrfaches seines Abstands übersteigt; das gilt auch für einen Lauf, der seit dem Start nie gelang. Als Fehler zählt auch ein Lauf, der einen Fehler selbst abfängt und protokolliert, etwa um mit dem nächsten Eintrag weiterzumachen</td>
+<td>je geplantem Lauf (<code>scheduled_job</code>, der Name seiner Sperre oder Klasse und Methode): Unix-Zeit des letzten erfolgreichen Laufs auf dieser Instanz, frühestens ihr Start, Abstand zweier Termine und Läufe, die mit einem Fehler endeten. Ein abgeschalteter Lauf hat keine Reihe. Unter der Sperre läuft jeder Termin auf einer Instanz: überfällig ist ein Lauf, wenn <code>time() - max by (scheduled_job) (opaa_scheduled_last_success)</code> ein Mehrfaches seines Abstands übersteigt; das gilt auch für einen Lauf, der seit dem Start nie gelang. Als Fehler zählt auch ein Lauf, der einen Fehler selbst abfängt und protokolliert, etwa um mit dem nächsten Eintrag weiterzumachen</td>
 </tr>
 <tr>
 <td><code>opaa_scheduled_locks_held</code>, <code>opaa_scheduled_locks_oldest_age_seconds</code></td>
@@ -4459,6 +4519,14 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td><code>jvm_memory_used_bytes</code>, <code>jvm_memory_max_bytes</code></td>
 <td>Speicher der JVM</td>
 </tr>
+<tr>
+<td><code>jvm_gc_live_data_size_bytes</code>, <code>jvm_gc_max_data_size_bytes</code></td>
+<td>Heap, der nach der letzten Speicherbereinigung belegt blieb, und sein Höchstwert; ihr Verhältnis zeigt, ob der Heap wirklich knapp wird</td>
+</tr>
+<tr>
+<td><code>process_start_time_seconds</code></td>
+<td>Startzeit der Instanz als Unix-Zeit; zeigt Neustarts</td>
+</tr>
 </tbody>
 </table>
 <p>Die Werte zu letztem Erfolg, überfälligen Bibliotheken und Verzeichnisabgleich liest jede Instanz
@@ -4514,8 +4582,10 @@ diese Werte an:</p>
 </ul>
 <p>Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
-unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln und Alarme unter Kubernetes:
-<a href="kubernetes.html#betriebsüberwachung">Betriebsüberwachung</a>.</p>
+unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln unter Kubernetes:
+<a href="kubernetes.html#betriebsüberwachung">Betriebsüberwachung</a>; Dashboards und Alarme für Kubernetes und
+Compose: <a href="dashboards-und-alarme.html">Dashboards und Alarme</a>, was bei einem Alarm zu tun ist:
+<a href="alarme.html">Alarme</a>.</p>
 <h2 id="ausleitung-an-ein-sicherheitsmonitoring">Ausleitung an ein Sicherheitsmonitoring<a class="headerlink" href="#ausleitung-an-ein-sicherheitsmonitoring" title="Permanent link">&para;</a></h2>
 <p>OPAA kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
 geben, damit Verwaltungshandeln wie Rechteänderungen, Kontosperren oder Zugriffe auf das Protokoll

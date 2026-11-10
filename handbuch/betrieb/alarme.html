@@ -1,0 +1,5810 @@
+
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="dashboards-und-alarme.html">
+      
+      
+        <link rel="next" href="nachvollziehbarkeit.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/opaa-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Alarme - OPAA-Handbuch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/opaa.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#alarme" class="md-skip">
+          Zum Inhalt
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OPAA-Handbuch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Alarme
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Dunkles Farbschema"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dunkles Farbschema" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Helles Farbschema"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Helles Farbschema" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Suche" placeholder="Suche" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Suche">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Zurücksetzen" aria-label="Zurücksetzen" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Suche wird initialisiert
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  <img src="../assets/opaa-mark-hell.svg" alt="logo">
+
+    </a>
+    OPAA-Handbuch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OPAA-Handbuch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benutzer
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Benutzer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstieg und Chat
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Einstieg und Chat
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/erste-schritte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Erste Schritte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/fragen-stellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fragen stellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/belege-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/anhaengen-und-diktieren.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dateien anhängen und Spracheingabe
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompts-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/antworten-weitergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Antworten weitergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/chats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chats verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-inhalte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inhalte eines Space zuordnen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-mitglieder.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mitglieder eines Space verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/space-einstellungen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Space-Einstellungen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Katalog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Katalog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/katalog.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Katalog nutzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wissensbibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/prompt-bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt-Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/vorlage-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vorlage anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek pflegen
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bibliothek pflegen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/arbeitsmittel-teilen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek teilen und für KI-Werkzeuge freigeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/bibliothek-aktuell-halten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bibliothek aktuell halten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/metadaten-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../benutzer/konnektoren/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quellen anbinden
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quellen anbinden
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/filesystem.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Verzeichnis im Dateisystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/http-directory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Webverzeichnis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/rss-feed.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Confluence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/s3.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: S3-Objektspeicher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/smb.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Windows-Dateifreigabe (SMB)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/sharepoint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: SharePoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/onedrive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: OneDrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/google-drive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Google Drive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/nextcloud.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konnektoren/dropbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Dropbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto und Zugriff
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konto und Zugriff
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/konto-verbinden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto verbinden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/private-bibliothek.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/ki-werkzeug-einrichten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/gruppe-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interne Gruppe pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/zugriff-nachvollziehen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugriffsberechtigung nachvollziehen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/meine-daten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Passwort ändern und Daten herunterladen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../administration/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Administration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemverwaltung
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Systemverwaltung
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einfuehrung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einführung vorbereiten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/branding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lokale Konten verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anmeldung-einstellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anmeldung einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/konto-uebergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konto an Identitätsanbieter übergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/systemrollen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemrollen vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/gruppen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gruppen verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/anlegerechte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anlegerechte vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/ausscheiden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ausscheiden und Nachfolge regeln
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/zugaenge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugänge einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/modelle.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/suche-und-indexierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suche und Indexierung überwachen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/externe-ki-werkzeuge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Externe KI-Werkzeuge zulassen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/datenschutz.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/e-mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/virenpruefung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Virenprüfung einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/vorlagen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vorlagen einschalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/einstellungen-uebertragen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstellungen übertragen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revision
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Revision
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/stichtagsauskunft.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stichtagsauskunft erstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/nachweisprotokoll-lesen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachweisprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/verbindungsprotokoll.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verbindungsprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Betrieb
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Betrieb
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="schnellstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schnellstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="docker-compose.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kubernetes.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="authentifizierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentifizierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modell-endpunkte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="texterkennung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Texterkennung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sandbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sandbox für Agenten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="netz-und-sicherheit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Netz und Sicherheit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="datenbank.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenbank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="originalablage.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mehrere-instanzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mehrere Backend-Instanzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="images-und-laufzeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images und Laufzeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="aktualisierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aktualisierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sicherung-und-wiederherstellung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sicherung und Wiederherstellung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ueberwachung-und-fehlerbehebung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="alarme.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#schweregrade-und-bereiche" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schweregrade und Bereiche
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenig-verkehr-fehlende-und-unlesbare-werte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenig Verkehr, fehlende und unlesbare Werte
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#folgealarme-unterdrücken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Folgealarme unterdrücken
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plattform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plattform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plattform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaabackendnotready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaBackendNotReady
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaabackendmetricsmissing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaBackendMetricsMissing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaafrontendnotready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaFrontendNotReady
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaheapusagehigh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaHeapUsageHigh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaadatabasepooltimeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDatabasePoolTimeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainstanceheartbeatstale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInstanceHeartbeatStale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainvalidationbusdisconnected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInvalidationBusDisconnected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaversionmix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaVersionMix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaametricunreadable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMetricUnreadable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaidentityproviderrejected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIdentityProviderRejected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaahigherrorrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaHighErrorRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chat-und-suche" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chat und Suche
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chat und Suche">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaachatsloburn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaChatSloBurn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatimetofirsttokenhigh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTimeToFirstTokenHigh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaretrievalmostlyempty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaRetrievalMostlyEmpty
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modelle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modelle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Modelle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaamodelroledown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaModelRoleDown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaoutboundauthfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaOutboundAuthFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaoutboundthrottled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaOutboundThrottled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatokenbudgetforecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTokenBudgetForecast
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexierung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexierung
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Indexierung">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaindexingstalled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIndexingStalled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaalibrariesoverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaLibrariesOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaindexingrunsfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIndexingRunsFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verzeichnisabgleich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verzeichnisabgleich
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verzeichnisabgleich">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaadirectorysyncstale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDirectorySyncStale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaadirectorysyncplanpending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDirectorySyncPlanPending
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hintergrund" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hintergrund
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hintergrund">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaascheduledjoboverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaScheduledJobOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaqueuebacklog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaQueueBacklog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamaildeliveryfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMailDeliveryFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revisionsprotokoll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Revisionsprotokoll
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revisionsprotokoll">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditretentionoverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditRetentionOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditpayloaddropped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditPayloadDropped
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditchainstalled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditChainStalled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditchainunsealed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditChainUnsealed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditloghorizon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditLogHorizon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherheit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherheit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sicherheit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwarescanfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareScanFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwaredetected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareDetected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwaresignaturesoutdated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareSignaturesOutdated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaglobalratelimithit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaGlobalRateLimitHit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaloginfailurespike" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaLoginFailureSpike
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatargetvalidationtablefull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTargetValidationTableFull
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaasiemexportlagging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaSiemExportLagging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainstallationpending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInstallationPending
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="nachvollziehbarkeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="releases-und-nachweise.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases und Nachweise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referenz
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referenz
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/rechte-matrix.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rechte-Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/glossar.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/konfiguration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konfiguration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../referenz/formate/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Formate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pdf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PDF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/docx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Word (DOCX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Text (ODT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/pptx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PowerPoint (PPTX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/odp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Präsentation (ODP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/tabular.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Tabellen (XLSX, CSV, ODS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/html.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: HTML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/markdown.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: E-Mail (EML, MSG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Confluence-Seite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/formate/fallback.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Auffang-Pipeline (TXT, DOC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/metadaten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-indexierung-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Indexierung arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../referenz/wie-die-suche-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Suche arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#schweregrade-und-bereiche" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schweregrade und Bereiche
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenig-verkehr-fehlende-und-unlesbare-werte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenig Verkehr, fehlende und unlesbare Werte
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#folgealarme-unterdrücken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Folgealarme unterdrücken
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plattform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plattform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plattform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaabackendnotready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaBackendNotReady
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaabackendmetricsmissing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaBackendMetricsMissing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaafrontendnotready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaFrontendNotReady
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaheapusagehigh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaHeapUsageHigh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaadatabasepooltimeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDatabasePoolTimeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainstanceheartbeatstale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInstanceHeartbeatStale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainvalidationbusdisconnected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInvalidationBusDisconnected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaversionmix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaVersionMix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaametricunreadable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMetricUnreadable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaidentityproviderrejected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIdentityProviderRejected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaahigherrorrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaHighErrorRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chat-und-suche" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chat und Suche
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chat und Suche">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaachatsloburn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaChatSloBurn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatimetofirsttokenhigh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTimeToFirstTokenHigh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaretrievalmostlyempty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaRetrievalMostlyEmpty
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modelle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modelle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Modelle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaamodelroledown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaModelRoleDown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaoutboundauthfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaOutboundAuthFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaoutboundthrottled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaOutboundThrottled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatokenbudgetforecast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTokenBudgetForecast
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexierung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexierung
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Indexierung">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaindexingstalled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIndexingStalled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaalibrariesoverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaLibrariesOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaindexingrunsfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaIndexingRunsFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verzeichnisabgleich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verzeichnisabgleich
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verzeichnisabgleich">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaadirectorysyncstale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDirectorySyncStale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaadirectorysyncplanpending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaDirectorySyncPlanPending
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hintergrund" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hintergrund
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hintergrund">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaascheduledjoboverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaScheduledJobOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaqueuebacklog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaQueueBacklog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamaildeliveryfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMailDeliveryFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#revisionsprotokoll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Revisionsprotokoll
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revisionsprotokoll">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditretentionoverdue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditRetentionOverdue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditpayloaddropped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditPayloadDropped
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditchainstalled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditChainStalled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditchainunsealed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditChainUnsealed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaauditloghorizon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAuditLogHorizon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherheit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherheit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sicherheit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwarescanfailing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareScanFailing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwaredetected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareDetected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaamalwaresignaturesoutdated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaMalwareSignaturesOutdated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaglobalratelimithit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaGlobalRateLimitHit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaloginfailurespike" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaLoginFailureSpike
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaatargetvalidationtablefull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaTargetValidationTableFull
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaasiemexportlagging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaSiemExportLagging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaainstallationpending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaInstallationPending
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="alarme">Alarme<a class="headerlink" href="#alarme" title="Permanent link">&para;</a></h1>
+<p>Jeder Alarm, den OPAA mitbringt, hat hier seinen Abschnitt: was ausfällt, wer sich kümmert, die drei
+ersten Prüfungen, was nachts reicht und wann man ihn stummschaltet. Die Annotation <code>runbook_url</code>
+jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafana kommen, steht unter
+<a href="dashboards-und-alarme.html">Dashboards und Alarme</a>.</p>
+<h2 id="schweregrade-und-bereiche">Schweregrade und Bereiche<a class="headerlink" href="#schweregrade-und-bereiche" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th><code>severity</code></th>
+<th>Bedeutung</th>
+<th>Zustellung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>critical</code></td>
+<td>Personen können OPAA nicht oder kaum benutzen, oder Daten gehen verloren</td>
+<td>weckt die Bereitschaft</td>
+</tr>
+<tr>
+<td><code>warning</code></td>
+<td>eine Funktion ist gestört oder wird es bald; Personen merken es noch kaum</td>
+<td>Ticket für den nächsten Arbeitstag</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>ein schleichender Trend oder ein Einzelereignis zum Nachsehen</td>
+<td>Dashboard, keine Benachrichtigung</td>
+</tr>
+</tbody>
+</table>
+<p>Das Label <code>component</code> sagt, welcher Bereich betroffen ist, und taugt als Schlüssel für die Verteilung:
+<code>platform</code> (Pods, Datenbank, Anmeldung), <code>chat</code>, <code>search</code>, <code>model</code>, <code>indexing</code>, <code>directory</code>
+(Verzeichnisabgleich), <code>background</code> (geplante Läufe, Mails), <code>audit</code> (Revisionsprotokoll) und
+<code>security</code>. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
+Werte eines Anbieters.</p>
+<p>Jeder Alarm trägt außerdem <code>namespace</code>, den Namespace der Installation (unter Compose <code>opaa</code>).
+Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
+(<a href="kubernetes.html#alarme">Alarme im Chart</a>).</p>
+<h2 id="wenig-verkehr-fehlende-und-unlesbare-werte">Wenig Verkehr, fehlende und unlesbare Werte<a class="headerlink" href="#wenig-verkehr-fehlende-und-unlesbare-werte" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Mindestvolumen:</strong> Quoten wie Fehleranteil, leere Suchen oder gescheiterte Mails zählen erst ab
+  einer Mindestzahl von Vorgängen im Fenster. Eine einzelne gescheiterte Frage am Sonntagmorgen
+  weckt niemanden.</li>
+<li><strong>Unlesbare Werte:</strong> Werte, die OPAA aus der Datenbank liest (Warteschlangen, Bestand,
+  Instanzregister, Sperren, Revisionsprotokoll), sind <code>NaN</code>, wenn die Abfrage scheitert oder länger
+  als zehn Sekunden braucht. Ein Vergleich mit <code>NaN</code> ist nie wahr; Alarme auf diesen Wert schweigen
+  deshalb. Das meldet <a href="#OpaaMetricUnreadable">OpaaMetricUnreadable</a>; die Alarme des
+  Revisionsprotokolls feuern bei <code>NaN</code> selbst. Ausgenommen sind die Texterkennung, solange sie aus
+  ist, und private Bibliotheken unter der Mindestgruppengröße: Dort ist <code>NaN</code> gewollt.</li>
+<li><strong>Fehlende Werte:</strong> Fehlen alle Metriken eines Backends, feuert
+  <a href="#OpaaBackendMetricsMissing">OpaaBackendMetricsMissing</a>; die Alarme auf Werte von OPAA schweigen
+  dann. Die Alarme des Revisionsprotokolls melden auch eine fehlende Reihe, solange Prometheus das
+  Backend erreicht.</li>
+</ul>
+<h2 id="folgealarme-unterdrücken">Folgealarme unterdrücken<a class="headerlink" href="#folgealarme-unterdrücken" title="Permanent link">&para;</a></h2>
+<p>Ein Ausfall zieht weitere Alarme nach sich. Mit einem Alertmanager unterdrückt dieses Rezept die
+Folgen und lässt die Ursache stehen:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">inhibit_rules</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># Ohne Backend zählt nur noch der Ausfall selbst.</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendNotReady"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">severity="critical"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">component=~"chat|search|model|indexing|directory|background|audit|security"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">equal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">namespace</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendNotReady"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">severity="critical"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendMetricsMissing"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">equal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">namespace</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="c1"># Ohne Chat- oder Embedding-Modell scheitern Fragen, das sagt der Modellalarm schon.</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaModelRoleDown"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">role=~"chat|embedding"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname=~"OpaaHighErrorRate|OpaaChatSloBurn|OpaaTimeToFirstTokenHigh|OpaaRetrievalMostlyEmpty"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">equal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">namespace</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="c1"># Ein kritischer Alarm verdrängt seine eigene Warnstufe für dasselbe Ziel.</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">severity="critical"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">severity="warning"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">equal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">role</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">target</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">kind</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pod</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">queue</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">namespace</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p><code>equal: [namespace]</code> hält die Installationen auseinander, die gegen einen Alertmanager laufen. Im
+letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code> nicht die Warnung zur Rolle
+<code>rerank</code>.</p>
+<h2 id="plattform">Plattform<a class="headerlink" href="#plattform" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaBackendNotReady"></a></p>
+<h3 id="opaabackendnotready">OpaaBackendNotReady<a class="headerlink" href="#opaabackendnotready" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> <code>critical</code>: kein Backend-Pod bereit, Anmeldung und Fragen gehen nicht. <code>warning</code>:
+  weniger bereite Pods als gewünscht, der Rest trägt die Last.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Log und Ereignisse des Pods (<code>kubectl describe pod</code>), Startabbruch mit Namen der
+  Variable? 2. Datenbank erreichbar, <code>/actuator/health/readiness</code>? 3. OOM-Kill oder CrashLoop, Speicher-Limit?</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort; <code>warning</code> reicht am Morgen, solange ein Pod bereit ist.</li>
+<li><strong>Stummschalten:</strong> während eines geplanten Wartungsfensters. Ein mit <code>backend.replicas: 0</code>
+  angehaltenes Backend schweigt von selbst.</li>
+</ul>
+<p><a id="OpaaBackendMetricsMissing"></a></p>
+<h3 id="opaabackendmetricsmissing">OpaaBackendMetricsMissing<a class="headerlink" href="#opaabackendmetricsmissing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Prometheus fragt weniger Backend-Pods ab, als laufen sollen; alle Alarme auf Werte
+  von OPAA sind für diese Pods blind.</li>
+<li><strong>Zuständig:</strong> Betrieb der Überwachung.</li>
+<li><strong>Prüfen:</strong> 1. Laufen die Pods? 2. <code>ServiceMonitor</code> und dessen Labels für den Prometheus.</li>
+<li><code>metrics.scrapeFrom</code> und NetworkPolicy zum Management-Port.</li>
+<li><strong>Nachts:</strong> reicht am Morgen, außer zusammen mit <code>OpaaBackendNotReady</code>.</li>
+<li><strong>Stummschalten:</strong> nicht; ohne Metriken sieht man nichts anderes.</li>
+</ul>
+<p><a id="OpaaFrontendNotReady"></a></p>
+<h3 id="opaafrontendnotready">OpaaFrontendNotReady<a class="headerlink" href="#opaafrontendnotready" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> <code>critical</code>: die Oberfläche ist nicht erreichbar, auch wenn das Backend läuft.
+  <code>warning</code>: ein Teil der Frontend-Pods fehlt.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Ereignisse des Pods: Image ziehbar, Readiness Probe? 2. Log des nginx.</li>
+<li>Zuletzt geänderte Werte unter <code>frontend</code> oder des Eingangs.</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort, <code>warning</code> am Morgen.</li>
+<li><strong>Stummschalten:</strong> im Wartungsfenster.</li>
+</ul>
+<p><a id="OpaaHeapUsageHigh"></a></p>
+<h3 id="opaaheapusagehigh">OpaaHeapUsageHigh<a class="headerlink" href="#opaaheapusagehigh" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Pod hält nach der Speicherbereinigung fast seinen ganzen Heap belegt; bald
+  folgen lange Pausen oder ein OOM-Kill.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Heap nach der Speicherbereinigung“ im Dashboard „Betrieb &amp; Bereitschaft“:
+  wächst sie stetig? 2. Laufende Indexierung großer Dateien oder viele gleichzeitige Agentenläufe?</li>
+<li>Speicher-Limit des Pods und Heap-Anteil.</li>
+<li><strong>Nachts:</strong> reicht am Morgen; Kubernetes startet einen Pod nach einem OOM-Kill neu.</li>
+<li><strong>Stummschalten:</strong> nicht; Speicher-Limit oder Heap-Anteil anheben.</li>
+</ul>
+<p><a id="OpaaDatabasePoolTimeouts"></a></p>
+<h3 id="opaadatabasepooltimeouts">OpaaDatabasePoolTimeouts<a class="headerlink" href="#opaadatabasepooltimeouts" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Anfragen eines Pods haben vergeblich auf eine Datenbankverbindung gewartet und
+  sind gescheitert.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform mit der Datenbankbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Datenbankverbindungen“: alle belegt? 2. Lange Abfragen und offene
+  Transaktionen in <code>pg_stat_activity</code>. 3. Reichen <code>max_connections</code> der Datenbank für alle Pods
+  (<a href="datenbank.html#verbindungen-bei-mehreren-instanzen">Verbindungen bei mehreren Instanzen</a>)?</li>
+<li><strong>Nachts:</strong> reicht am Morgen, außer zusammen mit <code>OpaaHighErrorRate</code> <code>critical</code>.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaInstanceHeartbeatStale"></a></p>
+<h3 id="opaainstanceheartbeatstale">OpaaInstanceHeartbeatStale<a class="headerlink" href="#opaainstanceheartbeatstale" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Pod schreibt seinen Herzschlag ins Instanzregister nicht mehr; die anderen
+  halten ihn bald für ausgefallen und übernehmen seine Arbeit
+  (<a href="mehrere-instanzen.html#das-instanzregister">Das Instanzregister</a>).</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Antwortet die Datenbank langsam? 2. Lange Pausen der Speicherbereinigung im Pod?</li>
+<li>Log des Pods nach Fehlern beim Herzschlag.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaInvalidationBusDisconnected"></a></p>
+<h3 id="opaainvalidationbusdisconnected">OpaaInvalidationBusDisconnected<a class="headerlink" href="#opaainvalidationbusdisconnected" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Pod hört die Meldungen zu geänderten Zwischenspeichern nicht und liest an ihnen
+  vorbei aus der Datenbank: richtig, aber langsamer
+  (<a href="mehrere-instanzen.html#änderungen-erreichen-jede-instanz">Änderungen erreichen jede Instanz</a>).</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Log des Pods zum Kanal der Cache-Meldungen. 2. Steht ein Connection Pooler im
+  Transaktionsmodus zwischen Backend und Datenbank? 3. Neustarts oder Failover der Datenbank.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaVersionMix"></a></p>
+<h3 id="opaaversionmix">OpaaVersionMix<a class="headerlink" href="#opaaversionmix" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Instanzen verschiedener Versionen laufen seit einer halben Stunde nebeneinander;
+  ein Rolling Update hängt.</li>
+<li><strong>Zuständig:</strong> wer das Update eingespielt hat.</li>
+<li><strong>Prüfen:</strong> 1. <code>kubectl rollout status</code> des Backends. 2. Startet der neue Pod, oder bricht er ab?</li>
+<li><a href="mehrere-instanzen.html#update-ohne-ausfall">Update ohne Ausfall</a>.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht; das Update zu Ende bringen oder zurücknehmen.</li>
+</ul>
+<p><a id="OpaaMetricUnreadable"></a></p>
+<h3 id="opaametricunreadable">OpaaMetricUnreadable<a class="headerlink" href="#opaametricunreadable" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Kein Pod kann den Wert im Label <code>metric</code> aus der Datenbank lesen; Alarme auf diesen
+  Wert schweigen so lange.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Log der Pods: die Warnung nennt Wert und Fehler. 2. Antwortet die Datenbank binnen
+  zehn Sekunden? 3. Hat eine Migration oder ein Rücksichern Rechte oder Tabellen verändert?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaIdentityProviderRejected"></a></p>
+<h3 id="opaaidentityproviderrejected">OpaaIdentityProviderRejected<a class="headerlink" href="#opaaidentityproviderrejected" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Anmeldung über den Identitätsanbieter ist gestört: Die meisten Aufrufe an ihn
+  scheitern (abgelehnt, nicht erreichbar, Zertifikat, Timeout), oder Anmeldungen lassen sich nicht
+  prüfen, weil seine Signaturschlüssel nicht abrufbar sind. Einzelne abgewiesene Anfragen einer
+  Person zählen nicht. Ein gestörter Verzeichnisdienst meldet sich als
+  <a href="#OpaaOutboundAuthFailing">OpaaOutboundAuthFailing</a> mit <code>component</code> <code>directory</code>.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Betreuung des Identitätsanbieters.</li>
+<li><strong>Prüfen:</strong> 1. Ist der Anbieter aus dem Cluster erreichbar (Ausgangsproxy, NetworkPolicy, DNS)?</li>
+<li>Log nach der Antwort des Anbieters: Zertifikat, Adresse, Client oder Geheimnis geändert
+  (<a href="authentifizierung.html#anbieterverwaltung">Anbieterverwaltung</a>)? 3. Liefert er seine
+  Signaturschlüssel aus?</li>
+<li><strong>Nachts:</strong> sofort; ohne Anbieter kommen nur lokale Konten herein.</li>
+<li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Anbieters.</li>
+</ul>
+<p><a id="OpaaHighErrorRate"></a></p>
+<h3 id="opaahigherrorrate">OpaaHighErrorRate<a class="headerlink" href="#opaahigherrorrate" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein merklicher (<code>warning</code>) oder großer (<code>critical</code>) Teil der Anfragen endet mit
+  einem Status 5xx.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Fehlerantworten (5xx) je Pod“: ein Pod oder alle? 2. Feuert
+  <code>OpaaModelRoleDown</code>? Auch die <code>503</code> einer Installation ohne Chat- oder Embedding-Modell zählen
+  mit (<a href="installation.html#ohne-modelle-installiert">Ohne Modelle installiert</a>). 3. Log nach dem Fehler
+  der häufigsten Route.</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort, <code>warning</code> am Morgen.</li>
+<li><strong>Stummschalten:</strong> solange eine Installation bewusst ohne Modelle läuft.</li>
+</ul>
+<h2 id="chat-und-suche">Chat und Suche<a class="headerlink" href="#chat-und-suche" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaChatSloBurn"></a></p>
+<h3 id="opaachatsloburn">OpaaChatSloBurn<a class="headerlink" href="#opaachatsloburn" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Es scheitern mehr Fragen, als das Ziel für 30 Tage erlaubt. <code>critical</code>: in einer
+  Stunde mit 14,4-facher Geschwindigkeit, das Budget ist in zwei Tagen weg. <code>warning</code>: sechs Stunden
+  lang sechsfach. <code>info</code>: drei Tage lang über dem Ziel. Abgewiesene Fragen (fehlende Berechtigung,
+  ungültige Eingabe) zählen nicht.</li>
+<li><strong>Zuständig:</strong> Betrieb, bei Modellursache mit der Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Feuert <code>OpaaModelRoleDown</code> oder <code>OpaaOutboundThrottled</code>? 2. Dashboard „KI-Modelle
+  &amp; Kosten“: Ausgehende Aufrufe nach Ergebnis. 3. Log nach Fehlern der Fragen.</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort, die anderen am Morgen.</li>
+<li><strong>Stummschalten:</strong> während eines angekündigten Ausfalls des Modells.</li>
+</ul>
+<p><a id="OpaaTimeToFirstTokenHigh"></a></p>
+<h3 id="opaatimetofirsttokenhigh">OpaaTimeToFirstTokenHigh<a class="headerlink" href="#opaatimetofirsttokenhigh" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Antworten zeigen ihr erstes Wort spät; Personen warten oder brechen ab.</li>
+<li><strong>Zuständig:</strong> Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Dauer je Stufe einer Frage: Suche, Neubewertung oder Antwort des Modells?</li>
+<li>Auslastung des Modelldienstes. 3. Lange Chats mit großem Eingabekontext.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nicht nötig, der Alarm benachrichtigt nicht.</li>
+</ul>
+<p><a id="OpaaRetrievalMostlyEmpty"></a></p>
+<h3 id="opaaretrievalmostlyempty">OpaaRetrievalMostlyEmpty<a class="headerlink" href="#opaaretrievalmostlyempty" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Fast keine Frage mit Suche findet eine Fundstelle; Antworten kommen ohne Belege.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Embedding-Modell erreichbar, Health Groups <code>embedding-model</code> und <code>vector-store</code>?</li>
+<li>Läuft gerade eine Neueinbettung nach einem Modellwechsel
+  (<a href="modell-endpunkte.html#modell-wechseln">Modell wechseln</a>)? 3. Ist der Bestand im Dashboard
+  „Wissensbestand &amp; Bibliotheken“ gesunken?</li>
+<li><strong>Nachts:</strong> sofort.</li>
+<li><strong>Stummschalten:</strong> während einer geplanten Neueinbettung.</li>
+</ul>
+<h2 id="modelle">Modelle<a class="headerlink" href="#modelle" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaModelRoleDown"></a></p>
+<h3 id="opaamodelroledown">OpaaModelRoleDown<a class="headerlink" href="#opaamodelroledown" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Kein Pod erreicht den Dienst der Rolle im Label <code>role</code>. <code>critical</code> für Chat und
+  Embedding, solange Fragen gestellt werden: Fragen scheitern. <code>warning</code> für Neubewertung,
+  Spracherkennung, Texterkennung und Bildbeschreibung, solange OPAA sie aufruft: die Funktion fällt
+  aus, der Rest läuft (<a href="modell-endpunkte.html#ausfall-eines-modells">Ausfall eines Modells</a>).</li>
+<li><strong>Zuständig:</strong> Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Läuft der Modelldienst, ist er aus dem Cluster erreichbar (Ausgangsproxy,
+  NetworkPolicy)? 2. Log nach der Antwort des Dienstes. 3. Geänderte Adresse oder Zugangsschlüssel
+  in der Modellverwaltung.</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort, <code>warning</code> am Morgen.</li>
+<li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Dienstes.</li>
+</ul>
+<p><a id="OpaaOutboundAuthFailing"></a></p>
+<h3 id="opaaoutboundauthfailing">OpaaOutboundAuthFailing<a class="headerlink" href="#opaaoutboundauthfailing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Aufrufe an ein Ziel (Label <code>target</code>) scheitern an Anmeldung oder TLS: Modelle
+  (<code>component</code> <code>model</code>), Quellen und Originalablage (<code>indexing</code>), Verzeichnisdienst (<code>directory</code>;
+  bis dahin gilt der letzte angewendete Abgleich) oder Virenscanner (<code>security</code>).</li>
+<li><strong>Zuständig:</strong> wer das Ziel betreut; für Quellen die Verwaltung der Bibliothek.</li>
+<li><strong>Prüfen:</strong> 1. Zugangsschlüssel oder Zugang abgelaufen? 2. Zertifikat des Ziels abgelaufen oder
+  von einer Stelle, die der Truststore nicht kennt
+  (<a href="kubernetes.html#eigene-zertifizierungsstelle">Eigene Zertifizierungsstelle</a>)? 3. Log nach der
+  Antwort des Ziels.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht; ein dauerhaft entzogener Zugang wird in OPAA entfernt.</li>
+</ul>
+<p><a id="OpaaOutboundThrottled"></a></p>
+<h3 id="opaaoutboundthrottled">OpaaOutboundThrottled<a class="headerlink" href="#opaaoutboundthrottled" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Anbieter drosselt Aufrufe, auf die eine Person wartet; Antworten verzögern
+  sich oder scheitern.</li>
+<li><strong>Zuständig:</strong> Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Gedrosselte Aufrufe“: welches Ziel? 2. Kontingent beim Anbieter. 3. Läuft
+  zugleich eine große Indexierung gegen denselben Anbieter?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht; Kontingent anheben oder Last verteilen.</li>
+</ul>
+<p><a id="OpaaTokenBudgetForecast"></a></p>
+<h3 id="opaatokenbudgetforecast">OpaaTokenBudgetForecast<a class="headerlink" href="#opaatokenbudgetforecast" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Beim Tempo der letzten sieben Tage verbraucht das Chat-Modell in 30 Tagen mehr
+  Tokens als <code>metrics.prometheusRule.monthlyTokenBudget</code>. Nur mit gesetztem Budget.</li>
+<li><strong>Zuständig:</strong> wer das Budget verantwortet.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Tokens pro Stunde nach Zweck“: Antworten, Agenten oder Zerlegung?</li>
+<li>Neue Nutzung, etwa externe KI-Werkzeuge? 3. Ist das Budget noch richtig?</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nach einer bewussten Entscheidung für mehr Verbrauch; besser das Budget anheben.</li>
+</ul>
+<h2 id="indexierung">Indexierung<a class="headerlink" href="#indexierung" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaIndexingStalled"></a></p>
+<h3 id="opaaindexingstalled">OpaaIndexingStalled<a class="headerlink" href="#opaaindexingstalled" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Indexierungslauf in einem Pod ist aktiv, verarbeitet aber kein Dokument mehr;
+  neue und geänderte Dokumente bleiben unauffindbar.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Verwaltung der Bibliothek.</li>
+<li><strong>Prüfen:</strong> 1. Laufstatus und Laufprotokoll der Bibliothek
+  (<a href="../referenz/wie-indexierung-arbeitet.html#laufprotokoll">Laufprotokoll</a>). 2. Antwortet die Quelle?</li>
+<li>Embedding-Modell erreichbar?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht. Ein Upload während eines hängenden Laufs verschiebt den Alarm um eine
+  Frist.</li>
+</ul>
+<p><a id="OpaaLibrariesOverdue"></a></p>
+<h3 id="opaalibrariesoverdue">OpaaLibrariesOverdue<a class="headerlink" href="#opaalibrariesoverdue" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Bibliotheken eines Konnektortyps (Label <code>connector</code>) haben seit mehr als zwei
+  ihrer Intervalle keinen erfolgreichen Lauf; ihr Inhalt veraltet.</li>
+<li><strong>Zuständig:</strong> Verwaltung der Bibliotheken, bei allen eines Typs der Betrieb.</li>
+<li><strong>Prüfen:</strong> 1. Laufprotokoll einer betroffenen Bibliothek. 2. Feuert <code>OpaaOutboundAuthFailing</code> für
+  <code>connector</code>? 3. Staut sich die Warteschlange <code>indexing</code>?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> solange eine Quelle angekündigt abgeschaltet ist.</li>
+</ul>
+<p><a id="OpaaIndexingRunsFailing"></a></p>
+<h3 id="opaaindexingrunsfailing">OpaaIndexingRunsFailing<a class="headerlink" href="#opaaindexingrunsfailing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein großer Teil der Läufe eines Konnektortyps scheitert.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Verwaltung der Bibliotheken.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Gescheiterte Läufe nach Grund“. 2. Laufprotokoll einer gescheiterten
+  Bibliothek. 3. Zugang, Zertifikat oder Adresse der Quelle geändert?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<h2 id="verzeichnisabgleich">Verzeichnisabgleich<a class="headerlink" href="#verzeichnisabgleich" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaDirectorySyncStale"></a></p>
+<h3 id="opaadirectorysyncstale">OpaaDirectorySyncStale<a class="headerlink" href="#opaadirectorysyncstale" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Der Abgleich mit dem Verzeichnis eines Anbieters (Label <code>provider</code>) wurde länger
+  als einen Tag nicht angewendet; Ausgeschiedene behalten so lange ihre Gruppen und Rechte. Wartet
+  ein Plan auf Bestätigung, meldet das stattdessen <code>OpaaDirectorySyncPlanPending</code>.</li>
+<li><strong>Zuständig:</strong> Systemverwaltung mit dem Betrieb.</li>
+<li><strong>Prüfen:</strong> 1. Seite Verzeichnisabgleich: letzter Lauf und Meldung
+  (<a href="authentifizierung.html#verzeichnisabgleich-je-anbieter">Verzeichnisabgleich je Anbieter</a>).</li>
+<li>Verzeichniszugang hinterlegt und gültig? 3. Feuert <code>OpaaOutboundAuthFailing</code> für <code>directory</code>?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaDirectorySyncPlanPending"></a></p>
+<h3 id="opaadirectorysyncplanpending">OpaaDirectorySyncPlanPending<a class="headerlink" href="#opaadirectorysyncplanpending" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein Abgleich würde mehr entziehen, als die Plausibilitätsschwelle erlaubt, und
+  wartet seit einem Tag auf die Systemverwaltung; bis dahin gilt der alte Stand.</li>
+<li><strong>Zuständig:</strong> Systemverwaltung.</li>
+<li><strong>Prüfen:</strong> 1. Plan auf der Seite Verzeichnisabgleich ansehen. 2. Stimmt die Änderung im
+  Verzeichnis (Umorganisation, Fehler beim Anbieter)? 3. Bestätigen oder verwerfen.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nicht; entscheiden.</li>
+</ul>
+<h2 id="hintergrund">Hintergrund<a class="headerlink" href="#hintergrund" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaScheduledJobOverdue"></a></p>
+<h3 id="opaascheduledjoboverdue">OpaaScheduledJobOverdue<a class="headerlink" href="#opaascheduledjoboverdue" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein geplanter Lauf (Label <code>scheduled_job</code>) ist seit mehreren Intervallen auf keinem Pod
+  gelungen, auch einer, der seit dem Start nie gelang.</li>
+<li><strong>Zuständig:</strong> Betrieb der Plattform.</li>
+<li><strong>Prüfen:</strong> 1. Log nach dem Namen des Laufs. 2. Kurve „Instanzen und Sperren“: hält eine Sperre
+  seit Stunden (<a href="mehrere-instanzen.html#geplante-läufe-laufen-genau-einmal">Geplante Läufe laufen genau einmal</a>)?</li>
+<li>Ausfall einer Instanz, die die Sperre hielt?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaQueueBacklog"></a></p>
+<h3 id="opaaqueuebacklog">OpaaQueueBacklog<a class="headerlink" href="#opaaqueuebacklog" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Der älteste Eintrag einer Warteschlange (Label <code>queue</code>) wartet zu lange:
+  <code>mail_outbox</code> Mails, <code>source_events</code> gemeldete Änderungen der Quellen, <code>indexing</code> angenommene
+  Läufe einschließlich des längsten laufenden, <code>ocr_backlog</code> Scans für die Texterkennung.</li>
+<li><strong>Zuständig:</strong> <code>mail_outbox</code> Betrieb mit dem Mailserver, sonst Betrieb mit der Verwaltung der
+  Bibliotheken.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Warteschlangen“: wächst das Alter stetig? 2. Der Dienst dahinter: Mailserver
+  (<a href="../administration/e-mail.html">E-Mail-Versand</a>), Quelle, Embedding-Modell oder
+  <a href="texterkennung.html">Texterkennung</a>. 3. Ein einzelner sehr großer Lauf?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> während eines geplanten großen Erstlaufs für <code>indexing</code>.</li>
+</ul>
+<p><a id="OpaaMailDeliveryFailing"></a></p>
+<h3 id="opaamaildeliveryfailing">OpaaMailDeliveryFailing<a class="headerlink" href="#opaamaildeliveryfailing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die meisten Mails sind endgültig gescheitert; Einladungen, Rücksetzlinks und
+  Benachrichtigungen kommen nicht an.</li>
+<li><strong>Zuständig:</strong> Betrieb mit dem Mailserver.</li>
+<li><strong>Prüfen:</strong> 1. Erreichbarkeit und Zugang des Mailservers. 2. Log nach der Antwort des Servers.</li>
+<li>Absenderadresse oder Relay-Regeln geändert?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Mailservers.</li>
+</ul>
+<h2 id="revisionsprotokoll">Revisionsprotokoll<a class="headerlink" href="#revisionsprotokoll" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaAuditRetentionOverdue"></a></p>
+<h3 id="opaaauditretentionoverdue">OpaaAuditRetentionOverdue<a class="headerlink" href="#opaaauditretentionoverdue" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die automatische Löschung des Revisionsprotokolls ist seit mehr als 35 Tagen nicht
+  gelaufen (sie läuft am 1. jedes Monats um 03:00), oder ihr Stand ist nicht lesbar; Einträge
+  bleiben länger als die Frist.</li>
+<li><strong>Zuständig:</strong> Betrieb, Bericht an Datenschutz und Revision.</li>
+<li><strong>Prüfen:</strong> 1. Log der Pods um den 1. des Monats, 03:00. 2. Sperre <code>audit-retention</code>.</li>
+<li>Rechte des Datenbankkontos nach einem Rücksichern.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaAuditPayloadDropped"></a></p>
+<h3 id="opaaauditpayloaddropped">OpaaAuditPayloadDropped<a class="headerlink" href="#opaaauditpayloaddropped" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> OPAA hat Einträge einer Ereignisart (Label <code>event_type</code>) ohne Angaben geschrieben,
+  die der Ereigniskatalog nicht nennt. Ein Programmfehler; der Vorgang selbst ist durchgeführt.</li>
+<li><strong>Zuständig:</strong> Betrieb, Fund an das Projekt melden.</li>
+<li><strong>Prüfen:</strong> 1. Log nach „Dropped audit payload keys“. 2. Ereignisart und Version notieren.</li>
+<li>Fund melden.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nach der Meldung bis zur behebenden Version.</li>
+</ul>
+<p><a id="OpaaAuditChainStalled"></a></p>
+<h3 id="opaaauditchainstalled">OpaaAuditChainStalled<a class="headerlink" href="#opaaauditchainstalled" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Neue Einträge bekommen keinen Kontrollpunkt der Prüfsummenkette
+  (<a href="nachvollziehbarkeit.html#prüfsummenkette-und-monatssiegel">Prüfsummenkette und Monatssiegel</a>), oder
+  der Stand der Kette ist nicht lesbar. Beim ersten Start einer großen Installation auch, bis der
+  Lauf den Bestand aufgeholt hat.</li>
+<li><strong>Zuständig:</strong> Betrieb, Bericht an die Revision.</li>
+<li><strong>Prüfen:</strong> 1. Log der Pods. 2. Sperre <code>audit-chain</code>. 3. Offene Transaktionen in
+  <code>pg_stat_activity</code>.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> beim Aufholen nach dem ersten Start.</li>
+</ul>
+<p><a id="OpaaAuditChainUnsealed"></a></p>
+<h3 id="opaaauditchainunsealed">OpaaAuditChainUnsealed<a class="headerlink" href="#opaaauditchainunsealed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein abgeschlossener Protokollmonat trägt kein Siegel: Der Lauf kommt nicht bis zum
+  Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag
+  <code>AUDIT_LOG_MONTH_SEALED</code> noch steht.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Revision.</li>
+<li><strong>Prüfen:</strong> 1. Log der Pods nach „no seal“. 2. <code>GET /api/v1/audit/chain/{Monat}</code> für den Vormonat.</li>
+<li>Steht dort <code>BROKEN</code>, prüft die Revision den Befund.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> für einen dauerhaft <code>BROKEN</code> Monat nach dem Befund der Revision, gezielt für
+  diesen Monat; der Lauf versiegelt ihn nicht neu.</li>
+</ul>
+<p><a id="OpaaAuditLogHorizon"></a></p>
+<h3 id="opaaauditloghorizon">OpaaAuditLogHorizon<a class="headerlink" href="#opaaauditloghorizon" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Der letzte angelegte Protokollmonat endet bald. Danach scheitert jeder Vorgang,
+  der ins Revisionsprotokoll schreibt. Die Monate liegen weit im Voraus an; der Alarm heißt, die Uhr
+  der Datenbank steht falsch oder Protokollmonate wurden entfernt.</li>
+<li><strong>Zuständig:</strong> Betrieb mit der Datenbankbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Uhrzeit der Datenbank und der Pods. 2. Wurden Tabellen des Protokolls von Hand
+  geändert oder unvollständig zurückgesichert? 3. Fund an das Projekt melden.</li>
+<li><strong>Nachts:</strong> <code>critical</code> sofort, <code>warning</code> am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<h2 id="sicherheit">Sicherheit<a class="headerlink" href="#sicherheit" title="Permanent link">&para;</a></h2>
+<p><a id="OpaaMalwareScanFailing"></a></p>
+<h3 id="opaamalwarescanfailing">OpaaMalwareScanFailing<a class="headerlink" href="#opaamalwarescanfailing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Virenprüfung scheitert bei den meisten Dateien; diese werden nicht aufgenommen
+  (<a href="netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">Virenprüfung</a>).</li>
+<li><strong>Zuständig:</strong> Betrieb des Virenscanners.</li>
+<li><strong>Prüfen:</strong> 1. Läuft der Scanner, ist er erreichbar? 2. Größengrenze des Scanners. 3. Log nach der
+  Antwort des Scanners.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Scanners.</li>
+</ul>
+<p><a id="OpaaMalwareDetected"></a></p>
+<h3 id="opaamalwaredetected">OpaaMalwareDetected<a class="headerlink" href="#opaamalwaredetected" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Virenprüfung hat eine Datei abgewiesen; sie wurde nicht aufgenommen.</li>
+<li><strong>Zuständig:</strong> Informationssicherheit.</li>
+<li><strong>Prüfen:</strong> 1. Log nach dem Fund. 2. Woher kam die Datei (Upload oder Quelle)? 3. Ist die Quelle
+  selbst befallen?</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nicht nötig, der Alarm benachrichtigt nicht.</li>
+</ul>
+<p><a id="OpaaMalwareSignaturesOutdated"></a></p>
+<h3 id="opaamalwaresignaturesoutdated">OpaaMalwareSignaturesOutdated<a class="headerlink" href="#opaamalwaresignaturesoutdated" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Signaturen des Virenscanners sind veraltet; neue Schadsoftware bleibt
+  unerkannt.</li>
+<li><strong>Zuständig:</strong> Betrieb des Virenscanners.</li>
+<li><strong>Prüfen:</strong> 1. Log der Signaturaktualisierung des Scanners. 2. Erreicht der Scanner seine
+  Spiegelquelle? 3. Ohne Internet: Spiegel im Haus aktuell?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaGlobalRateLimitHit"></a></p>
+<h3 id="opaaglobalratelimithit">OpaaGlobalRateLimitHit<a class="headerlink" href="#opaaglobalratelimithit" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Anfragen sind an einer installationsweiten Grenze (Label <code>limit</code>) abgewiesen
+  worden; an der Anmeldegrenze ein Hinweis auf verteiltes Ausprobieren von Zugangsdaten.</li>
+<li><strong>Zuständig:</strong> Informationssicherheit mit dem Betrieb.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Abgewiesen an einer Grenze“. 2. Zugriffslog des Eingangs nach
+  Client-Adressen. 3. Stimmt die Client-Adresse hinter dem Proxy
+  (<a href="netz-und-sicherheit.html#vertraute-proxys-und-client-adresse">Vertraute Proxys</a>)?</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaLoginFailureSpike"></a></p>
+<h3 id="opaaloginfailurespike">OpaaLoginFailureSpike<a class="headerlink" href="#opaaloginfailurespike" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Lokale Konten werden ein Vielfaches häufiger abgewiesen als zur selben Zeit in den
+  Wochen davor; ein Hinweis auf das Ausprobieren von Zugangsdaten.</li>
+<li><strong>Zuständig:</strong> Informationssicherheit.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Abgewiesene Anmeldungen“: falsche Zugangsdaten oder gesperrte Konten?</li>
+<li>Zugriffslog nach Client-Adressen. 3. Feuert <code>OpaaGlobalRateLimitHit</code>?</li>
+<li><strong>Nachts:</strong> reicht am Morgen; die Anmeldesperre wirkt ohne Zutun.</li>
+<li><strong>Stummschalten:</strong> nach einem bekannten Anlass, etwa einer Passwortänderung für viele Konten.</li>
+</ul>
+<p><a id="OpaaTargetValidationTableFull"></a></p>
+<h3 id="opaatargetvalidationtablefull">OpaaTargetValidationTableFull<a class="headerlink" href="#opaatargetvalidationtablefull" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Zielprüfung bewacht so viele gespeicherte Ziele, wie die Konfiguration
+  erlaubt; neue Ziele lassen sich bis zum Neustart nicht speichern. Eine volle Tabelle deutet auf
+  Missbrauch (<a href="netz-und-sicherheit.html#zielprüfung-abrufe-des-servers">Zielprüfung</a>).</li>
+<li><strong>Zuständig:</strong> Informationssicherheit mit dem Betrieb.</li>
+<li><strong>Prüfen:</strong> 1. Log nach dem Grund. 2. Wer hat zuletzt viele Ziele angelegt (Nachweisprotokoll)?</li>
+<li>Nach der Klärung die Pods neu starten.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+<p><a id="OpaaSiemExportLagging"></a></p>
+<h3 id="opaasiemexportlagging">OpaaSiemExportLagging<a class="headerlink" href="#opaasiemexportlagging" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Einträge des Revisionsprotokolls erreichen das Sicherheitsmonitoring verspätet
+  (<a href="ueberwachung-und-fehlerbehebung.html#ausleitung-an-ein-sicherheitsmonitoring">Ausleitung</a>).</li>
+<li><strong>Zuständig:</strong> Betrieb mit dem Betrieb des Sicherheitsmonitorings.</li>
+<li><strong>Prüfen:</strong> 1. Erreicht OPAA den Empfänger? 2. Log nach gescheiterten Zustellungen. 3. Offene
+  Transaktionen in <code>pg_stat_activity</code>.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Empfängers.</li>
+</ul>
+<p><a id="OpaaInstallationPending"></a></p>
+<h3 id="opaainstallationpending">OpaaInstallationPending<a class="headerlink" href="#opaainstallationpending" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Die Installation steht seit einer Stunde offen; wer das Installations-Token kennt,
+  kann sie übernehmen (<a href="installation.html#installations-token">Installations-Token</a>).</li>
+<li><strong>Zuständig:</strong> wer installiert.</li>
+<li><strong>Prüfen:</strong> 1. Installation abschließen. 2. Ist die Adresse von außen erreichbar? 3. Wer hatte
+  Zugriff auf das Log mit dem Token?</li>
+<li><strong>Nachts:</strong> reicht am Morgen, wenn die Adresse nicht von außen erreichbar ist.</li>
+<li><strong>Stummschalten:</strong> nicht.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Zurück zum Seitenanfang
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "In Zwischenablage kopiert", "clipboard.copy": "In Zwischenablage kopieren", "search.result.more.one": "1 weiteres Suchergebnis auf dieser Seite", "search.result.more.other": "# weitere Suchergebnisse auf dieser Seite", "search.result.none": "Keine Suchergebnisse", "search.result.one": "1 Suchergebnis", "search.result.other": "# Suchergebnisse", "search.result.placeholder": "Suchbegriff eingeben", "search.result.term.missing": "Es fehlt", "select.version": "Version ausw\u00e4hlen"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

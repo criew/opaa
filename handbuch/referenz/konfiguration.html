@@ -2624,6 +2624,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3113,6 +3117,62 @@
     
   
     Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../betrieb/dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../betrieb/alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
   
 
     
@@ -4245,6 +4305,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>10s,60s,300s,900s,1800s,3600s,7200s,14400s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
 <td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Indizierungslaufs (<code>opaa_indexing_run_duration_seconds_bucket</code>)</td>
+</tr>
+<tr>
+<td><code>OPAA_METRICS_SLO_INDEXING_STAGE</code></td>
+<td><code>10ms,100ms,500ms,1s,5s,10s,30s,60s,300s</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Zeit je Dokument und Schritt der Indizierung (<code>opaa_indexing_stage_duration_seconds_bucket</code>)</td>
 </tr>
 <tr>
 <td><code>OPAA_CORS_ALLOWED_ORIGINS</code></td>
@@ -5517,6 +5583,42 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>— (kein Spring-Property; nur <code>docker-compose.ocr.yml</code>, dort Compose-Default <code>2g</code>)</td>
 <td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
 <td>Größe des <code>/tmp</code> des Dienstes (tmpfs, nach dem Stopp leer); zählt gegen <code>OPAA_OCR_MEMORY</code></td>
+</tr>
+<tr>
+<td><code>OPAA_GRAFANA_ADMIN_PASSWORD</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, Pflicht ohne Vorgabe)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Passwort des Admin-Kontos im Grafana des Monitoring-Overlays; ohne ihn bricht Compose ab (<a href="../betrieb/dashboards-und-alarme.html#compose">Dashboards und Alarme</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_GRAFANA_ADMIN_USER</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, dort Compose-Default <code>admin</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Name des Admin-Kontos im Grafana</td>
+</tr>
+<tr>
+<td><code>OPAA_GRAFANA_ROOT_URL</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, dort Compose-Default <code>http://localhost:3001/</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Adresse des Grafana, wie der Browser sie sieht, etwa <code>https://grafana.example.org/</code> auf einer eigenen Subdomain; Grafana bildet daraus Weiterleitungen und Links (<a href="../betrieb/dashboards-und-alarme.html#compose">Dashboards und Alarme</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_GRAFANA_BIND_ADDRESS</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, dort Compose-Default <code>127.0.0.1</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Adresse, an die Docker den Port des Grafana bindet; über Loopback hinaus nur ohne Reverse-Proxy auf demselben Host</td>
+</tr>
+<tr>
+<td><code>OPAA_GRAFANA_PORT</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, dort Compose-Default <code>3001</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Host-Port des Grafana</td>
+</tr>
+<tr>
+<td><code>OPAA_PROMETHEUS_RETENTION</code></td>
+<td>— (kein Spring-Property; nur <code>docker-compose.monitoring.yml</code>, dort Compose-Default <code>30d</code>)</td>
+<td>wirkt nur aus Prozessumgebung/<code>.env</code>, <strong>nicht</strong> aus <code>.env.docker</code> (siehe Hinweis oben)</td>
+<td>Wie lange der Prometheus des Monitoring-Overlays Messwerte hält, als Dauer wie <code>30d</code> oder <code>90d</code></td>
 </tr>
 <tr>
 <td><strong>Bibliothek</strong></td>

@@ -2626,6 +2626,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3349,6 +3353,62 @@
     
   
     Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
   
 
     
@@ -4910,8 +4970,8 @@ sind drei Fragen wichtig:</p>
 <li><strong>Hört jede Instanz die Änderungen?</strong> <code>opaa_invalidation_bus_connected</code> ist je Instanz <code>1</code>, solange
   sie mithört, und <code>0</code>, solange ihre Zwischenspeicher an sich vorbei lesen.</li>
 <li><strong>Laufen die geplanten Läufe?</strong> Unter der Sperre führt nur eine Instanz einen Termin aus; den
-  letzten Erfolg eines Laufs zeigt deshalb <code>max by (job) (opaa_scheduled_last_success)</code> über alle
-  Instanzen, die Fehler <code>sum by (job) (opaa_scheduled_failures_total)</code>. Bis ein Lauf auf einer
+  letzten Erfolg eines Laufs zeigt deshalb <code>max by (scheduled_job) (opaa_scheduled_last_success)</code> über alle
+  Instanzen, die Fehler <code>sum by (scheduled_job) (opaa_scheduled_failures_total)</code>. Bis ein Lauf auf einer
   Instanz gelingt, zeigt sie ihren eigenen Start als letzten Erfolg. Die gehaltenen Sperren und das
   Alter der ältesten zeigt <code>opaa_scheduled_locks_held</code> und <code>opaa_scheduled_locks_oldest_age_seconds</code>.</li>
 </ul>

@@ -2626,6 +2626,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3899,6 +3903,62 @@
     
   
     Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dashboards-und-alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards und Alarme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="alarme.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarme
   
 
     
@@ -8037,8 +8097,8 @@ curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span>
 </code></pre></div>
 <h2 id="betriebsüberwachung">Betriebsüberwachung<a class="headerlink" href="#betriebsüberwachung" title="Permanent link">&para;</a></h2>
 <p>OPAA bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
-Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt einige
-Grundalarme mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.</p>
+Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt Alarme
+und Grafana-Dashboards mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.</p>
 <h3 id="management-port">Management-Port<a class="headerlink" href="#management-port" title="Permanent link">&para;</a></h3>
 <p>Probes und Metriken laufen über einen eigenen Port des Backends, den <strong>Management-Port</strong>. Die API
 bleibt auf ihrem Port. Damit kann die NetworkPolicy des Backends dem Prometheus den Management-Port
@@ -8113,78 +8173,15 @@ Alarme fassen sie mit <code>max by (…)</code> über die Pods zusammen, nicht m
 Bibliothek so oft, wie Pods laufen. Zähler, Timer und Gauges einer einzelnen Instanz wie
 <code>opaa_indexing_runs_active</code> werden über die Pods summiert.</p>
 <h3 id="alarme">Alarme<a class="headerlink" href="#alarme" title="Permanent link">&para;</a></h3>
-<p><code>metrics.prometheusRule.enabled</code> legt eine <code>PrometheusRule</code> mit neun Alarmen an. Mit mehreren
-Backend-Pods melden fehlende Metriken, voller Heap und hängende Indexierung schon einen einzelnen Pod;
-die beiden letzten nennen ihn im Label <code>pod</code>. Sie setzt den
-ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen.
-<code>metrics.prometheusRule.labels</code> trägt die Labels, nach denen der Prometheus Regeln auswählt; bei
-kube-prometheus-stack wieder <code>release: &lt;Release-Name&gt;</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Alarm</th>
-<th>Schwere</th>
-<th>Löst aus, wenn</th>
-<th>Erste Prüfung</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>OpaaBackendNotReady</code></td>
-<td>critical</td>
-<td>das Backend zehn Minuten lang weniger bereite Pods hat als gewünscht</td>
-<td>Protokoll des Pods; ist die Datenbank erreichbar?</td>
-</tr>
-<tr>
-<td><code>OpaaBackendMetricsMissing</code></td>
-<td>warning</td>
-<td>Prometheus zehn Minuten lang weniger Backend-Pods abfragen kann, als das Deployment haben will; ohne kube-state-metrics erst, wenn es keinen erreicht</td>
-<td>Pods, <code>ServiceMonitor</code>, <code>metrics.scrapeFrom</code></td>
-</tr>
-<tr>
-<td><code>OpaaHighErrorRate</code></td>
-<td>warning</td>
-<td>der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen</td>
-<td>Protokoll; oft ein nicht erreichbares Modell. Auch die <code>503</code> einer Installation ohne Chat- oder Embedding-Modell zählen mit (Fragen, Uploads, Suchen); die Health Groups <code>chat-model</code> und <code>embedding-model</code> mit <code>NOT_CONFIGURED</code> zeigen diesen Fall (<a href="installation.html#ohne-modelle-installiert">Ohne Modelle installiert</a>)</td>
-</tr>
-<tr>
-<td><code>OpaaIndexingStalled</code></td>
-<td>warning</td>
-<td>in einem Pod die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde</td>
-<td>Laufstatus der Bibliothek, Quelle, Embedding-Modell</td>
-</tr>
-<tr>
-<td><code>OpaaAuditRetentionOverdue</code></td>
-<td>warning</td>
-<td>die automatische Löschung des Revisionsprotokolls seit mehr als 35 Tagen nicht gelaufen ist (sie läuft am 1. jedes Monats um 03:00) oder das Backend ihren Stand nicht lesen kann</td>
-<td>Log des Pods, vor allem zu diesem Zeitpunkt</td>
-</tr>
-<tr>
-<td><code>OpaaAuditPayloadDropped</code></td>
-<td>warning</td>
-<td>das Backend in der letzten Stunde Einträge einer Ereignisart ohne Angaben geschrieben hat, die der Ereigniskatalog nicht nennt (Programmfehler; der Vorgang selbst ist durchgeführt)</td>
-<td>Log des Pods nach „Dropped audit payload keys“, Fund melden</td>
-</tr>
-<tr>
-<td><code>OpaaAuditChainStalled</code></td>
-<td>warning</td>
-<td>der älteste Protokolleintrag ohne Kontrollpunkt der Prüfsummenkette eine Stunde lang älter als sechs Stunden ist (der Lauf findet alle zehn Minuten statt) oder das Backend den Stand der Kette nicht lesen kann; beim ersten Start einer großen Installation auch, bis der Lauf den Bestand aufgeholt hat</td>
-<td>Log der Pods, Sperre <code>audit-chain</code> in der Tabelle <code>shedlock</code>, offene Transaktionen in <code>pg_stat_activity</code></td>
-</tr>
-<tr>
-<td><code>OpaaAuditChainUnsealed</code></td>
-<td>warning</td>
-<td>ein abgeschlossener Protokollmonat seit sechs Stunden kein Siegel trägt: der Lauf kommt nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag <code>AUDIT_LOG_MONTH_SEALED</code> noch steht; beim ersten Start einer großen Installation auch, bis der Lauf den Bestand aufgeholt hat</td>
-<td>Log der Pods nach „no seal“, <code>GET /api/v1/audit/chain/{Monat}</code> für den Vormonat. Bleibt ein Monat dauerhaft <code>BROKEN</code>, prüft die Revision den Befund; danach schaltet der Betrieb den Alarm für diesen Monat bewusst stumm (Silence), weil der Lauf ihn nicht neu versiegelt</td>
-</tr>
-<tr>
-<td><code>OpaaHeapUsageHigh</code></td>
-<td>warning</td>
-<td>der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist</td>
-<td>Speicher-Limit oder Heap-Anteil anheben</td>
-</tr>
-</tbody>
-</table>
+<p><code>metrics.prometheusRule.enabled</code> legt die Alarme als <code>PrometheusRule</code> an. Sie setzt den
+ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen; die Alarme zur
+Bereitschaft von Backend und Frontend lesen zusätzlich <strong>kube-state-metrics</strong>, das
+kube-prometheus-stack mitbringt. <code>metrics.prometheusRule.labels</code> trägt die Labels, nach denen der
+Prometheus Regeln auswählt; bei kube-prometheus-stack wieder <code>release: &lt;Release-Name&gt;</code>. Jeder Alarm
+und was zu tun ist: <a href="alarme.html">Alarme</a>; Dashboards und Zustellung:
+<a href="dashboards-und-alarme.html#kubernetes">Dashboards und Alarme</a>.</p>
+<p>Ist das Backend mit <code>backend.replicas: 0</code> bewusst angehalten, schweigen <code>OpaaBackendNotReady</code> und
+<code>OpaaBackendMetricsMissing</code>.</p>
 <table>
 <thead>
 <tr>
@@ -8195,34 +8192,167 @@ kube-prometheus-stack wieder <code>release: &lt;Release-Name&gt;</code>.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>metrics.prometheusRule.errorRateThreshold</code></td>
-<td><code>0.05</code></td>
-<td>Schwelle von <code>OpaaHighErrorRate</code> (Anteil)</td>
+<td><code>metrics.prometheusRule.groups.&lt;Gruppe&gt;</code></td>
+<td>alle <code>true</code></td>
+<td>schaltet eine Gruppe ab: <code>platform</code>, <code>chat</code>, <code>model</code>, <code>indexing</code>, <code>directory</code>, <code>background</code>, <code>audit</code>, <code>security</code>; etwa <code>chat: false</code> für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“</td>
 </tr>
 <tr>
-<td><code>metrics.prometheusRule.errorRateMinRequests</code></td>
-<td><code>20</code></td>
-<td>Mindestzahl der Anfragen in zehn Minuten, ab der <code>OpaaHighErrorRate</code> zählt</td>
+<td><code>metrics.runbookBaseUrl</code></td>
+<td>die Alarmseite dieses Handbuchs im Netz</td>
+<td>Adresse der Alarmseite für <code>runbook_url</code> und die Links der Dashboards</td>
 </tr>
 <tr>
-<td><code>metrics.prometheusRule.heapUsageThreshold</code></td>
-<td><code>0.9</code></td>
-<td>Schwelle von <code>OpaaHeapUsageHigh</code> (Anteil des maximalen Heaps)</td>
+<td><code>metrics.grafanaDashboards.enabled</code></td>
+<td><code>false</code></td>
+<td>legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt <code>metrics.prometheusRule.enabled</code></td>
 </tr>
 <tr>
-<td><code>metrics.prometheusRule.indexingStallMinutes</code></td>
-<td><code>60</code></td>
-<td>Frist ohne Fortschritt für <code>OpaaIndexingStalled</code></td>
+<td><code>metrics.grafanaDashboards.label</code>, <code>labelValue</code></td>
+<td><code>grafana_dashboard</code>, <code>"1"</code></td>
+<td>Label, nach dem der Sidecar ConfigMaps auswählt</td>
+</tr>
+<tr>
+<td><code>metrics.grafanaDashboards.folder</code></td>
+<td><code>OPAA</code></td>
+<td>Ordner im Grafana (Annotation <code>grafana_folder</code>); leer: der Ordner des Sidecars</td>
+</tr>
+<tr>
+<td><code>metrics.grafanaDashboards.labels</code>, <code>annotations</code></td>
+<td>leer</td>
+<td>weitere Labels und Annotationen der ConfigMaps</td>
 </tr>
 </tbody>
 </table>
-<p><code>OpaaBackendNotReady</code> liest die Metriken von <strong>kube-state-metrics</strong>, das kube-prometheus-stack
-mitbringt. Ist das Backend mit <code>backend.replicas: 0</code> bewusst angehalten, schweigen
-<code>OpaaBackendNotReady</code> und <code>OpaaBackendMetricsMissing</code>.</p>
-<p>Uploads zählen ebenfalls als verarbeitete Dokumente. Ein Upload während eines hängenden Laufs
-verschiebt <code>OpaaIndexingStalled</code> deshalb um eine Frist.</p>
-<p>Schwellen mit Nachkommastellen gehören in eine Wertedatei oder <code>--set-json</code>: <code>--set</code> übergibt sie
-als Text, und das Schema lehnt sie ab.</p>
+<p>Die Schwellen unter <code>metrics.prometheusRule</code>; Anteile sind Zahlen zwischen 0 und 1:</p>
+<table>
+<thead>
+<tr>
+<th>Wert</th>
+<th>Vorgabe</th>
+<th>Alarm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>errorRateThreshold</code>, <code>errorRateMinRequests</code></td>
+<td><code>0.05</code>, <code>20</code></td>
+<td><code>OpaaHighErrorRate</code> <code>warning</code>: Anteil 5xx in zehn Minuten, ab so vielen Anfragen</td>
+</tr>
+<tr>
+<td><code>errorRateCriticalThreshold</code>, <code>errorRateCriticalMinRequests</code></td>
+<td><code>0.25</code>, <code>50</code></td>
+<td><code>OpaaHighErrorRate</code> <code>critical</code></td>
+</tr>
+<tr>
+<td><code>heapUsageThreshold</code></td>
+<td><code>0.85</code></td>
+<td><code>OpaaHeapUsageHigh</code>: Anteil des Heaps, der nach der Speicherbereinigung belegt bleibt</td>
+</tr>
+<tr>
+<td><code>indexingStallMinutes</code></td>
+<td><code>60</code></td>
+<td><code>OpaaIndexingStalled</code>: Frist ohne verarbeitetes Dokument</td>
+</tr>
+<tr>
+<td><code>chatSloObjective</code>, <code>chatSloMinQuestions</code></td>
+<td><code>0.995</code>, <code>30</code></td>
+<td><code>OpaaChatSloBurn</code>: Ziel für Fragen ohne Fehler des Dienstes über 30 Tage</td>
+</tr>
+<tr>
+<td><code>timeToFirstTokenSeconds</code>, <code>timeToFirstTokenMinQuestions</code></td>
+<td><code>10</code>, <code>30</code></td>
+<td><code>OpaaTimeToFirstTokenHigh</code>: p95 bis zum ersten Wort</td>
+</tr>
+<tr>
+<td><code>retrievalEmptyShare</code>, <code>retrievalEmptyMinQuestions</code></td>
+<td><code>0.8</code>, <code>30</code></td>
+<td><code>OpaaRetrievalMostlyEmpty</code></td>
+</tr>
+<tr>
+<td><code>outboundAuthErrorShare</code>, <code>outboundAuthErrorMinRequests</code></td>
+<td><code>0.5</code>, <code>5</code></td>
+<td><code>OpaaOutboundAuthFailing</code></td>
+</tr>
+<tr>
+<td><code>identityProviderFailureShare</code>, <code>identityProviderMinRequests</code></td>
+<td><code>0.5</code>, <code>10</code></td>
+<td><code>OpaaIdentityProviderRejected</code>: Anteil gescheiterter Aufrufe an den Identitätsanbieter in zehn Minuten, ohne Erfolge und Client-Fehler</td>
+</tr>
+<tr>
+<td><code>identityProviderKeyErrorMin</code></td>
+<td><code>5</code></td>
+<td><code>OpaaIdentityProviderRejected</code>: so viele Anmeldungen in zehn Minuten, die sich mangels Signaturschlüsseln nicht prüfen ließen</td>
+</tr>
+<tr>
+<td><code>throttledShare</code>, <code>throttledMinRequests</code></td>
+<td><code>0.2</code>, <code>20</code></td>
+<td><code>OpaaOutboundThrottled</code></td>
+</tr>
+<tr>
+<td><code>indexingRunFailureShare</code>, <code>indexingRunFailureMinRuns</code></td>
+<td><code>0.25</code>, <code>4</code></td>
+<td><code>OpaaIndexingRunsFailing</code>: in sechs Stunden je Konnektortyp</td>
+</tr>
+<tr>
+<td><code>directorySyncMaxAgeHours</code>, <code>directorySyncPlanPendingHours</code></td>
+<td><code>26</code>, <code>24</code></td>
+<td><code>OpaaDirectorySyncStale</code>, <code>OpaaDirectorySyncPlanPending</code></td>
+</tr>
+<tr>
+<td><code>queueMaxAgeMinutes.&lt;Warteschlange&gt;</code></td>
+<td><code>mail_outbox</code> 30, <code>source_events</code> 60, <code>ocr_backlog</code> 360, <code>indexing</code> 120</td>
+<td><code>OpaaQueueBacklog</code>; <code>indexing</code> zählt laufende Läufe mit und liegt deshalb über der üblichen Laufdauer</td>
+</tr>
+<tr>
+<td><code>scheduledOverdueFactor</code>, <code>scheduledOverdueMinMinutes</code></td>
+<td><code>3</code>, <code>15</code></td>
+<td><code>OpaaScheduledJobOverdue</code>: Intervalle ohne Erfolg, frühestens nach so vielen Minuten</td>
+</tr>
+<tr>
+<td><code>mailFailureShare</code>, <code>mailFailureMinAttempts</code></td>
+<td><code>0.5</code>, <code>5</code></td>
+<td><code>OpaaMailDeliveryFailing</code></td>
+</tr>
+<tr>
+<td><code>malwareScanFailureShare</code>, <code>malwareScanMinScans</code></td>
+<td><code>0.5</code>, <code>3</code></td>
+<td><code>OpaaMalwareScanFailing</code></td>
+</tr>
+<tr>
+<td><code>malwareSignatureMaxAgeDays</code></td>
+<td><code>3</code></td>
+<td><code>OpaaMalwareSignaturesOutdated</code></td>
+</tr>
+<tr>
+<td><code>loginFailureFactor</code>, <code>loginFailureMin</code></td>
+<td><code>5</code>, <code>50</code></td>
+<td><code>OpaaLoginFailureSpike</code>: abgewiesene lokale Anmeldungen in 15 Minuten über dem Mindestwert und dem Vielfachen des Medians derselben Viertelstunde der sieben Tage davor</td>
+</tr>
+<tr>
+<td><code>siemExportLagMinutes</code></td>
+<td><code>60</code></td>
+<td><code>OpaaSiemExportLagging</code></td>
+</tr>
+<tr>
+<td><code>auditLogHorizonWarningDays</code>, <code>auditLogHorizonCriticalHours</code></td>
+<td><code>14</code>, <code>48</code></td>
+<td><code>OpaaAuditLogHorizon</code></td>
+</tr>
+<tr>
+<td><code>heartbeatMaxAgeSeconds</code></td>
+<td><code>45</code></td>
+<td><code>OpaaInstanceHeartbeatStale</code>; drei Intervalle von <code>OPAA_INSTANCE_HEARTBEAT_INTERVAL</code></td>
+</tr>
+<tr>
+<td><code>monthlyTokenBudget</code></td>
+<td><code>0</code>, aus</td>
+<td><code>OpaaTokenBudgetForecast</code>: Tokens des Chat-Modells je Monat</td>
+</tr>
+</tbody>
+</table>
+<p>Die Kacheln der Startseite zeigen den Zustand der Alarme, eine geänderte Schwelle wirkt also auf
+beide; die Kurven der Bereiche färben sich nach den Vorgaben dieser Tabelle. Schwellen mit Nachkommastellen gehören in eine Wertedatei oder <code>--set-json</code>:
+<code>--set</code> übergibt sie als Text, und das Schema lehnt sie ab.</p>
 <h3 id="protokolle">Protokolle<a class="headerlink" href="#protokolle" title="Permanent link">&para;</a></h3>
 <p>Das Backend schreibt auf die Standardausgabe; ein Log-Sammler des Clusters nimmt sie dort ab. Mit
 <code>backend.logFormat</code> wird jede Zeile ein JSON-Objekt, das der Sammler ohne eigenes Muster zerlegt:</p>
