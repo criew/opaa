@@ -6,4 +6,4 @@ Gemeinsame Schale aller Asset-Typen (Bibliothek, Prompt-Bibliothek): Katalog mit
 - **Spec-Tag:** `asset` (`opaa-api/src/main/openapi/assets.yaml`, einschließlich Katalog, Freigaben und Space-Zuordnung).
 - **Backend-Modul:** rights (Paket `io.opaa.asset`).
 - **Erlaubte Abhängigkeiten:** `principal`, `succession`.
-- **Genutzt von:** `space`, `library`, `prompt`, `document-template`, `external-access`, `app`.
+- **Genutzt von:** `space`, `library`, `prompt`, `document-template`, `agent`, `external-access`, `app`.

@@ -210,7 +210,10 @@ export function creatableAssetTypes(
  * narrow the scope: a type's pages stay in the catalog's frame whether or not its switch is read.
  */
 export function catalogScopePrefixes(): string[] {
-  const types = activeIn(useAuthStore.getState().features, { documentTemplates: true })
+  const types = activeIn(useAuthStore.getState().features, {
+    documentTemplates: true,
+    agents: true,
+  })
   return [CATALOG_ROUTE, ...types.map((definition) => definition.routePrefix)]
 }
 
