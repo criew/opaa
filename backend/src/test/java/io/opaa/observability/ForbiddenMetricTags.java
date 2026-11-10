@@ -5,10 +5,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * The tag keys no metric may carry (ADR-0071): each would name a person, a space, a library, a
- * document, a file, an address or what someone searched for, and so turn an installation-wide count
- * into one per object or person. A key matches regardless of case and of {@code .}, {@code _} or
- * {@code -} between its words.
+ * The tag keys no metric may carry (ADR-0071): each of {@link #KEYS} would name a person, a space,
+ * a library, a document, a file, an address or what someone searched for, and so turn an
+ * installation-wide count into one per object or person; each of {@link #RESERVED_KEYS} is a label
+ * Prometheus or its ServiceMonitor sets on every series and would rename to {@code exported_<key>}.
+ * A key matches regardless of case and of {@code .}, {@code _} or {@code -} between its words.
  */
 final class ForbiddenMetricTags {
 
@@ -53,6 +54,9 @@ final class ForbiddenMetricTags {
           "token",
           "tokenid");
 
+  /** Target labels of the scrape; a tag of the same name ends up as {@code exported_<key>}. */
+  static final Set<String> RESERVED_KEYS = Set.of("job", "instance", "pod", "service", "namespace");
+
   /**
    * Meters whose {@code path} tag is the fixed working directory of the process (Spring Boot's disk
    * space metrics), never a path a person chose.
@@ -78,8 +82,9 @@ final class ForbiddenMetricTags {
     return isForbidden(key) && !fixedPath;
   }
 
-  /** Whether {@code key} names one of {@link #KEYS}. */
+  /** Whether {@code key} names one of {@link #KEYS} or {@link #RESERVED_KEYS}. */
   static boolean isForbidden(String key) {
-    return KEYS.contains(key.toLowerCase(Locale.ROOT).replaceAll("[._-]", ""));
+    String normalized = key.toLowerCase(Locale.ROOT).replaceAll("[._-]", "");
+    return KEYS.contains(normalized) || RESERVED_KEYS.contains(normalized);
   }
 }

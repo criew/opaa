@@ -45,6 +45,9 @@ class MetricTagSourceTest {
     assertThat(ForbiddenMetricTags.isForbidden("library_id")).isTrue();
     assertThat(ForbiddenMetricTags.isForbidden("User.Id")).isTrue();
     assertThat(ForbiddenMetricTags.isForbidden("connection_type")).isFalse();
+    assertThat(ForbiddenMetricTags.isForbidden("job")).isTrue();
+    assertThat(ForbiddenMetricTags.isForbidden("Namespace")).isTrue();
+    assertThat(ForbiddenMetricTags.isForbidden("scheduled_job")).isFalse();
     assertThat(ForbiddenMetricTags.isForbidden("gen_ai.token.type")).isFalse();
     assertThat(ForbiddenMetricTags.isIdentifyingValue("3f2c1b9e-0a4d-4c5e-9f8a-1b2c3d4e5f60"))
         .isTrue();
