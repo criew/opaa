@@ -75,7 +75,20 @@ public final class SelfDisclosureTestData {
         id,
         organizationId,
         sourceType);
+    grant(id, owner, "OWNER");
     return id;
+  }
+
+  /** A grant of {@code role} on {@code library} to {@code user}, as the asset shell writes one. */
+  public void grant(UUID library, UUID user, String role) {
+    jdbc.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, ?)",
+        UUID.randomUUID(),
+        library,
+        organizationId,
+        user,
+        role);
   }
 
   /**

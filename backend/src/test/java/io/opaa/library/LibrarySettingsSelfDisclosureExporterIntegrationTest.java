@@ -51,6 +51,7 @@ class LibrarySettingsSelfDisclosureExporterIntegrationTest {
             + " '30 days', external_access_set_by_user_id = ? WHERE id = ?",
         person,
         shared);
+    data.grant(shared, person, "MANAGER");
     UUID foreignRelease = data.library("SD-FOREIGN Freigabe", other, false, "UPLOAD");
     jdbc.update(
         "UPDATE knowledge_libraries SET external_access_state = 'ACTIVE',"
@@ -99,6 +100,30 @@ class LibrarySettingsSelfDisclosureExporterIntegrationTest {
         .doesNotContain("SD-FOREIGN")
         .doesNotContain("otto")
         .doesNotContain(other.toString());
+  }
+
+  /**
+   * A release the person set on a library she no longer reads keeps its record, but the library's
+   * name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void aReleaseOnALibraryThePersonNoLongerReadsAppearsWithoutItsName() throws Exception {
+    UUID left = data.library("Umbenannt nach dem Austritt", other, false, "UPLOAD");
+    jdbc.update(
+        "UPDATE knowledge_libraries SET external_access_state = 'ACTIVE',"
+            + " external_access_set_at = now(), external_access_expires_at = now() + interval"
+            + " '30 days', external_access_set_by_user_id = ? WHERE id = ?",
+        person,
+        left);
+
+    CapturingSelfDisclosureSink sink =
+        new CapturingSelfDisclosureSink(LibrarySettingsSelfDisclosureExporter.CATEGORY);
+    exporter.export(new SelfDisclosureSubject(person, data.organizationId()), sink);
+
+    assertThat(sink.records("externalAccess"))
+        .singleElement()
+        .satisfies(record -> assertThat(record).containsEntry("library", "(kein Leserecht)"));
+    assertThat(sink.text()).doesNotContain("Umbenannt nach dem Austritt");
   }
 
   @Test
