@@ -25,7 +25,7 @@ import type {
   LlmModelToolCheckResponse,
   ToolCapability,
 } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import {
   getLatestLlmModelToolCheck,
   getLlmModelToolCheckReport,
@@ -147,7 +147,7 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
             {error}
           </Alert>
         )}
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
           Die Prüfung stellt dem Modell „{model.displayName}“ (
           <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
             {model.modelIdentifier}
@@ -179,7 +179,7 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
 
         {canStart && (
           <FormControl sx={{ display: 'block', mt: 1 }}>
-            <FormLabel id={repetitionsId} sx={{ fontSize: 13.5, mb: 0.5 }}>
+            <FormLabel id={repetitionsId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
               {check ? 'Erneut prüfen' : 'Umfang der Prüfung'}
             </FormLabel>
             <RadioGroup
@@ -195,10 +195,10 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
                   sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
                   label={
                     <Box>
-                      <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                      <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                         {option.label}
                       </Typography>
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         {option.hint}
                       </Typography>
                     </Box>
@@ -234,7 +234,7 @@ function Progress({ check }: { check: LlmModelToolCheckResponse }) {
   const percent = check.totalRuns === 0 ? 0 : (100 * check.completedRuns) / check.totalRuns
   return (
     <Box sx={{ mb: 2 }} role="status">
-      <Typography sx={{ fontSize: 13.5, mb: 0.75 }}>
+      <Typography sx={{ fontSize: fontSize.text, mb: 0.75 }}>
         Prüfung läuft: {check.completedRuns} von {check.totalRuns} Fällen bewertet.
       </Typography>
       <LinearProgress
@@ -268,7 +268,10 @@ function Result({ check }: { check: LlmModelToolCheckResponse }) {
               <TableCell>
                 {TOOL_CHECK_CATEGORY_LABELS[category.category] ?? category.category}
                 {TOOL_CHECK_FLOOR.includes(category.category) && (
-                  <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  <Typography
+                    component="span"
+                    sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+                  >
                     {' '}
                     (Pflicht)
                   </Typography>
@@ -279,7 +282,7 @@ function Result({ check }: { check: LlmModelToolCheckResponse }) {
           ))}
         </TableBody>
       </Table>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
         Messlauf {check.runId}
         {seconds != null && `, Dauer ${seconds} s`}
         {check.medianModelCallMillis != null &&
