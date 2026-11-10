@@ -54,6 +54,10 @@ protokollereignisse
 protokollereignisse#account-deactivated
 protokollereignisse#account-erased
 protokollereignisse#account-reauthentication-forced
+protokollereignisse#agent-changed
+protokollereignisse#agent-created
+protokollereignisse#agent-deleted
+protokollereignisse#agent-settings-changed
 protokollereignisse#api-token-expired
 protokollereignisse#api-token-issued
 protokollereignisse#api-token-revoked
@@ -237,6 +241,7 @@ protokollereignisse#transcription-model-changed
 protokollereignisse#upload-orphan-originals-deleted
 rollensicht
 rollensicht#auditor
+rollensicht#create-agent
 rollensicht#create-connector-library
 rollensicht#create-internal-group
 rollensicht#create-library
