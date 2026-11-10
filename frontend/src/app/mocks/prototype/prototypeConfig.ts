@@ -18,7 +18,8 @@ export interface PrototypeEntry {
 }
 
 /**
- * Entry points of the prototype bar. The mocked user is always the system administrator; what a
+ * Entry points of the prototype bar. The mocked user is the system administrator unless `?mockProfile=`
+ * chooses another; what a
  * reader sees comes from libraries whose fixture carries `myRole: 'VIEWER'`.
  */
 export const ENTRY_GROUPS: { label: string; entries: PrototypeEntry[] }[] = [

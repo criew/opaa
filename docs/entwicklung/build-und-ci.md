@@ -36,6 +36,15 @@ beliebigen URL wählt den Fixture-Satz, z. B. viele Einträge mit langen Namen (
 die Gruppen dem Szenario. Tabelle und Erweiterung um weitere Bereiche:
 [e2e/ui-lab/README.md](../../e2e/ui-lab/README.md#mock-szenarien).
 
+**Mock-Profile.** `?mockProfile=admin|user|auditor|signed-out` wählt, wer im Mock angemeldet ist;
+die Wahl bleibt wie das Szenario für den Tab bestehen, `?mockProfile=admin` setzt zurück. `user` ist
+ein Konto ohne Verwaltung, `auditor` die Rolle Revision mit ihren Seiten unter `/revision/…`, und
+`signed-out` meldet niemanden an und bietet zwei Identitätsanbieter sowie lokale Konten mit
+Selbstregistrierung und Passwort-Rücksetzung an, sodass Anmelde-, Registrier- und Passwortseiten
+erreichbar sind. Den Einrichtungs-Assistenten öffnet `?mockInstallation=pending`, mit allen
+optionalen Schritten `?mockInstallation=embedding`; `?mockInstallation=done` kehrt zurück. Im
+Szenario `slow` läuft die Chat-Antwort nach zwei Sekunden Wort für Wort ein.
+
 **UI-Lab.** Werkzeuge für Screenshots, Kennzahlen, Videos und Variantenvergleiche gegen dieses
 Frontend liegen unter [`e2e/ui-lab/`](../../e2e/ui-lab/README.md); den Ablauf für die
 Neugestaltung eines Bereichs beschreibt der Skill `.claude/skills/ui-lab/SKILL.md`, den
@@ -231,7 +240,10 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    startet deshalb einmal mit einem Stand ab dem Merge von #3206 oder wird neu aufgesetzt), ebenso
    wenig eine mit Liquibase migrierte
    ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2). Ab dieser
-   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei.
+   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei. Liegt der letzte Stand,
+   der eine Baseline umschreibt ([Baselines](../../backend/docs/migrationen.md#baselines)), später,
+   ist er die Untergrenze: Keine ältere Historie passt zu den neuen Prüfsummen. Auf einem solchen
+   Stand und in den 24 Stunden danach prüft Szenario 05 also das Update der Version auf sich selbst.
 
 Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
 Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.

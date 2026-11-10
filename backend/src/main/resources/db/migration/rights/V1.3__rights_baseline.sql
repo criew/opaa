@@ -444,7 +444,7 @@ CREATE TABLE capability_grant_history (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     transfer_id uuid,
     scope character varying(200),
-    CONSTRAINT chk_capability_grant_history_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY'))),
+    CONSTRAINT chk_capability_grant_history_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY', 'CREATE_AGENT', 'CREATE_TEMPLATE'))),
     CONSTRAINT chk_capability_grant_history_cause CHECK ((cause IN ('DELIVERED', 'GRANTED', 'REVOKED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT'))),
     CONSTRAINT chk_capability_grant_history_interval CHECK (((valid_to IS NULL) OR (valid_to >= valid_from))),
     CONSTRAINT chk_capability_grant_history_scope CHECK ((((capability)::text = 'CREATE_CONNECTOR_LIBRARY'::text) = (scope IS NOT NULL))),
@@ -462,7 +462,7 @@ CREATE TABLE capability_grants (
     granted_by_user_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     scope character varying(200),
-    CONSTRAINT chk_capability_grants_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY'))),
+    CONSTRAINT chk_capability_grants_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY', 'CREATE_AGENT', 'CREATE_TEMPLATE'))),
     CONSTRAINT chk_capability_grants_scope CHECK ((((capability)::text = 'CREATE_CONNECTOR_LIBRARY'::text) = (scope IS NOT NULL))),
     CONSTRAINT chk_capability_grants_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)) OR (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (subject_user_id IS NULL) AND (subject_group_id IS NULL)))),
     CONSTRAINT chk_capability_grants_subject_type CHECK ((subject_type IN ('USER', 'GROUP', 'ALL_ACCOUNTS')))
@@ -1022,3 +1022,27 @@ INSERT INTO capability_grant_history
   (id, organization_id, capability, scope, subject_type, cause, valid_from, created_at)
 SELECT gen_random_uuid(), organization_id, capability, scope, 'ALL_ACCOUNTS', 'DELIVERED', created_at, now()
   FROM capability_grants;
+
+-- From which age in months an entry of the operational list "Ohne Zuständigkeit" is highlighted, as
+-- the system administration set it; without the row the factory default in the code applies
+-- (ADR-0060, Entscheidung 1).
+CREATE TABLE succession_settings (
+    id integer NOT NULL,
+    aging_threshold_months integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT succession_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_succession_settings_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_succession_settings_months CHECK (((aging_threshold_months >= 1) AND (aging_threshold_months <= 120)))
+);
+
+-- The plausibility threshold of the directory sync in percent, installation-wide, as the system
+-- administration set it; without the row the factory default in the code applies (ADR-0060,
+-- Entscheidung 1).
+CREATE TABLE directory_sync_settings (
+    id integer NOT NULL,
+    change_threshold_percent integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT directory_sync_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_directory_sync_settings_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_directory_sync_settings_percent CHECK (((change_threshold_percent >= 1) AND (change_threshold_percent <= 100)))
+);

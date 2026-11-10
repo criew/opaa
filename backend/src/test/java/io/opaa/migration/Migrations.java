@@ -12,7 +12,6 @@ import java.sql.Connection;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.flywaydb.core.Flyway;
@@ -34,15 +33,6 @@ final class Migrations {
 
   /** The prefix of every module directory; the next path segment is the module's name. */
   static final String MODULE_ROOT = "db/migration/";
-
-  /**
-   * The placeholders the application passes (VectorStoreMigrationPlaceholders), as in its defaults.
-   */
-  static final Map<String, String> PLACEHOLDERS =
-      Map.of(
-          "opaa_vector_store_dimensions", "1024",
-          "opaa_vector_store_index_type", "hnsw",
-          "opaa_vector_store_distance_ops", "vector_cosine_ops");
 
   private static final Pattern NAME = Pattern.compile("V([0-9][0-9.]*)__([a-z0-9_]+)\\.sql");
 
@@ -180,7 +170,6 @@ final class Migrations {
           // a test may create its own tables before the first script; the application never does
           .baselineOnMigrate(baselineOnMigrate)
           .baselineVersion("0")
-          .placeholders(PLACEHOLDERS)
           .load()
           .migrate();
     } finally {

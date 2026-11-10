@@ -34,10 +34,6 @@ BEGIN
   IF NEW.session_generation < OLD.session_generation THEN
     NEW.session_generation := OLD.session_generation;
   END IF;
-  IF NEW.password_invalidated_before IS DISTINCT FROM OLD.password_invalidated_before
-      AND NEW.session_generation = OLD.session_generation THEN
-    NEW.session_generation := OLD.session_generation + 1;
-  END IF;
   RETURN NEW;
 END; $$;
 
@@ -72,6 +68,8 @@ BEGIN
     IF partition_month IS NOT NULL
        AND (partition_month + interval '1 month') <= new_cutoff THEN
       EXECUTE format('DROP TABLE %s', rec.partition_rel);
+      DELETE FROM audit_chain_checkpoints WHERE month = partition_month;
+      DELETE FROM audit_chain_seals WHERE month = partition_month;
       RETURN NEXT rec.partition_name;
     END IF;
   END LOOP;
@@ -158,8 +156,9 @@ CREATE TABLE audit_log (
     outcome character varying(10) NOT NULL,
     reason character varying(1000),
     correlation_ref character varying(255),
+    schema_version smallint,
     CONSTRAINT chk_audit_log_actor_kind CHECK ((actor_kind IN ('USER', 'SERVICE_ACCOUNT', 'SYSTEM_PROCESS'))),
-    CONSTRAINT chk_audit_log_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP', 'ASSET_GRANT', 'USER_ACCOUNT', 'API_TOKEN', 'SYSTEM_SETTING', 'AUDIT_LOG', 'DIRECTORY_SYNC_RUN', 'PROMPT_LIBRARY', 'PROMPT'))),
+    CONSTRAINT chk_audit_log_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP', 'ASSET_GRANT', 'USER_ACCOUNT', 'API_TOKEN', 'SYSTEM_SETTING', 'AUDIT_LOG', 'DIRECTORY_SYNC_RUN', 'PROMPT_LIBRARY', 'PROMPT', 'SERVICE_ACCOUNT', 'AGENT', 'DOCUMENT_TEMPLATE'))),
     CONSTRAINT chk_audit_log_outcome CHECK ((outcome IN ('SUCCESS', 'DENIED', 'FAILURE'))),
     CONSTRAINT chk_audit_log_subject CHECK ((((subject_kind IS NULL) AND (subject_ref IS NULL)) OR ((subject_kind IS NOT NULL) AND (subject_kind IN ('USER', 'GROUP')) AND (subject_ref IS NOT NULL))))
 )
@@ -180,7 +179,6 @@ CREATE TABLE branding_settings (
     product_name character varying(60),
     claim character varying(120),
     primary_color character varying(7),
-    default_color_scheme character varying(10),
     logo_content bytea,
     logo_content_type character varying(50),
     logo_version character varying(16),
@@ -195,7 +193,6 @@ CREATE TABLE branding_settings (
     login_background_version character varying(16),
     login_background_updated_at timestamp with time zone,
     ai_notice character varying(500),
-    CONSTRAINT chk_branding_settings_color_scheme CHECK (((default_color_scheme IS NULL) OR (default_color_scheme IN ('LIGHT', 'DARK', 'SYSTEM')))),
     CONSTRAINT chk_branding_settings_login_background_complete CHECK ((((login_background_content IS NULL) AND (login_background_content_type IS NULL) AND (login_background_version IS NULL) AND (login_background_updated_at IS NULL)) OR ((login_background_content IS NOT NULL) AND (login_background_content_type IS NOT NULL) AND (login_background_version IS NOT NULL) AND (login_background_updated_at IS NOT NULL)))),
     CONSTRAINT chk_branding_settings_login_background_content_type CHECK (((login_background_content_type IS NULL) OR (login_background_content_type IN ('image/png', 'image/jpeg')))),
     CONSTRAINT chk_branding_settings_login_background_size CHECK (((login_background_content IS NULL) OR (octet_length(login_background_content) <= 2097152))),
@@ -252,6 +249,8 @@ CREATE TABLE local_auth_settings (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by uuid,
     version bigint DEFAULT 0 NOT NULL,
+    lockout_max_attempts integer,
+    lockout_duration_minutes integer,
     CONSTRAINT chk_local_auth_settings_default_expiry_days CHECK ((default_expiry_days >= 1)),
     CONSTRAINT chk_local_auth_settings_inactive_days CHECK ((inactive_days >= 30)),
     CONSTRAINT chk_local_auth_settings_invitation_token_ttl CHECK (((invitation_token_ttl_hours >= 1) AND (invitation_token_ttl_hours <= 720))),
@@ -265,7 +264,6 @@ CREATE TABLE local_credentials (
     password_hash character varying(255),
     password_change_required boolean DEFAULT false NOT NULL,
     password_change_reason character varying(32),
-    password_invalidated_before timestamp with time zone,
     locked_at timestamp with time zone,
     locked_reason character varying(32),
     failed_login_attempts integer DEFAULT 0 NOT NULL,
@@ -279,6 +277,7 @@ CREATE TABLE local_credentials (
     version bigint DEFAULT 0 NOT NULL,
     expiry_reminded_for timestamp with time zone,
     session_generation bigint DEFAULT 0 NOT NULL,
+    email_changed_by_admin_at timestamp with time zone,
     CONSTRAINT chk_local_credentials_created_reason CHECK ((btrim((created_reason)::text) <> ''::text)),
     CONSTRAINT chk_local_credentials_failed_login_attempts CHECK ((failed_login_attempts >= 0)),
     CONSTRAINT chk_local_credentials_lock_consistent CHECK (((locked_at IS NULL) = (locked_reason IS NULL))),
@@ -451,7 +450,9 @@ CREATE TABLE users (
     last_login_at timestamp with time zone,
     system_role character varying(20) DEFAULT 'USER'::character varying NOT NULL,
     organization_id uuid NOT NULL,
-    directory_locked_at timestamp with time zone
+    directory_locked_at timestamp with time zone,
+    erased_at timestamp with time zone,
+    quick_tour_hint_done boolean DEFAULT false NOT NULL
 );
 
 ALTER TABLE ONLY admin_review_reminders
@@ -679,6 +680,41 @@ VALUES (
   now()
 );
 
+-- Checksum chain of the audit log, one chain per monthly partition (ADR-0059, Entscheidung 4).
+-- A checkpoint records how far the chain run got: the number of entries chained from the start of
+-- the month, the key of the last chained entry and the head hash. The primary key is the marker
+-- against a second run writing the same position twice (ADR-0053, Entscheidung 7).
+CREATE TABLE audit_chain_checkpoints (
+    month date NOT NULL,
+    position bigint NOT NULL,
+    last_recorded_at timestamp with time zone,
+    last_event_id uuid,
+    head_hash bytea NOT NULL,
+    algorithm character varying(40) NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT audit_chain_checkpoints_pkey PRIMARY KEY (month, position),
+    CONSTRAINT chk_audit_chain_checkpoints_month CHECK ((month = (date_trunc('month'::text, (month)::timestamp with time zone))::date)),
+    CONSTRAINT chk_audit_chain_checkpoints_position CHECK ((position >= 0)),
+    CONSTRAINT chk_audit_chain_checkpoints_last_key CHECK (((position = 0) = (last_recorded_at IS NULL) AND (position = 0) = (last_event_id IS NULL))),
+    CONSTRAINT chk_audit_chain_checkpoints_hash CHECK ((octet_length(head_hash) = 32))
+);
+
+-- The seal of a closed month: the head hash over all its entries, written once together with the
+-- AUDIT_LOG_MONTH_SEALED entry that carries it out of the database. One seal per month.
+CREATE TABLE audit_chain_seals (
+    month date NOT NULL,
+    entry_count bigint NOT NULL,
+    head_hash bytea NOT NULL,
+    algorithm character varying(40) NOT NULL,
+    sealed_at timestamp with time zone NOT NULL,
+    seal_event_id uuid NOT NULL,
+    CONSTRAINT audit_chain_seals_pkey PRIMARY KEY (month),
+    CONSTRAINT uk_audit_chain_seals_event UNIQUE (seal_event_id),
+    CONSTRAINT chk_audit_chain_seals_month CHECK ((month = (date_trunc('month'::text, (month)::timestamp with time zone))::date)),
+    CONSTRAINT chk_audit_chain_seals_count CHECK ((entry_count >= 0)),
+    CONSTRAINT chk_audit_chain_seals_hash CHECK ((octet_length(head_hash) = 32))
+);
+
 -- Long, fixed horizon of monthly partitions - three months back through 16 years forward from
 -- the moment this migration runs; no DEFAULT partition, so a write outside this horizon fails
 -- loudly instead of landing somewhere retention deletion can never reclaim.
@@ -697,8 +733,8 @@ BEGIN
 END $$;
 
 -- opaa_audit_owner (ADR-0015): a dedicated NOLOGIN role nothing ever authenticates as. Ownership of
--- audit_log, its partitions, audit_actor_pseudonyms, audit_retention_settings and the retention
--- deletion function moves to it, so the application account (current_user) can never bypass the
+-- audit_log, its partitions, audit_actor_pseudonyms, audit_retention_settings, the checksum chain
+-- (audit_chain_checkpoints, audit_chain_seals) and the retention deletion function moves to it, so the application account (current_user) can never bypass the
 -- narrow INSERT/SELECT/EXECUTE grants it keeps - an owner always retains DDL on its own objects.
 -- The membership is taken only for the moves and given back; the residual ADMIN OPTION a
 -- CREATEROLE account receives on a role it creates is documented as open in ADR-0015.
@@ -714,6 +750,8 @@ END $$;
 ALTER TABLE audit_log OWNER TO opaa_audit_owner;
 ALTER TABLE audit_actor_pseudonyms OWNER TO opaa_audit_owner;
 ALTER TABLE audit_retention_settings OWNER TO opaa_audit_owner;
+ALTER TABLE audit_chain_checkpoints OWNER TO opaa_audit_owner;
+ALTER TABLE audit_chain_seals OWNER TO opaa_audit_owner;
 ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
 DO $$
 DECLARE
@@ -724,9 +762,9 @@ BEGIN
   END LOOP;
 END $$;
 
-REVOKE ALL ON TABLE audit_log, audit_actor_pseudonyms, audit_retention_settings FROM PUBLIC;
+REVOKE ALL ON TABLE audit_log, audit_actor_pseudonyms, audit_retention_settings, audit_chain_checkpoints, audit_chain_seals FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() FROM PUBLIC;
-GRANT INSERT, SELECT ON TABLE audit_log, audit_actor_pseudonyms TO CURRENT_USER;
+GRANT INSERT, SELECT ON TABLE audit_log, audit_actor_pseudonyms, audit_chain_checkpoints, audit_chain_seals TO CURRENT_USER;
 GRANT SELECT ON TABLE audit_retention_settings TO CURRENT_USER;
 GRANT UPDATE (retention_months, updated_at) ON TABLE audit_retention_settings TO CURRENT_USER;
 GRANT EXECUTE ON FUNCTION opaa_audit_delete_expired_partitions() TO CURRENT_USER;
@@ -738,3 +776,78 @@ BEGIN
     current_schema(), current_user);
   EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
 END $$;
+
+-- How many calendar years the grants of the anlassbezogene Klärung are kept, as the system
+-- administration set it; without the row the factory default in the code applies (ADR-0060,
+-- Entscheidung 1).
+CREATE TABLE audit_incident_scope_retention_settings (
+    id integer NOT NULL,
+    retention_years integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT audit_incident_scope_retention_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_audit_incident_scope_retention_settings_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_audit_incident_scope_retention_settings_years CHECK (((retention_years >= 1) AND (retention_years <= 10)))
+);
+
+-- How often the administration held the deletion of the chats of a locked account, per calendar
+-- month, for the report to the staff council: no person, no account, nothing finer than a month.
+CREATE TABLE audit_chat_cleanup_hold_monthly_counts (
+    organization_id uuid NOT NULL,
+    hold_month date NOT NULL,
+    hold_count integer NOT NULL,
+    CONSTRAINT audit_chat_cleanup_hold_monthly_counts_pkey PRIMARY KEY (organization_id, hold_month),
+    CONSTRAINT chk_audit_chat_cleanup_hold_monthly_counts_count CHECK ((hold_count > 0)),
+    CONSTRAINT chk_audit_chat_cleanup_hold_monthly_counts_month CHECK ((hold_month = (date_trunc('month'::text, (hold_month)::timestamp with time zone))::date)),
+    CONSTRAINT fk_audit_chat_cleanup_hold_monthly_counts_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+-- The requests for the AUDITOR role (separation of system administration and audit): a system administrator or a provider's roles claim asks, an
+-- auditor confirms or declines. One request per account. A decided request of the administration
+-- is deleted, its trace is the audit log; a declined request of a provider stays as declined_at, so
+-- the claim the next sign-in carries again does not reopen it, and ends once the claim no longer
+-- names the role.
+CREATE TABLE auditor_role_requests (
+    id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    requested_by_user_id uuid,
+    requested_by_provider_id uuid,
+    requested_at timestamp with time zone NOT NULL,
+    declined_at timestamp with time zone,
+    CONSTRAINT auditor_role_requests_pkey PRIMARY KEY (id),
+    CONSTRAINT ux_auditor_role_requests_user UNIQUE (user_id),
+    CONSTRAINT ck_auditor_role_requests_one_source
+        CHECK ((requested_by_user_id IS NULL) <> (requested_by_provider_id IS NULL)),
+    CONSTRAINT ck_auditor_role_requests_declined_by_provider
+        CHECK (declined_at IS NULL OR requested_by_provider_id IS NOT NULL),
+    CONSTRAINT fk_auditor_role_requests_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_auditor_role_requests_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_auditor_role_requests_requested_by_organization FOREIGN KEY (requested_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_auditor_role_requests_provider FOREIGN KEY (requested_by_provider_id) REFERENCES oidc_providers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_auditor_role_requests_organization ON auditor_role_requests USING btree (organization_id);
+CREATE INDEX idx_auditor_role_requests_requested_by ON auditor_role_requests USING btree (requested_by_user_id);
+CREATE INDEX idx_auditor_role_requests_provider ON auditor_role_requests USING btree (requested_by_provider_id);
+
+-- The steps of the holds of the deletion of a locked account's chats per calendar month and
+-- purpose, for the report to the staff council: no person, no account, no reason, nothing finer
+-- than a month. The counts outlive the holds and their requests.
+CREATE TABLE audit_chat_cleanup_hold_purpose_counts (
+    organization_id uuid NOT NULL,
+    case_month date NOT NULL,
+    purpose varchar(40) NOT NULL,
+    transition varchar(10) NOT NULL,
+    case_count integer NOT NULL,
+    CONSTRAINT audit_chat_cleanup_hold_purpose_counts_pkey
+        PRIMARY KEY (organization_id, case_month, purpose, transition),
+    CONSTRAINT chk_audit_chat_cleanup_hold_purpose_counts_count CHECK ((case_count > 0)),
+    CONSTRAINT chk_audit_chat_cleanup_hold_purpose_counts_month CHECK (
+        (case_month = (date_trunc('month'::text, (case_month)::timestamp with time zone))::date)),
+    CONSTRAINT chk_audit_chat_cleanup_hold_purpose_counts_purpose CHECK (
+        (purpose IN ('AUTHORITY_OR_COURT_ORDER', 'SECURITY_INCIDENT_EVIDENCE', 'DATA_SUBJECT_REQUEST'))),
+    CONSTRAINT chk_audit_chat_cleanup_hold_purpose_counts_transition CHECK (
+        (transition IN ('REQUESTED', 'APPROVED', 'EXTENDED', 'REJECTED', 'EXPIRED'))),
+    CONSTRAINT fk_audit_chat_cleanup_hold_purpose_counts_organization FOREIGN KEY (organization_id)
+        REFERENCES organizations(id) ON DELETE CASCADE
+);
