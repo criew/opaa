@@ -80,8 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request that is not authenticated, or refused by the budget per account
      * behind the chain, gives back its client and global token; one authenticated by an access
      * token ({@link OwnQuotaAuthentication}) its client token; one a later limit refused ({@link
-     * RateLimitAuthentication#markRefusedByLaterLimit}) or answered {@code 403} or {@code 404} its
-     * global token. Rationale: ADR-0033, 9.
+     * RateLimitAuthentication#markRefusedByLaterLimit}) or by its operation before any work ({@link
+     * RefusedBeforeWork}) its global token. Rationale: ADR-0033, 9.
      */
     AUTHENTICATED,
 
@@ -286,7 +286,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
     } finally {
       if (admission != null) {
-        settle(admission, request, response);
+        settle(admission, request);
       }
     }
   }
@@ -411,8 +411,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /** Gives back what the request's mark shows it did not owe - see {@link Counting}. */
-  private static void settle(
-      Admission admission, HttpServletRequest request, HttpServletResponse response) {
+  private static void settle(Admission admission, HttpServletRequest request) {
     CompiledRule rule = admission.rule();
     switch (rule.counting()) {
       case EVERY_REQUEST -> {}
@@ -427,7 +426,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
           }
           if (RateLimitAuthentication.isMarked(
                   request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)
-              || refusedByTheOperation(response)) {
+              || RateLimitAuthentication.isMarked(request, RefusedBeforeWork.ATTRIBUTE)) {
             releaseGlobal(admission);
           }
         }
@@ -442,17 +441,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
       }
     }
-  }
-
-  /**
-   * An authenticated request the operation turned away as forbidden or not found did no work, so it
-   * owes the installation's ceiling nothing; its budgets per client and per account stay spent, so
-   * probing other ids buys nothing and the answer reveals nothing a {@code 403} or {@code 404} does
-   * not already say.
-   */
-  private static boolean refusedByTheOperation(HttpServletResponse response) {
-    int status = response.getStatus();
-    return status == HttpServletResponse.SC_FORBIDDEN || status == HttpServletResponse.SC_NOT_FOUND;
   }
 
   private static void releaseGlobal(Admission admission) {

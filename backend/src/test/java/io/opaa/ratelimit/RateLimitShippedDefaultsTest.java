@@ -6,12 +6,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.common.NotFoundException;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import io.opaa.test.InMemoryInstallationCounters;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,15 +42,17 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.yaml.snakeyaml.Yaml;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The load bounds as shipped in {@code application.yml}, bound the way Spring binds them, in front
  * of the production filter and {@link AuthenticatedRequestMarkerFilter}: every global ceiling has a
- * budget per account below it, an account the operation turns away cannot spend a ceiling for
- * everyone, every writing operation of the specification falls under a rule, and opening a live
- * dictation is limited. No Spring context.
+ * budget per account below it, accounts the operation turns away before its work cannot spend a
+ * ceiling for everyone while a refusal after the work still counts, every writing operation of the
+ * specification falls under a rule, and opening a live dictation is limited. No Spring context.
  */
 class RateLimitShippedDefaultsTest {
 
@@ -114,7 +118,8 @@ class RateLimitShippedDefaultsTest {
                 path.getValue().formatted(UUID.randomUUID()),
                 "198.51.100." + (attempt % 250 + 1),
                 mallory,
-                403);
+                403,
+                true);
         if (status == 429) {
           refused++;
         }
@@ -136,12 +141,72 @@ class RateLimitShippedDefaultsTest {
     }
   }
 
+  /**
+   * Two accounts without rights together try more often than the ceiling admits (two times the
+   * budget per account above it): their refusals before the work give the ceiling back.
+   */
+  @Test
+  void refusalsBeforeTheWorkOfSeveralAccountsLeaveTheIndexingCeilingToOthers() throws Exception {
+    RateLimitProperties shipped = shipped(Map.of());
+    EndpointLimit indexing = shipped.indexing();
+    assertThat(2 * indexing.maxRequestsPerAccount()).isGreaterThan(indexing.globalMaxRequests());
+    Filter filter = filter(shipped);
+    int client = 1;
+    for (String refused : List.of("mallory", "trudy")) {
+      for (int attempt = 0; attempt < indexing.maxRequestsPerAccount(); attempt++) {
+        assertThat(
+                answer(
+                    filter,
+                    "POST",
+                    indexingOf(UUID.randomUUID()),
+                    "198.51.100." + client++,
+                    account(refused),
+                    404,
+                    true))
+            .isEqualTo(404);
+      }
+    }
+
+    assertThat(
+            answer(
+                filter, "POST", indexingOf(UUID.randomUUID()), "203.0.113.9", account("anna"), 202))
+        .isEqualTo(202);
+  }
+
+  /** A 404 the operation answers after its work - a failed fetch - keeps its token. */
+  @Test
+  void aNotFoundAfterTheWorkStillSpendsTheIndexingCeiling() throws Exception {
+    RateLimitProperties shipped = shipped(Map.of());
+    Filter filter = filter(shipped);
+    int ceiling = shipped.indexing().globalMaxRequests();
+    for (int account = 1; account <= ceiling; account++) {
+      assertThat(
+              answer(
+                  filter,
+                  "POST",
+                  indexingOf(UUID.randomUUID()),
+                  "198.51.100." + account,
+                  account("curator-" + account),
+                  404))
+          .isEqualTo(404);
+    }
+
+    assertThat(
+            answer(
+                filter, "POST", indexingOf(UUID.randomUUID()), "203.0.113.9", account("anna"), 202))
+        .isEqualTo(429);
+  }
+
+  private static String indexingOf(UUID libraryId) {
+    return "/api/v1/libraries/" + libraryId + "/indexing";
+  }
+
   @Test
   void theSourceTestOfAnAccountTheOperationTurnsAwayLeavesTheCeilingToOthers() throws Exception {
     Filter filter = filter(shipped(Map.of()));
     String path = "/api/v1/libraries/source-test";
     for (int attempt = 0; attempt < 100; attempt++) {
-      answer(filter, "POST", path, "198.51.100." + (attempt + 1), account("mallory"), 404);
+      answer(filter, "POST", path, "198.51.100." + (attempt + 1), account("mallory"), 404, true);
     }
 
     assertThat(answer(filter, "POST", path, "203.0.113.9", account("colleague"), 200))
@@ -238,15 +303,48 @@ class RateLimitShippedDefaultsTest {
       Authentication authentication,
       int status)
       throws Exception {
+    return answer(filter, method, path, client, authentication, status, false);
+  }
+
+  /**
+   * As above; with {@code beforeWork} the operation refuses in its checks in front of the work,
+   * through {@link RefusedBeforeWork}, the way the services do.
+   */
+  private static int answer(
+      Filter filter,
+      String method,
+      String path,
+      String client,
+      Authentication authentication,
+      int status,
+      boolean beforeWork)
+      throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest(method, path);
     request.setRemoteAddr(client);
     MockHttpServletResponse response = new MockHttpServletResponse();
+    FilterChain operation =
+        (r, s) -> {
+          if (beforeWork) {
+            RequestContextHolder.setRequestAttributes(
+                new ServletRequestAttributes((HttpServletRequest) r));
+            try {
+              RefusedBeforeWork.check(
+                  () -> {
+                    throw new NotFoundException("Bibliothek nicht gefunden");
+                  });
+            } catch (NotFoundException refused) {
+              // answered by the exception handler
+            } finally {
+              RequestContextHolder.resetRequestAttributes();
+            }
+          }
+          ((HttpServletResponse) s).setStatus(status);
+        };
     FilterChain securityChainEnd =
         (req, res) -> {
           SecurityContextHolder.getContext().setAuthentication(authentication);
           try {
-            new AuthenticatedRequestMarkerFilter()
-                .doFilter(req, res, (r, s) -> ((HttpServletResponse) s).setStatus(status));
+            new AuthenticatedRequestMarkerFilter().doFilter(req, res, operation);
           } finally {
             SecurityContextHolder.clearContext();
           }
