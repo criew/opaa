@@ -4,7 +4,16 @@ import type {
   EmbeddingModelProbeResponse,
   EmbeddingReindexStatusResponse,
   LlmModelResponse,
+  LlmModelToolCapability,
 } from '@/shared/api/types'
+
+/** The statement of a model nobody has checked yet - the default of every new model. */
+export const UNVERIFIED_TOOL_CAPABILITY: LlmModelToolCapability = {
+  value: 'UNVERIFIED',
+  basis: null,
+  assessedAt: null,
+  measurementRun: null,
+}
 
 /**
  * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET,
@@ -20,6 +29,7 @@ export let mockLlmModels: LlmModelResponse[] = [
     maxTokens: 8000,
     apiKeySet: false,
     active: true,
+    toolCapability: { ...UNVERIFIED_TOOL_CAPABILITY },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -36,6 +46,7 @@ export function resetMockLlmModels() {
       maxTokens: 8000,
       apiKeySet: false,
       active: true,
+      toolCapability: { ...UNVERIFIED_TOOL_CAPABILITY },
       createdAt: '2026-03-01T10:00:00Z',
       updatedAt: '2026-03-01T10:00:00Z',
     },

@@ -102,7 +102,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -138,7 +138,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -155,7 +155,7 @@ class QueryControllerTest {
   void queryWithUsedPromptIdPassesItThrough() throws Exception {
     UUID promptId = UUID.randomUUID();
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(
             new QueryResult(
                 "Answer",
@@ -194,6 +194,7 @@ class QueryControllerTest {
             any(),
             promptCaptor.capture(),
             any(),
+            any(),
             any());
     assertThat(promptCaptor.getValue()).isEqualTo(promptId);
   }
@@ -210,7 +211,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -228,6 +229,7 @@ class QueryControllerTest {
             any(),
             any(),
             useKnowledgeCaptor.capture(),
+            any(),
             any(),
             any(),
             any(),
@@ -251,7 +253,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -280,6 +282,7 @@ class QueryControllerTest {
             any(),
             any(),
             any(),
+            any(),
             any());
     assertThat(useKnowledgeCaptor.getValue()).isFalse();
     assertThat(libraryIdsCaptor.getValue()).containsExactly(libraryId1, libraryId2);
@@ -301,7 +304,7 @@ class QueryControllerTest {
   @Test
   void queryWithMultilineQuestionIsAccepted() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(
             new QueryResult(
                 "Answer",
@@ -334,6 +337,7 @@ class QueryControllerTest {
             any(),
             any(),
             anyBoolean(),
+            any(),
             any(),
             any(),
             any(),
@@ -379,7 +383,7 @@ class QueryControllerTest {
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -396,7 +400,7 @@ class QueryControllerTest {
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
@@ -424,7 +428,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -446,6 +450,7 @@ class QueryControllerTest {
             anyBoolean(),
             any(),
             filterCaptor.capture(),
+            any(),
             any(),
             any(),
             any());
@@ -592,7 +597,7 @@ class QueryControllerTest {
   void theStreamedTurnSendsStartedThenTheProvisionalTextThenTheFinalResponse() throws Exception {
     UUID chatId = UUID.randomUUID();
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               AnswerStreamListener listener = listenerOf(call);
@@ -634,14 +639,14 @@ class QueryControllerTest {
                     .contains("\"answer\":\"Die Antwort.\"")
                     .contains("\"chatId\":\"" + chatId + "\""));
     verify(queryService)
-        .query(eq("Frage?"), eq(chatId), any(), eq(true), any(), any(), any(), any(), any());
+        .query(eq("Frage?"), eq(chatId), any(), eq(true), any(), any(), any(), any(), any(), any());
   }
 
   /** A turn the model answered without streaming still arrives as a stream with its final event. */
   @Test
   void aTurnWithoutStreamedTextStillEndsInTheFinalEvent() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(streamedResult(UUID.randomUUID()));
 
     String body =
@@ -662,7 +667,7 @@ class QueryControllerTest {
   @Test
   void aRefusalBeforeTheModelAnswersKeepsItsOwnStatus() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new ConflictException("Der Space ist archiviert."));
 
     mockMvc
@@ -678,7 +683,7 @@ class QueryControllerTest {
   @Test
   void aFailureAfterTheModelBeganEndsTheStreamWithTheEnvelopeItWouldHaveHad() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               listenerOf(call).started();
@@ -708,7 +713,7 @@ class QueryControllerTest {
   @Test
   void theShutdownEndsTheStreamWithItsCode() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               listenerOf(call).started();

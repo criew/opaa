@@ -14,7 +14,7 @@ import io.opaa.common.ServiceUnavailableException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceCredentialsConverter;
 import io.opaa.knowledge.UploadProperties;
-import io.opaa.llm.TranscriptionModelRole;
+import io.opaa.llm.transcription.TranscriptionModelRole;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.security.CipherBinding;

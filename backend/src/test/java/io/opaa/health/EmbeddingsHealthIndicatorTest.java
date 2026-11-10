@@ -7,8 +7,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.llm.EmbeddingModelNotInstalledException;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelNotInstalledException;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.test.MutableClock;
 import java.time.Duration;
 import java.time.Instant;

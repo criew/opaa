@@ -56,7 +56,7 @@ prompts:
     purpose: >-
       Bittet ein Vision-Modell der Texterkennung, den Text einer gescannten Seite wortgetreu und
       ohne Zusätze wiederzugeben
-    classes: [io.opaa.llm.TextRecognitionVisionPrompt]
+    classes: [io.opaa.llm.textrecognition.TextRecognitionVisionPrompt]
     sha256: "54c5316716f8591a052e95ac0bc9b407d3368585aac9ec47d8feec423fd422bb"
 aiFunctions:
   - id: chat-answer

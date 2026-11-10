@@ -21,7 +21,7 @@ import org.springframework.scheduling.TaskScheduler;
  * {@link OptionalModelRole#currentStatus()}, which stays readable after this line has scrolled
  * away.
  */
-class OptionalRoleStartupCheck implements ApplicationListener<ApplicationReadyEvent> {
+public class OptionalRoleStartupCheck implements ApplicationListener<ApplicationReadyEvent> {
 
   private static final Logger log = LoggerFactory.getLogger(OptionalRoleStartupCheck.class);
 
@@ -36,7 +36,7 @@ class OptionalRoleStartupCheck implements ApplicationListener<ApplicationReadyEv
    * @param name the role at the start of a log line, e.g. {@code "Rerank"}
    * @param consequence what the application does while the role is unusable, one sentence
    */
-  OptionalRoleStartupCheck(
+  public OptionalRoleStartupCheck(
       OptionalModelRole<?> role,
       ModelRoleSettingsChangedEvent.Role changes,
       String name,

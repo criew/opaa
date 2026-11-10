@@ -79,7 +79,7 @@ final class VariantPrerequisites {
       return Optional.of(
           "Diese Variante lässt die Rerank-Stufe laufen, aber die Rerank-Modellrolle ist in "
               + "diesem Lauf nicht nutzbar (ausgeschaltet, unbelegt oder nicht erreichbar – "
-              + "siehe io.opaa.llm.RerankModelRole#status). Die Variante würde die "
+              + "siehe io.opaa.llm.rerank.RerankModelRole#status). Die Variante würde die "
               + "Konfiguration ohne Reranking unter dem Namen der mit Reranking messen.");
     }
     if (effective.fullTextSearchEnabled() && !fullTextIndexUpToDate) {

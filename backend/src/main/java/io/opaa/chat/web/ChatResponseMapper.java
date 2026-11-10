@@ -1,5 +1,8 @@
 package io.opaa.chat.web;
 
+import io.opaa.api.dto.AgentRunEndState;
+import io.opaa.api.dto.AgentRunStep;
+import io.opaa.api.dto.AgentRunStepStatus;
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatNoteItem;
@@ -13,6 +16,7 @@ import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.TextRecognitionConnectionType;
+import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
@@ -117,6 +121,7 @@ public final class ChatResponseMapper {
     if (turn.getRole() == ChatRole.ASSISTANT) {
       response.privateSourcesInContext(ChatSource.anyPrivate(turn.getSources()));
       response.evidence(toEvidence(turn.getEvidence()));
+      response.agentRun(toAgentRun(turn.getAgentRun()));
     }
     response.attachments(ChatAttachmentResponseMapper.toRefs(turn.getAttachments()));
     UsedPrompt usedPrompt = turn.getUsedPrompt();
@@ -142,6 +147,25 @@ public final class ChatResponseMapper {
         evidence.truncated(),
         evidence.knowledgeSearched(),
         evidence.passagesFound());
+  }
+
+  /**
+   * The agent run of an answer, {@code null} for none. Also used by {@code QueryResponseMapper}.
+   */
+  public static io.opaa.api.dto.AgentRun toAgentRun(AgentRunRecord run) {
+    if (run == null) {
+      return null;
+    }
+    return new io.opaa.api.dto.AgentRun(
+        run.runId(),
+        AgentRunEndState.valueOf(run.endState().name()),
+        run.steps().stream()
+            .map(
+                step ->
+                    new AgentRunStep(step.tool(), AgentRunStepStatus.valueOf(step.status().name()))
+                        .detail(step.detail())
+                        .hits(step.hits()))
+            .toList());
   }
 
   /** Also used by {@code QueryResponseMapper}. */

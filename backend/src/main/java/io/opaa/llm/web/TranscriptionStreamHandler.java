@@ -1,11 +1,11 @@
 package io.opaa.llm.web;
 
 import io.opaa.auth.CurrentUser;
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
-import io.opaa.llm.RealtimeTranscriptionClient;
-import io.opaa.llm.RealtimeTranscriptionRole;
-import io.opaa.llm.RealtimeTranscriptionRole.LiveSession;
-import io.opaa.llm.RealtimeTranscriptionRole.RealtimeUnusableException;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.RealtimeTranscriptionClient;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole.LiveSession;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole.RealtimeUnusableException;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;

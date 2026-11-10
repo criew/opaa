@@ -31,10 +31,10 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.knowledge.VectorTableCreator;
-import io.opaa.llm.EmbeddingAnchorRecorder;
-import io.opaa.llm.EmbeddingModelAdministration.Draft;
-import io.opaa.llm.EmbeddingModelAdministration.Kind;
-import io.opaa.llm.EmbeddingModelService.ProbeOutcome;
+import io.opaa.llm.embedding.EmbeddingAnchorRecorder;
+import io.opaa.llm.embedding.EmbeddingModelAdministration.Draft;
+import io.opaa.llm.embedding.EmbeddingModelAdministration.Kind;
+import io.opaa.llm.embedding.EmbeddingModelService.ProbeOutcome;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -919,7 +919,8 @@ class EmbeddingModelChangeIntegrationTest {
     long[] calls = {0};
     probe.answerWith(
         (endpoint, texts) -> {
-          if (texts.size() == io.opaa.llm.EmbeddingAnchor.TEXTS.size() && calls[0]++ == 0) {
+          if (texts.size() == io.opaa.llm.embedding.EmbeddingAnchor.TEXTS.size()
+              && calls[0]++ == 0) {
             jdbcTemplate.update("UPDATE embedding_model SET generation = generation + 100");
           }
           return FakeEmbeddingModel.probeOutcome(texts);

@@ -5,7 +5,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;

@@ -1067,6 +1067,12 @@ components:
             On an ASSISTANT message: its Belegstand as assessed when the answer was generated.
             Null on a USER message, on an answer without anything to assess and on answers from
             before the Belegstand existed.
+        agentRun:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AgentRun"
+          description: >-
+            On an ASSISTANT message an agent gave: the steps and end of its run. Null otherwise.
         privateSourcesInContext:
           type: boolean
           nullable: true

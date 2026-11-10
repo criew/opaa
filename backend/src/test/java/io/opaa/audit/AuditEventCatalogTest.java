@@ -19,6 +19,24 @@ class AuditEventCatalogTest {
         .containsExactlyInAnyOrder(AuditEventType.values());
   }
 
+  /**
+   * The transcription role and the installation step write the live upstream into their payloads; a
+   * key missing here is dropped from the record and logged as an error on every save.
+   */
+  @Test
+  void theLiveTranscriptionKeysAreListed() {
+    assertThat(AuditEventCatalog.PAYLOAD_KEYS.get(AuditEventType.TRANSCRIPTION_MODEL_CHANGED))
+        .contains(
+            "realtimeProtocol",
+            "realtimeUrl",
+            "realtimeModel",
+            "realtimeApiKeySet",
+            "realtimeApiKeyChange",
+            "realtimeMaxSessions");
+    assertThat(AuditEventCatalog.PAYLOAD_KEYS.get(AuditEventType.INSTALLATION_STEP_SAVED))
+        .contains("realtimeProtocol", "realtimeUrl", "realtimeModel", "realtimeApiKeySet");
+  }
+
   @Test
   void theSelfDisclosureRepeatsOnlyListedKeys() {
     Map<AuditEventType, Set<String>> beyondTheCatalog = new TreeMap<>();

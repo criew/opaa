@@ -9,7 +9,7 @@ package io.opaa.query.answer;
  *
  * <p>Without a text there is no block at all, not an empty one.
  */
-final class SpaceInstructionBlock {
+public final class SpaceInstructionBlock {
 
   static final String HEADER =
       "Anweisung dieses Space — dauerhafte Vorgabe der Space-Verantwortlichen für jede Antwort in"
@@ -27,7 +27,7 @@ final class SpaceInstructionBlock {
   private SpaceInstructionBlock() {}
 
   /** The rendered block, or {@code null} when {@code instruction} is {@code null} or blank. */
-  static String render(String instruction) {
+  public static String render(String instruction) {
     if (instruction == null || instruction.isBlank()) {
       return null;
     }

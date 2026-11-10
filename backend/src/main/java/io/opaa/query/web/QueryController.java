@@ -35,6 +35,7 @@ public class QueryController {
             MetadataFilterMapper.toDomain(request.getMetadataFilter()),
             request.getUsedPromptId(),
             null,
-            request.getAttachmentIds()));
+            request.getAttachmentIds(),
+            request.getAgentId()));
   }
 }

@@ -37,7 +37,7 @@ import org.springframework.util.StringUtils;
  * Authorization} header cannot be replayed to an origin this rule never checked.
  */
 @DataFlowCarrier
-final class ModelEndpointAccess {
+public final class ModelEndpointAccess {
 
   /** Short enough that a caller trying several drafts in a row is never left waiting long. */
   static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -121,7 +121,7 @@ final class ModelEndpointAccess {
    * model_check} on the background path, so a failing check of a draft never enters the error rate
    * of what a person waits for.
    */
-  static HttpClient newHttpClient() {
+  public static HttpClient newHttpClient() {
     return MeteredHttpClient.of(
         HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
@@ -131,12 +131,12 @@ final class ModelEndpointAccess {
         OutboundPathClass.BACKGROUND);
   }
 
-  static boolean isHttp(URI uri) {
+  public static boolean isHttp(URI uri) {
     String scheme = uri.getScheme();
     return scheme != null && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
   }
 
-  static HttpRequest.Builder authorized(HttpRequest.Builder builder, String apiKey) {
+  public static HttpRequest.Builder authorized(HttpRequest.Builder builder, String apiKey) {
     if (StringUtils.hasText(apiKey)) {
       builder.header("Authorization", "Bearer " + apiKey);
     }
@@ -144,12 +144,12 @@ final class ModelEndpointAccess {
   }
 
   /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */
-  static String unexpectedStatus(int status) {
+  public static String unexpectedStatus(int status) {
     return ProxyRefusal.describeStatus(status)
         .orElse("Der Server antwortete mit HTTP " + status + ".");
   }
 
-  static String translateConnectionError(IOException e) {
+  public static String translateConnectionError(IOException e) {
     Optional<String> proxyRefusal = ProxyRefusal.describe(e);
     if (proxyRefusal.isPresent()) {
       return proxyRefusal.get();

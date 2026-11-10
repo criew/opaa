@@ -14,7 +14,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.llm.TextRecognitionModelRole.ActiveTextRecognition;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole.ActiveTextRecognition;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
