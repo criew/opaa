@@ -72,6 +72,36 @@ class AgentWorkspaceIntegrationTest {
   }
 
   @Test
+  void aStopAskedOnOneInstanceIsSeenByTheInstanceRunningTheRun() {
+    AgentWorkspace running = workspace();
+    AgentWorkspace other = workspace();
+    UUID run = UUID.randomUUID();
+    UUID neighbour = UUID.randomUUID();
+    running.tryReserve(run);
+    running.tryReserve(neighbour);
+    UUID person = UUID.randomUUID();
+    running.armCancel(run, person, "token-of-the-run");
+    running.armCancel(neighbour, UUID.randomUUID(), "token-of-the-neighbour");
+    assertThat(running.cancelRequested(run)).isFalse();
+
+    other.cancel("unknown-token", person);
+    assertThat(running.cancelRequested(run)).isFalse();
+    // a token that leaked to another account stops nothing
+    other.cancel("token-of-the-run", UUID.randomUUID());
+    assertThat(running.cancelRequested(run)).isFalse();
+    other.cancel("token-of-the-run", person);
+
+    assertThat(running.cancelRequested(run)).isTrue();
+    assertThat(running.cancelRequested(neighbour)).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM agent_run_reservations WHERE cancel_token_hash = ?",
+                Integer.class,
+                "token-of-the-run"))
+        .isZero();
+  }
+
+  @Test
   void aReleasedPlaceIsFreeAtOnce() {
     AgentWorkspace workspace = workspace();
     UUID run = UUID.randomUUID();

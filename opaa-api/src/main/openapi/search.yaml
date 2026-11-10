@@ -102,8 +102,15 @@ paths:
         ends without final - the client went away, the instance shut down - was not persisted.
         The response carries X-Accel-Buffering: no for proxies in front of the application.
         With agentId the stream commits as soon as the run holds its place in the workspace:
-        started follows at once, ping comments before each model call, then final without
-        delta events.
+        started follows at once, then run_started with the run's runId and cancelToken, ping comments at
+        least every 10 seconds also while the model or a tool works, step_started before and
+        step_finished after each tool call, limit_reached once the run reaches a limit,
+        run_finished when the model is done, then reset with the whole provisional answer while
+        citation validation and persistence run, then final. Without agentId none of these five
+        events is sent. A run ends before its next tool call and next model call, and nothing of
+        the turn is persisted, once POST /api/v1/query/stream/cancel names its cancelToken - on
+        any instance -, once a write to its reader fails, or once the instance stops (error with
+        code SHUTTING_DOWN at once).
       requestBody:
         required: true
         content:
@@ -150,6 +157,38 @@ paths:
           $ref: "#/components/responses/BadGateway"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/query/stream/cancel:
+    post:
+      operationId: cancelQueryStream
+      tags: [query]
+      summary: Ends the agent run of a streamed turn before its next tool call.
+      description: >
+        The stop button of the chat. A closed connection is noticed only at the next write to it,
+        which may succeed once more; this call ends the run for certain. Possession of the
+        cancelToken of the run_started event is the authorization: it reached only the reader of
+        that stream, and it stops only a run the caller started. The mark lies in the database, so
+        the run ends whichever instance runs it and whichever instance receives this call. The run
+        makes no further tool call and no further model call, and nothing of the turn is persisted.
+        An unknown, expired, already used or foreign token is answered alike, so a token is never
+        confirmed. The call has its own rate limit and spends nothing of the caller's questions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryStreamCancelRequest"
+      responses:
+        "204":
+          description: The run, if one holds the token, ends before its next tool call.
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: The rate limit of the stop was reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/search/metadata-filter-options:
     get:
@@ -665,8 +704,8 @@ components:
             chat's own useKnowledge and @-references do not apply. Requires chatId to name a chat
             the caller authored and no new attachmentIds (400 otherwise); refused with 409 when
             the agent cannot be used, 429 when the agent workspace is full and 503 while the
-            active chat model is not recorded as tool-capable. The stream endpoint sends such a
-            turn as one final event. Absent: the ordinary turn, unchanged.
+            active chat model is not recorded as tool-capable. The stream endpoint reports the
+            run's steps as they happen (QueryStreamEvent). Absent: the ordinary turn, unchanged.
 
     QueryStreamEvent:
       type: object
@@ -677,11 +716,25 @@ components:
       properties:
         type:
           type: string
-          enum: [started, delta, reset, final, error]
+          enum:
+            - started
+            - run_started
+            - delta
+            - reset
+            - step_started
+            - step_finished
+            - limit_reached
+            - run_finished
+            - final
+            - error
           description: >
             started - the model has begun to answer. delta - text appended to the provisional
             answer. reset - the provisional answer is replaced by text, for instance once leading
-            reasoning text of the model is recognised as such. final - the turn is complete and
+            reasoning text of the model is recognised as such. run_started, step_started,
+            step_finished, limit_reached and run_finished - agent turns only
+            (QueryRequest.agentId): the run holds its place (runId, cancelToken), a tool call begins or
+            ended (step), the run reached a limit and answers with what it has (endState), the
+            run ended (endState), before its provisional answer. final - the turn is complete and
             persisted, response is the same QueryResponse POST /api/v1/query returns. error -
             the turn ended without an answer and was not persisted; error carries the envelope and
             the status the request would have been answered with, with code SHUTTING_DOWN when the
@@ -691,10 +744,72 @@ components:
           description: >
             delta and reset only. Provisional text as the model writes it, citation markers
             included and not yet validated; it must not be copied or exported as the answer.
+        runId:
+          type: string
+          format: uuid
+          description: >
+            run_started only. The run's id, the same as AgentRun.runId of the final response.
+        cancelToken:
+          type: string
+          description: >
+            run_started only. The secret that POST /api/v1/query/stream/cancel takes to end this
+            run; valid while the run lasts.
+        step:
+          description: step_started and step_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunStreamStep"
+        endState:
+          description: limit_reached and run_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunEndState"
         response:
           $ref: "#/components/schemas/QueryResponse"
         error:
           $ref: "#/components/schemas/ErrorResponse"
+
+    QueryStreamCancelRequest:
+      type: object
+      required: [cancelToken]
+      properties:
+        cancelToken:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The cancelToken of the run_started event of the stream to end.
+          example: 7f9c2b1e-5d4a-4c3b-9e8f-1a2b3c4d5e6f
+
+    AgentRunStreamStep:
+      type: object
+      required: [index, tool]
+      description: >
+        One step of a running agent run, as the person may see it: never the tool's raw
+        arguments. step_started carries index, tool and, where the tool has one before it runs,
+        detail; step_finished carries the step as it is kept in AgentRun.steps at the same index,
+        with status and hits. A step refused at a limit arrives as step_finished alone.
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: The step's position in AgentRun.steps of the final response.
+        tool:
+          type: string
+          description: >
+            The tool's name, or unknown for a tool the model invented; a technical constant a
+            client maps to its own wording, not a text to show.
+          example: search_knowledge
+        detail:
+          type: string
+          nullable: true
+          description: What the step is about, e.g. the sub-question of a search.
+        hits:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: step_finished only. Passages the step found; null for a tool that finds none.
+        status:
+          description: step_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunStepStatus"
 
     QueryResponse:
       type: object

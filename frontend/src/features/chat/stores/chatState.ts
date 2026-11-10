@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { ChatMessage } from '../types/chat'
+import type { ChatMessage, LiveAgentRun } from '../types/chat'
 import type { ChatAttachmentRef, ChatNoteItem, MetadataFilter } from '@/shared/api/types'
 import type { SearchScope } from './chatSettingsPersistence'
 
@@ -32,6 +32,9 @@ export interface ChatState {
   /** The provisional answer this view waits for while the model writes it - unvalidated, not to be
    * copied or exported - or null. The final answer replaces it in `messages`. */
   streamingAnswer: string | null
+  /** The agent run this view waits for while it works, or null; the final answer carries its kept
+   * steps in `messages`. */
+  streamingRun: LiveAgentRun | null
   /** A question refused while another chat was shown, to be put back into the input of this chat;
    * cleared by `clearReturnedQuestion` once the input has handled it. */
   returnedQuestion: RefusedQuestion | null

@@ -1,5 +1,10 @@
 package io.opaa.query.toolloop;
 
+import io.opaa.query.AgentRunCancellation;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -14,9 +19,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * under {@code READ COMMITTED} could both count a free place and overbook. Unlike the caps of
  * ADR-0053, Entscheidung 12, the workspace fails closed - without the database there is no run
  * anyway.
+ *
+ * <p>The reservation also carries the stop mark of a streamed run: the hash of its cancel token and
+ * when the person asked to stop. Any instance sets it; the running one reads it before each tool
+ * call and model call.
  */
 @Component
-class AgentWorkspace {
+class AgentWorkspace implements AgentRunCancellation {
 
   private final JdbcClient jdbc;
   private final TransactionTemplate transaction;
@@ -67,6 +76,53 @@ class AgentWorkspace {
     jdbc.sql("DELETE FROM agent_run_reservations WHERE run_id = :runId")
         .param("runId", runId)
         .update();
+  }
+
+  /**
+   * Lets {@code cancelToken} stop the run of {@code runId}, in the hand of {@code userId} who
+   * started it; only the token's hash is stored.
+   */
+  void armCancel(UUID runId, UUID userId, String cancelToken) {
+    jdbc.sql(
+            "UPDATE agent_run_reservations SET cancel_token_hash = :hash, user_id = :userId"
+                + " WHERE run_id = :runId")
+        .param("hash", hash(cancelToken))
+        .param("userId", userId)
+        .param("runId", runId)
+        .update();
+  }
+
+  @Override
+  public void cancel(String cancelToken, UUID callerId) {
+    jdbc.sql(
+            "UPDATE agent_run_reservations SET cancel_requested_at = clock_timestamp()"
+                + " WHERE cancel_token_hash = :hash AND user_id = :callerId"
+                + " AND cancel_requested_at IS NULL")
+        .param("hash", hash(cancelToken))
+        .param("callerId", callerId)
+        .update();
+  }
+
+  /** Whether the person asked to stop the run of {@code runId}. */
+  boolean cancelRequested(UUID runId) {
+    return jdbc.sql(
+                "SELECT count(*) FROM agent_run_reservations"
+                    + " WHERE run_id = :runId AND cancel_requested_at IS NOT NULL")
+            .param("runId", runId)
+            .query(Integer.class)
+            .single()
+        > 0;
+  }
+
+  static String hash(String cancelToken) {
+    try {
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256")
+                  .digest(cancelToken.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is missing", e);
+    }
   }
 
   /** The places taken now, installation-wide; every instance reports the same figure. */
