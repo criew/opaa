@@ -4218,6 +4218,10 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 <p>Das SMTP-Passwort schützt <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>, derselbe Schlüssel wie die Zugangsschlüssel
 der Chat-Modelle (<a href="../betrieb/netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.</p>
+<p>Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt OPAA vor dem Speichern des
+Zugangs und einer Vorlage nach einer
+<a href="../betrieb/authentifizierung.html#erneute-anmeldung-vor-sensiblen-vorgängen">erneuten Anmeldung</a>,
+wenn die letzte nicht gerade eben war; die Testnachricht braucht keine.</p>
 <h2 id="zustellung-über-die-warteschlange">Zustellung über die Warteschlange<a class="headerlink" href="#zustellung-über-die-warteschlange" title="Permanent link">&para;</a></h2>
 <p>OPAA verschickt auf zwei Wegen:</p>
 <ul>
