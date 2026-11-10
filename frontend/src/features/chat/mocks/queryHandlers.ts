@@ -2,12 +2,30 @@ import { getResponse, http, HttpResponse, type RequestHandler } from 'msw'
 import { getRandomMockResponse, mockErrorResponse } from './queryFixtures'
 import { mockChatDetails, mockChatArchive } from './chatFixtures'
 import { mockSpaceAssetAssociations } from '../../asset/mocks/assetFixtures'
-import type { QueryRequest } from '@/shared/api/types'
+import type { AgentRun, QueryRequest } from '@/shared/api/types'
 import { currentMockScenario } from '@/shared/mocks/mockScenario'
 
 /** Pace of the answer stream in the `slow` scenario: a pause before the first word, then word by word. */
 const SLOW_STREAM_FIRST_WORD_MS = 2000
 const SLOW_STREAM_WORD_MS = 120
+/** Pace of an agent's steps in the `slow` scenario. */
+const SLOW_STREAM_STEP_MS = 1500
+
+/** The steps of the mock agent run, given to a question with agentId or the spike prefix "@test ". */
+const MOCK_AGENT_RUN: AgentRun = {
+  runId: '00000000-0000-4000-8000-0000000a9e47',
+  endState: 'COMPLETED',
+  steps: [
+    {
+      tool: 'search_knowledge',
+      detail: 'Dienstvereinbarung Rufbereitschaft',
+      hits: 4,
+      status: 'DONE',
+    },
+    { tool: 'read_document', detail: 'dienstvereinbarung.pdf', hits: 6, status: 'DONE' },
+    { tool: 'search_knowledge', detail: 'Ausgleich für Einsätze', hits: 0, status: 'EMPTY' },
+  ],
+}
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -60,7 +78,10 @@ async function answerOf(request: Request): Promise<Response> {
 }
 
 /** The answer of POST /api/v1/query as the event stream of POST /api/v1/query/stream. */
-function eventStreamOf(response: { answer?: string }): ReadableStream<Uint8Array> {
+function eventStreamOf(response: {
+  answer?: string
+  agentRun?: AgentRun | null
+}): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   const frame = (event: Record<string, unknown>) =>
     encoder.encode(`event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`)
@@ -70,6 +91,33 @@ function eventStreamOf(response: { answer?: string }): ReadableStream<Uint8Array
     async start(controller) {
       const slow = currentMockScenario() === 'slow'
       controller.enqueue(frame({ type: 'started' }))
+      // Mirrors AgentToolLoop: each step as it begins and ends, the run's end, then the whole
+      // provisional answer at once.
+      const run = response.agentRun
+      if (run) {
+        for (const [index, step] of run.steps.entries()) {
+          if (cancelled) return
+          const detail = step.tool === 'search_knowledge' ? step.detail : null
+          controller.enqueue(
+            frame({ type: 'step_started', step: { index, tool: step.tool, detail } }),
+          )
+          if (slow) await pause(SLOW_STREAM_STEP_MS)
+          if (cancelled) return
+          controller.enqueue(frame({ type: 'step_finished', step: { index, ...step } }))
+        }
+        if (run.endState.startsWith('LIMIT_')) {
+          controller.enqueue(frame({ type: 'limit_reached', endState: run.endState }))
+        }
+        controller.enqueue(frame({ type: 'run_finished', endState: run.endState }))
+        if (mockAnswerDeltas) {
+          controller.enqueue(frame({ type: 'reset', text: response.answer ?? '' }))
+          if (slow) await pause(SLOW_STREAM_FIRST_WORD_MS)
+        }
+        if (cancelled) return
+        controller.enqueue(frame({ type: 'final', response }))
+        controller.close()
+        return
+      }
       if (slow) await pause(SLOW_STREAM_FIRST_WORD_MS)
       for (const part of parts) {
         if (cancelled) return
@@ -103,9 +151,12 @@ export const queryHandlers = [
         headers: { 'Content-Type': 'application/json' },
       })
     }
-    return new HttpResponse(eventStreamOf((await answered.json()) as { answer?: string }), {
-      headers: { 'Content-Type': 'text/event-stream' },
-    })
+    return new HttpResponse(
+      eventStreamOf((await answered.json()) as { answer?: string; agentRun?: AgentRun }),
+      {
+        headers: { 'Content-Type': 'text/event-stream' },
+      },
+    )
   }),
   http.post('/api/v1/query', async ({ request }) => {
     const body = (await request.json()) as QueryRequest
@@ -163,8 +214,10 @@ export const queryHandlers = [
       })
     }
     const mockResponse = getRandomMockResponse()
+    const agentTurn = Boolean(body.agentId) || body.question.startsWith('@test ')
     return HttpResponse.json({
       ...mockResponse,
+      ...(agentTurn ? { agentRun: MOCK_AGENT_RUN } : {}),
       chatId,
       chatTitle,
       // Mirrors QueryResponse#noteItems: the note state that went into *this* answer -
