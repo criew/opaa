@@ -161,8 +161,9 @@ benutzt; dessen nächste Erneuerung ist dann ein Replay und beendet alle Sitzung
 absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für lokale `SYSTEM_ADMIN`
 `admin-refresh-token-ttl` 4 h und `admin-session-max-lifetime` 12 h; alle vier Werte werden beim
 Start validiert wie das Secret. Wird ein Konto zum `SYSTEM_ADMIN`, enden mit der Rollenänderung
-alle seine Sitzungen (Zähler erhöht, Refresh-Tokens als `ADMIN` widerrufen); die nächste Anmeldung
-läuft unter den Fristen der Systemverwaltung. Zur zweiten Sicherung gilt bei jeder Rotation die
+alle seine Sitzungen (Zähler erhöht, Refresh-Tokens als `ADMIN` widerrufen) und mit ihnen seine
+Zugangstokens für externe KI-Werkzeuge, damit kein vorher ausgestelltes Token still mit
+Verwalterrechten weiterläuft; die nächste Anmeldung läuft unter den Fristen der Systemverwaltung. Zur zweiten Sicherung gilt bei jeder Rotation die
 Rolle der Rotation: Sie kürzt das Ende der Familie höchstens auf jetzt plus
 `admin-session-max-lifetime` und verlängert es nie. Cookie `opaa_refresh`:
 `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local`; `cookie-secure = false` ist für
