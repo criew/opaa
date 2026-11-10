@@ -1,7 +1,6 @@
 package io.opaa.indexing.job;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.knowledge.SourceType;
 import io.opaa.observability.IndexingMetrics;
 import java.time.Duration;
@@ -29,10 +28,11 @@ public record EndedRun(
   /** The {@code failure_category} of a run the recovery failed for its lost owner or heartbeat. */
   static final String ABANDONED = "abandoned";
 
-  /** Failure categories that speak of the one person behind an owner-only library. */
-  private static final Set<String> PERSON_BOUND =
-      Set.of(
-          RunFailureCategory.QUOTA_EXHAUSTED.name(), RunFailureCategory.OWNER_DEACTIVATED.name());
+  /**
+   * Stored failure categories that speak of the one person behind an owner-only library, named as
+   * {@code RunFailureCategory} stores them; the job layer sits below the connector SPI.
+   */
+  private static final Set<String> PERSON_BOUND = Set.of("QUOTA_EXHAUSTED", "OWNER_DEACTIVATED");
 
   /** Records this run in {@code metrics}; {@code category} overrides the stored one if not null. */
   void recordIn(IndexingMetrics metrics, String category) {
