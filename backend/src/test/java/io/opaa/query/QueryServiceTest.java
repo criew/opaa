@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +48,10 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.AnswerCompleteness;
+import io.opaa.llm.NoActiveChatModelException;
+import io.opaa.llm.OptionalRoleState;
 import io.opaa.llm.OptionalRoleStatus;
+import io.opaa.llm.rerank.RerankClient;
 import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.metadata.CitationMetadataReader;
 import io.opaa.metadata.CoreMetadata;
@@ -55,10 +59,13 @@ import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
+import io.opaa.observability.QueryEmbeddingTime;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.AnswerReaderGoneException;
+import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.query.answer.ConversationMemoryConfiguration;
 import io.opaa.query.citation.ChatSourceAssembler;
@@ -91,7 +98,9 @@ import io.opaa.retrieval.search.SubQueryDecompositionStage;
 import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import io.opaa.test.SourceTypes;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.SocketTimeoutException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +108,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -154,6 +165,8 @@ class QueryServiceTest {
 
   private QueryService queryService;
 
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
   private final UUID readableLibraryId = UUID.randomUUID();
@@ -187,6 +200,15 @@ class QueryServiceTest {
       QueryProperties queryProperties,
       ChatMemory memory,
       Optional<ToolLoopQueryHandler> toolLoopHandler) {
+    return newQueryService(queryProperties, memory, toolLoopHandler, disabledRerankRole());
+  }
+
+  /** The same service with {@code rerankRole} as the rerank model role. */
+  private QueryService newQueryService(
+      QueryProperties queryProperties,
+      ChatMemory memory,
+      Optional<ToolLoopQueryHandler> toolLoopHandler,
+      RerankModelRole rerankRole) {
     RetrievalPipeline pipeline =
         new RetrievalConfiguration()
             .retrievalPipeline(
@@ -201,12 +223,12 @@ class QueryServiceTest {
                 new FullTextSearchStage(mock(FullTextChunkSearch.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
-                new RerankStage(disabledRerankRole()),
+                new RerankStage(rerankRole),
                 new RelevanceCutoffStage(RelevanceCutoffProperties.DEFAULT),
                 new DocumentCompletionStage(),
                 RetrievalPipelineProperties.allStagesEnabled());
     RetrievalContextFactory contextFactory =
-        new RetrievalContextFactory(queryProperties, disabledRerankRole());
+        new RetrievalContextFactory(queryProperties, rerankRole);
     return new QueryService(
         new KnowledgeRetrieval(pipeline, contextFactory),
         contextFactory,
@@ -227,7 +249,7 @@ class QueryServiceTest {
         chatService,
         chatNoteService,
         chatNoteExtractionService,
-        new QueryMetrics(new SimpleMeterRegistry()),
+        new QueryMetrics(meterRegistry),
         mock(MetadataFilterValidator.class),
         promptService,
         toolLoopHandler,
@@ -903,7 +925,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     UUID earlierAttachmentId = UUID.randomUUID();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(chatService.attachmentContext(eq(chat), any(), any()))
@@ -981,7 +1003,7 @@ class QueryServiceTest {
             .build();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(chatService.attachmentContext(chat, List.of(attachmentId), "Wie lang ist die Frist?"))
@@ -1041,7 +1063,7 @@ class QueryServiceTest {
                     true))
             .build();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(any(), any())).thenReturn(Set.of());
     when(chatService.attachmentContext(chat, List.of(attachmentId), "Frist?"))
         .thenReturn(
@@ -1156,7 +1178,7 @@ class QueryServiceTest {
     String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1190,7 +1212,7 @@ class QueryServiceTest {
     String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1237,7 +1259,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     // Only the sticky reference, not the second library the caller can also read - the scope
     // that the chat's own useKnowledge=false restricts to (epic #523), regardless of the
     // request-level useKnowledge/libraryIds passed below.
@@ -1266,7 +1288,7 @@ class QueryServiceTest {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(
             chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
@@ -1296,7 +1318,7 @@ class QueryServiceTest {
           new Chat(UUID.randomUUID(), currentUserId, organizationId, null, useKnowledge, Set.of());
       UUID chatId = chat.getId();
       when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-      when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+      when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
       when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
       when(chatService.spaceHasLibraryAssociations(
               chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
@@ -1350,7 +1372,7 @@ class QueryServiceTest {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(
             chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
@@ -1461,7 +1483,7 @@ class QueryServiceTest {
     when(promptService.requireUsable(promptId, chat.getSpaceId(), caller)).thenReturn(prompt);
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1588,7 +1610,7 @@ class QueryServiceTest {
             new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."));
     // The read inside the retrieval sees the window the reload below wrote.
     when(chatMemory.get(conversationKey)).thenReturn(persistedHistory);
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(persistedHistory);
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(persistedHistory);
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1619,7 +1641,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 6)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 7)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1633,7 +1655,7 @@ class QueryServiceTest {
 
     serviceWithSmallWindow.query("Frage", chatId, caller, true, List.of());
 
-    verify(chatService).historyAsSpringAiMessages(chatId, 6);
+    verify(chatService).historyAsSpringAiMessages(chatId, 7);
   }
 
   /**
@@ -1648,7 +1670,7 @@ class QueryServiceTest {
     String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20))
+    when(chatService.historyAsSpringAiMessages(chatId, 21))
         .thenReturn(
             List.of(
                 new UserMessage("Was kostet ein Anwohnerparkausweis?"),
@@ -2044,7 +2066,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -2270,7 +2292,7 @@ class QueryServiceTest {
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatService.spaceModelInstruction(chat.getSpaceId())).thenReturn(instruction);
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     ArgumentCaptor<DecompositionContext> decomposition =
@@ -2327,7 +2349,7 @@ class QueryServiceTest {
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatService.spaceModelInstruction(chat.getSpaceId())).thenReturn(attack);
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     var chunk =
@@ -2873,5 +2895,542 @@ class QueryServiceTest {
         return null;
       }
     };
+  }
+
+  /**
+   * What one question records in {@code opaa.query.*}, {@code opaa.retrieval.*} (ADR-0071): its
+   * mode, its stages, the time to the first streamed chunk, its retrieval and context, and why it
+   * ended without an answer.
+   */
+  @Nested
+  class Metrics {
+
+    private final ChatResponse answer =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+
+    private Document passage() {
+      return Document.builder()
+          .text("Die Poststelle nimmt PDF an.")
+          .metadata(Map.of("file_name", "post.md", "document_id", "doc-1"))
+          .score(0.9)
+          .build();
+    }
+
+    private double count(String name, String... tags) {
+      return meterRegistry.get(name).tags(tags).counter().count();
+    }
+
+    private double stageMillis(String stage) {
+      return meterRegistry
+          .get("opaa.query.stage.duration")
+          .tag("stage", stage)
+          .timer()
+          .totalTime(TimeUnit.MILLISECONDS);
+    }
+
+    private long stageCount(String stage) {
+      return meterRegistry.get("opaa.query.stage.duration").tag("stage", stage).timer().count();
+    }
+
+    private double queryMillis(String mode) {
+      return meterRegistry
+          .get("opaa.query.duration")
+          .tag("mode", mode)
+          .timer()
+          .totalTime(TimeUnit.MILLISECONDS);
+    }
+
+    @Test
+    void aQuestionWithASearchCountsAsRagWithItsHits() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(passage()));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Welche Formate?", null, caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.query.duration").tag("mode", "rag").timer().count())
+          .isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.retrieval.hits").summary().totalAmount()).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.retrieval.empty").counter().count()).isZero();
+    }
+
+    @Test
+    void aRetrievalWithoutAHitCountsAsEmpty() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Welche Formate?", null, caller, true, List.of());
+
+      assertThat(meterRegistry.get("opaa.retrieval.hits").summary().count()).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.retrieval.empty").counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    void aChatWithoutKnowledgeCountsAsNoSearchAndRecordsNoRetrieval() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(List.of());
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
+      when(chatService.spaceHasLibraryAssociations(any(), any(), any())).thenReturn(true);
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Formuliere freundlich", chat.getId(), caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "no_search")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.retrieval.hits").summary().count()).isZero();
+      assertThat(stageCount("generate")).isEqualTo(1);
+      assertThat(stageCount("persist")).isEqualTo(1);
+      assertThat(stageCount("retrieve")).isZero();
+    }
+
+    @Test
+    void aTurnTheToolLoopTookOverCountsAsAgent() {
+      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+      QueryResult spikeResult =
+          new QueryResult(
+              "Spike-Antwort",
+              List.of(),
+              new QueryOutcome(
+                  "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
+              UUID.randomUUID(),
+              null,
+              null);
+      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
+          .thenReturn(Optional.of(spikeResult));
+      QueryService service =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.of(spikeHandler));
+
+      service.query("@test Frage", null, caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isZero();
+    }
+
+    @Test
+    void aHistoryLongerThanTheWindowCountsAsTruncatedInTheToolLoopToo() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      List<Message> history = new ArrayList<>();
+      for (int i = 0; i < 21; i++) {
+        history.add(new UserMessage("Nachricht " + i));
+      }
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(history);
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+      QueryResult spikeResult =
+          new QueryResult(
+              "Spike-Antwort",
+              List.of(),
+              new QueryOutcome(
+                  "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
+              chat.getId(),
+              null,
+              null);
+      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
+          .thenReturn(Optional.of(spikeResult));
+      QueryService service =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.of(spikeHandler));
+
+      service.query("@test Frage", chat.getId(), caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    void aFailureInTheToolLoopCountsAsAnAgentError() {
+      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
+          .thenThrow(new IllegalStateException("tool failed"));
+      QueryService service =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.of(spikeHandler));
+
+      assertThatThrownBy(() -> service.query("@test Frage", null, caller, true, List.of()))
+          .isInstanceOf(IllegalStateException.class);
+
+      assertThat(count("opaa.query.count", "status", "error", "mode", "agent")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "error", "mode", "rag")).isZero();
+    }
+
+    @Test
+    void aTurnTheToolLoopDeclinesKeepsItsOrdinaryMode() {
+      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
+      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
+          .thenReturn(Optional.empty());
+      QueryService service =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.of(spikeHandler));
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      service.query("Frage", null, caller, true, List.of());
+
+      assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isZero();
+    }
+
+    /**
+     * A request error is no failure of the service: it counts as rejected, with neither a duration
+     * nor an abort, and so stays out of the chat SLO.
+     */
+    @Test
+    void aRequestErrorCountsAsRejectedOnly() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      doThrow(new AccessDeniedException("kein Mitglied"))
+          .when(chatService)
+          .requireStillSpaceMember(chat);
+
+      assertThatThrownBy(() -> queryService.query("Frage", chat.getId(), caller, true, List.of()))
+          .isInstanceOf(AccessDeniedException.class);
+
+      assertThat(count("opaa.query.count", "status", "rejected", "mode", "rag")).isEqualTo(1);
+      assertThat(meterRegistry.find("opaa.query.count").tag("status", "error").counters())
+          .allSatisfy(counter -> assertThat(counter.count()).isZero());
+      assertThat(meterRegistry.find("opaa.query.aborted").counters())
+          .allSatisfy(counter -> assertThat(counter.count()).isZero());
+      assertThat(meterRegistry.find("opaa.query.duration").timers())
+          .allSatisfy(timer -> assertThat(timer.count()).isZero());
+    }
+
+    @Test
+    void aMissingChatModelCountsAsRejected() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenThrow(NoActiveChatModelException.class);
+
+      assertThatThrownBy(() -> queryService.query("Frage", null, caller, true, List.of()))
+          .isInstanceOf(NoActiveChatModelException.class);
+
+      assertThat(count("opaa.query.count", "status", "rejected", "mode", "rag")).isEqualTo(1);
+      assertThat(count("opaa.query.aborted", "cause", "error")).isZero();
+    }
+
+    /**
+     * Every stage stubbed to take a known time: the stages are recorded once each, and their sum
+     * stays below the question's duration because the stages never overlap.
+     */
+    @Test
+    void theStagesOfAQuestionSumToLessThanItsDuration() throws Exception {
+      RerankModelRole rerankRole = mock(RerankModelRole.class);
+      when(rerankRole.currentStatus())
+          .thenReturn(
+              new OptionalRoleStatus(OptionalRoleState.READY, "http://reranker/v1", "bge", null));
+      when(rerankRole.rerank(any(), any()))
+          .thenAnswer(
+              invocation -> {
+                sleep(20);
+                return List.of(new RerankClient.ScoredCandidate(0, 0.9));
+              });
+      QueryService queryService =
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+              chatMemory,
+              Optional.empty(),
+              rerankRole);
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(List.of());
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(any(), anyInt()))
+          .thenAnswer(
+              invocation -> {
+                sleep(30);
+                return Optional.of(List.of("Formate der Poststelle"));
+              });
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenAnswer(
+              invocation -> {
+                long started = System.nanoTime();
+                sleep(25);
+                QueryEmbeddingTime.add(System.nanoTime() - started);
+                sleep(15);
+                return List.of(passage());
+              });
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenAnswer(
+              invocation -> {
+                sleep(40);
+                return answer;
+              });
+      when(chatService.appendTurn(any(), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                sleep(20);
+                return "Titel";
+              });
+
+      queryService.query("Welche Formate?", chat.getId(), caller, true, List.of());
+
+      for (String stage :
+          List.of("decompose", "embed_query", "retrieve", "rerank", "generate", "persist")) {
+        assertThat(stageCount(stage)).as(stage).isEqualTo(1);
+      }
+      assertThat(stageMillis("rerank")).isGreaterThanOrEqualTo(20);
+      assertThat(stageMillis("decompose")).isGreaterThanOrEqualTo(30);
+      assertThat(stageMillis("embed_query")).isGreaterThanOrEqualTo(25);
+      assertThat(stageMillis("retrieve")).isGreaterThanOrEqualTo(15);
+      assertThat(stageMillis("generate")).isGreaterThanOrEqualTo(40);
+      assertThat(stageMillis("persist")).isGreaterThanOrEqualTo(20);
+      double stages =
+          List.of("decompose", "embed_query", "retrieve", "rerank", "generate", "persist").stream()
+              .mapToDouble(this::stageMillis)
+              .sum();
+      assertThat(stages).isGreaterThanOrEqualTo(150).isLessThanOrEqualTo(queryMillis("rag"));
+    }
+
+    /**
+     * The stream starts with a reasoning block the answer holds back - started, but no visible text
+     * - and the time is taken at the first visible text, not at the first chunk or the end.
+     */
+    @Test
+    void theTimeToTheFirstTokenIsTakenAtTheFirstVisibleTextNotAtAReasoningBlockOrTheEnd() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(passage()));
+      when(answerGenerationService.streamAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                AnswerStreamListener listener = invocation.getArgument(7);
+                listener.started();
+                sleep(60);
+                listener.idle();
+                listener.provisional("Ant", false);
+                listener.provisional("wort", false);
+                sleep(80);
+                return answer;
+              });
+
+      queryService.query(
+          "Welche Formate?",
+          null,
+          caller,
+          true,
+          List.of(),
+          MetadataFilter.NONE,
+          null,
+          new RecordingListener());
+
+      var ttft = meterRegistry.get("opaa.query.time_to_first_token").tag("mode", "rag").timer();
+      assertThat(ttft.count()).isEqualTo(1);
+      assertThat(ttft.totalTime(TimeUnit.MILLISECONDS))
+          .isGreaterThanOrEqualTo(60)
+          .isLessThanOrEqualTo(queryMillis("rag") - 80);
+    }
+
+    @Test
+    void anAnswerThatWasNotStreamedRecordsNoTimeToTheFirstToken() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Welche Formate?", null, caller, true, List.of());
+
+      assertThat(meterRegistry.find("opaa.query.time_to_first_token").timers())
+          .allSatisfy(timer -> assertThat(timer.count()).isZero());
+    }
+
+    @Test
+    void aReaderThatWentAwayCountsAsClientCancelAndAsAnError() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.streamAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
+          .thenThrow(new AnswerReaderGoneException(new IOException("Broken pipe")));
+
+      assertThatThrownBy(
+              () ->
+                  queryService.query(
+                      "Welche Formate?",
+                      null,
+                      caller,
+                      true,
+                      List.of(),
+                      MetadataFilter.NONE,
+                      null,
+                      new RecordingListener()))
+          .isInstanceOf(AnswerReaderGoneException.class);
+
+      assertThat(count("opaa.query.aborted", "cause", "client_cancel")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "error", "mode", "rag")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.query.duration").tag("mode", "rag").timer().count())
+          .isEqualTo(1);
+    }
+
+    @Test
+    void aModelTimeoutCountsAsTimeout() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenThrow(
+              new IllegalStateException(
+                  "model call failed", new SocketTimeoutException("read timed out")));
+
+      assertThatThrownBy(() -> queryService.query("Frage", null, caller, true, List.of()))
+          .isInstanceOf(IllegalStateException.class);
+
+      assertThat(count("opaa.query.aborted", "cause", "timeout")).isEqualTo(1);
+      assertThat(count("opaa.query.aborted", "cause", "error")).isZero();
+    }
+
+    @Test
+    void anyOtherFailureCountsAsError() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenThrow(new IllegalStateException("database gone"));
+
+      assertThatThrownBy(() -> queryService.query("Frage", null, caller, true, List.of()))
+          .isInstanceOf(IllegalStateException.class);
+
+      assertThat(count("opaa.query.aborted", "cause", "error")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "error", "mode", "rag")).isEqualTo(1);
+      assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isZero();
+    }
+
+    @Test
+    void theAnswersFinishReasonAndInputTokensAreRecorded() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      ChatResponse truncated =
+          new ChatResponse(
+              List.of(
+                  new Generation(
+                      new AssistantMessage("Abgeschnit"),
+                      ChatGenerationMetadata.builder().finishReason("length").build())),
+              ChatResponseMetadata.builder().usage(createUsage(1800, 512)).build());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(truncated);
+
+      queryService.query("Frage", null, caller, true, List.of());
+
+      assertThat(count("opaa.query.finish_reason", "reason", "length")).isEqualTo(1);
+      assertThat(meterRegistry.get("opaa.query.context.tokens").summary().totalAmount())
+          .isEqualTo(1800);
+    }
+
+    @Test
+    void aHistoryLongerThanTheWindowCountsAsTruncatedAndOnlyTheWindowReachesTheModel() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      List<Message> longerThanTheWindow =
+          IntStream.range(0, 11)
+              .boxed()
+              .<Message>flatMap(
+                  i -> Stream.of(new UserMessage("Frage " + i), new AssistantMessage("Antwort")))
+              .toList();
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21))
+          .thenReturn(longerThanTheWindow.subList(1, 22));
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Und weiter?", chat.getId(), caller, true, List.of());
+
+      assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isEqualTo(1);
+      @SuppressWarnings("unchecked")
+      ArgumentCaptor<List<Message>> seeded = ArgumentCaptor.forClass(List.class);
+      verify(chatMemory).add(any(), seeded.capture());
+      assertThat(seeded.getValue()).hasSize(20);
+      assertThat(seeded.getValue().getFirst().getText()).isEqualTo("Frage 1");
+    }
+
+    @Test
+    void aCutHistoryOfAFailedQuestionIsNotCounted() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      List<Message> history = new ArrayList<>();
+      for (int i = 0; i < 21; i++) {
+        history.add(new UserMessage("Nachricht " + i));
+      }
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(history);
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenThrow(new IllegalStateException("database gone"));
+
+      assertThatThrownBy(
+              () -> queryService.query("Und weiter?", chat.getId(), caller, true, List.of()))
+          .isInstanceOf(IllegalStateException.class);
+
+      assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isZero();
+    }
+
+    @Test
+    void aHistoryThatFitsTheWindowIsNotTruncated() {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21))
+          .thenReturn(List.of(new UserMessage("Frage"), new AssistantMessage("Antwort")));
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(answer);
+
+      queryService.query("Und weiter?", chat.getId(), caller, true, List.of());
+
+      assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isZero();
+    }
+
+    private static void sleep(long millis) throws InterruptedException {
+      Thread.sleep(millis);
+    }
+  }
+
+  /** A stream reader that takes everything and keeps nothing. */
+  private static final class RecordingListener implements AnswerStreamListener {
+
+    @Override
+    public void started() {}
+
+    @Override
+    public void provisional(String text, boolean replace) {}
+
+    @Override
+    public void idle() {}
+
+    @Override
+    public void beforeKeeping() {}
   }
 }
