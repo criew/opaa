@@ -23,13 +23,10 @@ HANDBOOK = "docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md"
 # Series that come from outside the backend: kube-state-metrics, the scrape and the alerts.
 EXTERNAL = ("kube_deployment_", "up", "ALERTS")
 
-# Metrics of an open pull request that the alerts and dashboards already use; until #3692 is merged
-# their rows are missing in the handbook table. A name here that the table lists fails
-# the check, so the list empties itself.
-PENDING = {
-    "opaa_outbound_requests_seconds_count", "opaa_outbound_requests_seconds_bucket", "opaa_outbound_throttled_total",
-    "opaa_model_role_available", "opaa_malware_scans_seconds_count", "opaa_malware_signatures_age_seconds",
-}
+# Metrics of an open pull request that the alerts and dashboards already use while their rows are
+# still missing in the handbook table. A name here that the table lists fails the check, so the
+# list empties itself.
+PENDING: set[str] = set()
 
 VARIABLES = (("${__url_time_range}", ""), ("$__range_s", "86400"), ("$__range", "1d"), ("$__interval", "1h"),
              ("$namespace", ".*"), ("$host", ".*"), ("$connector", ".*"), ("$model", ".*"),
