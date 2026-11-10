@@ -11,16 +11,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Starts and reads tool checks of chat model entries (#1753): the tool-calling case base run
- * against a stored entry, so an installation measures its own combination. Only offered while
- * agents are switched on ({@link ToolCheckGate}); otherwise every path answers 404 like an unknown
- * model. A check measures and records; it never sets the model's tool capability.
+ * Starts and reads tool checks of chat model entries: the tool-calling case base run against a
+ * stored entry, so an installation measures its own combination. Only offered while agents are
+ * switched on ({@link ToolCheckGate}); otherwise every path answers 404 like an unknown model. A
+ * check measures and records; it never sets the model's tool capability.
  *
  * <p>Callers are system administrators only, guarded at the controller.
  */
@@ -32,7 +33,8 @@ public class ToolCheckService {
 
   /**
    * A running check whose heartbeat is older than this is given up as aborted: two model calls at
-   * their time limit plus a margin, so a slow but living check is never taken for dead.
+   * their time limit plus a margin, so a slow but living check is never taken for dead. A call is
+   * made without retries, so it never outlasts its time limit.
    */
   static final long STALE_SECONDS = 2 * ToolCheckWorker.MODEL_CALL_TIMEOUT.toSeconds() + 300;
 
@@ -77,7 +79,10 @@ public class ToolCheckService {
     repository.abortStale(STALE_SECONDS);
     List<ToolCheck> earlier = repository.findByModelIdOrderByStartedAtDesc(modelId);
     if (earlier.size() >= KEPT_PER_MODEL) {
-      repository.deleteAll(earlier.subList(KEPT_PER_MODEL - 1, earlier.size()));
+      repository.deleteAllByIdInBatch(
+          earlier.subList(KEPT_PER_MODEL - 1, earlier.size()).stream()
+              .map(ToolCheck::getId)
+              .toList());
     }
     int total = ToolCallingCaseBase.load().cases().size() * repetitions;
     ToolCheck check =
@@ -95,7 +100,17 @@ public class ToolCheckService {
           "Es läuft bereits eine Werkzeugprüfung. Warten Sie, bis sie beendet ist.", e);
     }
     UUID checkId = check.getId();
-    TransactionCallbacks.afterCommitOrNow(() -> executor.execute(() -> worker.run(checkId)));
+    TransactionCallbacks.afterCommitOrNow(
+        () -> {
+          try {
+            executor.execute(() -> worker.run(checkId));
+          } catch (TaskRejectedException e) {
+            worker.fail(
+                checkId,
+                "Auf diesem Server läuft noch eine abgebrochene Prüfung aus. Starten Sie in einigen"
+                    + " Minuten erneut.");
+          }
+        });
     return view(check, model);
   }
 

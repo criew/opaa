@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
@@ -24,8 +26,9 @@ import reactor.core.publisher.Flux;
  * Runs one tool check on the tool-check pool: a readiness call, then every case of the case base
  * against the model entry with the agent loop's {@code search_knowledge} definition, answered
  * without streaming like the agent loop. Each model call renews the heartbeat, each judged run the
- * progress; the end is written only while the row is still running. No transaction spans a model
- * call.
+ * progress; the end is written only while the row is still running. Between two cases it stops when
+ * the row was given up meanwhile or agents were switched off; a run that hit an error of the
+ * endpoint ends the check as failed, never as a measured result. No transaction spans a model call.
  */
 @Component
 class ToolCheckWorker {
@@ -38,6 +41,7 @@ class ToolCheckWorker {
   private static final Logger log = LoggerFactory.getLogger(ToolCheckWorker.class);
 
   private final ToolCheckRepository repository;
+  private final ToolCheckGate gate;
   private final LlmModelRepository models;
   private final ActiveChatModelResolver chatModels;
   private final TransactionTemplate transactions;
@@ -45,11 +49,13 @@ class ToolCheckWorker {
 
   ToolCheckWorker(
       ToolCheckRepository repository,
+      ToolCheckGate gate,
       LlmModelRepository models,
       ActiveChatModelResolver chatModels,
       TransactionTemplate transactions,
       Clock clock) {
     this.repository = repository;
+    this.gate = gate;
     this.models = models;
     this.chatModels = chatModels;
     this.transactions = transactions;
@@ -65,6 +71,11 @@ class ToolCheckWorker {
     ToolCheck check = found.get();
     try {
       measure(check, model.get());
+    } catch (Stopped e) {
+      log.info("Tool check {} stopped: {}", checkId, e.getMessage());
+      if (e.agentsOff) {
+        fail(checkId, "Die Prüfung ist abgebrochen, weil die Agenten abgeschaltet wurden.");
+      }
     } catch (RuntimeException e) {
       log.warn("Tool check {} failed: {}", checkId, e.toString());
       fail(checkId, "Die Prüfung ist abgebrochen: " + e.getClass().getSimpleName() + ".");
@@ -73,10 +84,15 @@ class ToolCheckWorker {
 
   private void measure(ToolCheck check, LlmModel model) {
     UUID checkId = check.getId();
+    AtomicBoolean givenUp = new AtomicBoolean();
     ChatModel chatModel =
         new HeartbeatChatModel(
             chatModels.chatModelFor(model, MODEL_CALL_TIMEOUT),
-            () -> write(() -> repository.beat(checkId)));
+            () -> {
+              if (written(() -> repository.beat(checkId)) == 0) {
+                givenUp.set(true);
+              }
+            });
     String answeredModel;
     try {
       ChatResponse ready = chatModel.call(new Prompt("Antworte mit dem Wort: bereit"));
@@ -105,7 +121,27 @@ class ToolCheckWorker {
             check.getRepetitions(),
             false,
             MODEL_CALL_TIMEOUT,
-            (done, total, run) -> write(() -> repository.recordProgress(checkId, done)));
+            (done, total, run) -> {
+              if (givenUp.get() || written(() -> repository.recordProgress(checkId, done)) == 0) {
+                throw new Stopped("given up as aborted meanwhile", false);
+              }
+              if (!gate.open()) {
+                throw new Stopped("agents were switched off", true);
+              }
+            });
+    long errors =
+        runs.stream().filter(run -> run.outcome() == ToolCallingJudge.Outcome.ERROR).count();
+    if (errors > 0) {
+      fail(
+          checkId,
+          errors
+              + " von "
+              + runs.size()
+              + " Läufen scheiterten an einem Fehler des Endpunkts, etwa einer Zeitüberschreitung"
+              + " oder einer Drosselung. Das Ergebnis sagt dann nichts über das Modell; prüfen Sie"
+              + " erneut.");
+      return;
+    }
     ToolCallingReport report =
         ToolCallingReport.of(
             start,
@@ -142,12 +178,29 @@ class ToolCheckWorker {
         report.capabilityFloor().met() ? "floor met" : "floor not met");
   }
 
-  private void fail(UUID checkId, String failure) {
+  /** Ends a running check as failed with {@code failure}, shown to the administration. */
+  void fail(UUID checkId, String failure) {
     write(() -> repository.fail(checkId, failure));
   }
 
   private void write(Runnable update) {
     transactions.executeWithoutResult(status -> update.run());
+  }
+
+  private int written(IntSupplier update) {
+    Integer rows = transactions.execute(status -> update.getAsInt());
+    return rows == null ? 0 : rows;
+  }
+
+  /** Ends a measurement between two cases: the row is no longer running, or agents went off. */
+  private static final class Stopped extends RuntimeException {
+
+    private final boolean agentsOff;
+
+    Stopped(String reason, boolean agentsOff) {
+      super(reason);
+      this.agentsOff = agentsOff;
+    }
   }
 
   /** Renews the heartbeat before every model call, so a long case never looks abandoned. */

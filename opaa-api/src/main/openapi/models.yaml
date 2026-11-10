@@ -965,7 +965,7 @@ components:
       type: string
       description: >
         RUNNING while cases are measured; COMPLETED with a result; FAILED when the endpoint did not
-        answer at all; ABORTED when the instance running it stopped before the end.
+        answer at all; ABORTED when it gave no sign of life for too long, e.g. after a restart of its instance.
       enum: [RUNNING, COMPLETED, FAILED, ABORTED]
 
     LlmModelToolCheckCategory:

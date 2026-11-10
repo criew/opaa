@@ -166,8 +166,8 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
         )}
         {check && check.status === 'ABORTED' && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Die letzte Prüfung wurde abgebrochen, weil der Server neu gestartet wurde. Starten Sie
-            sie erneut.
+            Die letzte Prüfung wurde abgebrochen, weil sie lange kein Lebenszeichen gab, etwa nach
+            einem Neustart des Servers. Starten Sie sie erneut.
           </Alert>
         )}
         {check && check.status === 'COMPLETED' && !check.currentCombination && (

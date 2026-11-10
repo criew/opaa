@@ -102,7 +102,10 @@ Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorhe
 
 - Die Prüfung stellt dem Modell erfundene Fragen mit dem Suchwerkzeug der Agenten; Bibliotheken und
   Chats berührt sie nicht. Sie läuft auf dem Server weiter, wenn Sie den Dialog schließen, und es
-  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab.
+  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab; bis OPAA das
+  merkt, erscheint sie bis zu 15 Minuten als laufend, und so lange lässt sich keine neue starten.
+- Schaltet jemand die Agenten ab, bricht eine laufende Prüfung nach dem aktuellen Fall ab. Scheitern
+  Aufrufe am Endpunkt, etwa an einer Drosselung, endet sie als gescheitert statt mit einem Ergebnis.
 - „Bericht herunterladen“ liefert den vollständigen Bericht mit jedem Lauf im Wortlaut, wie die
   Messung unter [Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen).
 - Ein Ergebnis für eine frühere Basis-Adresse oder Modell-Kennung lässt sich nicht übernehmen.

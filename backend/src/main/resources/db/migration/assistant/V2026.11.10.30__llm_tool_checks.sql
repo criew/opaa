@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- Tool checks of chat models (#1753): one row per run of the tool-calling case base against a
+-- Tool checks of chat models: one row per run of the tool-calling case base against a
 -- model entry. The cases are fictional; neither the row nor the report names a person.
 CREATE TABLE llm_tool_checks (
     id uuid NOT NULL,

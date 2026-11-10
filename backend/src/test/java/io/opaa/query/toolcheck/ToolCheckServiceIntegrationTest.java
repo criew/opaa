@@ -4,6 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.doReturn;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -23,8 +29,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * A tool check against a fake OpenAI-compatible endpoint that answers every request with plain text
@@ -39,8 +47,16 @@ class ToolCheckServiceIntegrationTest {
   @Autowired private ToolCheckRepository repository;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private ThreadPoolTaskExecutor toolCheckExecutor;
+  @Autowired private MockMvc mockMvc;
 
   private HttpServer server;
+
+  /** Whether the fake endpoint answers anything but the readiness call with a server error. */
+  private volatile boolean failCases;
+
+  /** Released once the first case reached the fake endpoint. */
+  private volatile CountDownLatch firstCase = new CountDownLatch(1);
+
   private volatile CountDownLatch hold = new CountDownLatch(0);
   private UUID modelId;
 
@@ -151,6 +167,100 @@ class ToolCheckServiceIntegrationTest {
     assertThatThrownBy(() -> service.latest(modelId)).isInstanceOf(NotFoundException.class);
   }
 
+  @Test
+  void errorsOfTheEndpointFailTheCheckInsteadOfMeasuringIt() {
+    failCases = true;
+
+    service.start(modelId, 1);
+    ToolCheckView done = awaitEnd();
+
+    assertThat(done.check().getStatus()).isEqualTo(ToolCheckStatus.FAILED);
+    assertThat(done.check().getFailure()).contains("Fehler des Endpunkts");
+    assertThat(done.measurementRun()).isNull();
+  }
+
+  @Test
+  void switchingAgentsOffStopsARunningCheck() throws InterruptedException {
+    hold = new CountDownLatch(1);
+    service.start(modelId, 1);
+    assertThat(firstCase.await(30, TimeUnit.SECONDS)).isTrue();
+
+    doReturn(false).when(gate).open();
+    hold.countDown();
+    await().atMost(Duration.ofSeconds(60)).until(() -> !running() && !workerBusy());
+
+    ToolCheck check = repository.findFirstByModelIdOrderByStartedAtDesc(modelId).orElseThrow();
+    assertThat(check.getStatus()).isEqualTo(ToolCheckStatus.FAILED);
+    assertThat(check.getFailure()).contains("Agenten");
+    assertThat(check.getCompletedRuns()).isLessThan(check.getTotalRuns());
+  }
+
+  @Test
+  void onlyTheNewestChecksOfAModelAreKept() {
+    for (int i = 0; i < ToolCheckService.KEPT_PER_MODEL + 1; i++) {
+      jdbc.update(
+          "INSERT INTO llm_tool_checks (id, model_id, base_url, model_identifier, status,"
+              + " repetitions, total_runs, started_at, heartbeat_at, finished_at)"
+              + " VALUES (?, ?, 'x', 'fake-model', 'FAILED', 1, 28,"
+              + " clock_timestamp() - make_interval(hours => ?), clock_timestamp(),"
+              + " clock_timestamp())",
+          UUID.randomUUID(),
+          modelId,
+          i + 1);
+    }
+
+    service.start(modelId, 1);
+    awaitEnd();
+
+    assertThat(repository.findByModelIdOrderByStartedAtDesc(modelId))
+        .hasSize(ToolCheckService.KEPT_PER_MODEL);
+  }
+
+  @Test
+  void theApiStartsAndReadsAChecksAndHandsOutItsReport() throws Exception {
+    String path = "/api/v1/admin/models/" + modelId + "/tool-checks";
+    mockMvc
+        .perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{\"repetitions\":4}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{\"repetitions\":1}"))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.status").value("RUNNING"))
+        .andExpect(jsonPath("$.modelIdentifier").value("fake-model"))
+        .andExpect(jsonPath("$.repetitions").value(1))
+        .andExpect(jsonPath("$.totalRuns").value(ToolCallingCaseBase.load().cases().size()));
+    ToolCheckView done = awaitEnd();
+
+    mockMvc
+        .perform(get(path + "/latest"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(done.check().getId().toString()))
+        .andExpect(jsonPath("$.status").value("COMPLETED"))
+        .andExpect(jsonPath("$.runId").value(done.check().getRunId()))
+        .andExpect(jsonPath("$.currentCombination").value(true))
+        .andExpect(jsonPath("$.floorMet").value(false))
+        .andExpect(jsonPath("$.categories.length()").value(7))
+        .andExpect(jsonPath("$.categories[0].category").exists())
+        .andExpect(jsonPath("$.categories[0].summary").exists())
+        .andExpect(jsonPath("$.measurementRun").value(done.measurementRun()));
+    mockMvc
+        .perform(get(path + "/" + done.check().getId() + "/report"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith("text/markdown"))
+        .andExpect(
+            header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".md")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString(done.check().getRunId())));
+    mockMvc
+        .perform(
+            get(
+                "/api/v1/admin/models/"
+                    + UUID.randomUUID()
+                    + "/tool-checks/"
+                    + done.check().getId()
+                    + "/report"))
+        .andExpect(status().isNotFound());
+  }
+
   private ToolCheckView awaitEnd() {
     await().atMost(Duration.ofSeconds(60)).until(() -> !running() && !workerBusy());
     return service.latest(modelId);
@@ -174,12 +284,21 @@ class ToolCheckServiceIntegrationTest {
   }
 
   private void answer(HttpExchange exchange) throws IOException {
-    try {
-      hold.await(30, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    boolean readiness = request.contains("Antworte mit dem Wort: bereit");
+    if (!readiness) {
+      firstCase.countDown();
+      try {
+        hold.await(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
-    exchange.getRequestBody().readAllBytes();
+    if (failCases && !readiness) {
+      exchange.sendResponseHeaders(500, -1);
+      exchange.close();
+      return;
+    }
     byte[] body =
         ("{\"id\":\"c\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"fake-model\","
                 + "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\","
