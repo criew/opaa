@@ -934,6 +934,12 @@ das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die ei
 Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
 eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.
 
+Mit eingeschaltetem Schalter „Agenten“ startet die Systemverwaltung dieselbe Messung auch in der
+Anwendung, siehe [Werkzeuge prüfen](../administration/modelle.md#werkzeuge-prüfen); der Weg hier
+bleibt für Messungen vor der Installation, für Kombinationen außerhalb der Modellverwaltung und für
+Messreihen mit Ausgabe im Fluss oder der Definition der Agenten-Suche
+(`-Dopaa.eval.toolCalling.tool=production`).
+
 **Voraussetzungen:** ein Rechner mit JDK 21 und dem Quellstand der installierten Version, Netzzugang
 zum Endpunkt des Modells, beim ersten Lauf Internetzugang für Gradle und Maven Central. Docker ist
 nicht nötig.

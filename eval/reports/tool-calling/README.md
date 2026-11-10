@@ -59,18 +59,13 @@ Diese Lücken sind bewusst offen und gehören zu Issue #1753:
   Ollama auf einer GPU, dasselbe und ein zweites Modell auf vLLM auf derselben GPU. Zwei Modelle auf
   zwei Laufzeiten sagen mehr als drei Modelle auf einer.
 - **Keine Empfehlung für das Fähigkeitsfeld.** Sie folgt aus den Messläufen.
-- **Wiederholung gegen das echte `search_knowledge`.** Erst nach der Werkzeugschleife (#1750); der
-  Vergleich zur Attrappen-Messung steht dann hier.
-- **Keine Selbstbedienung für eine Installation.** #1753 verlangt, dass eine Installation die
-  Fallbasis selbst für ihr Modell fahren kann, und lässt eine Modelladresse, die nur über eine
-  Systemeigenschaft überschreibbar ist, als Entwicklerweg nicht gelten. Genau das ist der heutige
-  Weg: Quellstand der Version, JDK 21, Gradle und `-Dopaa.eval.chatBaseUrl`. Die Selbstbedienung
-  ist damit **heute verneint**. Begründung: Eine Messung aus der Modellverwaltung heraus braucht
-  einen Einstieg im Produkt (Schnittstelle, Recht, Ablage des Berichts) und gehört zum
-  Fähigkeitsfeld am Modelleintrag (#1749) oder zu einem eigenen Schritt danach; die Fallbasis und
-  der Lauf ohne Docker und Datenbank sind dafür vorbereitet. Bis dahin bleibt eine Fähigkeitsangabe
-  außerhalb der hier geführten Kombinationen ungeprüft, sofern das Haus nicht selbst den
-  Entwicklerweg geht, den das Handbuch beschreibt.
+- **Vergleich mit dem echten `search_knowledge`.** Die Messung kann es anbieten
+  (`-Dopaa.eval.toolCalling.tool=production`); der Vergleich zur Attrappen-Messung folgt aus den
+  Messläufen.
+- **Selbstbedienung** ist gebaut: Mit eingeschaltetem Schalter „Agenten“ startet die
+  Systemverwaltung die Messung am Modelleintrag („Werkzeuge prüfen“), ohne Quellstand. Der Server
+  fährt denselben Messkern mit der Definition von `search_knowledge`, hält den Bericht zum
+  Herunterladen bereit und schlägt die Fähigkeitsangabe mit der Grundlage *gemessen* vor.
 
 ## Betriebsfehler, die wie ein unfähiges Modell aussehen
 
