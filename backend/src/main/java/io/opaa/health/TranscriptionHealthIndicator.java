@@ -2,6 +2,7 @@ package io.opaa.health;
 
 import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.llm.transcription.TranscriptionRoleStatusProvider;
+import io.opaa.observability.LocalHealthGroup;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "management.health.transcription.enabled", matchIfMissing = true)
-public class TranscriptionHealthIndicator implements HealthIndicator {
+public class TranscriptionHealthIndicator implements HealthIndicator, LocalHealthGroup {
 
   private final TranscriptionRoleStatusProvider role;
 
@@ -41,5 +42,10 @@ public class TranscriptionHealthIndicator implements HealthIndicator {
       builder.withDetail("diagnostic", status.diagnostic());
     }
     return builder.build();
+  }
+
+  @Override
+  public String healthGroup() {
+    return ModelHealthGroupsConfiguration.TRANSCRIPTION_GROUP;
   }
 }

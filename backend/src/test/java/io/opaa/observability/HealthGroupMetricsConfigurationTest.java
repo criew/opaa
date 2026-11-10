@@ -1,8 +1,10 @@
 package io.opaa.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,9 +28,10 @@ import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups;
 import org.springframework.boot.health.contributor.Status;
 
 /**
- * How fresh {@code opaa.health.group.status} is: a probed group read while the instance still
- * starts shows its later state within a minute of the refresher's ticks, and a passive group is
- * never probed and accepts a last result of up to ten minutes.
+ * How fresh {@code opaa.health.group.status} is: a probe group read while the instance still starts
+ * shows its later state within a minute of the refresher's ticks; only the probe groups and a
+ * {@link LocalHealthGroup} are read that often, every other group every five minutes; a passive
+ * group is never probed and accepts a last result of up to ten minutes.
  */
 class HealthGroupMetricsConfigurationTest {
 
@@ -41,8 +46,13 @@ class HealthGroupMetricsConfigurationTest {
 
   @BeforeEach
   void groups() {
-    when(groups.getNames()).thenReturn(Set.of("readiness", "embedding-model"));
+    when(groups.getNames())
+        .thenReturn(
+            Set.of("readiness", "liveness", "chat-model", "upload-store", "embedding-model"));
     when(endpoint.healthForPath("readiness")).thenAnswer(call -> descriptor(readiness.get()));
+    when(endpoint.healthForPath("liveness")).thenAnswer(call -> descriptor(Status.UP));
+    when(endpoint.healthForPath("chat-model")).thenAnswer(call -> descriptor(Status.UP));
+    when(endpoint.healthForPath("upload-store")).thenAnswer(call -> descriptor(Status.UP));
     beans.addBean("endpoint", endpoint);
     beans.addBean("groups", groups);
     beans.addBean(
@@ -59,31 +69,42 @@ class HealthGroupMetricsConfigurationTest {
             return Optional.of(Status.UP);
           }
         });
+    beans.addBean("chat", (LocalHealthGroup) () -> "chat-model");
   }
 
   // regression guard for #3710: the read during startup must not stand for minutes once ready
   @Test
   void aReadinessReadDuringStartupIsReplacedWithinAMinuteOfTicks() {
-    PolledGauges gauges = gauges();
+    List<PolledGauges> gauges = gauges();
     readiness.set(Status.OUT_OF_SERVICE);
-    gauges.refreshIfDue(START);
+    tick(gauges, START);
     assertThat(status("readiness")).isZero();
 
     readiness.set(Status.UP);
-    for (Instant tick = START.plusSeconds(PolledGaugeRefresher.TICK_SECONDS);
-        !tick.isAfter(START.plus(Duration.ofMinutes(1)));
-        tick = tick.plusSeconds(PolledGaugeRefresher.TICK_SECONDS)) {
-      gauges.refreshIfDue(tick);
-    }
+    ticksForOneMinute(gauges);
 
     assertThat(status("readiness")).isEqualTo(1.0);
   }
 
   @Test
-  void aPassiveGroupIsNeverProbedAndAcceptsAResultOfTenMinutes() {
-    PolledGauges gauges = gauges();
+  void onlyProbeAndLocalGroupsAreReadOftenAndAGroupWithoutMarkStaysSlow() {
+    List<PolledGauges> gauges = gauges();
     readiness.set(Status.UP);
-    gauges.refreshIfDue(START);
+    tick(gauges, START);
+    ticksForOneMinute(gauges);
+
+    verify(endpoint, times(3)).healthForPath("readiness");
+    verify(endpoint, times(3)).healthForPath("liveness");
+    verify(endpoint, times(3)).healthForPath("chat-model");
+    verify(endpoint, times(1)).healthForPath("upload-store");
+    assertThat(registry.find(HealthGroupMetricsConfiguration.STATUS).gauges()).hasSize(5);
+  }
+
+  @Test
+  void aPassiveGroupIsNeverProbedAndAcceptsAResultOfTenMinutes() {
+    List<PolledGauges> gauges = gauges();
+    readiness.set(Status.UP);
+    tick(gauges, START);
 
     assertThat(status("embedding-model")).isEqualTo(1.0);
     assertThat(passiveMaxAges).containsOnly(Duration.ofMinutes(10));
@@ -91,13 +112,74 @@ class HealthGroupMetricsConfigurationTest {
     verify(endpoint, never()).health();
   }
 
-  private PolledGauges gauges() {
-    return new HealthGroupMetricsConfiguration()
-        .healthGroupGauges(
+  @Test
+  void readsOneRightAfterTheOtherAreNeverRefused() {
+    ExecutorService thread = HealthGroupMetricsConfiguration.readThread();
+    try {
+      for (int i = 0; i < 20_000; i++) {
+        assertThat(
+                HealthGroupMetricsConfiguration.withinLimit(
+                    thread, HealthGroupMetricsConfiguration.TIME_LIMIT, () -> 1.0))
+            .isEqualTo(1.0);
+      }
+    } finally {
+      thread.shutdownNow();
+    }
+  }
+
+  @Test
+  void aHangingReadHoldsAtMostOneFurtherReadAndRefusesTheRestAtOnce() throws Exception {
+    ExecutorService thread = HealthGroupMetricsConfiguration.readThread();
+    CountDownLatch release = new CountDownLatch(1);
+    try {
+      thread.submit(
+          () -> {
+            release.await();
+            return null;
+          });
+      Duration shortLimit = Duration.ofMillis(200);
+      assertThatThrownBy(
+              () -> HealthGroupMetricsConfiguration.withinLimit(thread, shortLimit, () -> 1.0))
+          .hasMessageContaining("not read within");
+      long before = System.nanoTime();
+      assertThatThrownBy(
+              () -> HealthGroupMetricsConfiguration.withinLimit(thread, shortLimit, () -> 1.0))
+          .hasMessageContaining("still running");
+      assertThat(Duration.ofNanos(System.nanoTime() - before)).isLessThan(shortLimit);
+    } finally {
+      release.countDown();
+      thread.shutdownNow();
+    }
+  }
+
+  private List<PolledGauges> gauges() {
+    HealthGroupMetricsConfiguration configuration = new HealthGroupMetricsConfiguration();
+    return List.of(
+        configuration.localHealthGroupGauges(
             registry,
             beans.getBeanProvider(HealthEndpoint.class),
             beans.getBeanProvider(HealthEndpointGroups.class),
-            beans.getBeanProvider(PassiveHealthGroup.class));
+            beans.getBeanProvider(PassiveHealthGroup.class),
+            beans.getBeanProvider(LocalHealthGroup.class)),
+        configuration.healthGroupGauges(
+            registry,
+            beans.getBeanProvider(HealthEndpoint.class),
+            beans.getBeanProvider(HealthEndpointGroups.class),
+            beans.getBeanProvider(PassiveHealthGroup.class),
+            beans.getBeanProvider(LocalHealthGroup.class)));
+  }
+
+  private static void tick(List<PolledGauges> gauges, Instant now) {
+    gauges.forEach(polled -> polled.refreshIfDue(now));
+  }
+
+  /** The refresher's ticks after {@link #START} up to one minute later. */
+  private static void ticksForOneMinute(List<PolledGauges> gauges) {
+    for (Instant tick = START.plusSeconds(PolledGaugeRefresher.TICK_SECONDS);
+        !tick.isAfter(START.plus(Duration.ofMinutes(1)));
+        tick = tick.plusSeconds(PolledGaugeRefresher.TICK_SECONDS)) {
+      tick(gauges, tick);
+    }
   }
 
   private double status(String group) {

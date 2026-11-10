@@ -3,6 +3,7 @@ package io.opaa.health;
 import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.NoActiveChatModelException;
+import io.opaa.observability.LocalHealthGroup;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "management.health.chat.enabled", matchIfMissing = true)
-public class ChatHealthIndicator implements HealthIndicator {
+public class ChatHealthIndicator implements HealthIndicator, LocalHealthGroup {
 
   private final ActiveChatModelResolver activeChatModelResolver;
 
@@ -43,5 +44,10 @@ public class ChatHealthIndicator implements HealthIndicator {
     } catch (Exception e) {
       return Health.down(e).build();
     }
+  }
+
+  @Override
+  public String healthGroup() {
+    return ModelHealthGroupsConfiguration.CHAT_GROUP;
   }
 }
