@@ -63,9 +63,9 @@ public class RateLimitConfiguration {
    */
   static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
 
-  /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
   static final String QUERY_CANCEL_PATTERN = "^/api/v1/query/stream/cancel$";
 
+  /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
   static final String CHAT_SEARCH_PATTERN = "^/api/v1/spaces/[^/]+/chats/search$";
 
   /**
