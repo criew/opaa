@@ -75,7 +75,20 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
 | `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
 | `opaa_installation_pending` | `1`, solange die Installation nicht abgeschlossen ist ([Installation](installation.md)) |
-| `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
+| `opaa_indexing_documents_total` | verarbeitete Dokumente nach Konnektortyp (`connector`, der Schlüssel des Quellentyps klein geschrieben, etwa `confluence`, `sharepoint`, `upload`) und Ergebnis (`processed`, `skipped`, `failed`) |
+| `opaa_indexing_runs_total` | beendete Indizierungsläufe nach `connector` (`private` für jede private Bibliothek, `none` für eine gelöschte), Betriebsart (`mode`: `full`, `delta`, `event`), Ergebnis (`result`: `completed`, `incomplete`, `failed`) und Grund (`failure_category`, etwa `credentials_rejected`, `not_connected` oder `quota_exhausted`; `abandoned` für einen Lauf, den Neustart, Ausfall oder Zeitüberschreitung beendet hat; sonst `none`; bei einer privaten Bibliothek bleiben nur `none`, `abandoned` und die Sperren der Verwaltung `type_locked`, `profile_locked`, `profile_required`, jeder andere Grund heißt dort `private`) |
+| `opaa_indexing_run_duration_seconds_*` | Dauer eines Laufs vom Start bis zum Ende nach `connector` und `result`, mit Buckets |
+| `opaa_indexing_run_last_success_seconds` | Unix-Zeit des jüngsten erfolgreichen Laufs je `connector`, zur Übersicht; eine einzelne Bibliothek ohne Erfolg verdeckt er, solange eine andere desselben Typs läuft |
+| `opaa_indexing_libraries_overdue` | Bibliotheken mit Zeitplan je `connector`, deren letzter erfolgreicher Lauf länger als zwei ihrer Intervalle zurückliegt; eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer Anlage, eine ohne Zeitplan nie. Steigt der Wert über `0`, steht im Laufprotokoll der Bibliothek der Grund |
+| `opaa_indexing_runs_active`, `opaa_indexing_runs_queued` | Läufe, die diese Instanz gerade ausführt, und Läufe, die auf einen ihrer Threads warten |
+| `opaa_indexing_stage_duration_seconds_*` | Zeit je Dokument und Schritt (`stage`): `fetch` Herunterladen bei Konnektoren mit Datei-Abgleich, `parse` Lesen und Schneiden im Format ohne Anhänge, `ocr` Texterkennung eines Scans, `chunk` Metadaten und Kontextpräfix der Abschnitte, `embed` Aufrufe des Embedding-Modells, `store` Schreiben in den Index |
+| `opaa_indexing_chunks_total` | Abschnitte, die indizierte Dokumente in den Index geschrieben haben |
+| `opaa_indexing_bytes_total` | Bytes, die Läufe von ihren Quellen heruntergeladen haben, nach `connector`; gezählt am Ende eines Laufs |
+| `opaa_indexing_parse_failures_total` | Dokumente ohne verwertbaren Text nach Dateiklasse (`mime_class`: `pdf`, `office`, `text`, `image`, `mail`, `archive`, `audio`, `video`, `other`) und Grund (`reason`: `parse_failed` nicht lesbar, `no_content` leer, `no_text` kein brauchbarer Text) |
+| `opaa_indexing_reindex_remaining` | Abschnitte, die ein Wechsel des Embedding-Modells noch einbetten muss, `0` ohne Wechsel ([Modelle](modell-endpunkte.md)) |
+| `opaa_directory_sync_runs_total`, `opaa_directory_sync_duration_seconds_*` | Läufe des Verzeichnisabgleichs und ihre Dauer nach Typ des Verzeichniszugangs (`provider`: `keycloak`, `none` ohne Zugang) und Ergebnis (`result`: `applied`, `dry_run`, `pending_confirmation`, `aborted_threshold`, `aborted_empty_result`, `unreachable`, `failed`) |
+| `opaa_directory_sync_last_success_seconds` | Unix-Zeit des letzten angewendeten Abgleichs je `provider`; steht still, solange ein Plan auf Bestätigung wartet |
+| `opaa_directory_sync_plan_pending_age_seconds` | wie lange die älteste Entscheidung über einen Abgleichplan je `provider` schon aussteht, `0` ohne Plan; ersetzt ein neuer Lauf den Plan, zählt die Zeit weiter |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modell-endpunkte.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)) |
 | `opaa_ocr_documents_total`, `opaa_ocr_pages_total`, `opaa_ocr_duration_seconds_*` | Texterkennung gescannter Dokumente nach Ergebnis (`recognized`, `empty`, `reused`, `failed`, `blocked`, `pending`) und Verbindungstyp, gesendete Seiten und Dauer mit Buckets; `empty` heißt, der Dienst hat geantwortet, aber keinen Text erkannt; steigt `failed`, ist der Dienst nicht verfügbar ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
@@ -123,6 +136,16 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 | `jvm_gc_live_data_size_bytes`, `jvm_gc_max_data_size_bytes` | Heap, der nach der letzten Speicherbereinigung belegt blieb, und sein Höchstwert; ihr Verhältnis zeigt, ob der Heap wirklich knapp wird |
 | `process_start_time_seconds` | Startzeit der Instanz als Unix-Zeit; zeigt Neustarts |
+
+Die Werte zu letztem Erfolg, überfälligen Bibliotheken und Verzeichnisabgleich liest jede Instanz
+jede Minute aus der Datenbank, den Rückstand eines Modellwechsels alle fünf Minuten. Jeder Pod
+meldet denselben Wert, über Pods gilt deshalb `max`; nur `opaa_indexing_runs_active` und
+`opaa_indexing_runs_queued` zählen je Pod und werden summiert. Kann eine Instanz nicht lesen,
+meldet sie `NaN` statt eines veralteten Werts und warnt im Log. Ein unvollständiger Lauf (`incomplete`) zählt als
+Erfolg. Private Bibliotheken erscheinen bei Läufen, letztem Erfolg und Überfälligkeit nur
+zusammengefasst als `connector="private"`; `opaa_indexing_documents_total` zählt ihre Dokumente
+unter dem Quellentyp, installationsweit. Eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer
+Anlage, nicht ab dem Einschalten des Zeitplans, weil OPAA diesen Zeitpunkt nicht speichert.
 
 Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
 Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,

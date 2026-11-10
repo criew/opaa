@@ -107,6 +107,10 @@ protokollereignisse#directory-sync-plan-discarded
 protokollereignisse#directory-sync-report-read
 protokollereignisse#directory-sync-run-completed
 protokollereignisse#document-metadata-changed
+protokollereignisse#document-template-changed
+protokollereignisse#document-template-created
+protokollereignisse#document-template-deleted
+protokollereignisse#document-template-settings-changed
 protokollereignisse#embedding-model-change-discarded
 protokollereignisse#embedding-model-changed
 protokollereignisse#embedding-model-endpoint-changed
@@ -242,6 +246,7 @@ rollensicht#create-internal-group
 rollensicht#create-library
 rollensicht#create-prompt-library
 rollensicht#create-space
+rollensicht#create-template
 rollensicht#faehigkeiten
 rollensicht#matrix
 rollensicht#system-admin
@@ -300,6 +305,7 @@ voreinstellungen#connection-lifecycle-settings-setting-value-inactivity-threshol
 voreinstellungen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
+voreinstellungen#document-template-settings-enabled
 voreinstellungen#einstellungen
 voreinstellungen#embedding-model-base-url
 voreinstellungen#embedding-model-model-identifier

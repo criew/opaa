@@ -49,6 +49,12 @@ class ScheduledRunLockStructureTest {
           "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)",
           "io.opaa.audit.AuditChainService#refreshMetrics",
           "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)",
+          "io.opaa.indexing.maintenance.IndexingStateMetrics#refresh",
+          "each instance reads the indexing gauges it reports itself; it only reads (E12)",
+          "io.opaa.indexing.maintenance.IndexingStateMetrics#refreshReindex",
+          "each instance reads the re-index backlog it reports itself; it only reads (E12)",
+          "io.opaa.directory.sync.DirectorySyncMetrics#refresh",
+          "each instance reads the directory gauges it reports itself; it only reads (E12)",
           "io.opaa.observability.PolledGaugeRefresher#refresh",
           "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)");
 

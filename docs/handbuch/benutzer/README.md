@@ -32,6 +32,7 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Arbeitsmittel finden und einem Space zuordnen | [Katalog nutzen](katalog.md) |
 | Eigene Dokumente durchsuchbar machen | [Wissensbibliothek anlegen](bibliothek-anlegen.md) |
 | Eigene Prompts schreiben | [Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md) |
+| Word-Vorlage für Agenten bereitstellen | [Vorlage anlegen](vorlage-anlegen.md) |
 
 ## Bibliothek pflegen
 

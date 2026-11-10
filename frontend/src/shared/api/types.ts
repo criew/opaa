@@ -173,6 +173,15 @@ export type PromptResponse = components['schemas']['PromptResponse']
 export type PromptLibraryRequest = components['schemas']['PromptLibraryRequest']
 export type PromptLibraryUpdateRequest = components['schemas']['PromptLibraryUpdateRequest']
 export type PromptLibraryResponse = components['schemas']['PromptLibraryResponse']
+export type DocumentTemplateResponse = components['schemas']['DocumentTemplateResponse']
+export type DocumentTemplatePlaceholder = components['schemas']['DocumentTemplatePlaceholder']
+export type DocumentTemplateUpdateRequest = components['schemas']['DocumentTemplateUpdateRequest']
+export type DocumentTemplateAvailabilityResponse =
+  components['schemas']['DocumentTemplateAvailabilityResponse']
+export type DocumentTemplateSettingsResponse =
+  components['schemas']['DocumentTemplateSettingsResponse']
+export type DocumentTemplateSettingsRequest =
+  components['schemas']['DocumentTemplateSettingsRequest']
 export type AssetOrigin = components['schemas']['AssetOrigin']
 export type CatalogEntryResponse = components['schemas']['CatalogEntryResponse']
 export type CatalogPageResponse = components['schemas']['CatalogPageResponse']

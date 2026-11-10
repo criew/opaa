@@ -17,7 +17,10 @@ import org.springframework.stereotype.Component;
 class PrivateAssetAuditObjects implements PersonalAuditObjects {
 
   private static final Set<AuditObjectType> TYPES =
-      Set.of(AuditObjectType.KNOWLEDGE_LIBRARY, AuditObjectType.PROMPT_LIBRARY);
+      Set.of(
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          AuditObjectType.PROMPT_LIBRARY,
+          AuditObjectType.DOCUMENT_TEMPLATE);
 
   private final NamedParameterJdbcTemplate jdbc;
 

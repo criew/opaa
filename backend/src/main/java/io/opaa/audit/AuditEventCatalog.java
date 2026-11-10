@@ -141,6 +141,9 @@ public final class AuditEventCatalog {
     put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
     put(keys, Set.of("name", "promptLibraryId"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields", "promptLibraryId"), PROMPT_CHANGED);
+    put(keys, Set.of("name"), DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED);
+    put(keys, Set.of("changedFields"), DOCUMENT_TEMPLATE_CHANGED);
+    put(keys, Set.of("enabled"), DOCUMENT_TEMPLATE_SETTINGS_CHANGED);
     put(keys, Set.of("changedFields", "serviceAccountConfirmed"), LIBRARY_SOURCE_UPDATED);
     put(keys, Set.of("externalId", "provider"), GROUP_CREATED);
     put(keys, Set.of("changedFields"), GROUP_CHANGED);

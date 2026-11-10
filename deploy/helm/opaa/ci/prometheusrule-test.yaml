@@ -41,6 +41,28 @@ tests:
               summary: "Indexierung ohne Fortschritt"
               description: "Ein Indexierungslauf im Pod r-opaa-backend-a von r-opaa-backend ist aktiv, hat aber seit 60 Minuten kein Dokument verarbeitet."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaIndexingStalled"
+  # A fresh pod registers the documents series of every connector at 0 on start: its first run,
+  # which never processes a document, still alerts instead of leaving the expression empty.
+  - interval: 1m
+    input_series:
+      - series: 'executor_active_threads{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a",name="indexingTaskExecutor"}'
+        values: '1x90'
+      - series: 'opaa_indexing_documents_total{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a",connector="confluence",result="processed"}'
+        values: '0x90'
+      - series: 'opaa_indexing_documents_total{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a",connector="upload",result="failed"}'
+        values: '0x90'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: OpaaIndexingStalled
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              component: "indexing"
+              pod: "r-opaa-backend-a"
+            exp_annotations:
+              summary: "Indexierung ohne Fortschritt"
+              description: "Ein Indexierungslauf im Pod r-opaa-backend-a von r-opaa-backend ist aktiv, hat aber seit 60 Minuten kein Dokument verarbeitet."
+              runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaIndexingStalled"
   # Two pods: a stalls while b keeps processing its own run. The pod of the stalled run alerts; the
   # sum over both pods would hide it.
   - interval: 1m

@@ -23,17 +23,12 @@ HANDBOOK = "docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md"
 # Series that come from outside the backend: kube-state-metrics, the scrape and the alerts.
 EXTERNAL = ("kube_deployment_", "up", "ALERTS")
 
-# Metrics of open pull requests that the alerts and dashboards already use; until #3692 and #3697
-# are merged their rows are missing in the handbook table. A name here that the table lists fails
+# Metrics of an open pull request that the alerts and dashboards already use; until #3692 is merged
+# their rows are missing in the handbook table. A name here that the table lists fails
 # the check, so the list empties itself.
 PENDING = {
     "opaa_outbound_requests_seconds_count", "opaa_outbound_requests_seconds_bucket", "opaa_outbound_throttled_total",
     "opaa_model_role_available", "opaa_malware_scans_seconds_count", "opaa_malware_signatures_age_seconds",
-    "opaa_indexing_runs_total", "opaa_indexing_run_duration_seconds_bucket", "opaa_indexing_run_last_success_seconds",
-    "opaa_indexing_libraries_overdue", "opaa_indexing_runs_active", "opaa_indexing_runs_queued",
-    "opaa_indexing_stage_duration_seconds_bucket", "opaa_indexing_bytes_total", "opaa_indexing_parse_failures_total",
-    "opaa_indexing_reindex_remaining", "opaa_directory_sync_last_success_seconds",
-    "opaa_directory_sync_plan_pending_age_seconds",
 }
 
 VARIABLES = (("${__url_time_range}", ""), ("$__range_s", "86400"), ("$__range", "1d"), ("$__interval", "1h"),

@@ -675,6 +675,7 @@ components:
           PROMPT_LIBRARY,
           PROMPT,
           SERVICE_ACCOUNT,
+          DOCUMENT_TEMPLATE,
         ]
       example: KNOWLEDGE_LIBRARY
 
@@ -706,6 +707,10 @@ components:
           PROMPT_CREATED,
           PROMPT_CHANGED,
           PROMPT_DELETED,
+          DOCUMENT_TEMPLATE_CREATED,
+          DOCUMENT_TEMPLATE_CHANGED,
+          DOCUMENT_TEMPLATE_DELETED,
+          DOCUMENT_TEMPLATE_SETTINGS_CHANGED,
           LIBRARY_SOURCE_UPDATED,
           GROUP_CREATED,
           GROUP_CHANGED,

@@ -56,7 +56,7 @@ class RunCodeTool {
               + " Wissensbasis müssen im Skript selbst stehen.")
   String runCode(String code, ToolContext toolContext) {
     ToolLoopRunState runState =
-        (ToolLoopRunState) toolContext.getContext().get(SearchKnowledgeTool.RUN_STATE_KEY);
+        (ToolLoopRunState) toolContext.getContext().get(SpikeSearchKnowledgeTool.RUN_STATE_KEY);
     if (runState.chatId() == null) {
       return "Code kann nur in einem Chat eines Space ausgeführt werden.";
     }

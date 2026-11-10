@@ -20,6 +20,7 @@ import {
   CONNECTION_LOG_ROUTE,
   CONNECTION_PROFILES_ROUTE,
   CONNECTIONS_ADMIN_ROUTE,
+  DOCUMENT_TEMPLATE_SETTINGS_ROUTE,
   EXTERNAL_TOOLS_LIBRARIES_ROUTE,
   EXTERNAL_TOOLS_ROUTE,
   EXTERNAL_TOOLS_SETTINGS_ROUTE,
@@ -65,6 +66,9 @@ import {
   OidcProviderManagementPage,
   PrivacySettingsPage,
   PromptLibraryCreatePage,
+  DocumentTemplateCreatePage,
+  DocumentTemplateDetailPage,
+  DocumentTemplateSettingsPage,
   PromptLibraryDetailPage,
   ProviderGroupWorklistPage,
   RegisterPage,
@@ -98,6 +102,7 @@ const ADMIN_SECTIONS = [
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
   { label: 'Virenprüfung', to: '/admin/malware-scan' },
+  { label: 'Vorlagen', to: DOCUMENT_TEMPLATE_SETTINGS_ROUTE },
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
@@ -262,6 +267,20 @@ export default function App() {
                   ) : (
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
+                  {/* Switched off at run time, the backend answers 404 and the page says so. */}
+                  <Route
+                    path="templates"
+                    element={<Navigate to={catalogRoute('DOCUMENT_TEMPLATE')} replace />}
+                  />
+                  <Route path="templates/new" element={<DocumentTemplateCreatePage />} />
+                  <Route
+                    path="templates/:documentTemplateId"
+                    element={<DocumentTemplateDetailPage />}
+                  />
+                  <Route
+                    path="templates/:documentTemplateId/:tab"
+                    element={<DocumentTemplateDetailPage />}
+                  />
                 </Route>
                 {/* Global areas render inside the global frame: no space
                   column, a light secondary column with the area navigation instead. */}
@@ -347,6 +366,10 @@ export default function App() {
                   <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                   <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
                   <Route path="admin/malware-scan" element={<MalwareScanSettingsPage />} />
+                  <Route
+                    path={DOCUMENT_TEMPLATE_SETTINGS_ROUTE.slice(1)}
+                    element={<DocumentTemplateSettingsPage />}
+                  />
                   <Route
                     path="admin/search"
                     element={<Navigate to="/admin/search/overview" replace />}

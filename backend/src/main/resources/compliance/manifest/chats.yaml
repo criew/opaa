@@ -227,6 +227,8 @@ nonPersonalTables:
   agent_run_reservations: [run_id, expires_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
+  document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
+  document_template_files: [template_id, content]
   prompts:
     - id
     - library_id
@@ -240,6 +242,14 @@ nonPersonalTables:
     - created_at
     - updated_at
 settings:
+  - key: document_template_settings.enabled
+    source: DATABASE
+    defaultValue: "false"
+    range: an oder aus
+    effect: >-
+      Schalter „Vorlagen“: Dokumentvorlagen lassen sich anlegen, finden und von Agenten befüllen;
+      aus, bleiben gespeicherte Vorlagen erhalten, sind aber nirgends erreichbar
+    bearings: [DATA]
   - key: opaa.chat.attachments.unbound-retention
     source: PROPERTY
     defaultValue: "24h"

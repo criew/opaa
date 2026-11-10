@@ -55,6 +55,7 @@ const capabilityLabels: Record<Capability, string> = {
   CREATE_CONNECTOR_LIBRARY: 'Konnektorbibliotheken anlegen',
   CREATE_INTERNAL_GROUP: 'Interne Gruppen anlegen',
   CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
+  CREATE_TEMPLATE: 'Vorlagen anlegen',
 }
 
 /**

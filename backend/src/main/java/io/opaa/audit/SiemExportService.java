@@ -59,7 +59,8 @@ class SiemExportService {
           AuditObjectType.SPACE,
           AuditObjectType.KNOWLEDGE_LIBRARY,
           AuditObjectType.PROMPT_LIBRARY,
-          AuditObjectType.PROMPT);
+          AuditObjectType.PROMPT,
+          AuditObjectType.DOCUMENT_TEMPLATE);
 
   private final JdbcTemplate jdbc;
   private final SiemExportProperties properties;
