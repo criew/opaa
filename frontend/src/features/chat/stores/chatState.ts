@@ -10,6 +10,8 @@ import type { SearchScope } from './chatSettingsPersistence'
 export interface RefusedQuestion {
   restoreDraft: string
   onRestored: () => void
+  /** The question's agent goes back to the input with it; false when the agent was refused. */
+  keepAgent?: boolean
 }
 
 export interface ChatState {
@@ -67,11 +69,13 @@ export interface ChatState {
    * including a prompt that is no longer usable) resolves to a {@link RefusedQuestion}: nothing of
    * it stays in the history, and the input gets it back to be corrected and sent again.
    * `attachments` are the ready chat attachments sent along; the chat binds them with this turn.
+   * `agent` is the agent chosen for this question; it replaces the question's search scope.
    */
   sendMessage: (
     question: string,
     usedPrompt?: { id: string; title: string },
     attachments?: ChatAttachmentRef[],
+    agent?: { id: string; name: string },
   ) => Promise<RefusedQuestion | void>
   /** Sets the chip bar back to the special @Space-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void

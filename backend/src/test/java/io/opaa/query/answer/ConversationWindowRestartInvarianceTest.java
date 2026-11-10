@@ -105,7 +105,10 @@ class ConversationWindowRestartInvarianceTest {
         .containsExactly(QUESTION, "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.");
   }
 
-  /** A question is the person's own wording and is never rewritten on its way into the window. */
+  /**
+   * A question is the person's own wording and is not rewritten on its way into the window, apart
+   * from invisible characters.
+   */
   @Test
   void aQuestionIsCarriedIntoTheWindowVerbatim() {
     List<Message> reloaded =
@@ -115,6 +118,40 @@ class ConversationWindowRestartInvarianceTest {
     assertThat(reloaded)
         .extracting(Message::getText)
         .containsExactly("Was bedeutet 【source: x#1 | y.md】 in Ihrer Antwort?");
+  }
+
+  /**
+   * Both entrances drop invisible characters: the answer just generated as well as the persisted
+   * question and answer read back, so the live window and the reloaded one send the same prompt and
+   * neither carries hidden text into the next turn.
+   */
+  @Test
+  void liveAndReloadedWindowsCarryTheSameTextWithoutInvisibleCharacters() {
+    String hiddenAnswer = "Ein Anwohner\u200Bparkausweis kostet 30,70 Euro\uDB40\uDC41 pro Jahr.";
+    String hiddenQuestion = "Was kostet ein Anwohner\u2066parkausweis?";
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answer(hiddenAnswer), answer("Ermäßigt."), answer("Ermäßigt."));
+    String conversationId = "invisible-" + UUID.randomUUID();
+
+    answerGenerationService.generateAnswer(
+        QUESTION, List.of(), conversationId, List.of(), false, true, null);
+    answerGenerationService.generateAnswer(
+        FOLLOW_UP, List.of(), conversationId, List.of(), false, true, null);
+    chatMemory.clear(conversationId);
+    chatMemory.add(
+        conversationId,
+        ConversationWindowMessages.reloaded(
+            List.of(new UserMessage(hiddenQuestion), new AssistantMessage(hiddenAnswer))));
+    answerGenerationService.generateAnswer(
+        FOLLOW_UP, List.of(), conversationId, List.of(), false, true, null);
+
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel, times(3)).call(prompts.capture());
+    List<String> live = texts(prompts.getAllValues().get(1));
+    assertThat(texts(prompts.getAllValues().get(2))).isEqualTo(live);
+    assertThat(live)
+        .contains("Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.")
+        .noneMatch(text -> text.matches("(?s).*[\\u200B\\u2066\\x{E0041}].*"));
   }
 
   /**

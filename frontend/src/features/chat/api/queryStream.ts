@@ -18,6 +18,8 @@ export interface StreamQueryOptions {
   signal?: AbortSignal
   /** The chat attachments sent with this question. */
   attachmentIds?: string[]
+  /** The agent chosen for this question. */
+  agentId?: string
 }
 
 export const STREAM_BROKEN_MESSAGE =
@@ -66,6 +68,7 @@ export async function streamQuery(
     metadataFilter,
     usedPromptId,
     options.attachmentIds,
+    options.agentId,
   )
   let response: AxiosResponse<ReadableStream<Uint8Array>>
   try {
@@ -87,6 +90,7 @@ export async function streamQuery(
         metadataFilter,
         usedPromptId,
         options.attachmentIds,
+        options.agentId,
       )
     }
     normalizeError(err)

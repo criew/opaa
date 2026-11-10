@@ -65,7 +65,9 @@ bewertet werden.
 
 Identität, Organisation und Suchbereich erreichen das Werkzeug über den `ToolContext`, an den
 Modellargumenten vorbei. Der Suchbereich ist der Schnitt aus den lesbaren Bibliotheken der
-aufrufenden Person, dem Bereich des Chats und den Bibliotheken des Agenten. Das Modell bestimmt die
+aufrufenden Person, den Bibliotheken des Space, in dem der Chat liegt, und den Bibliotheken des
+Agenten, sofern er welche hat. Die Chip-Leiste des Chats gilt für einen Agentenlauf nicht: Wer einen
+Agenten wählt, ersetzt damit den Suchbereich der Frage. Das Modell bestimmt die
 Frage und darf den Bereich verengen, etwa über Bibliotheks- oder Metadatenfilter. Erweitern darf es
 ihn nie. Ein Bibliotheksbezeichner außerhalb des Bereichs ist kein Eingabefehler: Er wird ignoriert
 und im Schritt als ignoriert vermerkt, ohne seinen Wert. Ein Bezeichner, den ein abgerufenes

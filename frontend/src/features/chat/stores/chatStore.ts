@@ -219,8 +219,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: (question, usedPrompt, attachments) =>
-    sendChatMessage(get, set, question, usedPrompt, attachments),
+  sendMessage: (question, usedPrompt, attachments, agent) =>
+    sendChatMessage(get, set, question, usedPrompt, attachments, agent),
 
   setScopeAll: () => {
     // Already showing @Space-Wissen - nothing to replace. Short-circuiting here avoids a PATCH

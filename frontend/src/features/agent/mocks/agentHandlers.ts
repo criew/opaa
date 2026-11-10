@@ -31,6 +31,17 @@ export const agentHandlers = [
     HttpResponse.json({ enabled: mockAgentSettings.enabled }),
   ),
 
+  // Every readable agent stands in every space of the mock; switched off, nothing is offered.
+  http.get('/api/v1/agents/available', () =>
+    HttpResponse.json(
+      offline()
+        ? []
+        : Object.values(mockAgents)
+            .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+            .map((agent) => ({ id: agent.id, name: agent.name, description: agent.description })),
+    ),
+  ),
+
   http.get('/api/v1/agents', () =>
     offline()
       ? notFound()

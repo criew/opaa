@@ -11,8 +11,10 @@ import { scheduleTitleReload } from './chatTitleReload'
 import { reloadChatTurns } from './chatDetail'
 import {
   DRAFT_RESTORED_NOTE,
+  DRAFT_RESTORED_WITHOUT_AGENT_NOTE,
   DRAFT_RESTORED_WITHOUT_PROMPT_NOTE,
   INVALID_QUESTION_MESSAGE,
+  isAgentNotAvailable,
   isPromptNotUsable,
   isQuestionViolation,
   parkRefused,
@@ -45,6 +47,7 @@ export async function sendChatMessage(
   question: string,
   usedPrompt?: { id: string; title: string },
   attachments: ChatAttachmentRef[] = [],
+  agent?: { id: string; name: string },
 ): Promise<RefusedQuestion | void> {
   // This call's token in the session epoch, captured before any await below. Checked
   // again before every set() that follows an await - a logout (resetAllStores) in the meantime
@@ -77,6 +80,7 @@ export async function sendChatMessage(
       content: question,
       ...(usedPrompt ? { usedPromptTitle: usedPrompt.title } : {}),
       ...(attachments.length > 0 ? { attachments } : {}),
+      ...(agent ? { agentName: agent.name } : {}),
       timestamp: new Date(),
     },
     persistedUserTurnsBefore: sendingChatId
@@ -104,16 +108,24 @@ export async function sendChatMessage(
 
   // A 4xx means the question was not persisted: it is handed back instead of lost.
   // A stream the instance ended on shutdown kept nothing either: the question goes back as well.
-  const classifyRefusal = (failure: unknown): { reason: string; note: string } | null => {
+  const classifyRefusal = (
+    failure: unknown,
+  ): { reason: string; note: string; agentRefused: boolean } | null => {
     const status = responseStatus(failure)
     if (status === null || ((status < 400 || status >= 500) && !isShutdownNotice(failure)))
       return null
     const message =
       failure instanceof Error ? failure.message : 'Ein unerwarteter Fehler ist aufgetreten'
     const promptNotUsable = usedPrompt !== undefined && isPromptNotUsable(failure)
+    const agentRefused = agent !== undefined && isAgentNotAvailable(failure)
     return {
       reason: status === 400 && isQuestionViolation(message) ? INVALID_QUESTION_MESSAGE : message,
-      note: promptNotUsable ? DRAFT_RESTORED_WITHOUT_PROMPT_NOTE : DRAFT_RESTORED_NOTE,
+      note: promptNotUsable
+        ? DRAFT_RESTORED_WITHOUT_PROMPT_NOTE
+        : agentRefused
+          ? DRAFT_RESTORED_WITHOUT_AGENT_NOTE
+          : DRAFT_RESTORED_NOTE,
+      agentRefused,
     }
   }
   const parkRefusal = (failure: unknown) => {
@@ -192,6 +204,7 @@ export async function sendChatMessage(
       usedPrompt?.id,
       {
         signal: answerAbort.signal,
+        ...(agent ? { agentId: agent.id } : {}),
         ...(attachments.length > 0
           ? { attachmentIds: attachments.map((attachment) => attachment.id) }
           : {}),
@@ -297,7 +310,9 @@ export async function sendChatMessage(
       }))
       if (send.chatId && isTargetChatShown()) reloadChatTurns(get, set, send.chatId)
       notify(ANSWER_CANCELLED_NOTE, 'info')
-      return isTargetChatShown() ? { restoreDraft: question, onRestored: () => {} } : undefined
+      return isTargetChatShown()
+        ? { restoreDraft: question, onRestored: () => {}, keepAgent: agent !== undefined }
+        : undefined
     }
     // A failure is shown in its own chat only, not in one the person switched to.
     if (!isTargetChatShown()) {
@@ -311,7 +326,7 @@ export async function sendChatMessage(
     // back to the input. The error only promises that once the input confirms it.
     const refusal = classifyRefusal(err)
     if (refusal) {
-      const { reason, note } = refusal
+      const { reason, note, agentRefused } = refusal
       set((state) => ({
         messages: state.messages.filter((m) => m !== send.userMessage),
         error: reason,
@@ -319,6 +334,7 @@ export async function sendChatMessage(
       }))
       return {
         restoreDraft: question,
+        keepAgent: agent !== undefined && !agentRefused,
         onRestored: () => {
           if (isTargetChatShown() && get().error === reason) set({ error: `${reason} ${note}` })
         },

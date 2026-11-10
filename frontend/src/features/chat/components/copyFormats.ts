@@ -4,11 +4,14 @@ import {
   readMarker,
   unwrapBracketedMarkers,
 } from '@/shared/ui/markdown/citations'
-import { formatDate } from '@/shared/utils/formatDate'
+import type { OutwardPolicy } from '@/shared/ui/markdown/outwardMarkdown'
+import { answerForOutside } from '@/shared/ui/markdown/outwardMarkdown'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
  * (`【source: <documentId>#<chunk> | <fileName>】`); none of the formats may let them through raw.
+ * Every format ends in {@link answerForOutside}, so no image, foreign link or raw HTML of the
+ * answer reaches the program the text is pasted into.
  */
 
 /**
@@ -33,22 +36,23 @@ function splitAtMarkers(content: string): { texts: string[]; markers: string[] }
 }
 
 /** The answer as Markdown, without footnote markers and without a source list - the default. */
-export function answerAsMarkdown(content: string): string {
-  return splitAtMarkers(unwrapBracketedMarkers(content)).texts.join('').trim()
+export function answerAsMarkdown(content: string, policy: OutwardPolicy = {}): string {
+  const markdown = splitAtMarkers(unwrapBracketedMarkers(content)).texts.join('').trim()
+  return answerForOutside(markdown, policy).trim()
 }
 
 /**
  * The answer as Markdown with its sources: each marker becomes a Markdown footnote (`[^1]`, the
  * same number the chat shows), repeated neighbours collapse, and the cited documents follow as a
  * footnote list with their Fundort where the pipeline knew one. `labelPrefix` goes in front of
- * every footnote label (`[^2-1]`), for documents that hold several answers; the answer's own text
- * is never touched.
+ * every footnote label (`[^2-1]`), for documents that hold several answers.
  */
 export function answerWithSources(
   answer: string,
   citations: CitationIndex,
-  labelPrefix = '',
+  options: OutwardPolicy & { labelPrefix?: string } = {},
 ): string {
+  const labelPrefix = options.labelPrefix ?? ''
   const { texts, markers } = splitAtMarkers(unwrapBracketedMarkers(answer))
   const fileNameByNumber = new Map<number, string>()
   const parts: string[] = []
@@ -68,33 +72,57 @@ export function answerWithSources(
   })
   parts.push(texts[texts.length - 1])
   const body = parts.join('').trim()
-  if (fileNameByNumber.size === 0) return body
+  if (fileNameByNumber.size === 0) return answerForOutside(body, options).trim()
   const notes = [...fileNameByNumber.entries()]
     .sort(([a], [b]) => a - b)
     .map(([number, fileName]) => {
       const location = citations.locationByNumber.get(number)
       return `[^${labelPrefix}${number}]: ${fileName}${location ? `, ${location}` : ''}`
     })
-  return `${body}\n\n${notes.join('\n')}`
+  return answerForOutside(`${body}\n\n${notes.join('\n')}`, options).trim()
 }
 
 // Each rule looks at most 300 characters ahead per position, so a line built to make them
-// backtrack still costs time linear in its length.
+// backtrack still costs time linear in its length. A bracket written as an escape is text, not
+// syntax; escapes are resolved after the syntax rules, so the text keeps no backslash. What the
+// resolved escapes form anew is not syntax either: an image becomes its alt text, a link its text
+// with the address in parentheses, so no live link reaches a Markdown reader.
 const INLINE_RULES: [RegExp, string][] = [
-  [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
-  [/\[([^\]]{1,300})\]\([^)]{0,300}\)/g, '$1'], // link -> its text
-  [/`([^`]+)`/g, '$1'],
+  [/(?<!\\)!\[([^\]]{0,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
+  [/(?<!\\)\[([^\]]{1,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // link -> its text
   [/(\*\*|__)(.{1,300}?)\1/g, '$2'],
   [/~~(.{1,300}?)~~/g, '$1'],
   [/(^|[^\w*])\*(?!\s)(.{1,300}?)(?<!\s)\*(?!\w)/g, '$1$2'],
   [/(^|[^\w_])_(?!\s)(.{1,300}?)(?<!\s)_(?!\w)/g, '$1$2'],
+  [/\\([!-/:-@[-`{-~])/g, '$1'],
+  [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1'],
+  [/\[([^\]]{1,300})\]\(([^)]{0,300})\)/g, '$1 ($2)'],
+  // Any tag stays text when the plain text is pasted into a Markdown or HTML reader.
+  [/<(?=[A-Za-z/!?])/g, '&lt;'],
 ]
 
+/**
+ * A code span of up to 1000 characters. Its content is kept as written, past every rule; it keeps
+ * its backticks when it holds `<`, a bracket or a parenthesis, so a tag, link or image stays code in a
+ * Markdown reader.
+ */
+const CODE_SPAN = /(`+)(?!`)([^`]|[^`][\s\S]{0,1000}?[^`])\1(?!`)/g
+
+/** Stands in for the code spans of a line while the rules run; never part of an answer. */
+const SLOT = /\uE000(\d+)\uE001/g
+
 function plainInline(line: string): string {
-  return INLINE_RULES.reduce(
+  const spans: string[] = []
+  const withSlots = line.replace(/[\uE000\uE001]/g, '').replace(CODE_SPAN, (span, _, code) => {
+    const padded = /^ [\s\S]* $/.test(code) && code.trim() !== ''
+    spans.push(/[<[\]()]/.test(code) ? span : padded ? code.slice(1, -1) : code)
+    return `\uE000${spans.length - 1}\uE001`
+  })
+  const plain = INLINE_RULES.reduce(
     (text, [pattern, replacement]) => text.replace(pattern, replacement),
-    line,
+    withSlots,
   )
+  return plain.replace(SLOT, (_, index: string) => spans[Number(index)])
 }
 
 /**
@@ -102,10 +130,10 @@ function plainInline(line: string): string {
  * lose their marks, bullets become "•", table rows become tab-separated cells (they paste into a
  * spreadsheet), code keeps its lines.
  */
-export function answerAsPlainText(content: string): string {
+export function answerAsPlainText(content: string, policy: OutwardPolicy = {}): string {
   const lines: string[] = []
   let inCode = false
-  for (const line of answerAsMarkdown(content).split('\n')) {
+  for (const line of answerAsMarkdown(content, policy).split('\n')) {
     if (/^\s*(```|~~~)/.test(line)) {
       inCode = !inCode
       continue
@@ -138,42 +166,7 @@ export function answerAsPlainText(content: string): string {
     .trim()
 }
 
-/**
- * The note appended when an answer is copied with the copy button: the authority's notice from
- * the branding, the product name and the date of the answer (German format). Deliberately without
- * a model name - that would reveal the installation's configuration. It is visible text, not a
- * machine-readable marking.
- */
-export function copyNote(notice: string, productName: string, answeredAt: Date): string {
-  const date = formatDate(answeredAt)
-  return `${plainNoteText(notice)} – ${plainNoteText(productName)}, ${date}`
-}
-
-/**
- * Notice and product name come from the branding. Direction controls (U+202A–202E, U+2066–2069,
- * U+200E/F, U+061C) would reorder the rest of the line when the note is pasted, tag characters
- * (U+E0000–E007F) could hide text in it, and breaks or control characters would split it, so they
- * are dropped or turned into blanks. The PDF export of a chat applies the same rule.
- */
-function plainNoteText(text: string): string {
-  return Array.from(text.replace(/[\r\n\u2028\u2029]+/g, ' '))
-    .filter((char) => !isDroppedFromNote(char.codePointAt(0) ?? 0))
-    .join('')
-    .trim()
-}
-
-function isDroppedFromNote(code: number): boolean {
-  return (
-    code <= 0x1f ||
-    (code >= 0x7f && code <= 0x9f) ||
-    code === 0x61c ||
-    code === 0x200e ||
-    code === 0x200f ||
-    (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2066 && code <= 0x2069) ||
-    (code >= 0xe0000 && code <= 0xe007f)
-  )
-}
+export { copyNote } from './copyNote'
 
 /** Markdown followed by a rule and the note as its own paragraph. */
 export function markdownWithNote(markdown: string, note: string): string {

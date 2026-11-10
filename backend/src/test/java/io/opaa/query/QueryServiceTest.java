@@ -321,6 +321,28 @@ class QueryServiceTest {
         .generateAnswer(eq("@test Frage"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
   }
 
+  /** Tag, zero-width and direction characters hidden in a question never reach the model. */
+  @Test
+  void queryHandsTheQuestionOnWithoutInvisibleCharacters() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(chatResponse);
+
+    queryService.query("Frist?󠁉󠁇​‮", null, caller, true, List.of());
+
+    verify(answerGenerationService)
+        .generateAnswer(eq("Frist?"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+  }
+
+  @Test
+  void aQuestionOfInvisibleCharactersAloneIsRefused() {
+    assertThatThrownBy(() -> queryService.query("󠁉​", null, caller, true, List.of()))
+        .isInstanceOf(ValidationException.class);
+  }
+
   /**
    * Once the switch is on (the handler bean present), a question the handler declines (no {@code
    * "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code
@@ -1693,6 +1715,52 @@ class QueryServiceTest {
   }
 
   /**
+   * A deleted chat's conversation window never comes back: once the chat no longer resolves, its id
+   * runs as an ephemeral conversation, which must start empty instead of reading the window the
+   * stored chat left in this process.
+   */
+  @Test
+  void theIdOfADeletedChatStartsAnEmptyConversation() {
+    ChatMemory realChatMemory =
+        MessageWindowChatMemory.builder()
+            .chatMemoryRepository(new CaffeineChatMemoryRepository())
+            .maxMessages(20)
+            .build();
+    QueryService serviceWithRealMemory =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), realChatMemory);
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId))
+        .thenReturn(Optional.of(chat), Optional.empty());
+    when(chatService.historyAsSpringAiMessages(chatId, 21))
+        .thenReturn(
+            List.of(
+                new UserMessage("Frage aus dem geloeschten Chat"),
+                new AssistantMessage("Antwort aus dem geloeschten Chat")));
+    lenient().when(chatService.effectiveLibraryScope(any(), any())).thenReturn(Set.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    List<List<Message>> windowsSeen = new ArrayList<>();
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenAnswer(
+            invocation -> {
+              windowsSeen.add(realChatMemory.get(invocation.getArgument(2)));
+              return chatResponse;
+            });
+
+    serviceWithRealMemory.query("Erste Frage", chatId, caller, false, List.of());
+    serviceWithRealMemory.query("Frage nach dem Loeschen", chatId, caller, false, List.of());
+
+    assertThat(windowsSeen).hasSize(2);
+    assertThat(windowsSeen.get(0)).hasSize(2);
+    assertThat(windowsSeen.get(1))
+        .as("the window of the deleted chat")
+        .extracting(Message::getText)
+        .noneMatch(text -> text.contains("geloeschten Chat"));
+  }
+
+  /**
    * #525 acceptance criterion: "Folgefragen im selben Chat nutzen den persistierten Verlauf als
    * Kontext". The window of a persisted chat is replaced from the persisted store on every turn,
    * whatever the in-memory cache held - the search query is enriched from that persisted history,
@@ -2261,7 +2329,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesSearchWithConversationHistory() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2290,7 +2358,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesThirdMessageWithTheLastUserQuestionOfTheSearchWindow() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2320,7 +2388,7 @@ class QueryServiceTest {
   @Test
   void queryLeavesAQuestionOlderThanTheSearchWindowOutOfTheFallbackQuery() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2625,7 +2693,7 @@ class QueryServiceTest {
     @Test
     void aMessageWithoutSearchNeedIsSearchedWithTheFallbackQueryAndTheAnswerIsTold() {
       UUID chatId = UUID.randomUUID();
-      when(chatMemory.get(currentUserId + ":" + chatId))
+      when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
           .thenReturn(
               List.of(
                   new UserMessage("Was kostet ein Personalausweis?"),

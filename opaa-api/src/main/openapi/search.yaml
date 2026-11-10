@@ -898,6 +898,15 @@ components:
         runId:
           type: string
           format: uuid
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The agent that ran; null on runs kept before the agent was recorded.
+        agentName:
+          type: string
+          nullable: true
+          description: The agent's name at the time of the run, shown at the answer.
         endState:
           $ref: "#/components/schemas/AgentRunEndState"
         steps:

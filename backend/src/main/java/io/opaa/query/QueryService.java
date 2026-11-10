@@ -18,6 +18,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.PromptText;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
@@ -83,6 +84,12 @@ import org.springframework.stereotype.Service;
 public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
+
+  /**
+   * Separates the conversation key of an ephemeral conversation from that of a stored chat with the
+   * same id: a stored chat's key is {@code userId:chatId}, an ephemeral one never is.
+   */
+  static final String EPHEMERAL_KEY_INFIX = ":ephemeral:";
 
   private final KnowledgeRetrieval knowledgeRetrieval;
   private final RetrievalContextFactory retrievalContextFactory;
@@ -275,9 +282,11 @@ public class QueryService {
    * runs through the {@link AgentTurnHandler} instead of the ordinary path (ADR-0070): it needs a
    * persisted chat of the caller and takes no new attachments (400 otherwise), and it is not
    * streamed. Without an agent nothing changes - one search, one model call, no tool definitions.
+   * The question is answered and stored without invisible characters ({@link PromptText}); one with
+   * no visible character left is a 400.
    */
   public QueryResult query(
-      String question,
+      String askedQuestion,
       UUID chatId,
       CurrentUser caller,
       boolean useKnowledge,
@@ -287,6 +296,10 @@ public class QueryService {
       AnswerStreamListener answerListener,
       List<UUID> attachmentIds,
       UUID agentId) {
+    String question = PromptText.withoutInvisible(askedQuestion);
+    if (question == null || question.isBlank()) {
+      throw new ValidationException("Die Frage enthält keinen sichtbaren Text.");
+    }
     UUID currentUserId = caller.id();
     List<UUID> requestedAttachments = attachmentIds == null ? List.of() : attachmentIds;
     QueryClock clock = new QueryClock();
@@ -319,13 +332,15 @@ public class QueryService {
           // A chatId that does not resolve to an owned persisted chat (including "none
           // given") runs ephemerally rather than being rejected, reused as the in-memory
           // conversation-cache key when the caller supplied one, or freshly generated
-          // otherwise. Always qualified with currentUserId: without this, an unresolved
-          // chatId (unknown, or another user's real chat id) would collide with the cache
-          // key that chat's owner's own persisted-chat path uses, leaking one user's
-          // conversation history into another's prompt.
+          // otherwise. Always qualified with currentUserId, so one account never reads
+          // another's window, and an ephemeral key never equals a stored chat's key, so the id
+          // of a deleted chat never reads the window that chat left in this process.
           UUID effectiveChatId =
               chat.map(Chat::getId).orElseGet(() -> chatId != null ? chatId : UUID.randomUUID());
-          String conversationKey = currentUserId + ":" + effectiveChatId;
+          String conversationKey =
+              chat.isPresent()
+                  ? currentUserId + ":" + effectiveChatId
+                  : currentUserId + EPHEMERAL_KEY_INFIX + effectiveChatId;
           boolean historyCut = seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
           // The Gesprächsnotiz as it stands *before* this turn - the state that goes into
