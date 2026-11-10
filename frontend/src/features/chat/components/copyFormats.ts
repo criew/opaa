@@ -82,34 +82,47 @@ export function answerWithSources(
   return answerForOutside(`${body}\n\n${notes.join('\n')}`, options).trim()
 }
 
-const IMAGE_TO_ALT: [RegExp, string] = [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1']
-
 // Each rule looks at most 300 characters ahead per position, so a line built to make them
 // backtrack still costs time linear in its length. A bracket written as an escape is text, not
-// syntax; escapes are resolved at the end, so the text keeps no backslash, and an image that an
-// escaped description held becomes its alt text there.
+// syntax; escapes are resolved after the syntax rules, so the text keeps no backslash. What the
+// resolved escapes form anew is not syntax either: an image becomes its alt text, a link its text
+// with the address in parentheses, so no live link reaches a Markdown reader.
 const INLINE_RULES: [RegExp, string][] = [
   [/(?<!\\)!\[([^\]]{0,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
   [/(?<!\\)\[([^\]]{1,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // link -> its text
-  [/`([^`]+)`/g, '$1'],
   [/(\*\*|__)(.{1,300}?)\1/g, '$2'],
   [/~~(.{1,300}?)~~/g, '$1'],
   [/(^|[^\w*])\*(?!\s)(.{1,300}?)(?<!\s)\*(?!\w)/g, '$1$2'],
   [/(^|[^\w_])_(?!\s)(.{1,300}?)(?<!\s)_(?!\w)/g, '$1$2'],
   [/\\([!-/:-@[-`{-~])/g, '$1'],
-  IMAGE_TO_ALT,
-  // A tag that loads or links stays text when the plain text is pasted into a Markdown reader.
-  [
-    /<(?=\/?(?:a|img|image|iframe|frame|script|style|link|object|embed|video|audio|source|picture|svg|math|input|form|meta|base)\b)/gi,
-    '&lt;',
-  ],
+  [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1'],
+  [/\[([^\]]{1,300})\]\(([^)]{0,300})\)/g, '$1 ($2)'],
+  // Any tag stays text when the plain text is pasted into a Markdown or HTML reader.
+  [/<(?=[A-Za-z/!?])/g, '&lt;'],
 ]
 
+/**
+ * A code span of up to 1000 characters. Its content is kept as written, past every rule; it keeps
+ * its backticks when it holds `<`, `[` or `]`, so a tag, link or image in it stays code in a
+ * Markdown reader.
+ */
+const CODE_SPAN = /(`+)(?!`)([^`]|[^`][\s\S]{0,1000}?[^`])\1(?!`)/g
+
+/** Stands in for the code spans of a line while the rules run; never part of an answer. */
+const SLOT = /\uE000(\d+)\uE001/g
+
 function plainInline(line: string): string {
-  return INLINE_RULES.reduce(
+  const spans: string[] = []
+  const withSlots = line.replace(/[\uE000\uE001]/g, '').replace(CODE_SPAN, (span, _, code) => {
+    const padded = /^ [\s\S]* $/.test(code) && code.trim() !== ''
+    spans.push(/[<[\]]/.test(code) ? span : padded ? code.slice(1, -1) : code)
+    return `\uE000${spans.length - 1}\uE001`
+  })
+  const plain = INLINE_RULES.reduce(
     (text, [pattern, replacement]) => text.replace(pattern, replacement),
-    line,
+    withSlots,
   )
+  return plain.replace(SLOT, (_, index: string) => spans[Number(index)])
 }
 
 /**

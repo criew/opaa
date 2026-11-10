@@ -165,12 +165,23 @@ describe('answerAsPlainText', () => {
     )
   })
 
-  test('keeps no Markdown escape, and writes a tag that loads or links as text', () => {
+  test('keeps no Markdown escape, and writes every tag as text', () => {
     expect(
       answerAsPlainText(
         'Ersetzen Sie <Projektname>, x<br>y, Fußnote \\[1\\]. <img src="https://evil.example/p">',
       ),
-    ).toBe('Ersetzen Sie <Projektname>, x<br>y, Fußnote [1]. &lt;img src="https://evil.example/p">')
+    ).toBe(
+      'Ersetzen Sie &lt;Projektname>, x&lt;br>y, Fußnote [1]. &lt;img src="https://evil.example/p">',
+    )
+  })
+
+  test.each([
+    ['<span style="background:url(https://evil.example/s)">b</span>'],
+    ['<table background="https://evil.example/t">'],
+    ['<area href="https://evil.example/r"> <track src="https://evil.example/k">'],
+    ['<!-- x --> <?php x ?>'],
+  ])('writes the tag %s as text', (answer) => {
+    expect(answerAsPlainText(answer)).not.toMatch(/<[A-Za-z/!?]/)
   })
 
   test('keeps the address of a refused link next to brackets of the text', () => {
@@ -178,7 +189,26 @@ describe('answerAsPlainText', () => {
       answerAsPlainText('[[b](https://evil.example/x)](https://amt.example/y)', {
         allowedOrigins: ['https://amt.example'],
       }),
-    ).toBe('[b (https://evil.example/x)](https://amt.example/y)')
+    ).toBe('b (https://evil.example/x) (https://amt.example/y)')
+  })
+
+  test.each([
+    [
+      '<div>\n[x](https://evil.example/a)\n</div>',
+      '&lt;div>\nx (https://evil.example/a)\n&lt;/div>',
+    ],
+    ['\\[x\\](https://evil.example/a)', 'x (https://evil.example/a)'],
+  ])('turns a link that resolved escapes form into text with its address: %s', (answer, plain) => {
+    const once = answerAsPlainText(answer)
+
+    expect(once).toBe(plain)
+    expect(answerAsPlainText(once)).toBe(once)
+  })
+
+  test('keeps code spans as written, in backticks where they hold a tag or a link', () => {
+    expect(
+      answerAsPlainText('Code `<img src=x>` und `a\\*b`, ``` a`b ```, `[l](https://x.example)`'),
+    ).toBe('Code `<img src=x>` und a\\*b, a`b, `[l](https://x.example)`')
   })
 })
 
