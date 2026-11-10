@@ -83,6 +83,14 @@ nicht an der Formulierung des Systemvorspanns
 | **Löschung** | mit dem Chat: durch die Person, die Bereinigung des Space oder die Sperre des Kontos ([ADR-0066](0066-chatliste-ablage-suche-und-bereinigung.md), Entscheidungen 7 und 8) | Löschlauf, der abgelaufene Tagespartitionen entfernt; nicht abschaltbar | Entfernen abgelaufener Monatspartitionen ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)) |
 | **Wer hineinsieht** | die Person selbst im Gesprächsverlauf | die Systemverwaltung der eigenen Organisation zur Störungssuche, nur mit genau einer Lauf-Kennung und einem Anlass; kein Lesepfad für `AUDITOR` | `AUDITOR` über die bestehenden Wege der Revision |
 
+**Zu (a).** Die Schritte erreichen die Person schon während des Laufs, als Ereignisse im
+bestehenden Antwortstrom des Chats, in denselben Worten, in denen sie an der Nachricht bleiben; rohe
+Werkzeugargumente erscheinen nie. Die Antwort gilt als vorläufig, bis Belegprüfung und Speichern
+abgeschlossen sind. An der Nachricht stehen die Schritte getrennt vom Antworttext und gehen weder in
+den Gesprächsverlauf späterer Fragen noch in den Chattitel oder die Volltextsuche über Chats ein:
+Sie sind Nachweis der Antwort, kein Gesprächsinhalt. Schließt der Leser den Strom, endet der Lauf
+vor seinem nächsten Werkzeugaufruf, und nichts von ihm wird in (a) gespeichert.
+
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von
 `opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird nur über eine Funktion für
