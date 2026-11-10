@@ -30,12 +30,13 @@ import org.springframework.context.annotation.Configuration;
  * The status of every health group as {@code opaa.health.group.status} with {@code health_group}
  * (ADR-0071): {@code 1} up, {@code 0} down or out of service, {@code -1} unknown. An alert can
  * watch a group without a probe from outside. Read on a thread of its own, each group within {@link
- * #TIME_LIMIT}, else {@code NaN}. A {@link LocalHealthGroup} and the two probe groups are read
- * every {@link #LOCAL_INTERVAL}, so the read during the start, before readiness is up, soon gives
- * way; every other group only every {@link #INTERVAL}, since its probe may call a foreign service
- * and count towards its outbound metrics. A {@link PassiveHealthGroup}, whose probe calls a model,
- * is not probed: it shows the last result of at most {@link #PASSIVE_MAX_AGE}, else {@code -1}. The
- * tag is not {@code group}, which names a group of persons ({@code ForbiddenMetricTags}).
+ * #TIME_LIMIT}, else {@code NaN}. The two probe groups, every {@link LocalHealthGroup} and every
+ * {@link PassiveHealthGroup} are read every {@link #LOCAL_INTERVAL}, so the read during the start,
+ * before readiness is up, soon gives way; every other group only every {@link #INTERVAL}, since its
+ * probe may call a foreign service and count towards its outbound metrics. A passive group, whose
+ * probe calls a model, is not probed: it shows the last result of at most {@link #PASSIVE_MAX_AGE},
+ * else {@code -1}. The tag is not {@code group}, which names a group of persons ({@code
+ * ForbiddenMetricTags}).
  */
 @Configuration(proxyBeanMethods = false)
 public class HealthGroupMetricsConfiguration {
@@ -46,8 +47,9 @@ public class HealthGroupMetricsConfiguration {
   static final Duration INTERVAL = Duration.ofMinutes(5);
 
   /**
-   * For a group whose probe reads only this process, its database or a state in memory. A hanging
-   * database holds the refresher for up to {@link #TIME_LIMIT} per group and round.
+   * For a group whose probe reads only this process, its database or a state in memory. A read that
+   * hangs holds the refresher for up to twice {@link #TIME_LIMIT} per round: its own wait and that
+   * of the one read queued behind it; every further read is refused at once.
    */
   static final Duration LOCAL_INTERVAL = Duration.ofSeconds(30);
 
@@ -89,7 +91,7 @@ public class HealthGroupMetricsConfiguration {
       ObjectProvider<HealthEndpointGroups> groups,
       ObjectProvider<PassiveHealthGroup> passive,
       ObjectProvider<LocalHealthGroup> local) {
-    Set<String> fast = localGroups(local);
+    Set<String> fast = localGroups(local, passive);
     return gauges(
         new PolledGauges(registry, LOCAL_INTERVAL), endpoint, groups, passive, fast::contains);
   }
@@ -101,7 +103,7 @@ public class HealthGroupMetricsConfiguration {
       ObjectProvider<HealthEndpointGroups> groups,
       ObjectProvider<PassiveHealthGroup> passive,
       ObjectProvider<LocalHealthGroup> local) {
-    Set<String> fast = localGroups(local);
+    Set<String> fast = localGroups(local, passive);
     return gauges(
         new PolledGauges(registry, INTERVAL),
         endpoint,
@@ -110,10 +112,15 @@ public class HealthGroupMetricsConfiguration {
         group -> !fast.contains(group));
   }
 
-  /** The groups read every {@link #LOCAL_INTERVAL}: the probe groups and every marked one. */
-  static Set<String> localGroups(ObjectProvider<LocalHealthGroup> local) {
+  /**
+   * The groups read every {@link #LOCAL_INTERVAL}: the probe groups, every marked one and every
+   * passive one, whose read only looks up its last result.
+   */
+  static Set<String> localGroups(
+      ObjectProvider<LocalHealthGroup> local, ObjectProvider<PassiveHealthGroup> passive) {
     Set<String> groups = new TreeSet<>(PROBE_GROUPS);
     local.orderedStream().map(LocalHealthGroup::healthGroup).forEach(groups::add);
+    passive.orderedStream().map(PassiveHealthGroup::healthGroup).forEach(groups::add);
     return groups;
   }
 

@@ -29,9 +29,9 @@ import org.springframework.boot.health.contributor.Status;
 
 /**
  * How fresh {@code opaa.health.group.status} is: a probe group read while the instance still starts
- * shows its later state within a minute of the refresher's ticks; only the probe groups and a
- * {@link LocalHealthGroup} are read that often, every other group every five minutes; a passive
- * group is never probed and accepts a last result of up to ten minutes.
+ * shows its later state within a minute of the refresher's ticks; only the probe groups, a {@link
+ * LocalHealthGroup} and a {@link PassiveHealthGroup} are read that often, every other group every
+ * five minutes; a passive group is never probed and accepts a last result of up to ten minutes.
  */
 class HealthGroupMetricsConfigurationTest {
 
@@ -87,7 +87,7 @@ class HealthGroupMetricsConfigurationTest {
   }
 
   @Test
-  void onlyProbeAndLocalGroupsAreReadOftenAndAGroupWithoutMarkStaysSlow() {
+  void probeLocalAndPassiveGroupsAreReadOftenAndAGroupWithoutMarkStaysSlow() {
     List<PolledGauges> gauges = gauges();
     readiness.set(Status.UP);
     tick(gauges, START);
@@ -97,6 +97,7 @@ class HealthGroupMetricsConfigurationTest {
     verify(endpoint, times(3)).healthForPath("liveness");
     verify(endpoint, times(3)).healthForPath("chat-model");
     verify(endpoint, times(1)).healthForPath("upload-store");
+    assertThat(passiveMaxAges).hasSize(3);
     assertThat(registry.find(HealthGroupMetricsConfiguration.STATUS).gauges()).hasSize(5);
   }
 
