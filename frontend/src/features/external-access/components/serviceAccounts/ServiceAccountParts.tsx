@@ -92,7 +92,7 @@ export function TokenRows({
 }) {
   async function revoke(token: ServiceAccountTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ widerrufen?`,
+      question: `„${token.name}“ widerrufen?`,
       consequence: REVOKE_TOKEN_CONSEQUENCE,
       confirmLabel: 'Widerrufen',
       tone: 'danger',

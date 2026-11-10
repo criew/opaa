@@ -94,7 +94,7 @@ function QuotaForm({
       question: `Speicherkontingent geteilter Bibliotheken auf ${formatFileSize(parsed.bytes)} je Bibliothek ändern?`,
       consequence:
         'Die Grenze gilt für jede geteilte Bibliothek ab dem nächsten aufgenommenen Dokument. Gelöscht wird nichts: Eine Bibliothek, die schon mehr belegt, behält alle Dokumente und nimmt nichts mehr auf, bis sie darunter liegt. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Grenze ändern',
+      confirmLabel: 'Ändern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -109,7 +109,7 @@ function QuotaForm({
         current.capBytes === 0
           ? 'Geteilte Bibliotheken nehmen dann ohne Grenze auf. Die Änderung steht im Revisionsprotokoll.'
           : `Es gilt dann die Obergrenze des Betriebs von ${formatFileSize(current.capBytes)}. Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Grenze entfernen',
+      confirmLabel: 'Entfernen',
       tone: 'caution',
     })
     if (!confirmed) return

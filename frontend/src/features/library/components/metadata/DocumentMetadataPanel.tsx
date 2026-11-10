@@ -106,7 +106,7 @@ export default function DocumentMetadataPanel({
 
   async function handleDelete(field: DocumentMetadataFieldResponse) {
     const confirmed = await confirmAction({
-      question: `${field.label} von "${fileName}" löschen?`,
+      question: `${field.label} von „${fileName}“ löschen?`,
       consequence:
         'Das Feld ist danach leer; die nächste automatische Extraktion darf es wieder befüllen.',
       confirmLabel: 'Löschen',

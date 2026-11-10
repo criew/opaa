@@ -15,7 +15,7 @@ export interface ConfirmOptions {
    * information the decision rests on.
    */
   consequence?: ReactNode
-  /** The verb of the action ("Löschen", "Abschalten", "Verwerfen") - never "OK". */
+  /** The verb of the action ("Löschen", "Ausschalten", "Verwerfen") - never "OK". */
   confirmLabel: string
   /** Only where "Abbrechen" would be wrong. */
   cancelLabel?: string

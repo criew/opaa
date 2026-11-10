@@ -30,7 +30,7 @@ export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
 export const SELF_REGISTRATION_CONSEQUENCE =
   'Die Registrierung ist danach ein öffentlich erreichbares Formular. Es gilt nur für die unten ' +
   'eingetragenen Adress-Domänen, die Rate-Limits der Anmeldung greifen, jedes Konto wird mit dem ' +
-  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung" erzeugt. Das Einschalten ist ein ' +
+  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung“ erzeugt. Das Einschalten ist ein ' +
   'Protokollereignis und nach der Dienstvereinbarung mitbestimmungspflichtig.'
 
 export const PUBLIC_BASE_URL_HINT =
@@ -366,9 +366,9 @@ export default function LocalAuthSettingsCard() {
     if (
       !next &&
       !(await confirmAction({
-        question: 'Lokale Anmeldung abschalten?',
+        question: 'Lokale Anmeldung ausschalten?',
         consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       }))
     ) {

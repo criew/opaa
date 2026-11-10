@@ -232,7 +232,8 @@ export default function SpaceGeneralSection({
                 onClick={async () => {
                   const confirmed = await confirmAction({
                     question: 'Diesen Space löschen?',
-                    consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                    consequence:
+                      'Mitgliedschaften und Zuordnungen des Space werden gelöscht; die zugeordneten Bibliotheken bleiben bestehen.',
                     confirmLabel: 'Löschen',
                     tone: 'danger',
                   })

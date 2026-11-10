@@ -47,9 +47,9 @@ export async function confirmAllAccountsSubject(roleLabel: string): Promise<bool
   return confirmAction({
     question: 'An alle Konten freigeben?',
     consequence:
-      `Jede Person Ihrer Organisation erhält damit die Rolle „${roleLabel}" — ohne eine weitere ` +
+      `Jede Person Ihrer Organisation erhält damit die Rolle „${roleLabel}“ — ohne eine weitere ` +
       'Freigabe und ohne Zutun der Empfänger. Sie können die Freigabe jederzeit zurücknehmen.',
-    confirmLabel: 'An alle freigeben',
+    confirmLabel: 'Freigeben',
     tone: 'caution',
   })
 }
@@ -90,11 +90,11 @@ export async function confirmExternalSubject(selection: SubjectSelection): Promi
 export async function confirmGroupSubject(group: SelectableGroupResponse): Promise<boolean> {
   if (group.provider?.external) {
     return confirmAction({
-      question: 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?',
+      question: `Für „${groupLabel(group)}“ freigeben?`,
       consequence:
         `„${groupLabel(group)}“ stammt aus dem Anbieter „${group.provider.displayName}“, der ` +
         'einer anderen Organisation gehört. Wer dort Mitglied ist, entscheidet nicht diese Stelle.',
-      confirmLabel: 'Fortfahren',
+      confirmLabel: 'Freigeben',
       tone: 'caution',
     })
   }
@@ -109,7 +109,7 @@ export async function confirmResolvedGroupById(group: SelectableGroupResponse): 
   const confirmed = await confirmAction({
     question: `Recht an „${groupLabel(group)}“ erteilen?`,
     consequence: groupDetailLine(group),
-    confirmLabel: 'Weiter',
+    confirmLabel: 'Erteilen',
     tone: 'caution',
   })
   if (!confirmed) return false

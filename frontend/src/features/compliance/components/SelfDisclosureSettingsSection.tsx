@@ -70,10 +70,10 @@ export default function SelfDisclosureSettingsSection() {
     if (busy || !current || !changed) return
     if (update.enabled === false) {
       const confirmed = await confirmAction({
-        question: 'Selbstauskunft abschalten?',
+        question: 'Selbstauskunft ausschalten?',
         consequence:
           'Niemand kann seine Daten dann selbst herunterladen; die Einstellungen nennen stattdessen den Auskunftsantrag bei der Behörde. Ein laufender Download läuft zu Ende. Die Änderung steht im Nachweisprotokoll.',
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       })
       if (!confirmed) return

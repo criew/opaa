@@ -50,7 +50,7 @@ export function useLibraryDeletion({
     const confirmed = await confirmAction({
       question: `„${library.name}“ sofort löschen?`,
       consequence: PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
-      confirmLabel: 'Endgültig löschen',
+      confirmLabel: 'Löschen',
       tone: 'danger',
     })
     if (!confirmed) return
@@ -86,10 +86,10 @@ export function useLibraryDeletion({
     // deletion stays blocked as long as it still contains documents.
     const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
     const confirmed = await confirmAction({
-      question: `Bibliothek "${library.name}" löschen?`,
+      question: `„${library.name}“ löschen?`,
       consequence: isConnectorLibrary
-        ? 'Das entfernt auch alle indizierten Dokumente dieser Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.'
-        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
+        ? 'Alle indizierten Dokumente, Rechte und Space-Zuordnungen dieser Bibliothek werden gelöscht.'
+        : 'Die Rechte und Space-Zuordnungen dieser Bibliothek werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

@@ -172,9 +172,12 @@ export default function ChatsPage() {
       const confirmed = await confirmAction({
         question:
           targets.length === 1
-            ? `„${chatTitle(targets[0])}“ wirklich löschen?`
-            : `${chatCount(targets.length)} wirklich löschen?`,
-        consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+            ? `„${chatTitle(targets[0])}“ löschen?`
+            : `${chatCount(targets.length)} löschen?`,
+        consequence:
+          targets.length === 1
+            ? 'Alle Nachrichten des Chats werden gelöscht.'
+            : 'Alle Nachrichten dieser Chats werden gelöscht.',
         confirmLabel: 'Löschen',
         tone: 'danger',
       })

@@ -355,7 +355,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           fallen die bisherigen Vektoren weg; zurück geht es dann nur mit einem neuen Wechsel.
         </>
       ),
-      confirmLabel: 'Wechsel starten',
+      confirmLabel: 'Wechseln',
       tone: 'danger',
     })
     if (!confirmed || probed.dimensions == null) return

@@ -67,11 +67,13 @@ export default function GroupStewardsSection({
     const confirmed = await confirmAction({
       question: own
         ? `Verantwortung für „${groupName}“ abgeben?`
-        : `${steward.displayName ?? 'Diese Person'} als verantwortlich entlassen?`,
+        : steward.displayName
+          ? `„${steward.displayName}“ als verantwortlich entlassen?`
+          : 'Diese Person als verantwortlich entlassen?',
       consequence: own
         ? 'Sie können die Gruppe danach nicht mehr pflegen.'
         : 'Die Person kann die Gruppe danach nicht mehr pflegen.',
-      confirmLabel: own ? 'Verantwortung abgeben' : 'Entlassen',
+      confirmLabel: own ? 'Abgeben' : 'Entlassen',
       tone: 'danger',
     })
     if (!confirmed) return

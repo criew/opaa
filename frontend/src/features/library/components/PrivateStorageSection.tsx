@@ -118,7 +118,7 @@ function QuotaForm({
         quotaBytes === 0
           ? 'Private Bibliotheken nehmen dann ohne Grenze auf, ab dem nächsten aufgenommenen Dokument; nur das Kontingent je Bibliothek gilt weiter. Die Änderung steht im Revisionsprotokoll.'
           : 'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf, was den Speicher wachsen lässt. Eine geänderte Datei, die nicht größer wird, ersetzt ihre bisherige Fassung weiter. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Grenze ändern',
+      confirmLabel: 'Ändern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -128,10 +128,10 @@ function QuotaForm({
   async function handleReset() {
     if (busy) return
     const confirmed = await confirmAction({
-      question: `Speicherkontingent privater Bibliotheken zur Werkseinstellung von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurückkehren?`,
+      question: `Speicherkontingent privater Bibliotheken auf die Werkseinstellung von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurücksetzen?`,
       consequence:
         'Es gilt dann wieder die Werkseinstellung. Bereits Gespeichertes bleibt. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: 'caution',
     })
     if (!confirmed) return

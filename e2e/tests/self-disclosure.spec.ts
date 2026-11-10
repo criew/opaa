@@ -392,8 +392,8 @@ ${BODY}
       await expect(toggle).toBeChecked({ timeout: 20_000 })
       await toggle.click()
       await section.getByRole('button', { name: 'Speichern' }).click()
-      const confirm = admin.getByRole('dialog').filter({ hasText: 'Selbstauskunft abschalten?' })
-      await confirm.getByRole('button', { name: 'Abschalten' }).click()
+      const confirm = admin.getByRole('dialog').filter({ hasText: 'Selbstauskunft ausschalten?' })
+      await confirm.getByRole('button', { name: 'Ausschalten' }).click()
       await expect(admin.getByText('Die Selbstauskunft ist abgeschaltet.')).toBeVisible()
 
       await openMyData(page)

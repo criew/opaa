@@ -52,10 +52,10 @@ export default function LibraryConnectionPanel({
   async function handleRelease() {
     if (!current) return
     const confirmed = await confirmAction({
-      question: `Bibliothek vom Zugang „${current.name}“ lösen?`,
+      question: `Zuordnung zu „${current.name}“ entfernen?`,
       consequence:
         'Die Bibliothek behält ihre Adresse und ihre Zugangsdaten und läuft mit ihnen als eigene Adresse weiter.',
-      confirmLabel: 'Lösen',
+      confirmLabel: 'Entfernen',
       tone: 'caution',
     })
     if (!confirmed) return

@@ -35,17 +35,17 @@ describe('ConfirmHost', () => {
     // renderWithProviders mounts the host itself; it is not added again here.
     renderWithProviders(<div />)
     void confirmAction({
-      question: 'Lokale Anmeldung abschalten?',
+      question: 'Lokale Anmeldung ausschalten?',
       consequence: 'Alle lokalen Konten verlieren ihre Sitzung.',
-      confirmLabel: 'Abschalten',
+      confirmLabel: 'Ausschalten',
       tone: 'caution',
     })
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Lokale Anmeldung abschalten?')).toBeInTheDocument()
+    expect(screen.getByText('Lokale Anmeldung ausschalten?')).toBeInTheDocument()
     expect(screen.getByText('Alle lokalen Konten verlieren ihre Sitzung.')).toBeInTheDocument()
     // The verb, not „OK" - whoever reads only the button still knows what they agree to.
-    expect(screen.getByRole('button', { name: 'Abschalten' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ausschalten' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'OK' })).toBeNull()
   })
 

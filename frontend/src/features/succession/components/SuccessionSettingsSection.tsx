@@ -75,7 +75,7 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
           max={settings.maxAgingThresholdMonths}
           format={monthsLabel}
           confirmChange={(next) => ({
-            question: `Einträge ab ${monthsLabel(next)} als lange offen hervorheben?`,
+            question: `Schwelle für lange offene Einträge auf ${monthsLabel(next)} ändern?`,
             consequence:
               'Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.',
             danger: next < settings.agingThresholdMonths,

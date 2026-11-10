@@ -84,7 +84,7 @@ function PromptsArea({
 
   async function handleDelete(prompt: PromptResponse) {
     const confirmed = await confirmAction({
-      question: `Prompt „${prompt.title}“ löschen?`,
+      question: `„${prompt.title}“ löschen?`,
       consequence: `Der Befehl /${prompt.name} steht danach nicht mehr zur Verfügung.`,
       confirmLabel: 'Löschen',
       tone: 'danger',
@@ -308,9 +308,9 @@ export default function PromptLibraryDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Prompt-Bibliothek „${library?.name}“ löschen?`,
+      question: `„${library?.name}“ löschen?`,
       consequence:
-        'Das entfernt auch alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

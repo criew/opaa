@@ -77,7 +77,7 @@ export default function AssetOwnerSection({
         : (subject.user?.displayName ?? subject.user?.email ?? targetId)
     if (!(await confirmExternalSubject(subject))) return
     const confirmed = await confirmAction({
-      question: `Eigentum an „${targetLabel}" übergeben?`,
+      question: `Eigentum an „${targetLabel}“ übergeben?`,
       consequence:
         `Die Zuständigkeit für diese ${noun} geht damit über. Sie behalten Ihre Rolle nur, wenn ` +
         'sie Ihnen gesondert eingeräumt wird — die Eigentümerrolle geht mit.',

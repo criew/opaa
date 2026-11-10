@@ -189,11 +189,11 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
     // wording does not say.
     const isSelf = grant.subjectType === 'USER' && grant.subjectId === currentUserId
     const confirmed = await confirmAction({
-      question: `Freigabe für "${subjectDisplayName(grant)}" entziehen?`,
+      question: `Freigabe für „${subjectDisplayName(grant)}“ widerrufen?`,
       consequence: isSelf
-        ? 'Das ist Ihre eigene Freigabe - Sie verlieren dadurch möglicherweise selbst den Zugriff auf diese Rechteansicht. Diese Aktion kann nicht rückgängig gemacht werden.'
-        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
-      confirmLabel: 'Entziehen',
+        ? 'Das ist Ihre eigene Freigabe: Sie verlieren damit möglicherweise selbst den Zugriff auf diese Rechteansicht.'
+        : `„${subjectDisplayName(grant)}“ verliert sofort die Rolle „${assetRoleLabel(grant.role)}“, sofern kein anderer Weg sie gewährt.`,
+      confirmLabel: 'Widerrufen',
       tone: 'danger',
     })
     if (!confirmed) {

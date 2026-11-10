@@ -20,7 +20,7 @@ export function confirmLock(
         tone: 'danger',
       })
     : confirmAction({
-        question: `Sperre für ${target} aufheben?`,
+        question: `${capitalize(target)} entsperren?`,
         consequence: remainingLock
           ? `${remainingLock} Das Aufheben wird als Governance-Ereignis protokolliert.`
           : 'Die Bibliotheken laufen ohne Neueinrichtung weiter, und neue sind wieder nach Freigabe möglich. Das Aufheben wird als Governance-Ereignis protokolliert.',

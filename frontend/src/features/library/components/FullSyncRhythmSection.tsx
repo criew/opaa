@@ -84,7 +84,7 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
     const confirmed = await confirmAction({
       question: `Vollabgleich-Rhythmus von ${name} auf ${daysLabel(days)} ändern?`,
       consequence: `Gilt ab dem nächsten Lauf für ${scopeOf(rhythm)}. Ein kürzerer Rhythmus entfernt früher, was in der Quelle gelöscht wurde, und stellt mehr Anfragen an die Quelle. Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Rhythmus ändern',
+      confirmLabel: 'Ändern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -96,7 +96,7 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
     const confirmed = await confirmAction({
       question: `Vollabgleich-Rhythmus von ${name} auf die Werkseinstellung von ${daysLabel(rhythm.defaultIntervalDays)} zurücksetzen?`,
       consequence: `Gilt ab dem nächsten Lauf für ${scopeOf(rhythm)}. Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: 'caution',
     })
     if (!confirmed) return

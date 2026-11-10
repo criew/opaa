@@ -427,11 +427,11 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang lösen' }))
-    await answerConfirm(user, /vom Zugang „Nextcloud intern“ lösen\?/, 'Abbrechen')
+    await answerConfirm(user, 'Zuordnung zu „Nextcloud intern“ entfernen?', 'Abbrechen')
     expect(release).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Zugang lösen' }))
-    await answerConfirm(user, /vom Zugang „Nextcloud intern“ lösen\?/, 'Lösen')
+    await answerConfirm(user, 'Zuordnung zu „Nextcloud intern“ entfernen?', 'Entfernen')
     await waitFor(() => expect(release).toHaveBeenCalledWith('library-1'))
   })
 

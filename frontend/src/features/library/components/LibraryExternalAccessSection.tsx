@@ -139,10 +139,10 @@ export default function LibraryExternalAccessSection({
 
   async function end() {
     const confirmed = await confirmAction({
-      question: 'Freigabe für externe KI-Werkzeuge beenden?',
+      question: 'Freigabe für externe KI-Werkzeuge widerrufen?',
       consequence:
         'Zugangstokens, die diese Bibliothek enthalten, finden danach nichts mehr darin. Eine erneute Freigabe ist jederzeit möglich.',
-      confirmLabel: 'Freigabe beenden',
+      confirmLabel: 'Widerrufen',
       tone: 'danger',
     })
     if (!confirmed) return

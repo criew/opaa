@@ -253,8 +253,9 @@ export default function LibraryDocumentsSection({
 
   async function handleDelete(document: LibraryDocumentResponse) {
     const confirmed = await confirmAction({
-      question: `Dokument "${document.fileName}" löschen?`,
-      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${document.fileName}“ löschen?`,
+      consequence:
+        'Das Dokument verschwindet mit seinen Anhängen aus der Bibliothek; Antworten finden es nicht mehr.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

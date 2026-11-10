@@ -123,7 +123,11 @@ export default function SpaceMemberList({
 
   async function remove(member: SpaceMemberResponse) {
     const confirmed = await confirmAction({
-      question: `${memberLabelOf(member)} aus diesem Space entfernen?`,
+      question: `„${memberLabelOf(member)}“ aus diesem Space entfernen?`,
+      consequence:
+        member.subjectType === 'GROUP'
+          ? 'Wer nur über diese Gruppe Mitglied ist, verliert sofort den Zugriff auf den Space.'
+          : 'Die Person verliert sofort den Zugriff auf den Space, sofern keine Gruppe sie hält.',
       confirmLabel: 'Entfernen',
       tone: 'danger',
     })
@@ -132,7 +136,8 @@ export default function SpaceMemberList({
 
   async function makeOwner(member: SpaceMemberResponse) {
     const confirmed = await confirmAction({
-      question: `Verantwortung an ${memberLabelOf(member)} übertragen?`,
+      question: `Verantwortung an „${memberLabelOf(member)}“ übertragen?`,
+      consequence: `„${memberLabelOf(member)}“ ist danach sofort für diesen Space verantwortlich.`,
       confirmLabel: 'Übertragen',
       tone: 'caution',
     })

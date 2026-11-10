@@ -70,7 +70,7 @@ describe('EmbeddingChangeSection', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toHaveTextContent('Vektorsuche ausgesetzt')
-    await user.click(within(dialog).getByRole('button', { name: 'Wechsel starten' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Wechseln' }))
 
     await waitFor(() => expect(started).toHaveLength(1))
     expect(started[0]).toMatchObject({
