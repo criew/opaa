@@ -10,9 +10,9 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
 
 ## Invarianten und Stolpersteine
 
-- **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht, deklariert es als
-  Port, den das obere Paket implementiert (`GroupMembershipSource`, `GroupSubjectDirectory`, `AssetOwnershipDirectory`,
-  `SuccessionFindingSource`, `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`, `CapabilityScopeCatalog`).
+- **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht, ist ein Port des oberen
+  Pakets (`GroupMembershipSource`, `GroupSubjectDirectory`, `AssetOwnershipDirectory`, `SuccessionFindingSource`,
+  `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`, `SpaceVisibility`, `CapabilityScopeCatalog`).
 - **Geltungsbereich einer Fähigkeit** hat nur `CREATE_CONNECTOR_LIBRARY` (`CapabilityService#isScoped`): rights
   speichert `scope` und deutet ihn nie; jede Prüfung nennt ihn, entschieden wird in `ConnectorReleaseService`.
 - **Grants sind typunabhängig:** Asset über `AssetType` plus ID, Typen nie aufgezählt; `asset_grants`

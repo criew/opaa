@@ -20,6 +20,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
+import io.opaa.common.PromptText;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AccessPath;
@@ -1041,12 +1042,13 @@ public class SpaceService {
   }
 
   /**
-   * Applies a requested instruction to the model: stripped, blank meaning none. Only a holder of
-   * the space role ADMIN changes it - the system administration's precedence does not reach it,
-   * since the text shapes every answer of every member. An unchanged value needs no role.
+   * Applies a requested instruction to the model: without invisible characters ({@link
+   * PromptText}), stripped, blank meaning none. Only a holder of the space role ADMIN changes it -
+   * the system administration's precedence does not reach it, since the text shapes every answer of
+   * every member. An unchanged value needs no role.
    */
   private void changeModelInstruction(Space space, String requested, CurrentUser caller) {
-    String stripped = requested.strip();
+    String stripped = PromptText.withoutInvisible(requested).strip();
     String normalized = stripped.isEmpty() ? null : stripped;
     if (normalized != null && normalized.length() > MAX_MODEL_INSTRUCTION_LENGTH) {
       throw new ValidationException(

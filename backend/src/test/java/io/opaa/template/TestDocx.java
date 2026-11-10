@@ -25,6 +25,18 @@ public final class TestDocx {
     }
   }
 
+  /** A document with one paragraph holding a complex field of {@code instruction}. */
+  public static byte[] withFieldCode(String instruction) {
+    try (XWPFDocument document = new XWPFDocument();
+        ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      document.createParagraph().createRun().getCTR().addNewInstrText().setStringValue(instruction);
+      document.write(out);
+      return out.toByteArray();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
   /** A template upload of {@code content} named {@code fileName}. */
   public static DocumentTemplateUpload upload(String fileName, byte[] content) {
     return new DocumentTemplateUpload() {

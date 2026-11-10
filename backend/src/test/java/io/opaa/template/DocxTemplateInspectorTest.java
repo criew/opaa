@@ -131,6 +131,161 @@ class DocxTemplateInspectorTest {
         .hasMessageContaining("nachladen");
   }
 
+  @Test
+  void aFieldHiddenByACharacterReferenceAPrefixOrSplitRunsIsRefused() throws IOException {
+    List<String> hidden =
+        List.of(
+            "<w:p><w:fldSimple w:instr=\"&#73;NCLUDEPICTURE \\\\host\\x \\d\"/></w:p>",
+            "<w:p><w:r><w:instrText>INCL</w:instrText></w:r>"
+                + "<w:r><w:instrText>UDEPICTURE x</w:instrText></w:r></w:p>",
+            "<w:p><w:r><q:instrText xmlns:q=\"http://schemas.openxmlformats.org/wordprocessingml/"
+                + "2006/main\">INCLUDETEXT x</q:instrText></w:r></w:p>");
+    for (String field : hidden) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+  }
+
+  @Test
+  void aFieldInsideTheCodeOfAnotherFieldOrAFieldOffTheListIsRefused() throws IOException {
+    String begin = "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>";
+    String separate = "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
+    String end = "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r>";
+    String quote = "QUOTE 73 78 67 76 85 68 69 80 73 67 84 85 82 69";
+    List<String> active =
+        List.of(
+            "<w:p>" + begin + begin + instr(quote) + end + instr(" x \\d") + end + "</w:p>",
+            "<w:p>" + begin + instr(quote) + end + "</w:p>",
+            "<w:p>" + begin + instr("REF ") + begin + instr("PAGE") + end + end + "</w:p>",
+            "<w:p>" + begin + instr("REF ") + "<w:fldSimple w:instr=\"PAGE\"/>" + end + "</w:p>",
+            "<w:p>" + begin + instr("IF 1 = 1 x") + separate + end + "</w:p>",
+            "<w:p><w:fldSimple w:instr=\" MACROBUTTON x \"/></w:p>");
+    for (String field : active) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+    String toc =
+        "<w:p>"
+            + begin
+            + instr(" TOC \\o \"1-3\" \\h ")
+            + separate
+            + begin
+            + instr(" PAGEREF _Toc1 \\h ")
+            + separate
+            + "<w:r><w:t>3</w:t></w:r>"
+            + end
+            + end
+            + "</w:p><w:p><w:fldSimple w:instr=\" NUMPAGES \\* MERGEFORMAT \"/></w:p>";
+    assertThat(
+            new DocxActiveContent(ParserLimitProperties.DEFAULTS)
+                .isPassive(withBodyStart(TestDocx.withParagraphs("Text"), toc)))
+        .isTrue();
+  }
+
+  @Test
+  void aMailMergeDataSourceOrAFormFieldMacroIsRefused() throws IOException {
+    byte[] mailMerge =
+        withPart(
+            TestDocx.withParagraphs("{{ a }}"),
+            "word/settings.xml",
+            "<w:settings",
+            "<w:mailMerge><w:mainDocumentType w:val=\"formLetters\"/>"
+                + "<w:connectString w:val=\"Provider=x\"/><w:query w:val=\"SELECT * FROM x\"/>"
+                + "</w:mailMerge>");
+    byte[] macro =
+        withBodyStart(
+            TestDocx.withParagraphs("{{ a }}"),
+            "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"><w:ffData><w:name w:val=\"T\"/>"
+                + "<w:exitMacro w:val=\"AutoOpen\"/></w:ffData></w:fldChar></w:r>"
+                + instr(" FORMTEXT ")
+                + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>");
+    for (byte[] docx : List.of(mailMerge, macro)) {
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .isInstanceOf(ValidationException.class);
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx)).isFalse();
+    }
+  }
+
+  /** {@code docx} with {@code xml} inserted right after the opening tag starting {@code tag}. */
+  private static byte[] withPart(byte[] docx, String name, String tag, String xml)
+      throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(docx));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        byte[] content = in.readAllBytes();
+        if (entry.getName().equals(name)) {
+          String text = new String(content, StandardCharsets.UTF_8);
+          int open = text.indexOf('>', text.indexOf(tag)) + 1;
+          content =
+              (text.substring(0, open) + xml + text.substring(open))
+                  .getBytes(StandardCharsets.UTF_8);
+        }
+        zip.write(content);
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
+  private static String instr(String code) {
+    return "<w:r><w:instrText xml:space=\"preserve\">" + code + "</w:instrText></w:r>";
+  }
+
+  @Test
+  void aPlainDocumentIsPassiveAndAnUnreadableOneIsNot() throws IOException {
+    DocxActiveContent check = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
+    byte[] plain =
+        withBodyStart(
+            TestDocx.withParagraphs("Text"),
+            "<w:p><w:r><w:instrText>PAGE</w:instrText></w:r>"
+                + "<w:r><w:instrText> MERGEFIELD AddEntry</w:instrText></w:r></w:p>");
+
+    assertThat(check.isPassive(plain)).isTrue();
+    assertThat(check.isPassive("kein Word".getBytes(StandardCharsets.UTF_8))).isFalse();
+  }
+
+  /** {@code docx} with {@code xml} inserted at the start of the document body. */
+  private static byte[] withBodyStart(byte[] docx, String xml) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(docx));
+        ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+        zip.putNextEntry(new ZipEntry(entry.getName()));
+        byte[] content = in.readAllBytes();
+        if (entry.getName().equals("word/document.xml")) {
+          String text = new String(content, StandardCharsets.UTF_8);
+          int body = text.indexOf("<w:body>") + "<w:body>".length();
+          content =
+              (text.substring(0, body) + xml + text.substring(body))
+                  .getBytes(StandardCharsets.UTF_8);
+        }
+        zip.write(content);
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
   private static byte[] withPackage(
       java.util.function.Consumer<org.apache.poi.xwpf.usermodel.XWPFDocument> change)
       throws IOException {
@@ -174,5 +329,52 @@ class DocxTemplateInspectorTest {
       zip.closeEntry();
     }
     return out.toByteArray();
+  }
+
+  /**
+   * A field code counts as Word reads it: joined across the runs of a complex field, under any
+   * namespace prefix, and in a simple field with either quote.
+   */
+  @Test
+  void aFieldThatPullsInContentIsRefusedHoweverItIsWritten() throws IOException {
+    String w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    List<String> hidden =
+        List.of(
+            "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+                + "<w:r><w:instrText xml:space=\"preserve\"> INCLUDE</w:instrText></w:r>"
+                + "<w:r><w:instrText>PICTURE \"https://x.example/p.png\" \\d</w:instrText></w:r>"
+                + "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>x</w:t></w:r>"
+                + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>",
+            "<x:p xmlns:x=\""
+                + w
+                + "\"><x:r><x:instrText> DDEAUTO cmd \"/c calc\"</x:instrText></x:r></x:p>",
+            "<w:p><w:fldSimple w:instr=' INCLUDETEXT \"c:/geheim.docx\" '><w:r><w:t>x</w:t></w:r>"
+                + "</w:fldSimple></w:p>");
+    for (String field : hidden) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+  }
+
+  @Test
+  void aMergeFieldSplitAcrossRunsStaysAllowed() throws IOException {
+    Path file =
+        write(
+            withBodyStart(
+                TestDocx.withParagraphs("{{ a }}"),
+                "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+                    + instr(" MERGE")
+                    + instr("FIELD Name")
+                    + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"));
+
+    assertThat(inspector.inspect(file, "vorlage.docx", Files.size(file))).isNotEmpty();
   }
 }

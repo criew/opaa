@@ -14,7 +14,9 @@ Reiter „Quelle“, Zeile „Zeitplan“, „Ändern“: aus, stündlich, tägl
 
 „Jetzt indizieren“ im Kopf der Detailseite startet einen Lauf. „Vollabgleich starten“ liest alles
 neu und erkennt auch Gelöschtes. Bei einer Upload-Bibliothek laden und löschen Sie Dokumente im
-Reiter „Dokumente“.
+Reiter „Dokumente“. Ein Ordner geht mit allem, was er enthält. Scheitert dabei ein Dokument oder
+lädt jemand gleichzeitig in den Ordner hoch, bricht das Löschen ab: Was schon gelöscht ist, bleibt
+gelöscht, und erneutes Löschen des Ordners vollendet es.
 
 ## Zustand lesen
 

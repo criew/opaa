@@ -94,10 +94,10 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository, Inval
   /**
    * Returns every cache key, unfiltered by account. {@link ChatMemoryRepository} requires this
    * method with no per-user variant, but the keys this repository actually stores are {@code
-   * currentUserId + ":" + effectiveChatId} (see {@code QueryService#query}) - so a caller that
-   * treats the result as a listing of conversations for "the current user" would in fact see every
-   * account's keys mixed together. It must never back a user-facing conversation listing without
-   * first filtering by the caller's own user-id prefix.
+   * currentUserId + ":" ...}, a stored chat's and an ephemeral conversation's apart (see {@code
+   * QueryService#query}) - so a caller that treats the result as a listing of conversations for
+   * "the current user" would in fact see every account's keys mixed together. It must never back a
+   * user-facing conversation listing without first filtering by the caller's own user-id prefix.
    */
   @Override
   public List<String> findConversationIds() {

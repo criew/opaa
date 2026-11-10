@@ -44,6 +44,7 @@ class DocumentTemplateServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private RunTemplates runTemplates;
 
   private UUID organization;
   private UUID author;
@@ -200,6 +201,33 @@ class DocumentTemplateServiceIntegrationTest {
             jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM document_templates WHERE id = ?", Long.class, templateId))
         .isEqualTo(1);
+  }
+
+  @Test
+  void anAgentRunMayFillOnlyTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
+    settingsService.update(true, admin());
+    grantCreateTemplate(author);
+    DocumentTemplate template =
+        templateService.create(creation("Bericht"), caller(author)).template();
+
+    assertThat(runTemplates.available(organization, author))
+        .extracting(RunTemplates.RunTemplate::id, RunTemplates.RunTemplate::placeholders)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(
+                template.getId(),
+                List.of(new TemplatePlaceholder("titel", PlaceholderKind.FIELD, List.of()))));
+    assertThat(runTemplates.forFilling(template.getId(), organization, author))
+        .get()
+        .extracting(RunTemplates.TemplateToFill::fileName)
+        .isEqualTo("vorlage.docx");
+    assertThat(runTemplates.available(organization, colleague)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, colleague)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author)).isEmpty();
+
+    settingsService.update(false, admin());
+
+    assertThat(runTemplates.available(organization, author)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, author)).isEmpty();
   }
 
   private DocumentTemplateCreation creation(String name) {

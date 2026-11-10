@@ -8,11 +8,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The OpenSandbox server behind the tool {@code run_code} (ADR-0073), {@code opaa.sandbox.*}. Off
- * by default; switched on, the start fails without an address or API key.
+ * The OpenSandbox server behind the tools {@code run_code} and {@code fill_template} (ADR-0073),
+ * {@code opaa.sandbox.*}. Off by default; switched on, the start fails without an address or API
+ * key.
  *
- * @param enabled offers {@code run_code} to the agent loop; each agent and the tool's own switch
- *     decide further.
+ * @param enabled offers {@code run_code} and {@code fill_template} to the agent loop; each agent
+ *     and the tool's own switch decide further.
  * @param baseUrl address of the OpenSandbox server the sandboxes are created on.
  * @param apiKey API key of the OpenSandbox server.
  * @param image container image of a sandbox: Python with the document libraries.

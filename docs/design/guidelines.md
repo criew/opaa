@@ -885,9 +885,10 @@ folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschalte
 ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
 Bildschirmen bricht die Zeile als Einheit um: Die Suche steht oben, Typgruppe und Umschalter darunter;
 ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen die Icons der
-Typknöpfe, und Knöpfe und
-Chips rücken enger zusammen, damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite nach
-WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
+Typknöpfe, Knöpfe und Chips rücken enger zusammen, der Trennstrich entfällt und der
+Favoriten-Chip zeigt nur noch den Stern, mit „Favoriten" als zugänglichem Namen und Tooltip
+(5.1, Nur-Icon-Schaltflächen), damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite
+nach WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
 Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name — auch
 unter „Nur ausgewählte" bzw. „Nur zugeordnete". Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".

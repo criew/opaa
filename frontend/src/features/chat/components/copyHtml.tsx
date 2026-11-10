@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { isAllowedLinkTarget } from '@/shared/ui/markdown/linkPolicy'
+import { blockedImageText, isAllowedLinkTarget } from '@/shared/ui/markdown/linkPolicy'
 
 /**
  * The `text/html` part of a copied answer: the Markdown rendered as HTML (raw HTML inside the
@@ -55,7 +55,7 @@ function componentsFor(allowedOrigins: readonly string[], pageHref: string): Com
     },
     img: ({ src, alt }) => (
       <span>
-        {`[Bild: ${alt?.trim() || 'ohne Beschreibung'}]`}
+        {blockedImageText(alt)}
         {typeof src === 'string' && src !== '' ? ` (${src})` : null}
       </span>
     ),

@@ -63,12 +63,29 @@ final class AgentToolCallback implements ToolCallback {
       ObjectMapper objectMapper,
       AgentMetrics metrics,
       Clock clock) {
+    return of(
+        tool,
+        new ToolOffer(tool.description(), tool.inputSchema()),
+        reminder,
+        objectMapper,
+        metrics,
+        clock);
+  }
+
+  /** The tool with the description and schema {@code offer} gives this run. */
+  static AgentToolCallback of(
+      AgentTool tool,
+      ToolOffer offer,
+      String reminder,
+      ObjectMapper objectMapper,
+      AgentMetrics metrics,
+      Clock clock) {
     return new AgentToolCallback(
         tool,
         ToolDefinition.builder()
             .name(tool.name())
-            .description(tool.description())
-            .inputSchema(tool.inputSchema())
+            .description(offer.description())
+            .inputSchema(offer.inputSchema())
             .build(),
         reminder,
         objectMapper,
@@ -114,18 +131,21 @@ final class AgentToolCallback implements ToolCallback {
       run.traceStep(name, StepStatus.LIMIT.name(), null, 0, limit.name());
       return LIMIT_REACHED + reminder;
     }
+    JsonNode arguments = arguments(toolInput);
+    // Announced before it runs: a reader that went away ends the run here, before the call.
+    run.startStep(name, tool == null || arguments == null ? null : tool.startDetail(arguments));
     long started = System.nanoTime();
     ToolCallOutcome outcome;
     try {
-      outcome = execute(toolInput, run);
+      outcome = execute(arguments, run);
     } catch (RuntimeException e) {
       run.traceStep(name, StepStatus.ERROR.name(), null, millisSince(started), "TOOL_FAILED");
       throw e;
     }
     run.traceStep(
         name, outcome.result().stepStatus().name(), outcome.hits(), millisSince(started), null);
-    run.recordCall(name, outcome);
     metrics.recordToolCall(name, outcome.result());
+    run.recordCall(name, outcome);
     return outcome.modelText() + reminder;
   }
 
@@ -133,18 +153,23 @@ final class AgentToolCallback implements ToolCallback {
     return Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
   }
 
-  private ToolCallOutcome execute(String toolInput, AgentRun run) {
-    if (tool == null) {
-      return ToolCallOutcome.refused(ToolCallResult.UNKNOWN_TOOL, UNKNOWN_TOOL);
-    }
+  /** The call's arguments as a JSON object, {@code null} when they are none. */
+  private JsonNode arguments(String toolInput) {
     JsonNode arguments;
     try {
       arguments =
           objectMapper.readTree(toolInput == null || toolInput.isBlank() ? "{}" : toolInput);
     } catch (JacksonException e) {
-      return ToolCallOutcome.refused(ToolCallResult.INVALID_ARGUMENTS, INVALID_JSON);
+      return null;
     }
-    if (arguments == null || !arguments.isObject()) {
+    return arguments != null && arguments.isObject() ? arguments : null;
+  }
+
+  private ToolCallOutcome execute(JsonNode arguments, AgentRun run) {
+    if (tool == null) {
+      return ToolCallOutcome.refused(ToolCallResult.UNKNOWN_TOOL, UNKNOWN_TOOL);
+    }
+    if (arguments == null) {
       return ToolCallOutcome.refused(ToolCallResult.INVALID_ARGUMENTS, INVALID_JSON);
     }
     try {

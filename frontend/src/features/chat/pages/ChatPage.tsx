@@ -34,6 +34,7 @@ export default function ChatPage() {
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
   const streamingAnswer = useChatStore((s) => s.streamingAnswer)
+  const streamingRun = useChatStore((s) => s.streamingRun)
   const cancelAnswer = useChatStore((s) => s.cancelAnswer)
   const isLoadingChat = useChatStore((s) => s.isLoadingChat)
   const error = useChatStore((s) => s.error)
@@ -369,13 +370,16 @@ export default function ChatPage() {
         isLoading={isLoading}
         targetMessageId={targetMessageId}
         streamingAnswer={streamingAnswer}
+        streamingRun={streamingRun}
       />
       <SearchAvailabilityNotice />
       <ChatInput
-        onSend={(message, usedPrompt, attachments) =>
-          attachments
-            ? sendMessage(message, usedPrompt, attachments)
-            : sendMessage(message, usedPrompt)
+        onSend={(message, usedPrompt, attachments, agent) =>
+          agent
+            ? sendMessage(message, usedPrompt, attachments ?? [], agent)
+            : attachments
+              ? sendMessage(message, usedPrompt, attachments)
+              : sendMessage(message, usedPrompt)
         }
         answerPending={isLoading}
         onCancelAnswer={cancelAnswer}
