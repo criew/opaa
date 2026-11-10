@@ -12,7 +12,8 @@ import java.util.Set;
  * An ended run as {@code opaa.indexing.runs} counts it, read together with its library's source
  * type and owner-only mark (both {@code null} once the library is gone). Carries no identifier of
  * run, library or document; a run of an owner-only library counts as {@link
- * IndexingMetrics#PRIVATE}, with its person-bound failure categories folded into that one too.
+ * IndexingMetrics#PRIVATE}, and so does every failure category of it but the administration's
+ * locks.
  */
 public record EndedRun(
     SourceType sourceType,
@@ -29,10 +30,13 @@ public record EndedRun(
   static final String ABANDONED = "abandoned";
 
   /**
-   * Stored failure categories that speak of the one person behind an owner-only library, named as
-   * {@code RunFailureCategory} stores them; the job layer sits below the connector SPI.
+   * The only stored failure categories an owner-only library's run keeps: locks the administration
+   * set for everyone, which say nothing about its person. Every other one, including any added
+   * later, becomes {@link IndexingMetrics#PRIVATE}. Named as {@code RunFailureCategory} stores
+   * them; the job layer sits below the connector SPI.
    */
-  private static final Set<String> PERSON_BOUND = Set.of("QUOTA_EXHAUSTED", "OWNER_DEACTIVATED");
+  private static final Set<String> PRIVATE_KEEPS =
+      Set.of("TYPE_LOCKED", "PROFILE_LOCKED", "PROFILE_REQUIRED");
 
   /** Records this run in {@code metrics}; {@code category} overrides the stored one if not null. */
   void recordIn(IndexingMetrics metrics, String category) {
@@ -70,7 +74,7 @@ public record EndedRun(
     if (failureCategory == null) {
       return IndexingMetrics.NO_CATEGORY;
     }
-    if (ownersOwn && PERSON_BOUND.contains(failureCategory)) {
+    if (ownersOwn && !PRIVATE_KEEPS.contains(failureCategory)) {
       return IndexingMetrics.PRIVATE;
     }
     return failureCategory.toLowerCase(Locale.ROOT);

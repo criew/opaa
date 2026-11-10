@@ -139,8 +139,11 @@ die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, z
 Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`).
 
 Läufe, letzter Erfolg und Überfälligkeit einer privaten Bibliothek zählen nicht unter ihrem
-Quellentyp, sondern unter `connector="private"`, und die Laufgründe, die von der einen Person dahinter
-sprechen (`quota_exhausted`, `owner_deactivated`), fallen dort in die Sammelkategorie `private`. Eine
+Quellentyp, sondern unter `connector="private"`. Als `failure_category` gilt dort eine Positivliste:
+`none`, `abandoned`, `private` und die Sperren der Verwaltung (`type_locked`, `profile_locked`,
+`profile_required`), die für alle gleich gelten. Jeder andere Laufgrund, auch ein künftiger, fällt in
+die Sammelkategorie `private`, denn Kontingent, Konto, Verbindung und Anmeldedaten sprechen von der
+einen Person dahinter. Eine
 private Bibliothek ist oft die einzige ihres Typs; unter ihrem Typ ergäbe die Reihe den Verlauf
 einer Person. Das folgt derselben Linie wie die Maskierung geschützter Gruppen (ADR-0036,
 Entscheidung 9) und der Zahlen über private Bibliotheken (ADR-0049): keine Personensicht aus

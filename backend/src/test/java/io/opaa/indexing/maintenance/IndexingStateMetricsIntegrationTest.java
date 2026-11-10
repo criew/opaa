@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.test.BareLibraries;
@@ -14,6 +15,8 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.AfterEach;
@@ -40,6 +43,7 @@ class IndexingStateMetricsIntegrationTest {
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobService indexingJobService;
+  @Autowired private SourceConnectorRegistry connectorRegistry;
 
   @Autowired
   @Qualifier("indexingTaskExecutor")
@@ -169,6 +173,31 @@ class IndexingStateMetricsIntegrationTest {
     } finally {
       jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", ownersOwn);
       BareLibraries.remove(jdbcTemplate, ownersOwn);
+    }
+  }
+
+  /**
+   * Every registered source type reports its document series from the context start, before its
+   * first document: OpaaIndexingStalled needs a series to see no increase on a fresh pod.
+   */
+  @Test
+  void everyRegisteredSourceTypeReportsItsDocumentSeriesFromTheStart() {
+    List<String> connectors =
+        connectorRegistry.descriptors().stream()
+            .map(descriptor -> descriptor.type().key().toLowerCase(Locale.ROOT))
+            .toList();
+
+    assertThat(connectors).contains("upload");
+    for (String connector : connectors) {
+      for (String result : List.of("processed", "skipped", "failed")) {
+        assertThat(
+                meterRegistry
+                    .find("opaa.indexing.documents")
+                    .tags("connector", connector, "result", result)
+                    .counter())
+            .as("%s/%s", connector, result)
+            .isNotNull();
+      }
     }
   }
 

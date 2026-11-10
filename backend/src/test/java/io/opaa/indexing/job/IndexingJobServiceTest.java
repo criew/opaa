@@ -43,6 +43,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.QueryTimeoutException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
@@ -420,13 +422,29 @@ class IndexingJobServiceTest {
     assertThat(runs("confluence", "delta", "incomplete", "quota_exhausted")).isEqualTo(1.0);
   }
 
+  /**
+   * Under {@code private} only the administration's locks keep their category; every other one -
+   * the person's quota, account, connection or credentials - becomes {@code private}.
+   */
   @Test
-  void aRunOfAnOwnerOnlyLibraryCountsAsPrivateWithItsPersonBoundCategoryFolded() {
+  void aRunOfAnOwnerOnlyLibraryKeepsOnlyTheAdministrationsLocksAsCategory() {
     UUID quota = UUID.randomUUID();
     UUID deactivated = UUID.randomUUID();
     UUID rejected = UUID.randomUUID();
+    UUID locked = UUID.randomUUID();
     when(indexingJobRepository.failIfRunning(any(), anyString(), anyString(), any(Instant.class)))
         .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(locked))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "ONEDRIVE",
+                    true,
+                    IndexingRunMode.FULL,
+                    JobStatus.FAILED,
+                    "PROFILE_LOCKED",
+                    false,
+                    null)));
     when(indexingJobRepository.findEndedRun(quota))
         .thenReturn(
             Optional.of(
@@ -464,14 +482,56 @@ class IndexingJobServiceTest {
     service.failJob(quota, "Kontingent erschöpft", "QUOTA_EXHAUSTED");
     service.failJob(deactivated, "Konto deaktiviert", "OWNER_DEACTIVATED");
     service.failJob(rejected, "Anmeldung abgelehnt", "CREDENTIALS_REJECTED");
+    service.failJob(locked, "Profil gesperrt", "PROFILE_LOCKED");
 
-    assertThat(runs("private", "full", "failed", "private")).isEqualTo(2.0);
-    assertThat(runs("private", "full", "failed", "credentials_rejected")).isEqualTo(1.0);
+    assertThat(runs("private", "full", "failed", "private")).isEqualTo(3.0);
+    assertThat(runs("private", "full", "failed", "profile_locked")).isEqualTo(1.0);
+    assertThat(runs("private", "full", "failed", "credentials_rejected")).isZero();
     assertThat(meterRegistry.find("opaa.indexing.runs").tag("connector", "onedrive").counter())
         .isNull();
     assertThat(
             meterRegistry.get("opaa.indexing.bytes").tag("connector", "private").counter().count())
         .isEqualTo(2048.0);
+  }
+
+  /** A rolled back end is no ended run: the count waits for the commit. */
+  @Test
+  void anEndedRunCountsOnlyOnceItsTransactionCommitted() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(jobId))
+        .thenReturn(
+            Optional.of(
+                endedRun("SMB", IndexingRunMode.FULL, JobStatus.COMPLETED, null, false, null)));
+    TransactionSynchronizationManager.initSynchronization();
+    try {
+      service.completeJob(jobId, 1, 0, 0, 1);
+
+      assertThat(runs("smb", "full", "completed", "none")).isZero();
+      verify(indexingJobRepository, never()).findEndedRun(any());
+
+      TransactionSynchronizationManager.getSynchronizations()
+          .forEach(TransactionSynchronization::afterCommit);
+    } finally {
+      TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    assertThat(runs("smb", "full", "completed", "none")).isEqualTo(1.0);
+  }
+
+  /** Counting never takes the end back: a failed read of the ended run is only logged. */
+  @Test
+  void aFailedReadOfTheEndedRunLeavesTheEndStanding() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(jobId)).thenThrow(new QueryTimeoutException("blocked"));
+
+    assertThat(service.completeJob(jobId, 1, 0, 0, 1)).isTrue();
+    assertThat(meterRegistry.find("opaa.indexing.runs").counter()).isNull();
   }
 
   @Test

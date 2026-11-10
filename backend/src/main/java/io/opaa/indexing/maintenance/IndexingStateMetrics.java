@@ -27,6 +27,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The state of indexing as gauges: last successful run and overdue scheduled libraries per
@@ -63,6 +65,13 @@ public class IndexingStateMetrics {
           + " GROUP BY kl.id, a.id";
 
   private final JdbcTemplate jdbc;
+
+  /**
+   * Bounds the backlog count: its shared schema lock and its statements join this transaction and
+   * give up after {@value #QUERY_TIMEOUT_SECONDS} seconds instead of holding the scheduler thread.
+   */
+  private final TransactionTemplate reindexReads;
+
   private final EmbeddingReindexService reindex;
   private final Clock clock;
   private final MultiGauge lastSuccess;
@@ -75,20 +84,15 @@ public class IndexingStateMetrics {
   @Autowired
   public IndexingStateMetrics(
       DataSource dataSource,
+      PlatformTransactionManager transactionManager,
       MeterRegistry meterRegistry,
       EmbeddingReindexService reindex,
       Clock clock,
       @Qualifier("indexingTaskExecutor") TaskExecutor indexingTaskExecutor) {
-    this(reads(dataSource), meterRegistry, reindex, clock, indexingTaskExecutor);
-  }
-
-  IndexingStateMetrics(
-      JdbcTemplate jdbc,
-      MeterRegistry meterRegistry,
-      EmbeddingReindexService reindex,
-      Clock clock,
-      TaskExecutor indexingTaskExecutor) {
-    this.jdbc = jdbc;
+    this.jdbc = reads(dataSource);
+    this.reindexReads = new TransactionTemplate(transactionManager);
+    this.reindexReads.setReadOnly(true);
+    this.reindexReads.setTimeout(QUERY_TIMEOUT_SECONDS);
     this.reindex = reindex;
     this.clock = clock;
     this.lastSuccess =
@@ -168,7 +172,8 @@ public class IndexingStateMetrics {
   @Scheduled(initialDelay = 0, fixedDelayString = "PT5M")
   public void refreshReindex() {
     try {
-      reindexRemaining.set((double) reindex.remainingChunks());
+      Long remaining = reindexReads.execute(status -> reindex.remainingChunks());
+      reindexRemaining.set(remaining == null ? Double.NaN : remaining.doubleValue());
     } catch (RuntimeException e) {
       reindexRemaining.set(Double.NaN);
       log.debug("The re-index backlog could not be read, reporting NaN", e);

@@ -4,6 +4,7 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
 import io.opaa.llm.EmbeddingModelService;
@@ -190,16 +191,41 @@ public class IndexingJobService {
     return updated > 0;
   }
 
-  /** Counts the run {@code jobId} this service just ended. */
+  /** Counts the run {@code jobId} this service just ended, once its end has committed. */
   private void recordEnded(UUID jobId) {
-    indexingJobRepository.findEndedRun(jobId).ifPresent(run -> run.recordIn(metrics, null));
+    afterCommit(
+        () ->
+            indexingJobRepository
+                .findEndedRun(jobId)
+                .ifPresent(run -> run.recordIn(metrics, null)));
   }
 
-  /** Counts every run a recovery failed at {@code completedAt} with {@code errorMessage}. */
+  /**
+   * Counts every run a recovery failed at {@code completedAt} with {@code errorMessage}, once the
+   * recovery has committed.
+   */
   private void recordRecovered(Instant completedAt, String errorMessage) {
-    indexingJobRepository
-        .findRunsFailedAt(completedAt, errorMessage)
-        .forEach(run -> run.recordIn(metrics, EndedRun.ABANDONED));
+    afterCommit(
+        () ->
+            indexingJobRepository
+                .findRunsFailedAt(completedAt, errorMessage)
+                .forEach(run -> run.recordIn(metrics, EndedRun.ABANDONED)));
+  }
+
+  /**
+   * Runs {@code count} after the surrounding transaction committed - a rolled back end is no ended
+   * run - or at once without one. It reads on its own after the commit, and a failure there is only
+   * logged: counting never takes the end of a run or a recovery back.
+   */
+  private static void afterCommit(Runnable count) {
+    TransactionCallbacks.afterCommitOrNow(
+        () -> {
+          try {
+            count.run();
+          } catch (RuntimeException e) {
+            log.warn("Could not count an ended indexing run", e);
+          }
+        });
   }
 
   /**
