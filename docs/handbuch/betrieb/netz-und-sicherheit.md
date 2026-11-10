@@ -23,6 +23,14 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   über `proxy-buffering: "off"`, schalten es ausdrücklich ab. Komprimieren darf der Proxy den
   Strom nicht. Das Backend schickt alle 10 Sekunden ein Lebenszeichen, das Timeout begrenzt also
   die Pause zwischen zwei Ereignissen.
+- **Lange Läufe eines Agenten durchlassen:** Ein Agent arbeitet in mehreren Schritten und meldet
+  jeden im selben Antwortstrom, oft über Minuten. Solange Modell oder Werkzeug arbeiten, sendet
+  OPAA mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
+  die Schritte erscheinen, wenn sie geschehen; ein Lese-Timeout ab etwa 30 Sekunden genügt, auch
+  für Läufe über Minuten. Bricht die Person ab, schickt der Browser zusätzlich
+  `POST /api/v1/query/stream/cancel`; der Stopp liegt in der Datenbank und wirkt, gleich welche
+  Instanz ihn annimmt. Diese Anfrage zählt nicht gegen die Grenze für Fragen. Der Lauf endet vor
+  seinem nächsten Schritt, nichts davon wird gespeichert; ein Wiederaufnehmen gibt es nicht.
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
@@ -95,6 +103,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - **Bilder** lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
   an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
   `Content-Security-Policy` fremde Bilder.
+- **Kopieren und Export** wenden dieselben Regeln an, in jedem Format: Ein Bild wird zu „[Bild: …]“
+  mit der Adresse als Text, ein Link zu einem nicht erlaubten Ziel zu Linktext mit Adresse, HTML in
+  der Antwort zu Text. Ein anderes Programm, in das die Antwort eingefügt wird, lädt so nichts nach.
 - **Bedienung:** Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
   Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
   Meldung und bleibt im Feld stehen.
@@ -476,9 +487,9 @@ steht, erreicht über die Suche das Modell.
 **Was unabhängig vom Modell wirkt:**
 
 - **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
-  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
-  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
-  Anweisung folgt.
+  die Antwort nie, auch nicht in Kopie und Export
+  ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss über einen
+  präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der Anweisung folgt.
 - **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
   Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
 
@@ -492,7 +503,14 @@ steht, erreicht über die Suche das Modell.
   Laufprotokoll und in einer Metrik
   ([Wissensbibliotheken, Parsen und Chunken](../referenz/wie-indexierung-arbeitet.md#was-mit-jedem-dokument-passiert)
   und [Ergebnis je Dokument](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)).
-- **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+- **Unsichtbare Zeichen in eigenen Texten:** Frage, Prompt-Vorlage, Anweisung des Space und eines
+  Agenten erreichen das Modell ohne unsichtbare Zeichen und ohne Steuerzeichen der Schreibrichtung;
+  Prompt-Vorlagen und Anweisungen des Space werden schon so gespeichert. Was die Schrift braucht,
+  bleibt: verbindende und trennende Zeichen innerhalb eines Emoji und zwischen Buchstaben von
+  Schriften wie Persisch oder Devanagari, und ein Variantenwähler direkt nach einem Emoji, einer
+  Tastenkappe oder einem Zeichen solcher Schriften, nie nach einem lateinischen Buchstaben.
+- **MCP-Server:** Treffer sowie Namen und Beschreibungen der Bibliotheken sind für externe
+  KI-Werkzeuge als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../benutzer/ki-werkzeug-einrichten.md)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).

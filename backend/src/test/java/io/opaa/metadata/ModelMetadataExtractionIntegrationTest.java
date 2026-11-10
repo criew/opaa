@@ -171,7 +171,8 @@ class ModelMetadataExtractionIntegrationTest {
     ModelExtractionStats stats = counters.statsFor(library.getId());
     assertThat(stats.acceptedValues()).isZero();
     assertThat(stats.rejectedBelowThreshold()).isEqualTo(1);
-    // The discarded value keeps its confidence, which is what makes the threshold calibratable.
+    // The discarded value keeps its confidence, which is what makes the threshold calibratable;
+    // the proposed value itself is never stored, so it cannot outlive the document.
     assertThat(
             jdbcTemplate.queryForList(
                 "SELECT field_key, proposed_value, confidence, reason FROM"
@@ -181,7 +182,7 @@ class ModelMetadataExtractionIntegrationTest {
         .satisfies(
             row -> {
               assertThat(row.get("field_key")).isEqualTo("document_type");
-              assertThat(row.get("proposed_value")).isEqualTo("SATZUNG_ORDNUNG");
+              assertThat(row.get("proposed_value")).isNull();
               assertThat((Double) row.get("confidence")).isEqualTo(0.79);
               assertThat(row.get("reason")).isEqualTo("BELOW_THRESHOLD");
             });

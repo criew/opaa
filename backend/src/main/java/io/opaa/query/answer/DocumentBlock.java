@@ -1,6 +1,7 @@
 package io.opaa.query.answer;
 
 import io.opaa.common.ContentFence;
+import io.opaa.common.PromptText;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -21,12 +22,6 @@ public final class DocumentBlock {
    * The marker of a passage as {@code CitationMarker} reads it; the brackets are reserved for it.
    */
   static final String CITATION_FORMAT = "【source: %s#%s | %s】";
-
-  /** Control and format characters except tab, line break and the joiner inside emoji. */
-  private static final Pattern INVISIBLE =
-      Pattern.compile("[\\p{Cc}&&[^\\t\\n\\r]]|[\\p{Cf}&&[^\\u200D]]");
-
-  private static final int JOINER = 0x200D;
 
   /**
    * Chat-template role tokens between bars, ASCII or full-width: {@code <|im_start|>}, {@code
@@ -124,8 +119,7 @@ public final class DocumentBlock {
    * {@code [INST]} after the check.
    */
   private static String defuse(String text) {
-    String cleaned = INVISIBLE.matcher(text).replaceAll("");
-    cleaned = withoutStrayJoiners(cleaned);
+    String cleaned = PromptText.withoutInvisible(text);
     String previous;
     do {
       previous = cleaned;
@@ -135,35 +129,5 @@ public final class DocumentBlock {
     cleaned = ROLE_TOKEN.matcher(cleaned).replaceAll("‹$1›");
     cleaned = TURN_TOKEN.matcher(cleaned).replaceAll("‹$1›");
     return INSTRUCTION_MARKER.matcher(cleaned).replaceAll("(Markierung)");
-  }
-
-  /**
-   * Keeps a joiner only between two symbols, where it joins an emoji; anywhere else it only hides a
-   * word from {@link #HEAD_LINE}. Works on code points, since emoji lie outside the BMP.
-   */
-  private static String withoutStrayJoiners(String text) {
-    if (text.indexOf(JOINER) < 0) {
-      return text;
-    }
-    int[] codePoints = text.codePoints().toArray();
-    StringBuilder kept = new StringBuilder(text.length());
-    for (int i = 0; i < codePoints.length; i++) {
-      int cp = codePoints[i];
-      if (cp == JOINER
-          && !(i > 0
-              && i + 1 < codePoints.length
-              && joinsAfter(codePoints[i - 1])
-              && Character.getType(codePoints[i + 1]) == Character.OTHER_SYMBOL)) {
-        continue;
-      }
-      kept.appendCodePoint(cp);
-    }
-    return kept.toString();
-  }
-
-  /** A symbol, a skin-tone modifier or the emoji presentation selector before a joiner. */
-  private static boolean joinsAfter(int cp) {
-    int type = Character.getType(cp);
-    return type == Character.OTHER_SYMBOL || type == Character.MODIFIER_SYMBOL || cp == 0xFE0F;
   }
 }

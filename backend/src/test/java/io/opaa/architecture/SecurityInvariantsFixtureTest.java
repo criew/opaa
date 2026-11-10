@@ -118,6 +118,23 @@ class SecurityInvariantsFixtureTest {
   }
 
   @Test
+  void aPromptBuiltPastPromptTextIsReportedByItsMethodEvenNextToOneThatCleans() {
+    Map<String, String> prompts = SecurityInvariants.promptBuildingUnits(CLASSES);
+
+    assertThat(prompts)
+        .containsOnlyKeys(
+            FIXTURE + ".RawPromptWriter#message",
+            FIXTURE + ".RawPromptWriter#prompt",
+            FIXTURE + ".RawPromptWriter#ask",
+            FIXTURE + ".CleanPromptWriter#title");
+    assertThat(prompts.get(FIXTURE + ".RawPromptWriter#prompt"))
+        .startsWith("calls org.springframework.ai.chat.prompt.Prompt#builder");
+    assertThat(prompts.get(FIXTURE + ".RawPromptWriter#ask"))
+        .startsWith(
+            "calls org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec#system");
+  }
+
+  @Test
   void anEntryWhoseCodeUnitNoLongerBreaksTheRuleIsStale() {
     assertThat(
             SecurityInvariants.stale(

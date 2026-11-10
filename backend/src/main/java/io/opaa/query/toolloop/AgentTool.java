@@ -23,8 +23,26 @@ public interface AgentTool {
   String inputSchema();
 
   /**
+   * Description and argument schema as this run offers them to the model, asked once before the
+   * run's first model call. By default the fixed ones; a tool whose arguments depend on what the
+   * asker may use right now builds them here and checks them again on every call.
+   */
+  default ToolOffer offer(AgentRun run) {
+    return new ToolOffer(description(), inputSchema());
+  }
+
+  /**
    * Runs one call. A failure of a service behind the tool is thrown and ends the run with an error;
    * an argument the tool cannot use is an outcome, not an exception.
    */
   ToolCallOutcome call(JsonNode arguments, AgentRun run);
+
+  /**
+   * What a call with {@code arguments} is about in the person's words, shown while it runs - the
+   * same text the outcome's detail will carry, never a raw argument such as an id. {@code null}
+   * when the tool knows it only after the call or has none.
+   */
+  default String startDetail(JsonNode arguments) {
+    return null;
+  }
 }

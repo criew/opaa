@@ -12,6 +12,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 /**
  * The category {@code space-membership-history} of the self-disclosure: the intervals of the
  * person's own space memberships and the membership changes she brought about. Another member is
- * "andere Person", a group member its group, a change without acting person "System".
+ * "andere Person", a group member its group, a change without acting person "System". A space or
+ * group she may no longer see appears without its name ({@link ReadableAssetNames}).
  */
 @Component
 public class SpaceMembershipHistorySelfDisclosureExporter implements SelfDisclosureExporter {
@@ -57,10 +59,12 @@ public class SpaceMembershipHistorySelfDisclosureExporter implements SelfDisclos
 
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public SpaceMembershipHistorySelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -76,37 +80,50 @@ public class SpaceMembershipHistorySelfDisclosureExporter implements SelfDisclos
         sink,
         "intervals",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, s.name AS space_name, h.subject_type, h.subject_user_id,"
-                    + " g.name AS group_name, h.role, h.cause, h.actor_user_id, h.valid_from,"
-                    + " h.valid_to FROM space_membership_history h"
-                    + " LEFT JOIN spaces s ON s.id = h.space_id"
-                    + " LEFT JOIN groups g ON g.id = h.subject_group_id"
-                    + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("space", rs.getString("space_name"));
-                  record.put("memberType", rs.getString("subject_type"));
-                  record.put("member", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("memberGroup", rs.getString("group_name"));
-                  record.put("role", rs.getString("role"));
-                  record.put("cause", rs.getString("cause"));
-                  record.put(
-                      "actor",
-                      who(
-                          rs.getObject("actor_user_id", UUID.class),
-                          me,
-                          SelfDisclosureLabels.SYSTEM));
-                  record.put("validFrom", instant(rs.getTimestamp("valid_from")));
-                  record.put("validTo", instant(rs.getTimestamp("valid_to")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.space_id, h.subject_group_id, s.name AS space_name, h.subject_type, h.subject_user_id,"
+                        + " g.name AS group_name, h.role, h.cause, h.actor_user_id, h.valid_from,"
+                        + " h.valid_to FROM space_membership_history h"
+                        + " LEFT JOIN spaces s ON s.id = h.space_id"
+                        + " LEFT JOIN groups g ON g.id = h.subject_group_id"
+                        + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("space", rs.getString("space_name"));
+                      record.put("memberType", rs.getString("subject_type"));
+                      record.put(
+                          "member", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("memberGroup", rs.getString("group_name"));
+                      record.put("role", rs.getString("role"));
+                      record.put("cause", rs.getString("cause"));
+                      record.put(
+                          "actor",
+                          who(
+                              rs.getObject("actor_user_id", UUID.class),
+                              me,
+                              SelfDisclosureLabels.SYSTEM));
+                      record.put("validFrom", instant(rs.getTimestamp("valid_from")));
+                      record.put("validTo", instant(rs.getTimestamp("valid_to")));
+                      ReadableAssetNames.mark(
+                          record,
+                          "space",
+                          rs.getObject("space_id", UUID.class),
+                          ReadableAssetNames.SPACE);
+                      ReadableAssetNames.mark(
+                          record,
+                          "memberGroup",
+                          rs.getObject("subject_group_id", UUID.class),
+                          ReadableAssetNames.GROUP);
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
   }
 }

@@ -65,7 +65,9 @@ bewertet werden.
 
 Identität, Organisation und Suchbereich erreichen das Werkzeug über den `ToolContext`, an den
 Modellargumenten vorbei. Der Suchbereich ist der Schnitt aus den lesbaren Bibliotheken der
-aufrufenden Person, dem Bereich des Chats und den Bibliotheken des Agenten. Das Modell bestimmt die
+aufrufenden Person, den Bibliotheken des Space, in dem der Chat liegt, und den Bibliotheken des
+Agenten, sofern er welche hat. Die Chip-Leiste des Chats gilt für einen Agentenlauf nicht: Wer einen
+Agenten wählt, ersetzt damit den Suchbereich der Frage. Das Modell bestimmt die
 Frage und darf den Bereich verengen, etwa über Bibliotheks- oder Metadatenfilter. Erweitern darf es
 ihn nie. Ein Bibliotheksbezeichner außerhalb des Bereichs ist kein Eingabefehler: Er wird ignoriert
 und im Schritt als ignoriert vermerkt, ohne seinen Wert. Ein Bezeichner, den ein abgerufenes
@@ -82,6 +84,19 @@ nicht an der Formulierung des Systemvorspanns
 | **Frist** | Aufbewahrung des Chats | eigene Frist, Vorgabe 7 Tage, Höchstwert 30 | allgemeine Protokollfrist ([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md), Entscheidung 2) |
 | **Löschung** | mit dem Chat: durch die Person, die Bereinigung des Space oder die Sperre des Kontos ([ADR-0066](0066-chatliste-ablage-suche-und-bereinigung.md), Entscheidungen 7 und 8) | Löschlauf, der abgelaufene Tagespartitionen entfernt; nicht abschaltbar | Entfernen abgelaufener Monatspartitionen ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)) |
 | **Wer hineinsieht** | die Person selbst im Gesprächsverlauf | die Systemverwaltung der eigenen Organisation zur Störungssuche, nur mit genau einer Lauf-Kennung und einem Anlass; kein Lesepfad für `AUDITOR` | `AUDITOR` über die bestehenden Wege der Revision |
+
+**Zu (a).** Die Schritte erreichen die Person schon während des Laufs, als Ereignisse im
+bestehenden Antwortstrom des Chats, in denselben Worten, in denen sie an der Nachricht bleiben; rohe
+Werkzeugargumente erscheinen nie. Die Antwort gilt als vorläufig, bis Belegprüfung und Speichern
+abgeschlossen sind. An der Nachricht stehen die Schritte getrennt vom Antworttext und gehen weder in
+den Gesprächsverlauf späterer Fragen noch in den Chattitel oder die Volltextsuche über Chats ein:
+Sie sind Nachweis der Antwort, kein Gesprächsinhalt. Bricht die Person ab, endet der Lauf vor
+seinem nächsten Modell- oder Werkzeugaufruf, und nichts von ihm wird in (a) gespeichert. Ein
+geschlossener Strom allein genügt dafür nicht, der Server bemerkt ihn erst beim nächsten Schreiben,
+und das kann noch gelingen. Der Lauf nennt deshalb zu Beginn ein Stopp-Token; der Abbruch setzt
+damit einen Merker an der Reservierung des Laufs in der Datenbank, den der Lauf vor jedem Aufruf
+liest, gleich welche Instanz den Abbruch angenommen hat. Ein Lebenszeichen alle 10 Sekunden, auch
+während Modell oder Werkzeug arbeiten, hält Proxys offen und deckt einen verlorenen Leser auf.
 
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von

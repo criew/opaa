@@ -8,7 +8,9 @@ import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSink.RecordWriter;
 import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +32,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The category {@code library-settings} of the self-disclosure: the libraries whose release for
  * external AI tools the person set, and her private libraries with their source address. The
  * address goes out without user info, query and fragment ({@link #withoutSecrets}); the stored
- * credentials never. Each section is read in pages, each page in a short read-only transaction.
+ * credentials never. A library the person may no longer read appears without its name ({@link
+ * ReadableAssetNames}). Each section is read in pages, each page in a short read-only transaction.
  */
 @Component
 public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -66,14 +69,17 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
   private final SourceConnectorRegistry connectors;
+  private final ReadableAssetNames names;
 
   /** The registry arrives lazily - the connectors themselves sit on top of the asset shell. */
   public LibrarySettingsSelfDisclosureExporter(
       JdbcTemplate jdbc,
       PlatformTransactionManager transactionManager,
-      @Lazy SourceConnectorRegistry connectors) {
+      @Lazy SourceConnectorRegistry connectors,
+      ReadableAssetNames names) {
     this.jdbc = jdbc;
     this.connectors = connectors;
+    this.names = names;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
   }
@@ -135,7 +141,9 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
                       (rs, i) -> {
                         Map<String, Object> record = new LinkedHashMap<>();
                         filler.fill(rs, record);
-                        return new Row(rs.getObject("id", UUID.class), record);
+                        UUID id = rs.getObject("id", UUID.class);
+                        ReadableAssetNames.mark(record, id, KnowledgeLibrary.ASSET_TYPE.value());
+                        return new Row(id, record);
                       },
                       subject.accountId(),
                       subject.organizationId(),
@@ -144,6 +152,7 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
       if (page == null || page.isEmpty()) {
         return;
       }
+      names.apply(subject.accountId(), page.stream().map(Row::record).toList(), "library");
       if (writer == null) {
         writer = sink.section(section);
       }

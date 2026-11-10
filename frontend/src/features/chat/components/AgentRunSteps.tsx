@@ -3,27 +3,8 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import type { AgentRun, AgentRunStep } from '@/shared/api/types'
-
-const TOOL_LABELS: Record<string, string> = {
-  search_knowledge: 'Wissen durchsucht',
-  read_document: 'Dokument gelesen',
-  list_sources: 'Quellen aufgelistet',
-  run_code: 'Code ausgeführt',
-  ask_user: 'Rückfrage',
-  unknown: 'Unbekanntes Werkzeug',
-}
-
-const STATUS_LABELS: Record<AgentRunStep['status'], string | null> = {
-  DONE: null,
-  EMPTY: 'nichts gefunden',
-  ARGUMENT_IGNORED: 'Einschränkung außerhalb des Bereichs ignoriert',
-  INVALID_ARGUMENTS: 'nicht ausgeführt, Angaben unbrauchbar',
-  UNKNOWN_TOOL: 'nicht ausgeführt, Werkzeug unbekannt',
-  DENIED: 'nicht ausgeführt, keine Berechtigung',
-  LIMIT: 'nicht ausgeführt, Grenze erreicht',
-  ERROR: 'fehlgeschlagen',
-}
+import type { AgentRun } from '@/shared/api/types'
+import { stepText } from './agentStepText'
 
 const LIMIT_NOTES: Record<AgentRun['endState'], string | null> = {
   COMPLETED: null,
@@ -31,15 +12,6 @@ const LIMIT_NOTES: Record<AgentRun['endState'], string | null> = {
   LIMIT_DURATION: 'Der Agent hat seine Höchstdauer erreicht.',
   LIMIT_VOLUME: 'Der Agent hat die Höchstmenge an gesammeltem Text erreicht.',
   ASK_USER: null,
-}
-
-function stepText(step: AgentRunStep): string {
-  const parts = [TOOL_LABELS[step.tool] ?? step.tool]
-  if (step.detail) parts[0] += `: ${step.detail}`
-  if (step.hits != null) parts.push(`${step.hits} Treffer`)
-  const status = STATUS_LABELS[step.status]
-  if (status) parts.push(status)
-  return parts.join(' · ')
 }
 
 interface AgentRunStepsProps {

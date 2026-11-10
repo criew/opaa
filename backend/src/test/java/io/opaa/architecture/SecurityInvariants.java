@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 /**
- * Five security invariants over compiled classes. Each rule answers what breaks it now, keyed by
+ * Six security invariants over compiled classes. Each rule answers what breaks it now, keyed by
  * code unit ({@code <class>#<method>}, a lambda counted to the method it is written in) or handler
  * operation, with the first offending call or method reference as value. An allowlist names
  * justified exceptions with their reason: {@link #unlisted} answers what is neither a building
@@ -187,6 +187,26 @@ final class SecurityInvariants {
   private static final String VERSION = "jakarta.persistence.Version";
 
   private static final String DYNAMIC_UPDATE = "org.hibernate.annotations.DynamicUpdate";
+
+  /**
+   * The members that hand text to a chat model as a message or a prompt: the constructors and
+   * builders of user and system messages, a prompt, and the system and user text of a chat client
+   * request. Keyed by owner type, subtypes included.
+   */
+  static final Map<String, Set<String>> PROMPT_BUILDING_MEMBERS =
+      Map.of(
+          "org.springframework.ai.chat.messages.UserMessage",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.messages.SystemMessage",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.prompt.Prompt",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec",
+          Set.of("system", "user"));
+
+  /** The one way foreign text enters a prompt: cleaned, marker-free, fenced where it is data. */
+  static final Set<String> PROMPT_TEXT_BLOCKS =
+      Set.of("io.opaa.common.PromptText", "io.opaa.common.ContentFence");
 
   private static final String CONTROLLER = "org.springframework.stereotype.Controller";
 
@@ -395,6 +415,34 @@ final class SecurityInvariants {
                 .as(org.springframework.data.repository.Repository.class)
                 .resolveGeneric(0))
         .map(Class::getName);
+  }
+
+  /**
+   * Methods that build a prompt ({@link #PROMPT_BUILDING_MEMBERS}) without calling one of {@link
+   * #PROMPT_TEXT_BLOCKS} themselves; a lambda counts as part of the method it is written in. Which
+   * text flows into a message is not visible in bytecode: the rule makes every method that writes a
+   * prompt either clean its text in the same method or name where that text was cleaned. It cannot
+   * tell whether the cleaned text is the one that reaches the message.
+   */
+  static Map<String, String> promptBuildingUnits(JavaClasses classes) {
+    Map<String, String> building = new TreeMap<>();
+    Set<String> cleaning = new TreeSet<>();
+    for (JavaClass type : classes) {
+      for (JavaCodeUnit unit : type.getCodeUnits()) {
+        accessesOf(unit)
+            .forEach(
+                access -> {
+                  if (matches(access, PROMPT_BUILDING_MEMBERS)) {
+                    building.putIfAbsent(keyOf(unit), describe(access));
+                  }
+                  if (PROMPT_TEXT_BLOCKS.contains(access.getTargetOwner().getName())) {
+                    cleaning.add(keyOf(unit));
+                  }
+                });
+      }
+    }
+    building.keySet().removeAll(cleaning);
+    return building;
   }
 
   /** Lines for the entries of {@code current} that {@code allowed} does not name. */

@@ -319,6 +319,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAvailablePrompts",
             "listAgents",
             "getAgent",
+            "listAvailableAgents",
             "getAgentAvailability",
             "getAgentSettings",
             "getDocumentTemplateAvailability",

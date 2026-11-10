@@ -10,16 +10,19 @@ import io.opaa.compliance.SelfDisclosureCategory.Section;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The category {@code favorites} of the self-disclosure: the assets the person marked as favorite,
- * with type, name and when.
+ * with type, name and when; the name only while she may still read the asset ({@link
+ * ReadableAssetNames}).
  */
 @Component
 public class FavoritesSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -39,10 +42,12 @@ public class FavoritesSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public FavoritesSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -57,23 +62,28 @@ public class FavoritesSelfDisclosureExporter implements SelfDisclosureExporter {
         sink,
         "favorites",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT f.asset_id, a.asset_type, a.name, f.created_at FROM asset_favorites f"
-                    + " JOIN assets a ON a.id = f.asset_id"
-                    + " WHERE f.user_id = ? AND f.organization_id = ?"
-                    + " AND (f.created_at, f.asset_id) > (?, ?)"
-                    + " ORDER BY f.created_at, f.asset_id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "asset_id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("name"));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  return record;
-                },
+            names.apply(
                 subject.accountId(),
-                subject.organizationId(),
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT f.asset_id, a.asset_type, a.name, f.created_at FROM asset_favorites f"
+                        + " JOIN assets a ON a.id = f.asset_id"
+                        + " WHERE f.user_id = ? AND f.organization_id = ?"
+                        + " AND (f.created_at, f.asset_id) > (?, ?)"
+                        + " ORDER BY f.created_at, f.asset_id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "asset_id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("name"));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      return record;
+                    },
+                    subject.accountId(),
+                    subject.organizationId(),
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
   }
 }

@@ -90,6 +90,46 @@ describe('chatStore with a streamed answer', () => {
     ])
   })
 
+  it("shows an agent's steps while it works and keeps them with the final answer only", async () => {
+    const steps = [
+      { index: 0, tool: 'search_knowledge', detail: 'Fristen', hits: 2, status: 'DONE' },
+    ]
+    const stream = heldStream(
+      [
+        { type: 'started' },
+        { type: 'step_started', step: { index: 0, tool: 'search_knowledge', detail: 'Fristen' } },
+        { type: 'step_finished', step: steps[0] },
+      ],
+      [
+        { type: 'run_finished', endState: 'COMPLETED' },
+        {
+          ...FINAL,
+          response: {
+            ...FINAL.response,
+            agentRun: {
+              runId: '00000000-0000-0000-0000-000000000001',
+              endState: 'COMPLETED',
+              steps: [{ tool: 'search_knowledge', detail: 'Fristen', hits: 2, status: 'DONE' }],
+            },
+          },
+        },
+      ],
+    )
+    server.use(stream.handler)
+
+    const sent = useChatStore.getState().sendMessage('Wie lang ist die Frist?')
+    await expect.poll(() => useChatStore.getState().streamingRun?.steps[0]?.status).toBe('DONE')
+    expect(useChatStore.getState().messages.map((m) => m.role)).toEqual(['user'])
+
+    stream.release()
+    await sent
+
+    const state = useChatStore.getState()
+    expect(state.streamingRun).toBeNull()
+    expect(state.messages[1].content).toBe('Die Frist beträgt einen Monat.')
+    expect(state.messages[1].agentRun?.steps).toHaveLength(1)
+  })
+
   it('cancelling ends the request and hands the question back to the input', async () => {
     const stream = heldStream([{ type: 'started' }, { type: 'delta', text: 'Die Frist ' }], [FINAL])
     server.use(stream.handler)
