@@ -111,7 +111,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(within(dialog).getByRole('combobox', { name: 'Typ von frist' }))
     await user.click(await screen.findByRole('option', { name: 'Datum' }))
     await user.click(within(dialog).getByLabelText('frist ist Pflicht'))
-    await user.click(within(dialog).getByRole('button', { name: 'Prompt speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
     await waitForDialogClosed()
 
     // Second prompt without variables
@@ -119,7 +119,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     dialog = await screen.findByRole('dialog', { name: 'Neuer Prompt' })
     await user.type(within(dialog).getByLabelText('Titel'), 'Vermerk')
     await user.type(within(dialog).getByLabelText('Text'), 'Fasse den Sachverhalt zusammen.')
-    await user.click(within(dialog).getByRole('button', { name: 'Prompt speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
     await waitForDialogClosed()
 
     expect(await screen.findByText('/anhoerung')).toBeInTheDocument()

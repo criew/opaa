@@ -459,7 +459,7 @@ describe('ConnectionProfilesTab', () => {
     const create = await screen.findByRole('button', { name: 'Neuer Zugang' })
     expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
     await user.click(create)
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     expect(within(dialog).getByRole('combobox', { name: /Quellart/ })).toHaveTextContent(
       /^Nextcloud$/,
     )
@@ -471,9 +471,11 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
-    expect(create).toBeDisabled()
+    // „Anlegen“ stays available; what is missing is named above the form
+    await user.click(create)
+    expect(within(dialog).getByText(/^Bitte ausfüllen: /)).toBeVisible()
     await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
     const fileSystem = await screen.findByRole('option', { name: /Dateisystem/ })
     expect(fileSystem).toHaveAttribute('aria-disabled', 'true')
@@ -481,10 +483,8 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('option', { name: /Nextcloud/ }))
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Nextcloud Partner')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://partner.example.org')
-    expect(create).toBeDisabled()
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'OAuth' }))
-    expect(create).toBeDisabled()
     await user.type(within(dialog).getByLabelText(/^Client-ID/), 'opaa')
     await user.type(within(dialog).getByLabelText(/^Client-Secret/), 'geheim')
     await user.click(create)
@@ -502,7 +502,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Nextcloud/)
     expect(within(dialog).queryByLabelText(/Konnektor-Vorgaben/)).not.toBeInTheDocument()
     expect(within(dialog).getByText('Vorgaben für jede Bibliothek')).toBeVisible()
@@ -528,7 +528,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Nextcloud/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang ohne Schalter')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
@@ -546,7 +546,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
@@ -570,7 +570,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Ablage mit fester Adresse/)
     expect(within(dialog).queryByLabelText(/^Server-Adresse/)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/feste Adresse: https:\/\/api\.ablage\.example/)).toBeVisible()
@@ -604,8 +604,7 @@ describe('ConnectionProfilesTab', () => {
     await user.clear(name)
     await user.type(name, 'Zugang Nextcloud Rathaus')
 
-    const save = within(dialog).getByRole('button', { name: 'Speichern' })
-    expect(save).toBeDisabled()
+    expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
     expect(within(dialog).getByText(/Angaben der Quellart liegen nicht vor/)).toBeVisible()
     expect(sent).toHaveLength(0)
     expect(mockConnectionProfiles[0].connectorSettings).toEqual({ edition: 'INTERN' })
@@ -793,7 +792,10 @@ describe('ConnectionProfilesTab', () => {
     expect(
       within(refusals).getByRole('link', { name: 'Abgelehnte Bibliothek 1 öffnen' }),
     ).toHaveAttribute('href', '/libraries/library-on-connection-profile-nextcloud-1')
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    expect(
+      await within(dialog).findByText(/^Nichts wurde gespeichert: Der Konnektor lehnt/),
+    ).toBeVisible()
     expect(sent).toHaveLength(0)
   }, 20000)
 
@@ -845,7 +847,7 @@ describe('ConnectionProfilesTab', () => {
     expect(await within(dialog).findByTestId('profile-change-rejections')).toHaveTextContent(
       'Einstellungen: Die Edition einer Bibliothek ist nach der Anlage nicht änderbar.',
     )
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
   }, 20000)
 
   it('saves a mere rename without a preview', async () => {
@@ -973,6 +975,6 @@ describe('ConnectionProfilesTab', () => {
     const dialog = await openEdit(user)
     expect(within(dialog).getByText('Die Angaben der Quellart werden geladen …')).toBeVisible()
     expect(within(dialog).queryByText(/liegen nicht vor/)).not.toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
   })
 })

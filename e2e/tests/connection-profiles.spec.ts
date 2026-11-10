@@ -129,7 +129,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   }) => {
     await gotoConnectionProfiles(page)
     await page.getByRole('button', { name: 'Neuer Zugang' }).click()
-    const form = page.getByRole('dialog', { name: 'Zugang anlegen' })
+    const form = page.getByRole('dialog', { name: 'Neuer Zugang' })
     await form.getByRole('combobox', { name: /Quellart/ }).click()
     await page.getByRole('option', { name: /RSS-Feed/ }).click()
     await form.getByLabel('Name').fill(PROFILE_NAME)
@@ -291,7 +291,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expect(dialog.getByTestId('library-connection-test')).toContainText('erreichbar', {
       timeout: 15_000,
     })
-    await dialog.getByRole('button', { name: 'Prüfen und zuordnen' }).click()
+    await dialog.getByRole('button', { name: 'Zuordnen' }).click()
     await expect(dialog).toHaveCount(0)
 
     await expect(lockNotice(page)).toHaveCount(0)

@@ -378,7 +378,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   }) => {
     await gotoConnectionProfiles(page);
     await page.getByRole("button", { name: "Neuer Zugang" }).click();
-    const form = page.getByRole("dialog", { name: "Zugang anlegen" });
+    const form = page.getByRole("dialog", { name: "Neuer Zugang" });
     await form.getByRole("combobox", { name: /Quellart/ }).click();
     const locked = page
       .locator('[role="option"][aria-disabled="true"]')
@@ -774,7 +774,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       .getByRole("button", { name: "Einstellungen", exact: true })
       .click();
     const panel = page.getByRole("dialog", {
-      name: "Einstellungen für externe KI-Werkzeuge",
+      name: "Einstellungen",
     });
     await expect(
       panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),

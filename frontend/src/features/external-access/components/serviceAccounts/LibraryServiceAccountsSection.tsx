@@ -2,10 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
@@ -24,7 +20,6 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { TextAction } from '@/shared/ui/DetailSection'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import ListSearch from '@/shared/ui/ListSearch'
 import RowMenu from '@/shared/ui/RowMenu'
 import StateDot from '@/shared/ui/StateDot'
@@ -40,6 +35,8 @@ import { Ending, ExpiredOn } from './ServiceAccountParts'
 import { useErrorTitle } from './serviceAccountHooks'
 import { REMOVE_CONSENT_CONSEQUENCE, formatDate, soonLabel } from './serviceAccountLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** Up to this many choices stand as a radio list without search (guidelines 5.11). */
 const DIRECT_CHOICES = 7
@@ -269,8 +266,7 @@ function ChangeDateForm({
   const ref = useRef<HTMLInputElement>(null)
   useErrorTitle(Boolean(error))
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
+  async function submit() {
     if (!date) {
       setError('Bitte ein Datum angeben.')
       ref.current?.focus()
@@ -288,42 +284,20 @@ function ChangeDateForm({
   }
 
   return (
-    <Dialog
-      open
-      onClose={() => !saving && onClose()}
-      fullWidth
-      maxWidth="xs"
-      aria-labelledby="consent-date-title"
+    <FormDialog
+      titleId="consent-date-title"
+      title="Frist ändern"
+      submitLabel="Speichern"
+      onSubmit={() => void submit()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Wird gespeichert"
     >
-      <form noValidate onSubmit={(event) => void submit(event)}>
-        <DialogTitle id="consent-date-title">Frist ändern</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: fontSize.text, mb: 2, overflowWrap: 'anywhere' }}>
-            {consent.serviceAccountName}
-          </Typography>
-          <UntilField
-            value={date}
-            onChange={setDate}
-            maxDays={maxDays}
-            error={error}
-            inputRef={ref}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button variant="text" onClick={onClose} disabled={saving}>
-            Abbrechen
-          </Button>
-          <BusyButton
-            type="submit"
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Wird gespeichert"
-          >
-            Speichern
-          </BusyButton>
-        </DialogActions>
-      </form>
-    </Dialog>
+      <Typography sx={{ fontSize: fontSize.text, mb: 2, overflowWrap: 'anywhere' }}>
+        {consent.serviceAccountName}
+      </Typography>
+      <UntilField value={date} onChange={setDate} maxDays={maxDays} error={error} inputRef={ref} />
+    </FormDialog>
   )
 }
 
@@ -555,43 +529,37 @@ export default function LibraryServiceAccountsSection({ libraryId }: { libraryId
         </TextAction>
       }
     >
-      <Dialog
+      <ViewDialog
         open={managing}
         onClose={() => setManaging(false)}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby="consent-manage-title"
+        titleId="consent-manage-title"
+        title="Dienstkonten mit Zugriff"
       >
-        <DialogTitleWithClose id="consent-manage-title" onClose={() => setManaging(false)}>
-          Dienstkonten mit Zugriff
-        </DialogTitleWithClose>
-        <DialogContent>
-          <Box sx={{ mb: 3 }}>
-            <AddConsentForm
-              key={version}
-              libraryId={libraryId}
-              listed={listed}
-              maxDays={maxDays}
-              onSaved={(name) => {
-                notify(`„${name}“ hat Zugriff auf diese Bibliothek.`, 'success')
-                changed()
-              }}
-            />
-          </Box>
-          {consents && consents.length > 0 ? (
-            <ConsentRows
-              libraryId={libraryId}
-              consents={consents}
-              onChangeDate={setChanging}
-              onChanged={changed}
-            />
-          ) : (
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Kein Dienstkonto hat Zugriff auf diese Bibliothek.
-            </Typography>
-          )}
-        </DialogContent>
-      </Dialog>
+        <Box sx={{ mb: 3 }}>
+          <AddConsentForm
+            key={version}
+            libraryId={libraryId}
+            listed={listed}
+            maxDays={maxDays}
+            onSaved={(name) => {
+              notify(`„${name}“ hat Zugriff auf diese Bibliothek.`, 'success')
+              changed()
+            }}
+          />
+        </Box>
+        {consents && consents.length > 0 ? (
+          <ConsentRows
+            libraryId={libraryId}
+            consents={consents}
+            onChangeDate={setChanging}
+            onChanged={changed}
+          />
+        ) : (
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            Kein Dienstkonto hat Zugriff auf diese Bibliothek.
+          </Typography>
+        )}
+      </ViewDialog>
       <ChangeDateDialog
         libraryId={libraryId}
         consent={changing}

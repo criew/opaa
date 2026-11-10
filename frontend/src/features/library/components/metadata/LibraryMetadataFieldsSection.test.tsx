@@ -159,7 +159,7 @@ describe('LibraryMetadataFieldsSection', () => {
     expect(
       within(dialog).getByText(/mindestens im Filter oder im Kontextpräfix wirken/),
     ).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Anlegen' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
@@ -171,7 +171,7 @@ describe('LibraryMetadataFieldsSection', () => {
     await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }))
 
     expect(await screen.findByText(/3 Dokument\(e\) tragen „F2026“/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Abbildung bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Abbilden' }))
     expect(mockRemap).toHaveBeenCalledWith('library-team', 'fassung', 'F2026', null)
   })
 
@@ -185,7 +185,7 @@ describe('LibraryMetadataFieldsSection', () => {
     expect(
       await screen.findByText(/4 Dokument\(e\) tragen einen Wert für „Fassung“/),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
+    await user.click(screen.getByRole('button', { name: 'Löschen' }))
     expect(mockDelete).toHaveBeenCalledWith('library-team', 'fassung')
   })
 
@@ -244,7 +244,7 @@ describe('LibraryMetadataFieldsSection', () => {
     expect(await within(dialog).findByText(/4812 Abschnitte/)).toBeInTheDocument()
     expect(mockUpdateCorePrefix).not.toHaveBeenCalled()
 
-    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Einschalten' }))
 
     expect(mockUpdateCorePrefix).toHaveBeenCalledWith('library-team', {
       documentType: true,
@@ -266,7 +266,7 @@ describe('LibraryMetadataFieldsSection', () => {
 
     await user.click(await screen.findByRole('button', EDIT_FIELD))
     await user.click(await screen.findByRole('button', { name: 'Feld löschen' }))
-    const confirm = await screen.findByRole('button', { name: 'Endgültig löschen' })
+    const confirm = await screen.findByRole('button', { name: 'Löschen' })
     const dialog = confirm.closest<HTMLElement>('[role="dialog"]')!
 
     expect(
