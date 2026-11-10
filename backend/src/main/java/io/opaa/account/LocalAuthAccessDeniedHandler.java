@@ -1,6 +1,7 @@
 package io.opaa.account;
 
 import io.opaa.api.dto.ErrorResponse;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -40,7 +41,7 @@ public class LocalAuthAccessDeniedHandler implements AccessDeniedHandler {
       throws IOException {
     boolean csrf = denied instanceof CsrfException;
     ErrorResponse body =
-        new ErrorResponse(
+        RequestIds.errorResponse(
             csrf ? CSRF_MESSAGE : DENIED_MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
     if (csrf) {
       body.setCode(CSRF_CODE);

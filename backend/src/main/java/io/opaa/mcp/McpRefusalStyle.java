@@ -5,6 +5,7 @@ import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.security.ExternalAccessRefusalStyle;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
+import io.opaa.observability.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -98,6 +99,10 @@ class McpRefusalStyle implements ExternalAccessRefusalStyle {
     body.put("timestamp", Instant.now(clock).toString());
     if (rejection != null) {
       body.put("reason", rejection.marker());
+    }
+    String requestId = RequestIds.current();
+    if (requestId != null) {
+      body.put("requestId", requestId);
     }
     jsonMapper.writeValue(response.getOutputStream(), body);
   }

@@ -26,6 +26,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.observability.RequestIds;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.UntrustedCertificate;
@@ -197,8 +198,22 @@ public class IndexingRunTemplate {
     this.connectionResolver = connectionResolver;
   }
 
-  /** Runs {@code body} for {@code jobId} inside the frame described on this class. */
+  /**
+   * Runs {@code body} for {@code jobId} inside the frame described on this class, with the run id
+   * in the MDC of every log line the run writes on this thread or hands to a decorated pool.
+   */
   public void run(
+      UUID jobId,
+      KnowledgeLibrary library,
+      IndexingRunMode runMode,
+      SourceIndexingExecutor executor,
+      RunBody body) {
+    try (var runContext = RequestIds.indexingRun(jobId)) {
+      runInFrame(jobId, library, runMode, executor, body);
+    }
+  }
+
+  private void runInFrame(
       UUID jobId,
       KnowledgeLibrary library,
       IndexingRunMode runMode,

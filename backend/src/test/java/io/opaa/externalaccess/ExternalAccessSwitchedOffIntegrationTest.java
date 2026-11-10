@@ -322,9 +322,14 @@ class ExternalAccessSwitchedOffIntegrationTest {
     }
   }
 
-  /** The error body without what differs between any two requests: the path and the time. */
+  /**
+   * The error body without what differs between any two requests: the path, the time and the
+   * request id.
+   */
   private static String normalized(String body, String path) {
-    return body.replace(path, "<path>").replaceAll("\"timestamp\"\\s*:\\s*\"[^\"]*\"", "");
+    return body.replace(path, "<path>")
+        .replaceAll("\"timestamp\"\\s*:\\s*\"[^\"]*\"", "")
+        .replaceAll("\"requestId\"\\s*:\\s*\"[^\"]*\"", "");
   }
 
   private static String freshValue() {

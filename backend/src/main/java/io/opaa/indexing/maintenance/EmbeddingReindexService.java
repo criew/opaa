@@ -28,6 +28,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.llm.embedding.EmbeddingModelAdministration;
+import io.opaa.observability.MdcTaskDecorator;
 import io.opaa.permission.PersonThreshold;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
@@ -397,7 +398,7 @@ public class EmbeddingReindexService {
   private void submit(Work work) {
     active.incrementAndGet();
     try {
-      executor.execute(() -> run(work));
+      executor.execute(MdcTaskDecorator.withCallersMdc(() -> run(work)));
     } catch (RuntimeException e) {
       active.decrementAndGet();
       throw e;

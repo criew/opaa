@@ -3,6 +3,7 @@ package io.opaa.ratelimit;
 import io.opaa.common.LogText;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.observability.RequestIds;
 import io.opaa.ratelimit.RateLimitService.Decision;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.FilterChain;
@@ -17,7 +18,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -499,11 +499,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
       throws IOException {
     response.setStatus(status.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    var body =
-        Map.of(
-            "error", message,
-            "status", status.value(),
-            "timestamp", Instant.now(clock).toString());
-    jsonMapper.writeValue(response.getOutputStream(), body);
+    jsonMapper.writeValue(
+        response.getOutputStream(),
+        RequestIds.errorResponse(message, status.value(), Instant.now(clock)));
   }
 }
