@@ -106,7 +106,6 @@ public class QueryService {
   private final QueryMetrics metrics;
   private final MetadataFilterValidator metadataFilterValidator;
   private final PromptService promptService;
-  private final Optional<ToolLoopQueryHandler> toolLoopQueryHandler;
   private final NeighborChunkExpansion neighborChunkExpansion;
   private final AgentTurnHandler agentTurnHandler;
 
@@ -126,7 +125,6 @@ public class QueryService {
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator,
       PromptService promptService,
-      Optional<ToolLoopQueryHandler> toolLoopQueryHandler,
       NeighborChunkExpansion neighborChunkExpansion,
       AgentTurnHandler agentTurnHandler) {
     this.knowledgeRetrieval = knowledgeRetrieval;
@@ -144,7 +142,6 @@ public class QueryService {
     this.metrics = metrics;
     this.metadataFilterValidator = metadataFilterValidator;
     this.promptService = promptService;
-    this.toolLoopQueryHandler = toolLoopQueryHandler;
     this.neighborChunkExpansion = neighborChunkExpansion;
     this.agentTurnHandler = agentTurnHandler;
   }
@@ -224,7 +221,7 @@ public class QueryService {
    * ({@code null}: not streamed, see {@link AnswerGenerationService#streamAnswer}). Everything
    * after the generation - citation repair and validation, sources, persistence, the note - runs on
    * the complete answer exactly as without streaming, and only once it is complete: a stream that
-   * ends early persists nothing. A turn the tool loop takes over is not streamed.
+   * ends early persists nothing.
    */
   public QueryResult query(
       String question,
@@ -251,8 +248,8 @@ public class QueryService {
    * The same query with the chat attachments {@code attachmentIds} sent along. Their passages - and
    * those of every earlier attachment of the chat - precede the retrieved chunks and are cited like
    * them ({@code ChatService#attachmentContext}); the attachments are bound to the chat with the
-   * turn. Naming one without a persisted chat of the caller is a 400. A turn with attachments is
-   * never taken over by the tool loop, which would not see them.
+   * turn. Naming one without a persisted chat of the caller is a 400, and so is naming one in a
+   * turn with a chosen agent, whose tool loop would not see it.
    */
   public QueryResult query(
       String question,
@@ -386,56 +383,26 @@ public class QueryService {
                   "Anhänge lassen sich einem Agenten noch nicht mitsenden");
             }
             clock.mode = QueryMetrics.Mode.AGENT;
-            return agentTurnHandler.handle(
-                new AgentTurn(
-                    question,
-                    chat.get(),
-                    caller.organizationId(),
-                    currentUserId,
-                    readableLibraryIds,
-                    agentId,
-                    conversationKey,
-                    notePoints,
-                    spaceInstruction,
-                    usedPrompt,
-                    metadataFilter,
-                    startTime,
-                    answerListener));
-          }
-
-          // A present tool-loop handler may take over the whole turn, with exactly the
-          // rights and scope just resolved above; an empty result leaves everything below
-          // unchanged. A question that names new attachments stays on the ordinary path,
-          // which reads them; earlier attachments of the chat, the loop's own generated
-          // files among them, do not keep a turn from the loop.
-          Optional<QueryResult> toolLoopResult =
-              toolLoopQueryHandler
-                  .filter(handler -> attachments.newAttachmentIds().isEmpty())
-                  .flatMap(
-                      handler -> {
-                        QueryMetrics.Mode ordinaryMode = clock.mode;
-                        clock.mode = QueryMetrics.Mode.AGENT;
-                        Optional<QueryResult> taken =
-                            handler.handle(
-                                question,
-                                chat,
-                                effectiveChatId,
-                                conversationKey,
-                                notePoints,
-                                searchScope,
-                                metadataFilter,
-                                startTime,
-                                usedPrompt);
-                        if (taken.isEmpty()) {
-                          clock.mode = ordinaryMode;
-                        }
-                        return taken;
-                      });
-          if (toolLoopResult.isPresent()) {
+            QueryResult agentResult =
+                agentTurnHandler.handle(
+                    new AgentTurn(
+                        question,
+                        chat.get(),
+                        caller.organizationId(),
+                        currentUserId,
+                        readableLibraryIds,
+                        agentId,
+                        conversationKey,
+                        notePoints,
+                        spaceInstruction,
+                        usedPrompt,
+                        metadataFilter,
+                        startTime,
+                        answerListener));
             if (historyCut) {
               metrics.recordContextTruncated();
             }
-            return toolLoopResult.get();
+            return agentResult;
           }
 
           // Why an empty scope is empty - at most one of the four: no space at all, nothing

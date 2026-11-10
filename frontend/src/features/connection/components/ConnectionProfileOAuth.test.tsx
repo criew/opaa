@@ -87,7 +87,7 @@ describe('ConnectionProfilesTab, OAuth', () => {
     // the button stays disabled until the source types are loaded
     await waitFor(() => expect(button).toBeEnabled())
     await user.click(button)
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Name/))
     await user.paste('Zugang Keycloak')
@@ -116,11 +116,12 @@ describe('ConnectionProfilesTab, OAuth', () => {
       `${window.location.origin}/connections/callback`,
     )
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
-    expect(create).toBeDisabled()
+    // „Anlegen“ stays available; what is missing is named above the form
+    await user.click(create)
+    expect(within(dialog).getByText(/^Bitte ausfüllen: /)).toBeVisible()
 
     await user.click(within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/))
     await user.paste('https://idp.example.org/realms/r/protocol/openid-connect/auth')
-    expect(create).toBeDisabled()
     await user.click(within(dialog).getByLabelText(/^Token-Endpunkt/))
     await user.paste('https://idp.example.org/realms/r/protocol/openid-connect/token')
     await user.click(create)
@@ -157,7 +158,8 @@ describe('ConnectionProfilesTab, OAuth', () => {
     expect(
       within(dialog).getByText(/Der Token-Endpunkt muss mit https:\/\/ beginnen/),
     ).toBeVisible()
-    expect(create).toBeDisabled()
+    await user.click(create)
+    expect(within(dialog).getByText(/^Bitte ausfüllen: .*Autorisierungs-Endpunkt/)).toBeVisible()
 
     await user.clear(authorization)
     await user.click(authorization)
@@ -180,7 +182,7 @@ describe('ConnectionProfilesTab, OAuth', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'OAuth' }))
@@ -243,7 +245,9 @@ describe('ConnectionProfilesTab, OAuth', () => {
       expect(
         within(dialog).getByText(/Der Token-Endpunkt ändert sich\. Das hinterlegte Secret/),
       ).toBeVisible()
-      expect(save).toBeDisabled()
+      await user.click(save)
+      expect(within(dialog).getByText(/^Bitte ausfüllen: Client-Secret\.$/)).toBeVisible()
+      expect(sent).toHaveLength(0)
 
       await user.type(secret, 'neues-geheimnis')
       expect(save).toBeEnabled()
@@ -255,7 +259,9 @@ describe('ConnectionProfilesTab, OAuth', () => {
 
     it('saves a public client with an empty secret once that is chosen', async () => {
       const { user, dialog, save, sent } = await openWithMovedTokenEndpoint()
-      expect(save).toBeDisabled()
+      await user.click(save)
+      expect(within(dialog).getByText(/^Bitte ausfüllen: Client-Secret\.$/)).toBeVisible()
+      expect(sent).toHaveLength(0)
 
       await user.click(
         within(dialog).getByRole('checkbox', {

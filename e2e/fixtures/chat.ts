@@ -305,17 +305,24 @@ export async function openNewLibraryWizard(page: Page): Promise<void> {
   await expect(page.getByRole('radiogroup', { name: 'Quellart wählen' })).toBeVisible()
 }
 
+/** Step „Stammdaten“ of the library wizard, after „Quellart“: name the library and go on. */
+export async function nameNewLibrary(page: Page, name: string): Promise<void> {
+  await expect(page.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
+  await page.getByLabel('Name', { exact: true }).fill(name)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+}
+
 /**
- * The last two moves of the creation wizard: „Weiter“ into the step „Prüfen“, then „Bibliothek
- * anlegen“. Resolves on the new library's detail page - the wizard navigates straight there, and
- * itself lives at /libraries/new, hence the lookahead.
+ * The last two moves of the creation wizard: „Weiter“ into the step „Prüfen“, then „Anlegen“.
+ * Resolves on the new library's detail page - the wizard navigates straight there, and itself
+ * lives at /libraries/new, hence the lookahead.
  */
 export async function createFromReview(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeAttached()
   await Promise.all([
     page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+    page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
   ])
 }
 
@@ -361,7 +368,7 @@ export async function createLibraryWithDocuments(
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
   await openNewLibraryWizard(page)
-  // Schrittfolge „Quellart · Name · Freigaben · Prüfen" - Upload ist vorausgewählt und hat
+  // Schrittfolge „Quellart · Stammdaten · Freigaben · Prüfen" - Upload ist vorausgewählt und hat
   // keinen Schritt „Quelle".
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(libraryName)

@@ -118,13 +118,14 @@ function next(user: User) {
   return user.click(screen.getByRole('button', { name: 'Weiter' }))
 }
 
-/** Step 1 „Quellart": choose a tile and go on - then „Quelle einrichten" (or „Name") follows. */
-async function chooseType(user: User, label: RegExp) {
+/** „Quellart“ and „Stammdaten“ of a connector library: choose a tile, name it, on to „Quelle“. */
+async function chooseType(user: User, label: RegExp, name = 'Testbibliothek') {
   await user.click(screen.getByRole('radio', { name: label }))
   await next(user)
+  await nameItAndContinue(user, name)
 }
 
-/** Step „Name & Beschreibung": overwrite the prefilled name and go on to „Freigaben". */
+/** Step „Stammdaten“: enter the name and go on. */
 async function nameItAndContinue(user: User, name: string) {
   const field = screen.getByLabelText(/^Name/)
   await user.clear(field)
@@ -162,8 +163,8 @@ async function chooseByHand(user: User, link: string, label: string, texts: stri
 
 /** From the last step before „Prüfen“ (or from „Prüfen“ itself): create the library there. */
 async function create(user: User) {
-  if (!screen.queryByRole('button', { name: 'Bibliothek anlegen' })) await next(user)
-  await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+  if (!screen.queryByRole('button', { name: 'Anlegen' })) await next(user)
+  await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 }
 
 describe('LibraryCreatePage (#596, #1942)', () => {
@@ -241,9 +242,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
     // „Weiter“ stays enabled and says why it cannot go on, at the step it stays on
     await next(userEvent.setup())
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Woher kommt das Wissen?' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Quellart' })).toBeInTheDocument()
     expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
     expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
   })
@@ -268,26 +267,68 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await renderPage()
 
     expect(screen.getByText('1 · Quellart')).toBeInTheDocument()
-    expect(screen.getByText('2 · Name')).toBeInTheDocument()
+    expect(screen.getByText('2 · Stammdaten')).toBeInTheDocument()
     expect(screen.getByText('3 · Freigaben')).toBeInTheDocument()
     expect(screen.getByText('4 · Prüfen')).toBeInTheDocument()
     expect(screen.queryByText(/· Quelle$/)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /Confluence/ }))
-    expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
-    expect(screen.getByText('3 · Name')).toBeInTheDocument()
+    expect(screen.getByText('2 · Stammdaten')).toBeInTheDocument()
+    expect(screen.getByText('3 · Quelle')).toBeInTheDocument()
     expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
     expect(screen.getByText('5 · Prüfen')).toBeInTheDocument()
   })
 
-  it('blocks Weiter without a name and says so', async () => {
+  it('walks the new steps after „Ändern“ swaps the source type for one with a source', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+
+    await next(user)
+    await nameItAndContinue(user, 'Handakte')
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+
+    await changeRow(user, 'Quellart')
+    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+    await next(user)
+    // the step list changed: „Weiter“ no longer jumps to „Prüfen“ past the new step „Quelle“
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
+  })
+
+  it('walks „Quelle“ again after „Ändern“ swaps one connector for another', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+
+    await chooseType(user, /Webverzeichnis/, 'Handakte')
+    await user.type(
+      screen.getByLabelText('Adresse', { exact: true }),
+      'https://example.org/ablage/',
+    )
+    await next(user)
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+
+    await changeRow(user, 'Quellart')
+    await user.click(screen.getByRole('radio', { name: /RSS-Feed/ }))
+    await next(user)
+    // same step list, another source: „Weiter“ walks on instead of jumping past „Quelle“
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
+  })
+
+  it('names a missing name at the field and moves the focus into it', async () => {
     const user = userEvent.setup()
     await renderPage()
 
     await next(user)
     await next(user)
-    expect(await screen.findByText('Name fehlt')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+    const name = screen.getByLabelText(/^Name/)
+    expect(name).toHaveAccessibleDescription('Name fehlt')
+    expect(name).toHaveFocus()
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
   })
 
   it('carries the focus to the heading of the step just entered', async () => {
@@ -296,7 +337,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await next(user)
 
-    const heading = screen.getByRole('heading', { level: 2, name: 'Name & Beschreibung' })
+    const heading = screen.getByRole('heading', { level: 2, name: 'Stammdaten' })
     expect(heading).toHaveFocus()
   })
 
@@ -317,7 +358,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       renderWithProviders(<LibraryCreatePage />, { withRouter: true })
 
       await screen.findByText(/Sie dürfen derzeit keine Bibliothek anlegen/)
-      expect(document.getElementById('library-create-capability-hint')).toHaveTextContent(
+      expect(document.getElementById('wizard-create-blocked')).toHaveTextContent(
         'Wenden Sie sich an die Systemverwaltung',
       )
       expect(screen.queryByRole('radio')).not.toBeInTheDocument()
@@ -375,9 +416,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         ),
       )
       expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument()
-      expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+      expect(screen.getByText('3 · Quelle')).toBeInTheDocument()
       // no hint above the wizard: it would concern the chosen type, and that one is allowed now
-      expect(document.getElementById('library-create-capability-hint')).toBeNull()
+      expect(document.getElementById('wizard-create-blocked')).toBeNull()
     })
   })
 
@@ -513,7 +554,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
 
-      await chooseType(user, /Dateisystem/)
+      await chooseType(user, /Dateisystem/, 'Dienstanweisungen')
       await user.type(screen.getByLabelText(/^Verzeichnis/), '/data/dokumente')
       // nightly is preset; the row „Zeitplan“ opens on „Ändern“
       expect(within(rowOf('Zeitplan')).getByText(/täglich 02:00/)).toBeInTheDocument()
@@ -521,7 +562,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(screen.getByRole('combobox', { name: 'Häufigkeit' }))
       await user.click(await screen.findByRole('option', { name: 'Wöchentlich' }))
       await next(user)
-      await nameItAndContinue(user, 'Dienstanweisungen')
+      await next(user)
       await create(user)
 
       await waitFor(() =>
@@ -556,10 +597,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListS3Buckets.mockReset()
     })
 
-    async function openS3Step() {
+    async function openS3Step(name?: string) {
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /S3-Objektspeicher/)
+      await chooseType(user, /S3-Objektspeicher/, name)
       return user
     }
 
@@ -593,7 +634,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         listingPermitted: true,
         buckets: ['protokolle', 'satzungen'],
       })
-      const user = await openS3Step()
+      const user = await openS3Step('Protokolle')
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
@@ -604,9 +645,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'satzungen',
       ])
       await next(user)
-      // The name is prefilled from the source - here the first bucket.
-      expect(screen.getByLabelText(/^Name/)).toHaveValue('protokolle')
-      await nameItAndContinue(user, 'Protokolle')
       await create(user)
 
       await waitFor(() =>
@@ -642,7 +680,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         listingPermitted: true,
         buckets: ['verwaltung-dokumente', 'archiv'],
       })
-      const user = await openS3Step()
+      const user = await openS3Step('Verwaltungsdokumente')
       await user.click(screen.getByRole('combobox', { name: 'Anbieter' }))
       await user.click(await screen.findByRole('option', { name: 'AWS S3' }))
       expect(screen.getByLabelText('Endpoint')).toHaveValue('https://s3.eu-central-1.amazonaws.com')
@@ -657,7 +695,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
-      await nameItAndContinue(user, 'Verwaltungsdokumente')
       await create(user)
 
       await waitFor(() =>
@@ -683,7 +720,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     it('creates „Alle Buckets“ where the key may list them', async () => {
       mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
       mockListS3Buckets.mockResolvedValue({ listingPermitted: true, buckets: ['akten'] })
-      const user = await openS3Step()
+      const user = await openS3Step('Objektspeicher')
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
@@ -694,7 +731,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'Was später in der Quelle dazukommt, wird automatisch mit indiziert.',
       )
       await next(user)
-      await nameItAndContinue(user, 'Objektspeicher')
       await create(user)
 
       await waitFor(() =>
@@ -778,10 +814,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListConfluenceSpaces.mockResolvedValue({ spaces })
     })
 
-    async function openConfluenceStep() {
+    async function openConfluenceStep(name?: string) {
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Confluence/)
+      await chooseType(user, /Confluence/, name)
       return user
     }
 
@@ -804,7 +840,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     it('creates „Alle Spaces“ without listing a single space', async () => {
       mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValue(DC_VERIFIED)
-      const user = await openConfluenceStep()
+      const user = await openConfluenceStep('Wiki')
       await connectDataCenter(user, true)
 
       const all = screen.getByRole('radio', { name: 'Alle Spaces' })
@@ -813,7 +849,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'Was später in der Quelle dazukommt, wird automatisch mit indiziert.',
       )
       await next(user)
-      await nameItAndContinue(user, 'Wiki')
       await create(user)
 
       await waitFor(() =>
@@ -883,7 +918,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     it('verifies credentials, loads the spaces, and sends edition, credentials and selection', async () => {
       mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
-      const user = await openConfluenceStep()
+      const user = await openConfluenceStep('Wiki Bauamt')
       await connectDataCenter(user)
 
       expect(mockTestLibrarySource).toHaveBeenLastCalledWith({
@@ -896,9 +931,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
       expect(within(rowOf('Verbindung')).getByText('verbunden')).toBeInTheDocument()
       await next(user)
-      // A single space prefills the name.
-      expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
-      await nameItAndContinue(user, 'Wiki Bauamt')
       await create(user)
 
       // The whole request, not just an excerpt: a field the creation endpoint does not
@@ -931,13 +963,12 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     // on creation and must not send the field as 0.
     it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
       mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
-      const user = await openConfluenceStep()
+      const user = await openConfluenceStep('Wiki Bauamt')
       await connectDataCenter(user)
       await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
       await changeRow(user, 'Zeitplan')
       await user.type(screen.getByLabelText(/Vollabgleich alle/), '14')
       await next(user)
-      await nameItAndContinue(user, 'Wiki Bauamt')
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -948,7 +979,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     it('skips the first run when the immediate-indexing switch is turned off', async () => {
       mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
-      const user = await openConfluenceStep()
+      const user = await openConfluenceStep('Wiki Bauamt')
       await connectDataCenter(user)
       await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
 
@@ -957,7 +988,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
-      await nameItAndContinue(user, 'Wiki Bauamt')
       await create(user)
 
       await waitFor(() =>
@@ -1098,6 +1128,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await next(user)
     expect(screen.getByText('Adresse fehlt')).toBeInTheDocument()
 
+    // back over „Stammdaten“ to „Quellart“
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await chooseType(user, /Dateisystem/)
     expect(screen.queryByLabelText(/^Adresse/)).not.toBeInTheDocument()
@@ -1126,9 +1158,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await waitFor(() => expect(summary).toHaveFocus())
       await user.click(within(summary).getByRole('button', { name: 'Verbindung: Verzeichnis' }))
       await waitFor(() => expect(path).toHaveFocus())
-      expect(
-        screen.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
     }, 15000)
 
     it('ties a missing address to the URL field', async () => {
@@ -1210,6 +1240,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     // The same address value, another source type: the probe never ran against a web directory.
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await chooseType(user, /Webverzeichnis/)
 
     expect(screen.getByLabelText(/Adresse/)).toHaveValue('https://example.test/feed.xml')
@@ -1220,21 +1251,21 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     const user = userEvent.setup()
     await renderPage()
 
-    await chooseType(user, /Webverzeichnis/)
+    await chooseType(user, /Webverzeichnis/, 'Merkblätter')
     await user.type(
       screen.getByLabelText(/^Adresse/),
       'https://intranet.behoerde.example/merkblaetter/',
     )
     await next(user)
-    await user.type(screen.getByLabelText(/^Name/), ' Merkblätter')
+    expect(screen.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     expect(within(rowOf('Verbindung')).getByText('intranet.behoerde.example')).toBeInTheDocument()
     await changeRow(user, 'Verbindung')
     expect(screen.getByLabelText(/^Adresse/)).toHaveValue(
       'https://intranet.behoerde.example/merkblaetter/',
     )
-    await next(user)
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('intranet.behoerde.example Merkblätter')
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
+    expect(screen.getByLabelText(/^Name/)).toHaveValue('Merkblätter')
   }, 20000)
 
   // A library is created with no reach of its own - the wizard picks no release level, because
@@ -1324,7 +1355,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Nextcloud/)
+      await chooseType(user, /Nextcloud/, 'Projektablage')
 
       expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('NEXTCLOUD')
       const choice = await screen.findByRole('radiogroup', { name: 'Zugang' })
@@ -1345,7 +1376,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(screen.getByLabelText(/^Benutzername/), 'svc-opaa')
       await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       await next(user)
-      await nameItAndContinue(user, 'Projektablage')
+      await next(user)
       await create(user)
 
       await waitFor(() =>
@@ -1440,14 +1471,14 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       ])
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Nextcloud/)
+      await chooseType(user, /Nextcloud/, 'Projektablage')
       await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
 
       expect(screen.queryByRole('switch', { name: /Zertifikatsprüfung/ })).not.toBeInTheDocument()
       await user.type(screen.getByLabelText(/^Benutzername/), 'svc-opaa')
       await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       await next(user)
-      await nameItAndContinue(user, 'Projektablage')
+      await next(user)
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -1460,14 +1491,14 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Nextcloud/)
+      await chooseType(user, /Nextcloud/, 'Eigene Cloud')
       await user.click(await screen.findByRole('radio', { name: /Eigene Adresse/ }))
 
       await user.type(screen.getByLabelText(/^Adresse/), 'https://cloud.example')
       await user.type(screen.getByLabelText(/^Benutzername/), 'svc')
       await user.type(screen.getByLabelText(/^App-Passwort$/), 'pw')
       await next(user)
-      await nameItAndContinue(user, 'Eigene Cloud')
+      await next(user)
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -1574,7 +1605,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /SharePoint/)
+      await chooseType(user, /SharePoint/, 'Bauamt Dokumente')
 
       expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('SHAREPOINT')
       // nothing to fill in under „Verbindung“: it names the Zugang, and „Umfang“ opens at once
@@ -1616,8 +1647,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(rhythm).not.toHaveAccessibleDescription(/Confluence/)
 
       await next(user)
-      expect(screen.getByLabelText(/^Name/)).toHaveValue('Dokumente (Bauamt)')
-      await nameItAndContinue(user, 'Bauamt Dokumente')
+      await next(user)
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -1648,7 +1678,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /SharePoint/)
+      await chooseType(user, /SharePoint/, 'Bauamt')
 
       const all = await screen.findByRole('radio', { name: 'Alle Dokumentbibliotheken einer Site' })
       expect(all).toBeChecked()
@@ -1660,8 +1690,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'https://rheinfurt.sharepoint.com/sites/bauamt',
       ])
       await next(user)
-      expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
-      await nameItAndContinue(user, 'Bauamt')
+      await next(user)
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
@@ -1755,21 +1784,19 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListConnectionProfileOptions.mockResolvedValue([ownProfile])
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Nextcloud/)
+      await chooseType(user, /Nextcloud/, 'Meine Ablage')
 
       const group = await screen.findByRole('radiogroup', { name: 'Zugang' })
       await user.click(within(group).getByRole('radio', { name: /Nextcloud intern · privat/ }))
 
       expect(screen.queryByLabelText(/^Benutzername/)).not.toBeInTheDocument()
       expect(screen.queryByLabelText(/^App-Passwort/)).not.toBeInTheDocument()
-      expect(screen.getByText('3 · Name')).toBeInTheDocument()
+      expect(screen.getByText('3 · Quelle')).toBeInTheDocument()
       expect(screen.getByText('4 · Prüfen')).toBeInTheDocument()
       expect(screen.queryByText(/· Freigaben/)).not.toBeInTheDocument()
 
       await next(user)
-      const field = screen.getByLabelText(/^Name/)
-      await user.clear(field)
-      await user.type(field, 'Meine Ablage')
+      expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
       expect(screen.getByText(/Nur Sie sehen diese Bibliothek/)).toBeInTheDocument()
       await create(user)
 
@@ -1811,7 +1838,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListConnectionProfileOptions.mockResolvedValue([ownProfile])
       const user = userEvent.setup()
       await renderPage()
-      await chooseType(user, /Nextcloud/)
+      await chooseType(user, /Nextcloud/, 'Projektablage')
       await screen.findByRole('radio', { name: /Nextcloud intern · privat/ })
 
       expect(screen.getByRole('radio', { name: /Nextcloud intern · privat/ })).toHaveAccessibleName(
@@ -1826,7 +1853,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
       await next(user)
-      await nameItAndContinue(user, 'Projektablage')
+      await next(user)
       await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())

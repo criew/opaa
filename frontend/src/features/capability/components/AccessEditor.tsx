@@ -313,10 +313,16 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
         </Button>
         <Button
           variant="contained"
-          disabled={busy || unchanged || missingSubject}
-          onClick={() => void onSave(target)}
+          disabled={busy}
+          onClick={() => {
+            // without a subject the line under „Danach“ says what is missing
+            if (missingSubject) return
+            // nothing changed: there is nothing to save, the editor just closes
+            if (unchanged) onCancel()
+            else void onSave(target)
+          }}
         >
-          {busy ? 'Wird gespeichert …' : 'Speichern'}
+          Speichern
         </Button>
       </Stack>
     </Stack>

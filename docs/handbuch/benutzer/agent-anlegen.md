@@ -10,8 +10,9 @@ Agenten gibt es nur, wenn die Systemverwaltung sie eingeschaltet hat. Das Anlege
 niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“.
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Agenten“ und „Weiter“.
-2. Name, Zweck und Eigentümer angeben, „Agent anlegen“. Der Zweck steht später in der Auswahl im
-   Chat unter dem Namen.
+2. **Stammdaten:** Name und Zweck. Der Zweck steht später in der Auswahl im Chat unter dem Namen.
+   **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“, auf Wunsch Rollen vormerken.
+   **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 3. Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen darf,
    und mit den Werkzeugen „Im Wissen suchen“ und „Dokument lesen“.
 4. Auf seiner Seite jede Zeile mit „Ändern“ einrichten:

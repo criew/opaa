@@ -10,9 +10,9 @@
    (siehe unten). Als `.docx` speichern, ohne Makros.
 2. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Vorlagen“ und „Weiter“.
 3. **Stammdaten:** Name, Beschreibung und „Word-Datei auswählen“.
-4. **Eigentümer:** „Mein Konto“ oder „Eine Gruppe“; für eine Hausvorlage ist die Gruppe die
-   haltbarere Wahl.
-5. **Rechte:** auf Wunsch Rollen vormerken, dann „Vorlage anlegen“.
+4. **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“; für eine Hausvorlage ist die
+   Gruppe die haltbarere Wahl. Auf Wunsch Rollen vormerken.
+5. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht

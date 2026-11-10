@@ -304,7 +304,7 @@ describe('GroupManagementPage', () => {
     const dialog = await screen.findByRole('dialog', {
       name: '„Projektbeteiligte Phoenix“ bearbeiten',
     })
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
     expect(within(dialog).getByText('Verantwortlich')).toBeInTheDocument()
 
     const name = within(dialog).getByLabelText('Name der Gruppe')
@@ -349,7 +349,7 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByText('Verzeichnisdienst · /Haus A/Referat 50')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Name der Gruppe')).not.toBeInTheDocument()
     expect(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
   })
 
   // ADR-0036, Entscheidung 9: the system administration decides about the protection - also for a
@@ -507,6 +507,14 @@ describe('GroupManagementPage', () => {
     await user.click(screen.getByRole('button', { name: 'Gruppe anlegen' }))
     const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
     expect(within(dialog).getByText('Ada Admin (Sie)')).toBeInTheDocument()
+    // without a name „Anlegen“ says so at the field and puts the focus there
+    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+    expect(within(dialog).getByLabelText('Name der Gruppe')).toBeInvalid()
+    expect(within(dialog).getByLabelText('Name der Gruppe')).toHaveFocus()
+    expect(within(dialog).getByText('Bitte einen Namen angeben.')).toBeVisible()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
     await user.type(within(dialog).getByLabelText('Name der Gruppe'), 'Neue Gruppe')
     await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
     const protection = within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })

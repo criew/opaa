@@ -154,7 +154,7 @@ describe('ConnectorTypesTab', () => {
       await within(dialog).findByTestId('profile-requirement-not-switchable'),
     ).toHaveTextContent('keinen nicht gesperrten Zugang')
     expect(within(dialog).queryByRole('button', { name: 'Einschalten' })).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
     expect(sent).toEqual([])
   })
 
@@ -236,7 +236,7 @@ describe('ConnectorTypesTab', () => {
     const dialog = await screen.findByRole('dialog', { name: /Bestand von Nextcloud/ })
     expect(await within(dialog).findByRole('radio', { name: /Weiterlaufen lassen/ })).toBeChecked()
     await user.click(within(dialog).getByRole('radio', { name: /Sperren – sie laufen nicht mehr/ }))
-    await user.click(within(dialog).getByRole('button', { name: 'Wahl speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: 'LOCKED' }]))
   })

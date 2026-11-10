@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import visuallyHiddenSx from '@mui/utils/visuallyHidden'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
-import PageHeading from '@/shared/ui/a11y/PageHeading'
+import WizardLayout from '@/shared/ui/wizard/WizardLayout'
+import { useFieldError } from '@/shared/ui/wizard/useFieldError'
+import { notify } from '@/shared/stores/notificationStore'
 import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
@@ -46,7 +46,6 @@ import {
   type ConfluenceFullSyncRhythm,
   type LibraryScheduleValues,
 } from '../utils/librarySchedule'
-import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
@@ -67,21 +66,19 @@ import {
   CONSENT_REQUIRED,
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
-  STEP_NAME,
+  SOURCE_SETUP_INDEX,
+  STEP_MASTER_DATA,
   STEP_REVIEW,
   STEP_SHARING,
   STEP_SOURCE_SETUP,
   STEP_SOURCE_TYPE,
   restoredDraft,
   restoredSourceValues,
-  stepHeadings,
   stepsFor,
 } from '../components/libraryCreateWizard'
 import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
-import LibraryCreateFooter from '../components/LibraryCreateFooter'
-import { CONTENT_WIDTH } from '../components/setup/rowStyles'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
@@ -98,13 +95,14 @@ export default function LibraryCreatePage() {
   // A consent for the source leaves for the provider; the wizard comes back on „Quelle einrichten“.
   const [restored] = useState(restoredDraft)
   const draft = restored?.draft
-  const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
+  const [activeStep, setActiveStep] = useState(restored ? SOURCE_SETUP_INDEX : 0)
   const [error, setError] = useState<string | null>(null)
   const setupRef = useRef<SourceSetupHandle>(null)
-  // the row of „Quelle einrichten“ open on arrival: the first one, or the one „Ändern“ asked for
+  // the row of „Quelle“ open on arrival: the first one, or the one „Ändern“ asked for
   const [initialRow, setInitialRow] = useState<SetupRowId | null>('connection')
-  // set by „Ändern“ on the review step: „Weiter“ then leads straight back to it
-  const [returnToReview, setReturnToReview] = useState(false)
+  // source type and step list „Ändern“ on the review step left from: while both hold, „Weiter“
+  // leads straight back to „Prüfen“; another source type walks its steps, „Quelle“ included
+  const [reviewSteps, setReviewSteps] = useState<string | null>(null)
   const [stepFailed, setStepFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
@@ -113,13 +111,14 @@ export default function LibraryCreatePage() {
   const { isMissing } = useMyCapabilities()
 
   const [name, setName] = useState(draft?.name ?? '')
-  const [nameTouched, setNameTouched] = useState(draft?.nameTouched ?? false)
+  const nameCheck = useFieldError('Name fehlt')
   const [description, setDescription] = useState(draft?.description ?? '')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>(draft?.ownerType ?? 'USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(
     draft?.selectedGroup ?? null,
   )
   const myGroups = useMyGroups()
+  const groupCheck = useFieldError('Gruppe fehlt')
 
   const [chosenType, setSourceType] = useState<SourceTypeKey>(draft?.sourceType ?? 'UPLOAD')
   // The entered values of every source form, by type key - a form keeps its values when another
@@ -204,6 +203,8 @@ export default function LibraryCreatePage() {
   const groupResponsible =
     consentProfile !== undefined && ownerType === 'GROUP' && selectedGroup !== null
   const steps = stepsFor(uploadLibrary, privateLibrary)
+  const reviewKey = `${sourceType}|${steps.join('|')}`
+  const returnToReview = reviewSteps === reviewKey
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
     admitsProfiles &&
@@ -266,23 +267,9 @@ export default function LibraryCreatePage() {
       ? capabilityMissingMessage(requiredCapability)
       : releaseMissingFor(sourceType)
 
-  // Focus follows the step (WCAG 2.4.3): after „Weiter" it is on the heading of the new
-  // step, not on the button that has just disappeared.
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
-  const firstRender = useRef(true)
+  // Back from the provider: the draft is consumed; the layout puts the focus on the step's title.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      return
-    }
-    stepHeadingRef.current?.focus()
-  }, [activeStep])
-
-  // Back from the provider: the draft is consumed, and the focus lands on the step it left.
-  useEffect(() => {
-    if (!restored) return
-    forgetConsentIntent()
-    stepHeadingRef.current?.focus()
+    if (restored) forgetConsentIntent()
   }, [restored])
 
   /** The configuration whose form keeps its values under `key`. */
@@ -334,7 +321,6 @@ export default function LibraryCreatePage() {
         schedule,
         startFirstRun,
         name,
-        nameTouched,
         description,
         ownerType,
         selectedGroup,
@@ -393,48 +379,38 @@ export default function LibraryCreatePage() {
         setStepFailed(true)
         return
       }
-      // Where the source provides it, the name comes from it - as long as nobody has typed one.
-      if (!nameTouched && name.trim() === '') {
-        setName(configuration.nameFromSource(values))
-      }
     }
-    if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Name fehlt')
-      setStepFailed(true)
-      return
-    }
-    if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
-      setStepFailed(true)
+    if (currentStep === STEP_MASTER_DATA && !nameCheck.check(name.trim() !== '')) return
+    if (
+      currentStep === STEP_SHARING &&
+      !groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
+    ) {
       return
     }
     setError(null)
     setStepFailed(false)
     if (currentStep === STEP_SOURCE_TYPE && !returnToReview) setInitialRow('connection')
     setActiveStep((s) => (returnToReview ? steps.indexOf(STEP_REVIEW) : s + 1))
-    setReturnToReview(false)
+    setReviewSteps(null)
   }
 
   /** „Ändern“ on the review step: to the step (and row) of the answer, and back after „Weiter“. */
   const changeAt = (step: string, row: SetupRowId | null = null) => {
     setInitialRow(row)
-    setReturnToReview(true)
+    setReviewSteps(reviewKey)
     setError(null)
     setActiveStep(steps.indexOf(step))
   }
 
   const handleCreate = async () => {
     if (submitting) return
-    if (missingCapability) {
-      setError(missingCapability)
-      return
-    }
+    // „Prüfen“ follows both checks; a gap leads back to the step that asks for it
     if (name.trim() === '') {
-      setError('Name fehlt')
+      setActiveStep(steps.indexOf(STEP_MASTER_DATA))
       return
     }
     if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
+      setActiveStep(steps.indexOf(STEP_SHARING))
       return
     }
     const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
@@ -485,6 +461,7 @@ export default function LibraryCreatePage() {
         await triggerIndexing(libraryId, sourceType)
       }
       forgetConsentIntent()
+      notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       // the detail page shows its next steps after this handover
       navigate(`/libraries/${libraryId}?justCreated=1`)
     } catch (err) {
@@ -514,6 +491,12 @@ export default function LibraryCreatePage() {
       value: displayNameOf(sourceType),
       onChange: () => changeAt(STEP_SOURCE_TYPE),
     },
+    { label: 'Name', value: name.trim(), onChange: () => changeAt(STEP_MASTER_DATA) },
+    {
+      label: 'Beschreibung',
+      value: description.trim(),
+      onChange: () => changeAt(STEP_MASTER_DATA),
+    },
     ...(configuration && setup
       ? setup.sections.map((section) => ({
           label: section.id === 'connection' ? 'Verbindung' : 'Umfang',
@@ -535,8 +518,6 @@ export default function LibraryCreatePage() {
           },
         ]
       : []),
-    { label: 'Name', value: name.trim(), onChange: () => changeAt(STEP_NAME) },
-    { label: 'Beschreibung', value: description.trim(), onChange: () => changeAt(STEP_NAME) },
     ...(steps.includes(STEP_SHARING)
       ? [
           {
@@ -557,196 +538,188 @@ export default function LibraryCreatePage() {
         ]
       : []),
   ]
-  const stepHeading = stepHeadings[currentStep] ?? currentStep
-  const documentTitle = `${stepFailed || error ? 'Fehler: ' : ''}${stepHeading} – Schritt ${activeStep + 1} von ${steps.length} – Neue Wissensbibliothek`
-
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
-        <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
-        <Typography aria-hidden sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}>
-          Neue Wissensbibliothek
+    <WizardLayout
+      object="Neue Wissensbibliothek"
+      steps={steps}
+      activeStep={activeStep}
+      failed={stepFailed || nameCheck.error !== null || groupCheck.error !== null}
+      createBlockedBy={missingCapability}
+      error={error}
+      footerNote={
+        currentStep === STEP_SHARING && pendingGrants.length > 0
+          ? pendingGrants.length === 1
+            ? '1 Freigabe vorgemerkt'
+            : `${pendingGrants.length} Freigaben vorgemerkt`
+          : null
+      }
+      // rows end in their own line; a second one above the buttons would double it
+      footerSeparated={currentStep !== STEP_SOURCE_SETUP && currentStep !== STEP_REVIEW}
+      // back from the provider, the focus lands on the step the person left
+      focusTitleOnMount={restored !== null}
+      submitting={submitting}
+      createAnnouncement="Bibliothek wird angelegt"
+      onCancel={() => void handleCancel()}
+      onBack={() => {
+        setError(null)
+        setStepFailed(false)
+        setInitialRow(null)
+        setReviewSteps(null)
+        setActiveStep((s) => s - 1)
+      }}
+      onNext={() => void handleNext()}
+      onCreate={() => void handleCreate()}
+    >
+      {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Quellarten werden geladen …
         </Typography>
-        {/* one page title for the whole wizard; the step heading takes the focus after „Weiter“ */}
-        <Typography ref={stepHeadingRef} component="h2" tabIndex={-1} sx={visuallyHiddenSx}>
-          {stepHeading}
-        </Typography>
-        <WizardStepBar steps={steps} active={activeStep} />
+      )}
 
-        {missingCapability && (
-          <Alert severity="info" sx={{ mb: 2 }} id="library-create-capability-hint">
-            {missingCapability}
-          </Alert>
+      {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={reloadSourceTypes}>
+              Erneut versuchen
+            </Button>
+          }
+        >
+          Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
+        </Alert>
+      )}
+
+      {currentStep === STEP_SOURCE_TYPE &&
+        sourceTypesLoaded &&
+        !sourceTypesError &&
+        shownTypes.length > 0 && (
+          <ChoiceTileGroup<SourceTypeKey>
+            aria-label="Quellart wählen"
+            value={sourceType}
+            onChange={(next) => {
+              setSourceType(next)
+              setError(null)
+            }}
+            tiles={shownTypes.map((type) => ({
+              value: type,
+              label: displayNameOf(type),
+              description: documentSourceTypeDescription(type),
+              icon: <SourceTypeIcon sourceType={type} fontSize={iconSize.lg} />,
+              disabledReason: missingFor(type),
+            }))}
+          />
         )}
 
-        {/* A step's error is announced without moving the focus (WCAG 4.1.3). */}
-        <Box role="alert" aria-live="polite">
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+      {currentStep === STEP_SOURCE_SETUP && setup && (
+        <CreateSourceSetupStep
+          showConnectionSelect={showConnectionSelect}
+          descriptor={descriptor}
+          profileOptions={profileOptions}
+          connectionChoice={connectionChoice}
+          onChooseConnection={chooseConnection}
+          connectionLead={connectionLead}
+          consentProfile={consentProfile}
+          pendingConnection={pendingConnection}
+          serviceAccountConfirmed={serviceAccountConfirmed}
+          onServiceAccountConfirmedChange={(checked) => {
+            setServiceAccountConfirmed(checked)
+            if (checked) setConfirmationMissing(false)
+          }}
+          confirmationMissing={confirmationMissing}
+          connectingSource={connectingSource}
+          onConnectSource={() => void handleConnectSource()}
+          setup={setup}
+          awaitsConsent={awaitsConsent}
+          setupRef={setupRef}
+          initialRow={initialRow}
+          values={values}
+          formContext={formContext}
+          onSourceChange={(patch: object) => {
+            // from the latest values: a listing or detection may answer after further typing
+            setSourceValues((prev) => ({
+              ...prev,
+              [valuesKey]: {
+                ...(withConnection(enteredValues(prev[valuesKey]), connection) as object),
+                ...withoutFixed(patch, connection),
+              },
+            }))
+            setError(null)
+          }}
+          schedule={schedule}
+          onScheduleChange={(patch) => {
+            setSchedule((prev) => ({ ...prev, ...patch }))
+            setError(null)
+          }}
+          confluenceRhythm={confluenceRhythm}
+          startFirstRun={startFirstRun}
+          onStartFirstRunChange={setStartFirstRun}
+          firstRunHint={firstRunHint}
+          connectionChoices={selectable.length}
+        />
+      )}
+
+      {currentStep === STEP_MASTER_DATA && (
+        <>
+          {uploadLibrary && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
+              gebündelt.
+            </Typography>
+          )}
+          <AssetNameFields
+            idPrefix="library-create"
+            name={name}
+            onNameChange={(next) => {
+              nameCheck.clear()
+              setName(next)
+              setError(null)
+            }}
+            nameError={nameCheck.error}
+            nameInputRef={nameCheck.ref}
+            description={description}
+            onDescriptionChange={setDescription}
+            namePlaceholder="z. B. Rechtsquellen Soziales"
+          />
+        </>
+      )}
+
+      {currentStep === STEP_SHARING && (
+        <CreateSharingStep
+          ownerType={ownerType}
+          onOwnerTypeChange={(next) => {
+            groupCheck.clear()
+            setOwnerType(next)
+            setError(null)
+          }}
+          myGroups={myGroups}
+          selectedGroup={selectedGroup}
+          onSelectedGroupChange={(group) => {
+            groupCheck.clear()
+            setSelectedGroup(group)
+          }}
+          groupError={groupCheck.error}
+          groupInputRef={groupCheck.ref}
+          connectsSource={consentProfile !== undefined}
+          groupResponsible={groupResponsible}
+          responsibleIsGroup={responsibleIsGroup}
+          onResponsibleIsGroupChange={setResponsibleIsGroup}
+          pendingGrants={pendingGrants}
+          onPendingGrantsChange={setPendingGrants}
+        />
+      )}
+
+      {currentStep === STEP_REVIEW && (
+        <>
+          {privateLibrary && (
+            <Alert severity="info" data-testid="library-create-private-note">
+              {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto auf dem Zugang „
+              {connection?.name}“ und lässt sich weder freigeben noch übertragen.
             </Alert>
           )}
-        </Box>
-
-        {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-            Quellarten werden geladen …
-          </Typography>
-        )}
-
-        {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={reloadSourceTypes}>
-                Erneut versuchen
-              </Button>
-            }
-          >
-            Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
-          </Alert>
-        )}
-
-        {currentStep === STEP_SOURCE_TYPE &&
-          sourceTypesLoaded &&
-          !sourceTypesError &&
-          shownTypes.length > 0 && (
-            <ChoiceTileGroup<SourceTypeKey>
-              aria-label="Quellart wählen"
-              value={sourceType}
-              onChange={(next) => {
-                setSourceType(next)
-                setError(null)
-              }}
-              tiles={shownTypes.map((type) => ({
-                value: type,
-                label: displayNameOf(type),
-                description: documentSourceTypeDescription(type),
-                icon: <SourceTypeIcon sourceType={type} fontSize={iconSize.lg} />,
-                disabledReason: missingFor(type),
-              }))}
-            />
-          )}
-
-        {currentStep === STEP_SOURCE_SETUP && setup && (
-          <CreateSourceSetupStep
-            showConnectionSelect={showConnectionSelect}
-            descriptor={descriptor}
-            profileOptions={profileOptions}
-            connectionChoice={connectionChoice}
-            onChooseConnection={chooseConnection}
-            connectionLead={connectionLead}
-            consentProfile={consentProfile}
-            pendingConnection={pendingConnection}
-            serviceAccountConfirmed={serviceAccountConfirmed}
-            onServiceAccountConfirmedChange={(checked) => {
-              setServiceAccountConfirmed(checked)
-              if (checked) setConfirmationMissing(false)
-            }}
-            confirmationMissing={confirmationMissing}
-            connectingSource={connectingSource}
-            onConnectSource={() => void handleConnectSource()}
-            setup={setup}
-            awaitsConsent={awaitsConsent}
-            setupRef={setupRef}
-            initialRow={initialRow}
-            values={values}
-            formContext={formContext}
-            onSourceChange={(patch: object) => {
-              // from the latest values: a listing or detection may answer after further typing
-              setSourceValues((prev) => ({
-                ...prev,
-                [valuesKey]: {
-                  ...(withConnection(enteredValues(prev[valuesKey]), connection) as object),
-                  ...withoutFixed(patch, connection),
-                },
-              }))
-              setError(null)
-            }}
-            schedule={schedule}
-            onScheduleChange={(patch) => {
-              setSchedule((prev) => ({ ...prev, ...patch }))
-              setError(null)
-            }}
-            confluenceRhythm={confluenceRhythm}
-            startFirstRun={startFirstRun}
-            onStartFirstRunChange={setStartFirstRun}
-            firstRunHint={firstRunHint}
-            connectionChoices={selectable.length}
-          />
-        )}
-
-        {currentStep === STEP_NAME && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            {uploadLibrary && (
-              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-                Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
-                gebündelt.
-              </Typography>
-            )}
-            {privateLibrary && (
-              <Alert severity="info" data-testid="library-create-private-note">
-                {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto auf dem Zugang „
-                {connection?.name}“ und lässt sich weder freigeben noch übertragen.
-              </Alert>
-            )}
-            <AssetNameFields
-              idPrefix="library-create"
-              name={name}
-              onNameChange={(next) => {
-                setNameTouched(true)
-                setName(next)
-                setError(null)
-              }}
-              description={description}
-              onDescriptionChange={setDescription}
-              namePlaceholder="z. B. Rechtsquellen Soziales"
-            />
-          </Box>
-        )}
-
-        {currentStep === STEP_SHARING && (
-          <CreateSharingStep
-            ownerType={ownerType}
-            onOwnerTypeChange={(next) => {
-              setOwnerType(next)
-              setError(null)
-            }}
-            myGroups={myGroups}
-            selectedGroup={selectedGroup}
-            onSelectedGroupChange={setSelectedGroup}
-            connectsSource={consentProfile !== undefined}
-            groupResponsible={groupResponsible}
-            responsibleIsGroup={responsibleIsGroup}
-            onResponsibleIsGroupChange={setResponsibleIsGroup}
-            pendingGrants={pendingGrants}
-            onPendingGrantsChange={setPendingGrants}
-          />
-        )}
-
-        {currentStep === STEP_REVIEW && <LibraryReviewStep entries={reviewEntries} />}
-
-        <LibraryCreateFooter
-          activeStep={activeStep}
-          stepCount={steps.length}
-          // rows end in their own line; a second one above the buttons would double it
-          separated={currentStep !== STEP_SOURCE_SETUP && currentStep !== STEP_REVIEW}
-          submitting={submitting}
-          pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          missingCapability={missingCapability}
-          returnToReview={returnToReview}
-          onCancel={() => void handleCancel()}
-          onBack={() => {
-            setError(null)
-            setStepFailed(false)
-            setInitialRow(null)
-            setActiveStep((s) => s - 1)
-          }}
-          onNext={() => void handleNext()}
-          onCreate={() => void handleCreate()}
-        />
-      </Box>
-    </Box>
+          <LibraryReviewStep entries={reviewEntries} />
+        </>
+      )}
+    </WizardLayout>
   )
 }

@@ -240,6 +240,14 @@ async function finishToReview(page, type) {
   return REVIEW_HEADING.test(await headingText(page))
 }
 
+/** „Stammdaten“ precedes the source step: name the library and go on. */
+async function passMasterData(page, type) {
+  const name = await firstVisible(page.getByLabel(/^Name/))
+  if (!name) return
+  await name.fill(`${type} UI-Lab`).catch(() => {})
+  await next(page)
+}
+
 async function wizardFlow(page, { type, scenario }, ctx, states) {
   await gotoWizard(page, ctx.base, scenario)
   if (!(await pickType(page, type))) {
@@ -247,6 +255,7 @@ async function wizardFlow(page, { type, scenario }, ctx, states) {
     return
   }
   await next(page)
+  await passMasterData(page, type)
   await chooseConnection(page, type)
   if (type === 'dropbox') {
     if (!(await dropboxConsent(page))) ctx.log('  dropbox consent button not found')

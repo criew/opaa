@@ -8,7 +8,12 @@ import {
   uploadTextDocument,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
-import { createFromReview, indexedDocumentStates, openNewLibraryWizard } from '../fixtures/chat'
+import {
+  createFromReview,
+  indexedDocumentStates,
+  nameNewLibrary,
+  openNewLibraryWizard,
+} from '../fixtures/chat'
 
 // Nacharbeiten-Serie aus Epic #458 (siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -165,7 +170,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
   })
 })
 
-// The connection test in the creation wizard's step "Quelle einrichten", both directions.
+// The connection test in the creation wizard's step "Quelle", both directions.
 //
 // Happy path: HTTP_DIRECTORY against the suite's own "rss-feed" httpd service
 // (docker-compose.e2e.yml, also used by #471), reachable from the backend container under the
@@ -193,6 +198,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await nameNewLibrary(page, 'E2E Assistent')
     await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/webverzeichnis/')
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
@@ -201,7 +207,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
     await expect(result).toContainText(
       'Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.',
     )
-    // Deliberately never clicked "Bibliothek anlegen" - this scenario only exercises the test
+    // Deliberately never clicked "Anlegen" - this scenario only exercises the test
     // call itself, no library was created and there is nothing for cleanupLibraries to remove.
   })
 
@@ -213,6 +219,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await nameNewLibrary(page, libraryName)
     // "ai-stub" resolves instantly (it is part of this very stack) - nothing listens on port 9,
     // so the backend's HTTP client gets an immediate, DNS-independent connection refusal.
     await page.getByLabel('Adresse', { exact: true }).fill('http://ai-stub:9/')
@@ -229,8 +236,6 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
       'Verbindung: Test (Adresse)',
     )
     await page.getByRole('button', { name: 'Trotzdem fortfahren' }).click()
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
@@ -322,14 +327,13 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await nameNewLibrary(page, libraryName)
     await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/anlagen/')
     // Der Sofortstart gilt im Assistenten für jeden Konnektortyp und ist
     // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
     // statt des Leerzustands den Bestand des ersten Laufs.
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
     await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
@@ -395,6 +399,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await nameNewLibrary(page, libraryName)
     await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/anlagen/')
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
@@ -403,8 +408,6 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
     await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()

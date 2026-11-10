@@ -203,7 +203,6 @@ describe('ConnectionCallbackPage', () => {
       schedule: scheduleValuesFrom(null),
       startFirstRun: true,
       name: '',
-      nameTouched: false,
       description: '',
       ownerType: 'USER',
       selectedGroup: null,
