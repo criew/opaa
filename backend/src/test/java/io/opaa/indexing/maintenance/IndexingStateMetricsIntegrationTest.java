@@ -1,8 +1,12 @@
 package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.observability.IndexingMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.test.BareLibraries;
 import io.opaa.test.OpaaIntegrationTest;
@@ -11,11 +15,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * The indexing gauges read from the real tables. This class's libraries carry a source type of
@@ -31,6 +39,11 @@ class IndexingStateMetricsIntegrationTest {
   @Autowired private IndexingStateMetrics metrics;
   @Autowired private MeterRegistry meterRegistry;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private IndexingJobService indexingJobService;
+
+  @Autowired
+  @Qualifier("indexingTaskExecutor")
+  private TaskExecutor indexingTaskExecutor;
 
   private final UUID dead = UUID.randomUUID();
   private final UUID alive = UUID.randomUUID();
@@ -120,14 +133,127 @@ class IndexingStateMetricsIntegrationTest {
     assertThat(gauge("opaa.indexing.libraries.overdue")).isEqualTo(1.0);
   }
 
+  /**
+   * Runs of an owner-only library count as {@code private}, never under their source type: no
+   * series traces one person's library. Its run lies ahead of any other private library's.
+   */
   @Test
-  void theReindexBacklogAndThePoolOfRunsAreReported() {
-    metrics.refresh();
+  void anOwnerOnlyLibraryCountsAsPrivate() {
+    UUID ownersOwn = UUID.randomUUID();
+    BareLibraries.create(jdbcTemplate, ownersOwn, true);
+    try {
+      jdbcTemplate.update(
+          "UPDATE knowledge_libraries SET source_type = ?, schedule_enabled = true,"
+              + " schedule_cron = ? WHERE id = ?",
+          CONNECTOR_TYPE,
+          DAILY_AT_THREE,
+          ownersOwn);
+      Instant ahead = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(Duration.ofDays(365));
+      run(ownersOwn, "COMPLETED", ahead);
+      run(dead, "COMPLETED", Instant.now().minus(Duration.ofDays(3)));
+      run(alive, "COMPLETED", Instant.now().minus(Duration.ofMinutes(5)));
 
-    assertThat(meterRegistry.get("opaa.indexing.reindex.remaining").gauge().value())
-        .isGreaterThanOrEqualTo(0.0);
-    assertThat(meterRegistry.get("opaa.indexing.runs.active").gauge().value()).isNotNegative();
-    assertThat(meterRegistry.get("opaa.indexing.runs.queued").gauge().value()).isNotNegative();
+      metrics.refresh();
+
+      assertThat(
+              meterRegistry
+                  .get("opaa.indexing.run.last_success")
+                  .tag("connector", IndexingMetrics.PRIVATE)
+                  .gauge()
+                  .value())
+          .isEqualTo(ahead.getEpochSecond());
+      assertThat(gauge("opaa.indexing.run.last_success"))
+          .as("the private run never shows under its source type")
+          .isLessThan(ahead.getEpochSecond());
+      assertThat(gauge("opaa.indexing.libraries.overdue")).isEqualTo(1.0);
+    } finally {
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", ownersOwn);
+      BareLibraries.remove(jdbcTemplate, ownersOwn);
+    }
+  }
+
+  @Test
+  void withoutAPendingModelChangeNothingIsLeftToReindex() {
+    metrics.refreshReindex();
+
+    assertThat(meterRegistry.get("opaa.indexing.reindex.remaining").gauge().value()).isZero();
+  }
+
+  /** Every thread of the pool busy and one more run waiting: both gauges say so. */
+  @Test
+  void theRunsThePoolExecutesAndHoldsQueuedAreReported() throws InterruptedException {
+    ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) indexingTaskExecutor;
+    int threads = pool.getCorePoolSize();
+    CountDownLatch release = new CountDownLatch(1);
+    try {
+      for (int i = 0; i <= threads; i++) {
+        pool.execute(
+            () -> {
+              try {
+                release.await();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+      }
+      await()
+          .atMost(Duration.ofSeconds(10))
+          .untilAsserted(
+              () -> {
+                assertThat(meterRegistry.get("opaa.indexing.runs.active").gauge().value())
+                    .isEqualTo(threads);
+                assertThat(meterRegistry.get("opaa.indexing.runs.queued").gauge().value())
+                    .isEqualTo(1.0);
+              });
+    } finally {
+      release.countDown();
+    }
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              assertThat(meterRegistry.get("opaa.indexing.runs.active").gauge().value()).isZero();
+              assertThat(meterRegistry.get("opaa.indexing.runs.queued").gauge().value()).isZero();
+            });
+  }
+
+  /**
+   * The recovery fails a stale run in one statement and finds it again in Postgres by the end time
+   * and message it wrote: the run counts once, as {@code abandoned}.
+   */
+  @Test
+  void aRunTheRecoveryFailsCountsAsAbandoned() {
+    Instant stale = Instant.now().minus(Duration.ofDays(2));
+    jdbcTemplate.update(
+        "INSERT INTO indexing_jobs (id, status, started_at, last_progress_at, organization_id,"
+            + " library_id, run_mode) VALUES (?, 'RUNNING', ?, ?, ?, ?, 'INCREMENTAL')",
+        UUID.randomUUID(),
+        Timestamp.from(stale),
+        Timestamp.from(stale),
+        Organization.DEFAULT_ID,
+        alive);
+    double before = abandoned();
+
+    indexingJobService.recoverStaleJobs(Duration.ofHours(1));
+
+    assertThat(abandoned()).isEqualTo(before + 1);
+  }
+
+  private double abandoned() {
+    Counter counter =
+        meterRegistry
+            .find("opaa.indexing.runs")
+            .tags(
+                "connector",
+                CONNECTOR,
+                "mode",
+                "delta",
+                "result",
+                "failed",
+                "failure_category",
+                "abandoned")
+            .counter();
+    return counter == null ? 0 : counter.count();
   }
 
   private static org.assertj.core.data.Offset<Double> within() {

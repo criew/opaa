@@ -68,6 +68,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -118,6 +119,22 @@ public class IndexingConfiguration {
   @Bean
   IndexingMetrics indexingMetrics(MeterRegistry meterRegistry) {
     return new IndexingMetrics(meterRegistry);
+  }
+
+  /**
+   * Registers the {@code opaa.indexing.documents} series of every registered source type at 0 once
+   * all beans exist, so a fresh pod reports them before its first document (OpaaIndexingStalled).
+   */
+  @Bean
+  SmartInitializingSingleton indexingDocumentSeries(
+      IndexingMetrics indexingMetrics, ObjectProvider<SourceConnectorRegistry> connectors) {
+    return () ->
+        connectors.ifAvailable(
+            registry ->
+                indexingMetrics.registerDocumentSeries(
+                    registry.descriptors().stream()
+                        .map(descriptor -> descriptor.type().key())
+                        .toList()));
   }
 
   /**

@@ -104,16 +104,32 @@ nennt; die Bibliothek ist nie ein Label. Ein Lauf zählt an seinem Ende in `opaa
 Betriebsart, Ergebnis und `failure_category` aus der festen Liste der Laufgründe; einen Lauf, den
 die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, zählt sie als
 `abandoned`. `opaa.indexing.run.duration` veröffentlicht SLO-Buckets wie die Timer aus
-Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`). Was nur die Datenbank weiß, liest jede Instanz
-jede Minute aus den vorhandenen Tabellen: den jüngsten Erfolg je Konnektortyp, die Zahl überfälliger
-Bibliotheken je Typ, den Rückstand eines Modellwechsels, den letzten angewendeten
-Verzeichnisabgleich und das Alter eines Plans, der auf Bestätigung wartet. Jeder Pod meldet dann
-denselben Wert; Dashboards und Alarme fassen solche Gauges mit `max` über die Pods zusammen, nicht
-mit `sum`. Der jüngste Erfolg je Typ verdeckt eine tote Bibliothek, solange eine andere desselben
-Typs läuft. Deshalb zählt `opaa.indexing.libraries.overdue` die Bibliotheken mit Zeitplan, deren
-letzter Erfolg länger als zwei ihrer Intervalle zurückliegt, als Anzahl ohne Kennung. Der
-Verzeichnisabgleich nennt als `provider` den Typ des Verzeichniszugangs (`keycloak`); sein letzter
-Erfolg ist der letzte angewendete Lauf und steht still, solange ein Plan auf Bestätigung wartet.
+Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`).
+
+Läufe, letzter Erfolg und Überfälligkeit einer privaten Bibliothek zählen nicht unter ihrem
+Quellentyp, sondern unter `connector="private"`, und die Laufgründe, die von der einen Person dahinter
+sprechen (`quota_exhausted`, `owner_deactivated`), fallen dort in die Sammelkategorie `private`. Eine
+private Bibliothek ist oft die einzige ihres Typs; unter ihrem Typ ergäbe die Reihe den Verlauf
+einer Person. Das folgt derselben Linie wie die Maskierung geschützter Gruppen (ADR-0036,
+Entscheidung 9) und der Zahlen über private Bibliotheken (ADR-0049): keine Personensicht aus
+Betriebsdaten. `opaa.indexing.documents` bleibt beim Typ, auch bei `upload`, weil es
+installationsweit über alle Bibliotheken zählt.
+
+Was nur die Datenbank weiß, liest jede Instanz jede Minute aus den vorhandenen Tabellen: den
+jüngsten Erfolg je Konnektortyp, die Zahl überfälliger Bibliotheken je Typ, den letzten angewendeten
+Verzeichnisabgleich und das Alter der ausstehenden Entscheidung über einen Abgleichplan. Den
+Rückstand eines Modellwechsels liest sie alle fünf Minuten, weil er dann den ganzen Vektorindex
+zählt. Jeder Pod meldet dann denselben Wert; Dashboards und Alarme fassen solche Gauges mit `max`
+über die Pods zusammen, nicht mit `sum`. Scheitert das Lesen, meldet der Gauge `NaN`, nicht den
+letzten Wert: Ein veralteter Wert sähe aus wie ein gesunder. Der jüngste Erfolg je Typ verdeckt eine tote Bibliothek,
+solange eine andere desselben Typs läuft. Deshalb zählt `opaa.indexing.libraries.overdue` die
+Bibliotheken mit Zeitplan, deren letzter Erfolg länger als zwei ihrer Intervalle zurückliegt, als
+Anzahl ohne Kennung; eine Bibliothek ohne Erfolg zählt ab ihrer Anlage, weil der Zeitpunkt des
+Einschaltens ihres Zeitplans nicht gespeichert ist. Ein unvollständiger Lauf zählt als Erfolg: Er
+hat geendet und den erreichbaren Teil indiziert. Der Verzeichnisabgleich nennt als `provider` den
+Typ des Verzeichniszugangs (`keycloak`); sein letzter Erfolg ist der letzte angewendete Lauf und
+steht still, solange ein Plan auf Bestätigung wartet. Ersetzt ein neuer Lauf den wartenden Plan,
+behält der neue Plan die Entstehungszeit des ersten, denn so lange wartet die Entscheidung.
 
 ## Konsequenzen
 

@@ -44,6 +44,7 @@ import io.opaa.metadata.ModelExtractionPrompt;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.observability.IndexingStage;
+import io.opaa.observability.IndexingStageTimes;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.time.Clock;
@@ -849,12 +850,16 @@ public class DocumentIngestService {
     return values;
   }
 
-  /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
-  /** The source type key {@link IndexingMetrics} names the library's connector by. */
+  /**
+   * The source type key {@link IndexingMetrics} names the library's connector by. Documents count
+   * under it even in an owner-only library: the counter has no other label and stays
+   * installation-wide, unlike the runs (ADR-0071, Entscheidung 9).
+   */
   private static String connectorKey(KnowledgeLibrary library) {
     return library.getSourceType() == null ? null : library.getSourceType().key();
   }
 
+  /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
   private static String contextTitleFor(DocumentIngest ingest) {
     return ChunkContextPrefix.ingestTitle(
         ingest.syntheticName(), ingest.fileName(), ingest.title(), ingest.context());
@@ -1176,6 +1181,7 @@ public class DocumentIngestService {
     List<org.springframework.ai.document.Document> pieces = chunks;
     List<org.springframework.ai.document.Document> enriched = enrichment.apply(pieces);
     IndexingStage.CHUNK.recordSince(chunkStart);
+    IndexingStageTimes times = new IndexingStageTimes();
     long embedStart = IndexingStage.start();
     Map<String, float[]> verified = new HashMap<>();
     Long verifiedGeneration = null;
@@ -1218,9 +1224,13 @@ public class DocumentIngestService {
       pieces = splitOverlong(document, pieces, check.overlong());
       enriched = enrichment.apply(pieces);
     }
-    IndexingStage.EMBED.recordSince(embedStart);
+    times.addSince(IndexingStage.EMBED, embedStart);
 
-    addToVectorStore(enriched, verified, verifiedGeneration);
+    try {
+      addToVectorStore(enriched, verified, verifiedGeneration, times);
+    } finally {
+      times.record();
+    }
     // Recorded only after the chunks exist: the stamp says "these chunks carry this prefix", which
     // is exactly what the Nachlauf selects against.
     // Records the ingest's own title, not the effective one: with it,
@@ -1427,9 +1437,10 @@ public class DocumentIngestService {
   private void addToVectorStore(
       List<org.springframework.ai.document.Document> enriched,
       Map<String, float[]> verified,
-      long verifiedGeneration) {
+      long verifiedGeneration,
+      IndexingStageTimes times) {
     if (embeddingConcurrency <= 1) {
-      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration);
+      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration, times);
       return;
     }
 
@@ -1439,7 +1450,7 @@ public class DocumentIngestService {
       subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
     }
     if (subBatches.size() <= 1) {
-      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration);
+      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration, times);
       return;
     }
     // Sub-batches commit independently; an oversized chunk must fail the document before any of
@@ -1451,7 +1462,9 @@ public class DocumentIngestService {
             .map(
                 subBatch ->
                     CompletableFuture.runAsync(
-                        () -> vectorChunkStore.addChunks(subBatch, verified, verifiedGeneration),
+                        () ->
+                            vectorChunkStore.addChunks(
+                                subBatch, verified, verifiedGeneration, times),
                         embeddingExecutor))
             .toList();
     try {

@@ -13,9 +13,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,27 +48,29 @@ public class IndexingStateMetrics {
    */
   static final int OVERDUE_FACTOR = 2;
 
-  static final String LAST_SUCCESS_SQL =
-      "SELECT kl.source_type, extract(epoch FROM max(j.completed_at))"
-          + " FROM indexing_jobs j JOIN knowledge_libraries kl ON kl.id = j.library_id"
-          + " WHERE j.status = 'COMPLETED' GROUP BY kl.source_type";
-
-  /** Every library on a schedule, with its creation and its last successful run. */
-  static final String SCHEDULED_SQL =
-      "SELECT kl.source_type, kl.schedule_cron, a.created_at,"
-          + " (SELECT max(j.completed_at) FROM indexing_jobs j"
-          + " WHERE j.library_id = kl.id AND j.status = 'COMPLETED')"
+  /**
+   * Every library with its last successful run, its schedule ({@code null} for none or one about to
+   * be erased) and its creation; the partial index on {@code (library_id, completed_at)} serves the
+   * maximum.
+   */
+  static final String LIBRARIES_SQL =
+      "SELECT kl.source_type, a.owner_only,"
+          + " CASE WHEN kl.schedule_enabled AND kl.erasure_requested_at IS NULL"
+          + " THEN kl.schedule_cron END,"
+          + " a.created_at, max(j.completed_at)"
           + " FROM knowledge_libraries kl JOIN assets a ON a.id = kl.id"
-          + " WHERE kl.schedule_enabled AND kl.schedule_cron IS NOT NULL"
-          + " AND kl.erasure_requested_at IS NULL";
+          + " LEFT JOIN indexing_jobs j ON j.library_id = kl.id AND j.status = 'COMPLETED'"
+          + " GROUP BY kl.id, a.id";
 
   private final JdbcTemplate jdbc;
   private final EmbeddingReindexService reindex;
   private final Clock clock;
   private final MultiGauge lastSuccess;
   private final MultiGauge overdue;
-  private final AtomicLong reindexRemaining = new AtomicLong();
+  private final AtomicReference<Double> reindexRemaining = new AtomicReference<>(0.0);
   private final AtomicBoolean failing = new AtomicBoolean();
+  private volatile Set<String> lastSuccessConnectors = Set.of();
+  private volatile Set<String> overdueConnectors = Set.of();
 
   @Autowired
   public IndexingStateMetrics(
@@ -97,7 +100,7 @@ public class IndexingStateMetrics {
         MultiGauge.builder("opaa.indexing.libraries.overdue")
             .description("Scheduled libraries without a successful run for twice their interval")
             .register(meterRegistry);
-    Gauge.builder("opaa.indexing.reindex.remaining", reindexRemaining, AtomicLong::get)
+    Gauge.builder("opaa.indexing.reindex.remaining", reindexRemaining, AtomicReference::get)
         .description("Chunks a change of the embedding model still has to embed")
         .register(meterRegistry);
     if (indexingTaskExecutor instanceof ThreadPoolTaskExecutor pool) {
@@ -111,59 +114,76 @@ public class IndexingStateMetrics {
   }
 
   /**
-   * Reads every value anew. Runs on every instance without a lock: it only reads, and each instance
-   * reports its own gauges (ScheduledRunLockStructureTest#RUNS_ON_EVERY_INSTANCE). A failed read
-   * keeps the values of the last one and warns once until a read succeeds again.
+   * Reads both connector gauges anew in one query. Runs on every instance without a lock: it only
+   * reads, and each instance reports its own gauges
+   * (ScheduledRunLockStructureTest#RUNS_ON_EVERY_INSTANCE). A failed read reports NaN under the
+   * connectors of the last one and warns once until a read succeeds again.
    */
   @Scheduled(initialDelay = 0, fixedDelayString = "PT1M")
   public void refresh() {
     try {
-      lastSuccess.register(lastSuccessRows(), true);
-      overdue.register(overdueRows(), true);
-      reindexRemaining.set(reindex.remainingChunks());
+      Instant now = Instant.now(clock);
+      Map<String, Double> lastSuccessByConnector = new TreeMap<>();
+      Map<String, Integer> overdueByConnector = new TreeMap<>();
+      jdbc.query(
+          LIBRARIES_SQL,
+          row -> {
+            String connector =
+                row.getBoolean(2)
+                    ? IndexingMetrics.PRIVATE
+                    : IndexingMetrics.connector(row.getString(1));
+            Timestamp success = row.getTimestamp(5);
+            if (success != null) {
+              lastSuccessByConnector.merge(
+                  connector, success.toInstant().toEpochMilli() / 1000.0, Math::max);
+            }
+            Duration interval = row.getString(3) == null ? null : intervalOf(row.getString(3));
+            if (interval != null) {
+              Instant since = (success != null ? success : row.getTimestamp(4)).toInstant();
+              boolean late = since.plus(interval.multipliedBy(OVERDUE_FACTOR)).isBefore(now);
+              overdueByConnector.merge(connector, late ? 1 : 0, Integer::sum);
+            }
+          });
+      lastSuccess.register(rows(lastSuccessByConnector), true);
+      overdue.register(rows(overdueByConnector), true);
+      lastSuccessConnectors = Set.copyOf(lastSuccessByConnector.keySet());
+      overdueConnectors = Set.copyOf(overdueByConnector.keySet());
       if (failing.compareAndSet(true, false)) {
         log.info("Indexing state metrics are read again");
       }
     } catch (RuntimeException e) {
+      lastSuccess.register(unknown(lastSuccessConnectors), true);
+      overdue.register(unknown(overdueConnectors), true);
       if (failing.compareAndSet(false, true)) {
-        log.warn("Indexing state metrics could not be read, keeping the last values", e);
+        log.warn("Indexing state metrics could not be read, reporting NaN until they are", e);
       }
     }
   }
 
-  private List<MultiGauge.Row<?>> lastSuccessRows() {
-    Map<String, Double> byConnector = new TreeMap<>();
-    jdbc.query(
-        LAST_SUCCESS_SQL,
-        row -> {
-          byConnector.put(IndexingMetrics.connector(row.getString(1)), row.getDouble(2));
-        });
-    return byConnector.entrySet().stream()
+  /**
+   * Reads the chunks a model change still has to embed. Less often than {@link #refresh}: without a
+   * pending change it reads no chunk, with one it counts the whole vector table. NaN while it
+   * cannot be read.
+   */
+  @Scheduled(initialDelay = 0, fixedDelayString = "PT5M")
+  public void refreshReindex() {
+    try {
+      reindexRemaining.set((double) reindex.remainingChunks());
+    } catch (RuntimeException e) {
+      reindexRemaining.set(Double.NaN);
+      log.debug("The re-index backlog could not be read, reporting NaN", e);
+    }
+  }
+
+  /** NaN under every {@code connector} of the last read: "unknown", not a stale or zero value. */
+  private static List<MultiGauge.Row<?>> unknown(Set<String> connectors) {
+    return connectors.stream()
         .<MultiGauge.Row<?>>map(
-            entry -> MultiGauge.Row.of(Tags.of("connector", entry.getKey()), entry.getValue()))
+            connector -> MultiGauge.Row.of(Tags.of("connector", connector), Double.NaN))
         .toList();
   }
 
-  /**
-   * One row per connector type with a scheduled library: how many of them are overdue. A library
-   * that never succeeded counts from its creation.
-   */
-  private List<MultiGauge.Row<?>> overdueRows() {
-    Instant now = Instant.now(clock);
-    Map<String, Integer> byConnector = new TreeMap<>();
-    jdbc.query(
-        SCHEDULED_SQL,
-        row -> {
-          Duration interval = intervalOf(row.getString(2));
-          if (interval == null) {
-            return;
-          }
-          Timestamp success = row.getTimestamp(4);
-          Instant since = (success != null ? success : row.getTimestamp(3)).toInstant();
-          boolean late = since.plus(interval.multipliedBy(OVERDUE_FACTOR)).isBefore(now);
-          byConnector.merge(
-              IndexingMetrics.connector(row.getString(1)), late ? 1 : 0, Integer::sum);
-        });
+  private static List<MultiGauge.Row<?>> rows(Map<String, ? extends Number> byConnector) {
     return byConnector.entrySet().stream()
         .<MultiGauge.Row<?>>map(
             entry -> MultiGauge.Row.of(Tags.of("connector", entry.getKey()), entry.getValue()))

@@ -297,8 +297,20 @@ class IndexingJobServiceTest {
       String failureCategory,
       boolean incomplete,
       Long bytes) {
+    return endedRun(sourceType, false, mode, status, failureCategory, incomplete, bytes);
+  }
+
+  private static EndedRun endedRun(
+      String sourceType,
+      boolean ownerOnly,
+      IndexingRunMode mode,
+      JobStatus status,
+      String failureCategory,
+      boolean incomplete,
+      Long bytes) {
     return new EndedRun(
         SourceType.of(sourceType),
+        ownerOnly,
         mode,
         status,
         failureCategory,
@@ -406,6 +418,60 @@ class IndexingJobServiceTest {
     service.completeJob(jobId, 1, 0, 4, 1);
 
     assertThat(runs("confluence", "delta", "incomplete", "quota_exhausted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aRunOfAnOwnerOnlyLibraryCountsAsPrivateWithItsPersonBoundCategoryFolded() {
+    UUID quota = UUID.randomUUID();
+    UUID deactivated = UUID.randomUUID();
+    UUID rejected = UUID.randomUUID();
+    when(indexingJobRepository.failIfRunning(any(), anyString(), anyString(), any(Instant.class)))
+        .thenReturn(1);
+    when(indexingJobRepository.findEndedRun(quota))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "ONEDRIVE",
+                    true,
+                    IndexingRunMode.FULL,
+                    JobStatus.FAILED,
+                    "QUOTA_EXHAUSTED",
+                    false,
+                    2048L)));
+    when(indexingJobRepository.findEndedRun(deactivated))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "ONEDRIVE",
+                    true,
+                    IndexingRunMode.FULL,
+                    JobStatus.FAILED,
+                    "OWNER_DEACTIVATED",
+                    false,
+                    null)));
+    when(indexingJobRepository.findEndedRun(rejected))
+        .thenReturn(
+            Optional.of(
+                endedRun(
+                    "ONEDRIVE",
+                    true,
+                    IndexingRunMode.FULL,
+                    JobStatus.FAILED,
+                    "CREDENTIALS_REJECTED",
+                    false,
+                    null)));
+
+    service.failJob(quota, "Kontingent erschöpft", "QUOTA_EXHAUSTED");
+    service.failJob(deactivated, "Konto deaktiviert", "OWNER_DEACTIVATED");
+    service.failJob(rejected, "Anmeldung abgelehnt", "CREDENTIALS_REJECTED");
+
+    assertThat(runs("private", "full", "failed", "private")).isEqualTo(2.0);
+    assertThat(runs("private", "full", "failed", "credentials_rejected")).isEqualTo(1.0);
+    assertThat(meterRegistry.find("opaa.indexing.runs").tag("connector", "onedrive").counter())
+        .isNull();
+    assertThat(
+            meterRegistry.get("opaa.indexing.bytes").tag("connector", "private").counter().count())
+        .isEqualTo(2048.0);
   }
 
   @Test

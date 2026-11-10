@@ -8,6 +8,7 @@ import io.opaa.llm.EmbeddingClients.Pinned;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.observability.IndexingStage;
+import io.opaa.observability.IndexingStageTimes;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -155,6 +156,23 @@ public class VectorChunkStore implements ChunkMetadataStore {
    * another model are never written.
    */
   public void addChunks(List<Document> chunks, Map<String, float[]> known, long knownGeneration) {
+    IndexingStageTimes times = new IndexingStageTimes();
+    try {
+      addChunks(chunks, known, knownGeneration, times);
+    } finally {
+      times.record();
+    }
+  }
+
+  /**
+   * {@link #addChunks(List, Map, long)}, adding its embedding and write time to {@code times}
+   * instead of recording them, so the caller records one value per document for all its batches.
+   */
+  public void addChunks(
+      List<Document> chunks,
+      Map<String, float[]> known,
+      long knownGeneration,
+      IndexingStageTimes times) {
     if (chunks.isEmpty()) {
       return;
     }
@@ -171,10 +189,10 @@ public class VectorChunkStore implements ChunkMetadataStore {
       warnUnverified(pinned, chunks, check);
       try {
         List<float[]> vectors = vectorsFor(pinned, chunks, reusable, check.vectors());
-        IndexingStage.EMBED.recordSince(embedStart);
+        times.addSince(IndexingStage.EMBED, embedStart);
         long storeStart = IndexingStage.start();
         vectorStoreWriter.writeEmbeddedChunks(chunks, vectors, pinned.generation());
-        IndexingStage.STORE.recordSince(storeStart);
+        times.addSince(IndexingStage.STORE, storeStart);
         return;
       } catch (EmbeddingGenerationChangedException e) {
         if (attempt >= GENERATION_ATTEMPTS) {

@@ -228,6 +228,30 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
     assertThat(chunkIndices).containsExactlyElementsOf(IntStream.range(0, 6).boxed().toList());
   }
 
+  /** A document split into three sub-batches is still one observation of each stage. */
+  @Test
+  void aDocumentInSubBatchesRecordsEmbedAndStoreOnce() throws IOException {
+    SimpleMeterRegistry stages = new SimpleMeterRegistry();
+    io.micrometer.core.instrument.Metrics.addRegistry(stages);
+    try {
+      Path file = tempDir.resolve("staged.txt");
+      Files.writeString(file, "irrelevant");
+      stubParseAndChunk(file, "staged.txt", chunksOf(6));
+      RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(new CyclicBarrier(3));
+
+      service(writer, 3, 2).ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+
+      assertThat(writer.writeCalls).hasSize(3);
+      for (String stage : List.of("embed", "store")) {
+        assertThat(stages.get("opaa.indexing.stage.duration").tag("stage", stage).timer().count())
+            .as(stage)
+            .isEqualTo(1);
+      }
+    } finally {
+      io.micrometer.core.instrument.Metrics.removeRegistry(stages);
+    }
+  }
+
   @Test
   void singleChunkDocumentTakesTheDirectPathEvenAtHighConcurrency() throws IOException {
     // A single chunk can never be split into more than one sub-batch, regardless of concurrency

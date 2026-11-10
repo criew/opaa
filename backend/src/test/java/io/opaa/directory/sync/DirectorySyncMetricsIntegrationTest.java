@@ -30,6 +30,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIntegrationTest
 class DirectorySyncMetricsIntegrationTest {
 
+  /** Ahead of any applied run another test class records. */
+  private static final Duration AHEAD = Duration.ofDays(365);
+
+  /** Behind any plan another test class leaves waiting. */
+  private static final Duration BEHIND = Duration.ofDays(400);
+
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncMetrics metrics;
   @Autowired private DirectorySyncStatusRecorder statusRecorder;
@@ -65,6 +71,7 @@ class DirectorySyncMetricsIntegrationTest {
 
   @AfterEach
   void removeProvider() {
+    directoryClient.reset();
     pendingPlanRepository
         .findByOrganizationIdAndProviderId(Organization.DEFAULT_ID, providerId)
         .ifPresent(pendingPlanRepository::delete);
@@ -114,19 +121,24 @@ class DirectorySyncMetricsIntegrationTest {
     assertThat(runs("unreachable")).isEqualTo(before + 1);
   }
 
+  /**
+   * The gauges keep the largest value of every provider of a type: this class's applied run lies
+   * ahead of any other class's and its plan far behind, so another provider sharing the database
+   * never decides the value read here.
+   */
   @Test
   void aWaitingPlanShowsItsAgeWhileLastSuccessStaysAtTheLastAppliedRun() {
-    Instant applied = Instant.now().truncatedTo(ChronoUnit.SECONDS).minus(Duration.ofHours(1));
+    Instant applied = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(AHEAD);
     statusRecorder.record(
         Organization.DEFAULT_ID, providerId, applied, DirectorySyncOutcome.APPLIED, "ok", 0.0);
     assertThat(gauge("opaa.directory_sync.last_success"))
         .isEqualTo((double) applied.getEpochSecond());
 
-    Instant planned = Instant.now().minus(Duration.ofMinutes(10));
+    Instant planned = Instant.now().minus(BEHIND);
     statusRecorder.record(
         Organization.DEFAULT_ID,
         providerId,
-        planned,
+        applied.plus(Duration.ofMinutes(1)),
         DirectorySyncOutcome.PENDING_CONFIRMATION,
         "wartet",
         0.6);
@@ -134,14 +146,34 @@ class DirectorySyncMetricsIntegrationTest {
         new DirectorySyncPendingPlan(
             Organization.DEFAULT_ID, providerId, planned, "f".repeat(64), 0.6, 3, 0, "{}"));
 
-    assertThat(gauge("opaa.directory_sync.plan.pending.age")).isBetween(590.0, 3600.0);
+    assertThat(gauge("opaa.directory_sync.plan.pending.age"))
+        .isBetween(
+            (double) BEHIND.toSeconds() - 5, (double) BEHIND.plus(Duration.ofHours(1)).toSeconds());
     assertThat(gauge("opaa.directory_sync.last_success"))
         .as("a run that left a plan waiting is no applied run")
         .isEqualTo((double) applied.getEpochSecond());
   }
 
   @Test
-  void withoutAWaitingPlanThePendingAgeIsZero() {
-    assertThat(gauge("opaa.directory_sync.plan.pending.age")).isZero();
+  void aDecidedPlanNoLongerCountsTowardsThePendingAge() {
+    pendingPlanRepository.save(
+        new DirectorySyncPendingPlan(
+            Organization.DEFAULT_ID,
+            providerId,
+            Instant.now().minus(BEHIND),
+            "f".repeat(64),
+            0.6,
+            3,
+            0,
+            "{}"));
+    assertThat(gauge("opaa.directory_sync.plan.pending.age"))
+        .isGreaterThanOrEqualTo((double) BEHIND.toSeconds() - 5);
+
+    pendingPlanRepository
+        .findByOrganizationIdAndProviderId(Organization.DEFAULT_ID, providerId)
+        .ifPresent(pendingPlanRepository::delete);
+
+    assertThat(gauge("opaa.directory_sync.plan.pending.age"))
+        .isLessThan((double) BEHIND.minus(Duration.ofDays(1)).toSeconds());
   }
 }

@@ -293,9 +293,9 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       @Param("failureCategory") String failureCategory,
       @Param("completedAt") Instant completedAt);
 
-  /** The columns {@link EndedRun} reads, with the source type of the run's library. */
+  /** The columns {@link EndedRun} reads, with source type and owner-only mark of its library. */
   String ENDED_RUN =
-      "select new io.opaa.indexing.job.EndedRun(l.sourceType, j.runMode, j.status,"
+      "select new io.opaa.indexing.job.EndedRun(l.sourceType, l.ownerOnly, j.runMode, j.status,"
           + " j.failureCategory, j.incomplete, j.startedAt, j.completedAt, j.bytesDownloaded)"
           + " from IndexingJob j left join io.opaa.knowledge.KnowledgeLibrary l"
           + " on l.id = j.libraryId";

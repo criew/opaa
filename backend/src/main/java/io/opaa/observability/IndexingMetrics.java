@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Locale;
 
 /**
@@ -15,7 +16,16 @@ import java.util.Locale;
 public class IndexingMetrics {
 
   /** The {@code connector} of a run whose library is gone. */
-  public static final String UNKNOWN_CONNECTOR = "unknown";
+  public static final String NO_CONNECTOR = "none";
+
+  /**
+   * The {@code connector} of every run of an owner-only library, and the {@code failure_category}
+   * its person-bound failures share: no series traces one person's library (ADR-0071, Entscheidung
+   * 9).
+   */
+  public static final String PRIVATE = "private";
+
+  private static final String[] DOCUMENT_RESULTS = {"processed", "skipped", "failed"};
 
   /** The {@code failure_category} of a run that ended without one. */
   public static final String NO_CATEGORY = "none";
@@ -53,31 +63,43 @@ public class IndexingMetrics {
 
   /**
    * The {@code connector} tag value of the source type {@code sourceTypeKey}: the key in lower
-   * case, {@value #UNKNOWN_CONNECTOR} without one.
+   * case, {@value #NO_CONNECTOR} without one.
    */
   public static String connector(String sourceTypeKey) {
-    return sourceTypeKey == null ? UNKNOWN_CONNECTOR : sourceTypeKey.toLowerCase(Locale.ROOT);
+    return sourceTypeKey == null ? NO_CONNECTOR : sourceTypeKey.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Registers every {@code result} series of {@code opaa.indexing.documents} at 0 for each of
+   * {@code sourceTypeKeys}, so a pod reports them from its start: a first run that never processes
+   * a document shows as no increase instead of no series at all.
+   */
+  public void registerDocumentSeries(Collection<String> sourceTypeKeys) {
+    for (String key : sourceTypeKeys) {
+      for (String result : DOCUMENT_RESULTS) {
+        documentsCounter(key, result);
+      }
+    }
   }
 
   public void recordProcessed(String sourceTypeKey) {
-    documents(sourceTypeKey, "processed", "Documents processed");
+    documentsCounter(sourceTypeKey, "processed").increment();
   }
 
   public void recordSkipped(String sourceTypeKey) {
-    documents(sourceTypeKey, "skipped", "Documents skipped (unchanged or rejected)");
+    documentsCounter(sourceTypeKey, "skipped").increment();
   }
 
   public void recordFailed(String sourceTypeKey) {
-    documents(sourceTypeKey, "failed", "Documents failed");
+    documentsCounter(sourceTypeKey, "failed").increment();
   }
 
-  private void documents(String sourceTypeKey, String result, String description) {
-    Counter.builder("opaa.indexing.documents")
+  private Counter documentsCounter(String sourceTypeKey, String result) {
+    return Counter.builder("opaa.indexing.documents")
         .tag("connector", connector(sourceTypeKey))
         .tag("result", result)
-        .description(description)
-        .register(meterRegistry)
-        .increment();
+        .description("Documents handled by indexing, by connector type and result")
+        .register(meterRegistry);
   }
 
   /** {@code count} chunks one indexed document wrote to the index. */
@@ -101,19 +123,19 @@ public class IndexingMetrics {
   }
 
   /**
-   * One ended indexing run: {@code result} is {@code completed}, {@code incomplete} or {@code
-   * failed}, {@code mode} {@code full}, {@code delta} or {@code event}, {@code failureCategory} the
-   * lower-case run failure category, {@value #NO_CATEGORY} or {@code abandoned}. {@code bytes} are
-   * the bytes the run downloaded, counted once at its end.
+   * One ended indexing run: {@code connector} is a {@link #connector} value or {@value #PRIVATE},
+   * {@code result} {@code completed}, {@code incomplete} or {@code failed}, {@code mode} {@code
+   * full}, {@code delta} or {@code event}, {@code failureCategory} the lower-case run failure
+   * category, {@value #NO_CATEGORY}, {@code abandoned} or {@value #PRIVATE}. {@code bytes} are the
+   * bytes the run downloaded, counted once at its end.
    */
   public void recordRunEnded(
-      String sourceTypeKey,
+      String connector,
       String mode,
       String result,
       String failureCategory,
       Duration duration,
       long bytes) {
-    String connector = connector(sourceTypeKey);
     Counter.builder("opaa.indexing.runs")
         .tag("connector", connector)
         .tag("mode", mode)

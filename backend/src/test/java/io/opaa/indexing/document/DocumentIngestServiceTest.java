@@ -2687,7 +2687,7 @@ class DocumentIngestServiceTest {
       assertThat(meterRegistry.get("opaa.indexing.chunks").counter().count()).isEqualTo(2.0);
       assertThat(stageCount("parse")).isEqualTo(1);
       assertThat(stageCount("chunk")).isEqualTo(1);
-      assertThat(stageCount("embed")).isPositive();
+      assertThat(stageCount("embed")).isEqualTo(1);
       assertThat(stageCount("store")).isEqualTo(1);
       assertThat(stageCount("ocr")).isZero();
     }

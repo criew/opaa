@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +64,8 @@ public class DirectorySyncMetrics {
   private final MultiGauge lastSuccess;
   private final MultiGauge pendingAge;
   private final AtomicBoolean failing = new AtomicBoolean();
+  private volatile Set<String> lastSuccessProviders = Set.of();
+  private volatile Set<String> pendingAgeProviders = Set.of();
 
   @Autowired
   public DirectorySyncMetrics(DataSource dataSource, MeterRegistry meterRegistry) {
@@ -122,31 +125,48 @@ public class DirectorySyncMetrics {
   /**
    * Reads both gauges anew. Runs on every instance without a lock: it only reads, and each instance
    * reports its own gauges (ScheduledRunLockStructureTest#RUNS_ON_EVERY_INSTANCE). A failed read
-   * keeps the values of the last one and warns once until a read succeeds again.
+   * reports NaN under the providers of the last one and warns once until a read succeeds again.
    */
   @Scheduled(initialDelay = 0, fixedDelayString = "PT1M")
   public void refresh() {
     try {
-      lastSuccess.register(rows(LAST_APPLIED_SQL), true);
-      pendingAge.register(rows(PENDING_AGE_SQL), true);
+      Map<String, Double> applied = read(LAST_APPLIED_SQL);
+      Map<String, Double> pending = read(PENDING_AGE_SQL);
+      lastSuccess.register(rows(applied), true);
+      pendingAge.register(rows(pending), true);
+      lastSuccessProviders = Set.copyOf(applied.keySet());
+      pendingAgeProviders = Set.copyOf(pending.keySet());
       if (failing.compareAndSet(true, false)) {
         log.info("Directory sync metrics are read again");
       }
     } catch (RuntimeException e) {
+      lastSuccess.register(rows(unknown(lastSuccessProviders)), true);
+      pendingAge.register(rows(unknown(pendingAgeProviders)), true);
       if (failing.compareAndSet(false, true)) {
-        log.warn("Directory sync metrics could not be read, keeping the last values", e);
+        log.warn("Directory sync metrics could not be read, reporting NaN until they are", e);
       }
     }
   }
 
-  /** One row per provider type of {@code sql}'s pairs; the largest value wins within a type. */
-  private List<MultiGauge.Row<?>> rows(String sql) {
+  /** {@code sql}'s pairs by provider type; the largest value wins within a type. */
+  private Map<String, Double> read(String sql) {
     Map<String, Double> byProvider = new TreeMap<>();
     RowCallbackHandler collect =
         row -> {
           byProvider.merge(tagOf(row.getString(1)), row.getDouble(2), Math::max);
         };
     jdbc.query(sql, collect);
+    return byProvider;
+  }
+
+  /** NaN under each of {@code providers}: "unknown", not a stale or zero value. */
+  private static Map<String, Double> unknown(Set<String> providers) {
+    Map<String, Double> byProvider = new TreeMap<>();
+    providers.forEach(provider -> byProvider.put(provider, Double.NaN));
+    return byProvider;
+  }
+
+  private static List<MultiGauge.Row<?>> rows(Map<String, Double> byProvider) {
     return byProvider.entrySet().stream()
         .<MultiGauge.Row<?>>map(
             entry -> MultiGauge.Row.of(Tags.of("provider", entry.getKey()), entry.getValue()))
