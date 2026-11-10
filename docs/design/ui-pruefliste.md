@@ -30,6 +30,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Label | 1–3 | Sicht (P12) |
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
+| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled` (P28) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
@@ -52,8 +53,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
    gemessen (`alertCount` im Zustand `wizard-validation`) und Sicht
 8. Bestätigungsdialog: [guidelines.md](./guidelines.md), 5.10. Darüber hinaus kein
    „Nicht mehr fragen“, kein „Später“, keine zusätzliche Warnbox. – Sicht
-9. **Stepper:** Schrittnamen aus einem Wort, keine Unterzeilen, keine Restzeit- oder
-   Prozentangaben. – Sicht
+9. **Stepper:** Schrittnamen und Schrittleiste: [guidelines.md](./guidelines.md), 5.15. Darüber
+   hinaus keine Unterzeilen, keine Restzeit- oder Prozentangaben. – Sicht
 10. **Filter:** schlichte Chips, gewählt heißt gefüllt. Keine Leisten „Gespeicherte Filter“ oder
     „Alle zurücksetzen“ ohne Bedarf. Ein Filter erscheint nur, wenn er kürzt
     ([guidelines.md](./guidelines.md), 5.3). Filterzeile für Assets: [guidelines.md](./guidelines.md),
@@ -110,14 +111,14 @@ zwei Einträgen.
     gemessen (`tabStops`, `title`) und Tastatur
 27. Fokus nicht verdeckt durch Sticky-Leiste oder Popup-Benachrichtigung (WCAG 2.4.11). –
     gemessen (`focusObscured`, `focusHidden`)
-28. **Absenden bleibt aktiv:** kein `disabled` wegen fehlender Eingaben; ein Doppelklick legt
-    nichts doppelt an. – gemessen (`disabledSubmits`) und Sicht
+28. Absenden bleibt aktiv, Fehler am Feld: [guidelines.md](./guidelines.md), 5.15; ein
+    Doppelklick legt nichts doppelt an. – gemessen (`disabledSubmits`, Budget 0) und Sicht
 29. **Validierung beim Verlassen des Felds oder beim Absenden**, nicht beim Tippen;
     Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “. –
     gemessen (`title`, `invalidFields`) und Tastatur
 30. **Zurück verliert nichts**, weder im Assistenten noch über den Browser. – Video
 31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde. – Video
-32. **Prüfschritt** vor dem Anlegen, mit „Ändern“-Verweisen je Abschnitt. – Sicht
+32. Prüfschritt vor dem Anlegen: [guidelines.md](./guidelines.md), 5.15. – Sicht
 33. **Verbindungstest einheitlich:** automatisch bei „Weiter“ und über einen eigenen Knopf;
     Ergebnis inline, mit der Stufe (Adresse · Anmeldung · Rechte); es verfällt, sobald ein
     Verbindungsfeld geändert wird. – Sicht und Video
