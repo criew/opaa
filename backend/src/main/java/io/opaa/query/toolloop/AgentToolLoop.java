@@ -298,7 +298,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private QueryResult runAndKeep(
       AgentTurn turn, AgentRunSpec spec, AgentRun run, ChatClient client) {
     String reminder = AgentPrompt.reminder(turn.spaceInstruction());
-    List<ToolCallback> callbacks = callbacks(spec, reminder);
+    List<ToolCallback> callbacks = callbacks(spec, run, reminder);
     ToolCallingManager toolCallingManager =
         DefaultToolCallingManager.builder()
             .observationRegistry(observationRegistry)
@@ -436,8 +436,11 @@ class AgentToolLoop implements AgentTurnHandler {
         record);
   }
 
-  /** The agent's tools that are registered and switched on, in the registry's order. */
-  private List<ToolCallback> callbacks(AgentRunSpec spec, String reminder) {
+  /**
+   * The agent's tools that are registered and switched on, in the registry's order, each as it
+   * offers itself to this run.
+   */
+  private List<ToolCallback> callbacks(AgentRunSpec spec, AgentRun run, String reminder) {
     AgentToolSwitches switches = toolSwitches.getIfAvailable();
     Set<String> enabled = switches == null ? Set.of() : switches.enabledTools();
     List<ToolCallback> callbacks = new ArrayList<>();
@@ -448,7 +451,8 @@ class AgentToolLoop implements AgentTurnHandler {
             .ifPresent(
                 tool ->
                     callbacks.add(
-                        AgentToolCallback.of(tool, reminder, objectMapper, metrics, clock)));
+                        AgentToolCallback.of(
+                            tool, tool.offer(run), reminder, objectMapper, metrics, clock)));
       }
     }
     return callbacks;
