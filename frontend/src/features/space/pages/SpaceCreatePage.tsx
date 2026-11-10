@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -104,6 +104,8 @@ export default function SpaceCreatePage() {
   const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
   const [submitting, setSubmitting] = useState(false)
+  // „Anlegen“ before the preselection's catalog entry is in: busy and announced, created once it is
+  const [createWhenReady, setCreateWhenReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // ADR-0036, Entscheidung 5: a missing Anlegerecht is explained, not hidden - „Anlegen“ stays
   // and leads to the reason. The backend refuses the same call regardless.
@@ -197,8 +199,13 @@ export default function SpaceCreatePage() {
   }
 
   const handleCreate = async () => {
+    if (submitting) return
     // the catalog entry of the preselection decides whether it may be associated
-    if (submitting || preselectPending) return
+    if (preselectPending) {
+      setCreateWhenReady(true)
+      return
+    }
+    setCreateWhenReady(false)
     setSubmitting(true)
     setError(null)
     try {
@@ -224,6 +231,19 @@ export default function SpaceCreatePage() {
       setSubmitting(false)
     }
   }
+
+  const createNow = useEffectEvent(() => void handleCreate())
+  useEffect(() => {
+    // the click is taken up once the preselection is decided, as its own task after this render
+    if (!createWhenReady || preselectPending) return
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (!cancelled) createNow()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [createWhenReady, preselectPending])
 
   const memberIcon = (member: PendingMember) =>
     member.subjectType === 'GROUP' ? (
@@ -305,7 +325,7 @@ export default function SpaceCreatePage() {
           : null
       }
       footerSeparated={activeStep !== STEPS.length - 1}
-      submitting={submitting}
+      submitting={submitting || createWhenReady}
       createAnnouncement="Space wird angelegt"
       onCancel={() => void handleCancel()}
       onBack={() => {

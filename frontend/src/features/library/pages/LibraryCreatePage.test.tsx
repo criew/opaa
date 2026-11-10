@@ -279,6 +279,24 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByText('5 · Prüfen')).toBeInTheDocument()
   })
 
+  it('walks the new steps after „Ändern“ swaps the source type for one with a source', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+
+    await next(user)
+    await nameItAndContinue(user, 'Handakte')
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+
+    await changeRow(user, 'Quellart')
+    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+    await next(user)
+    // the step list changed: „Weiter“ no longer jumps to „Prüfen“ past the new step „Quelle“
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
+  })
+
   it('names a missing name at the field and moves the focus into it', async () => {
     const user = userEvent.setup()
     await renderPage()

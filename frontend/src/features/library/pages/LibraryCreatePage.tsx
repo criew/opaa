@@ -98,10 +98,11 @@ export default function LibraryCreatePage() {
   const [activeStep, setActiveStep] = useState(restored ? SOURCE_SETUP_INDEX : 0)
   const [error, setError] = useState<string | null>(null)
   const setupRef = useRef<SourceSetupHandle>(null)
-  // the row of „Quelle einrichten“ open on arrival: the first one, or the one „Ändern“ asked for
+  // the row of „Quelle“ open on arrival: the first one, or the one „Ändern“ asked for
   const [initialRow, setInitialRow] = useState<SetupRowId | null>('connection')
-  // set by „Ändern“ on the review step: „Weiter“ then leads straight back to it
-  const [returnToReview, setReturnToReview] = useState(false)
+  // the step list „Ändern“ on the review step left from: while it holds, „Weiter“ leads straight
+  // back to „Prüfen“; a changed list (another source type) walks the new steps instead
+  const [reviewSteps, setReviewSteps] = useState<string | null>(null)
   const [stepFailed, setStepFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
@@ -117,7 +118,7 @@ export default function LibraryCreatePage() {
     draft?.selectedGroup ?? null,
   )
   const myGroups = useMyGroups()
-  const groupCheck = useFieldError('Bitte eine Gruppe auswählen')
+  const groupCheck = useFieldError('Gruppe fehlt')
 
   const [chosenType, setSourceType] = useState<SourceTypeKey>(draft?.sourceType ?? 'UPLOAD')
   // The entered values of every source form, by type key - a form keeps its values when another
@@ -202,6 +203,7 @@ export default function LibraryCreatePage() {
   const groupResponsible =
     consentProfile !== undefined && ownerType === 'GROUP' && selectedGroup !== null
   const steps = stepsFor(uploadLibrary, privateLibrary)
+  const returnToReview = reviewSteps === steps.join('|')
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
     admitsProfiles &&
@@ -388,13 +390,13 @@ export default function LibraryCreatePage() {
     setStepFailed(false)
     if (currentStep === STEP_SOURCE_TYPE && !returnToReview) setInitialRow('connection')
     setActiveStep((s) => (returnToReview ? steps.indexOf(STEP_REVIEW) : s + 1))
-    setReturnToReview(false)
+    setReviewSteps(null)
   }
 
   /** „Ändern“ on the review step: to the step (and row) of the answer, and back after „Weiter“. */
   const changeAt = (step: string, row: SetupRowId | null = null) => {
     setInitialRow(row)
-    setReturnToReview(true)
+    setReviewSteps(steps.join('|'))
     setError(null)
     setActiveStep(steps.indexOf(step))
   }
@@ -561,7 +563,7 @@ export default function LibraryCreatePage() {
         setError(null)
         setStepFailed(false)
         setInitialRow(null)
-        setReturnToReview(false)
+        setReviewSteps(null)
         setActiveStep((s) => s - 1)
       }}
       onNext={() => void handleNext()}

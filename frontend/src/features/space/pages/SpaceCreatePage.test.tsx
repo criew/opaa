@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
@@ -549,6 +549,49 @@ describe('SpaceCreatePage (#594)', () => {
       await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
       expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [])
+    })
+
+    // „Anlegen“ before the preselection's catalog entry is in: the click is announced as busy and
+    // taken up once the entry is decided, never swallowed.
+    it('creates after the preselection is decided when „Anlegen“ comes first', async () => {
+      let answer: () => void = () => {}
+      const answered = new Promise<void>((resolve) => {
+        answer = resolve
+      })
+      server.use(
+        http.get('/api/v1/catalog', async () => {
+          await answered
+          return HttpResponse.json({
+            entries: [],
+            page: 0,
+            size: 50,
+            totalElements: 0,
+            totalPages: 0,
+          })
+        }),
+      )
+      mockLocationState = {
+        preselect: {
+          assetType: 'PROMPT_LIBRARY',
+          assetId: 'prompt-library-referat-50',
+          name: 'Formulierungshilfen Referat 50',
+        },
+      }
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+
+      expect(screen.getByRole('button', { name: 'Anlegen' })).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByText('Space wird angelegt')).toBeInTheDocument()
+      expect(mockCreateNewSpace).not.toHaveBeenCalled()
+
+      answer()
+      await waitFor(() => expect(mockCreateNewSpace).toHaveBeenCalledTimes(1))
     })
   })
 })

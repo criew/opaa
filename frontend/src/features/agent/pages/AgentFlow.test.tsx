@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
+import { scenarioErrorBody } from '@/shared/mocks/mockScenario'
 import { renderWithProviders, setMockAuthState } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useAgentAvailability } from '@/shared/session/agentAvailability'
@@ -84,6 +85,32 @@ describe('Agenten', () => {
     } finally {
       mockMyCapabilities.capabilities = original
     }
+  })
+
+  it('führt einen vom Server abgelehnten Namen mit dessen Meldung an das Feld', async () => {
+    server.use(
+      http.post('/api/v1/agents', () =>
+        HttpResponse.json(
+          {
+            ...scenarioErrorBody(400, 'Die Angaben sind unvollständig.'),
+            fieldErrors: [{ field: 'name', message: 'Den Namen gibt es schon.' }],
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderAt('/agents/new')
+
+    await user.type(await screen.findByLabelText(/^Name/), 'Vergabeprüfung')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+
+    const field = await screen.findByLabelText(/^Name/)
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(field).toHaveAccessibleDescription('Den Namen gibt es schon.')
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
   })
 
   it('nennt einen fehlenden Namen am Feld und setzt den Fokus hinein', async () => {

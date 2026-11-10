@@ -116,7 +116,9 @@ zwei Einträgen.
 28. Absenden bleibt aktiv, Fehler am Feld: [guidelines.md](./guidelines.md), 5.15; ein
     Doppelklick legt nichts doppelt an. – gemessen (`disabledSubmits`, Budget 0) und Sicht
 29. **Validierung beim Verlassen des Felds oder beim Absenden**, nicht beim Tippen;
-    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “. –
+    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “.
+    Ausnahme Assistenten: Fehler am Feld, Zusammenfassung nur bei mehreren Befunden eines
+    Schritts ([guidelines.md](./guidelines.md), 5.15). –
     gemessen (`title`, `invalidFields`) und Tastatur
 30. **Zurück verliert nichts**, weder im Assistenten noch über den Browser. – Video
 31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde. – Video

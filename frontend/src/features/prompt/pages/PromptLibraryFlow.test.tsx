@@ -146,7 +146,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
     expect(group).toHaveFocus()
-    expect(group).toHaveAccessibleDescription('Bitte eine Gruppe auswählen')
+    expect(group).toHaveAccessibleDescription('Gruppe fehlt')
     expect(screen.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeInTheDocument()
   })
 

@@ -48,7 +48,7 @@ export default function DocumentTemplateCreatePage() {
   const fileCheck = useFieldError<HTMLButtonElement>('Word-Datei fehlt')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const groupCheck = useFieldError('Bitte eine Gruppe auswählen')
+  const groupCheck = useFieldError('Gruppe fehlt')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
   const missingCapability = isMissing('CREATE_TEMPLATE')

@@ -391,7 +391,7 @@ zuordnen"), bleibt die Aktion dieses Hinweises.
 „Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
 Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
 
-- „Vormerken" im Assistenten (Space, Wissensbibliothek, Prompt-Bibliothek, Vorlage; 5.15):
+- „Vormerken" im Assistenten (Space, Wissensbibliothek, Prompt-Bibliothek, Vorlage, Agent; 5.15):
   Gespeichert wird erst mit dem Anlegen.
 - „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
   und Befristung, keine Mitgliedschaft.
@@ -934,7 +934,7 @@ Space-Menü.
 ### 5.15 Assistenten
 
 Ein Assistent legt ein Objekt in mehreren Schritten an: Space, Wissensbibliothek,
-Prompt-Bibliothek, Vorlage. Alle rendern denselben Rahmen `WizardLayout`
+Prompt-Bibliothek, Vorlage, Agent. Alle rendern denselben Rahmen `WizardLayout`
 (`frontend/src/shared/ui/wizard/WizardLayout.tsx`); kein Thema baut Kopf, Schrittleiste oder
 Fußzeile selbst nach.
 
@@ -951,9 +951,13 @@ Fußzeile selbst nach.
   Rechten", „Zur Prüfung" oder „Space anlegen" entfallen. Eine Zählung wie „2 Freigaben
   vorgemerkt" steht still links neben den Knöpfen.
 - **„Weiter" und „Anlegen" sind immer aktiv.** Fehlt eine Eingabe, steht der Fehler am Feld, und
-  der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Fehlt das
-  Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den Fokus dorthin,
-  statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
+  der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Der
+  Fehlertext ist ein kurzer Satz in einer Form: „<Feld> fehlt" („Name fehlt", „Gruppe fehlt",
+  „Word-Datei fehlt"). Lehnt der Server ein Feld ab, führt der Assistent zu dessen Schritt, setzt
+  die Meldung des Servers an das Feld und den Fokus hinein. Eine Fehlerzusammenfassung über dem
+  Schritt (P29) gibt es nur, wo ein Schritt mehrere Befunde zugleich meldet (Schritt „Quelle").
+  Fehlt das Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den
+  Fokus dorthin, statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
 - **Prüfen.** Ein Assistent hat mindestens drei Schritte und endet mit „Prüfen": jede Antwort in
   einer Zeile Titel | Inhalt | „Ändern" (`WizardReview`). „Ändern" führt zum Schritt der Antwort,
   „Weiter" von dort zurück zu „Prüfen". Was mit weniger Schritten auskommt, ist ein Dialog (5.6).

@@ -49,7 +49,7 @@ export default function AgentCreatePage() {
   const [purpose, setPurpose] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const groupCheck = useFieldError('Bitte eine Gruppe auswählen')
+  const groupCheck = useFieldError('Gruppe fehlt')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -105,19 +105,18 @@ export default function AgentCreatePage() {
       notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(agentRoute(id))
     } catch (err) {
+      // A refused field takes the server's word to its step and field; anything else stays here.
       const fromServer = fieldMessages(apiFieldErrors(err))
       if (fromServer.name) {
         setActiveStep(0)
-        nameCheck.check(false)
+        nameCheck.fail(fromServer.name)
       } else if (fromServer.ownerId) {
         setActiveStep(STEP_SHARING)
-        groupCheck.check(false)
+        groupCheck.fail(fromServer.ownerId)
+      } else {
+        setError(err instanceof Error ? err.message : 'Der Agent konnte nicht angelegt werden.')
       }
-      setError(
-        fromServer.name ??
-          fromServer.ownerId ??
-          (err instanceof Error ? err.message : 'Der Agent konnte nicht angelegt werden.'),
-      )
+      setReturnToReview(true)
       setSubmitting(false)
     }
   }
