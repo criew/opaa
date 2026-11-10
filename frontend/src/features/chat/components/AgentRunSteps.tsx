@@ -30,6 +30,7 @@ const LIMIT_NOTES: Record<AgentRun['endState'], string | null> = {
   LIMIT_CALLS: 'Der Agent hat die Höchstzahl an Schritten erreicht.',
   LIMIT_DURATION: 'Der Agent hat seine Höchstdauer erreicht.',
   LIMIT_VOLUME: 'Der Agent hat die Höchstmenge an gesammeltem Text erreicht.',
+  ASK_USER: null,
 }
 
 function stepText(step: AgentRunStep): string {
@@ -47,7 +48,8 @@ interface AgentRunStepsProps {
 
 /**
  * The steps an agent took for an answer, collapsed by default. A run that stopped at a limit is
- * marked "nicht geprüft": the agent answered with what it had, which is not an error.
+ * marked "nicht geprüft": the agent answered with what it had, which is not an error. A run that
+ * asked the person back is marked as a question; the reply starts a new run.
  */
 export default function AgentRunSteps({ run }: AgentRunStepsProps) {
   const [open, setOpen] = useState(false)
@@ -81,6 +83,14 @@ export default function AgentRunSteps({ run }: AgentRunStepsProps) {
             nicht geprüft
           </Box>
           {` – ${limitNote} Die Antwort stützt sich nur auf das bis dahin Gefundene.`}
+        </Typography>
+      )}
+      {run.endState === 'ASK_USER' && (
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+          <Box component="strong" sx={{ fontWeight: 600 }}>
+            Rückfrage
+          </Box>
+          {' – Der Agent braucht eine Angabe von dir. Antworte einfach in einer neuen Nachricht.'}
         </Typography>
       )}
       {open && count > 0 && (
