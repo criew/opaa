@@ -4193,9 +4193,11 @@
 
 <h1 id="sandbox-für-agenten">Sandbox für Agenten<a class="headerlink" href="#sandbox-für-agenten" title="Permanent link">&para;</a></h1>
 <p>Ein Agent kann mit dem Werkzeug <code>run_code</code> ein Python-Skript schreiben und ausführen lassen, etwa
-für ein PDF, eine Tabelle oder ein Diagramm. Dieses Skript hat niemand geprüft. Es läuft deshalb
-nie im Backend, sondern in einer <strong>Sandbox</strong>: einem Wegwerf-Container ohne Netzausgang, der nur seinen
-eigenen Arbeitsordner sieht. Ohne Sandbox bietet OPAA das Werkzeug nicht an.</p>
+für ein PDF, eine Tabelle oder ein Diagramm. Dieses Skript hat niemand geprüft. Es läuft deshalb nie
+im Backend, sondern in einer <strong>Sandbox</strong>: einem Wegwerf-Container ohne Netzausgang, der nur seinen
+eigenen Arbeitsordner sieht. Dort befüllt auch das Werkzeug <code>fill_template</code> eine
+<a href="../benutzer/vorlage-anlegen.html">Dokumentvorlage</a> mit den Werten des Modells, über ein festes Skript
+des Images statt über Code des Modells. Ohne Sandbox bietet OPAA beide Werkzeuge nicht an.</p>
 <pre class="mermaid"><code>flowchart LR
     BE[Backend] --&gt;|Schlüssel,&lt;br/&gt;Skript| SV[Sandbox-Dienst&lt;br/&gt;OpenSandbox]
     SV --&gt;|startet, löscht| SB[Sandbox je Lauf]
@@ -4203,39 +4205,56 @@ eigenen Arbeitsordner sieht. Ohne Sandbox bietet OPAA das Werkzeug nicht an.</p>
     SB -.-x N[kein Netz]</code></pre>
 <h2 id="so-arbeitet-sie">So arbeitet sie<a class="headerlink" href="#so-arbeitet-sie" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Eine Sandbox je Agentenlauf.</strong> Der erste Aufruf von <code>run_code</code> in einem Lauf startet sie, jeder
-  weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am Ende des Laufs nimmt OPAA die
-  Dateien aus <code>/workspace/out</code> als Anhänge der fragenden Person an die Antwort und löscht die
-  Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.</li>
+<li><strong>Eine Sandbox je Agentenlauf.</strong> Der erste Aufruf von <code>run_code</code> oder <code>fill_template</code> in einem
+  Lauf startet sie, jeder weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am
+  Ende des Laufs nimmt OPAA die Dateien aus <code>/workspace/out</code> als Anhänge der fragenden Person an
+  die Antwort und löscht die Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.</li>
+<li><strong>Eigenes Verzeichnis für Vorlagen:</strong> <code>fill_template</code> schreibt in ein neues Verzeichnis mit
+  Zufallsnamen je Aufruf. OPAA liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
+  und das PDF; nur was gelesen und geprüft ist, meldet es dem Modell als angehängt.</li>
 <li><strong>Nie geteilt:</strong> Eine Sandbox gehört genau einem Lauf einer Person.</li>
 <li><strong>Nur was das Skript enthält:</strong> Die Sandbox sieht weder Wissensbasis noch Datenbank noch
   Dateiablage. Was sie verwenden soll, schreibt das Modell ins Skript.</li>
 <li><strong>Ausgaben sind fremd:</strong> Dateinamen, Größe und Dateityp prüft OPAA wie bei einem Upload. Je Lauf
   werden höchstens fünf Dateien zu je 10 MB angehängt, nur in den Formaten, die auch ein Upload
-  annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Lässt sich
-  eine Datei nicht abholen, fehlt sie; die Antwort bleibt.</li>
+  annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Jede
+  Word-Datei prüft OPAA wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
+  Objekte, Felder, die Inhalte nachladen); eine solche wird nicht angehängt. Lässt sich eine Datei
+  nicht abholen oder scheitert das Befüllen, fehlt sie; die Antwort bleibt.</li>
+<li><strong>Restrisiko:</strong> Hat <code>run_code</code> im selben Lauf vorher Code ausgeführt, kann ein Prozess dieses
+  Codes eine Datei von <code>fill_template</code> verändern, bevor OPAA sie liest. Er kann damit nichts
+  anhängen, was <code>run_code</code> nicht auch selbst hätte anhängen können; die Prüfungen gelten
+  unverändert.</li>
 <li><strong>Grenzen:</strong> Ein Skript läuft höchstens <code>OPAA_SANDBOX_RUN_TIMEOUT</code> und nie über das Laufende
   hinaus, der Start der Sandbox zählt mit; eine Sandbox lebt höchstens <code>OPAA_SANDBOX_MAX_LIFETIME</code>.
-  Dieser Wert muss die Laufzeit eines Agentenlaufs, zweimal die Dauer eines Schlussaufrufs und zwei Minuten abdecken,
-  sonst startet das Backend nicht. Danach entfernt der
-  Sandbox-Dienst sie selbst, auch wenn das Backend ausgefallen ist.</li>
+  Dieser Wert muss die Laufzeit eines Agentenlaufs, zweimal die Dauer eines Schlussaufrufs und zwei
+  Minuten abdecken, sonst startet das Backend nicht. Danach entfernt der Sandbox-Dienst sie selbst,
+  auch wenn das Backend ausgefallen ist.</li>
 <li><strong>Kein Nachinstallieren:</strong> Das Image <code>opaa/sandbox-python</code> bringt Python mit reportlab, fpdf2,
-  python-docx, openpyxl, pandas und matplotlib mit. Ein eigenes Image setzt <code>OPAA_SANDBOX_IMAGE</code>;
-  es braucht <code>python3</code> und das Kommando <code>env</code>.</li>
+  python-docx, openpyxl, pandas und matplotlib mit, dazu docxtpl, LibreOffice Writer ohne Oberfläche
+  für die PDF-Fassung, Schriften mit den Maßen von Arial, Times New Roman, Courier New und Calibri
+  sowie das feste Skript für <code>fill_template</code>. LibreOffice macht das Image um mehrere hundert MB
+  größer. Der Bau des Images prüft das Skript mit eigenen Tests und bricht ab, wenn einer scheitert.
+  Die Umwandlung in PDF bekommt einen Teil des Zeitlimits eines Aufrufs; reicht er nicht, bleibt die
+  Word-Datei. Ein eigenes Image setzt <code>OPAA_SANDBOX_IMAGE</code>; es braucht <code>python3</code> und das Kommando
+  <code>env</code>, für <code>fill_template</code> zusätzlich <code>/opt/opaa/fill_template.py</code> mit docxtpl und <code>soffice</code>.
+  Fehlt das Skript, scheitert nur <code>fill_template</code>.</li>
 <li><strong>Ohne Root-Rechte:</strong> Ein Skript läuft als Benutzer ohne Root-Rechte und kennt das Token des
   Ausführungsagenten seiner Sandbox nicht.</li>
 </ul>
-<p>Der Sandbox-Dienst ist OpenSandbox, ein gepflegter Baustein unter Apache-Lizenz 2.0. Er braucht einen eigenen API-Schlüssel; ohne Schlüssel
-oder Adresse startet das Backend mit eingeschalteter Sandbox nicht.</p>
+<p>Der Sandbox-Dienst ist OpenSandbox, ein gepflegter Baustein unter Apache-Lizenz 2.0. Er braucht
+einen eigenen API-Schlüssel; ohne Schlüssel oder Adresse startet das Backend mit eingeschalteter
+Sandbox nicht.</p>
 <h2 id="docker-compose">Docker Compose<a class="headerlink" href="#docker-compose" title="Permanent link">&para;</a></h2>
 <p>Das Overlay <code>docker-compose.sandbox.yml</code> startet den Sandbox-Dienst und baut das Image:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OPAA_SANDBOX_API_KEY</span><span class="o">=</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span>
 docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose.sandbox.yml<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
 </code></pre></div>
 <p>Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token. Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den
-Host: Den Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor
-(<code>runsc</code>) als Laufzeit der Sandboxen.</p>
+Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
+Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
+Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (<code>runsc</code>) als
+Laufzeit der Sandboxen.</p>
 <h2 id="plattenplatz-und-härtung-unter-compose">Plattenplatz und Härtung unter Compose<a class="headerlink" href="#plattenplatz-und-härtung-unter-compose" title="Permanent link">&para;</a></h2>
 <p><strong>Plattenplatz:</strong> Eine Sandbox hat eine Grenze für Laufzeit, Speicher und Prozesse, aber keine für
 den Plattenplatz. Was ein Skript schreibt, landet im Datenverzeichnis von Docker auf dem Host, bis
@@ -4249,19 +4268,23 @@ für jeden Betrieb mit Sandbox:</p>
 <li><strong>Grenze je Container, wo Docker sie kann:</strong> Mit dem Speichertreiber <code>overlay2</code> auf XFS mit
   Projektquoten (Mount-Option <code>pquota</code>) setzt <code>"storage-opts": ["overlay2.size=2G"]</code> in
   <code>/etc/docker/daemon.json</code> eine Grenze für jeden neuen Container. Andere Aufbauten, etwa der
-  containerd-Image-Speicher, übergehen die Angabe teils ohne Meldung. Ob sie wirkt, zeigt
-  <code>docker run --rm --storage-opt size=20m python:3.13-slim sh -c 'dd if=/dev/zero of=/tmp/f bs=1M count=50'</code>:
-  Der Befehl muss mit „No space left on device“ scheitern.</li>
-<li><strong>Füllstand überwachen:</strong> Ein Alarm auf den freien Platz dieses Dateisystems, wie für die Datenbank.</li>
+  containerd-Image-Speicher, übergehen die Angabe teils ohne Meldung. Ob sie wirkt, zeigt dieser
+  Befehl; er muss mit „No space left on device“ scheitern:</li>
 </ul>
+<p><div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--storage-opt<span class="w"> </span><span class="nv">size</span><span class="o">=</span>20m<span class="w"> </span>python:3.13-slim<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'dd if=/dev/zero of=/tmp/f bs=1M count=50'</span>
+</code></pre></div>
+- <strong>Füllstand überwachen:</strong> Ein Alarm auf den freien Platz dieses Dateisystems, wie für die
+  Datenbank.</p>
 <p><strong>Härtung des Dienstes:</strong> Der Sandbox-Dienst läuft mit Read-only Filesystem, ohne Capabilities und
 mit <code>no-new-privileges</code>. Schreiben darf er nur unter <code>/tmp</code> und in sein Volume
 <code>opensandbox-state</code> mit seinem eigenen Zustand. Die Images des Dienstes und seines
 Ausführungsagenten, das Basis-Image von <code>opaa/sandbox-python</code> und dessen Python-Pakete sind auf
 Version und Prüfsumme festgelegt; ein <code>docker compose pull</code> holt deshalb nie still einen anderen
-Stand. Neue Fassungen kommen mit einem OPAA-Update. Danach den Stapel mit <code>up -d --build</code> neu
-starten, damit auch das Sandbox-Image neu gebaut wird, und <code>run_code</code> einmal von einem Agenten
-ausführen lassen.</p>
+Stand. Die Pakete von LibreOffice kommen aus dem Debian-Release des Basis-Images mit seinen
+Sicherheitsupdates zum Zeitpunkt des Baus. Neue Fassungen kommen mit einem OPAA-Update. Danach den
+Stapel mit <code>up -d --build</code> neu starten, damit auch das Sandbox-Image neu gebaut wird, und <code>run_code</code>
+und <code>fill_template</code> einmal von einem Agenten ausführen lassen.</p>
 <h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
 <p>OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa der Dienst in
 <code>opensandbox-system</code> und die Sandboxen in <code>opensandbox</code>. Den Schlüssel bekommt der Dienst als
@@ -4276,7 +4299,7 @@ ausführen lassen.</p>
 <tbody>
 <tr>
 <td><code>sandbox.enabled</code></td>
-<td>schaltet <code>run_code</code> frei</td>
+<td>schaltet <code>run_code</code> und <code>fill_template</code> frei</td>
 </tr>
 <tr>
 <td><code>sandbox.baseUrl</code></td>
@@ -4325,16 +4348,17 @@ seine Laufzeitklasse fest, nicht OPAA:</p>
 </tbody>
 </table>
 <h2 id="einschalten-für-agenten">Einschalten für Agenten<a class="headerlink" href="#einschalten-für-agenten" title="Permanent link">&para;</a></h2>
-<p>Die Sandbox ist nur die Voraussetzung. Ein Agent nutzt <code>run_code</code> erst, wenn das Werkzeug in den
-Agenten-Einstellungen eingeschaltet und dem Agenten zugeordnet ist.</p>
+<p>Die Sandbox ist nur die Voraussetzung. Ein Agent nutzt <code>run_code</code> oder <code>fill_template</code> erst, wenn
+das Werkzeug in den Agenten-Einstellungen eingeschaltet und dem Agenten zugeordnet ist;
+<code>fill_template</code> zusätzlich nur, solange die Systemverwaltung Vorlagen eingeschaltet hat.</p>
 <h2 id="protokolle">Protokolle<a class="headerlink" href="#protokolle" title="Permanent link">&para;</a></h2>
 <p>Das Backend schreibt zu einem Lauf nur Kennung, Ergebnis und Zahlen ins Anwendungslog, keine
 Skripte, Dateinamen oder Inhalte. Die Schritte eines Laufs sieht die Person an ihrer Antwort.</p>
 <p>Je Sandbox hält das <strong>Sandboxprotokoll</strong> in der Datenbank fest: Lauf, technische Kennung der
 Sandbox, Ergebnis, Dauer, Zahl der Skripte, Zahl und Größe der Dateien und gegebenenfalls den
-Abbruchgrund. Kein Konto, kein Skript, kein Dateiinhalt. Es wird frühestens nach 7 Tagen und spätestens am Tag
-darauf gelöscht, einstellbar 1 bis 30 Tage, nie länger als das Schrittprotokoll; Frist und Einsicht beschreibt
-<a href="../administration/datenschutz.html">Datenschutz einstellen</a>.</p>
+Abbruchgrund. Kein Konto, kein Skript, kein Dateiinhalt. Es wird frühestens nach 7 Tagen und
+spätestens am Tag darauf gelöscht, einstellbar 1 bis 30 Tage, nie länger als das Schrittprotokoll;
+Frist und Einsicht beschreibt <a href="../administration/datenschutz.html">Datenschutz einstellen</a>.</p>
 <p>Der Sandbox-Dienst führt ein eigenes Log. Damit keine Skripte darin landen:</p>
 <ul>
 <li>Log-Stufe des Dienstes <code>INFO</code> oder höher, nie <code>DEBUG</code> (<code>[log] level</code> in <code>sandbox/config.toml</code>,

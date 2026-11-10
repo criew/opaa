@@ -1027,6 +1027,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#so-nutzt-ein-agent-die-vorlage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So nutzt ein Agent die Vorlage
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4066,6 +4077,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#so-nutzt-ein-agent-die-vorlage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So nutzt ein Agent die Vorlage
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4098,8 +4120,10 @@
 <p>OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen Block nicht
 schließen oder aktive Inhalte tragen: Makros, ActiveX-Elemente, eingebettete Objekte, eine
-verknüpfte Dokumentvorlage oder Felder wie DDE und INCLUDEPICTURE, die Inhalte nachladen. Links
-bleiben erlaubt.</p>
+verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an Formularfeldern oder Felder,
+die Inhalte nachladen. Erlaubt sind Links und einfache
+Felder wie Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eines
+anderen Feldes (etwa in einer WENN-Bedingung).</p>
 <h2 id="platzhalter-schreiben">Platzhalter schreiben<a class="headerlink" href="#platzhalter-schreiben" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4127,9 +4151,25 @@ bleiben erlaubt.</p>
 </tr>
 </tbody>
 </table>
+<p>Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (<code>{% if betrag &gt; 0 %}</code>), <code>+</code>
+und <code>-</code>, <code>~</code> zum Verketten und die Filter <code>default</code>, <code>upper</code>, <code>lower</code>, <code>title</code>, <code>capitalize</code>, <code>trim</code>, <code>round</code>,
+<code>int</code>, <code>float</code>, <code>abs</code>, <code>join</code>, <code>length</code>, <code>count</code>, <code>first</code> und <code>last</code> mit festen Werten als
+Argument, etwa <code>{{ name|default('unbekannt') }}</code>. Funktionsaufrufe, <code>set</code>, <code>macro</code>, andere Filter
+und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.</p>
 <p>Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
 <code>{%tr for … %}</code> in der ersten und <code>{%tr endfor %}</code> in einer eigenen Zeile darunter. Ein <code>-</code> am Rand eines Tags (<code>{%- if … -%}</code>) entfernt Leerraum wie gewohnt. Namen bestehen
 aus Buchstaben, Ziffern und Unterstrich. Ein Kommentar <code>{# … #}</code> erscheint nicht im Ergebnis.</p>
+<h2 id="so-nutzt-ein-agent-die-vorlage">So nutzt ein Agent die Vorlage<a class="headerlink" href="#so-nutzt-ein-agent-die-vorlage" title="Permanent link">&para;</a></h2>
+<p>Ein Agent mit dem Werkzeug <code>fill_template</code> bekommt in jedem Lauf die Vorlagen angeboten, die die
+fragende Person lesen darf, jeweils mit ihren Platzhaltern. Das Modell liefert nur die Werte, etwa
+Aktenzeichen und Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
+<a href="../betrieb/sandbox.html">Sandbox</a> und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
+Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert
+nicht, bleibt ein Feld leer (oder zeigt, was <code>default(…)</code> vorgibt), eine Liste hat keine Einträge,
+und eine Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert
+das Befüllen.</p>
+<p>Sind Vorlagen ausgeschaltet, darf die Person keine Vorlage lesen oder ist die Sandbox nicht
+erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt das dazu.</p>
 <p><strong>Rollen an der Vorlage:</strong></p>
 <table>
 <thead>
