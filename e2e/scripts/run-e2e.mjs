@@ -20,7 +20,7 @@
 //   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
 //   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 //   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
-//   node scripts/run-e2e.mjs --target sandbox      # agent spike with run_code (pnpm run test:sandbox)
+//   node scripts/run-e2e.mjs --target sandbox      # agent with run_code (pnpm run test:sandbox)
 //   node scripts/run-e2e.mjs --target ocr          # text recognition with the real opaa-ocr (pnpm run test:ocr)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, demo/README.md) with ai-stub standing in
@@ -320,11 +320,10 @@ const composeEnv = {
         : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
   // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run;
-  // its API key is random per run, since sandbox code can reach the server. The specs drive
-  // run_code through the agent spike's "@test " prefix, so its switch is on here.
+  // its API key is random per run, since sandbox code can reach the server. The specs switch
+  // agents on themselves and choose an agent with run_code.
   ...(isSandbox
     ? {
-        OPAA_SPIKE_TOOL_LOOP_ENABLED: 'true',
         OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092',
         OPAA_SANDBOX_API_KEY: process.env.OPAA_SANDBOX_API_KEY ?? randomBytes(24).toString('hex'),
       }
