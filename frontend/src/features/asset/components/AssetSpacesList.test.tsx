@@ -96,7 +96,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     expect(screen.getByText('nicht für alle Mitglieder lesbar')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: /^Lösen\s?Zuordnung zum Space „Disziplinarverfahren 2026“/,
+        name: /^Entfernen\s?Zuordnung zum Space „Disziplinarverfahren 2026“/,
       }),
     ).toBeInTheDocument()
   })
@@ -126,7 +126,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     const user = userEvent.setup()
 
     const detach = await screen.findByRole('button', {
-      name: /^Lösen\s?Zuordnung zum Space „Infotheke Bürgerbüro“/,
+      name: /^Entfernen\s?Zuordnung zum Space „Infotheke Bürgerbüro“/,
     })
     expect(mockGetSpaces).toHaveBeenCalledTimes(1)
     expect(
@@ -134,7 +134,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     ).not.toBeInTheDocument()
 
     await user.click(detach)
-    await answerConfirm(user, 'Zuordnung zum Space „Infotheke Bürgerbüro“ lösen?', 'Lösen')
+    await answerConfirm(user, 'Aus „Infotheke Bürgerbüro“ entfernen?', 'Entfernen')
 
     await waitFor(() =>
       expect(mockDetachSpaceAsset).toHaveBeenCalledWith('space-curated', 'prompt-1'),

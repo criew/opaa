@@ -37,6 +37,7 @@ import {
 } from '../api/documentTemplateApi'
 import PlaceholderList from '../components/PlaceholderList'
 import TemplateFilePicker from '../components/TemplateFilePicker'
+import { fontSize } from '@/shared/theme/tokens'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -120,7 +121,7 @@ function FileArea({
           flexWrap: 'wrap',
         }}
       >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: '80ch' }}>
           {template.fileName} · {formatFileSize(template.sizeBytes)}. Ein Agent füllt diese
           Platzhalter mit den Werten aus dem Chat; die Datei selbst bleibt unverändert.
         </Typography>
@@ -143,7 +144,7 @@ function FileArea({
       <PlaceholderList placeholders={template.placeholders} />
       {canReplace && (
         <Box>
-          <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600, mb: 1 }}>
+          <Typography component="h2" sx={{ fontSize: fontSize.title, fontWeight: 600, mb: 1 }}>
             Datei ersetzen
           </Typography>
           <TemplateFilePicker
@@ -248,9 +249,9 @@ export default function DocumentTemplateDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Vorlage „${template?.name}“ löschen?`,
+      question: `„${template?.name}“ löschen?`,
       consequence:
-        'Das entfernt auch die Datei, die Rechte und die Space-Zuordnungen dieser Vorlage. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Die Datei, die Rechte und die Space-Zuordnungen dieser Vorlage werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

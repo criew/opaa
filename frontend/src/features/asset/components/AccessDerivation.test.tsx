@@ -135,7 +135,7 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
       const sentence = await screen.findByText(
         'Thomas Klein ist Mitglied in diesem Space – über die Gruppe Meldewesen.',
       )
-      expect(sentence).toHaveAttribute('title', 'Seit 1.3.2026')
+      expect(sentence).toHaveAttribute('title', 'Seit 01.03.2026')
       expectNoDroppedDetails()
     })
 

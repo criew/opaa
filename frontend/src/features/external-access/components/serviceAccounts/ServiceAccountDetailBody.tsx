@@ -7,6 +7,7 @@ import IssueServiceAccountTokenDialog from './IssueServiceAccountTokenDialog'
 import ServiceAccountFormDialog from './ServiceAccountFormDialog'
 import { AccountState, LibraryRows, ResponsiblePerson, TokenRows } from './ServiceAccountParts'
 import { formatDate, rateLimitLabel } from './serviceAccountLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The body of one service account: its facts with „Ändern“, the tokens with „Token ausstellen“
@@ -38,7 +39,10 @@ export default function ServiceAccountDetailBody({
           ) : undefined
         }
       >
-        <Box component="dl" sx={{ ...definitionListSx, mt: 0, '& dd': { m: 0, fontSize: 13.5 } }}>
+        <Box
+          component="dl"
+          sx={{ ...definitionListSx, mt: 0, '& dd': { m: 0, fontSize: fontSize.text } }}
+        >
           <dt>Zustand</dt>
           <dd>
             <AccountState account={account} />

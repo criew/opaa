@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { DiscoveryPurpose } from './modelDiscovery'
 import type { DiscoveryState } from './useModelDiscovery'
+import { fontSize } from '../../theme/tokens'
 
 interface DiscoveryStatusProps {
   state: DiscoveryState
@@ -59,7 +60,9 @@ export default function DiscoveryStatus({
     const line = lineFor(state, idleHint, purpose)
     if (line !== null) {
       content = (
-        <Typography sx={{ mt: 1, fontSize: 12.5, color: 'text.secondary' }}>{line}</Typography>
+        <Typography sx={{ mt: 1, fontSize: fontSize.meta, color: 'text.secondary' }}>
+          {line}
+        </Typography>
       )
     }
   }

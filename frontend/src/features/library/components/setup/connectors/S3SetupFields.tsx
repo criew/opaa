@@ -26,6 +26,7 @@ import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { ALL_SCOPE_HINT, credentialsKept } from '../../sourceCore/common'
 import { browseSource } from '../../../api/libraryApi'
 import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../../sourceKit/selectionSources'
+import { fontSize } from '@/shared/theme/tokens'
 
 export function S3ConnectionFields({
   values,
@@ -132,7 +133,7 @@ export function S3ConnectionFields({
               }
               label="Bucket im Pfad adressieren"
             />
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Für MinIO und Ceph meist an, für AWS aus.
             </Typography>
           </Box>

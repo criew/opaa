@@ -1,4 +1,5 @@
 import type { SelfDisclosureStatus } from '@/shared/api/types'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** The hint against compelled disclosure, word for word as the specification fixes it. */
 export const PERSONAL_ONLY_NOTICE =
@@ -29,14 +30,7 @@ export const COMPLETED_MESSAGE = 'Ihre Daten wurden vollständig heruntergeladen
 
 /** A moment as „24.10.2026, 00:00 Uhr“, in the time zone of the browser. */
 export function formatMoment(iso: string): string {
-  const moment = new Date(iso)
-  const date = moment.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const time = moment.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-  return `${date}, ${time} Uhr`
+  return `${formatDateTime(iso)} Uhr`
 }
 
 function from(status: SelfDisclosureStatus, what: string): string {

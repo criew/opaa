@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** How many names a page brings — the same default as in the service. */
 const PAGE_SIZE = 50
@@ -93,12 +94,12 @@ export default function GroupMembersDisclosure({
     <Stack spacing={0.25} sx={{ mt: 0.5 }}>
       {error && <Alert severity="error">{error}</Alert>}
       {isLoading && !disclosure && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Mitglieder werden geladen …
         </Typography>
       )}
       {disclosure?.protectedGroup ? (
-        <Typography sx={{ fontSize: 12.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta }}>
           {disclosure.responsible.length > 0
             ? `Geschützte Gruppe — die Mitglieder werden nicht genannt. Verantwortlich: ${disclosure.responsible.join(', ')}`
             : 'Geschützte Gruppe — die Mitglieder werden nicht genannt. Auskunft gibt die Systemverwaltung.'}
@@ -113,7 +114,7 @@ export default function GroupMembersDisclosure({
             </Typography>
             <Stack component="ul" spacing={0.25} sx={{ m: 0, pl: 2.5 }}>
               {disclosure.members.map((member) => (
-                <Typography component="li" key={member.userId} sx={{ fontSize: 13 }}>
+                <Typography component="li" key={member.userId} sx={{ fontSize: fontSize.text }}>
                   {member.displayName ?? member.userId}
                 </Typography>
               ))}

@@ -6,6 +6,7 @@ import type { SuccessionSettingsResponse } from '@/shared/api/types'
 import { getSuccessionSettings, updateSuccessionSettings } from '../api/successionApi'
 import FactoryDefaultNumberSetting from '@/shared/ui/FactoryDefaultNumberSetting'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Months in words: „1 Monat“, „12 Monate“. */
 function monthsLabel(months: number): string {
@@ -60,7 +61,7 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
           {loadError}
         </Alert>
       ) : settings === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Schwelle wird geladen …
         </Typography>
       ) : (
@@ -75,7 +76,7 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
           max={settings.maxAgingThresholdMonths}
           format={monthsLabel}
           confirmChange={(next) => ({
-            question: `Einträge ab ${monthsLabel(next)} als lange offen hervorheben?`,
+            question: `Schwelle für lange offene Einträge auf ${monthsLabel(next)} ändern?`,
             consequence:
               'Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.',
             danger: next < settings.agingThresholdMonths,

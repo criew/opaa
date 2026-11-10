@@ -4,6 +4,7 @@ import Popover from '@mui/material/Popover'
 import Typography from '@mui/material/Typography'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import { fontSize } from '../../theme/tokens'
 
 /**
  * A hint of the admin lists: a short link with an icon in the row of the primary
@@ -39,7 +40,7 @@ export default function HintLink({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 13.5 }}
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: fontSize.text }}
       >
         <Icon fontSize="small" sx={{ color: 'warning.main' }} aria-hidden />
         {text}
@@ -59,7 +60,11 @@ export default function HintLink({
           },
         }}
       >
-        <Typography id={titleId} component="h2" sx={{ fontSize: 14, fontWeight: 600, mb: 0.75 }}>
+        <Typography
+          id={titleId}
+          component="h2"
+          sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.75 }}
+        >
           {title}
         </Typography>
         {children(close)}

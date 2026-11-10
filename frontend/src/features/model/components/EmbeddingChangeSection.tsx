@@ -36,6 +36,8 @@ import {
   formatTokens,
   sameEndpoint,
 } from './embeddingChange'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 type KeyChoice = 'keep' | 'new' | 'none'
 
@@ -151,11 +153,11 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
         finden bis dahin nur über die Volltextsuche.
       </Alert>
       <Stack spacing={1} sx={{ mb: 2 }}>
-        <Typography sx={{ fontSize: 13 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           Neues Modell: <strong>{target.model}</strong> ({target.dimensions} Dimensionen)
         </Typography>
         {previous && (
-          <Typography sx={{ fontSize: 13 }}>
+          <Typography sx={{ fontSize: fontSize.text }}>
             Bisheriges Modell: <strong>{previous.model}</strong> ({previous.dimensions} Dimensionen)
           </Typography>
         )}
@@ -166,16 +168,19 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
             aria-label="Fortschritt der Neueinbettung"
             sx={{ height: 6, borderRadius: 1 }}
           />
-          <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography
+            role="status"
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}
+          >
             {formatCount(index.embeddedChunks)} von {formatCount(index.totalChunks)} Abschnitten neu
             eingebettet
             {index.switching ? ' · Umschalten läuft' : index.running ? ' · läuft' : ' · angehalten'}
           </Typography>
         </Box>
         {index.lastRun?.message && !index.running && (
-          <Typography sx={{ fontSize: 12.5 }}>{index.lastRun.message}</Typography>
+          <Typography sx={{ fontSize: fontSize.meta }}>{index.lastRun.message}</Typography>
         )}
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Anhalten und Fortsetzen unter{' '}
           <Link component={RouterLink} to="/admin/search/index">
             Suche &amp; Indexierung → Indexstatus
@@ -209,13 +214,13 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
         </Button>
       </Stack>
       {index.switching && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           Der Vektorindex der neuen Spalte wird aufgebaut; verwerfen lässt sich der Wechsel jetzt
           nicht mehr.
         </Typography>
       )}
       {index.running && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           Einen Ersatz-Endpunkt nimmt OPAA nur bei angehaltenem Lauf an.
         </Typography>
       )}
@@ -355,7 +360,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           fallen die bisherigen Vektoren weg; zurück geht es dann nur mit einem neuen Wechsel.
         </>
       ),
-      confirmLabel: 'Wechsel starten',
+      confirmLabel: 'Wechseln',
       tone: 'danger',
     })
     if (!confirmed || probed.dimensions == null) return
@@ -375,14 +380,14 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
 
   return (
     <Box>
-      <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>
+      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
         {mode === 'change'
           ? 'Modell wechseln oder Endpunkt ändern'
           : mode === 'initial'
             ? 'Embedding-Modell festlegen'
             : 'Ersatz-Endpunkt'}
       </Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
           : mode === 'initial'
@@ -420,7 +425,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           fullWidth
         />
         <FormControl>
-          <FormLabel id={`${prefix}-key-label`} sx={{ fontSize: 13 }}>
+          <FormLabel id={`${prefix}-key-label`} sx={{ fontSize: fontSize.text }}>
             Zugangsschlüssel
           </FormLabel>
           <RadioGroup
@@ -444,7 +449,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             <FormControlLabel value="none" control={<Radio size="small" />} label="ohne" />
           </RadioGroup>
           {info.apiKeySet && !keepAllowed && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Die Adresse nennt einen anderen Endpunkt; der gespeicherte Schlüssel geht nicht mit.
             </Typography>
           )}
@@ -495,7 +500,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           <Alert severity="info">
             {result.message} Der Endpunkt bettet wie das aktive Modell ein
             {result.similarity != null
-              ? ` (Ähnlichkeit ${result.similarity.toLocaleString('de-DE', { maximumFractionDigits: 4 })})`
+              ? ` (Ähnlichkeit ${formatNumber(result.similarity, { maximumFractionDigits: 4 })})`
               : ''}
             ; ein Wechsel des Endpunkts genügt, ohne Neueinbettung.
           </Alert>
@@ -575,7 +580,7 @@ function ChangePreview({ result }: { result: EmbeddingModelProbeResponse }) {
             gridTemplateColumns: 'max-content 1fr',
             columnGap: 2,
             rowGap: 0.5,
-            fontSize: 13,
+            fontSize: fontSize.text,
             m: 0,
             mb: 1.5,
             '& dt': { color: 'text.secondary' },

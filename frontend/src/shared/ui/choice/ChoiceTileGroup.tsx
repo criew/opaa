@@ -2,6 +2,7 @@ import { useId, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import { fontSize, iconSize } from '../../theme/tokens'
 
 export interface ChoiceTile<K extends string> {
   value: K
@@ -169,9 +170,11 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
               {tile.icon}
             </Box>
             <Box>
-              <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{tile.label}</Typography>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
+                {tile.label}
+              </Typography>
               {tile.description && (
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
                   {tile.description}
                 </Typography>
               )}
@@ -184,7 +187,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
                   position: 'absolute',
                   top: 10,
                   right: 10,
-                  fontSize: 18,
+                  fontSize: iconSize.md,
                   color: 'primary.main',
                 }}
               />
@@ -200,7 +203,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
             <Typography
               id={reasonId}
               sx={{
-                fontSize: 12.5,
+                fontSize: fontSize.meta,
                 color: 'warning.main',
                 mt: 0.5,
                 pl: `${ICON_SIZE_PX + ICON_GAP_PX}px`,

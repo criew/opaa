@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SectionHead from './SectionHead'
+import { fontSize } from '../theme/tokens'
 
 interface PageSectionProps {
   /** The section's head - monospace, spaced, on a hairline. Names the section for assistive tech. */
@@ -67,7 +68,9 @@ export default function PageSection({
         </Box>
       )}
       {description && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2, maxWidth: '80ch' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2, maxWidth: '80ch' }}
+        >
           {description}
         </Typography>
       )}

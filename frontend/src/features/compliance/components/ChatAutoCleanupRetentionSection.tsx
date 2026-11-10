@@ -32,7 +32,7 @@ export default function ChatAutoCleanupRetentionSection() {
       consequence: shorter
         ? 'In Spaces mit eingeschalteter Bereinigung archiviert oder löscht der nächste nächtliche Lauf Chats früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
         : 'Die längeren Fristen gelten ab dem nächsten nächtlichen Lauf. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Fristen ändern',
+      confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -52,7 +52,7 @@ export default function ChatAutoCleanupRetentionSection() {
       consequence: shorter
         ? 'In Spaces mit eingeschalteter Bereinigung archiviert oder löscht der nächste nächtliche Lauf Chats früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
         : 'Gilt ab dem nächsten nächtlichen Lauf für alle Spaces mit eingeschalteter Bereinigung. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return false
@@ -65,7 +65,7 @@ export default function ChatAutoCleanupRetentionSection() {
       question: `Fristen der Chat-Bereinigung von ${periodLabel(current.archiveAfterDays, 'days')} und ${periodLabel(current.deleteAfterDays, 'days')} festlegen?`,
       consequence:
         'Danach gilt der angezeigte Wert als eigener Wert der Verwaltung, und der nächste nächtliche Lauf löscht nach ihm, sobald seine Frist erreicht ist. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werte festlegen',
+      confirmLabel: 'Festlegen',
       tone: 'danger',
     })
     if (!confirmed) return

@@ -1,3 +1,5 @@
+import { formatNumber } from '@/shared/utils/formatDate'
+
 /**
  * Whether two base addresses name the same endpoint: scheme, host, port (the default one when
  * omitted) and path without trailing slashes, as the server decides whether a stored key may stay.
@@ -21,10 +23,8 @@ function endpointKey(address: string): string | null {
   return `${scheme}://${url.hostname.toLowerCase()}:${port}${path}`
 }
 
-const NUMBER = new Intl.NumberFormat('de-DE')
-
 export function formatCount(value: number): string {
-  return NUMBER.format(value)
+  return formatNumber(value)
 }
 
 /** A rough duration, as the preview names it. */
@@ -47,13 +47,13 @@ export function formatBytes(bytes: number): string {
     unit++
   }
   const digits = unit >= 2 ? 1 : 0
-  return `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: digits }).format(value)} ${units[unit]}`
+  return `${formatNumber(value, { maximumFractionDigits: digits })} ${units[unit]}`
 }
 
 /** A token count rounded to millions or thousands, as an estimate. */
 export function formatTokens(tokens: number): string {
   if (tokens >= 1_000_000) {
-    return `etwa ${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(tokens / 1_000_000)} Mio.`
+    return `etwa ${formatNumber(tokens / 1_000_000, { maximumFractionDigits: 1 })} Mio.`
   }
   if (tokens >= 1000) return `etwa ${formatCount(Math.round(tokens / 1000))} Tsd.`
   return `etwa ${formatCount(tokens)}`

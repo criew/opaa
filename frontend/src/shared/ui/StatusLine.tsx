@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '../theme/tokens'
 
 export type StatusTone = 'neutral' | 'success' | 'warning' | 'error'
 
@@ -61,12 +62,12 @@ export default function StatusLine({
             transform: 'translateY(-1px)',
           }}
         />
-        <Typography component={component} sx={{ fontSize: 14, fontWeight: 600 }}>
+        <Typography component={component} sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
           {headline}
         </Typography>
       </Box>
       {detail && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5, pl: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, pl: 2 }}>
           {detail}
         </Typography>
       )}

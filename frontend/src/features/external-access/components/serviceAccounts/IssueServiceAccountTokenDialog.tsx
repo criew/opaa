@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { connectionsAdminRoute } from '@/shared/routes'
 import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
@@ -49,14 +49,14 @@ export function TokenValue({ created }: { created: CreatedServiceAccountTokenRes
   const url = `${window.location.origin}/mcp`
   return (
     <Stack spacing={1.5}>
-      <Typography sx={{ fontSize: 13.5 }}>
+      <Typography sx={{ fontSize: fontSize.text }}>
         „{created.name}“, gültig bis {formatDate(created.expiresAt)}
       </Typography>
       <Box
         data-testid="service-account-token-value"
         sx={{
           fontFamily: fontFamily.mono,
-          fontSize: 14,
+          fontSize: fontSize.text,
           p: 1.5,
           border: 1,
           borderColor: 'divider',
@@ -77,7 +77,10 @@ export function TokenValue({ created }: { created: CreatedServiceAccountTokenRes
         </Button>
       </Box>
       <Alert severity="warning">{VALUE_ONCE_HINT}</Alert>
-      <Box component="dl" sx={{ m: 0, fontSize: 13, '& dt': { color: 'text.secondary' } }}>
+      <Box
+        component="dl"
+        sx={{ m: 0, fontSize: fontSize.text, '& dt': { color: 'text.secondary' } }}
+      >
         <dt>Adresse</dt>
         <Box component="dd" sx={{ m: 0, fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
           {url}
@@ -198,7 +201,7 @@ function TokenDialog({
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
-            <Typography sx={{ fontSize: 13.5 }}>Für „{account.name}“</Typography>
+            <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
             <TextField
               label="Name"
               placeholder="Produktion"

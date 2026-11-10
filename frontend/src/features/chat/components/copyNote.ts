@@ -1,3 +1,5 @@
+import { formatDate } from '@/shared/utils/formatDate'
+
 /**
  * The note appended when an answer is copied with the copy button: the authority's notice from
  * the branding, the product name and the date of the answer (German format). Deliberately without
@@ -5,11 +7,7 @@
  * machine-readable marking.
  */
 export function copyNote(notice: string, productName: string, answeredAt: Date): string {
-  const date = answeredAt.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  const date = formatDate(answeredAt)
   return `${plainNoteText(notice)} – ${plainNoteText(productName)}, ${date}`
 }
 

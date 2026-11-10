@@ -8,6 +8,7 @@ import type {
 } from '@/shared/api/types'
 import StatusLine from '@/shared/ui/StatusLine'
 import { formatFraction, outcomeLabel, outcomeTone } from './directorySyncLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 function groupLine(change: DirectorySyncGroupChange): string {
   const path = change.sourcePath ? ` · ${change.sourcePath}` : ''
@@ -20,12 +21,12 @@ function GroupList({ title, changes }: { title: string; changes: DirectorySyncGr
   if (changes.length === 0) return null
   return (
     <Box>
-      <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         {title} ({changes.length})
       </Typography>
       <Stack component="ul" sx={{ m: 0, pl: 2.5 }}>
         {changes.map((change) => (
-          <Typography component="li" key={change.externalId} sx={{ fontSize: 13 }}>
+          <Typography component="li" key={change.externalId} sx={{ fontSize: fontSize.text }}>
             {groupLine(change)}
           </Typography>
         ))}
@@ -41,7 +42,7 @@ function userNames(users: DirectorySyncUserRef[]): string {
 function UserList({ title, users }: { title: string; users: DirectorySyncUserRef[] }) {
   if (users.length === 0) return null
   return (
-    <Typography sx={{ fontSize: 13 }}>
+    <Typography sx={{ fontSize: fontSize.text }}>
       <strong>
         {title} ({users.length}):
       </strong>{' '}
@@ -72,10 +73,12 @@ export default function DirectorySyncReportView({
         />
       )}
       {!showOutcome && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{report.message}</Typography>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          {report.message}
+        </Typography>
       )}
       <Stack spacing={1} sx={{ mt: 1 }}>
-        <Typography sx={{ fontSize: 13 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           Mitgliedschaften: +{report.membershipsAdded} / −{report.membershipsRemoved} · Anteil{' '}
           {formatFraction(report.changedFraction)} bei einer Schwelle von{' '}
           {formatFraction(report.thresholdFraction)}
@@ -89,7 +92,7 @@ export default function DirectorySyncReportView({
               title="Werden nicht mehr gepflegt (Token-Gruppen)"
               changes={report.unmaintainedTokenGroups}
             />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Ihre Mitgliedschaft bleibt eingefroren stehen, und sie sind kein neues Ziel für
               Berechtigungen mehr. Nichts wird stillschweigend entzogen — die Rechte dieser Gruppen
               lassen sich in der Arbeitsliste des Anbieters übertragen.
@@ -98,12 +101,12 @@ export default function DirectorySyncReportView({
         )}
         {report.membershipChanges.length > 0 && (
           <Box>
-            <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
               Mitgliedschaften je Gruppe ({report.membershipChanges.length})
             </Typography>
             <Stack component="ul" sx={{ m: 0, pl: 2.5 }}>
               {report.membershipChanges.map((change) => (
-                <Typography component="li" key={change.externalId} sx={{ fontSize: 13 }}>
+                <Typography component="li" key={change.externalId} sx={{ fontSize: fontSize.text }}>
                   {change.name}:{' '}
                   {change.added.length > 0 && `aufgenommen ${userNames(change.added)}`}
                   {change.added.length > 0 && change.removed.length > 0 && ' · '}
@@ -116,7 +119,7 @@ export default function DirectorySyncReportView({
         <UserList title="Konten, die gesperrt würden" users={report.accountsLocked} />
         <UserList title="Konten, die entsperrt würden" users={report.accountsUnlocked} />
         {report.accountLocksWithheld.length > 0 && (
-          <Typography sx={{ fontSize: 13 }}>
+          <Typography sx={{ fontSize: fontSize.text }}>
             <strong>Nicht gesperrt ({report.accountLocksWithheld.length}):</strong>{' '}
             {userNames(report.accountLocksWithheld)} — eine Sperre ließe die Installation ohne
             anmeldefähigen Systemverwalter zurück.

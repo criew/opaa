@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LocalUserSummaryResponse } from '@/shared/api/types'
 import HintLink from '@/shared/ui/list/HintLink'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const REVIEW_OBLIGATION_TEXT =
   'Lokale Konten sind begründet und befristet zu führen und regelmäßig zu überprüfen; ' +
@@ -52,7 +53,7 @@ export default function LocalUserReviewHint({
     <HintLink text={parts.join(' · ')} title="Hinweise zur Kontenprüfung">
       {(close) => (
         <>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
             {REVIEW_OBLIGATION_TEXT}
             {summary.lastReviewHint ? ` ${summary.lastReviewHint}` : ''}
           </Typography>
@@ -95,7 +96,7 @@ function HintRow({
 }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>{text}</Typography>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>{text}</Typography>
       {/* Visibly short, so that every row stays on one line; the name says where it leads. */}
       <Button
         size="small"

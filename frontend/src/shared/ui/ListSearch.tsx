@@ -1,6 +1,7 @@
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import SearchIcon from '@mui/icons-material/Search'
+import { iconSize } from '../theme/tokens'
 
 /**
  * The one search field of a list on a detail page: magnifier, placeholder as example, the name
@@ -31,7 +32,7 @@ export default function ListSearch({
         input: {
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ fontSize: 16 }} />
+              <SearchIcon sx={{ fontSize: iconSize.sm }} />
             </InputAdornment>
           ),
         },

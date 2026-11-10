@@ -19,7 +19,7 @@ import { userInitial } from '@/shared/utils/userInitial'
 import SectionHead from '@/shared/ui/SectionHead'
 import { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import { OwnExternalAccessTokensSection } from '@/features/external-access'
 import { MyGroupsSection } from '@/features/group'
@@ -133,18 +133,21 @@ export default function SettingsPage() {
                         width: 56,
                         height: 56,
                         bgcolor: 'primary.main',
-                        fontSize: 20,
+                        fontSize: fontSize.detailTitle,
                         fontWeight: 600,
                       }}
                     >
                       {userInitial(user)}
                     </Avatar>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 15, fontWeight: 600 }}>
+                      <Typography noWrap sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
                         {accountName}
                       </Typography>
                       {accountMeta && (
-                        <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                        <Typography
+                          noWrap
+                          sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+                        >
                           {accountMeta}
                         </Typography>
                       )}
@@ -163,7 +166,9 @@ export default function SettingsPage() {
                         value={
                           <>
                             {createdReason}
-                            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                            <Typography
+                              sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}
+                            >
                               So hat Ihre Systemverwaltung den dienstlichen Anlass Ihres Kontos
                               festgehalten.
                             </Typography>
@@ -176,7 +181,7 @@ export default function SettingsPage() {
                         title="Passwort"
                         headingLevel="h3"
                         value={
-                          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                             Gilt nur für diese Installation.
                           </Typography>
                         }
@@ -197,7 +202,7 @@ export default function SettingsPage() {
                 )}
 
                 <SectionHead>Darstellung</SectionHead>
-                <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
+                <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
                   Gilt in diesem Browser.
                 </Typography>
                 <ToggleButtonGroup

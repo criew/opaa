@@ -735,7 +735,7 @@ describe('LlmModelManagementPage', () => {
     await screen.findByRole('table', { name: 'Chat-Modelle' })
     const menu = await openRowMenu(user, 'Modell A')
     await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, /Modell „Modell A“ löschen\?/, 'Löschen')
+    await answerConfirm(user, /^„Modell A“ löschen\?/, 'Löschen')
 
     expect(await screen.findByText(/nicht gelöscht werden/i)).toBeInTheDocument()
   })

@@ -24,7 +24,7 @@ import {
 } from './copyFormats'
 import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
 import { useClipboardCopy } from './useClipboardCopy'
-import { motion, radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, motion, radius } from '@/shared/theme/tokens'
 
 interface CopyAnswerButtonProps {
   content: string
@@ -118,11 +118,11 @@ export default function CopyAnswerButton({
           })}
         >
           {copied ? (
-            <CheckIcon aria-hidden sx={{ fontSize: 15, color: 'primary.main' }} />
+            <CheckIcon aria-hidden sx={{ fontSize: iconSize.sm, color: 'primary.main' }} />
           ) : (
-            <ContentCopyOutlinedIcon aria-hidden sx={{ fontSize: 15 }} />
+            <ContentCopyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.sm }} />
           )}
-          <Typography component="span" sx={{ fontSize: 12.5, fontWeight: 500 }}>
+          <Typography component="span" sx={{ fontSize: fontSize.meta, fontWeight: 500 }}>
             {copied ? 'Kopiert' : 'Kopieren'}
           </Typography>
         </ButtonBase>
@@ -141,7 +141,7 @@ export default function CopyAnswerButton({
             px: 0.5,
           })}
         >
-          <ExpandMoreIcon aria-hidden sx={{ fontSize: 18 }} />
+          <ExpandMoreIcon aria-hidden sx={{ fontSize: iconSize.md }} />
         </ButtonBase>
       </Tooltip>
       <Menu

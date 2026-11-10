@@ -21,7 +21,7 @@ import { LAST_PROVIDER_STORAGE_KEY, useAuthStore } from '@/shared/session/authSt
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { SYSTEM_LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, iconSize, radius } from '@/shared/theme/tokens'
 
 function lastUsedProviderId(): string | null {
   try {
@@ -97,7 +97,7 @@ function ProviderChoice({
       >
         <Box
           component="span"
-          sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}
+          sx={{ fontSize: fontSize.text, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}
         >
           {signingIn ? (
             'Anmeldung läuft …'
@@ -115,7 +115,7 @@ function ProviderChoice({
           sx={{
             flex: 1,
             minWidth: 0,
-            fontSize: 11.5,
+            fontSize: fontSize.meta,
             fontWeight: 400,
             lineHeight: 1.3,
             fontFamily: fontFamily.mono,
@@ -215,7 +215,7 @@ export default function LoginPage() {
       {hasChoice && (
         <Box component="section" role="group" aria-labelledby="login-choice-title">
           <SectionEyebrow id="login-choice-title">Identitätsanbieter</SectionEyebrow>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
             {providers.length > 1
               ? 'Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.'
               : 'Melden Sie sich mit dem Konto Ihrer Organisation an.'}
@@ -255,8 +255,11 @@ export default function LoginPage() {
 
       <Divider sx={{ my: 3 }} />
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', color: 'text.secondary' }}>
-        <LockOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
-        <Typography sx={{ fontSize: 12, lineHeight: 1.5 }}>
+        <LockOutlinedIcon
+          aria-hidden="true"
+          sx={{ fontSize: iconSize.sm, mt: '1px', flex: 'none' }}
+        />
+        <Typography sx={{ fontSize: fontSize.meta, lineHeight: 1.5 }}>
           {trustNote(hasChoice, hasLocalForm)}
         </Typography>
       </Stack>
@@ -264,7 +267,7 @@ export default function LoginPage() {
       {/* ADR-0033, Entscheidung 4: while the management is switched off, this quiet link is the
           only visible way to the local system administrators' sign-in. */}
       {!hasLocalForm && (
-        <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
+        <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
           <Link component={RouterLink} to={SYSTEM_LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
             Anmeldung für die Systemverwaltung
           </Link>

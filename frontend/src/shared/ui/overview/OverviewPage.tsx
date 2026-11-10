@@ -15,7 +15,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
 import type { Theme } from '@mui/material/styles'
-import { blue } from '../../theme/tokens'
+import { blue, fontSize, iconSize } from '../../theme/tokens'
 
 export interface ControlledSearch {
   value: string
@@ -151,7 +151,7 @@ export default function OverviewPage<T>({
       >
         <PageHeading title={title} />
         {!firstLoad && (
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {entryCountLabel(count)}
           </Typography>
         )}
@@ -195,7 +195,7 @@ export default function OverviewPage<T>({
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16 }} />
+                    <SearchIcon sx={{ fontSize: iconSize.sm }} />
                   </InputAdornment>
                 ),
                 endAdornment: query ? (
@@ -205,7 +205,7 @@ export default function OverviewPage<T>({
                       aria-label="Suche zurücksetzen"
                       onClick={() => setQuery('')}
                     >
-                      <CloseIcon sx={{ fontSize: 16 }} />
+                      <CloseIcon sx={{ fontSize: iconSize.sm }} />
                     </IconButton>
                   </InputAdornment>
                 ) : undefined,

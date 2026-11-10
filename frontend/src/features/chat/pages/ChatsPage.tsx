@@ -30,6 +30,7 @@ import { CHAT_PAGE_SIZE, useChatListStore } from '../stores/chatListStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useSpaceStore } from '@/features/space'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
+import { fontSize } from '@/shared/theme/tokens'
 
 type ChatsTab = 'active' | 'archive'
 
@@ -172,9 +173,12 @@ export default function ChatsPage() {
       const confirmed = await confirmAction({
         question:
           targets.length === 1
-            ? `„${chatTitle(targets[0])}“ wirklich löschen?`
-            : `${chatCount(targets.length)} wirklich löschen?`,
-        consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+            ? `„${chatTitle(targets[0])}“ löschen?`
+            : `${chatCount(targets.length)} löschen?`,
+        consequence:
+          targets.length === 1
+            ? 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.'
+            : 'Alle Nachrichten, Notizen und Anhänge dieser Chats werden gelöscht.',
         confirmLabel: 'Löschen',
         tone: 'danger',
       })
@@ -336,13 +340,13 @@ export default function ChatsPage() {
                     />
                   }
                   label="Alle auf dieser Seite auswählen"
-                  slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                  slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                   sx={{ mr: 0 }}
                 />
                 <Box sx={{ flexGrow: 1 }} />
                 {hasSelection ? (
                   <>
-                    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {selectedIds.length} ausgewählt
                     </Typography>
                     <Button
@@ -364,7 +368,7 @@ export default function ChatsPage() {
                     </Button>
                   </>
                 ) : null}
-                <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                   {statusMessage}
                 </Typography>
               </Stack>

@@ -1,5 +1,5 @@
 import type { SxProps, Theme } from '@mui/material/styles'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 
 /**
  * The table language of the model area: column heads as letter-spaced capitals in the
@@ -10,13 +10,13 @@ import { fontFamily } from '@/shared/theme/tokens'
  */
 export const MODEL_TABLE_SX: SxProps<Theme> = {
   tableLayout: 'fixed',
-  '& th': { fontFamily: fontFamily.mono, fontSize: 10, letterSpacing: '0.08em' },
-  '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
+  '& th': { fontFamily: fontFamily.mono, fontSize: fontSize.label, letterSpacing: '0.08em' },
+  '& td': { fontSize: fontSize.text, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
 }
 
 /** Machine values - identifiers, addresses, numbers - are set in the monospace font. */
 export const MACHINE_VALUE_SX: SxProps<Theme> = {
   fontFamily: fontFamily.mono,
-  fontSize: 12,
+  fontSize: fontSize.meta,
   overflowWrap: 'anywhere',
 }

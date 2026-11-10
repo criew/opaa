@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import { fontSize } from '../theme/tokens'
 
 export interface KeyValueEntry {
   /** The label on the left; stays secondary, the value carries the weight. */
@@ -36,7 +37,7 @@ export default function KeyValueList({ entries, valueFont = 'text', sx }: KeyVal
           gridTemplateColumns: { xs: '1fr', sm: 'max-content 1fr' },
           columnGap: 2.5,
           rowGap: 0.5,
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           my: 0,
         },
         ...(Array.isArray(sx) ? sx : [sx]),
@@ -52,7 +53,7 @@ export default function KeyValueList({ entries, valueFont = 'text', sx }: KeyVal
             sx={{
               m: 0,
               overflowWrap: 'anywhere',
-              ...(valueFont === 'mono' ? { fontFamily: 'monospace', fontSize: 12 } : {}),
+              ...(valueFont === 'mono' ? { fontFamily: 'monospace', fontSize: fontSize.meta } : {}),
             }}
           >
             {entry.value}

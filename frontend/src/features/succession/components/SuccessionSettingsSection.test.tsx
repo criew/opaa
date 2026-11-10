@@ -27,7 +27,7 @@ describe('SuccessionSettingsSection', () => {
     await user.clear(field)
     await user.type(field, '6')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    const question = 'Einträge ab 6 Monate als lange offen hervorheben?'
+    const question = 'Schwelle für lange offene Einträge auf 6 Monate ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toBeVisible()
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, question, 'Ändern')
@@ -65,7 +65,7 @@ describe('SuccessionSettingsSection', () => {
       'erst nach 12 Monate statt nach 6 Monate hervorgehoben',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('caution')
-    await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')
+    await answerConfirm(user, question, 'Zurücksetzen')
 
     await waitFor(() => expect(sent).toEqual([{ agingThresholdMonths: null }]))
   })

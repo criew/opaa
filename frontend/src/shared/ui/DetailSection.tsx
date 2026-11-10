@@ -5,6 +5,7 @@ import Link from '@mui/material/Link'
 import type { SxProps, Theme } from '@mui/material/styles'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import { fontSize } from '../theme/tokens'
 
 interface DetailSectionProps {
   /** The section's head in running type, weight 600 - the style of the rows of the Reiter „Quelle". */
@@ -50,7 +51,7 @@ export default function DetailSection({
         <Typography
           id={headId}
           component={headingLevel}
-          sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary' }}
+          sx={{ fontSize: fontSize.title, fontWeight: 600, color: 'text.primary' }}
         >
           {title}
         </Typography>
@@ -63,7 +64,7 @@ export default function DetailSection({
 
 /** The type of a text action and a free-standing text link: one look for both (Leitlinie 5.1). */
 const TEXT_ACTION_SX = {
-  fontSize: 13.5,
+  fontSize: fontSize.text,
   fontWeight: 500,
   textAlign: 'left',
   minHeight: 24,

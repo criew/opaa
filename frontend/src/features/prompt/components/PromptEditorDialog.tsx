@@ -22,7 +22,7 @@ import {
   validatePromptDraft,
   variablesForText,
 } from '../utils/promptTemplate'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SectionHead from '@/shared/ui/SectionHead'
 import PromptTextHighlight from './PromptTextHighlight'
@@ -220,7 +220,7 @@ export default function PromptEditorDialog({
             {text.trim() ? (
               <PromptPreview text={text} variables={variables} />
             ) : (
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Die Vorschau erscheint, sobald der Prompt einen Text hat.
               </Typography>
             )}

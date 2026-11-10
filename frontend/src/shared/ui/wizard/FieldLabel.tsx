@@ -1,5 +1,6 @@
 import Typography from '@mui/material/Typography'
 import type { ReactNode } from 'react'
+import { fontSize } from '../../theme/tokens'
 
 interface FieldLabelProps {
   htmlFor?: string
@@ -19,7 +20,7 @@ export default function FieldLabel({ htmlFor, id, children }: FieldLabelProps) {
       component={htmlFor ? 'label' : 'span'}
       htmlFor={htmlFor}
       id={id}
-      sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: '5px' }}
+      sx={{ display: 'block', fontSize: fontSize.meta, color: 'text.secondary', mb: '5px' }}
     >
       {children}
     </Typography>
