@@ -46,6 +46,7 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
 import java.io.InputStream;
@@ -482,6 +483,22 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * {@link OriginalAccess} resolves the original; an attachment is re-extracted from its parent.
    */
   public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
+    // only these checks refuse before any original is fetched (RefusedBeforeWork)
+    ReadableDocument readable = RefusedBeforeWork.check(() -> readableDocument(documentId, caller));
+    Document document = readable.document();
+    KnowledgeLibrary library = readable.library();
+
+    requireNoMalwareFinding(document);
+    if (isReExtractableAttachment(document)) {
+      return loadAttachmentContent(document, library);
+    }
+    return loadOriginal(document, library);
+  }
+
+  private record ReadableDocument(Document document, KnowledgeLibrary library) {}
+
+  /** The document and its library, once the caller may read its content. */
+  private ReadableDocument readableDocument(UUID documentId, CurrentUser caller) {
     Document document =
         documentRepository
             .findById(documentId)
@@ -498,12 +515,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // its originals may already be gone while the erasure waits or resumes
       throw new NotFoundException("Die Bibliothek wird gelöscht", LIBRARY_BEING_ERASED);
     }
-
-    requireNoMalwareFinding(document);
-    if (isReExtractableAttachment(document)) {
-      return loadAttachmentContent(document, library);
-    }
-    return loadOriginal(document, library);
+    return new ReadableDocument(document, library);
   }
 
   /** An original the malware scan found malware in is never served, nor anything extracted. */

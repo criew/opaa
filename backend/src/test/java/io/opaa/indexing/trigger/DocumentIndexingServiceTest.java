@@ -37,11 +37,14 @@ import io.opaa.indexing.spi.VanishedDocumentPolicy;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.test.SourceTypes;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +52,9 @@ import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskRejectedException;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * ADR-0018: triggering an indexing run reduces to "index this library" - type and configuration are
@@ -190,6 +196,48 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(() -> service.triggerIndexing(unknownLibraryId, caller))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void anUnknownLibraryIsRefusedBeforeTheWorkAndMarkedSo() {
+    UUID unknownLibraryId = UUID.randomUUID();
+    when(libraryRepository.findByIdAndOrganizationId(unknownLibraryId, organizationId))
+        .thenReturn(Optional.empty());
+
+    MockHttpServletRequest request =
+        refusedWithin(
+            () -> service.triggerIndexing(unknownLibraryId, caller), NotFoundException.class);
+
+    assertThat(Collections.list(request.getAttributeNames()))
+        .as("the refusal before the run gives back the global rate-limit token")
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
+  }
+
+  @Test
+  void aMissingEditorGrantIsRefusedBeforeTheWorkAndMarkedSo() {
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
+
+    MockHttpServletRequest request =
+        refusedWithin(
+            () -> service.triggerIndexing(library.getId(), caller), AccessDeniedException.class);
+
+    assertThat(Collections.list(request.getAttributeNames()))
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
+  }
+
+  private static MockHttpServletRequest refusedWithin(
+      ThrowingCallable call, Class<? extends Throwable> refusal) {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/x/index");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      assertThatThrownBy(call).isInstanceOf(refusal);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+    return request;
   }
 
   @Test

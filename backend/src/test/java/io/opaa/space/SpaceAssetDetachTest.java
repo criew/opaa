@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +90,7 @@ class SpaceAssetDetachTest {
     library = KnowledgeLibrary.ownedByUser(ORGANIZATION, "Akten", null, managerId);
     when(assetRepository.findById(library.getId())).thenReturn(Optional.of((Asset) library));
     when(assetTypes.isActive(any())).thenReturn(true);
-    AssetTypeDefinition definition = mock(AssetTypeDefinition.class);
+    AssetTypeDefinition definition = mock(AssetTypeDefinition.class, CALLS_REAL_METHODS);
     when(definition.auditObjectType()).thenReturn(AuditObjectType.KNOWLEDGE_LIBRARY);
     when(assetTypes.require(library.getAssetType())).thenReturn(definition);
     when(assetAuthorization.load(library.getAssetType(), library.getId(), ORGANIZATION))
