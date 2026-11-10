@@ -794,7 +794,7 @@ class RedirectFollowingFetcherTest {
   }
 
   private static HttpClient productionClient() {
-    return SourceHttpClientFactory.buildHttpClient();
+    return SourceHttpClientFactory.buildHttpClient("test");
   }
 
   private static void redirectTo(com.sun.net.httpserver.HttpExchange exchange, String location)

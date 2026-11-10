@@ -3,6 +3,8 @@ package io.opaa.directory.sync.connector;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.directory.sync.DirectoryClient;
@@ -90,6 +92,11 @@ class DirectoryConnectorConfigurationTest {
     @Bean
     Clock clock() {
       return Clock.systemUTC();
+    }
+
+    @Bean
+    MeterRegistry meterRegistry() {
+      return new SimpleMeterRegistry();
     }
   }
 }

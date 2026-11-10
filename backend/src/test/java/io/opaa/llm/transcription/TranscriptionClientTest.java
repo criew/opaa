@@ -2,8 +2,10 @@ package io.opaa.llm.transcription;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.llm.transcription.TranscriptionClient.ProbeFailure;
 import io.opaa.llm.transcription.TranscriptionClient.TranscriptionUnavailableException;
 import java.io.IOException;
@@ -35,6 +37,7 @@ class TranscriptionClientTest {
   private HttpServer server;
   private String baseUrl;
   private TranscriptionClient client;
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
   private final CountDownLatch release = new CountDownLatch(1);
 
   /** An endpoint with the budget of one call. */
@@ -54,7 +57,7 @@ class TranscriptionClientTest {
     server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1";
-    client = new TranscriptionClient(new ObjectMapper());
+    client = new TranscriptionClient(new ObjectMapper(), meterRegistry);
   }
 
   @AfterEach
@@ -97,6 +100,60 @@ class TranscriptionClientTest {
           }
           exchange.close();
         });
+  }
+
+  @Test
+  void aRecordingCountsItsResultTheAudioSecondsTheEndpointNamesAndTheRequest() {
+    respond(
+        "/v1/audio/transcriptions",
+        200,
+        "{\"text\":\"Hallo\",\"usage\":{\"type\":\"duration\",\"seconds\":7.5}}",
+        new AtomicReference<>());
+
+    transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM);
+
+    assertThat(meterRegistry.get("opaa.transcription.audio").counter().count()).isEqualTo(7.5);
+    assertThat(
+            meterRegistry
+                .get("opaa.transcription.requests")
+                .tag("result", "success")
+                .counter()
+                .count())
+        .isEqualTo(1.0);
+    assertThat(
+            meterRegistry
+                .get("opaa.outbound.requests")
+                .tag("target", "transcription")
+                .tag("outcome", "success")
+                .tag("path_class", "background")
+                .timer()
+                .count())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aRefusedRecordingCountsAsRefusedWithoutAudioSeconds() {
+    respond("/v1/audio/transcriptions", 401, "", new AtomicReference<>());
+
+    assertThatThrownBy(() -> transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
+        .isInstanceOf(TranscriptionUnavailableException.class);
+
+    assertThat(
+            meterRegistry
+                .get("opaa.transcription.requests")
+                .tag("result", "refused")
+                .counter()
+                .count())
+        .isEqualTo(1.0);
+    assertThat(meterRegistry.find("opaa.transcription.audio").counter()).isNull();
+    assertThat(
+            meterRegistry
+                .get("opaa.outbound.requests")
+                .tag("target", "transcription")
+                .tag("outcome", "auth_error")
+                .timer()
+                .count())
+        .isEqualTo(1);
   }
 
   @Test
@@ -235,6 +292,19 @@ class TranscriptionClientTest {
         .isInstanceOf(TranscriptionUnavailableException.class)
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).timedOut()).isTrue())
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isFalse());
+    // the deadline interrupts the call on its own thread, which records the timeout
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        meterRegistry
+                            .get("opaa.outbound.requests")
+                            .tag("target", "transcription")
+                            .tag("outcome", "timeout")
+                            .timer()
+                            .count())
+                    .isEqualTo(1));
   }
 
   @Test

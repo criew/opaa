@@ -280,15 +280,17 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
-  # SPIKE, development only: the tool run_code of the tool loop above, a Python script in an
-  # OpenSandbox sandbox without network (docker-compose.sandbox.yml). Needs both switches; the
-  # beans behind it (io.opaa.query.spike) only exist while both are set.
+  # The isolated execution environment behind the agent tool run_code (ADR-0073): an OpenSandbox
+  # server that starts one sandbox without network per agent run. Off by default; switched on, the
+  # start fails without base-url and api-key. max-lifetime must not exceed the server's
+  # max_sandbox_timeout_seconds.
   sandbox:
     enabled: ${OPAA_SANDBOX_ENABLED:false}
     base-url: ${OPAA_SANDBOX_BASE_URL:http://opensandbox-server:8090}
     api-key: ${OPAA_SANDBOX_API_KEY:}
     image: ${OPAA_SANDBOX_IMAGE:opaa/sandbox-python:1}
     run-timeout: ${OPAA_SANDBOX_RUN_TIMEOUT:60s}
+    max-lifetime: ${OPAA_SANDBOX_MAX_LIFETIME:15m}
     cpu: ${OPAA_SANDBOX_CPU:1}
     memory: ${OPAA_SANDBOX_MEMORY:1Gi}
   # Installation-wide feature flags (ADR-0044, io.opaa.common.FeatureFlags): every flag is on
@@ -977,6 +979,7 @@ management:
         "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
         "[opaa.agent.run.duration]": ${OPAA_METRICS_SLO_AGENT:5s,10s,30s,60s,120s,180s}
         "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
+        "[opaa.outbound.requests]": ${OPAA_METRICS_SLO_OUTBOUND:100ms,250ms,500ms,1s,2500ms,5s,10s,30s,60s}
         "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
         "[opaa.indexing.run.duration]": ${OPAA_METRICS_SLO_INDEXING_RUN:10s,60s,300s,900s,1800s,3600s,7200s,14400s}
         "[opaa.indexing.stage.duration]": ${OPAA_METRICS_SLO_INDEXING_STAGE:10ms,100ms,500ms,1s,5s,10s,30s,60s,300s}

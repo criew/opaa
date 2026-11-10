@@ -29,7 +29,7 @@ class ConnectorChecksUntrustedCertificateTest {
           catchThrowableOfType(
               IOException.class,
               () ->
-                  SourceHttpClientFactory.buildHttpClient()
+                  SourceHttpClientFactory.buildHttpClient("test")
                       .send(
                           HttpRequest.newBuilder(
                                   URI.create(

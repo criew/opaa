@@ -72,7 +72,7 @@ public class ConfluenceClientFactory {
               + ", connection is "
               + connection.edition());
     }
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("confluence");
     ConfluenceHttp http =
         new ConfluenceHttp(
             httpClient,

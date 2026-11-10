@@ -145,6 +145,16 @@ spec:
         - port: http
           protocol: TCP
     {{- end }}
+    {{- if .Values.sandbox.enabled }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml .Values.sandbox.serverNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.sandbox.serverPodSelector | nindent 12 }}
+      ports:
+        - port: {{ .Values.sandbox.serverPort }}
+          protocol: TCP
+    {{- end }}
     {{- if .Values.tracing.enabled }}
     {{- with .Values.tracing.egress }}
     {{- toYaml . | nindent 4 }}

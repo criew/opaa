@@ -74,6 +74,18 @@ public final class DocumentBlock {
     return BLOCK.open(id) + "\n" + (body.isEmpty() ? "" : body + "\n") + BLOCK.close(id);
   }
 
+  /**
+   * Like {@link #renderLines}, but each line keeps its leading spaces - for program output, whose
+   * indentation carries meaning.
+   */
+  public static String renderIndentedLines(String id, List<String> lines) {
+    String body =
+        lines.stream()
+            .map(line -> defuse(line).replaceAll("\\R+", " ").stripTrailing())
+            .collect(Collectors.joining("\n"));
+    return BLOCK.open(id) + "\n" + (body.isEmpty() ? "" : body + "\n") + BLOCK.close(id);
+  }
+
   private static String section(String id, Document chunk) {
     String fileName =
         cleanName(chunk.getMetadata().getOrDefault("file_name", "unknown").toString());

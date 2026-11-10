@@ -165,6 +165,35 @@ transcription:
   # default (4).
   maxConcurrent: ""
 
+# Isolated execution environment of the agent tool run_code (ADR-0073), off by default. The sandbox
+# server (OpenSandbox) is installed from its own chart into namespaces of its own; this release
+# connects the backend to it with the API key from the secret (key OPAA_SANDBOX_API_KEY:
+# secrets.sandboxApiKey, or that key in secrets.existingSecret) and closes the network of the
+# sandbox pods: in "namespace" it creates a NetworkPolicy that denies every egress of every pod
+# there and admits ingress only from the server.
+sandbox:
+  enabled: false
+  # Address of the OpenSandbox server, e.g. http://opensandbox-server.opensandbox-system:8090.
+  baseUrl: ""
+  # Namespace the server starts the sandbox pods in; required with enabled.
+  namespace: ""
+  # The server's pods, for the backend's egress rule (networkPolicy.egress.enabled) and the
+  # ingress of the sandbox pods; both required with enabled.
+  serverNamespaceSelector: {}
+  # e.g. { matchLabels: { app.kubernetes.io/name: opensandbox-server } }
+  serverPodSelector: {}
+  serverPort: 8090
+  # Settings of the backend; empty keeps the application default.
+  # Sandbox image with Python and the document libraries.
+  image: ""
+  # Time limit of one script, e.g. 60s.
+  runTimeout: ""
+  # Longest life of one sandbox, e.g. 15m; at most the server's max_sandbox_timeout_seconds.
+  maxLifetime: ""
+  # Limits of one sandbox, e.g. "1" and 1Gi.
+  cpu: ""
+  memory: ""
+
 # Text recognition (OCR) of scanned PDF documents. Two switches, both off by default: "enabled" is
 # the backend's operation switch (OPAA_OCR_ENABLED) - without it no page goes to any text
 # recognition service; "service" runs the bundled service opaa-ocr in the release. Connection type,
@@ -406,6 +435,7 @@ secrets:
   #             v0.1.0-rc.4)
   #   no longer read: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY (set under Modelle)
   #   with ocr.service.enabled: ocr-api-key (the key of the bundled text recognition service)
+  #   with sandbox.enabled: OPAA_SANDBOX_API_KEY (the key of the OpenSandbox server)
   #   optional: OPAA_INSTALLATION_TOKEN
   #   during a key change: OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS,
   #             OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS
@@ -445,6 +475,9 @@ secrets:
   # at least 32 characters without spaces, e.g. openssl rand -hex 32. The system administration
   # enters the same key under Modelle > Texterkennung.
   ocrApiKey: ""
+  # API key of the OpenSandbox server (OPAA_SANDBOX_API_KEY), required with sandbox.enabled: the
+  # same value as the server's OPENSANDBOX_SERVER_API_KEY, e.g. openssl rand -hex 32.
+  sandboxApiKey: ""
 
 backend:
   image:

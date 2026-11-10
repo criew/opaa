@@ -1,5 +1,8 @@
-# OpenSandbox lifecycle server for the run_code tool (docker-compose.sandbox.yml).
+# OpenSandbox lifecycle server for the agent tool run_code (docker-compose.sandbox.yml, ADR-0073).
 # The API key comes from OPENSANDBOX_SERVER_API_KEY; without it the server refuses to start.
+# max_sandbox_timeout_seconds below must be at least the backend's OPAA_SANDBOX_MAX_LIFETIME.
+# For a stronger isolation level on Linux, add a [secure_runtime] section (gVisor/runsc installed
+# on the host) as the OpenSandbox server documentation describes.
 
 [server]
 host = "0.0.0.0"

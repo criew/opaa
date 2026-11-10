@@ -84,7 +84,8 @@ class SharePointTenantIntegrationTest {
       new GraphConnections(
           SharePointProperties.defaults(),
           new TargetAddressValidator(true, List.of()),
-          Sleeper.threadSleep());
+          Sleeper.threadSleep(),
+          "sharepoint");
   private final SharePointSourceConnector connector =
       new SharePointSourceConnector(
           SharePointSourceConnector.API_BASE,

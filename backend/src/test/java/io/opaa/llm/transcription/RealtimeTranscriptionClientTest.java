@@ -3,8 +3,12 @@ package io.opaa.llm.transcription;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.llm.transcription.RealtimeTranscriptionClient.RealtimeUnavailableException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
@@ -29,13 +33,15 @@ class RealtimeTranscriptionClientTest {
   private static final String SECRET_TEXT = "Aktenzeichen 12-345 der Frau Muster";
 
   private final ObjectMapper json = new ObjectMapper();
+  private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
   private final RealtimeTranscriptionClient client =
       new RealtimeTranscriptionClient(
           List.of(
               new OpenAiRealtimeTranscriptionAdapter(json),
               new VllmRealtimeTranscriptionAdapter(json),
               new MistralRealtimeTranscriptionAdapter(json)),
-          json);
+          json,
+          registry);
   private FakeRealtimeUpstream upstream;
   private final Recorder recorder = new Recorder();
 
@@ -394,6 +400,7 @@ class RealtimeTranscriptionClientTest {
               assertThat(e.timedOut()).isFalse();
               assertThat(e.getMessage()).contains("401");
             });
+    assertThat(handshakes("auth_error", "interactive")).isEqualTo(1);
   }
 
   @Test
@@ -411,6 +418,26 @@ class RealtimeTranscriptionClientTest {
                     recorder))
         .isInstanceOfSatisfying(
             RealtimeUnavailableException.class, e -> assertThat(e.answered()).isFalse());
+    assertThat(handshakes("io_error", "interactive")).isEqualTo(1);
+  }
+
+  @Test
+  void aHandshakeThatGetsNoAnswerInTimeCountsAsATimeout() throws Exception {
+    try (ServerSocket silent = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+      RealtimeTranscriptionClient.ProbeFailure failure =
+          client.probe(
+              new RealtimeTranscriptionEndpoint(
+                  RealtimeTranscriptionProtocol.VLLM,
+                  "ws://127.0.0.1:" + silent.getLocalPort() + "/v1/realtime",
+                  "m",
+                  "",
+                  1),
+              Duration.ofMillis(300));
+
+      assertThat(failure).isNotNull();
+      assertThat(failure.timedOut()).isTrue();
+    }
+    assertThat(handshakes("timeout", "background")).isEqualTo(1);
   }
 
   @Test
@@ -425,6 +452,7 @@ class RealtimeTranscriptionClientTest {
     assertThat(failure).isNull();
     assertThat(upstream.connection(0).messages())
         .noneMatch(message -> message.contains("input_audio_buffer.append"));
+    assertThat(handshakes("success", "background")).isEqualTo(1);
   }
 
   @Test
@@ -450,6 +478,15 @@ class RealtimeTranscriptionClientTest {
 
     assertThat(failure).isNotNull();
     assertThat(failure.timedOut()).isTrue();
+  }
+
+  private long handshakes(String outcome, String pathClass) {
+    Timer timer =
+        registry
+            .find("opaa.outbound.requests")
+            .tags("target", "transcription", "outcome", outcome, "path_class", pathClass)
+            .timer();
+    return timer == null ? 0 : timer.count();
   }
 
   private RealtimeTranscriptionEndpoint endpoint(

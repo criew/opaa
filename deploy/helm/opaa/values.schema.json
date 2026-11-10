@@ -712,6 +712,62 @@
         }
       }
     },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Offers the agent tool run_code (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
+        },
+        "baseUrl": {
+          "type": "string",
+          "pattern": "^(https?://\\S+)?$",
+          "description": "Address of the OpenSandbox server (OPAA_SANDBOX_BASE_URL)"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$",
+          "description": "Namespace of the sandbox pods; the chart closes their network there"
+        },
+        "serverNamespaceSelector": {
+          "type": "object",
+          "description": "Namespace selector of the OpenSandbox server"
+        },
+        "serverPodSelector": {
+          "type": "object",
+          "description": "Pod selector of the OpenSandbox server"
+        },
+        "serverPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port of the OpenSandbox server"
+        },
+        "image": {
+          "type": "string",
+          "description": "Sandbox image; empty keeps the application default"
+        },
+        "runTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Time limit of one script such as 60s; empty keeps the application default"
+        },
+        "maxLifetime": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Longest life of one sandbox such as 15m, at least 60s; empty keeps the application default"
+        },
+        "cpu": {
+          "type": "string",
+          "description": "CPU limit of one sandbox such as 1 or 500m; empty keeps the application default"
+        },
+        "memory": {
+          "type": "string",
+          "description": "Memory limit of one sandbox such as 1Gi; empty keeps the application default"
+        }
+      }
+    },
     "mail": {
       "type": "object",
       "additionalProperties": false,
@@ -1528,6 +1584,11 @@
           "type": "string",
           "pattern": "^$|^\\S{32,}$",
           "description": "Key of the bundled text recognition service (ocr-api-key), at least 32 characters without spaces; required with ocr.service.enabled unless secrets.existingSecret is set"
+        },
+        "sandboxApiKey": {
+          "type": "string",
+          "pattern": "^$|^\\S{32,}$",
+          "description": "API key of the OpenSandbox server (OPAA_SANDBOX_API_KEY), at least 32 characters without spaces; required with sandbox.enabled unless secrets.existingSecret is set"
         },
         "rerankApiKey": {
           "type": "string",

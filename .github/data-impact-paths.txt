@@ -52,6 +52,7 @@ backend/src/main/java/io/opaa/s3/**/*.java
 backend/src/main/java/io/opaa/mail/**/*.java
 backend/src/main/java/io/opaa/mcp/**/*.java
 backend/src/main/java/io/opaa/outbound/**/*.java
+backend/src/main/java/io/opaa/observability/MeteredHttpClient.java
 backend/src/main/java/io/opaa/llm/**/*.java
 backend/src/main/java/io/opaa/observability/TracingConfiguration.java
 backend/src/main/java/io/opaa/observability/AllowlistedSpanExporter.java
@@ -111,6 +112,7 @@ backend/src/main/java/io/opaa/metadata/ModelMetadataExtractor.java
 backend/src/main/java/io/opaa/chat/ChatTitleGenerationService.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtraction.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtractionService.java
+backend/src/main/java/io/opaa/query/sandbox/**/*.java
 backend/src/main/java/io/opaa/query/spike/**/*.java
 backend/src/main/java/io/opaa/query/toolloop/**/*.java
 

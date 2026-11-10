@@ -10,6 +10,9 @@
 {{- if eq .Values.uploads.store "s3" }}
 {{- $requiredKeys = concat $requiredKeys (list "OPAA_UPLOAD_S3_ACCESS_KEY" "OPAA_UPLOAD_S3_SECRET_KEY") }}
 {{- end }}
+{{- if .Values.sandbox.enabled }}
+{{- $requiredKeys = append $requiredKeys "OPAA_SANDBOX_API_KEY" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
