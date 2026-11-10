@@ -2649,7 +2649,7 @@ describe('LibraryDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     await waitFor(() =>
-      expect(screen.queryByText(/konnten nicht geladen werden/)).not.toBeInTheDocument(),
+      expect(screen.queryByText(/Angaben zu dieser Bibliothek konnten nicht geladen werden/)).not.toBeInTheDocument(),
     )
   })
 
