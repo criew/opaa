@@ -34,6 +34,7 @@ CREATE TABLE backend_instances (
     stopped_at timestamp with time zone,
     fingerprint jsonb NOT NULL,
     fingerprint_hash text NOT NULL,
+    retired_settings jsonb,
     CONSTRAINT chk_backend_instances_fingerprint_object CHECK ((jsonb_typeof(fingerprint) = 'object'::text))
 );
 
@@ -93,3 +94,13 @@ ALTER TABLE ONLY shedlock
 CREATE TRIGGER trg_outbound_proxy_settings_invalidation AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON outbound_proxy_settings FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('outbound-proxy');
 
 INSERT INTO organizations (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default');
+
+-- The encryption purposes (io.opaa.security.EncryptionPurpose) on their way to refusing their
+-- unbound forms - enc:v1 and, for credentials, cleartext (ADR-0064, Entscheidung 6): measured_since
+-- is the first re-encryption run in a row that found none, retired_at the run that confirmed it.
+-- An instance started with OPAA_ENCRYPTION_KEYED_FORMAT=false clears the table.
+CREATE TABLE cipher_legacy_retirements (
+    purpose        varchar(32) PRIMARY KEY,
+    measured_since timestamptz NOT NULL,
+    retired_at     timestamptz
+);

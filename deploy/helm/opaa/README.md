@@ -202,8 +202,9 @@ Proben und Metriken laufen über den Management-Port (`backend.managementPort`),
 `metrics.serviceMonitor` legt einen ServiceMonitor an, `metrics.prometheusRule` die Alarme mit
 Schweregrad, Bereich und Runbook-Link, `metrics.grafanaDashboards` die Dashboards als ConfigMaps
 für den Sidecar eines vorhandenen Grafana (nur zusammen mit den Alarmen, deren Zustand die Kacheln
-zeigen), und `backend.logFormat` schaltet JSON-Protokolle ein. Mit
-kube-prometheus-stack:
+zeigen), und `backend.logFormat` schaltet JSON-Protokolle ein. Den Management-Port erreichen nur
+die Prometheus-Pods des Namespace `monitoring`; ein Prometheus in einem anderen Namespace gehört
+nach `metrics.scrapeFrom`. Mit kube-prometheus-stack im Namespace `monitoring`:
 
 ```yaml
 metrics:

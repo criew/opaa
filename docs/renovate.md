@@ -23,6 +23,7 @@ jederzeit auch lokal ausführen (unten).
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Basis-Image des OCR-Images (`ocr/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `dockerfile` | `ci` |
+| Images der Sandbox: Sandbox-Dienst (`docker-compose.sandbox.yml`), execd (`sandbox/config.toml`, eigener Regex-Manager) und Basis-Image (`sandbox/Dockerfile`), Version und Digest gemeinsam, dazu die Python-Pakete des Images mit Hashes (`sandbox/requirements.txt`), ohne Auto-Merge (siehe [Sandbox-Images](#sandbox-images)) | `docker-compose`, `custom.regex`, `dockerfile`, `pip_requirements` | `ci` |
 | Python-Pakete, die das OCR-Image im Basis-Image ersetzt (`ocr/requirements-overrides.txt`), mit Hashes, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `pip_requirements` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
@@ -100,6 +101,35 @@ Der Schritt „Modell-Prüfsummen gegen Herkunft abgleichen“ prüft danach jed
 Hugging-Face-API am eingetragenen Commit oder gegen die Prüfsummen des rapidocr-Pakets
 ([sbom.md](sbom.md#ocr-image)); der Rauchtest prüft die Texterkennung ohne Netz. Erst wenn beides
 grün ist, wird gemergt.
+
+## Sandbox-Images
+
+Das Compose-Overlay der Sandbox (`docker-compose.sandbox.yml`) startet `opensandbox/server`, der
+den Docker-Socket des Hosts hält; dieser startet `opensandbox/execd` (`execd_image` in
+`sandbox/config.toml`) und das Sandbox-Image aus `sandbox/Dockerfile`, in denen fremder Code
+läuft. Alle drei sind auf Version und Index-Digest festgelegt. Die Regel für `docker-compose.sandbox.yml` und
+`sandbox/**` in `renovate.json5` hält beides fest (`pinDigests: true`), wartet drei Tage und mergt
+nie automatisch: Keine Pflichtprüfung startet den Stapel. Ein neuer Digest bei gleicher Version
+wartet auf Freigabe in der Abhängigkeits-Übersicht. Dienst und execd gehören zur selben
+OpenSandbox-Version und kommen in einem PR (`groupName: 'OpenSandbox'`); als Version zählen nur
+die Tags `release-X.Y.Z`, keine Vorabversionen, `staging-…`-Builds oder die alten `v0.…`-Tags.
+
+`sandbox/config.toml` liest kein regulärer Manager, sondern ein eigener Regex-Manager. Sein
+Ausdruck lässt den Digest offen und seine Ersetzungsvorlage schreibt ihn mit; fehlt der Digest in
+der Datei, schlägt Renovate ihn deshalb selbst als Pin-PR vor.
+
+Die Python-Pakete des Sandbox-Images stehen samt allen Abhängigkeiten in `sandbox/requirements.txt`,
+jedes mit dem sha256 jedes Wheels, das CPython 3.13 auf `linux/amd64` und `linux/arm64` (glibc)
+installiert; das Dockerfile installiert mit `--require-hashes` und nur aus Wheels. Dieselbe Regel
+gilt (drei Tage, kein Auto-Merge). Hebt ein Update eine Abhängigkeit an, die ein anderes Paket
+anders verlangt, scheitert der Bau des Images im Scan des PRs.
+
+`.github/scripts/test_sandbox_image_pins.py` prüft, dass Compose-Datei, Dockerfile,
+`requirements.txt` und Regeln zusammenpassen und der Ausdruck die execd-Zeile trifft.
+
+Vor dem Merge eines Updates den Stapel mit dem Overlay starten und einmal `run_code` ausführen
+lassen ([Sandbox für Agenten](handbuch/betrieb/sandbox.md)). Das Sandbox-Image baut und scannt
+`cve-scan.yml` im PR mit ([cve-scanning.md](cve-scanning.md)).
 
 Bringt das Basis-Image ein Python-Paket mit bekannter Schwachstelle mit und gibt es noch keine
 docling-serve-Version mit der Fix-Version, ersetzt `ocr/Dockerfile` das Paket im Bau durch die

@@ -92,8 +92,17 @@ final class AgentPrompt {
             : AnswerGenerationService.SPACE_LANGUAGE_REMINDER);
   }
 
-  /** The instruction without the block's own markers, so it cannot close its block early. */
+  /**
+   * The instruction without the block's own markers, so it cannot close its block early; repeated
+   * until nothing changes, since a removal can join the halves of a marker written around another.
+   */
   private static String withoutMarkers(String instruction) {
-    return instruction.replace(AGENT_START, "").replace(AGENT_END, "");
+    String previous;
+    String current = instruction;
+    do {
+      previous = current;
+      current = previous.replace(AGENT_START, "").replace(AGENT_END, "");
+    } while (!current.equals(previous));
+    return current;
   }
 }

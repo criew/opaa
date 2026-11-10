@@ -127,18 +127,22 @@ public final class MigrationSchema {
               + "|RENAME)\\b",
           FLAGS);
 
-  /**
-   * The partition maintenance of the protocol tables, on names given at run time, and the removal
-   * of the baseline's {@code vector_store} on a database no instance started on: the installation
-   * creates that table again (ADR-0060, Entscheidung 10), so it counts as present.
-   */
+  /** The partition maintenance of the protocol tables, on names given at run time. */
   private static final Pattern BODY_ALLOWED =
       Pattern.compile(
           "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?%[Is]\\s+PARTITION\\s+OF\\b"
               + "|ALTER\\s+TABLE\\s+(?:ONLY\\s+)?%[Is]\\s+OWNER\\s+TO\\b"
-              + "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?%[Is]\\b"
-              + "|DROP\\s+TABLE\\s+vector_store\\s*;",
+              + "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?%[Is]\\b",
           FLAGS);
+
+  /**
+   * {@code vector_store} belongs to no migration: the installation creates it once the embedding
+   * model is chosen (ADR-0060, Entscheidung 10), with these columns and the model's dimension.
+   */
+  private static final String VECTOR_TABLE =
+      "CREATE TABLE vector_store (id uuid, content text, metadata json, embedding vector(1));";
+
+  private static final String VECTOR_TABLE_CREATOR = "io/opaa/knowledge/VectorTableCreator.java";
 
   /** Words a column pattern must never take for an unquoted column name. */
   private static final Set<String> KEYWORDS = Set.of("column", "constraint", "if", "only");
@@ -165,6 +169,8 @@ public final class MigrationSchema {
       schema.file = uri.substring(uri.lastIndexOf("db/migration/"));
       schema.apply(text(script));
     }
+    schema.file = VECTOR_TABLE_CREATOR;
+    schema.apply(VECTOR_TABLE);
     return schema.tables();
   }
 

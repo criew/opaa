@@ -1,6 +1,7 @@
 -- Module knowledge: pgvector, knowledge libraries with their folders and documents, indexing runs
--- and source state, the full-text and embedding index, vector_store, the metadata schema with the
--- delivered Dokumentart vocabulary, and the LLM model catalogue.
+-- and source state, the full-text and embedding index, the metadata schema with the delivered
+-- Dokumentart vocabulary, the LLM model catalogue and the model roles of the installation.
+-- vector_store is no part of it: the installation creates it once the embedding model is chosen.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -140,6 +141,11 @@ CREATE TABLE embedding_index (
     run_message text,
     updated_at timestamp with time zone NOT NULL,
     run_owner_instance_id uuid,
+    generation bigint DEFAULT 1 NOT NULL,
+    target_generation bigint,
+    run_kind character varying(20),
+    run_generation bigint,
+    index_build_started_at timestamp with time zone,
     CONSTRAINT chk_embedding_index_dimensions CHECK ((dimensions > 0)),
     CONSTRAINT chk_embedding_index_run_status CHECK ((run_status IN ('RUNNING', 'CANCELLED', 'FAILED', 'COMPLETED'))),
     CONSTRAINT chk_embedding_index_singleton CHECK ((id = 1)),
@@ -219,7 +225,6 @@ CREATE TABLE knowledge_libraries (
     external_access_set_at timestamp with time zone,
     external_access_set_by_user_id uuid,
     external_access_reminder_sent_at timestamp with time zone,
-    all_accounts_grant_allowed boolean DEFAULT true NOT NULL,
     erasure_requested_at timestamp with time zone,
     erasure_cause character varying(40),
     schedule_booked_at timestamp with time zone,
@@ -233,7 +238,6 @@ CASE external_access_state
 END),
     CONSTRAINT chk_knowledge_libraries_external_access_state CHECK ((external_access_state IN ('NEVER_SET', 'ACTIVE', 'WITHDRAWN', 'EXPIRED', 'SUSPENDED'))),
     CONSTRAINT chk_knowledge_libraries_schedule CHECK ((((schedule_enabled = false) AND (schedule_cron IS NULL)) OR ((schedule_enabled = true) AND (schedule_cron IS NOT NULL) AND ((source_type)::text <> 'UPLOAD'::text)))),
-    CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted CHECK ((((source_type)::text <> 'UPLOAD'::text) OR (all_accounts_grant_allowed = true))),
     CONSTRAINT chk_knowledge_libraries_source_settings CHECK (((source_settings IS NULL) OR (jsonb_typeof(source_settings) = 'object'::text))),
     CONSTRAINT chk_knowledge_libraries_source_type CHECK (((source_type)::text ~ '^[A-Z][A-Z0-9_]*$'::text)),
     CONSTRAINT chk_knowledge_libraries_upload_without_source CHECK ((((source_type)::text <> 'UPLOAD'::text) OR ((source_path IS NULL) AND (source_url IS NULL) AND (source_credentials IS NULL) AND (source_settings IS NULL))))
@@ -273,12 +277,9 @@ CREATE TABLE library_metadata_fields (
     value_pattern character varying(200),
     filter_enabled boolean DEFAULT false NOT NULL,
     context_prefix_enabled boolean DEFAULT false NOT NULL,
-    citation_enabled boolean DEFAULT false NOT NULL,
-    citation_position integer,
     sort_order integer NOT NULL,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
-    CONSTRAINT chk_library_metadata_fields_citation_position CHECK (((citation_enabled = (citation_position IS NOT NULL)) AND ((citation_position IS NULL) OR (citation_position = ANY (ARRAY[1, 2]))))),
     CONSTRAINT chk_library_metadata_fields_key CHECK (((field_key)::text ~ '^[a-z][a-z0-9_]*$'::text)),
     CONSTRAINT chk_library_metadata_fields_pattern CHECK ((((field_type)::text = 'PATTERN'::text) = (value_pattern IS NOT NULL))),
     CONSTRAINT chk_library_metadata_fields_retrieval_effect CHECK ((filter_enabled OR context_prefix_enabled)),
@@ -317,8 +318,15 @@ CREATE TABLE llm_models (
     active boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    tool_capability character varying(20) DEFAULT 'UNVERIFIED'::character varying NOT NULL,
+    tool_capability_basis character varying(20),
+    tool_capability_assessed_at timestamp with time zone,
+    tool_capability_measurement_run character varying(300),
     CONSTRAINT chk_llm_models_max_tokens CHECK ((max_tokens > 0)),
-    CONSTRAINT chk_llm_models_temperature CHECK (((temperature >= (0)::numeric) AND (temperature <= (2)::numeric)))
+    CONSTRAINT chk_llm_models_temperature CHECK (((temperature >= (0)::numeric) AND (temperature <= (2)::numeric))),
+    CONSTRAINT chk_llm_models_tool_capability CHECK ((tool_capability IN ('UNVERIFIED', 'CAPABLE', 'NOT_CAPABLE'))),
+    CONSTRAINT chk_llm_models_tool_capability_basis CHECK ((tool_capability_basis IN ('MEASURED', 'MANUAL'))),
+    CONSTRAINT chk_llm_models_tool_capability_statement CHECK (((((tool_capability)::text = 'UNVERIFIED'::text) AND (tool_capability_basis IS NULL) AND (tool_capability_assessed_at IS NULL) AND (tool_capability_measurement_run IS NULL)) OR (((tool_capability)::text <> 'UNVERIFIED'::text) AND (tool_capability_basis IS NOT NULL) AND (tool_capability_assessed_at IS NOT NULL) AND (((tool_capability_basis)::text = 'MEASURED'::text) = (tool_capability_measurement_run IS NOT NULL)))))
 );
 
 CREATE TABLE metadata_model_extraction_stats (
@@ -403,7 +411,8 @@ CREATE TABLE source_sync_state (
     subtree_markers jsonb,
     scan_progress jsonb,
     settings_basis character varying(64),
-    full_sync_quota_held boolean
+    full_sync_quota_held boolean,
+    resolved_scopes jsonb
 );
 
 ALTER TABLE ONLY chunk_full_text
@@ -540,6 +549,7 @@ CREATE INDEX idx_documents_parent ON documents USING btree (parent_document_id);
 
 CREATE INDEX idx_documents_pending_instance ON documents USING btree (processing_instance_id) WHERE ((status)::text = 'PENDING'::text);
 
+CREATE INDEX idx_indexing_jobs_library_completed ON indexing_jobs USING btree (library_id, completed_at) WHERE ((status)::text = 'COMPLETED'::text);
 CREATE INDEX idx_indexing_jobs_organization_id ON indexing_jobs USING btree (organization_id);
 
 CREATE INDEX idx_indexing_run_events_job_id ON indexing_run_events USING btree (job_id);
@@ -568,7 +578,6 @@ CREATE UNIQUE INDEX uk_library_folders_root_name ON library_folders USING btree 
 
 CREATE UNIQUE INDEX uk_library_metadata_field_values_code ON library_metadata_field_values USING btree (field_id, code);
 
-CREATE UNIQUE INDEX uk_library_metadata_fields_citation_position ON library_metadata_fields USING btree (library_id, citation_position) WHERE (citation_position IS NOT NULL);
 
 CREATE UNIQUE INDEX uk_library_metadata_fields_key ON library_metadata_fields USING btree (library_id, field_key);
 
@@ -761,25 +770,228 @@ INSERT INTO document_type_suffix_exclusions (code, token) VALUES
     ('VERMERK', 'sichtvermerk'),
     ('VERMERK', 'eingangsvermerk');
 
--- The table Spring AI's PgVectorStore reads and writes, created here rather than by Spring AI
--- (initialize-schema is false), so instances starting together never race in its DDL. Dimension,
--- index type and distance come from spring.ai.vectorstore.pgvector as Flyway placeholders.
-CREATE TABLE vector_store (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    content text,
-    metadata json,
-    embedding vector(${opaa_vector_store_dimensions}),
-    CONSTRAINT vector_store_pkey PRIMARY KEY (id)
+-- The model roles and settings of the installation (ADR-0060), each one row at most.
+
+-- The installation state of the whole installation, one row for every instance (ADR-0060,
+-- Entscheidung 4). No row means pending: the first start writes it under the start-up lock. The
+-- token is kept only as its SHA-256 hash and is cleared with the completion.
+CREATE TABLE installation_state (
+    id smallint NOT NULL,
+    status character varying(20) NOT NULL,
+    token_hash character varying(64),
+    token_source character varying(20),
+    completion_source character varying(30),
+    completed_at timestamp with time zone,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT installation_state_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_installation_state_singleton CHECK ((id = 1))
 );
 
-CREATE INDEX idx_vector_store_library_id ON vector_store USING btree (((metadata ->> 'library_id'::text)));
-CREATE INDEX idx_vector_store_document_id ON vector_store USING btree (((metadata ->> 'document_id'::text)));
+-- The saved steps of a pending installation (ADR-0060, Entscheidung 6), one row per step. payload
+-- holds the values without secrets; secret holds the password hash of the first account or the
+-- encrypted model key. Every row is deleted with the completion.
+CREATE TABLE installation_steps (
+    step character varying(30) NOT NULL,
+    payload jsonb NOT NULL,
+    secret text,
+    check_succeeded boolean,
+    check_message character varying(1000),
+    checked_at timestamp with time zone,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT installation_steps_pkey PRIMARY KEY (step)
+);
 
--- The name and shape PgVectorStore gives the vector index; none for index type none.
-DO $$
-BEGIN
-  IF '${opaa_vector_store_index_type}' <> 'none' THEN
-    EXECUTE 'CREATE INDEX spring_ai_vector_index ON vector_store'
-        || ' USING ${opaa_vector_store_index_type} (embedding ${opaa_vector_store_distance_ops})';
-  END IF;
-END $$;
+-- The embedding model of the installation (ADR-0060, Entscheidung 10), one row once it is chosen:
+-- written when the installation is completed, or by the dev mode at its start. dimensions is what a
+-- probe embedding returned or what the existing vector column declares; vector_store is created
+-- with it. The key is encrypted with the settings key.
+CREATE TABLE embedding_model (
+    id smallint NOT NULL,
+    base_url character varying(500) NOT NULL,
+    model_identifier character varying(200) NOT NULL,
+    api_key_ciphertext text,
+    max_input_tokens integer NOT NULL,
+    dimensions integer NOT NULL,
+    installed_at timestamp with time zone NOT NULL,
+    generation bigint DEFAULT 1 NOT NULL,
+    reference_vectors real[],
+    CONSTRAINT embedding_model_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_embedding_model_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_embedding_model_max_input_tokens CHECK ((max_input_tokens > 0)),
+    CONSTRAINT chk_embedding_model_dimensions CHECK ((dimensions > 0))
+);
+
+CREATE TRIGGER trg_embedding_model_invalidation AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON embedding_model FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('embedding-model');
+
+-- The rerank model role of the installation (ADR-0060, Entscheidung 10), one row once the
+-- administration saves it; without a row the factory default applies (off, unbound). The key is
+-- encrypted with the settings key. Timeout and probe interval stay in the configuration.
+CREATE TABLE rerank_model (
+    id smallint NOT NULL,
+    enabled boolean NOT NULL,
+    base_url character varying(500),
+    model_identifier character varying(200),
+    api_key_ciphertext text,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT rerank_model_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_rerank_model_singleton CHECK ((id = 1))
+);
+
+CREATE TRIGGER trg_rerank_model_invalidation AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON rerank_model FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('rerank-model');
+
+-- The transcription model role of the installation (ADR-0060, Entscheidung 10), one row once the
+-- administration saves it; without a row the factory default applies (off, unbound, language de).
+-- language null lets the model detect the language. The key is encrypted with the settings key.
+-- Audio size, timeout and concurrency stay in the configuration.
+CREATE TABLE transcription_model (
+    id smallint NOT NULL,
+    enabled boolean NOT NULL,
+    base_url character varying(500),
+    model_identifier character varying(200),
+    api_key_ciphertext text,
+    language character varying(8),
+    updated_at timestamp with time zone NOT NULL,
+    vocabulary character varying(500),
+    realtime_protocol character varying(16),
+    realtime_url character varying(500),
+    realtime_model character varying(200),
+    realtime_api_key_ciphertext text,
+    realtime_max_sessions integer,
+    CONSTRAINT transcription_model_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_transcription_model_singleton CHECK ((id = 1))
+);
+
+CREATE TRIGGER trg_transcription_model_invalidation AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON transcription_model FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('transcription-model');
+
+-- The text recognition (OCR) model role of the installation, one row once the administration saves
+-- it; without a row the factory default applies (off, docling-serve, unbound). connection_type is
+-- DOCLING_SERVE or OPENAI_VISION; model_identifier is only stored for a vision model. The key is
+-- encrypted with the settings key. The operation switch and the limits stay in the configuration.
+CREATE TABLE text_recognition_model (
+    id smallint NOT NULL,
+    enabled boolean NOT NULL,
+    connection_type character varying(32) NOT NULL,
+    base_url character varying(500),
+    model_identifier character varying(200),
+    api_key_ciphertext text,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT text_recognition_model_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_text_recognition_model_singleton CHECK ((id = 1))
+);
+
+CREATE TRIGGER trg_text_recognition_model_invalidation AFTER INSERT OR DELETE OR UPDATE OR TRUNCATE ON text_recognition_model FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('text-recognition-model');
+
+-- The malware scan of the installation, one row once the installation or the administration saves
+-- it; without a row the scan is off. host and port address the clamd daemon of the operator,
+-- timeout_seconds bounds one whole scan, on_unavailable (REJECT or ACCEPT) decides about a file the
+-- scanner could not judge.
+CREATE TABLE malware_scan_settings (
+    id smallint NOT NULL,
+    enabled boolean NOT NULL,
+    host character varying(255),
+    port integer NOT NULL,
+    timeout_seconds integer NOT NULL,
+    on_unavailable character varying(16) NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT malware_scan_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_malware_scan_settings_singleton CHECK ((id = 1))
+);
+
+-- The installation-wide rhythm of the full sync per source type as the system administration set
+-- it; without a row the factory default of the connector applies. A library may set its own.
+CREATE TABLE full_sync_rhythm_settings (
+    source_type character varying(20) NOT NULL,
+    interval_days integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT full_sync_rhythm_settings_pkey PRIMARY KEY (source_type),
+    CONSTRAINT chk_full_sync_rhythm_settings_days CHECK (((interval_days >= 1) AND (interval_days <= 365)))
+);
+
+-- The house-wide storage quota per shared library as the system administration set it, at most the
+-- operator's upper limit (opaa.library.quota-bytes); without the row the upper limit applies alone.
+CREATE TABLE shared_library_quota_settings (
+    id integer NOT NULL,
+    quota_bytes bigint NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT shared_library_quota_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_shared_library_quota_settings_bytes CHECK ((quota_bytes > 0)),
+    CONSTRAINT chk_shared_library_quota_settings_singleton CHECK ((id = 1))
+);
+
+-- The generation of an embedding model (ADR-0061, Entscheidung 2): vectors are comparable only
+-- under the same generation, model name and dimension. Every model change draws a new one from
+-- embedding_generation_seq, which never hands out a number twice; an endpoint change keeps it. The
+-- first model has generation 1, so the sequence starts after it.
+
+-- The model before a confirmed change, kept until the switch or the discard (Entscheidung 3); the
+-- key is encrypted with the settings key like in embedding_model.
+CREATE TABLE embedding_model_previous (
+    id smallint NOT NULL,
+    base_url character varying(500) NOT NULL,
+    model_identifier character varying(200) NOT NULL,
+    api_key_ciphertext text,
+    max_input_tokens integer NOT NULL,
+    dimensions integer NOT NULL,
+    installed_at timestamp with time zone NOT NULL,
+    generation bigint NOT NULL,
+    reference_vectors real[],
+    CONSTRAINT embedding_model_previous_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_embedding_model_previous_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_embedding_model_previous_max_input_tokens CHECK ((max_input_tokens > 0)),
+    CONSTRAINT chk_embedding_model_previous_dimensions CHECK ((dimensions > 0))
+);
+
+CREATE SEQUENCE embedding_generation_seq;
+
+SELECT setval('embedding_generation_seq', 1);
+
+-- A person's own vocabulary list for speech input, at most one per account. Visible only to the
+-- person, never evaluated, sent as prompt after the installation's list; deleted with the account.
+CREATE TABLE transcription_vocabularies (
+    user_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    vocabulary character varying(500) NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT transcription_vocabularies_pkey PRIMARY KEY (user_id),
+    CONSTRAINT fk_transcription_vocabularies_user_organization FOREIGN KEY (user_id, organization_id)
+        REFERENCES users(id, organization_id) ON DELETE CASCADE
+);
+
+-- The live transcription sessions open right now across all instances (ADR-0072), one row per
+-- session without any reference to the person: the cap of the installation counts them. A row is
+-- deleted when its session ends; one left behind by a stopped instance no longer counts once it is
+-- older than the hard limit of a session plus a margin, and is removed by the next opening.
+CREATE TABLE transcription_realtime_slots (
+    id uuid NOT NULL,
+    opened_at timestamp with time zone NOT NULL,
+    CONSTRAINT transcription_realtime_slots_pkey PRIMARY KEY (id)
+);
+
+-- Text recognition (OCR) of a scanned PDF, at most one row per document, in the same database as
+-- the document and its chunks so a restored backup keeps all three consistent. A row holds either
+-- the stored recognition (recognized_content: DoclingDocument JSON or Markdown per page, text and
+-- coordinates only, never an image), from which a re-index cuts the chunks again without the
+-- service, or a lock (blocked_reason) after a document-caused refusal or the page limit. Both apply
+-- only to the file with this checksum, recognised by connection type and configuration
+-- (configuration_id: connection type, address and model of the role, never its key) at this
+-- version of the pdf-ocr pipeline. Deleted with the document.
+CREATE TABLE document_text_recognition (
+    document_id uuid NOT NULL,
+    checksum character varying(64) NOT NULL,
+    connection_type character varying(32) NOT NULL,
+    configuration_id character varying(64) NOT NULL,
+    pipeline_version smallint NOT NULL,
+    page_count integer,
+    recognized_content text,
+    recognized_at timestamp with time zone,
+    blocked_reason character varying(500),
+    blocked_at timestamp with time zone,
+    CONSTRAINT document_text_recognition_pkey PRIMARY KEY (document_id),
+    CONSTRAINT fk_document_text_recognition_document FOREIGN KEY (document_id)
+        REFERENCES documents (id) ON DELETE CASCADE,
+    CONSTRAINT chk_document_text_recognition_state CHECK (
+        (recognized_content IS NULL) <> (blocked_reason IS NULL))
+);
+
+CREATE INDEX idx_document_text_recognition_blocked
+    ON document_text_recognition (document_id) WHERE blocked_reason IS NOT NULL;
