@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
@@ -22,6 +23,7 @@ import io.opaa.organization.Organization;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +52,8 @@ class DirectorySyncPlanConfirmationIntegrationTest {
   @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private DirectorySyncMetrics directorySyncMetrics;
+  @Autowired private MeterRegistry meterRegistry;
 
   private static final UUID ORGANIZATION_ID = Organization.DEFAULT_ID;
 
@@ -204,6 +208,43 @@ class DirectorySyncPlanConfirmationIntegrationTest {
                 directorySyncService.confirmPlan(
                     ORGANIZATION_ID, provider.getId(), firstPlanId, null, "Anlass"))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  /**
+   * The decision has waited since the first plan nobody decided: a replacing run keeps that time,
+   * so the status line and {@code opaa.directory_sync.plan.pending.age} do not start over.
+   */
+  @Test
+  void aReplacedPlanKeepsTheTimeItsDecisionHasWaitedSince() {
+    groupLosingMostOfItsMembers();
+    directorySyncService.run(ORGANIZATION_ID, provider.getId());
+    jdbcTemplate.update(
+        "UPDATE directory_sync_pending_plans SET created_at = now() - interval '2 hours'"
+            + " WHERE provider_id = ?",
+        provider.getId());
+    Instant firstShown =
+        directorySyncService
+            .getPendingPlan(ORGANIZATION_ID, provider.getId())
+            .orElseThrow()
+            .createdAt();
+
+    directoryClient.respondWithFor(
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
+    SyncReport second = directorySyncService.run(ORGANIZATION_ID, provider.getId());
+
+    assertThat(second.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
+    PendingPlanView current =
+        directorySyncService.getPendingPlan(ORGANIZATION_ID, provider.getId()).orElseThrow();
+    assertThat(current.membershipsRemoved()).isEqualTo(3);
+    assertThat(current.createdAt()).isEqualTo(firstShown);
+    directorySyncMetrics.refresh();
+    assertThat(
+            meterRegistry
+                .get("opaa.directory_sync.plan.pending.age")
+                .tag("provider", DirectorySyncMetrics.NO_PROVIDER)
+                .gauge()
+                .value())
+        .isGreaterThanOrEqualTo(7190.0);
   }
 
   // ---------------------------------------------------------------------------------------

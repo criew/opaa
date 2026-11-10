@@ -1755,6 +1755,13 @@ Namen des Pods; die Latenzen haben Buckets für p95 und SLO-Auswertungen. Eigene
 Buckets kommen als `OPAA_METRICS_SLO_*` über `backend.extraEnv`
 ([Konfiguration](../referenz/konfiguration.md)).
 
+Mit mehreren Backend-Pods melden Gauges, die jede Instanz aus der Datenbank liest, auf jedem Pod
+denselben Wert, etwa `opaa_indexing_run_last_success_seconds`,
+`opaa_indexing_libraries_overdue` und die Gauges des Verzeichnisabgleichs. Eigene Dashboards und
+Alarme fassen sie mit `max by (…)` über die Pods zusammen, nicht mit `sum`; sonst zählt jede
+Bibliothek so oft, wie Pods laufen. Zähler, Timer und Gauges einer einzelnen Instanz wie
+`opaa_indexing_runs_active` werden über die Pods summiert.
+
 ### Alarme
 
 `metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit neun Alarmen an. Mit mehreren
