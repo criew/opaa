@@ -388,6 +388,95 @@ class LibraryFolderServiceIntegrationTest {
     assertThat(folderRepository.findById(child.folder().getId())).isEmpty();
   }
 
+  /**
+   * A folder's documents go in a transaction each: the chunk lock of one document is released
+   * before the next row is deleted, so a folder of any size never accumulates one advisory lock per
+   * document in a single transaction (the shared lock table runs out otherwise). A trigger on this
+   * library's documents records how many chunk locks the deleting session holds at each row delete.
+   */
+  @Test
+  void deletingAFolderHoldsNoChunkLockOfAnEarlierDocument() {
+    LibraryFolderDetail folder =
+        folderService.createFolder(libraryId, "Viele", null, currentUserOf(editor, false));
+    for (int i = 0; i < 3; i++) {
+      uploadDocumentIntoFolder(folder.folder().getId(), "akte-" + i + ".txt", "Akte Nummer " + i);
+    }
+    String suffix = libraryId.toString().replace("-", "");
+    String probe = "folder_lock_probe_" + suffix;
+    try {
+      jdbcTemplate.execute("CREATE TABLE " + probe + " (held bigint NOT NULL)");
+      jdbcTemplate.execute(
+          "CREATE FUNCTION "
+              + probe
+              + "_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO "
+              + probe
+              + " SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'"
+              + " AND pid = pg_backend_pid() AND classid = "
+              + io.opaa.indexing.chunk.VectorStoreWriter.DOCUMENT_CHUNK_LOCK_NAMESPACE
+              + "; RETURN OLD; END $$");
+      jdbcTemplate.execute(
+          "CREATE TRIGGER "
+              + probe
+              + "_trg BEFORE DELETE ON documents FOR EACH ROW WHEN (OLD.library_id = '"
+              + libraryId
+              + "') EXECUTE FUNCTION "
+              + probe
+              + "_fn()");
+
+      folderService.deleteFolder(libraryId, folder.folder().getId(), currentUserOf(editor, false));
+
+      assertThat(jdbcTemplate.queryForList("SELECT held FROM " + probe, Long.class))
+          .hasSize(3)
+          .containsOnly(0L);
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + probe + "_trg ON documents");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS " + probe + "_fn()");
+      jdbcTemplate.execute("DROP TABLE IF EXISTS " + probe);
+    }
+  }
+
+  /**
+   * A document arriving in the folder while it is deleted keeps the folder: its row is refused by
+   * {@code fk_documents_folder}, which the caller gets as a conflict, never as a server error. A
+   * trigger moves a document of the library root into the folder at the moment its row goes.
+   */
+  @Test
+  void aDocumentArrivingDuringTheDeletionKeepsTheFolderAndAnswersWithAConflict() {
+    LibraryFolderDetail folder =
+        folderService.createFolder(libraryId, "Umkämpft", null, currentUserOf(editor, false));
+    UUID folderId = folder.folder().getId();
+    Document arriving = uploadDocumentIntoFolder(null, "spaet.txt", "Kommt gerade an");
+    String probe = "folder_arrival_probe_" + libraryId.toString().replace("-", "");
+    try {
+      jdbcTemplate.execute(
+          "CREATE FUNCTION "
+              + probe
+              + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE documents SET folder_id ="
+              + " OLD.id WHERE id = '"
+              + arriving.getId()
+              + "'; RETURN OLD; END $$");
+      jdbcTemplate.execute(
+          "CREATE TRIGGER "
+              + probe
+              + " BEFORE DELETE ON library_folders FOR EACH ROW WHEN (OLD.id = '"
+              + folderId
+              + "') EXECUTE FUNCTION "
+              + probe
+              + "()");
+
+      assertThatThrownBy(
+              () -> folderService.deleteFolder(libraryId, folderId, currentUserOf(editor, false)))
+          .isInstanceOf(ConflictException.class)
+          .hasMessageContaining("erneut");
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + probe + " ON library_folders");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS " + probe + "()");
+    }
+
+    assertThat(folderRepository.findById(folderId)).isPresent();
+    assertThat(documentRepository.findById(arriving.getId())).isPresent();
+  }
+
   @Test
   void deletingAnEmptyFolderRemovesOnlyTheFolderRow() {
     LibraryFolderDetail folder =

@@ -1,5 +1,6 @@
 package io.opaa.agent.web;
 
+import io.opaa.agent.AgentChoice;
 import io.opaa.agent.AgentService;
 import io.opaa.agent.AgentSwitch;
 import io.opaa.api.dto.AgentAvailabilityResponse;
@@ -8,6 +9,7 @@ import io.opaa.api.dto.AgentResponse;
 import io.opaa.api.dto.AgentUpdateRequest;
 import io.opaa.api.dto.AssetLockRequest;
 import io.opaa.api.dto.AssetResponsibilityResponse;
+import io.opaa.api.dto.AvailableAgent;
 import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -37,17 +39,18 @@ public class AgentController {
 
   private final AgentService agentService;
   private final AgentSwitch agentSwitch;
+  private final AgentChoice agentChoice;
 
-  public AgentController(AgentService agentService, AgentSwitch agentSwitch) {
+  public AgentController(
+      AgentService agentService, AgentSwitch agentSwitch, AgentChoice agentChoice) {
     this.agentService = agentService;
     this.agentSwitch = agentSwitch;
+    this.agentChoice = agentChoice;
   }
 
   @GetMapping
-  public List<AgentResponse> listAgents(
-      @RequestParam(name = "usable", defaultValue = "false") boolean usable,
-      @Caller CurrentUser caller) {
-    return AgentResponseMapper.toResponses(agentService.list(caller, usable));
+  public List<AgentResponse> listAgents(@Caller CurrentUser caller) {
+    return AgentResponseMapper.toResponses(agentService.list(caller));
   }
 
   @PostMapping
@@ -57,6 +60,17 @@ public class AgentController {
         .body(
             AgentResponseMapper.toResponse(
                 agentService.create(AgentResponseMapper.toCreation(request), caller)));
+  }
+
+  @GetMapping("/available")
+  public List<AvailableAgent> listAvailableAgents(
+      @RequestParam UUID spaceId, @Caller CurrentUser caller) {
+    return agentChoice.available(caller, spaceId).stream()
+        .map(
+            agent ->
+                new AvailableAgent(agent.getId(), agent.getName())
+                    .description(agent.getDescription()))
+        .toList();
   }
 
   @GetMapping("/availability")

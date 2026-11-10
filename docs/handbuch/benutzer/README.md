@@ -13,6 +13,7 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Prüfen, worauf eine Antwort sich stützt | [Belege prüfen](belege-pruefen.md) |
 | Datei mitgeben oder Frage sprechen | [Dateien anhängen und Spracheingabe](anhaengen-und-diktieren.md) |
 | Prompt im Chat einsetzen | [Prompts verwenden](prompts-verwenden.md) |
+| Frage an einen Agenten geben | [Agenten verwenden](agenten-verwenden.md) |
 | Antwort kopieren, Chat exportieren | [Antworten weitergeben](antworten-weitergeben.md) |
 | Chats ordnen, archivieren, wiederfinden | [Chats verwalten](chats.md) |
 

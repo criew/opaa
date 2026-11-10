@@ -330,4 +330,51 @@ class DocxTemplateInspectorTest {
     }
     return out.toByteArray();
   }
+
+  /**
+   * A field code counts as Word reads it: joined across the runs of a complex field, under any
+   * namespace prefix, and in a simple field with either quote.
+   */
+  @Test
+  void aFieldThatPullsInContentIsRefusedHoweverItIsWritten() throws IOException {
+    String w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    List<String> hidden =
+        List.of(
+            "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+                + "<w:r><w:instrText xml:space=\"preserve\"> INCLUDE</w:instrText></w:r>"
+                + "<w:r><w:instrText>PICTURE \"https://x.example/p.png\" \\d</w:instrText></w:r>"
+                + "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>x</w:t></w:r>"
+                + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>",
+            "<x:p xmlns:x=\""
+                + w
+                + "\"><x:r><x:instrText> DDEAUTO cmd \"/c calc\"</x:instrText></x:r></x:p>",
+            "<w:p><w:fldSimple w:instr=' INCLUDETEXT \"c:/geheim.docx\" '><w:r><w:t>x</w:t></w:r>"
+                + "</w:fldSimple></w:p>");
+    for (String field : hidden) {
+      byte[] docx = withBodyStart(TestDocx.withParagraphs("{{ a }}"), field);
+      Path file = write(docx);
+
+      assertThatThrownBy(() -> inspector.inspect(file, "vorlage.docx", Files.size(file)))
+          .as(field)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nachladen");
+      assertThat(new DocxActiveContent(ParserLimitProperties.DEFAULTS).isPassive(docx))
+          .as(field)
+          .isFalse();
+    }
+  }
+
+  @Test
+  void aMergeFieldSplitAcrossRunsStaysAllowed() throws IOException {
+    Path file =
+        write(
+            withBodyStart(
+                TestDocx.withParagraphs("{{ a }}"),
+                "<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
+                    + instr(" MERGE")
+                    + instr("FIELD Name")
+                    + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>"));
+
+    assertThat(inspector.inspect(file, "vorlage.docx", Files.size(file))).isNotEmpty();
+  }
 }

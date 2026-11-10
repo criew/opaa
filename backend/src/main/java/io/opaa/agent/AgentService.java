@@ -159,21 +159,9 @@ public class AgentService {
    * least {@code VIEWER}.
    */
   public List<AgentView> list(CurrentUser caller) {
-    return list(caller, false);
-  }
-
-  /**
-   * As {@link #list(CurrentUser)}; with {@code usableOnly} without the locked agents - the list a
-   * person chooses an agent from.
-   */
-  public List<AgentView> list(CurrentUser caller, boolean usableOnly) {
     requireEnabled();
     Set<UUID> readable =
-        new HashSet<>(
-            accessService.readableAssetIds(Agent.ASSET_TYPE, caller.id(), caller.organizationId()));
-    if (usableOnly) {
-      readable.removeAll(responsibilityService.lockedAmong(readable));
-    }
+        accessService.readableAssetIds(Agent.ASSET_TYPE, caller.id(), caller.organizationId());
     List<Agent> agents =
         agentRepository.findAllById(readable).stream()
             .sorted(Comparator.comparing(Agent::getName).thenComparing(Agent::getId))

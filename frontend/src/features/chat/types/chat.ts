@@ -58,6 +58,11 @@ export interface ChatMessage {
    * snapshot shown as "Prompt: <title>", never a link.
    */
   usedPromptTitle?: string
+  /**
+   * On a question: the name of the agent it was sent to - set when sent, and on a loaded chat
+   * taken from the answer's agent run.
+   */
+  agentName?: string
   /** On a question: the files sent along with it. */
   attachments?: ChatAttachmentRef[]
   timestamp: Date

@@ -24,7 +24,6 @@ import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,7 +119,7 @@ class AgentResponsibilityIntegrationTest {
   @Test
   void aLockedAgentIsLeftOutAndEveryRunIsRefusedUntilTheLockIsLifted() {
     UUID agent = anAgent("Vergabeprüfung", ResponsibleUnit.ofGroup(aGroup()));
-    assertThat(usableIds(admin())).contains(agent);
+    assertThat(lockOf(agent)).isNull();
 
     assertThatThrownBy(() -> agentService.lock(agent, "Prüfung", callerOf(reader)))
         .isInstanceOf(AccessDeniedException.class);
@@ -132,7 +131,7 @@ class AgentResponsibilityIntegrationTest {
 
     assertThat(locked.lock().cause()).isEqualTo(AssetLockCause.MANUAL);
     assertThat(locked.lock().reason()).isEqualTo("Anweisung wird überarbeitet");
-    assertThat(usableIds(admin())).doesNotContain(agent);
+    assertThat(lockOf(agent)).isNotNull();
     assertThat(agentService.list(admin())).extracting(view -> view.agent().getId()).contains(agent);
     assertThatThrownBy(() -> agentService.requireUsableForRun(agent))
         .isInstanceOfSatisfying(
@@ -144,7 +143,7 @@ class AgentResponsibilityIntegrationTest {
 
     agentService.unlock(agent, admin());
 
-    assertThat(usableIds(admin())).contains(agent);
+    assertThat(lockOf(agent)).isNull();
     agentService.requireUsableForRun(agent);
     assertThat(auditEvents(agent))
         .containsExactly("AGENT_CREATED", "ASSET_LOCKED", "ASSET_UNLOCKED");
@@ -279,9 +278,13 @@ class AgentResponsibilityIntegrationTest {
         .toList();
   }
 
-  private Set<UUID> usableIds(CurrentUser caller) {
-    return Set.copyOf(
-        agentService.list(caller, true).stream().map(view -> view.agent().getId()).toList());
+  private AssetResponsibilityView.Lock lockOf(UUID agent) {
+    return agentService.list(admin()).stream()
+        .filter(view -> view.agent().getId().equals(agent))
+        .findFirst()
+        .orElseThrow()
+        .responsibility()
+        .lock();
   }
 
   /** The audit entries of the object, without those of its grants. */

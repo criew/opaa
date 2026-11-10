@@ -5,6 +5,7 @@ import type {
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
   AssetResponsibilityResponse,
+  AvailableAgent,
   LibraryListResponse,
 } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
@@ -16,6 +17,18 @@ import { apiClient, normalizeError } from '@/shared/api/api'
 export async function getAgents(): Promise<AgentResponse[]> {
   try {
     const { data } = await apiClient.get<AgentResponse[]>('/v1/agents')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The agents the person can choose in a chat of the space; empty while agents are switched off. */
+export async function listAvailableAgents(spaceId: string): Promise<AvailableAgent[]> {
+  try {
+    const { data } = await apiClient.get<AvailableAgent[]>('/v1/agents/available', {
+      params: { spaceId },
+    })
     return data
   } catch (err) {
     normalizeError(err)

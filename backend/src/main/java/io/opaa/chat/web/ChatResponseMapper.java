@@ -157,15 +157,18 @@ public final class ChatResponseMapper {
       return null;
     }
     return new io.opaa.api.dto.AgentRun(
-        run.runId(),
-        AgentRunEndState.valueOf(run.endState().name()),
-        run.steps().stream()
-            .map(
-                step ->
-                    new AgentRunStep(step.tool(), AgentRunStepStatus.valueOf(step.status().name()))
-                        .detail(step.detail())
-                        .hits(step.hits()))
-            .toList());
+            run.runId(),
+            AgentRunEndState.valueOf(run.endState().name()),
+            run.steps().stream()
+                .map(
+                    step ->
+                        new AgentRunStep(
+                                step.tool(), AgentRunStepStatus.valueOf(step.status().name()))
+                            .detail(step.detail())
+                            .hits(step.hits()))
+                .toList())
+        .agentId(run.agentId())
+        .agentName(run.agentName());
   }
 
   /** Also used by {@code QueryResponseMapper}. */

@@ -450,8 +450,8 @@ public class ChatService {
   /**
    * The last {@code maxMessages} persisted messages as Spring AI messages, in turn order - ordered
    * by the application-assigned {@code sequence} (see {@link ChatMessage}'s Javadoc), not {@code
-   * created_at}. The content is the persisted text verbatim; the conversation window's own
-   * normalization happens at its entrance, in {@code QueryService}.
+   * created_at}. The content is the persisted text as is; the conversation window normalizes it at
+   * its entrance, {@code ConversationWindowMessages#reloaded}.
    */
   @Transactional(readOnly = true)
   public List<Message> historyAsSpringAiMessages(UUID chatId, int maxMessages) {

@@ -17,6 +17,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -130,7 +131,15 @@ public class LibraryFolderService {
     return toDetail(folder);
   }
 
-  @Transactional
+  /**
+   * Runs without an ambient transaction: every document goes in its own transaction through {@link
+   * FolderDocumentDeleter}, so the per-document chunk locks are released document by document and a
+   * folder of any size stays within the lock table. A failure stops the walk with the documents
+   * already deleted gone and the rest, and their folders, kept; a repeated call finishes the job.
+   *
+   * @throws ConflictException when a document or subfolder arrived in a folder while it was deleted
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void deleteFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
@@ -156,7 +165,14 @@ public class LibraryFolderService {
     for (Document document : documentRepository.findByFolderId(folder.getId())) {
       documentService.deleteDocument(libraryId, document.getId(), caller);
     }
-    folderRepository.delete(folder);
+    try {
+      folderRepository.delete(folder);
+    } catch (DataIntegrityViolationException e) {
+      // A document or subfolder that arrived meanwhile holds the row (RESTRICT foreign keys).
+      throw new ConflictException(
+          "Der Ordner hat während des Löschens neuen Inhalt bekommen. Bitte löschen Sie ihn"
+              + " erneut.");
+    }
   }
 
   /**

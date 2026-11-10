@@ -49,15 +49,25 @@ export const agentHandlers = [
     HttpResponse.json({ enabled: mockAgentSettings.enabled }),
   ),
 
-  http.get('/api/v1/agents', ({ request }) => {
-    if (offline()) return notFound()
-    const usable = new URL(request.url).searchParams.get('usable') === 'true'
-    return HttpResponse.json(
-      Object.values(mockAgents)
-        .filter((agent) => !usable || !agent.responsibility.lock)
-        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
-    )
-  }),
+  // Every readable, unlocked agent stands in every space of the mock; switched off, nothing is offered.
+  http.get('/api/v1/agents/available', () =>
+    HttpResponse.json(
+      offline()
+        ? []
+        : Object.values(mockAgents)
+            .filter((agent) => !agent.responsibility.lock)
+            .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+            .map((agent) => ({ id: agent.id, name: agent.name, description: agent.description })),
+    ),
+  ),
+
+  http.get('/api/v1/agents', () =>
+    offline()
+      ? notFound()
+      : HttpResponse.json(
+          Object.values(mockAgents).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+        ),
+  ),
 
   http.put('/api/v1/agents/:id/lock', async ({ params, request }) => {
     const agent = mockAgents[params.id as string]

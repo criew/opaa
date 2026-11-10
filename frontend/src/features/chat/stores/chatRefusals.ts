@@ -9,6 +9,8 @@ export const DRAFT_RESTORED_NOTE = 'Die Frage steht wieder im Eingabefeld.'
 
 export const DRAFT_RESTORED_WITHOUT_PROMPT_NOTE =
   'Die Frage steht wieder im Eingabefeld und lässt sich ohne Prompt senden.'
+export const DRAFT_RESTORED_WITHOUT_AGENT_NOTE =
+  'Die Frage steht wieder im Eingabefeld und lässt sich ohne Agenten senden.'
 
 /** The server's bean validation names the rejected field first, e.g. `question: …`. */
 export function isQuestionViolation(message: string): boolean {
@@ -27,6 +29,16 @@ export function responseStatus(err: unknown): number | null {
   const cause = err instanceof Error ? err.cause : undefined
   const status = (cause as { response?: { status?: unknown } } | undefined)?.response?.status
   return typeof status === 'number' ? status : null
+}
+
+/**
+ * The server refused the question because the person may not use the chosen agent, or because the
+ * system administration locked it; the server's message says which.
+ */
+export function isAgentNotAvailable(err: unknown): boolean {
+  const cause = err instanceof Error ? err.cause : undefined
+  const data = (cause as { response?: { data?: { code?: unknown } } } | undefined)?.response?.data
+  return data?.code === 'AGENT_NOT_AVAILABLE' || data?.code === 'AGENT_LOCKED'
 }
 
 /** The instance stopped while it answered (POST /api/v1/query/stream, code SHUTTING_DOWN). */

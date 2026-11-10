@@ -753,6 +753,30 @@ class ExternalAccessTokenIntegrationTest {
         .andExpect(jsonPath("$.tokens[0].libraries[0].suspended").value(true));
   }
 
+  /**
+   * The own list names a selected library only while the person may still read it: once the reading
+   * right is gone, the entry stays but its name today does not leave the server.
+   */
+  @Test
+  void theOwnListHidesTheNameOfALibraryThePersonNoLongerReads() throws Exception {
+    issue();
+    jdbcTemplate.update(
+        "UPDATE assets SET name = 'Umbenannt ohne Leserecht' WHERE id = ?", libraryId);
+    grants.deleteAll(grants.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId));
+    libraryAccess.invalidateLibrary(libraryId);
+
+    String body =
+        mockMvc
+            .perform(get("/api/v1/external-access/tokens").with(devUser("dev-user")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tokens[0].libraries[0].id").value(libraryId.toString()))
+            .andExpect(jsonPath("$.tokens[0].libraries[0].name").value("(kein Leserecht)"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(body).doesNotContain("Umbenannt ohne Leserecht");
+  }
+
   @Test
   void aLiveSelectionIsNotMarkedAsSuspended() throws Exception {
     issue();
