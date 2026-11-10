@@ -180,9 +180,10 @@ public class AgentService {
   }
 
   /**
-   * Replaces name, purpose and configuration ({@code MANAGER}). Each change counts the revision up
-   * and writes {@code AGENT_CHANGED} with the names of the changed fields, never their values. A
-   * caller who reaches the agent only through the system administration keeps the instruction.
+   * Replaces name, purpose and configuration ({@code MANAGER}). A change of what a run uses counts
+   * the revision up, a new name or purpose alone does not; each change writes {@code AGENT_CHANGED}
+   * with the names of the changed fields, never their values. A caller who reaches the agent only
+   * through the system administration keeps the instruction.
    */
   @Transactional
   public AgentView update(UUID agentId, AgentUpdate request, CurrentUser caller) {
@@ -220,8 +221,10 @@ public class AgentService {
           || !Objects.equals(agent.getDescription(), description)) {
         agent.rename(name, description);
       }
-      agent.configure(target);
-      agent.countRevision();
+      if (!agent.configuration().equals(target)) {
+        agent.configure(target);
+        agent.countRevision();
+      }
       auditEventRecorder.recordUserAction(
           AuditEvent.builder()
               .organizationId(agent.getOrganizationId())

@@ -25,7 +25,9 @@ data:
             Zitate und der Abschnittspfad des gespeicherten Fundstellen-Ankers; agent_run nennt je
             Werkzeugschritt die Unterfrage, bei run_code die Namen der erzeugten Dateien und bei
             fill_template den Namen der Vorlage mit den Namen der erzeugten Dateien, dazu Kennung und
-            Namen des Agenten, den die Person für die Frage gewählt hat
+            Namen des Agenten, den die Person für die Frage gewählt hat, und den Fassungsstempel der
+            Antwort: Fassung des Agenten, die durchsuchbaren Bibliotheken mit Namen zum Zeitpunkt,
+            ausgefüllte Vorlagen mit Fassung und das Modell
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -68,7 +70,10 @@ data:
       Chatsuche der Person über eigene Chats; Export eines eigenen Chats als Markdown- oder
       PDF-Datei durch die Person; keine Auswertung durch andere, Fragen werden nicht protokolliert;
       welcher Agent eine Antwort gab, steht nur an der Antwort im Chat der Person und wird nicht
-      ausgewertet
+      ausgewertet. Über die Datenbank ließe sich aus Agent und Fassungsstempel ablesen, welche
+      Person wann mit welchem Agenten in welcher Fassung, welchen Bibliotheken, Vorlagen und welchem
+      Modell gearbeitet hat; die Anwendung bietet dafür keine Abfrage, die Person sieht den Stempel
+      nur an der eigenen Antwort und in ihrer Selbstauskunft
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
       - >-
@@ -324,7 +329,15 @@ nonPersonalTables:
   agent_tools: [agent_id, tool_name]
   agent_settings_tools: [settings_id, tool_name]
   agent_seeds: [organization_id, seed_key, created_at]
-  document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
+  document_templates:
+    - id
+    - asset_type
+    - organization_id
+    - file_name
+    - size_bytes
+    - sha256
+    - placeholders
+    - revision
   document_template_files: [template_id, content]
   prompts:
     - id
