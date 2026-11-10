@@ -261,21 +261,44 @@ export const fontFamily = {
   mono: "'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace",
 } as const
 
-/** Fixed pixel steps (guidelines 3.2). The app uses 11-30px; larger steps are brand moments. */
+/**
+ * The six type steps of the app (guidelines 3.2). Components name a step, never a pixel value;
+ * ESLint rejects a numeric `fontSize` under `features/` and `app/`.
+ */
 export const fontSize = {
-  xs2: 11,
-  xs: 12,
-  sm: 14,
-  base: 16,
-  md: 18,
-  lg: 20,
-  xl: 24,
-  xl2: 30,
-  xl3: 36,
-  xl4: 48,
-  xl5: 64,
-  xl6: 80,
-  xl7: 104,
+  /** Uppercase section labels, table heads, overlines. */
+  label: 11,
+  /** Badges and chips, secondary facts next to a value (dates, counts), hints under a field. */
+  meta: 12,
+  /** Running text, field values, buttons, menu entries. */
+  text: 14,
+  /** Title of an area page, dialog or side panel; section heads. */
+  title: 16,
+  /** Title of a detail page. */
+  detailTitle: 20,
+  /** Step title in a wizard and other single-purpose pages. */
+  wizardTitle: 24,
+} as const
+
+/**
+ * Icon sizes in px (MUI sizes icons through `fontSize`). An icon next to text takes the size of
+ * the text step it accompanies or one step up.
+ */
+export const iconSize = {
+  xs: 14,
+  sm: 16,
+  md: 20,
+  lg: 24,
+  xl: 48,
+} as const
+
+/**
+ * Heights of buttons and single-line fields (guidelines 5.1, 5.2): `regular` everywhere,
+ * `compact` only in table rows, section heads, filter rows and toolbars.
+ */
+export const controlHeight = {
+  regular: 36,
+  compact: 32,
 } as const
 
 /** Inter weights (guidelines 3.3). Nothing above 700. */
@@ -333,13 +356,13 @@ export const radius = {
 } as const
 
 /**
- * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius, 12 px and
+ * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius, the meta step (12 px) and
  * weight 500, the same as the theme's `MuiChip`, so a badge never reads square, small or bold
  * beside a chip.
  */
 export const badgeShape = {
   borderRadius: `${radius.pill}px`,
-  fontSize: fontSize.xs,
+  fontSize: fontSize.meta,
   fontWeight: fontWeight.medium,
 } as const
 

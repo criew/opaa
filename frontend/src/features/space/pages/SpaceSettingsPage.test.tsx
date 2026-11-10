@@ -577,7 +577,7 @@ describe('SpaceSettingsPage', () => {
 
     const menu = await openMemberMenu(user, 'Colleague')
     await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
-    await answerConfirm(user, 'Colleague aus diesem Space entfernen?', 'Entfernen')
+    await answerConfirm(user, '„Colleague“ aus diesem Space entfernen?', 'Entfernen')
 
     await waitFor(() =>
       expect(useNotificationStore.getState().queue.map((n) => n.message)).toEqual([
@@ -639,7 +639,7 @@ describe('SpaceSettingsPage', () => {
 
     const menu = await openMemberMenu(user, 'Owner')
     await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
-    await answerConfirm(user, 'Owner aus diesem Space entfernen?', 'Entfernen')
+    await answerConfirm(user, '„Owner“ aus diesem Space entfernen?', 'Entfernen')
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/spaces', { replace: true }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -693,7 +693,7 @@ describe('SpaceSettingsPage', () => {
 
     const menu = await openMemberMenu(user, 'Owner')
     await user.click(within(menu).getByRole('menuitem', { name: 'Zum Eigentümer machen' }))
-    await answerConfirm(user, 'Verantwortung an Owner übertragen?', 'Übertragen')
+    await answerConfirm(user, 'Verantwortung an „Owner“ übertragen?', 'Übertragen')
 
     await waitFor(() => {
       expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
@@ -755,7 +755,7 @@ describe('SpaceSettingsPage', () => {
     expect(memberRow('Geschützte Gruppe').textContent).not.toMatch(/\d+ Mitglied/)
     const menu = await openMemberMenu(user, 'Geschützte Gruppe')
     await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
-    await answerConfirm(user, 'Geschützte Gruppe aus diesem Space entfernen?', 'Entfernen')
+    await answerConfirm(user, '„Geschützte Gruppe“ aus diesem Space entfernen?', 'Entfernen')
 
     await waitFor(() => {
       expect(mockRemoveSpaceMember).toHaveBeenCalledWith('space-team', 'm-team-personalrat')

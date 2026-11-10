@@ -1164,10 +1164,10 @@ describe('UserManagementPage', () => {
     await user.click(await screen.findByRole('switch', { name: 'Lokale Anmeldung aktiv' }))
 
     const abschaltfrage = await screen.findByRole('dialog', {
-      name: 'Lokale Anmeldung abschalten?',
+      name: 'Lokale Anmeldung ausschalten?',
     })
     expect(abschaltfrage).toHaveTextContent('Lokale Systemverwalter bleiben angemeldet')
-    await user.click(within(abschaltfrage).getByRole('button', { name: 'Abschalten' }))
+    await user.click(within(abschaltfrage).getByRole('button', { name: 'Ausschalten' }))
 
     expect(await screen.findByText(/haben ihre Sitzung verloren/)).toBeInTheDocument()
     await waitFor(() => expect(useUserAdminStore.getState().settings?.enabled).toBe(false))

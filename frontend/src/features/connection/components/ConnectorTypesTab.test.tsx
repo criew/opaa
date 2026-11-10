@@ -107,11 +107,11 @@ describe('ConnectorTypesTab', () => {
 
     const panel = await openType(user, 'Nextcloud')
     await user.click(within(panel).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Abbrechen')
+    await answerConfirm(user, /^„Nextcloud“ sperren\?/, 'Abbrechen')
     expect(sent).toEqual([])
 
     await user.click(within(panel).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Sperren')
+    await answerConfirm(user, /^„Nextcloud“ sperren\?/, 'Sperren')
     expect(await screen.findByText('Die Quellart „Nextcloud“ ist gesperrt.')).toBeVisible()
     expect(sent).toEqual([{ type: 'NEXTCLOUD', locked: true }])
   })

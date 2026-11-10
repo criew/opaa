@@ -20,6 +20,7 @@ import { formatDate } from './tokenLabels'
 import { ListEmptyState } from '@/shared/ui/list/AdminList'
 import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { releaseEndingLabel } from './externalToolsState'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface ReleasedLibrariesSectionProps {
   /** null while loading. */
@@ -132,7 +133,7 @@ export default function ReleasedLibrariesSection({
         >
           {libraries.map((entry) => (
             <Box component="li" key={entry.libraryId} sx={listCardSx}>
-              <Typography component="div" sx={{ fontSize: 13.5 }}>
+              <Typography component="div" sx={{ fontSize: fontSize.text }}>
                 {libraryLink(entry)}
               </Typography>
               <Box component="dl" sx={definitionListSx}>

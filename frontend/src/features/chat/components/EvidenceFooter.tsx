@@ -14,7 +14,7 @@ import type { AnswerEvidence } from '@/shared/api/types'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { describeEvidenceSummary } from '@/shared/ui/markdown/citations'
 import { citationMarkSx } from '@/shared/ui/markdown/citationMark'
-import { motion, radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, motion, radius } from '@/shared/theme/tokens'
 import { describeAnswerEvidence } from './answerEvidenceText'
 
 /** Footnote marks shown in the button before the rest folds into "+n". */
@@ -63,7 +63,9 @@ export default function EvidenceFooter({
     marks.push(`+${numbers.length - VISIBLE_MARKS}`)
   }
   const level = evidence ? LEVEL_STYLE[evidence.level] : undefined
-  const levelIcon = level && <level.Icon aria-hidden sx={{ fontSize: 16, color: level.color }} />
+  const levelIcon = level && (
+    <level.Icon aria-hidden sx={{ fontSize: iconSize.sm, color: level.color }} />
+  )
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -89,7 +91,7 @@ export default function EvidenceFooter({
             component="span"
             data-testid="answer-evidence"
             data-level={evidence?.level}
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: 12.5 }}
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: fontSize.meta }}
           >
             {levelIcon}
             <Box component="span" sx={visuallyHidden}>
@@ -99,7 +101,7 @@ export default function EvidenceFooter({
               {assessed.label}
             </Box>
             {assessed.reason && (
-              <Box component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              <Box component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 {' · '}
                 {assessed.reason}
               </Box>
@@ -171,23 +173,27 @@ export default function EvidenceFooter({
                       </Box>
                     ))
                   ) : (
-                    <DoneAllIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <DoneAllIcon sx={{ fontSize: iconSize.sm, color: 'text.secondary' }} />
                   ))}
               </Box>
-              <Typography component="span" sx={{ fontSize: 12.5, fontWeight: 600 }}>
+              <Typography component="span" sx={{ fontSize: fontSize.meta, fontWeight: 600 }}>
                 {assessed ? assessed.label : 'Belege anzeigen'}
               </Typography>
               <ArrowForwardIcon
                 aria-hidden
                 className="evidence-arrow"
-                sx={{ fontSize: 14, color: 'primary.main' }}
+                sx={{ fontSize: iconSize.xs, color: 'primary.main' }}
               />
             </ButtonBase>
             <Typography
               id={summaryId}
               component="span"
               data-testid="evidence-summary"
-              sx={{ fontSize: 11.5, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}
+              sx={{
+                fontSize: fontSize.meta,
+                color: 'text.secondary',
+                fontVariantNumeric: 'tabular-nums',
+              }}
             >
               {summary}
             </Typography>

@@ -44,6 +44,7 @@ import FormField from '../FormField'
 import ModelEndpointFields from '../ModelEndpointFields'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 import { STEP_RHYTHM } from '../stepLayout'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface TranscriptionModelStepProps extends StepNavigationProps {
   step: InstallationStepState
@@ -240,7 +241,7 @@ export default function TranscriptionModelStep({
         </SectionHead>
         <Stack spacing={STEP_RHYTHM.betweenGroups}>
           <Box>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {REALTIME_TEXTS.alwaysDictation}
             </Typography>
             <FormControlLabel
@@ -254,7 +255,10 @@ export default function TranscriptionModelStep({
               }
               label={REALTIME_TEXTS.switchLabel}
             />
-            <Typography id={`${id}-live-hint`} sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography
+              id={`${id}-live-hint`}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+            >
               {REALTIME_TEXTS.switchHint}
             </Typography>
           </Box>

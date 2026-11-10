@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { AssetType } from '@/shared/api/types'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
+import { iconSize } from '@/shared/theme/tokens'
 
 const ALL_TYPES = 'all'
 
@@ -78,7 +79,7 @@ export default function AssetFilterBar({
           input: {
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 16 }} />
+                <SearchIcon sx={{ fontSize: iconSize.sm }} />
               </InputAdornment>
             ),
             endAdornment: search.value ? (
@@ -88,7 +89,7 @@ export default function AssetFilterBar({
                   aria-label="Suche zurücksetzen"
                   onClick={() => search.onChange('')}
                 >
-                  <CloseIcon sx={{ fontSize: 16 }} />
+                  <CloseIcon sx={{ fontSize: iconSize.sm }} />
                 </IconButton>
               </InputAdornment>
             ) : undefined,
@@ -123,7 +124,10 @@ export default function AssetFilterBar({
                   >
                     <Icon
                       aria-hidden
-                      sx={(theme) => ({ fontSize: 16, [narrow(theme)]: { display: 'none' } })}
+                      sx={(theme) => ({
+                        fontSize: iconSize.sm,
+                        [narrow(theme)]: { display: 'none' },
+                      })}
                     />
                     {definition.label}
                   </ToggleButton>

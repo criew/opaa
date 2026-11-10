@@ -1,17 +1,13 @@
 import Chip from '@mui/material/Chip'
 import Box from '@mui/material/Box'
+import { formatDayHeading } from '@/shared/utils/formatDate'
 
 interface DateSeparatorProps {
   date: Date
 }
 
 export default function DateSeparator({ date }: DateSeparatorProps) {
-  const label = date.toLocaleDateString('de-DE', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const label = formatDayHeading(date)
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>

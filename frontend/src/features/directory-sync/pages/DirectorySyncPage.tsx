@@ -26,7 +26,7 @@ import {
   type OverviewEntry,
   type OverviewFilter,
 } from '../components/directorySyncState'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** From this many providers on, the overview offers a filter and a search. */
 const FILTER_FROM = 6
@@ -206,7 +206,7 @@ export default function DirectorySyncPage() {
             </>
           )}
           {!isLoading && entries.length > 0 && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
               Der nächste Lauf ergibt sich aus dem letzten Lauf und dem Intervall des Anbieters;
               „jetzt fällig“ heißt, das Intervall ist verstrichen. Das gilt nur, solange der
               Zeittakt der Installation eingeschaltet ist – sonst laufen Abgleiche nur von Hand.

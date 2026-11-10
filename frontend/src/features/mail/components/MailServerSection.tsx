@@ -32,6 +32,7 @@ import {
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Mirrors `MailSettingsService.PASSWORD_MASK`: sending it back means „unverändert". */
 const PASSWORD_MASK = '***'
@@ -327,7 +328,7 @@ export default function MailServerSection() {
               Testmail an mich senden
             </Button>
           </Stack>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
             sich hier bewusst nicht eintragen.
           </Typography>

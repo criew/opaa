@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { SHOWN_ONCE_HINT } from './localUserLabels'
 import { copyOnce } from '@/shared/utils/copyOnce'
 
@@ -45,14 +45,14 @@ export default function GeneratedPasswordDialog({
         Neues Passwort für „{generated.displayName}“
       </DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
           {generated.email}
         </Typography>
         <Box
           data-testid="generated-password-value"
           sx={{
             fontFamily: fontFamily.mono,
-            fontSize: 16,
+            fontSize: fontSize.title,
             fontWeight: 500,
             p: 1.5,
             border: 1,
@@ -63,7 +63,7 @@ export default function GeneratedPasswordDialog({
         >
           {generated.password}
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
           Bei der ersten Anmeldung muss das Passwort gewechselt werden. Übergeben Sie es auf einem
           nachvollziehbaren Weg – nicht in derselben Nachricht wie die Kennung.
         </Typography>

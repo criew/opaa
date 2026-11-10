@@ -26,7 +26,7 @@ import {
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, iconSize } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
 import CreateExternalAccessTokenDialog from './CreateExternalAccessTokenDialog'
@@ -53,7 +53,7 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
           <Typography
             component="span"
             sx={{
-              fontSize: 13,
+              fontSize: fontSize.text,
               color: library.suspended ? 'text.secondary' : 'text.primary',
             }}
           >
@@ -64,7 +64,7 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
               <Stack direction="row" spacing={0.25} component="span" sx={{ alignItems: 'center' }}>
                 <WarningAmberIcon
                   aria-hidden="true"
-                  sx={{ fontSize: 14, color: 'warning.main', flex: 'none' }}
+                  sx={{ fontSize: iconSize.xs, color: 'warning.main', flex: 'none' }}
                 />
                 <MetaBadge>Freigabe ausgesetzt</MetaBadge>
               </Stack>
@@ -129,7 +129,7 @@ export default function OwnExternalAccessTokensSection() {
 
   async function handleRevoke(token: OwnExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ widerrufen?`,
+      question: `„${token.name}“ widerrufen?`,
       consequence: REVOKE_CONSEQUENCE,
       confirmLabel: 'Widerrufen',
       tone: 'danger',
@@ -184,7 +184,7 @@ export default function OwnExternalAccessTokensSection() {
         {tokens === null ? (
           <Skeleton variant="rounded" height={160} />
         ) : tokens.length === 0 ? (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Sie haben noch kein Zugangstoken. „Token erzeugen“ legt eines an; die Auswahl der
             Bibliotheken treffen Sie dabei.
           </Typography>
@@ -208,7 +208,7 @@ export default function OwnExternalAccessTokensSection() {
                 return (
                   <TableRow key={token.id}>
                     <TableCell sx={{ fontWeight: 500 }}>{token.name}</TableCell>
-                    <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: 12.5 }}>
+                    <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta }}>
                       {token.prefix}
                     </TableCell>
                     <TableCell>

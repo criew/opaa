@@ -15,6 +15,7 @@ import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { ALL_SCOPE_HINT } from '../../sourceCore/common'
 import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 export function GoogleDriveConnectionFields({
   values,
@@ -60,10 +61,12 @@ export function GoogleDriveConnectionFields({
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: 1.5,
-              minHeight: 40,
+              minHeight: controlHeight.regular,
             }}
           >
-            <Typography sx={{ fontSize: 13.5, overflowWrap: 'anywhere' }}>{status}</Typography>
+            <Typography sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}>
+              {status}
+            </Typography>
             <Button
               size="small"
               variant="outlined"
@@ -84,7 +87,11 @@ export function GoogleDriveConnectionFields({
           </Box>
           <Typography
             id={`${fieldId('keyFile')}-error`}
-            sx={{ fontSize: 12, mt: 0.5, color: error ? 'error.main' : 'text.secondary' }}
+            sx={{
+              fontSize: fontSize.meta,
+              mt: 0.5,
+              color: error ? 'error.main' : 'text.secondary',
+            }}
           >
             {error ?? 'In der Google Cloud Console unter IAM › Dienstkonten › Schlüssel.'}
           </Typography>

@@ -23,6 +23,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SettingText {
   name: string
@@ -115,7 +116,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf ${value} ändern?`,
       consequence: `${endsPause}${earlierErasure(value)}${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
-      confirmLabel: 'Wert ändern',
+      confirmLabel: 'Ändern',
       tone: paused || earlierErasure(value) ? 'danger' : 'caution',
     })
     if (!confirmed) return
@@ -127,7 +128,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf ${entry.value} festlegen?`,
       consequence: `${endsPause}Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Wert festlegen',
+      confirmLabel: 'Festlegen',
       tone: 'danger',
     })
     if (!confirmed) return
@@ -139,7 +140,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     const confirmed = await confirmAction({
       question: `${text.name} auf die Werkseinstellung von ${entry.defaultValue} zurücksetzen?`,
       consequence: `${earlierErasure(entry.defaultValue)}${text.effect} Die Änderung steht im Revisionsprotokoll.`,
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: earlierErasure(entry.defaultValue) ? 'danger' : 'caution',
     })
     if (!confirmed) return
@@ -284,7 +285,7 @@ export default function ConnectionLifecycleSection() {
           {loadError}
         </Alert>
       ) : entries === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Schwellen und Fristen werden geladen …
         </Typography>
       ) : (

@@ -4,6 +4,7 @@ import {
   readMarker,
   unwrapBracketedMarkers,
 } from '@/shared/ui/markdown/citations'
+import { formatDate } from '@/shared/utils/formatDate'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
@@ -144,11 +145,7 @@ export function answerAsPlainText(content: string): string {
  * machine-readable marking.
  */
 export function copyNote(notice: string, productName: string, answeredAt: Date): string {
-  const date = answeredAt.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  const date = formatDate(answeredAt)
   return `${plainNoteText(notice)} – ${plainNoteText(productName)}, ${date}`
 }
 

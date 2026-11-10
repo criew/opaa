@@ -17,6 +17,7 @@ import { useMyGroups } from '@/features/principal'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
+import { fontSize } from '@/shared/theme/tokens'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Wem gehört die Prompt-Bibliothek?', 'Rechte'] as const
@@ -50,7 +51,8 @@ export default function PromptLibraryCreatePage() {
   const handleCancel = async () => {
     if (isDirty) {
       const confirmed = await confirmAction({
-        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        question: 'Eingaben verwerfen?',
+        consequence: 'Der Assistent schließt, ohne etwas anzulegen; Ihre Eingaben gehen verloren.',
         confirmLabel: 'Verwerfen',
         tone: 'caution',
       })
@@ -91,11 +93,15 @@ export default function PromptLibraryCreatePage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neue Prompt-Bibliothek
         </Typography>
         <PageHeading title="Neue Prompt-Bibliothek" visuallyHidden />
-        <Typography component="div" sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} aria-hidden>
+        <Typography
+          component="div"
+          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
+          aria-hidden
+        >
           {STEP_TITLES[activeStep]}
         </Typography>
         <WizardStepBar steps={STEPS} active={activeStep} />
@@ -124,7 +130,7 @@ export default function PromptLibraryCreatePage() {
           )}
           {activeStep === 1 && (
             <>
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Eine Gruppe als Eigentümerin übersteht jeden Personalwechsel — für Prompts, die ein
                 Referat gemeinsam pflegt, ist sie die haltbarere Wahl.
               </Typography>
@@ -163,7 +169,7 @@ export default function PromptLibraryCreatePage() {
           </Button>
           <Box sx={{ flex: 1 }} />
           {activeStep === lastStep && pendingGrants.length > 0 && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {pendingGrants.length === 1
                 ? '1 Freigabe vorgemerkt'
                 : `${pendingGrants.length} Freigaben vorgemerkt`}

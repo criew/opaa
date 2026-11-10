@@ -26,6 +26,7 @@ import { applyAccess, confirmAccess } from '@/features/capability'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { formatDay, signsInItself, type ProfileAttention } from './profileState'
+import { fontSize } from '@/shared/theme/tokens'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -54,7 +55,7 @@ function Lever({ action, children }: { action: ReactNode; children: ReactNode })
       }}
     >
       <Box>{action}</Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: { sm: 0.5 } }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', pt: { sm: 0.5 } }}>
         {children}
       </Typography>
     </Box>
@@ -225,7 +226,7 @@ function PanelContent({
           <Typography
             id="connection-profile-panel-heading"
             component="h2"
-            sx={{ fontSize: 18, fontWeight: 600, overflowWrap: 'anywhere' }}
+            sx={{ fontSize: fontSize.title, fontWeight: 600, overflowWrap: 'anywhere' }}
           >
             {profile.name}
           </Typography>
@@ -274,7 +275,7 @@ function PanelContent({
                 {accessError}
               </Alert>
             ) : !accessEntry || !access ? (
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Die Freigabe wird geladen …
               </Typography>
             ) : editingAccess ? (
@@ -294,10 +295,10 @@ function PanelContent({
                     Ändern
                   </Button>
                 </Box>
-                <Typography sx={{ fontSize: 13, mt: 1 }}>
+                <Typography sx={{ fontSize: fontSize.text, mt: 1 }}>
                   {resultSentence(access, phrase)}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                   Wer ihn nutzen darf, kann damit Bibliotheken anlegen und das eigene Konto
                   verbinden. Bei einem Entzug laufen bestehende Bibliotheken weiter. Dieselbe
                   Einstellung steht unter Anlegerechte.
@@ -358,7 +359,7 @@ function PanelContent({
             ]}
           />
           {persons && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
               Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine
               Zahl auf einzelne Personen schließen lässt.
             </Typography>

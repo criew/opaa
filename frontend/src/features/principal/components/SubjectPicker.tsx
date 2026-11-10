@@ -19,6 +19,7 @@ import {
   groupLabel,
   type SubjectSelection,
 } from './subjectSelection'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SubjectPickerProps {
   value: SubjectSelection
@@ -133,7 +134,7 @@ function OptionText({ option }: { option: SubjectOption }) {
   if (option.kind === 'USER') {
     return (
       <Stack spacing={0}>
-        <Typography sx={{ fontSize: 13.5 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           {option.user.displayName ?? option.user.email ?? option.user.id}
         </Typography>
         {((option.user.displayName && option.user.email) || option.user.providerName) && (
@@ -149,7 +150,9 @@ function OptionText({ option }: { option: SubjectOption }) {
   if (option.kind === 'GROUP') {
     return (
       <Stack spacing={0}>
-        <Typography sx={{ fontSize: 13.5 }}>{groupLabel(option.group)} · Gruppe</Typography>
+        <Typography sx={{ fontSize: fontSize.text }}>
+          {groupLabel(option.group)} · Gruppe
+        </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {groupDetailLine(option.group)}
         </Typography>
@@ -158,7 +161,7 @@ function OptionText({ option }: { option: SubjectOption }) {
   }
   return (
     <Stack spacing={0}>
-      <Typography sx={{ fontSize: 13.5 }}>{allAccountsLabel}</Typography>
+      <Typography sx={{ fontSize: fontSize.text }}>{allAccountsLabel}</Typography>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         Jede Person Ihrer Organisation
       </Typography>
@@ -187,7 +190,7 @@ function SearchStatus(props: HTMLAttributes<HTMLDivElement> & { ownerState?: unk
       {searchingOverOlderList && (
         <Typography
           variant="body2"
-          sx={{ px: 2, pt: 1.25, pb: 0.5, color: 'text.secondary', fontSize: 13.5 }}
+          sx={{ px: 2, pt: 1.25, pb: 0.5, color: 'text.secondary', fontSize: fontSize.text }}
         >
           {SEARCHING_TEXT}
         </Typography>

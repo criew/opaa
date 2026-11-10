@@ -9,6 +9,7 @@ import type {
 } from '@/shared/api/types'
 import type { PasswordChangeReason } from '@/shared/session/types'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
+import { formatDate } from '@/shared/utils/formatDate'
 
 /**
  * The German words of the local account management (ADR-0033, Entscheidung 11) - the same four
@@ -124,10 +125,9 @@ export function localUserErrorMessage(err: unknown, fallback: string): string {
   return apiErrorMessage(err, LOCAL_USER_CONFLICT_MESSAGES, fallback)
 }
 
-/** German date of a backend timestamp; „—" for an account without an expiry date. */
+/** German date of a backend timestamp; „–“ for a missing one. */
 export function formatExpiry(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+  return formatDate(value)
 }
 
 /** `yyyy-MM-dd` for a date input, in local time so the shown day matches the stored one. */

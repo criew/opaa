@@ -21,6 +21,7 @@ import PageSection from '@/shared/ui/PageSection'
 import { mailStatusOf } from '@/features/mail'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
   'Reguläre lokale Konten können sich ab sofort nicht mehr anmelden, und ihre laufenden Sitzungen ' +
@@ -31,7 +32,7 @@ export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
 export const SELF_REGISTRATION_CONSEQUENCE =
   'Die Registrierung ist danach ein öffentlich erreichbares Formular. Es gilt nur für die unten ' +
   'eingetragenen Adress-Domänen, die Rate-Limits der Anmeldung greifen, jedes Konto wird mit dem ' +
-  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung" erzeugt. Das Einschalten ist ein ' +
+  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung“ erzeugt. Das Einschalten ist ein ' +
   'Protokollereignis und nach der Dienstvereinbarung mitbestimmungspflichtig.'
 
 export const PUBLIC_BASE_URL_HINT =
@@ -197,17 +198,17 @@ function SmtpStatusLine() {
           bgcolor: !status ? 'text.disabled' : usable ? 'success.main' : 'warning.main',
         }}
       />
-      <Typography component="span" sx={{ fontSize: 12.5 }}>
+      <Typography component="span" sx={{ fontSize: fontSize.meta }}>
         E-Mail-Versand: {status ? status.headline : 'Status wird geladen …'}
       </Typography>
-      <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         ·{' '}
         <Link component={RouterLink} to="/admin/mail/server">
           E-Mail-Einstellungen
         </Link>
       </Typography>
       {status && !usable && (
-        <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           · Einladungen und Rücksetzlinks werden dann zur Übergabe angezeigt.
         </Typography>
       )}
@@ -261,7 +262,7 @@ function LinkFlowSwitch({
         </Tooltip>
       )}
       {ineffectiveHint !== null && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', ml: 6, mt: -0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', ml: 6, mt: -0.5 }}>
           {ineffectiveHint}
         </Typography>
       )}
@@ -379,9 +380,9 @@ export default function LocalAuthSettingsCard() {
     if (
       !next &&
       !(await confirmAction({
-        question: 'Lokale Anmeldung abschalten?',
+        question: 'Lokale Anmeldung ausschalten?',
         consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       }))
     ) {
@@ -508,7 +509,7 @@ export default function LocalAuthSettingsCard() {
       <SmtpStatusLine />
 
       <Box sx={{ mt: 2.5, pt: 2.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 1.5 }}>
+        <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1.5 }}>
           Regeln und Fristen
         </Typography>
         <Box
@@ -556,10 +557,13 @@ export default function LocalAuthSettingsCard() {
             </Box>
           ))}
         </Box>
-        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mt: 3, mb: 0.5 }}>
+        <Typography
+          component="h3"
+          sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3, mb: 0.5 }}
+        >
           Sperre nach Fehlversuchen
         </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
           Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
           der Betrieb fest, abschalten lässt sich die Sperre nicht.
           {limitsAreFactoryOnly(settings) && (
@@ -612,7 +616,7 @@ export default function LocalAuthSettingsCard() {
             onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
           />
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
           Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
           lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es eine
           andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.

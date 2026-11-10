@@ -264,7 +264,7 @@ describe('SpaceMemberList', () => {
 
     const menu = await openMenu(user, 'Bürgerbüro Rheinfurt')
     await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
-    await answerConfirm(user, 'Bürgerbüro Rheinfurt aus diesem Space entfernen?', 'Entfernen')
+    await answerConfirm(user, '„Bürgerbüro Rheinfurt“ aus diesem Space entfernen?', 'Entfernen')
 
     await waitFor(() => expect(handlers.onRemove).toHaveBeenCalledWith(buergerbuero))
   })
@@ -275,7 +275,7 @@ describe('SpaceMemberList', () => {
 
     const menu = await openMenu(user, 'Thomas Klein')
     await user.click(within(menu).getByRole('menuitem', { name: 'Zum Eigentümer machen' }))
-    await answerConfirm(user, 'Verantwortung an Thomas Klein übertragen?', 'Übertragen')
+    await answerConfirm(user, 'Verantwortung an „Thomas Klein“ übertragen?', 'Übertragen')
 
     await waitFor(() => expect(handlers.onMakeOwner).toHaveBeenCalledWith(thomas))
   })
@@ -293,7 +293,7 @@ describe('SpaceMemberList', () => {
     await user.keyboard('{ArrowDown}{Enter}')
 
     expect(
-      await screen.findByRole('dialog', { name: 'Verantwortung an Thomas Klein übertragen?' }),
+      await screen.findByRole('dialog', { name: 'Verantwortung an „Thomas Klein“ übertragen?' }),
     ).toBeInTheDocument()
   })
 
@@ -315,7 +315,7 @@ describe('SpaceMemberList', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space entfernen' }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'Thomas Klein aus diesem Space entfernen?',
+      name: '„Thomas Klein“ aus diesem Space entfernen?',
     })
     await waitFor(() =>
       expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus(),

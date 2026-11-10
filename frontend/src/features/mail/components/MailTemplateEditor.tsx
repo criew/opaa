@@ -12,7 +12,7 @@ import { useMailStore } from '../stores/mailStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useMailTemplatePreview } from '../hooks/useMailTemplatePreview'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -150,13 +150,13 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
-        <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600 }}>
+        <Typography component="h2" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
           {template.label}
         </Typography>
         <MetaBadge>{template.source === 'DATABASE' ? 'angepasst' : 'Standard'}</MetaBadge>
         <Typography
           component="code"
-          sx={{ fontFamily: 'monospace', fontSize: 12, color: 'text.secondary' }}
+          sx={{ fontFamily: 'monospace', fontSize: fontSize.meta, color: 'text.secondary' }}
         >
           {template.key}
         </Typography>
@@ -203,7 +203,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             <SectionHead id="mail-placeholders-head" underline={false}>
               Zulässige Platzhalter
             </SectionHead>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, mb: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, mb: 1 }}>
               Ein Klick fügt den Platzhalter an der Schreibmarke ein. Ein anderer Name wird beim
               Speichern abgewiesen — eine Vorlage, die erst beim Versand scheitert, scheitert,
               während jemand auf seine Einladung wartet.
@@ -263,7 +263,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
           </Stack>
 
           {isDirty && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Zum Testen zuerst speichern: Die Testmail verschickt die gespeicherte Fassung, nicht
               den Entwurf im Editor.
             </Typography>
@@ -311,17 +311,19 @@ function ComparisonColumn({
 }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
         {heading}
       </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Betreff</Typography>
-      <Typography sx={{ fontSize: 13.5, mb: 1.5, wordBreak: 'break-word' }}>{subject}</Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Textfassung</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>Betreff</Typography>
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5, wordBreak: 'break-word' }}>
+        {subject}
+      </Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>Textfassung</Typography>
       <Typography
         component="pre"
         sx={{
           fontFamily: 'monospace',
-          fontSize: 12,
+          fontSize: fontSize.meta,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           border: 1,

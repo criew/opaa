@@ -455,7 +455,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     await adminPage
       .getByRole('button', { name: `Weitere Aktionen für „${PERSON_DISPLAY_NAME}“` })
       .click()
-    await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
+    await adminPage.getByRole('menuitem', { name: 'Widerrufen' }).click()
     const confirmRevoke = adminPage
       .getByRole('dialog')
       .filter({ has: adminPage.locator('#confirm-question') })
@@ -531,7 +531,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
 
     // „Zuletzt benutzt" wird mit dem Widerruf gelöscht - es beantwortete „darf ich das widerrufen?".
     await gotoOwnTokens(personPage)
-    await expect(lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('—')
+    await expect(lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('–')
   })
 })
 

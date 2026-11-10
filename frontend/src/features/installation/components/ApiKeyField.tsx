@@ -3,6 +3,7 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import SecretInput from './SecretInput'
 import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The words around a stored secret that can be removed. */
 export interface StoredSecretWording {
@@ -77,7 +78,7 @@ export default function ApiKeyField({
           }}
         >
           {remove && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {wording.removed}
             </Typography>
           )}
