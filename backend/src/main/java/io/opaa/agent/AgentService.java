@@ -199,7 +199,7 @@ public class AgentService {
     String name = validateName(request.name(), errors);
     String description = validateDescription(request.description(), errors);
     String instruction =
-        readsContent(agent, caller)
+        holdsContentRole(agent, caller, AssetRole.MANAGER)
             ? validateInstruction(submitted.instruction(), errors)
             : agent.configuration().instruction();
     Set<UUID> libraryIds =
@@ -290,19 +290,23 @@ public class AgentService {
         accessService
             .reachByAsset(Agent.ASSET_TYPE, Set.of(agent.getId()))
             .getOrDefault(agent.getId(), AssetReach.NONE),
-        readsContent(agent, caller));
+        holdsContentRole(agent, caller, AssetRole.VIEWER));
   }
 
   /**
-   * Whether the caller reaches the agent by the formula, not only through the system
-   * administration; only then may they read and change its instruction.
+   * Whether the caller holds at least {@code required} on the agent by the formula, not only
+   * through the system administration; reading the instruction needs {@code VIEWER}, changing it
+   * {@code MANAGER}.
    */
-  private boolean readsContent(Agent agent, CurrentUser caller) {
-    return !caller.isSystemAdmin()
-        || accessService
-                .effectiveRoles(Agent.ASSET_TYPE, Set.of(agent.getId()), caller.id())
-                .get(agent.getId())
-            != null;
+  private boolean holdsContentRole(Agent agent, CurrentUser caller, AssetRole required) {
+    if (!caller.isSystemAdmin()) {
+      return true;
+    }
+    AssetRole role =
+        accessService
+            .effectiveRoles(Agent.ASSET_TYPE, Set.of(agent.getId()), caller.id())
+            .get(agent.getId());
+    return role != null && role.atLeast(required);
   }
 
   /** The ids among these that still name a library of the organization; a deleted one drops out. */
