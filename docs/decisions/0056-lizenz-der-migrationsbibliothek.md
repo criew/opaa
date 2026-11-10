@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-11-10
 
 ## Kontext
 
@@ -54,8 +54,10 @@ Die gesamte Liquibase-Historie ist zu einer Baseline je Modul zusammengefasst:
 `V1.<n>__<modul>_baseline.sql`, `<n>` die Stelle des Moduls in der Modulreihenfolge. Eine frische
 Datenbank hat danach dasselbe Schema, dieselben Eigentümer und Rechte, dieselben Partitionen und
 dieselben gelieferten Zeilen wie zuvor. Eine Installation mit Liquibase-Historie wird nicht
-übernommen, sondern neu aufgesetzt. Die Baselines liegen vor der Versionsgrenze `v0.1.0` ohne
-Rolling Update.
+übernommen, sondern neu aufgesetzt. Im November 2026 sind auch die bis dahin entstandenen
+Flyway-Migrationen in die Baselines eingegangen: Mit jeder Migration wuchs die Laufzeit der
+Migrationstests, und vor dem ersten Release gibt es keine Installation, die ein Update braucht. Die
+Baselines liegen vor der Versionsgrenze `v0.1.0` ohne Rolling Update.
 
 Begründung: Eine Übernahme bräuchte eine Brücke von `databasechangelog` zu `flyway_schema_history`
 für eine einzige Demo-Installation; Neuaufsetzen ist dort billiger und sicherer. Die Gleichheit des

@@ -6,7 +6,8 @@ CREATE TABLE rss_feed_state (
     etag text,
     last_modified text,
     updated_at timestamp with time zone NOT NULL,
-    library_id uuid NOT NULL
+    library_id uuid NOT NULL,
+    extraction_settings text
 );
 
 ALTER TABLE ONLY rss_feed_state

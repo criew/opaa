@@ -386,6 +386,21 @@ if grep -qF "ocr-api-key:" "$work_dir/ocr-existing.yaml"; then
 fi
 echo "key from an existing secret as expected"
 
+echo "--- metrics port"
+# The management port answers without login. By default only the Prometheus pods of one named
+# namespace reach it, never pods with the right label in any namespace (namespaceSelector: {}).
+policy="$(helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" \
+  --set metrics.serviceMonitor.enabled=true --show-only templates/networkpolicies.yaml |
+  awk 'BEGIN { RS = "\n---\n" } /\nkind: NetworkPolicy\n/ && /\n  name: opaa-backend-ingress\n/ { print }')"
+if [[ "$policy" != *"port: management"* || "$policy" == *"namespaceSelector: {}"* ||
+  "$policy" != *"kubernetes.io/metadata.name: monitoring"* ||
+  "$policy" != *"app.kubernetes.io/name: prometheus"* ]]; then
+  echo "By default the management port must admit only the Prometheus pods of the namespace monitoring:" >&2
+  echo "$policy" >&2
+  exit 1
+fi
+echo "management port open to the Prometheus of one namespace only"
+
 echo "--- sandbox"
 sandbox_values="$CHART_DIR/ci/sandbox-values.yaml"
 policy="$(helm template opaa "$CHART_DIR" --values "$sandbox_values" --show-only templates/sandbox-networkpolicy.yaml)"

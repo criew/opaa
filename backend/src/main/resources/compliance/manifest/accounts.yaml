@@ -86,7 +86,6 @@ data:
         nonPersonalColumns:
           - password_change_required
           - password_change_reason
-          - password_invalidated_before
           - is_bootstrap
           - created_at
           - updated_at

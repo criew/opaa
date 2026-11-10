@@ -15,28 +15,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The delta migration of the checksum chain (ADR-0059, Entscheidung 4) on an installation that has
- * everything else: the two chain tables belong to {@code opaa_audit_owner} and leave the
- * application account INSERT and SELECT only (ADR-0015), and the retention function takes the
- * checkpoints and the seal of a partition it drops with it, and only those.
+ * The checksum chain of the audit log (ADR-0059, Entscheidung 4): the two chain tables belong to
+ * {@code opaa_audit_owner} and leave the application account INSERT and SELECT only (ADR-0015), and
+ * the retention function takes the checkpoints and the seal of a partition it drops with it, and
+ * only those.
  */
-class AuditChainMigrationTest extends AbstractMigrationTest {
+class AuditChainTest extends AbstractMigrationTest {
 
-  private static final String SCRIPT = "db/migration/identity/V2026.10.25.2__audit_chain.sql";
   private static final String OWNER_ROLE = "opaa_audit_owner";
 
   private Connection connection;
 
   @Override
   protected List<String> baseFixtureMigrations() {
-    return Migrations.except(SCRIPT);
+    return Migrations.all();
   }
 
   @BeforeEach
-  void applyTheMigration() throws SQLException {
+  void connectToTheBaseline() throws SQLException {
     connection = connect();
     connection.setAutoCommit(true);
-    applyMigrations(connection, SCRIPT);
   }
 
   @AfterEach
