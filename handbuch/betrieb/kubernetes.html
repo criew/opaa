@@ -8144,13 +8144,13 @@ Backend weiter.</p>
 </tr>
 <tr>
 <td><code>metrics.scrapeFrom</code></td>
-<td>Pods mit <code>app.kubernetes.io/name: prometheus</code> in jedem Namespace</td>
+<td>Pods mit <code>app.kubernetes.io/name: prometheus</code> im Namespace <code>monitoring</code></td>
 <td>wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind</td>
 </tr>
 </tbody>
 </table>
-<p>Mit <strong>kube-prometheus-stack</strong> genügen zwei Werte. Der Prometheus dieses Charts wählt ServiceMonitors
-nach dem Label <code>release</code> mit dem Namen seines Releases aus:</p>
+<p>Mit <strong>kube-prometheus-stack</strong> im Namespace <code>monitoring</code> genügen zwei Werte. Der Prometheus dieses
+Charts wählt ServiceMonitors nach dem Label <code>release</code> mit dem Namen seines Releases aus:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">metrics</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">serviceMonitor</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
@@ -8158,8 +8158,19 @@ nach dem Label <code>release</code> mit dem Namen seines Releases aus:</p>
 <span class="w">      </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-prometheus-stack</span>
 </code></pre></div>
 <p>Seine Pods tragen <code>app.kubernetes.io/name: prometheus</code>, die Vorgabe von <code>metrics.scrapeFrom</code> lässt
-sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nach <code>metrics.scrapeFrom</code>.
-Fehlen dort die passenden Labels, sieht man das am Alarm <code>OpaaBackendMetricsMissing</code>.</p>
+sie also durch. Der Management-Port antwortet ohne Anmeldung; die Vorgabe öffnet ihn deshalb nur
+einem Namespace, nicht jedem Pod mit diesem Label im Cluster. Läuft der Prometheus in einem anderen
+Namespace oder ist er anders beschriftet, gehört sein Selektor nach <code>metrics.scrapeFrom</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scrapeFrom</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">namespaceSelector</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kubernetes.io/metadata.name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">observability</span>
+<span class="w">      </span><span class="nt">podSelector</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">app.kubernetes.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+</code></pre></div>
+<p>Fehlen dort die passenden Labels, sieht man das am Alarm <code>OpaaBackendMetricsMissing</code>.</p>
 <p>Welche Metriken das Backend liefert, steht unter
 <a href="ueberwachung-und-fehlerbehebung.html#logs-und-metriken">Logs und Metriken</a>. Jede Reihe trägt neben
 den Labels, die Prometheus selbst setzt (<code>pod</code>, <code>namespace</code>, <code>instance</code>), das Label <code>host</code> mit dem

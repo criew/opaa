@@ -2969,6 +2969,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plattenplatz-und-härtung-unter-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plattenplatz und Härtung unter Compose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4060,6 +4071,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plattenplatz-und-härtung-unter-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plattenplatz und Härtung unter Compose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4154,6 +4176,32 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token. Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den
 Host: Den Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor
 (<code>runsc</code>) als Laufzeit der Sandboxen.</p>
+<h2 id="plattenplatz-und-härtung-unter-compose">Plattenplatz und Härtung unter Compose<a class="headerlink" href="#plattenplatz-und-härtung-unter-compose" title="Permanent link">&para;</a></h2>
+<p><strong>Plattenplatz:</strong> Eine Sandbox hat eine Grenze für Laufzeit, Speicher und Prozesse, aber keine für
+den Plattenplatz. Was ein Skript schreibt, landet im Datenverzeichnis von Docker auf dem Host, bis
+die Sandbox gelöscht ist. Ein Skript kann so die Platte füllen, auf der auch die Datenbank des
+Stapels liegt. Der Sandbox-Dienst kann Docker keine Größengrenze je Sandbox mitgeben. Deshalb gilt
+für jeden Betrieb mit Sandbox:</p>
+<ul>
+<li><strong>Eigenes Dateisystem für Docker:</strong> Das Datenverzeichnis von Docker (<code>data-root</code>, Vorgabe
+  <code>/var/lib/docker</code>) liegt auf einem eigenen Dateisystem, nicht auf dem des Betriebssystems. Eine
+  volle Platte hält dann die Container an, nicht den Host.</li>
+<li><strong>Grenze je Container, wo Docker sie kann:</strong> Mit dem Speichertreiber <code>overlay2</code> auf XFS mit
+  Projektquoten (Mount-Option <code>pquota</code>) setzt <code>"storage-opts": ["overlay2.size=2G"]</code> in
+  <code>/etc/docker/daemon.json</code> eine Grenze für jeden neuen Container. Andere Aufbauten, etwa der
+  containerd-Image-Speicher, übergehen die Angabe teils ohne Meldung. Ob sie wirkt, zeigt
+  <code>docker run --rm --storage-opt size=20m python:3.13-slim sh -c 'dd if=/dev/zero of=/tmp/f bs=1M count=50'</code>:
+  Der Befehl muss mit „No space left on device“ scheitern.</li>
+<li><strong>Füllstand überwachen:</strong> Ein Alarm auf den freien Platz dieses Dateisystems, wie für die Datenbank.</li>
+</ul>
+<p><strong>Härtung des Dienstes:</strong> Der Sandbox-Dienst läuft mit Read-only Filesystem, ohne Capabilities und
+mit <code>no-new-privileges</code>. Schreiben darf er nur unter <code>/tmp</code> und in sein Volume
+<code>opensandbox-state</code> mit seinem eigenen Zustand. Die Images des Dienstes und seines
+Ausführungsagenten, das Basis-Image von <code>opaa/sandbox-python</code> und dessen Python-Pakete sind auf
+Version und Prüfsumme festgelegt; ein <code>docker compose pull</code> holt deshalb nie still einen anderen
+Stand. Neue Fassungen kommen mit einem OPAA-Update. Danach den Stapel mit <code>up -d --build</code> neu
+starten, damit auch das Sandbox-Image neu gebaut wird, und <code>run_code</code> einmal von einem Agenten
+ausführen lassen.</p>
 <h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
 <p>OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa der Dienst in
 <code>opensandbox-system</code> und die Sandboxen in <code>opensandbox</code>. Den Schlüssel bekommt der Dienst als

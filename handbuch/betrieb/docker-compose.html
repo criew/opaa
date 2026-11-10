@@ -5438,7 +5438,7 @@ selbst:</p>
 </tbody>
 </table>
 <p>Die mitgelieferten Vorlagen (<code>.env.docker.example</code>, <code>.env.example</code> und jede <code>docker-compose*.yml</code>
-des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
+des Repositorys) halten vier Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
 durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
 gehören nicht dazu.</p>
 <ul>
@@ -5455,6 +5455,11 @@ gehören nicht dazu.</p>
   bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
   (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
   Prüfung einzeln begründet.</li>
+<li><strong>Gehärtete Dienste bleiben gehärtet.</strong> <code>frontend</code>, der Texterkennungsdienst, der Prometheus des
+  Monitorings und der Sandbox-Dienst laufen mit Read-only Filesystem, ohne Capabilities
+  (<code>cap_drop: [ALL]</code>) und mit <code>no-new-privileges</code>. Die Prüfung schlägt fehl, wenn eine der drei
+  Angaben fehlt oder der Dienst sie wieder aufweicht: <code>privileged: true</code>, <code>cap_add</code>, ein Profil
+  <code>seccomp:unconfined</code> oder <code>apparmor:unconfined</code>, <code>pid</code>, <code>ipc</code> oder <code>network_mode</code> auf <code>host</code>.</li>
 </ul>
 <p>Eigene Dateien wie <code>.env.docker</code> oder eine <code>docker-compose.override.yml</code> prüft sie nicht.</p>
 <p>Der Startabbruch im Modus <code>dev</code> sieht nur die Variable <code>OPAA_FRONTEND_BIND_ADDRESS</code>: Ein eigener
