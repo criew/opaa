@@ -34,6 +34,14 @@ public interface SettingsSection {
   }
 
   /**
+   * Whether any change of this section demands a recent sign-in, as its own write path in the
+   * administration does; a security-relevant key demands it in every section.
+   */
+  default boolean requiresRecentLogin() {
+    return false;
+  }
+
+  /**
    * Keys an export of an earlier version may still carry although the section no longer has them;
    * an import ignores them instead of refusing the document.
    */

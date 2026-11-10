@@ -271,16 +271,11 @@ public class ExternalAccessTokenService {
 
   /**
    * Records the day of use, at most once per calendar day. Not an audit event and not a counter -
-   * the single use of a token is deliberately never written to the trail.
+   * the single use of a token is deliberately never written to the trail. Writes the day alone and
+   * only while the token is not revoked, so a revocation committed meanwhile stays.
    */
-  @Transactional
   public void recordUse(UUID tokenId) {
-    LocalDate today = LocalDate.now(clock);
-    tokens
-        .findById(tokenId)
-        .filter(token -> token.getRevokedAt() == null)
-        .filter(token -> token.touch(today))
-        .ifPresent(tokens::save);
+    tokens.recordUseOn(tokenId, LocalDate.now(clock));
   }
 
   /** How many live tokens name this library - a number for its owner, never a person. */

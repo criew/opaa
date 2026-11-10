@@ -1,5 +1,6 @@
 # Python packages of the sandbox image (sandbox/Dockerfile): the libraries generated scripts may
-# import (reportlab, fpdf2, python-docx, openpyxl, pandas, matplotlib) with all their dependencies,
+# import (reportlab, fpdf2, python-docx, openpyxl, pandas, matplotlib) and docxtpl for the fixed
+# script of fill_template (fill_template.py), with all their dependencies,
 # each pinned with the sha256 of every wheel CPython 3.13 on linux/amd64 and linux/arm64 (glibc)
 # installs. Installed with --require-hashes from wheels only; Renovate keeps versions and hashes.
 charset-normalizer==3.5.2 \
@@ -15,6 +16,8 @@ cycler==0.12.1 \
     --hash=sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30
 defusedxml==0.7.1 \
     --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
+docxtpl==0.20.2 \
+    --hash=sha256:626d5c570a46a62b2ca73b4d08f1c240fa031a5bc45371e1466a4fe184923d10
 et-xmlfile==2.0.0 \
     --hash=sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa
 fonttools==4.68.0 \
@@ -23,6 +26,8 @@ fonttools==4.68.0 \
     --hash=sha256:d76f8fdcb6936f5e1045a0c9dd721a4bf11112e60d1e243bfa1d39f06a8b3104
 fpdf2==2.8.9 \
     --hash=sha256:6e1d94af6d6311950a23dec7fb5fc84b000203eb59aee8e76c1e701b12a14976
+jinja2==3.1.6 \
+    --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
 kiwisolver==1.5.1 \
     --hash=sha256:21e46b23a2da695c364124817bc01d970effd5483147f8d66a6a7167e3f6b851 \
     --hash=sha256:74ad5c3dad54a4641b4c28cd15ded70899d04459c6c7aeacafea716be97cce6d
@@ -31,6 +36,9 @@ lxml==6.1.3 \
     --hash=sha256:611a51e61c92f62345a50b0035df6fc0d678f9299f33728826d831598862f59d \
     --hash=sha256:b477912f42c5c33405a10c759d22f80cf5af043ae02d95b9d8e5e5bc555739ed \
     --hash=sha256:d85dfab42dd672f87a7f76e9de7172962aee69fa12044f0d6e1a23cbd53fb80e
+markupsafe==3.0.4 \
+    --hash=sha256:434139499bb20b502ed3baa1f169e618f924a97e7a777fea1a49446d80106cf6 \
+    --hash=sha256:7018d4af1cd272e847aa5917983ab5e83e4f6579f9dbfecd4a79c0ca80b144c2
 matplotlib==3.11.2 \
     --hash=sha256:1944895967f87c84c9b4bad29a707b31f5b36df4a3a2339ea1f8ea3ce5105539 \
     --hash=sha256:af2661f6ac6bbd1d081996f54fdd9385715c625ace8cec0869055c0cfbf38981

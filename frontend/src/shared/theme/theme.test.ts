@@ -467,4 +467,16 @@ describe('type steps and control heights (guidelines 3.2, 5.1, 5.2)', () => {
       controlHeight.regular,
     )
   })
+
+  test('toggle buttons have the button heights, 1 px border included', () => {
+    const toggle = createAppTheme('light').components?.MuiToggleButton?.styleOverrides as Record<
+      string,
+      Record<string, number | string>
+    >
+    const line = Number.parseInt(String(toggle.root.lineHeight), 10)
+    const height = (slot: Record<string, number | string>) =>
+      Number(slot.paddingTop) + line + Number(slot.paddingBottom) + 2
+    expect(height(toggle.root)).toBe(controlHeight.regular)
+    expect(height(toggle.sizeSmall)).toBe(controlHeight.compact)
+  })
 })

@@ -412,10 +412,14 @@ dataFlows:
       einen Container ohne Netz startet und am Ende des Laufs löscht
     data: >-
       Die Python-Skripte, die das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
-      es aus den gefundenen Textstellen übernimmt; zurück kommen Ausgaben und die erzeugten Dateien,
-      die als Anhang der fragenden Person an die Antwort gehen. Keine Kontokennung, kein Zugriff
-      auf Index, Datenbank oder Dateiablage
-    trigger: Ein Werkzeugaufruf run_code eines Agenten, dem das Werkzeug zugeordnet und eingeschaltet ist
+      es aus den gefundenen Textstellen übernimmt; beim Werkzeug fill_template die DOCX-Datei einer
+      Dokumentvorlage, die die fragende Person lesen darf, und die Werte, die das Chat-Modell für
+      ihre Platzhalter liefert, gefüllt von einem festen Skript des Images. Zurück kommen Ausgaben
+      und die erzeugten Dateien, die als Anhang der fragenden Person an die Antwort gehen. Keine
+      Kontokennung, kein Zugriff auf Index, Datenbank oder Dateiablage
+    trigger: >-
+      Ein Werkzeugaufruf run_code oder fill_template eines Agenten, dem das Werkzeug zugeordnet und
+      eingeschaltet ist; fill_template zusätzlich nur bei eingeschaltetem Schalter „Vorlagen“
     switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse oder Schlüssel bricht der Start ab
     settings: [opaa.sandbox.enabled, opaa.sandbox.base-url]
   - id: trace-export
