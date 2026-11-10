@@ -30,11 +30,52 @@ describe('answerForOutside', () => {
     )
   })
 
-  it('gives the same text when applied twice', () => {
-    const once = answerForOutside(
-      '![x](https://evil.example/p.png) [y](https://evil.example/a) <b>c</b> [z](/d)',
-      { pageHref: PAGE },
+  it('shows a bare e-mail, www. or https address once and leaves code alone', () => {
+    const code = '```js\nif (a < b && c[0]) { x = "<img src=x>" }\n```'
+    const answer = [
+      'Kontakt: buergerbuero@stadt.example, www.stadt.example und https://stadt.example/a.',
+      '',
+      code,
+      '',
+      'Im Text `a[0] < b` bleibt.',
+    ].join('\n')
+
+    const output = answerForOutside(answer, { pageHref: PAGE })
+
+    expect(output).toBe(
+      [
+        'Kontakt: `buergerbuero@stadt.example`, `www.stadt.example` und' +
+          ' `https://stadt.example/a`.',
+        '',
+        code,
+        '',
+        'Im Text `a[0] < b` bleibt.',
+      ].join('\n'),
     )
-    expect(answerForOutside(once, { pageHref: PAGE })).toBe(once)
+  })
+
+  it('lets no bracket around a rewritten link close a link the answer never had', () => {
+    const output = answerForOutside('[[b](https://evil.example/x)](https://amt.example/y)', {
+      allowedOrigins: ['https://amt.example'],
+      pageHref: PAGE,
+    })
+
+    expect(output).toBe('\\[b (`https://evil.example/x`)\\](https://amt.example/y)')
+  })
+
+  it.each([
+    '![x](https://evil.example/p.png) [y](https://evil.example/a) <b>c</b> [z](/d)',
+    'Mail an a@b.example oder www.b.example, siehe <https://b.example/x>.',
+    '[mail a@b.example](https://evil.example/m) und [www.b.example](https://evil.example/w)',
+    '- [[b](https://evil.example/x)](https://amt.example/y)\n- [r][r]\n\n[r]: https://evil.example',
+    '| a | b |\n|---|---|\n| ![i](https://evil.example/i) | <span>x</span> |',
+    '<div>\n![z](https://evil.example/block.png)\n</div>\n\n```\n<img src=x>\n```',
+    '![alt mit ![inner](https://evil.example/in) und a@b.example](https://evil.example/o)',
+  ])('gives the same text when applied twice: %s', (answer) => {
+    const policy = { allowedOrigins: ['https://amt.example'], pageHref: PAGE }
+    const once = answerForOutside(answer, policy)
+
+    expect(answerForOutside(once, policy)).toBe(once)
+    expect(once).not.toMatch(/\\\\\\/)
   })
 })

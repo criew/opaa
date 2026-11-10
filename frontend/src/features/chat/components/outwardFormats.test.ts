@@ -30,6 +30,9 @@ const PAYLOAD = [
   'Erlaubt: [Amt](https://amt.example/seite) und `![code](https://evil.example/c.png)`',
 ].join('\n')
 
+const LOADING_TAG =
+  /<\/?(?:a|img|image|iframe|frame|script|style|link|object|embed|video|audio|source|picture|svg|math|input|form|meta|base)\b/i
+
 function parse(markdown: string) {
   return fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] })
 }
@@ -116,7 +119,10 @@ describe('every copy and export format of an answer', () => {
     (format) => {
       const output = TEXT_FORMATS[format](PAYLOAD)
       expect(activeAddresses(output).filter((found) => found.includes('evil'))).toEqual([])
-      expect(activeAddresses(output).filter((found) => !found.startsWith('link'))).toEqual([])
+      // Plain text keeps a tag that neither loads nor links (<div>) as written.
+      const loadsOrLinks = (found: string) =>
+        !found.startsWith('link') && (!found.startsWith('html ') || LOADING_TAG.test(found))
+      expect(activeAddresses(output).filter(loadsOrLinks)).toEqual([])
     },
   )
 

@@ -164,6 +164,22 @@ describe('answerAsPlainText', () => {
       'Datei 001_personalausweis_neu.md und kursiv',
     )
   })
+
+  test('keeps no Markdown escape, and writes a tag that loads or links as text', () => {
+    expect(
+      answerAsPlainText(
+        'Ersetzen Sie <Projektname>, x<br>y, Fußnote \\[1\\]. <img src="https://evil.example/p">',
+      ),
+    ).toBe('Ersetzen Sie <Projektname>, x<br>y, Fußnote [1]. &lt;img src="https://evil.example/p">')
+  })
+
+  test('keeps the address of a refused link next to brackets of the text', () => {
+    expect(
+      answerAsPlainText('[[b](https://evil.example/x)](https://amt.example/y)', {
+        allowedOrigins: ['https://amt.example'],
+      }),
+    ).toBe('[b (https://evil.example/x)](https://amt.example/y)')
+  })
 })
 
 describe('copy note', () => {

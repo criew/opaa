@@ -82,19 +82,27 @@ export function answerWithSources(
   return answerForOutside(`${body}\n\n${notes.join('\n')}`, options).trim()
 }
 
+const IMAGE_TO_ALT: [RegExp, string] = [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1']
+
 // Each rule looks at most 300 characters ahead per position, so a line built to make them
-// backtrack still costs time linear in its length.
+// backtrack still costs time linear in its length. A bracket written as an escape is text, not
+// syntax; escapes are resolved at the end, so the text keeps no backslash, and an image that an
+// escaped description held becomes its alt text there.
 const INLINE_RULES: [RegExp, string][] = [
-  [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
-  [/\[([^\]]{1,300})\]\([^)]{0,300}\)/g, '$1'], // link -> its text
+  [/(?<!\\)!\[([^\]]{0,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
+  [/(?<!\\)\[([^\]]{1,300})(?<!\\)\]\([^)]{0,300}\)/g, '$1'], // link -> its text
   [/`([^`]+)`/g, '$1'],
   [/(\*\*|__)(.{1,300}?)\1/g, '$2'],
   [/~~(.{1,300}?)~~/g, '$1'],
   [/(^|[^\w*])\*(?!\s)(.{1,300}?)(?<!\s)\*(?!\w)/g, '$1$2'],
   [/(^|[^\w_])_(?!\s)(.{1,300}?)(?<!\s)_(?!\w)/g, '$1$2'],
-  // Escapes are resolved, except before what could start an image, a link or HTML again when the
-  // text is pasted into a Markdown reader.
-  [/\\([\\`*_()>&|~:#.+-])/g, '$1'],
+  [/\\([!-/:-@[-`{-~])/g, '$1'],
+  IMAGE_TO_ALT,
+  // A tag that loads or links stays text when the plain text is pasted into a Markdown reader.
+  [
+    /<(?=\/?(?:a|img|image|iframe|frame|script|style|link|object|embed|video|audio|source|picture|svg|math|input|form|meta|base)\b)/gi,
+    '&lt;',
+  ],
 ]
 
 function plainInline(line: string): string {
