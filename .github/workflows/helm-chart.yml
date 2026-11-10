@@ -67,6 +67,8 @@ jobs:
               - 'docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md'
               - 'deploy/monitoring/**'
               - 'docker-compose.monitoring.yml'
+              # Histogram buckets the dashboards' _bucket queries rely on.
+              - 'backend/src/main/resources/application.yml'
             # The chart relies on the images' contract: user, port, writable paths, entrypoint.
             install:
               - 'deploy/helm/**'

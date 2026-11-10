@@ -2,13 +2,16 @@
 """Builds the Grafana dashboards of OPAA: the start page with one traffic light per building block,
 the indexing drill-down and the four areas Betrieb, Wissensbestand, Modelle and Sicherheit.
 
-The thresholds come from the defaults of metrics.prometheusRule in the chart's values.yaml, the same
-values the PrometheusRule renders with, so a tile turns yellow or red where the alert fires. The
-values are read as JSON (yq -o json '.metrics' values.yaml) from the file given with --values.
+A tile of the start page that stands for alerts reads their state from ALERTS, so a threshold
+changed in the chart's values moves alert and tile alike; what has no alert (readiness of the
+database, a model role that is not set up) is computed here. The thresholds of the other panels come
+from the defaults of metrics.prometheusRule in the chart's values.yaml, read as JSON
+(yq -o json '.metrics' values.yaml) from the file given with --values.
 
-Rules of every panel: traffic lights only on opaa_* metrics, latencies as percentiles, nothing per
-person, space, library or document. Gauges every pod reads from the database are combined with max,
-counters of the pods with sum.
+Rules of every panel: traffic lights only on opaa_* metrics and the alerts on them, latencies as
+percentiles, nothing per person, space, library or document, use only as shares, never as absolute
+counts over time. Gauges every pod reads from the database are combined with max, counters of the
+pods with sum.
 
 Usage: build_dashboards.py --values METRICS_JSON --out DIR [--check]
 """
@@ -26,6 +29,7 @@ KSEL = 'namespace=~"$namespace"'
 OK, WARN, CRIT, GREY = "#11774F", "#8F5A00", "#CE2C31", "#5A6270"
 NAVY, BLUE = "#012142", "#0B6FBC"
 STATUS_MAP = [{"type": "value", "options": {
+    "-2": {"text": "nicht gemessen", "color": GREY, "index": 4},
     "-1": {"text": "nicht eingerichtet", "color": GREY, "index": 0},
     "0": {"text": "in Ordnung", "color": OK, "index": 1},
     "1": {"text": "prüfen", "color": WARN, "index": 2},
@@ -149,6 +153,14 @@ class Builder:
             p["interval"] = interval
         return p
 
+    def share_ts(self, title, desc, metric, by, legend, pos):
+        """Share of each value of label `by` in the counter `metric` per hour, stacked to 100 %: the
+        mix, without how much was used."""
+        part = f"sum by ({by}) (increase({metric}[$__interval]))"
+        total = f"sum(increase({metric}[$__interval]))"
+        return self.ts(title, desc, [(f"{part} / ignoring({by}) group_left {total}", legend)], pos,
+                       unit="percentunit", bars=True, stack=True, interval="1h", max_=1)
+
     def bargauge(self, title, desc, items, pos, thresholds=None, max_=None, unit="short"):
         d = {"unit": unit, "thresholds": thresholds or self.thr(OK), "color": {"mode": "thresholds"},
              "decimals": 0, "min": 0}
@@ -185,8 +197,14 @@ class Builder:
         return f'max({" or ".join(parts)})'
 
     @staticmethod
-    def gt(expr, warn, crit):
-        return f"(({expr}) > bool {num(warn)}) + (({expr}) > bool {num(crit)})"
+    def alerts(matcher, info=0):
+        """Status of the firing alerts that match: 2 for critical, 1 for warning, info as given (0:
+        an info alert does not colour). No firing alert gives no value, which worst() leaves out."""
+        a = f'ALERTS{{alertstate="firing", namespace=~"$namespace", {matcher}'
+        parts = [f'2 * ({a}, severity="critical"}} == bool 1)', f'({a}, severity="warning"}} == bool 1)']
+        if info:
+            parts.append(f'{info} * ({a}, severity="info"}} == bool 1)')
+        return f'max({" or ".join(parts)})'
 
     @staticmethod
     def with_min(expr, volume, minimum):
@@ -203,9 +221,6 @@ class Builder:
         b = {}
         q = f'opaa_query_count_total{{{SEL}, status=~"success|error"}}'
         b["questions_1h"] = f"sum(increase({q}[1h]))"
-        b["error_share_1h"] = self.with_min(
-            f'sum(increase(opaa_query_count_total{{{SEL}, status="error"}}[1h])) / {b["questions_1h"]}',
-            b["questions_1h"], r["chatSloMinQuestions"])
         b["success_share_1h"] = self.with_min(
             f'sum(increase(opaa_query_count_total{{{SEL}, status="success"}}[1h])) / {b["questions_1h"]}',
             b["questions_1h"], r["chatSloMinQuestions"])
@@ -215,29 +230,13 @@ class Builder:
             ttft_count, r["timeToFirstTokenMinQuestions"])
         searches = f"sum(increase(opaa_retrieval_hits_count{{{SEL}}}[30m]))"
         b["searches_30m"] = searches
-        b["empty_share"] = self.with_min(
-            f"sum(increase(opaa_retrieval_empty_total{{{SEL}}}[30m])) / {searches}", searches,
-            r["retrievalEmptyMinQuestions"])
-        out = "opaa_outbound_requests_seconds_count"
-        idp_all = f'sum by (target) (increase({out}{{{SEL}, target=~"oidc|directory"}}[10m]))'
-        b["idp"] = (f'2 * max((sum by (target) (increase({out}{{{SEL}, target=~"oidc|directory", outcome="auth_error"}}[10m]))'
-                    f' / {idp_all} > bool {num(r["identityProviderAuthErrorShare"])})'
-                    f' and {idp_all} >= {num(r["identityProviderMinRequests"])})')
-        thr_all = f'sum by (target) (increase({out}{{{SEL}, path_class="interactive"}}[30m]))'
-        b["throttled"] = (f'max((sum by (target) (increase({out}{{{SEL}, path_class="interactive", outcome="throttled"}}[30m]))'
-                          f' / {thr_all} > bool {num(r["throttledShare"])})'
-                          f' and {thr_all} >= {num(r["throttledMinRequests"])})')
-        auth_all = f'sum by (target, kind) (increase({out}{{{SEL}, target!~"oidc|directory"}}[10m]))'
-        b["outbound_auth"] = (f'max((sum by (target, kind) (increase({out}{{{SEL}, target!~"oidc|directory", outcome=~"auth_error|tls_error"}}[10m]))'
-                              f' / {auth_all} > bool {num(r["outboundAuthErrorShare"])})'
-                              f' and {auth_all} >= {num(r["outboundAuthErrorMinRequests"])})')
         b["overdue_libs"] = f'sum(max by (connector) (opaa_indexing_libraries_overdue{{{SEL}, connector=~"$connector"}}))'
         runs = f'sum by (connector) (increase(opaa_indexing_runs_total{{{SEL}, connector=~"$connector"}}[6h]))'
         b["run_failure_share"] = (
             f'max(sum by (connector) (increase(opaa_indexing_runs_total{{{SEL}, connector=~"$connector", result="failed"}}[6h]))'
             f' / {runs} and {runs} >= {num(r["indexingRunFailureMinRuns"])})')
-        since = f'(time() - max by (job) (opaa_scheduled_last_success{{{SEL}, job!~"audit-chain|audit-retention"}}))'
-        b["jobs_overdue"] = (f'count({since} > on(job) ({num(r["scheduledOverdueFactor"])} * max by (job) '
+        since = f'(time() - max by (scheduled_job) (opaa_scheduled_last_success{{{SEL}, scheduled_job!~"audit-chain|audit-retention"}}))'
+        b["jobs_overdue"] = (f'count({since} > on(scheduled_job) ({num(r["scheduledOverdueFactor"])} * max by (scheduled_job) '
                              f'(opaa_scheduled_expected_interval_seconds{{{SEL}}})) and {since} > '
                              f'{num(r["scheduledOverdueMinMinutes"] * 60)}) or vector(0)')
         qmax = r["queueMaxAgeMinutes"]
@@ -246,10 +245,6 @@ class Builder:
             f'max by (queue) (opaa_queue_oldest_age_seconds{{{SEL}, queue="{qn}"}}) > {num(m * 60)}'
             for qn, m in sorted(qmax.items())) + ") or vector(0)")
         b["queue_oldest"] = f'max(opaa_queue_oldest_age_seconds{{{SEL}}})'
-        mails = f"sum(increase(opaa_mail_sent_total{{{SEL}}}[30m]))"
-        b["mail_failing"] = self.with_min(
-            f'sum(increase(opaa_mail_sent_total{{{SEL}, result="failed"}}[30m])) / {mails} > bool {num(r["mailFailureShare"])}',
-            mails, r["mailFailureMinAttempts"])
         b["dirsync_age"] = f'time() - max(opaa_directory_sync_last_success_seconds{{{SEL}, provider!="none"}})'
         b["dirsync_pending"] = f'max(opaa_directory_sync_plan_pending_age_seconds{{{SEL}}})'
         b["evidence"] = {
@@ -259,12 +254,6 @@ class Builder:
             "retention": f"max(opaa_audit_retention_last_run_age_seconds{{{SEL}}})",
             "horizon": f"max(opaa_audit_log_horizon_seconds{{{SEL}}})",
         }
-        http_all = f"sum(increase(http_server_requests_seconds_count{{{SEL}}}[10m]))"
-        http_share = f'sum(increase(http_server_requests_seconds_count{{{SEL}, status=~"5.."}}[10m])) / {http_all}'
-        b["http_5xx"] = self.worst(
-            self.with_min(f"({http_share}) > bool {num(r['errorRateThreshold'])}", http_all, r["errorRateMinRequests"]),
-            self.with_min(f"2 * (({http_share}) > bool {num(r['errorRateCriticalThreshold'])})", http_all,
-                          r["errorRateCriticalMinRequests"]))
         return b
 
     def deploy_score(self, suffix):
@@ -282,63 +271,36 @@ class Builder:
 
     def scores(self):
         r, b = self.r, self.blocks()
-        budget = 1 - r["chatSloObjective"]
+        A = self.alerts
         s = {}
-        s["backend"] = self.worst(self.deploy_score("backend"),
+        s["backend"] = self.worst(A('alertname="OpaaBackendNotReady"'),
                                   f'2 * (max(up{{{KSEL}, service=~".+-backend"}}) == bool 0)')
-        s["frontend"] = f"({self.deploy_score('frontend')}) or on() vector(-1)"
+        # Without kube-state-metrics (Compose) nothing measures the frontend.
+        s["frontend"] = self.worst(
+            A('alertname="OpaaFrontendNotReady"'),
+            base=f'(0 * max(kube_deployment_spec_replicas{{{KSEL}, deployment=~".+-frontend"}})) or on() vector(-2)')
         s["database"] = self.worst(
             f'2 * (max(opaa_health_group_status{{{SEL}, health_group="readiness"}}) == bool 0)',
-            f"sum(increase(hikaricp_connections_timeout_total{{{SEL}}}[10m])) > bool 0")
-        s["idp"] = f"({b['idp']}) or on() vector(0)"
+            A('alertname="OpaaDatabasePoolTimeouts"'))
+        # The identity provider alert has no target; of the outbound alerts only the directory.
+        s["idp"] = self.worst(A('alertname=~"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing", target=~"|directory"'))
         s["chat"] = self.worst(
-            self.gt(b["error_share_1h"], 6 * budget, 14.4 * budget),
-            f"({b['ttft_p95']}) > bool {num(r['timeToFirstTokenSeconds'])}",
+            A('alertname=~"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh"', info=1),
             base=f"-1 * (({b['questions_1h']} or on() vector(0)) < bool {num(r['chatSloMinQuestions'])})")
         s["search"] = self.worst(
-            f"2 * (({b['empty_share']}) >= bool {num(r['retrievalEmptyShare'])})",
-            f'2 * (max(opaa_model_role_available{{{SEL}, role="embedding"}}) == bool 0)',
-            f'max(opaa_model_role_available{{{SEL}, role="rerank"}}) == bool 0',
+            A('alertname="OpaaRetrievalMostlyEmpty"'),
+            A('alertname="OpaaModelRoleDown", role=~"embedding|rerank"'),
             base=f"-1 * (({b['searches_30m']} or on() vector(0)) < bool {num(r['retrievalEmptyMinQuestions'])})")
-        s["models"] = self.worst(
-            *[f'{lvl} * (max(opaa_model_role_available{{{SEL}, role="{role}"}}) == bool 0)' for role, lvl, _ in self.ROLES],
-            b["throttled"], b["outbound_auth"])
-        s["indexing"] = self.worst(
-            f"({b['overdue_libs']}) > bool 0",
-            f"({b['run_failure_share']}) > bool {num(r['indexingRunFailureShare'])}",
-            *[f"{b['queue_age'][qn]} > bool {num(r['queueMaxAgeMinutes'][qn] * 60)}"
-              for qn in ("indexing", "ocr_backlog", "source_events") if qn in r["queueMaxAgeMinutes"]])
+        s["models"] = self.worst(A('component="model"'))
+        s["indexing"] = self.worst(A('component="indexing"'))
         s["background"] = self.worst(
-            f"({b['jobs_overdue']}) > bool 0",
-            *[f"{b['queue_age'][qn]} > bool {num(r['queueMaxAgeMinutes'][qn] * 60)}"
-              for qn in ("mail_outbox",) if qn in r["queueMaxAgeMinutes"]],
-            b["mail_failing"],
-            f"({b['dirsync_age']}) > bool {num(r['directorySyncMaxAgeHours'] * 3600)}",
-            f"({b['dirsync_pending']}) > bool {num(r['directorySyncPlanPendingHours'] * 3600)}",
-            f"max(opaa_invalidation_bus_connected{{{SEL}}}) < bool 1",
-            f"max(opaa_instance_heartbeat_age_seconds{{{SEL}}}) > bool {num(r['heartbeatMaxAgeSeconds'])}")
-        s["platform"] = self.worst(
-            s["backend"], s["frontend"], s["database"], b["idp"], b["http_5xx"],
-            f"max(sum by (host) (jvm_gc_live_data_size_bytes{{{SEL}}}) / sum by (host) (jvm_gc_max_data_size_bytes{{{SEL}}}))"
-            f" > bool {num(r['heapUsageThreshold'])}",
-            f"max(opaa_instances_versions{{{SEL}}}) > bool 1")
-        e = b["evidence"]
-        s["evidence"] = self.worst(
-            f"{e['chain']} > bool 21600", f"{e['unsealed']} > bool 0",
-            f"{e['siem']} > bool {num(r['siemExportLagMinutes'] * 60)}", f"{e['retention']} > bool 3024000",
-            f"({e['horizon']} < bool {num(r['auditLogHorizonWarningDays'] * 86400)})"
-            f" + ({e['horizon']} < bool {num(r['auditLogHorizonCriticalHours'] * 3600)})")
-        s["alerts"] = ('max(2 * (ALERTS{alertstate="firing", alertname=~"Opaa.*", severity="critical"} == bool 1)'
-                       ' or (ALERTS{alertstate="firing", alertname=~"Opaa.*", severity="warning"} == bool 1)) or vector(0)')
-        s["security"] = self.worst(
-            s["evidence"],
-            self.with_min(f'sum(increase(opaa_malware_scans_seconds_count{{{SEL}, result="failed"}}[15m]))'
-                          f' / sum(increase(opaa_malware_scans_seconds_count{{{SEL}}}[15m]))'
-                          f' > bool {num(r["malwareScanFailureShare"])}',
-                          f"sum(increase(opaa_malware_scans_seconds_count{{{SEL}}}[15m]))", r["malwareScanMinScans"]),
-            f"max(opaa_malware_signatures_age_seconds{{{SEL}}}) > bool {num(r['malwareSignatureMaxAgeDays'] * 86400)}",
-            f'sum(increase(opaa_rate_limit_rejected_total{{{SEL}, scope="global"}}[15m])) > bool 0',
-            f"max(opaa_installation_pending{{{SEL}}}) == bool 1")
+            A('component=~"background|directory"'),
+            A('alertname=~"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale"'))
+        s["platform"] = self.worst(s["backend"], s["frontend"], s["database"], A('component="platform"'))
+        s["evidence"] = self.worst(A('component="audit"'), A('alertname="OpaaSiemExportLagging"'))
+        s["alerts"] = (f'max(2 * (ALERTS{{alertstate="firing", namespace=~"$namespace", alertname=~"Opaa.*", severity="critical"}} == bool 1)'
+                       f' or (ALERTS{{alertstate="firing", namespace=~"$namespace", alertname=~"Opaa.*", severity="warning"}} == bool 1)) or vector(0)')
+        s["security"] = self.worst(s["evidence"], A('component="security"'))
         return s, b
 
     # ------------------------------------------------------------ shared panels
@@ -351,10 +313,10 @@ class Builder:
             "critical": {"text": "sofort", "color": CRIT, "index": 0},
             "warning": {"text": "Ticket", "color": WARN, "index": 1},
             "info": {"text": "Info", "color": GREY, "index": 2}}}]
-        joined = ('label_join(ALERTS{alertstate="firing", alertname=~"Opaa.*"}, "betrifft", " ", '
-                  '"role", "target", "kind", "connector", "queue", "job", "provider", "pod", "metric", "limit", "event_type")')
+        joined = ('label_join(ALERTS{alertstate="firing", namespace=~"$namespace", alertname=~"Opaa.*"}, "betrifft", " ", '
+                  '"role", "target", "kind", "connector", "queue", "scheduled_job", "provider", "pod", "metric", "limit", "event_type")')
         hidden = {k: True for k in ("Time", "Value", "__name__", "alertstate", "role", "target", "kind", "connector",
-                                    "queue", "job", "provider", "pod", "metric", "limit", "event_type", "namespace",
+                                    "queue", "scheduled_job", "provider", "pod", "metric", "limit", "event_type", "namespace",
                                     "deployment", "container", "endpoint", "instance", "service", "prometheus")}
         return self.table(
             "Was feuert gerade?",
@@ -454,10 +416,19 @@ class Builder:
                     {"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": True,
                      "hide": True, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts",
                      "type": "dashboard"},
-                    {"datasource": DS, "enable": True, "iconColor": BLUE, "name": "Neustart oder Versionswechsel",
-                     "expr": f"changes(process_start_time_seconds{{{SEL}}}[2m]) > 0", "step": "60s",
-                     "titleFormat": "Neustart {{host}}", "textFormat": "Pod neu gestartet (Rolling Update oder Absturz)",
-                     "tagKeys": "host", "useValueForTime": False}]},
+                    {"datasource": DS, "enable": True, "iconColor": BLUE, "name": "Neuer Pod oder Neustart",
+                     "expr": (f"count by (host) (process_start_time_seconds{{{SEL}}}"
+                              f" unless process_start_time_seconds{{{SEL}}} offset 2m)"
+                              f" or count by (host) (changes(process_start_time_seconds{{{SEL}}}[2m]) > 0)"),
+                     "step": "60s", "titleFormat": "Start {{host}}",
+                     "textFormat": "Pod neu oder neu gestartet (Rolling Update, Skalierung oder Absturz)",
+                     "tagKeys": "host", "useValueForTime": False},
+                    {"datasource": DS, "enable": True, "iconColor": "purple", "name": "Neue Version",
+                     "expr": (f"count by (version) (opaa_build_info{{{SEL}}}"
+                              f" unless on(version) opaa_build_info{{{SEL}}} offset 2m)"),
+                     "step": "60s", "titleFormat": "Version {{version}}",
+                     "textFormat": "Die erste Instanz dieser Version ist gestartet",
+                     "tagKeys": "version", "useValueForTime": False}]},
                 "links": [{"title": "OPAA", "type": "dashboards", "tags": ["opaa"], "asDropdown": False,
                            "includeVars": True, "keepTime": True, "targetBlank": False, "icon": "external link"}],
                 "templating": {"list": variables}, "panels": panels, "version": 1}
@@ -502,23 +473,15 @@ class Builder:
             panels.append(self.status(name, desc, [(expr, name)], self.gp(i * 3, 2, 3, 5),
                                       links=self.link(f"Details: {name}", target), text_mode="value",
                                       font={"valueSize": 22}))
-        q = f'opaa_query_count_total{{{SEL}, status=~"success|error"}}'
         panels += [
-            self.ts("Fragen pro Stunde",
-                    "Beantwortete und gescheiterte Fragen der ganzen Installation pro Stunde, als Kontext für die "
-                    "Quoten: nachts ist wenig Verkehr. Keine Aufteilung nach Kanal oder Person.",
-                    [(f"sum(increase({q}[$__interval]))", "Fragen"),
-                     (f'sum(increase(opaa_query_count_total{{{SEL}, status="error"}}[$__interval]))', "gescheitert")],
-                    self.gp(0, 7, 8, 8), bars=True, interval="1h",
-                    overrides=[self.ov("Fragen", color=self.fixed("blue")), self.ov("gescheitert", color=self.fixed("red"))]),
             self.ts("Zeit bis zum ersten Wort (p95)",
                     "Wartezeit vom Absenden bis zum ersten sichtbaren Wort der Antwort; 95 % der Fragen waren schneller.",
                     [(f"histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{{{SEL}}}[15m])))", "p95"),
                      (f"histogram_quantile(0.5, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{{{SEL}}}[15m])))", "Median")],
-                    self.gp(8, 7, 8, 8), unit="s", thresholds=self.thr(OK, (WARN, r["timeToFirstTokenSeconds"])),
+                    self.gp(0, 7, 12, 8), unit="s", thresholds=self.thr(OK, (WARN, r["timeToFirstTokenSeconds"])),
                     thr_style="line+area", fill=0,
                     overrides=[self.ov("p95", color=self.fixed("blue")), self.ov("Median", color=self.fixed("#8AB8FF"))]),
-            self.alerts_table(self.gp(16, 7, 8, 8)),
+            self.alerts_table(self.gp(12, 7, 12, 8)),
             self.version_table(self.gp(0, 15, 12, 7)),
             self.stat("Über Nacht liegen geblieben?",
                       "Bibliotheken, die ihren Zeitplan verpasst haben (nur Anzahl; welche, zeigt der Laufstatus der "
@@ -668,13 +631,13 @@ class Builder:
                     self.gp(8, 14, 8, 7), overrides=[self.ov("Timeouts", color=self.fixed("red"))]),
             self.table("Geplante Läufe",
                        "Je Lauf: letzter Erfolg auf irgendeinem Pod, erwartetes Intervall und Fehler in 24 h.",
-                       [(f"(time() - max by (job) (opaa_scheduled_last_success{{{SEL}}})) / 60", ""),
-                        (f"max by (job) (opaa_scheduled_expected_interval_seconds{{{SEL}}}) / 60", ""),
-                        (f"sum by (job) (increase(opaa_scheduled_failures_total{{{SEL}}}[24h]))", "")],
+                       [(f"(time() - max by (scheduled_job) (opaa_scheduled_last_success{{{SEL}}})) / 60", ""),
+                        (f"max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{{{SEL}}}) / 60", ""),
+                        (f"sum by (scheduled_job) (increase(opaa_scheduled_failures_total{{{SEL}}}[24h]))", "")],
                        self.gp(16, 14, 8, 7),
                        [{"id": "merge", "options": {}},
                         {"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": {
-                            "job": "Lauf", "Value #A": "zuletzt vor", "Value #B": "Intervall", "Value #C": "Fehler 24 h"}}}],
+                            "scheduled_job": "Lauf", "Value #A": "zuletzt vor", "Value #B": "Intervall", "Value #C": "Fehler 24 h"}}}],
                        overrides=[self.ov("zuletzt vor", unit=MIN, decimals=0, custom__width=90),
                                   self.ov("Intervall", unit=MIN, decimals=0, custom__width=80),
                                   self.ov("Fehler 24 h", decimals=0, thresholds=self.thr(OK, (WARN, 1)),
@@ -709,10 +672,10 @@ class Builder:
         panels = [
             self.stat("Bestand",
                       "Bibliotheken, Dokumente und Abschnitte der ganzen Installation. Werte privater Bibliotheken "
-                      "erscheinen erst ab der Mindestgruppengröße.",
-                      [(f"sum(max by (kind) (opaa_inventory_libraries{{{SEL}}}))", "Bibliotheken"),
-                       (f"sum(max by (kind) (opaa_inventory_documents{{{SEL}}}))", "Dokumente"),
-                       (f"sum(max by (kind) (opaa_inventory_chunks{{{SEL}}}))", "Abschnitte"),
+                      "zählen erst ab der Mindestgruppengröße mit; ein unlesbarer Wert fehlt in der Summe.",
+                      [(f"sum(max by (kind) (opaa_inventory_libraries{{{SEL}}}) >= 0)", "Bibliotheken"),
+                       (f"sum(max by (kind) (opaa_inventory_documents{{{SEL}}}) >= 0)", "Dokumente"),
+                       (f"sum(max by (kind) (opaa_inventory_chunks{{{SEL}}}) >= 0)", "Abschnitte"),
                        (f"max(opaa_inventory_spaces{{{SEL}}})", "geteilte Spaces")],
                       self.gp(0, 0, 12, 4), color_mode="none", decimals=0, unit="locale", text_mode="value_and_name"),
             self.stat("Aktualität",
@@ -735,11 +698,10 @@ class Builder:
                     [(f"sum(increase(opaa_retrieval_empty_total{{{SEL}}}[30m])) / sum(increase(opaa_retrieval_hits_count{{{SEL}}}[30m]))", "leer")],
                     self.gp(0, 12, 8, 8), unit="percentunit", max_=1,
                     thresholds=self.thr("transparent", ("red", r["retrievalEmptyShare"])), thr_style="dashed"),
-            self.ts("Belegstand der Antworten", "Antworten pro Stunde nach Belegstand.",
-                    [(f"sum by (level) (increase(opaa_query_evidence_total{{{SEL}}}[$__interval]))", "{{level}}")],
-                    self.gp(8, 12, 8, 8), bars=True, stack=True, interval="1h"),
+            self.share_ts("Belegstand der Antworten", "Anteil der Antworten je Belegstand pro Stunde, ohne ihre Zahl.",
+                          f"opaa_query_evidence_total{{{SEL}}}", "level", "{{level}}", self.gp(8, 12, 8, 8)),
             self.ts("Speicher", "Belegter Speicher der Bibliotheken nach Art.",
-                    [(f"max by (kind) (opaa_inventory_storage_used_bytes{{{SEL}}})", "{{kind}}")],
+                    [(f"max by (kind) (opaa_inventory_storage_used_bytes{{{SEL}}}) >= 0", "{{kind}}")],
                     self.gp(16, 12, 8, 8), unit="bytes"),
             self.ts("Gescheiterte Läufe je Konnektortyp", "Pro Stunde. Dauerhaft gescheiterte Läufe deuten auf abgelaufene Zugänge.",
                     [(f'sum by (connector) (increase(opaa_indexing_runs_total{{{C}, result="failed"}}[$__interval]))', "{{connector}}")],
@@ -794,19 +756,19 @@ class Builder:
                     "Hintergrund bremst die Indexierung damit nur; interaktiv wartet eine Person.",
                     [(f"sum by (target, path_class) (increase(opaa_outbound_throttled_total{{{SEL}}}[$__interval]))", "{{target}} {{path_class}}")],
                     self.gp(12, 12, 12, 7), bars=True, stack=True, interval="1h"),
-            self.ts("Tokens pro Stunde nach Zweck", "Tokens des Chat-Modells nach Zweck: Antwort, Zerlegung, Notiz, Nebenaufgaben, Agent.",
-                    [(f"sum by (purpose) (increase(opaa_model_tokens_total{{{M}}}[$__interval]))", "{{purpose}}")],
-                    self.gp(0, 19, 12, 8), bars=True, stack=True, interval="1h"),
+            self.share_ts("Tokens nach Zweck", "Anteil der Tokens des Chat-Modells je Zweck pro Stunde: Antwort, "
+                          "Zerlegung, Notiz, Nebenaufgaben, Agent. Die Menge steht oben unter Steuerung.",
+                          f"opaa_model_tokens_total{{{M}}}", "purpose", "{{purpose}}", self.gp(0, 19, 12, 8)),
             self.ts("Kosten pro Tag nach Modell", "Aus Tokens und den Preisen oben berechnet, in Euro.",
                     [(f'(sum by (model) (increase(opaa_model_tokens_total{{{M}, token_type="input"}}[$__interval])) * $price_input'
                       f' + sum by (model) (increase(opaa_model_tokens_total{{{M}, token_type="output"}}[$__interval])) * $price_output) / 1e6', "{{model}}")],
                     self.gp(12, 19, 12, 8), bars=True, stack=True, interval="1d", unit="currencyEUR", decimals=2),
-            self.ts("Ende der Antworten", "Antworten pro Stunde nach dem Ende, das das Modell meldet; length heißt an der Ausgabegrenze abgeschnitten.",
-                    [(f"sum by (reason) (increase(opaa_query_finish_reason_total{{{SEL}}}[$__interval]))", "{{reason}}")],
-                    self.gp(0, 27, 12, 7), bars=True, stack=True, interval="1h"),
-            self.ts("Agentenläufe nach Ergebnis", "Agentenläufe pro Stunde nach Ergebnis, ohne Agentennamen.",
-                    [(f"sum by (result) (increase(opaa_agent_runs_total{{{SEL}}}[$__interval]))", "{{result}}")],
-                    self.gp(12, 27, 12, 7), bars=True, stack=True, interval="1h"),
+            self.share_ts("Ende der Antworten", "Anteil der Antworten je Ende, das das Modell meldet, pro Stunde; "
+                          "length heißt an der Ausgabegrenze abgeschnitten.",
+                          f"opaa_query_finish_reason_total{{{SEL}}}", "reason", "{{reason}}", self.gp(0, 27, 12, 7)),
+            self.share_ts("Agentenläufe nach Ergebnis", "Anteil der Agentenläufe je Ergebnis pro Stunde, ohne "
+                          "Agentennamen und ohne ihre Zahl.",
+                          f"opaa_agent_runs_total{{{SEL}}}", "result", "{{result}}", self.gp(12, 27, 12, 7)),
         ]
         return self.dashboard("models", "OPAA · KI-Modelle & Kosten", panels, self.variables("model"),
                               "Bereich Modelle: Erreichbarkeit, Antwortzeit, Drosselung, Tokens und Kosten. Kosten nur hier.")

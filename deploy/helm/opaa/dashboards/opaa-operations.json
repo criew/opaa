@@ -36,12 +36,27 @@
         },
         "enable": true,
         "iconColor": "#0B6FBC",
-        "name": "Neustart oder Versionswechsel",
-        "expr": "changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0",
+        "name": "Neuer Pod oder Neustart",
+        "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
-        "titleFormat": "Neustart {{host}}",
-        "textFormat": "Pod neu gestartet (Rolling Update oder Absturz)",
+        "titleFormat": "Start {{host}}",
+        "textFormat": "Pod neu oder neu gestartet (Rolling Update, Skalierung oder Absturz)",
         "tagKeys": "host",
+        "useValueForTime": false
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Neue Version",
+        "expr": "count by (version) (opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} unless on(version) opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} offset 2m)",
+        "step": "60s",
+        "titleFormat": "Version {{version}}",
+        "textFormat": "Die erste Instanz dieser Version ist gestartet",
+        "tagKeys": "version",
         "useValueForTime": false
       }
     ]
@@ -181,7 +196,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((((2 * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) < bool sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-backend\"})) * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) > bool 0))) and on() (sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-backend\"}) > 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(up{namespace=~\"$namespace\", service=~\".+-backend\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaBackendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaBackendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(up{namespace=~\"$namespace\", service=~\".+-backend\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Backend",
           "range": false,
           "instant": true,
@@ -193,7 +208,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "(((2 * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) < bool sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) > bool 0))) and on() (sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) > 0)) or on() vector(-1)",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((0 * max(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) or on() vector(-2)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Frontend",
           "range": false,
           "instant": true,
@@ -205,7 +220,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((2 * (max(opaa_health_group_status{namespace=~\"$namespace\", host=~\"$host\", health_group=\"readiness\"}) == bool 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((sum(increase(hikaricp_connections_timeout_total{namespace=~\"$namespace\", host=~\"$host\"}[10m])) > bool 0) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((2 * (max(opaa_health_group_status{namespace=~\"$namespace\", host=~\"$host\", health_group=\"readiness\"}) == bool 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaDatabasePoolTimeouts\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaDatabasePoolTimeouts\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Datenbank",
           "range": false,
           "instant": true,
@@ -217,7 +232,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "(2 * max((sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\", outcome=\"auth_error\"}[10m])) / sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\"}[10m])) > bool 0.5) and sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\"}[10m])) >= 10)) or on() vector(0)",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaIdentityProviderRejected|OpaaOutboundAuthFailing\", target=~\"|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Anmeldedienst",
           "range": false,
           "instant": true,
@@ -302,6 +317,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -547,7 +567,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count((time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > on(job) (3 * max by (job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"})) and (time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > 900) or vector(0)",
+          "expr": "count((time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", scheduled_job!~\"audit-chain|audit-retention\"})) > on(scheduled_job) (3 * max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"})) and (time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", scheduled_job!~\"audit-chain|audit-retention\"})) > 900) or vector(0)",
           "legendFormat": "Läufe überfällig",
           "range": false,
           "instant": true,
@@ -1052,7 +1072,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "(time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\"})) / 60",
+          "expr": "(time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\"})) / 60",
           "legendFormat": "__auto",
           "range": false,
           "instant": true,
@@ -1065,7 +1085,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"}) / 60",
+          "expr": "max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"}) / 60",
           "legendFormat": "__auto",
           "range": false,
           "instant": true,
@@ -1078,7 +1098,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (job) (increase(opaa_scheduled_failures_total{namespace=~\"$namespace\", host=~\"$host\"}[24h]))",
+          "expr": "sum by (scheduled_job) (increase(opaa_scheduled_failures_total{namespace=~\"$namespace\", host=~\"$host\"}[24h]))",
           "legendFormat": "__auto",
           "range": false,
           "instant": true,
@@ -1098,7 +1118,7 @@
               "Time": true
             },
             "renameByName": {
-              "job": "Lauf",
+              "scheduled_job": "Lauf",
               "Value #A": "zuletzt vor",
               "Value #B": "Intervall",
               "Value #C": "Fehler 24 h"

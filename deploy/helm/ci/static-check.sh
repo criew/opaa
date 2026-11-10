@@ -123,6 +123,8 @@ expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
 expect_refusal "otlpEndpoint" --set tracing.enabled=true
 expect_refusal "otlpEndpoint" --set tracing.enabled=true --set-string 'tracing.otlpEndpoint=collector:4318'
 expect_refusal "samplingProbability" --set-string tracing.samplingProbability=1.5
+# The tiles of the dashboards read the alerts.
+expect_refusal "needs metrics.prometheusRule.enabled" --set metrics.grafanaDashboards.enabled=true
 # CSP keywords such as 'self' are quoted; quotes would break the nginx configuration. The schema
 # admits what frontend/docker-entrypoint.d/05-opaa-runtime.sh admits at start, nothing else.
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"

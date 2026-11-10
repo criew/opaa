@@ -1779,7 +1779,7 @@ Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBac
 |---|---|---|
 | `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell |
 | `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
-| `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an |
+| `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
 | `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |
 | `metrics.grafanaDashboards.folder` | `OPAA` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
 | `metrics.grafanaDashboards.labels`, `annotations` | leer | weitere Labels und Annotationen der ConfigMaps |
@@ -1796,7 +1796,8 @@ Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und
 | `timeToFirstTokenSeconds`, `timeToFirstTokenMinQuestions` | `10`, `30` | `OpaaTimeToFirstTokenHigh`: p95 bis zum ersten Wort |
 | `retrievalEmptyShare`, `retrievalEmptyMinQuestions` | `0.8`, `30` | `OpaaRetrievalMostlyEmpty` |
 | `outboundAuthErrorShare`, `outboundAuthErrorMinRequests` | `0.5`, `5` | `OpaaOutboundAuthFailing` |
-| `identityProviderAuthErrorShare`, `identityProviderMinRequests` | `0.5`, `10` | `OpaaIdentityProviderRejected` |
+| `identityProviderFailureShare`, `identityProviderMinRequests` | `0.5`, `10` | `OpaaIdentityProviderRejected`: Anteil gescheiterter Aufrufe an den Identitätsanbieter in zehn Minuten, ohne Erfolge und Client-Fehler |
+| `identityProviderKeyErrorMin` | `5` | `OpaaIdentityProviderRejected`: so viele Anmeldungen in zehn Minuten, die sich mangels Signaturschlüsseln nicht prüfen ließen |
 | `throttledShare`, `throttledMinRequests` | `0.2`, `20` | `OpaaOutboundThrottled` |
 | `indexingRunFailureShare`, `indexingRunFailureMinRuns` | `0.25`, `4` | `OpaaIndexingRunsFailing`: in sechs Stunden je Konnektortyp |
 | `directorySyncMaxAgeHours`, `directorySyncPlanPendingHours` | `26`, `24` | `OpaaDirectorySyncStale`, `OpaaDirectorySyncPlanPending` |
@@ -1811,8 +1812,8 @@ Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und
 | `heartbeatMaxAgeSeconds` | `45` | `OpaaInstanceHeartbeatStale`; drei Intervalle von `OPAA_INSTANCE_HEARTBEAT_INTERVAL` |
 | `monthlyTokenBudget` | `0`, aus | `OpaaTokenBudgetForecast`: Tokens des Chat-Modells je Monat |
 
-Die Dashboards färben ihre Kacheln nach den Vorgaben dieser Tabelle; eine geänderte Schwelle wirkt
-nur auf den Alarm. Schwellen mit Nachkommastellen gehören in eine Wertedatei oder `--set-json`:
+Die Kacheln der Startseite zeigen den Zustand der Alarme, eine geänderte Schwelle wirkt also auf
+beide; die Kurven der Bereiche färben sich nach den Vorgaben dieser Tabelle. Schwellen mit Nachkommastellen gehören in eine Wertedatei oder `--set-json`:
 `--set` übergibt sie als Text, und das Schema lehnt sie ab.
 
 ### Protokolle

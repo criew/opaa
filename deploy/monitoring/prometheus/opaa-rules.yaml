@@ -9,6 +9,7 @@ groups:
           kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-backend"} == 0 and kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"} > 0
         for: 10m
         labels:
+          namespace: opaa
           severity: critical
           component: platform
         annotations:
@@ -21,6 +22,7 @@ groups:
           kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-backend"} > 0 and kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-backend"} < kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"}
         for: 15m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -35,6 +37,7 @@ groups:
           (count(up{namespace="opaa", service="opaa-backend"} == 1) or on() vector(0)) < on() max(kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"}) or (absent(up{namespace="opaa", service="opaa-backend"} == 1) unless on() (kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"} == 0))
         for: 10m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -46,6 +49,7 @@ groups:
           kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-frontend"} == 0 and kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-frontend"} > 0
         for: 5m
         labels:
+          namespace: opaa
           severity: critical
           component: platform
         annotations:
@@ -57,6 +61,7 @@ groups:
           kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-frontend"} > 0 and kube_deployment_status_replicas_available{namespace="opaa", deployment="opaa-frontend"} < kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-frontend"}
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -70,6 +75,7 @@ groups:
           sum by (pod) (jvm_gc_live_data_size_bytes{namespace="opaa", service="opaa-backend"}) / sum by (pod) (jvm_gc_max_data_size_bytes{namespace="opaa", service="opaa-backend"}) > 0.85
         for: 15m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -80,6 +86,7 @@ groups:
         expr: >-
           sum by (pod) (increase(hikaricp_connections_timeout_total{namespace="opaa", service="opaa-backend"}[10m])) > 0
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -93,6 +100,7 @@ groups:
           max by (pod) (opaa_instance_heartbeat_age_seconds{namespace="opaa", service="opaa-backend"}) > 45
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -104,6 +112,7 @@ groups:
           max by (pod) (opaa_invalidation_bus_connected{namespace="opaa", service="opaa-backend"}) == 0
         for: 10m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -116,6 +125,7 @@ groups:
           max(opaa_instances_versions{namespace="opaa", service="opaa-backend"}) > 1
         for: 30m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -131,29 +141,33 @@ groups:
           max by (metric, queue, kind, connector, provider) (label_replace({namespace="opaa", service="opaa-backend", __name__=~"opaa_queue_depth|opaa_queue_oldest_age_seconds|opaa_inventory_.+|opaa_instances_active|opaa_instances_versions|opaa_instance_heartbeat_age_seconds|opaa_scheduled_locks_held|opaa_scheduled_locks_oldest_age_seconds|opaa_audit_log_horizon_seconds|opaa_audit_chain_unsealed_months|opaa_audit_log_size_bytes|opaa_audit_log_oldest_partition_age_seconds|opaa_indexing_libraries_overdue|opaa_indexing_run_last_success_seconds|opaa_indexing_reindex_remaining|opaa_directory_sync_last_success_seconds|opaa_directory_sync_plan_pending_age_seconds", queue!="ocr_backlog", kind!="private"}, "metric", "$1", "__name__", "(.+)")) != max by (metric, queue, kind, connector, provider) (label_replace({namespace="opaa", service="opaa-backend", __name__=~"opaa_queue_depth|opaa_queue_oldest_age_seconds|opaa_inventory_.+|opaa_instances_active|opaa_instances_versions|opaa_instance_heartbeat_age_seconds|opaa_scheduled_locks_held|opaa_scheduled_locks_oldest_age_seconds|opaa_audit_log_horizon_seconds|opaa_audit_chain_unsealed_months|opaa_audit_log_size_bytes|opaa_audit_log_oldest_partition_age_seconds|opaa_indexing_libraries_overdue|opaa_indexing_run_last_success_seconds|opaa_indexing_reindex_remaining|opaa_directory_sync_last_success_seconds|opaa_directory_sync_plan_pending_age_seconds", queue!="ocr_backlog", kind!="private"}, "metric", "$1", "__name__", "(.+)"))
         for: 30m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
           summary: OPAA kann einen Betriebswert nicht aus der Datenbank lesen
           description: Kein Pod von opaa-backend kann {{ $labels.metric }} seit 30 Minuten lesen; Alarme auf diesen Wert schweigen so lange.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaMetricUnreadable"
-      # Refused calls to the identity provider (discovery, signing keys) or the directory service:
-      # an expired client secret or a revoked client keeps everyone out.
+      # Sign-in through the identity provider fails: most calls to it end in anything but success
+      # or a client error (a refused or wrong request of a single person), or tokens cannot be
+      # checked because its signing keys are out of reach (idp_error of the sign-ins).
       - alert: OpaaIdentityProviderRejected
         expr: >-
           (
 
-            sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"oidc|directory", outcome="auth_error"}[10m]))
-            / sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"oidc|directory"}[10m]))
+            sum(increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="oidc", outcome!~"success|client_error"}[10m]))
+            / sum(increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="oidc"}[10m]))
             > 0.5
-          ) and sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"oidc|directory"}[10m])) >= 10
+            and on() sum(increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="oidc"}[10m])) >= 10
+          ) or on() sum(increase(opaa_auth_logins_total{namespace="opaa", service="opaa-backend", method="oidc", result="idp_error"}[10m])) >= 5
         for: 5m
         labels:
+          namespace: opaa
           severity: critical
           component: platform
         annotations:
-          summary: Identitätsanbieter oder Verzeichnisdienst lehnt OPAA ab
-          description: Mehr als 50 % der Aufrufe von opaa-backend an {{ $labels.target }} scheitern seit zehn Minuten an der Anmeldung.
+          summary: Anmeldung über den Identitätsanbieter gestört
+          description: Seit zehn Minuten scheitern bei opaa-backend mehr als 50 % der Aufrufe an den Identitätsanbieter, oder mindestens 5 Anmeldungen ließen sich nicht prüfen, weil seine Signaturschlüssel nicht abrufbar waren.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaIdentityProviderRejected"
   - name: opaa-chat
     rules:
@@ -162,12 +176,13 @@ groups:
         expr: >-
           (
 
-            sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", status=~"5.."}[10m]))
-            / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend"}[10m]))
+            sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*", status=~"5.."}[10m]))
+            / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m]))
             > 0.05
-          ) and on() sum(increase(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend"}[10m])) >= 20
+          ) and on() sum(increase(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m])) >= 20
         for: 10m
         labels:
+          namespace: opaa
           severity: warning
           component: platform
         annotations:
@@ -178,12 +193,13 @@ groups:
         expr: >-
           (
 
-            sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", status=~"5.."}[10m]))
-            / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend"}[10m]))
+            sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*", status=~"5.."}[10m]))
+            / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m]))
             > 0.25
-          ) and on() sum(increase(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend"}[10m])) >= 50
+          ) and on() sum(increase(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m])) >= 50
         for: 10m
         labels:
+          namespace: opaa
           severity: critical
           component: platform
         annotations:
@@ -208,11 +224,12 @@ groups:
           ) and on() sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[1h])) >= 30
         for: 2m
         labels:
+          namespace: opaa
           severity: critical
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt schnell
-          description: In einer Stunde scheitern so viele Fragen an opaa-backend, dass das Fehlerbudget von 0.5 % in 30 Tagen 14.4-fach schneller als vorgesehen verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt
+          description: In einer Stunde scheitern so viele Fragen an opaa-backend, dass das 14,4-Fache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaChatSloBurn
         expr: >-
@@ -229,11 +246,12 @@ groups:
           ) and on() sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[6h])) >= 30
         for: 15m
         labels:
+          namespace: opaa
           severity: warning
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt anhaltend
-          description: In sechs Stunden scheitern so viele Fragen an opaa-backend, dass das Fehlerbudget von 0.5 % in 30 Tagen 6-fach schneller als vorgesehen verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt
+          description: In sechs Stunden scheitern so viele Fragen an opaa-backend, dass das Sechsfache des Anteils, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaChatSloBurn
         expr: >-
@@ -250,17 +268,19 @@ groups:
           ) and on() sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[3d])) >= 30
         for: 1h
         labels:
+          namespace: opaa
           severity: info
           component: chat
         annotations:
-          summary: Fehlerbudget der Chat-Fragen verbrennt schleichend
-          description: In drei Tagen scheitern so viele Fragen an opaa-backend, dass das Fehlerbudget von 0.5 % in 30 Tagen 1-fach schneller als vorgesehen verbraucht wird.
+          summary: Fehlerbudget der Chat-Fragen verbrennt
+          description: In drei Tagen scheitern so viele Fragen an opaa-backend, dass mehr als der Anteil, der auf diese Zeit entfällt, des Fehlerbudgets von 0,5 % für 30 Tage verbraucht wird.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaChatSloBurn"
       - alert: OpaaTimeToFirstTokenHigh
         expr: >-
           histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{namespace="opaa", service="opaa-backend"}[30m]))) > 10 and on() sum(increase(opaa_query_time_to_first_token_seconds_count{namespace="opaa", service="opaa-backend"}[30m])) >= 30
         for: 5m
         labels:
+          namespace: opaa
           severity: info
           component: chat
         annotations:
@@ -279,6 +299,7 @@ groups:
           ) and on() sum(increase(opaa_retrieval_hits_count{namespace="opaa", service="opaa-backend"}[30m])) >= 30
         for: 5m
         labels:
+          namespace: opaa
           severity: critical
           component: search
         annotations:
@@ -294,6 +315,7 @@ groups:
           max by (role) (opaa_model_role_available{namespace="opaa", service="opaa-backend", role=~"chat|embedding"}) == 0 and on() sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[10m])) > 0
         for: 10m
         labels:
+          namespace: opaa
           severity: critical
           component: model
         annotations:
@@ -309,6 +331,7 @@ groups:
           )
         for: 30m
         labels:
+          namespace: opaa
           severity: warning
           component: model
         annotations:
@@ -316,7 +339,7 @@ groups:
           description: Der Dienst der Rolle {{ $labels.role }} ist seit 30 Minuten für keinen Pod von opaa-backend erreichbar.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaModelRoleDown"
       # Expired key or certificate: the share of refused calls per target and kind. Identity
-      # provider and directory have their own alert; the routing component follows the target.
+      # provider and directory have their own rules; the routing component follows the target.
       - alert: OpaaOutboundAuthFailing
         expr: >-
           (
@@ -327,6 +350,7 @@ groups:
           ) and sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"rerank|transcription|ocr|vision|sandbox|model_check"}[10m])) >= 5
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: model
         annotations:
@@ -343,6 +367,7 @@ groups:
           ) and sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"connector|original_store"}[10m])) >= 5
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
         annotations:
@@ -359,6 +384,7 @@ groups:
           ) and sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"clamav"}[10m])) >= 5
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -377,6 +403,7 @@ groups:
           ) and sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", path_class="interactive"}[30m])) >= 20
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: model
         annotations:
@@ -393,6 +420,7 @@ groups:
           max by (pod) (min_over_time(executor_active_threads{namespace="opaa", service="opaa-backend", name="indexingTaskExecutor"}[60m])) > 0 and on(pod) max by (pod) (executor_active_threads{namespace="opaa", service="opaa-backend", name="indexingTaskExecutor"} offset 60m) > 0 and on(pod) sum by (pod) (increase(opaa_indexing_documents_total{namespace="opaa", service="opaa-backend"}[60m])) == 0
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
         annotations:
@@ -405,6 +433,7 @@ groups:
           max by (connector) (opaa_indexing_libraries_overdue{namespace="opaa", service="opaa-backend"}) > 0
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
         annotations:
@@ -422,6 +451,7 @@ groups:
           ) and sum by (connector) (increase(opaa_indexing_runs_total{namespace="opaa", service="opaa-backend"}[6h])) >= 4
         for: 15m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
         annotations:
@@ -437,17 +467,38 @@ groups:
           (time() - max by (provider) (opaa_directory_sync_last_success_seconds{namespace="opaa", service="opaa-backend", provider!="none"})) > 93600 unless on(provider) (max by (provider) (opaa_directory_sync_plan_pending_age_seconds{namespace="opaa", service="opaa-backend"}) > 0)
         for: 15m
         labels:
+          namespace: opaa
           severity: warning
           component: directory
         annotations:
           summary: Verzeichnisabgleich veraltet
           description: Der Verzeichnisabgleich mit {{ $labels.provider }} ist seit mehr als 26 Stunden nicht angewendet worden; Ausgeschiedene behalten so lange ihre Gruppen.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaDirectorySyncStale"
+      # The directory service refuses the access of the synchronisation; until then the last
+      # applied state stays in force.
+      - alert: OpaaOutboundAuthFailing
+        expr: >-
+          (
+
+            sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="directory", outcome=~"auth_error|tls_error"}[10m]))
+            / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="directory"}[10m]))
+            > 0.5
+          ) and sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="directory"}[10m])) >= 5
+        for: 5m
+        labels:
+          namespace: opaa
+          severity: warning
+          component: directory
+        annotations:
+          summary: Ausgehende Aufrufe scheitern an Anmeldung oder Zertifikat
+          description: Mehr als 50 % der Aufrufe von opaa-backend an {{ $labels.target }} ({{ $labels.kind }}) scheitern seit zehn Minuten an Anmeldung oder TLS.
+          runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaOutboundAuthFailing"
       - alert: OpaaDirectorySyncPlanPending
         expr: >-
           max by (provider) (opaa_directory_sync_plan_pending_age_seconds{namespace="opaa", service="opaa-backend"}) > 86400
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: directory
         annotations:
@@ -460,14 +511,15 @@ groups:
       # runs have their own alerts. A run that never succeeds counts from the start of the pod.
       - alert: OpaaScheduledJobOverdue
         expr: >-
-          (time() - max by (job) (opaa_scheduled_last_success{namespace="opaa", service="opaa-backend", job!~"audit-chain|audit-retention"})) > on(job) (3 * max by (job) (opaa_scheduled_expected_interval_seconds{namespace="opaa", service="opaa-backend"})) and (time() - max by (job) (opaa_scheduled_last_success{namespace="opaa", service="opaa-backend", job!~"audit-chain|audit-retention"})) > 900
+          (time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace="opaa", service="opaa-backend", scheduled_job!~"audit-chain|audit-retention"})) > on(scheduled_job) (3 * max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{namespace="opaa", service="opaa-backend"})) and (time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace="opaa", service="opaa-backend", scheduled_job!~"audit-chain|audit-retention"})) > 900
         for: 10m
         labels:
+          namespace: opaa
           severity: warning
           component: background
         annotations:
           summary: Geplanter Lauf überfällig
-          description: Der Lauf {{ $labels.job }} von opaa-backend ist seit mehr als 3 Intervallen auf keinem Pod gelungen.
+          description: Der Lauf {{ $labels.scheduled_job }} von opaa-backend ist seit mehr als 3 Intervallen auf keinem Pod gelungen.
           runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaScheduledJobOverdue"
       # A threshold per queue: what is late for a mail is normal for the OCR backlog. The age of
       # the indexing queue includes the longest running run.
@@ -476,6 +528,7 @@ groups:
           max by (queue) (opaa_queue_oldest_age_seconds{namespace="opaa", service="opaa-backend", queue="indexing"}) > 7200
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
           queue: indexing
@@ -488,6 +541,7 @@ groups:
           max by (queue) (opaa_queue_oldest_age_seconds{namespace="opaa", service="opaa-backend", queue="mail_outbox"}) > 1800
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: background
           queue: mail_outbox
@@ -500,6 +554,7 @@ groups:
           max by (queue) (opaa_queue_oldest_age_seconds{namespace="opaa", service="opaa-backend", queue="ocr_backlog"}) > 21600
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
           queue: ocr_backlog
@@ -512,6 +567,7 @@ groups:
           max by (queue) (opaa_queue_oldest_age_seconds{namespace="opaa", service="opaa-backend", queue="source_events"}) > 3600
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: indexing
           queue: source_events
@@ -531,6 +587,7 @@ groups:
           ) and on() sum(increase(opaa_mail_sent_total{namespace="opaa", service="opaa-backend"}[30m])) >= 5
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: background
         annotations:
@@ -548,6 +605,7 @@ groups:
           max(opaa_audit_retention_last_run_age_seconds{namespace="opaa", service="opaa-backend"}) > 35 * 86400 or max(opaa_audit_retention_last_run_age_seconds{namespace="opaa", service="opaa-backend"}) != max(opaa_audit_retention_last_run_age_seconds{namespace="opaa", service="opaa-backend"}) or (max(absent(opaa_audit_retention_last_run_age_seconds{namespace="opaa", service="opaa-backend"})) unless on() (kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"} == 0))
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: audit
         annotations:
@@ -560,6 +618,7 @@ groups:
         expr: >-
           sum by (event_type) (increase(opaa_audit_payload_dropped_total{namespace="opaa", service="opaa-backend"}[1h])) > 0
         labels:
+          namespace: opaa
           severity: warning
           component: audit
         annotations:
@@ -575,6 +634,7 @@ groups:
           max(opaa_audit_chain_lag_seconds{namespace="opaa", service="opaa-backend"}) > 6 * 3600 or max(opaa_audit_chain_lag_seconds{namespace="opaa", service="opaa-backend"}) != max(opaa_audit_chain_lag_seconds{namespace="opaa", service="opaa-backend"}) or (max(absent(opaa_audit_chain_lag_seconds{namespace="opaa", service="opaa-backend"})) unless on() (kube_deployment_spec_replicas{namespace="opaa", deployment="opaa-backend"} == 0))
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: audit
         annotations:
@@ -590,6 +650,7 @@ groups:
           max(opaa_audit_chain_unsealed_months{namespace="opaa", service="opaa-backend"}) > 0
         for: 6h
         labels:
+          namespace: opaa
           severity: warning
           component: audit
         annotations:
@@ -602,6 +663,7 @@ groups:
           max(opaa_audit_log_horizon_seconds{namespace="opaa", service="opaa-backend"}) < 1209600
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: audit
         annotations:
@@ -613,6 +675,7 @@ groups:
           max(opaa_audit_log_horizon_seconds{namespace="opaa", service="opaa-backend"}) < 172800
         for: 10m
         labels:
+          namespace: opaa
           severity: critical
           component: audit
         annotations:
@@ -631,6 +694,7 @@ groups:
           ) and on() sum(increase(opaa_malware_scans_seconds_count{namespace="opaa", service="opaa-backend"}[15m])) >= 3
         for: 5m
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -642,6 +706,7 @@ groups:
         expr: >-
           sum(increase(opaa_malware_scans_seconds_count{namespace="opaa", service="opaa-backend", result="infected"}[1h])) > 0
         labels:
+          namespace: opaa
           severity: info
           component: security
         annotations:
@@ -653,6 +718,7 @@ groups:
           max(opaa_malware_signatures_age_seconds{namespace="opaa", service="opaa-backend"}) > 259200
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -663,6 +729,7 @@ groups:
         expr: >-
           sum by (limit) (increase(opaa_rate_limit_rejected_total{namespace="opaa", service="opaa-backend", scope="global"}[15m])) > 0
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -687,6 +754,7 @@ groups:
             or on() vector(0)
           )
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -698,6 +766,7 @@ groups:
         expr: >-
           sum(increase(opaa_target_validation_refused_checks_total{namespace="opaa", service="opaa-backend"}[15m])) > 0
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -709,6 +778,7 @@ groups:
           max(opaa_siem_export_lag_seconds{namespace="opaa", service="opaa-backend"}) > 3600
         for: 30m
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:
@@ -721,6 +791,7 @@ groups:
           max(opaa_installation_pending{namespace="opaa", service="opaa-backend"}) == 1
         for: 1h
         labels:
+          namespace: opaa
           severity: warning
           component: security
         annotations:

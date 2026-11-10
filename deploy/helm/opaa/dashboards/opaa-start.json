@@ -36,12 +36,27 @@
         },
         "enable": true,
         "iconColor": "#0B6FBC",
-        "name": "Neustart oder Versionswechsel",
-        "expr": "changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0",
+        "name": "Neuer Pod oder Neustart",
+        "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
-        "titleFormat": "Neustart {{host}}",
-        "textFormat": "Pod neu gestartet (Rolling Update oder Absturz)",
+        "titleFormat": "Start {{host}}",
+        "textFormat": "Pod neu oder neu gestartet (Rolling Update, Skalierung oder Absturz)",
         "tagKeys": "host",
+        "useValueForTime": false
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Neue Version",
+        "expr": "count by (version) (opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} unless on(version) opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} offset 2m)",
+        "step": "60s",
+        "titleFormat": "Version {{version}}",
+        "textFormat": "Die erste Instanz dieser Version ist gestartet",
+        "tagKeys": "version",
         "useValueForTime": false
       }
     ]
@@ -197,7 +212,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((((((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=\"error\"}[1h])) / sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h]))) and on() ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h]))) >= 30))) > bool 0.03) + ((((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=\"error\"}[1h])) / sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h]))) and on() ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h]))) >= 30))) > bool 0.072)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((((histogram_quantile(0.95, sum by (le) (rate(opaa_query_time_to_first_token_seconds_bucket{namespace=~\"$namespace\", host=~\"$host\"}[30m])))) and on() ((sum(increase(opaa_query_time_to_first_token_seconds_count{namespace=~\"$namespace\", host=~\"$host\"}[30m]))) >= 30))) > bool 10) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"warning\"} == bool 1) or 1 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaChatSloBurn|OpaaTimeToFirstTokenHigh\", severity=\"info\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[1h])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Chat",
           "range": false,
           "instant": true,
@@ -210,6 +225,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -309,7 +329,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((2 * ((((sum(increase(opaa_retrieval_empty_total{namespace=~\"$namespace\", host=~\"$host\"}[30m])) / sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m]))) and on() ((sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m]))) >= 30))) >= bool 0.8)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"embedding\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"rerank\"}) == bool 0) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaRetrievalMostlyEmpty\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaModelRoleDown\", role=~\"embedding|rerank\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((-1 * ((sum(increase(opaa_retrieval_hits_count{namespace=~\"$namespace\", host=~\"$host\"}[30m])) or on() vector(0)) < bool 30)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Suche & Quellen",
           "range": false,
           "instant": true,
@@ -322,6 +342,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -421,7 +446,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((2 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"chat\"}) == bool 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"embedding\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((1 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"rerank\"}) == bool 0)) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((1 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"ocr\"}) == bool 0)) > 0, \"k\", \"s3\", \"\", \"\") or label_replace((1 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"transcription\"}) == bool 0)) > 0, \"k\", \"s4\", \"\", \"\") or label_replace((1 * (max(opaa_model_role_available{namespace=~\"$namespace\", host=~\"$host\", role=\"vision\"}) == bool 0)) > 0, \"k\", \"s5\", \"\", \"\") or label_replace((max((sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", path_class=\"interactive\", outcome=\"throttled\"}[30m])) / sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", path_class=\"interactive\"}[30m])) > bool 0.2) and sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", path_class=\"interactive\"}[30m])) >= 20)) > 0, \"k\", \"s6\", \"\", \"\") or label_replace((max((sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target!~\"oidc|directory\", outcome=~\"auth_error|tls_error\"}[10m])) / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target!~\"oidc|directory\"}[10m])) > bool 0.5) and sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target!~\"oidc|directory\"}[10m])) >= 5)) > 0, \"k\", \"s7\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "KI-Modelle",
           "range": false,
           "instant": true,
@@ -434,6 +459,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -533,7 +563,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace(((sum(max by (connector) (opaa_indexing_libraries_overdue{namespace=~\"$namespace\", host=~\"$host\", connector=~\"$connector\"}))) > bool 0) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((max(sum by (connector) (increase(opaa_indexing_runs_total{namespace=~\"$namespace\", host=~\"$host\", connector=~\"$connector\", result=\"failed\"}[6h])) / sum by (connector) (increase(opaa_indexing_runs_total{namespace=~\"$namespace\", host=~\"$host\", connector=~\"$connector\"}[6h])) and sum by (connector) (increase(opaa_indexing_runs_total{namespace=~\"$namespace\", host=~\"$host\", connector=~\"$connector\"}[6h])) >= 4)) > bool 0.25) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{namespace=~\"$namespace\", host=~\"$host\", queue=\"indexing\"}) > bool 7200) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{namespace=~\"$namespace\", host=~\"$host\", queue=\"ocr_backlog\"}) > bool 21600) > 0, \"k\", \"s3\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{namespace=~\"$namespace\", host=~\"$host\", queue=\"source_events\"}) > bool 3600) > 0, \"k\", \"s4\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"indexing\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Indexierung",
           "range": false,
           "instant": true,
@@ -546,6 +576,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -645,7 +680,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace(((count((time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > on(job) (3 * max by (job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"})) and (time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > 900) or vector(0)) > bool 0) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(opaa_queue_oldest_age_seconds{namespace=~\"$namespace\", host=~\"$host\", queue=\"mail_outbox\"}) > bool 1800) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((((sum(increase(opaa_mail_sent_total{namespace=~\"$namespace\", host=~\"$host\", result=\"failed\"}[30m])) / sum(increase(opaa_mail_sent_total{namespace=~\"$namespace\", host=~\"$host\"}[30m])) > bool 0.5) and on() ((sum(increase(opaa_mail_sent_total{namespace=~\"$namespace\", host=~\"$host\"}[30m]))) >= 5))) > 0, \"k\", \"s2\", \"\", \"\") or label_replace(((time() - max(opaa_directory_sync_last_success_seconds{namespace=~\"$namespace\", host=~\"$host\", provider!=\"none\"})) > bool 93600) > 0, \"k\", \"s3\", \"\", \"\") or label_replace(((max(opaa_directory_sync_plan_pending_age_seconds{namespace=~\"$namespace\", host=~\"$host\"})) > bool 86400) > 0, \"k\", \"s4\", \"\", \"\") or label_replace((max(opaa_invalidation_bus_connected{namespace=~\"$namespace\", host=~\"$host\"}) < bool 1) > 0, \"k\", \"s5\", \"\", \"\") or label_replace((max(opaa_instance_heartbeat_age_seconds{namespace=~\"$namespace\", host=~\"$host\"}) > bool 45) > 0, \"k\", \"s6\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"background|directory\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"OpaaInvalidationBusDisconnected|OpaaInstanceHeartbeatStale\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Hintergrund",
           "range": false,
           "instant": true,
@@ -658,6 +693,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -757,7 +797,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(label_replace((((2 * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) < bool sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-backend\"})) * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-backend\"}) > bool 0))) and on() (sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-backend\"}) > 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(up{namespace=~\"$namespace\", service=~\".+-backend\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((((2 * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) == bool 0)) + ((sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) < bool sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) * (sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) > bool 0))) and on() (sum(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"}) > 0)) or on() vector(-1)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((max(label_replace((2 * (max(opaa_health_group_status{namespace=~\"$namespace\", host=~\"$host\", health_group=\"readiness\"}) == bool 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((sum(increase(hikaricp_connections_timeout_total{namespace=~\"$namespace\", host=~\"$host\"}[10m])) > bool 0) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((2 * max((sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\", outcome=\"auth_error\"}[10m])) / sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\"}[10m])) > bool 0.5) and sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", target=~\"oidc|directory\"}[10m])) >= 10)) > 0, \"k\", \"s3\", \"\", \"\") or label_replace((max(label_replace(((((sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", status=~\"5..\"}[10m])) / sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\"}[10m]))) > bool 0.05) and on() ((sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\"}[10m]))) >= 20))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((((2 * ((sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\", status=~\"5..\"}[10m])) / sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\"}[10m]))) > bool 0.25)) and on() ((sum(increase(http_server_requests_seconds_count{namespace=~\"$namespace\", host=~\"$host\"}[10m]))) >= 50))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s4\", \"\", \"\") or label_replace((max(sum by (host) (jvm_gc_live_data_size_bytes{namespace=~\"$namespace\", host=~\"$host\"}) / sum by (host) (jvm_gc_max_data_size_bytes{namespace=~\"$namespace\", host=~\"$host\"})) > bool 0.85) > 0, \"k\", \"s5\", \"\", \"\") or label_replace((max(opaa_instances_versions{namespace=~\"$namespace\", host=~\"$host\"}) > bool 1) > 0, \"k\", \"s6\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaBackendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaBackendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((2 * (max(up{namespace=~\"$namespace\", service=~\".+-backend\"}) == bool 0)) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaFrontendNotReady\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace(((0 * max(kube_deployment_spec_replicas{namespace=~\"$namespace\", deployment=~\".+-frontend\"})) or on() vector(-2)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((max(label_replace((2 * (max(opaa_health_group_status{namespace=~\"$namespace\", host=~\"$host\", health_group=\"readiness\"}) == bool 0)) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaDatabasePoolTimeouts\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaDatabasePoolTimeouts\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"platform\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"platform\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s3\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Plattform",
           "range": false,
           "instant": true,
@@ -770,6 +810,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -869,7 +914,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(opaa_audit_chain_lag_seconds{namespace=~\"$namespace\", host=~\"$host\"}) > bool 21600) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(opaa_audit_chain_unsealed_months{namespace=~\"$namespace\", host=~\"$host\"}) > bool 0) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((max(opaa_siem_export_lag_seconds{namespace=~\"$namespace\", host=~\"$host\"}) > bool 3600) > 0, \"k\", \"s2\", \"\", \"\") or label_replace((max(opaa_audit_retention_last_run_age_seconds{namespace=~\"$namespace\", host=~\"$host\"}) > bool 3024000) > 0, \"k\", \"s3\", \"\", \"\") or label_replace(((max(opaa_audit_log_horizon_seconds{namespace=~\"$namespace\", host=~\"$host\"}) < bool 1.2096e+06) + (max(opaa_audit_log_horizon_seconds{namespace=~\"$namespace\", host=~\"$host\"}) < bool 172800)) > 0, \"k\", \"s4\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"audit\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=\"OpaaSiemExportLagging\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s1\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\"))",
           "legendFormat": "Nachweis",
           "range": false,
           "instant": true,
@@ -882,6 +927,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -981,7 +1031,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(2 * (ALERTS{alertstate=\"firing\", alertname=~\"Opaa.*\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", alertname=~\"Opaa.*\", severity=\"warning\"} == bool 1)) or vector(0)",
+          "expr": "max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"Opaa.*\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"Opaa.*\", severity=\"warning\"} == bool 1)) or vector(0)",
           "legendFormat": "Alarme",
           "range": false,
           "instant": true,
@@ -994,6 +1044,11 @@
             {
               "type": "value",
               "options": {
+                "-2": {
+                  "text": "nicht gemessen",
+                  "color": "#5A6270",
+                  "index": 4
+                },
                 "-1": {
                   "text": "nicht eingerichtet",
                   "color": "#5A6270",
@@ -1074,137 +1129,12 @@
     {
       "id": 10,
       "type": "timeseries",
-      "title": "Fragen pro Stunde",
-      "description": "Beantwortete und gescheiterte Fragen der ganzen Installation pro Stunde, als Kontext für die Quoten: nachts ist wenig Verkehr. Keine Aufteilung nach Kanal oder Person.",
-      "gridPos": {
-        "x": 0,
-        "y": 7,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "expr": "sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=~\"success|error\"}[$__interval]))",
-          "legendFormat": "Fragen",
-          "range": true,
-          "instant": false,
-          "editorMode": "code",
-          "interval": "1h"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "expr": "sum(increase(opaa_query_count_total{namespace=~\"$namespace\", host=~\"$host\", status=\"error\"}[$__interval]))",
-          "legendFormat": "gescheitert",
-          "range": true,
-          "instant": false,
-          "editorMode": "code",
-          "interval": "1h"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 2,
-            "fillOpacity": 70,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": 300000,
-            "lineInterpolation": "smooth",
-            "barAlignment": -1,
-            "axisBorderShow": false,
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Fragen"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "gescheitert"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "interval": "1h"
-    },
-    {
-      "id": 11,
-      "type": "timeseries",
       "title": "Zeit bis zum ersten Wort (p95)",
       "description": "Wartezeit vom Absenden bis zum ersten sichtbaren Wort der Antwort; 95 % der Fragen waren schneller.",
       "gridPos": {
-        "x": 8,
+        "x": 0,
         "y": 7,
-        "w": 8,
+        "w": 12,
         "h": 8
       },
       "datasource": {
@@ -1323,14 +1253,14 @@
       }
     },
     {
-      "id": 12,
+      "id": 11,
       "type": "table",
       "title": "Was feuert gerade?",
       "description": "Aktive OPAA-Alarme mit Schweregrad und Zuständigkeit (component). Ein Klick auf den Namen öffnet das Runbook im Handbuch.",
       "gridPos": {
-        "x": 16,
+        "x": 12,
         "y": 7,
-        "w": 8,
+        "w": 12,
         "h": 8
       },
       "datasource": {
@@ -1344,7 +1274,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "label_join(ALERTS{alertstate=\"firing\", alertname=~\"Opaa.*\"}, \"betrifft\", \" \", \"role\", \"target\", \"kind\", \"connector\", \"queue\", \"job\", \"provider\", \"pod\", \"metric\", \"limit\", \"event_type\")",
+          "expr": "label_join(ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\"Opaa.*\"}, \"betrifft\", \" \", \"role\", \"target\", \"kind\", \"connector\", \"queue\", \"scheduled_job\", \"provider\", \"pod\", \"metric\", \"limit\", \"event_type\")",
           "legendFormat": "__auto",
           "range": false,
           "instant": true,
@@ -1376,7 +1306,7 @@
               "kind": true,
               "connector": true,
               "queue": true,
-              "job": true,
+              "scheduled_job": true,
               "provider": true,
               "pod": true,
               "metric": true,
@@ -1514,7 +1444,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 12,
       "type": "table",
       "title": "Was hat sich geändert? Version je Pod",
       "description": "Version und Startzeit je Backend-Pod. Zwei Versionen nebeneinander: ein Rolling Update läuft oder hängt. Neustarts erscheinen zusätzlich als Markierung auf den Zeitreihen.",
@@ -1653,7 +1583,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 13,
       "type": "stat",
       "title": "Über Nacht liegen geblieben?",
       "description": "Bibliotheken, die ihren Zeitplan verpasst haben (nur Anzahl; welche, zeigt der Laufstatus der Bibliotheken), überfällige geplante Läufe, Warteschlangen über ihrer Schwelle und ihr ältester Eintrag.",
@@ -1686,7 +1616,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "count((time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > on(job) (3 * max by (job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"})) and (time() - max by (job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", job!~\"audit-chain|audit-retention\"})) > 900) or vector(0)",
+          "expr": "count((time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", scheduled_job!~\"audit-chain|audit-retention\"})) > on(scheduled_job) (3 * max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{namespace=~\"$namespace\", host=~\"$host\"})) and (time() - max by (scheduled_job) (opaa_scheduled_last_success{namespace=~\"$namespace\", host=~\"$host\", scheduled_job!~\"audit-chain|audit-retention\"})) > 900) or vector(0)",
           "legendFormat": "Läufe überfällig",
           "range": false,
           "instant": true,

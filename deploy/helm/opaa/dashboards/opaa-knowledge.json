@@ -36,12 +36,27 @@
         },
         "enable": true,
         "iconColor": "#0B6FBC",
-        "name": "Neustart oder Versionswechsel",
-        "expr": "changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0",
+        "name": "Neuer Pod oder Neustart",
+        "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
-        "titleFormat": "Neustart {{host}}",
-        "textFormat": "Pod neu gestartet (Rolling Update oder Absturz)",
+        "titleFormat": "Start {{host}}",
+        "textFormat": "Pod neu oder neu gestartet (Rolling Update, Skalierung oder Absturz)",
         "tagKeys": "host",
+        "useValueForTime": false
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Neue Version",
+        "expr": "count by (version) (opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} unless on(version) opaa_build_info{namespace=~\"$namespace\", host=~\"$host\"} offset 2m)",
+        "step": "60s",
+        "titleFormat": "Version {{version}}",
+        "textFormat": "Die erste Instanz dieser Version ist gestartet",
+        "tagKeys": "version",
         "useValueForTime": false
       }
     ]
@@ -163,7 +178,7 @@
       "id": 301,
       "type": "stat",
       "title": "Bestand",
-      "description": "Bibliotheken, Dokumente und Abschnitte der ganzen Installation. Werte privater Bibliotheken erscheinen erst ab der Mindestgruppengröße.",
+      "description": "Bibliotheken, Dokumente und Abschnitte der ganzen Installation. Werte privater Bibliotheken zählen erst ab der Mindestgruppengröße mit; ein unlesbarer Wert fehlt in der Summe.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -181,7 +196,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(max by (kind) (opaa_inventory_libraries{namespace=~\"$namespace\", host=~\"$host\"}))",
+          "expr": "sum(max by (kind) (opaa_inventory_libraries{namespace=~\"$namespace\", host=~\"$host\"}) >= 0)",
           "legendFormat": "Bibliotheken",
           "range": false,
           "instant": true,
@@ -193,7 +208,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(max by (kind) (opaa_inventory_documents{namespace=~\"$namespace\", host=~\"$host\"}))",
+          "expr": "sum(max by (kind) (opaa_inventory_documents{namespace=~\"$namespace\", host=~\"$host\"}) >= 0)",
           "legendFormat": "Dokumente",
           "range": false,
           "instant": true,
@@ -205,7 +220,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(max by (kind) (opaa_inventory_chunks{namespace=~\"$namespace\", host=~\"$host\"}))",
+          "expr": "sum(max by (kind) (opaa_inventory_chunks{namespace=~\"$namespace\", host=~\"$host\"}) >= 0)",
           "legendFormat": "Abschnitte",
           "range": false,
           "instant": true,
@@ -642,7 +657,7 @@
       "id": 306,
       "type": "timeseries",
       "title": "Belegstand der Antworten",
-      "description": "Antworten pro Stunde nach Belegstand.",
+      "description": "Anteil der Antworten je Belegstand pro Stunde, ohne ihre Zahl.",
       "gridPos": {
         "x": 8,
         "y": 12,
@@ -660,7 +675,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (level) (increase(opaa_query_evidence_total{namespace=~\"$namespace\", host=~\"$host\"}[$__interval]))",
+          "expr": "sum by (level) (increase(opaa_query_evidence_total{namespace=~\"$namespace\", host=~\"$host\"}[$__interval])) / ignoring(level) group_left sum(increase(opaa_query_evidence_total{namespace=~\"$namespace\", host=~\"$host\"}[$__interval]))",
           "legendFormat": "{{level}}",
           "range": true,
           "instant": false,
@@ -670,7 +685,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "percentunit",
           "custom": {
             "drawStyle": "bars",
             "lineWidth": 2,
@@ -702,7 +717,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "max": 1
         },
         "overrides": []
       },
@@ -741,7 +757,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by (kind) (opaa_inventory_storage_used_bytes{namespace=~\"$namespace\", host=~\"$host\"})",
+          "expr": "max by (kind) (opaa_inventory_storage_used_bytes{namespace=~\"$namespace\", host=~\"$host\"}) >= 0",
           "legendFormat": "{{kind}}",
           "range": true,
           "instant": false,

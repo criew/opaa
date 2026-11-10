@@ -751,9 +751,13 @@ metrics:
     # Share of outbound calls refused for authentication or TLS over 10 minutes, per target.
     outboundAuthErrorShare: 0.5
     outboundAuthErrorMinRequests: 5
-    # The same for the identity provider and the directory service; critical.
-    identityProviderAuthErrorShare: 0.5
+    # Identity provider, critical: share of calls ending in anything but success or a client error
+    # over 10 minutes, from this many calls on, or this many sign-ins whose token could not be
+    # checked for want of the provider's signing keys. The directory service counts under the
+    # outbound shares above, as a warning of component directory.
+    identityProviderFailureShare: 0.5
     identityProviderMinRequests: 10
+    identityProviderKeyErrorMin: 5
     # Share of throttled outbound calls a person waits for, over 30 minutes.
     throttledShare: 0.2
     throttledMinRequests: 20

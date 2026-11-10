@@ -96,6 +96,28 @@ def catalog_from_probe(path):
     return families, []
 
 
+APPLICATION_YML = "backend/src/main/resources/application.yml"
+
+
+def histogram_timers(path):
+    """Prometheus names of the timers with buckets: the keys under management.metrics.distribution
+    slo or percentiles-histogram of application.yml, e.g. opaa.query.duration ->
+    opaa_query_duration_seconds. A timer without either publishes no _bucket series."""
+    timers, section = set(), None
+    for line in open(path, encoding="utf-8"):
+        stripped = line.strip()
+        if re.match(r"(slo|percentiles-histogram):$", stripped):
+            section, indent = stripped, len(line) - len(line.lstrip())
+            continue
+        if section:
+            m = re.match(r'"\[([a-z0-9_.]+)\]":', stripped)
+            if m and len(line) - len(line.lstrip()) > indent:
+                timers.add(m.group(1).replace(".", "_") + "_seconds")
+            elif stripped and len(line) - len(line.lstrip()) <= indent:
+                section = None
+    return timers
+
+
 def known(name, exact, prefixes):
     return name in exact or any(name.startswith(p) for p in prefixes) \
         or name == "up" or any(name.startswith(e) for e in EXTERNAL if e != "up")
@@ -125,6 +147,8 @@ def main():
     ap.add_argument("--rules", action="append", default=[], help="rule file as JSON (yq -o json '.spec')")
     ap.add_argument("--handbook", default=HANDBOOK)
     ap.add_argument("--probe", help="text of /actuator/prometheus; replaces the handbook as catalogue")
+    ap.add_argument("--application", default=APPLICATION_YML,
+                    help="application.yml whose distribution settings say which timers have buckets")
     ap.add_argument("--promtool", action="store_true", help="parse every dashboard query with promtool")
     args = ap.parse_args()
 
@@ -153,6 +177,17 @@ def main():
                 missing.setdefault(name, []).append(f"{src} / {title}")
     for name, where in sorted(missing.items()):
         print(f"::error::Unknown metric {name}, used in {where[0]}" + (f" and {len(where) - 1} more" if len(where) > 1 else ""))
+        ok = False
+
+    histograms = histogram_timers(args.application)
+    unbucketed = {}
+    for src, title, expr in queries:
+        for name in names(expr):
+            if name.endswith("_bucket") and name not in PENDING and name[:-len("_bucket")] not in histograms:
+                unbucketed.setdefault(name, f"{src} / {title}")
+    for name, where in sorted(unbucketed.items()):
+        print(f"::error::{name}, used in {where}, has no buckets: its timer has no slo or "
+              f"percentiles-histogram entry in {args.application}")
         ok = False
 
     parsed = [q for q in dashboards if not q[1].startswith("variable ")]

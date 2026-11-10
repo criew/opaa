@@ -36,6 +36,7 @@ spec:
             {{ $available }} == 0 and {{ $replicas }} > 0
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: platform
           annotations:
@@ -48,6 +49,7 @@ spec:
             {{ $available }} > 0 and {{ $available }} < {{ $replicas }}
           for: 15m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -64,6 +66,7 @@ spec:
             (absent(up{ {{- $scrape }}} == 1) unless on() ({{ $replicas }} == 0))
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -75,6 +78,7 @@ spec:
             {{ $feAvailable }} == 0 and {{ $feReplicas }} > 0
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: platform
           annotations:
@@ -86,6 +90,7 @@ spec:
             {{ $feAvailable }} > 0 and {{ $feAvailable }} < {{ $feReplicas }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -101,16 +106,18 @@ spec:
             > {{ $rule.heapUsageThreshold }}
           for: 15m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
             summary: Heap des OPAA-Backends nach der Speicherbereinigung fast voll
-            description: Der Pod {{ $o }} $labels.pod {{ $c }} von {{ $deployment }} belegt seit 15 Minuten nach der Speicherbereinigung mehr als {{ mulf $rule.heapUsageThreshold 100 }} % seines Heaps.
+            description: Der Pod {{ $o }} $labels.pod {{ $c }} von {{ $deployment }} belegt seit 15 Minuten nach der Speicherbereinigung mehr als {{ printf "%g" (round (mulf $rule.heapUsageThreshold 100) 4) | replace "." "," }} % seines Heaps.
             runbook_url: "{{ $rb }}#OpaaHeapUsageHigh"
         - alert: OpaaDatabasePoolTimeouts
           expr: >-
             sum by (pod) (increase(hikaricp_connections_timeout_total{ {{- $scrape }}}[10m])) > 0
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -124,6 +131,7 @@ spec:
             max by (pod) (opaa_instance_heartbeat_age_seconds{ {{- $scrape }}}) > {{ $rule.heartbeatMaxAgeSeconds }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -135,6 +143,7 @@ spec:
             max by (pod) (opaa_invalidation_bus_connected{ {{- $scrape }}}) == 0
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -147,6 +156,7 @@ spec:
             max(opaa_instances_versions{ {{- $scrape }}}) > 1
           for: 30m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
@@ -165,29 +175,33 @@ spec:
             != {{ $polledSeries }}
           for: 30m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
             summary: OPAA kann einen Betriebswert nicht aus der Datenbank lesen
             description: Kein Pod von {{ $deployment }} kann {{ $o }} $labels.metric {{ $c }} seit 30 Minuten lesen; Alarme auf diesen Wert schweigen so lange.
             runbook_url: "{{ $rb }}#OpaaMetricUnreadable"
-        # Refused calls to the identity provider (discovery, signing keys) or the directory service:
-        # an expired client secret or a revoked client keeps everyone out.
+        # Sign-in through the identity provider fails: most calls to it end in anything but success
+        # or a client error (a refused or wrong request of a single person), or tokens cannot be
+        # checked because its signing keys are out of reach (idp_error of the sign-ins).
         - alert: OpaaIdentityProviderRejected
           expr: >-
             (
-              sum by (target) (increase({{ $outbound }}{ {{- $scrape }}, target=~"oidc|directory", outcome="auth_error"}[10m]))
-              / sum by (target) (increase({{ $outbound }}{ {{- $scrape }}, target=~"oidc|directory"}[10m]))
-              > {{ $rule.identityProviderAuthErrorShare }}
+              sum(increase({{ $outbound }}{ {{- $scrape }}, target="oidc", outcome!~"success|client_error"}[10m]))
+              / sum(increase({{ $outbound }}{ {{- $scrape }}, target="oidc"}[10m]))
+              > {{ $rule.identityProviderFailureShare }}
+              and on() sum(increase({{ $outbound }}{ {{- $scrape }}, target="oidc"}[10m])) >= {{ $rule.identityProviderMinRequests }}
             )
-            and sum by (target) (increase({{ $outbound }}{ {{- $scrape }}, target=~"oidc|directory"}[10m])) >= {{ $rule.identityProviderMinRequests }}
+            or on() sum(increase(opaa_auth_logins_total{ {{- $scrape }}, method="oidc", result="idp_error"}[10m])) >= {{ $rule.identityProviderKeyErrorMin }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: platform
           annotations:
-            summary: Identitätsanbieter oder Verzeichnisdienst lehnt OPAA ab
-            description: Mehr als {{ mulf $rule.identityProviderAuthErrorShare 100 }} % der Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} scheitern seit zehn Minuten an der Anmeldung.
+            summary: Anmeldung über den Identitätsanbieter gestört
+            description: Seit zehn Minuten scheitern bei {{ $deployment }} mehr als {{ printf "%g" (round (mulf $rule.identityProviderFailureShare 100) 4) | replace "." "," }} % der Aufrufe an den Identitätsanbieter, oder mindestens {{ $rule.identityProviderKeyErrorMin }} Anmeldungen ließen sich nicht prüfen, weil seine Signaturschlüssel nicht abrufbar waren.
             runbook_url: "{{ $rb }}#OpaaIdentityProviderRejected"
     {{- end }}
     {{- if $groups.chat }}
@@ -197,39 +211,41 @@ spec:
         - alert: OpaaHighErrorRate
           expr: >-
             (
-              sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, status=~"5.."}[10m]))
-              / sum(rate(http_server_requests_seconds_count{ {{- $scrape }}}[10m]))
+              sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*", status=~"5.."}[10m]))
+              / sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*"}[10m]))
               > {{ $rule.errorRateThreshold }}
             )
-            and on() sum(increase(http_server_requests_seconds_count{ {{- $scrape }}}[10m])) >= {{ $rule.errorRateMinRequests }}
+            and on() sum(increase(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*"}[10m])) >= {{ $rule.errorRateMinRequests }}
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: platform
           annotations:
             summary: Viele Fehlerantworten des OPAA-Backends
-            description: Mehr als {{ mulf $rule.errorRateThreshold 100 }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.errorRateThreshold 100) 4) | replace "." "," }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
             runbook_url: "{{ $rb }}#OpaaHighErrorRate"
         - alert: OpaaHighErrorRate
           expr: >-
             (
-              sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, status=~"5.."}[10m]))
-              / sum(rate(http_server_requests_seconds_count{ {{- $scrape }}}[10m]))
+              sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*", status=~"5.."}[10m]))
+              / sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*"}[10m]))
               > {{ $rule.errorRateCriticalThreshold }}
             )
-            and on() sum(increase(http_server_requests_seconds_count{ {{- $scrape }}}[10m])) >= {{ $rule.errorRateCriticalMinRequests }}
+            and on() sum(increase(http_server_requests_seconds_count{ {{- $scrape }}, uri!~"/actuator.*"}[10m])) >= {{ $rule.errorRateCriticalMinRequests }}
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: platform
           annotations:
             summary: Sehr viele Fehlerantworten des OPAA-Backends
-            description: Mehr als {{ mulf $rule.errorRateCriticalThreshold 100 }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.errorRateCriticalThreshold 100) 4) | replace "." "," }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
             runbook_url: "{{ $rb }}#OpaaHighErrorRate"
         # Burn rate of the error budget of chat questions, success / (success + error); rejected
         # questions say nothing about the service and stay out. Long and short window must both
         # burn, the long one with a minimum of questions.
-        {{- range $burn := list (dict "severity" "critical" "factor" 14.4 "long" "1h" "short" "5m" "for" "2m" "text" "schnell" "window" "einer Stunde") (dict "severity" "warning" "factor" 6.0 "long" "6h" "short" "30m" "for" "15m" "text" "anhaltend" "window" "sechs Stunden") (dict "severity" "info" "factor" 1.0 "long" "3d" "short" "6h" "for" "1h" "text" "schleichend" "window" "drei Tagen") }}
+        {{- range $burn := list (dict "severity" "critical" "factor" 14.4 "long" "1h" "short" "5m" "for" "2m" "window" "einer Stunde" "spend" "das 14,4-Fache des Anteils, der auf diese Zeit entfällt,") (dict "severity" "warning" "factor" 6.0 "long" "6h" "short" "30m" "for" "15m" "window" "sechs Stunden" "spend" "das Sechsfache des Anteils, der auf diese Zeit entfällt,") (dict "severity" "info" "factor" 1.0 "long" "3d" "short" "6h" "for" "1h" "window" "drei Tagen" "spend" "mehr als der Anteil, der auf diese Zeit entfällt,") }}
         - alert: OpaaChatSloBurn
           expr: >-
             (
@@ -245,11 +261,12 @@ spec:
             and on() sum(increase({{ $questions }}[{{ $burn.long }}])) >= {{ $rule.chatSloMinQuestions }}
           for: {{ $burn.for }}
           labels:
+            namespace: {{ $ns }}
             severity: {{ $burn.severity }}
             component: chat
           annotations:
             summary: Fehlerbudget der Chat-Fragen verbrennt {{ $burn.text }}
-            description: In {{ $burn.window }} scheitern so viele Fragen an {{ $deployment }}, dass das Fehlerbudget von {{ round (mulf $budget 100) 4 }} % in 30 Tagen {{ $burn.factor }}-fach schneller als vorgesehen verbraucht wird.
+            description: In {{ $burn.window }} scheitern so viele Fragen an {{ $deployment }}, dass {{ $burn.spend }} des Fehlerbudgets von {{ printf "%g" (round (mulf $budget 100) 4) | replace "." "," }} % für 30 Tage verbraucht wird.
             runbook_url: "{{ $rb }}#OpaaChatSloBurn"
         {{- end }}
         - alert: OpaaTimeToFirstTokenHigh
@@ -259,6 +276,7 @@ spec:
             and on() sum(increase(opaa_query_time_to_first_token_seconds_count{ {{- $scrape }}}[30m])) >= {{ $rule.timeToFirstTokenMinQuestions }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: info
             component: chat
           annotations:
@@ -277,11 +295,12 @@ spec:
             and on() sum(increase(opaa_retrieval_hits_count{ {{- $scrape }}}[30m])) >= {{ $rule.retrievalEmptyMinQuestions }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: search
           annotations:
             summary: Suche findet fast nichts mehr
-            description: Mindestens {{ mulf $rule.retrievalEmptyShare 100 }} % der Fragen mit Suche an {{ $deployment }} haben seit 30 Minuten keine einzige Fundstelle.
+            description: Mindestens {{ printf "%g" (round (mulf $rule.retrievalEmptyShare 100) 4) | replace "." "," }} % der Fragen mit Suche an {{ $deployment }} haben seit 30 Minuten keine einzige Fundstelle.
             runbook_url: "{{ $rb }}#OpaaRetrievalMostlyEmpty"
     {{- end }}
     {{- if $groups.model }}
@@ -295,6 +314,7 @@ spec:
             and on() sum(increase({{ $questions }}[10m])) > 0
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: model
           annotations:
@@ -310,6 +330,7 @@ spec:
             )
           for: 30m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: model
           annotations:
@@ -317,7 +338,7 @@ spec:
             description: Der Dienst der Rolle {{ $o }} $labels.role {{ $c }} ist seit 30 Minuten für keinen Pod von {{ $deployment }} erreichbar.
             runbook_url: "{{ $rb }}#OpaaModelRoleDown"
         # Expired key or certificate: the share of refused calls per target and kind. Identity
-        # provider and directory have their own alert; the routing component follows the target.
+        # provider and directory have their own rules; the routing component follows the target.
         {{- range $part := list (dict "targets" "rerank|transcription|ocr|vision|sandbox|model_check" "component" "model") (dict "targets" "connector|original_store" "component" "indexing") (dict "targets" "clamav" "component" "security") }}
         - alert: OpaaOutboundAuthFailing
           expr: >-
@@ -329,11 +350,12 @@ spec:
             and sum by (target, kind) (increase({{ $outbound }}{ {{- $scrape }}, target=~"{{ $part.targets }}"}[10m])) >= {{ $rule.outboundAuthErrorMinRequests }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: {{ $part.component }}
           annotations:
             summary: Ausgehende Aufrufe scheitern an Anmeldung oder Zertifikat
-            description: Mehr als {{ mulf $rule.outboundAuthErrorShare 100 }} % der Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} ({{ $o }} $labels.kind {{ $c }}) scheitern seit zehn Minuten an Anmeldung oder TLS.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.outboundAuthErrorShare 100) 4) | replace "." "," }} % der Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} ({{ $o }} $labels.kind {{ $c }}) scheitern seit zehn Minuten an Anmeldung oder TLS.
             runbook_url: "{{ $rb }}#OpaaOutboundAuthFailing"
         {{- end }}
         # Only calls a person waits for: in the background the indexing throttles itself at the
@@ -348,11 +370,12 @@ spec:
             and sum by (target) (increase({{ $outbound }}{ {{- $scrape }}, path_class="interactive"}[30m])) >= {{ $rule.throttledMinRequests }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: model
           annotations:
             summary: Anbieter drosselt Aufrufe, auf die jemand wartet
-            description: Mehr als {{ mulf $rule.throttledShare 100 }} % der interaktiven Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} wurden in 30 Minuten gedrosselt.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.throttledShare 100) 4) | replace "." "," }} % der interaktiven Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} wurden in 30 Minuten gedrosselt.
             runbook_url: "{{ $rb }}#OpaaOutboundThrottled"
         {{- if gt (int $rule.monthlyTokenBudget) 0 }}
         - alert: OpaaTokenBudgetForecast
@@ -360,6 +383,7 @@ spec:
             sum(increase(opaa_model_tokens_total{ {{- $scrape }}}[7d])) * 30 / 7 > {{ int $rule.monthlyTokenBudget }}
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: model
           annotations:
@@ -381,6 +405,7 @@ spec:
             and on(pod) sum by (pod) (increase(opaa_indexing_documents_total{ {{- $scrape }}}[{{ $rule.indexingStallMinutes }}m])) == 0
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: indexing
           annotations:
@@ -393,6 +418,7 @@ spec:
             max by (connector) (opaa_indexing_libraries_overdue{ {{- $scrape }}}) > 0
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: indexing
           annotations:
@@ -410,11 +436,12 @@ spec:
             and sum by (connector) (increase(opaa_indexing_runs_total{ {{- $scrape }}}[6h])) >= {{ $rule.indexingRunFailureMinRuns }}
           for: 15m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: indexing
           annotations:
             summary: Viele Indexierungsläufe scheitern
-            description: Mehr als {{ mulf $rule.indexingRunFailureShare 100 }} % der Läufe des Typs {{ $o }} $labels.connector {{ $c }} sind in sechs Stunden gescheitert.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.indexingRunFailureShare 100) 4) | replace "." "," }} % der Läufe des Typs {{ $o }} $labels.connector {{ $c }} sind in sechs Stunden gescheitert.
             runbook_url: "{{ $rb }}#OpaaIndexingRunsFailing"
     {{- end }}
     {{- if $groups.directory }}
@@ -429,17 +456,38 @@ spec:
             unless on(provider) (max by (provider) (opaa_directory_sync_plan_pending_age_seconds{ {{- $scrape }}}) > 0)
           for: 15m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: directory
           annotations:
             summary: Verzeichnisabgleich veraltet
             description: Der Verzeichnisabgleich mit {{ $o }} $labels.provider {{ $c }} ist seit mehr als {{ $rule.directorySyncMaxAgeHours }} Stunden nicht angewendet worden; Ausgeschiedene behalten so lange ihre Gruppen.
             runbook_url: "{{ $rb }}#OpaaDirectorySyncStale"
+        # The directory service refuses the access of the synchronisation; until then the last
+        # applied state stays in force.
+        - alert: OpaaOutboundAuthFailing
+          expr: >-
+            (
+              sum by (target, kind) (increase({{ $outbound }}{ {{- $scrape }}, target="directory", outcome=~"auth_error|tls_error"}[10m]))
+              / sum by (target, kind) (increase({{ $outbound }}{ {{- $scrape }}, target="directory"}[10m]))
+              > {{ $rule.outboundAuthErrorShare }}
+            )
+            and sum by (target, kind) (increase({{ $outbound }}{ {{- $scrape }}, target="directory"}[10m])) >= {{ $rule.outboundAuthErrorMinRequests }}
+          for: 5m
+          labels:
+            namespace: {{ $ns }}
+            severity: warning
+            component: directory
+          annotations:
+            summary: Ausgehende Aufrufe scheitern an Anmeldung oder Zertifikat
+            description: Mehr als {{ printf "%g" (round (mulf $rule.outboundAuthErrorShare 100) 4) | replace "." "," }} % der Aufrufe von {{ $deployment }} an {{ $o }} $labels.target {{ $c }} ({{ $o }} $labels.kind {{ $c }}) scheitern seit zehn Minuten an Anmeldung oder TLS.
+            runbook_url: "{{ $rb }}#OpaaOutboundAuthFailing"
         - alert: OpaaDirectorySyncPlanPending
           expr: >-
             max by (provider) (opaa_directory_sync_plan_pending_age_seconds{ {{- $scrape }}}) > {{ mul $rule.directorySyncPlanPendingHours 3600 }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: directory
           annotations:
@@ -452,19 +500,20 @@ spec:
       rules:
         # Under the lock every run happens on one pod, so the latest success over the pods. The audit
         # runs have their own alerts. A run that never succeeds counts from the start of the pod.
-        {{- $sinceSuccess := printf "(time() - max by (job) (opaa_scheduled_last_success{%s, job!~\"audit-chain|audit-retention\"}))" $scrape }}
+        {{- $sinceSuccess := printf "(time() - max by (scheduled_job) (opaa_scheduled_last_success{%s, scheduled_job!~\"audit-chain|audit-retention\"}))" $scrape }}
         - alert: OpaaScheduledJobOverdue
           expr: >-
             {{ $sinceSuccess }}
-            > on(job) ({{ $rule.scheduledOverdueFactor }} * max by (job) (opaa_scheduled_expected_interval_seconds{ {{- $scrape }}}))
+            > on(scheduled_job) ({{ $rule.scheduledOverdueFactor }} * max by (scheduled_job) (opaa_scheduled_expected_interval_seconds{ {{- $scrape }}}))
             and {{ $sinceSuccess }} > {{ mul $rule.scheduledOverdueMinMinutes 60 }}
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: background
           annotations:
             summary: Geplanter Lauf überfällig
-            description: Der Lauf {{ $o }} $labels.job {{ $c }} von {{ $deployment }} ist seit mehr als {{ $rule.scheduledOverdueFactor }} Intervallen auf keinem Pod gelungen.
+            description: Der Lauf {{ $o }} $labels.scheduled_job {{ $c }} von {{ $deployment }} ist seit mehr als {{ $rule.scheduledOverdueFactor }} Intervallen auf keinem Pod gelungen.
             runbook_url: "{{ $rb }}#OpaaScheduledJobOverdue"
         # A threshold per queue: what is late for a mail is normal for the OCR backlog. The age of
         # the indexing queue includes the longest running run.
@@ -475,6 +524,7 @@ spec:
             max by (queue) (opaa_queue_oldest_age_seconds{ {{- $scrape }}, queue="{{ $queue }}"}) > {{ mul $minutes 60 }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: {{ get $queueComponents $queue | default "background" }}
             queue: {{ $queue }}
@@ -495,11 +545,12 @@ spec:
             and on() sum(increase(opaa_mail_sent_total{ {{- $scrape }}}[30m])) >= {{ $rule.mailFailureMinAttempts }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: background
           annotations:
             summary: Mails werden nicht zugestellt
-            description: Mehr als {{ mulf $rule.mailFailureShare 100 }} % der Zustellversuche von {{ $deployment }} sind in 30 Minuten endgültig gescheitert.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.mailFailureShare 100) 4) | replace "." "," }} % der Zustellversuche von {{ $deployment }} sind in 30 Minuten endgültig gescheitert.
             runbook_url: "{{ $rb }}#OpaaMailDeliveryFailing"
     {{- end }}
     {{- if $groups.audit }}
@@ -520,6 +571,7 @@ spec:
             unless on() ({{ $replicas }} == 0))
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: audit
           annotations:
@@ -532,6 +584,7 @@ spec:
           expr: >-
             sum by (event_type) (increase(opaa_audit_payload_dropped_total{ {{- $scrape }}}[1h])) > 0
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: audit
           annotations:
@@ -553,6 +606,7 @@ spec:
             unless on() ({{ $replicas }} == 0))
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: audit
           annotations:
@@ -568,6 +622,7 @@ spec:
             max(opaa_audit_chain_unsealed_months{ {{- $scrape }}}) > 0
           for: 6h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: audit
           annotations:
@@ -580,6 +635,7 @@ spec:
             max(opaa_audit_log_horizon_seconds{ {{- $scrape }}}) < {{ mul $rule.auditLogHorizonWarningDays 86400 }}
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: audit
           annotations:
@@ -591,6 +647,7 @@ spec:
             max(opaa_audit_log_horizon_seconds{ {{- $scrape }}}) < {{ mul $rule.auditLogHorizonCriticalHours 3600 }}
           for: 10m
           labels:
+            namespace: {{ $ns }}
             severity: critical
             component: audit
           annotations:
@@ -611,17 +668,19 @@ spec:
             and on() sum(increase(opaa_malware_scans_seconds_count{ {{- $scrape }}}[15m])) >= {{ $rule.malwareScanMinScans }}
           for: 5m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
             summary: Virenprüfung scheitert
-            description: Mehr als {{ mulf $rule.malwareScanFailureShare 100 }} % der Virenprüfungen von {{ $deployment }} sind in 15 Minuten gescheitert; betroffene Dateien werden nicht aufgenommen.
+            description: Mehr als {{ printf "%g" (round (mulf $rule.malwareScanFailureShare 100) 4) | replace "." "," }} % der Virenprüfungen von {{ $deployment }} sind in 15 Minuten gescheitert; betroffene Dateien werden nicht aufgenommen.
             runbook_url: "{{ $rb }}#OpaaMalwareScanFailing"
         # The finding itself reaches the security monitoring through the audit log; this only shows it.
         - alert: OpaaMalwareDetected
           expr: >-
             sum(increase(opaa_malware_scans_seconds_count{ {{- $scrape }}, result="infected"}[1h])) > 0
           labels:
+            namespace: {{ $ns }}
             severity: info
             component: security
           annotations:
@@ -633,6 +692,7 @@ spec:
             max(opaa_malware_signatures_age_seconds{ {{- $scrape }}}) > {{ mul $rule.malwareSignatureMaxAgeDays 86400 }}
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
@@ -643,6 +703,7 @@ spec:
           expr: >-
             sum by (limit) (increase(opaa_rate_limit_rejected_total{ {{- $scrape }}, scope="global"}[15m])) > 0
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
@@ -664,6 +725,7 @@ spec:
               or on() vector(0)
             )
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
@@ -675,6 +737,7 @@ spec:
           expr: >-
             sum(increase(opaa_target_validation_refused_checks_total{ {{- $scrape }}}[15m])) > 0
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
@@ -686,6 +749,7 @@ spec:
             max(opaa_siem_export_lag_seconds{ {{- $scrape }}}) > {{ mul $rule.siemExportLagMinutes 60 }}
           for: 30m
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:
@@ -698,6 +762,7 @@ spec:
             max(opaa_installation_pending{ {{- $scrape }}}) == 1
           for: 1h
           labels:
+            namespace: {{ $ns }}
             severity: warning
             component: security
           annotations:

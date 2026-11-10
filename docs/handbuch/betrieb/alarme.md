@@ -19,6 +19,7 @@ Das Label `component` sagt, welcher Bereich betroffen ist, und taugt als Schlüs
 `security`. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
 Werte eines Anbieters.
 
+Jeder Alarm trägt außerdem `namespace`, den Namespace der Installation (unter Compose `opaa`).
 Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
 ([Alarme im Chart](kubernetes.md#alarme)).
 
@@ -48,19 +49,23 @@ inhibit_rules:
   # Ohne Backend zählt nur noch der Ausfall selbst.
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
     target_matchers: [component=~"chat|search|model|indexing|directory|background|audit|security"]
+    equal: [namespace]
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
     target_matchers: [alertname="OpaaBackendMetricsMissing"]
+    equal: [namespace]
   # Ohne Chat- oder Embedding-Modell scheitern Fragen, das sagt der Modellalarm schon.
   - source_matchers: [alertname="OpaaModelRoleDown", role=~"chat|embedding"]
     target_matchers: [alertname=~"OpaaHighErrorRate|OpaaChatSloBurn|OpaaTimeToFirstTokenHigh|OpaaRetrievalMostlyEmpty"]
-  # Ein kritischer Alarm verdrängt seine eigene Warnstufe.
+    equal: [namespace]
+  # Ein kritischer Alarm verdrängt seine eigene Warnstufe für dasselbe Ziel.
   - source_matchers: [severity="critical"]
     target_matchers: [severity="warning"]
-    equal: [alertname]
+    equal: [alertname, role, target, kind, pod, queue, namespace]
 ```
 
-Laufen mehrere Installationen gegen einen Alertmanager, bekommt jede Regel zusätzlich `equal` auf
-ein Label, das die Installation trennt, etwa ein externes Label ihres Prometheus.
+`equal: [namespace]` hält die Installationen auseinander, die gegen einen Alertmanager laufen. Im
+letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die Warnung zur Rolle
+`rerank`.
 
 ## Plattform
 
@@ -181,12 +186,16 @@ ein Label, das die Installation trennt, etwa ein externes Label ihres Prometheus
 
 ### OpaaIdentityProviderRejected
 
-- **Auswirkung:** Der Identitätsanbieter oder der Verzeichnisdienst (Label `target`) lehnt die
-  Anmeldung von OPAA ab; Anmeldungen über den Anbieter oder der Verzeichnisabgleich scheitern.
+- **Auswirkung:** Die Anmeldung über den Identitätsanbieter ist gestört: Die meisten Aufrufe an ihn
+  scheitern (abgelehnt, nicht erreichbar, Zertifikat, Timeout), oder Anmeldungen lassen sich nicht
+  prüfen, weil seine Signaturschlüssel nicht abrufbar sind. Einzelne abgewiesene Anfragen einer
+  Person zählen nicht. Ein gestörter Verzeichnisdienst meldet sich als
+  [OpaaOutboundAuthFailing](#OpaaOutboundAuthFailing) mit `component` `directory`.
 - **Zuständig:** Betrieb mit der Betreuung des Identitätsanbieters.
-- **Prüfen:** 1. Client-Geheimnis oder Verzeichniszugang abgelaufen oder geändert
-  ([Anbieterverwaltung](authentifizierung.md#anbieterverwaltung))? 2. Log nach der Antwort des
-  Anbieters. 3. Hat der Anbieter seine Adresse oder den Client geändert?
+- **Prüfen:** 1. Ist der Anbieter aus dem Cluster erreichbar (Ausgangsproxy, NetworkPolicy, DNS)?
+  2. Log nach der Antwort des Anbieters: Zertifikat, Adresse, Client oder Geheimnis geändert
+  ([Anbieterverwaltung](authentifizierung.md#anbieterverwaltung))? 3. Liefert er seine
+  Signaturschlüssel aus?
 - **Nachts:** sofort; ohne Anbieter kommen nur lokale Konten herein.
 - **Stummschalten:** während einer angekündigten Wartung des Anbieters.
 
@@ -266,7 +275,8 @@ ein Label, das die Installation trennt, etwa ein externes Label ihres Prometheus
 ### OpaaOutboundAuthFailing
 
 - **Auswirkung:** Aufrufe an ein Ziel (Label `target`) scheitern an Anmeldung oder TLS: Modelle
-  (`component` `model`), Quellen und Originalablage (`indexing`) oder Virenscanner (`security`).
+  (`component` `model`), Quellen und Originalablage (`indexing`), Verzeichnisdienst (`directory`;
+  bis dahin gilt der letzte angewendete Abgleich) oder Virenscanner (`security`).
 - **Zuständig:** wer das Ziel betreut; für Quellen die Verwaltung der Bibliothek.
 - **Prüfen:** 1. Zugangsschlüssel oder Zugang abgelaufen? 2. Zertifikat des Ziels abgelaufen oder
   von einer Stelle, die der Truststore nicht kennt
@@ -350,7 +360,7 @@ ein Label, das die Installation trennt, etwa ein externes Label ihres Prometheus
 - **Zuständig:** Systemverwaltung mit dem Betrieb.
 - **Prüfen:** 1. Seite Verzeichnisabgleich: letzter Lauf und Meldung
   ([Verzeichnisabgleich je Anbieter](authentifizierung.md#verzeichnisabgleich-je-anbieter)).
-  2. Verzeichniszugang hinterlegt und gültig? 3. Feuert `OpaaIdentityProviderRejected`?
+  2. Verzeichniszugang hinterlegt und gültig? 3. Feuert `OpaaOutboundAuthFailing` für `directory`?
 - **Nachts:** reicht am Morgen.
 - **Stummschalten:** nicht.
 
@@ -372,7 +382,7 @@ ein Label, das die Installation trennt, etwa ein externes Label ihres Prometheus
 
 ### OpaaScheduledJobOverdue
 
-- **Auswirkung:** Ein geplanter Lauf (Label `job`) ist seit mehreren Intervallen auf keinem Pod
+- **Auswirkung:** Ein geplanter Lauf (Label `scheduled_job`) ist seit mehreren Intervallen auf keinem Pod
   gelungen, auch einer, der seit dem Start nie gelang.
 - **Zuständig:** Betrieb der Plattform.
 - **Prüfen:** 1. Log nach dem Namen des Laufs. 2. Kurve „Instanzen und Sperren“: hält eine Sperre

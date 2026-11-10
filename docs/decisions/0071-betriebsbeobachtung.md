@@ -135,8 +135,9 @@ Die Metriken der Indizierung tragen als `connector` den Schlüssel des Quellenty
 nennt; die Bibliothek ist nie ein Label. Ein Lauf zählt an seinem Ende in `opaa.indexing.runs` mit
 Betriebsart, Ergebnis und `failure_category` aus der festen Liste der Laufgründe; einen Lauf, den
 die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, zählt sie als
-`abandoned`. `opaa.indexing.run.duration` veröffentlicht SLO-Buckets wie die Timer aus
-Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`).
+`abandoned`. `opaa.indexing.run.duration` und `opaa.indexing.stage.duration` veröffentlichen
+SLO-Buckets wie die Timer aus Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`,
+`OPAA_METRICS_SLO_INDEXING_STAGE`).
 
 Läufe, letzter Erfolg und Überfälligkeit einer privaten Bibliothek zählen nicht unter ihrem
 Quellentyp, sondern unter `connector="private"`. Als `failure_category` gilt dort eine Positivliste:
@@ -169,7 +170,8 @@ behält der neue Plan die Entstehungszeit des ersten, denn so lange wartet die E
 ### 10. Hintergrundläufe zentral gemessen, installationsweite Werte von jeder Instanz
 
 Letzter Erfolg, Fehler und erwartetes Intervall jedes geplanten Laufs (`opaa.scheduled.*` mit
-`job`, dem Namen seiner Sperre) misst ein Handler an der Observation, die Spring um jeden Lauf
+`scheduled_job`, dem Namen seiner Sperre; nicht `job`, das Prometheus für den Scrape-Job vergibt
+und ein gleichnamiges Tag in `exported_job` umbenennt) misst ein Handler an der Observation, die Spring um jeden Lauf
 legt, nicht Code im Lauf; ein Lauf zählt nur dort als erfolgreich, wo er seine Sperre bekam, und ein
 abgeschalteter Lauf hat keine Reihe. Bis zum ersten Erfolg gilt der Start der Instanz als letzter
 Erfolg, damit ein Lauf, der nie gelingt, ebenso überfällig wird wie einer, der aufhört zu gelingen.
@@ -203,13 +205,19 @@ Datenbank lesen kann, meldet `NaN` (Entscheidung 10); ein Vergleich darauf ist n
 meldet ein eigener Alarm jeden dauerhaft unlesbaren Wert, und die Alarme des Revisionsprotokolls
 werten `NaN` selbst als Befund. Die Alarme stehen in Gruppen je Bereich, jede einzeln abschaltbar.
 
+Jeder Alarm trägt `namespace` der Installation, damit Grafana und die Inhibit-Regeln eines
+geteilten Alertmanagers die Installationen trennen.
+
 Die Dashboards bestehen aus einer Startseite mit einer Ampel je Baustein und einem Dashboard je
 Bereich; sie zeigen nichts je Person, keine aktiven Personen und keine Chats je Zeitraum
-(Entscheidung 1). Chart und Compose-Overlay liefern dieselben Dateien aus, und die Schwellen der
-Alarme und der Ampelfarben stammen aus denselben Vorgaben der Chart-Werte; die Compose-Regeln sind
-aus dem Chart gerendert, nicht nachgeschrieben. Ein eigener Grafana oder Alertmanager kommt nicht in
-den Chart: Ein Cluster hat seine Überwachung, und Compose ohne Alertmanager zeigt Alarme, stellt
-sie aber nicht zu.
+(Entscheidung 1), und wie sich die Nutzung zusammensetzt nur als Anteil, nie als absolute Zahl über
+die Zeit. Eine Ampel liest den Zustand der Alarme ihres Bereichs (`ALERTS`), so steuert eine
+geänderte Schwelle Alarm und Ampel zugleich; der Chart legt die Dashboards deshalb nur mit den
+Alarmen an. Chart und Compose-Overlay liefern dieselben Dateien aus, die Compose-Regeln sind aus dem
+Chart gerendert, nicht nachgeschrieben. Ein eigener Grafana oder Alertmanager kommt nicht in den
+Chart: Ein Cluster hat seine Überwachung, und Compose ohne Alertmanager zeigt Alarme, stellt sie
+aber nicht zu. Grafana läuft nie auf der Origin von OPAA, sondern auf eigener Adresse: Auf derselben
+Origin könnte ein Skript in Grafana die Sitzung von OPAA lesen und in ihrem Namen handeln.
 
 ## Konsequenzen
 

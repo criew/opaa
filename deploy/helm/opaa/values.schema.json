@@ -1048,7 +1048,7 @@
               "exclusiveMinimum": 0,
               "maximum": 1
             },
-            "identityProviderAuthErrorShare": {
+            "identityProviderFailureShare": {
               "type": "number",
               "exclusiveMinimum": 0,
               "maximum": 1
@@ -1101,6 +1101,10 @@
             "identityProviderMinRequests": {
               "type": "integer",
               "minimum": 0
+            },
+            "identityProviderKeyErrorMin": {
+              "type": "integer",
+              "minimum": 1
             },
             "throttledMinRequests": {
               "type": "integer",

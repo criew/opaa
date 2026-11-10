@@ -1,4 +1,8 @@
 {{- if .Values.metrics.grafanaDashboards.enabled }}
+{{- /* The tiles of the start page read the state of the alerts; without them they stay green. */}}
+{{- if not .Values.metrics.prometheusRule.enabled }}
+{{- fail "metrics.grafanaDashboards.enabled needs metrics.prometheusRule.enabled: the tiles of the dashboards show the state of the chart's alerts" }}
+{{- end }}
 {{- $dashboards := .Values.metrics.grafanaDashboards }}
 {{- /* The files carry the default runbook address; an own runbookBaseUrl replaces it. */}}
 {{- $defaultRunbook := "https://opaa.io/handbuch/betrieb/alarme.html" | quote }}
