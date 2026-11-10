@@ -165,12 +165,12 @@ transcription:
   # default (4).
   maxConcurrent: ""
 
-# Isolated execution environment of the agent tool run_code (ADR-0073), off by default. The sandbox
-# server (OpenSandbox) is installed from its own chart into namespaces of its own; this release
-# connects the backend to it with the API key from the secret (key OPAA_SANDBOX_API_KEY:
-# secrets.sandboxApiKey, or that key in secrets.existingSecret) and closes the network of the
-# sandbox pods: in "namespace" it creates a NetworkPolicy that denies every egress of every pod
-# there and admits ingress only from the server.
+# Isolated execution environment of the agent tools run_code and fill_template (ADR-0073), off by
+# default. The sandbox server (OpenSandbox) is installed from its own chart into namespaces of its
+# own; this release connects the backend to it with the API key from the secret (key
+# OPAA_SANDBOX_API_KEY: secrets.sandboxApiKey, or that key in secrets.existingSecret) and closes the
+# network of the sandbox pods: in "namespace" it creates a NetworkPolicy that denies every egress
+# of every pod there and admits ingress only from the server.
 sandbox:
   enabled: false
   # Address of the OpenSandbox server, e.g. http://opensandbox-server.opensandbox-system:8090.

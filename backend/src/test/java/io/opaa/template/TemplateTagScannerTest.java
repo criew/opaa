@@ -1,14 +1,23 @@
 package io.opaa.template;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 class TemplateTagScannerTest {
+
+  /** Shared with the tests of the filling script, so upload and script refuse the same. */
+  private static final Path SHARED_CASES = Path.of("../sandbox/tests/template_cases.json");
 
   @Test
   void readsFieldsListsAndConditionsInOrderOfAppearance() {
@@ -28,6 +37,34 @@ class TemplateTagScannerTest {
             new TemplatePlaceholder(
                 "quellen", PlaceholderKind.LIST, List.of("titel", "fundstelle")),
             new TemplatePlaceholder("datum", PlaceholderKind.FIELD, List.of()));
+  }
+
+  @Test
+  void anythingBeyondFieldsListsConditionsAndTheAllowedFiltersIsRefused() throws IOException {
+    JsonNode cases = JsonMapper.builder().build().readTree(Files.readString(SHARED_CASES));
+    for (JsonNode refused : cases.path("refused")) {
+      String template = refused.asString();
+      assertThatThrownBy(() -> TemplateTagScanner.scan(template))
+          .as(template)
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("nur als Text");
+    }
+    for (JsonNode allowed : cases.path("allowed")) {
+      assertThatCode(() -> TemplateTagScanner.scan(allowed.asString()))
+          .as(allowed.asString())
+          .doesNotThrowAnyException();
+    }
+    assertThat(cases.path("refused").size()).isGreaterThan(30);
+    assertThat(TemplateTagScanner.scan("{{ safety }}{# |safe #}{% raw %}{{ x|safe }}{% endraw %}"))
+        .extracting(TemplatePlaceholder::name)
+        .containsExactly("safety");
+    assertThat(
+            TemplateTagScanner.scan(
+                "{{ a|default('-')|trim|title }}{{ b|round(1) }}{{ c|join(', ') }}{{ c|length }}"
+                    + "{{ d['x'] ~ '!' }}{{ (a or b) and not c }}{{ 'j' if d.x else 'n' }}"
+                    + "{% if b is not none and b > 1 %}{% endif %}{%tc vm %}{% colspan 2 %}"))
+        .extracting(TemplatePlaceholder::name)
+        .containsExactly("a", "b", "c", "d");
   }
 
   @Test
@@ -113,16 +150,16 @@ class TemplateTagScannerTest {
   }
 
   @Test
-  void rawBlocksTupleLoopsRangesAndLoopFiltersAreRead() {
+  void rawBlocksTupleLoopsAndLoopFiltersAreRead() {
     assertThat(
             TemplateTagScanner.scan(
                 "{% raw %}{{ kein }}{% endraw %}"
                     + "{% for (k, v) in paare %}{{ k }}{% endfor %}"
-                    + "{% for i in range(anzahl) %}{{ i }}{% endfor %}"
+                    + "{% for i in anzahl %}{{ i }}{% endfor %}"
                     + "{% for z in zeilen if z.aktiv %}{{ z.text }}{% endfor %}"))
         .containsExactly(
             new TemplatePlaceholder("paare", PlaceholderKind.LIST, List.of()),
-            new TemplatePlaceholder("anzahl", PlaceholderKind.FIELD, List.of()),
+            new TemplatePlaceholder("anzahl", PlaceholderKind.LIST, List.of()),
             new TemplatePlaceholder("zeilen", PlaceholderKind.LIST, List.of("aktiv", "text")));
   }
 

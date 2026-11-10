@@ -26,7 +26,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code permission-history} of the self-disclosure: the intervals of the rights
  * history in which the person was subject, owner or group member, and those she brought about. It
  * reads her own history rows directly, page by page, never through the point-in-time query. Another
- * person is "andere Person", a change without acting person "System".
+ * person is "andere Person", a change without acting person "System". An asset or group she may no
+ * longer see appears without its name ({@link ReadableAssetNames}); the asset type stays.
  */
 @Component
 public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureExporter {
@@ -129,10 +130,12 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
 
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
+  private final ReadableAssetNames names;
 
   public PermissionHistorySelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -149,140 +152,172 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
         sink,
         "assetGrants",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "WITH h AS (SELECT * FROM asset_grant_history WHERE organization_id = ?"
-                    + " AND (subject_user_id = ? OR actor_user_id = ?)"
-                    + " AND (valid_from, id) > (?, ?))"
-                    + " SELECT h.id, h.asset_type, a.name AS asset_name, h.subject_type,"
-                    + " h.subject_user_id, g.name AS group_name, h.role, h.expires_at, h.cause,"
-                    + " h.actor_user_id, h.valid_from, h.valid_to FROM h"
-                    + " LEFT JOIN assets a ON a.id = h.asset_id"
-                    + " LEFT JOIN groups g ON g.id = h.subject_group_id"
-                    + " ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("asset_name"));
-                  record.put("recipientType", rs.getString("subject_type"));
-                  record.put(
-                      "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("recipientGroup", rs.getString("group_name"));
-                  record.put("role", rs.getString("role"));
-                  record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "WITH h AS (SELECT * FROM asset_grant_history WHERE organization_id = ?"
+                        + " AND (subject_user_id = ? OR actor_user_id = ?)"
+                        + " AND (valid_from, id) > (?, ?))"
+                        + " SELECT h.id, h.asset_id, h.asset_type, a.name AS asset_name, h.subject_type,"
+                        + " h.subject_user_id, h.subject_group_id, g.name AS group_name, h.role,"
+                        + " h.expires_at, h.cause, h.actor_user_id, h.valid_from, h.valid_to FROM h"
+                        + " LEFT JOIN assets a ON a.id = h.asset_id"
+                        + " LEFT JOIN groups g ON g.id = h.subject_group_id"
+                        + " ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("asset_name"));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      record.put("recipientType", rs.getString("subject_type"));
+                      record.put(
+                          "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
+                      record.put("role", rs.getString("role"));
+                      record.put("expiresAt", instant(rs.getTimestamp("expires_at")));
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
     reader.copy(
         sink,
         "ownership",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, h.asset_type, a.name AS asset_name, h.owner_type, h.owner_user_id,"
-                    + " g.name AS group_name, h.cause, h.actor_user_id, h.valid_from, h.valid_to"
-                    + " FROM asset_ownership_history h LEFT JOIN assets a ON a.id = h.asset_id"
-                    + " LEFT JOIN groups g ON g.id = h.owner_group_id"
-                    + " WHERE h.organization_id = ? AND (h.owner_user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("asset_name"));
-                  record.put("ownerType", rs.getString("owner_type"));
-                  record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
-                  record.put("ownerGroup", rs.getString("group_name"));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.asset_id, h.asset_type, a.name AS asset_name, h.owner_type,"
+                        + " h.owner_user_id, h.owner_group_id, g.name AS group_name, h.cause,"
+                        + " h.actor_user_id, h.valid_from,"
+                        + " h.valid_to FROM asset_ownership_history h LEFT JOIN assets a ON a.id = h.asset_id"
+                        + " LEFT JOIN groups g ON g.id = h.owner_group_id"
+                        + " WHERE h.organization_id = ? AND (h.owner_user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("asset_name"));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      record.put("ownerType", rs.getString("owner_type"));
+                      record.put("owner", who(rs.getObject("owner_user_id", UUID.class), me, null));
+                      record.put("ownerGroup", rs.getString("group_name"));
+                      markGroup(record, "ownerGroup", rs, "owner_group_id");
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
     reader.copy(
         sink,
         "visibility",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, h.asset_type, a.name AS asset_name, h.cause,"
-                    + " h.external_access_state, h.external_access_expires_at, h.actor_user_id,"
-                    + " h.valid_from, h.valid_to FROM asset_visibility_history h"
-                    + " LEFT JOIN assets a ON a.id = h.asset_id"
-                    + " WHERE h.organization_id = ? AND h.actor_user_id = ?"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("assetType", rs.getString("asset_type"));
-                  record.put("asset", rs.getString("asset_name"));
-                  record.put("externalAccessState", rs.getString("external_access_state"));
-                  record.put(
-                      "externalAccessExpiresAt",
-                      instant(rs.getTimestamp("external_access_expires_at")));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.asset_id, h.asset_type, a.name AS asset_name, h.cause,"
+                        + " h.external_access_state, h.external_access_expires_at, h.actor_user_id,"
+                        + " h.valid_from, h.valid_to FROM asset_visibility_history h"
+                        + " LEFT JOIN assets a ON a.id = h.asset_id"
+                        + " WHERE h.organization_id = ? AND h.actor_user_id = ?"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("assetType", rs.getString("asset_type"));
+                      record.put("asset", rs.getString("asset_name"));
+                      ReadableAssetNames.mark(
+                          record, rs.getObject("asset_id", UUID.class), rs.getString("asset_type"));
+                      record.put("externalAccessState", rs.getString("external_access_state"));
+                      record.put(
+                          "externalAccessExpiresAt",
+                          instant(rs.getTimestamp("external_access_expires_at")));
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit),
+                "asset"));
     reader.copy(
         sink,
         "capabilities",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, h.capability, h.scope, h.subject_type, h.subject_user_id,"
-                    + " g.name AS group_name, h.cause, h.actor_user_id, h.valid_from, h.valid_to"
-                    + " FROM capability_grant_history h"
-                    + " LEFT JOIN groups g ON g.id = h.subject_group_id"
-                    + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("capability", rs.getString("capability"));
-                  record.put("scope", rs.getString("scope"));
-                  record.put("recipientType", rs.getString("subject_type"));
-                  record.put(
-                      "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
-                  record.put("recipientGroup", rs.getString("group_name"));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.capability, h.scope, h.subject_type, h.subject_user_id,"
+                        + " h.subject_group_id, g.name AS group_name, h.cause, h.actor_user_id,"
+                        + " h.valid_from, h.valid_to"
+                        + " FROM capability_grant_history h"
+                        + " LEFT JOIN groups g ON g.id = h.subject_group_id"
+                        + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("capability", rs.getString("capability"));
+                      record.put("scope", rs.getString("scope"));
+                      record.put("recipientType", rs.getString("subject_type"));
+                      record.put(
+                          "recipient", who(rs.getObject("subject_user_id", UUID.class), me, null));
+                      record.put("recipientGroup", rs.getString("group_name"));
+                      markGroup(record, "recipientGroup", rs, "subject_group_id");
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
     reader.copy(
         sink,
         "groupMemberships",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT h.id, g.name AS group_name, h.user_id, h.cause, h.actor_user_id,"
-                    + " h.valid_from, h.valid_to FROM group_membership_history h"
-                    + " LEFT JOIN groups g ON g.id = h.group_id"
-                    + " WHERE h.organization_id = ? AND (h.user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "valid_from", "id");
-                  record.put("group", rs.getString("group_name"));
-                  record.put("member", who(rs.getObject("user_id", UUID.class), me, null));
-                  putChange(record, rs, me);
-                  return record;
-                },
-                organization,
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT h.id, h.group_id, g.name AS group_name, h.user_id, h.cause, h.actor_user_id,"
+                        + " h.valid_from, h.valid_to FROM group_membership_history h"
+                        + " LEFT JOIN groups g ON g.id = h.group_id"
+                        + " WHERE h.organization_id = ? AND (h.user_id = ? OR h.actor_user_id = ?)"
+                        + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "valid_from", "id");
+                      record.put("group", rs.getString("group_name"));
+                      markGroup(record, "group", rs, "group_id");
+                      record.put("member", who(rs.getObject("user_id", UUID.class), me, null));
+                      putChange(record, rs, me);
+                      return record;
+                    },
+                    organization,
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
+  }
+
+  private static void markGroup(
+      Map<String, Object> record, String nameKey, ResultSet rs, String idColumn)
+      throws SQLException {
+    ReadableAssetNames.mark(
+        record, nameKey, rs.getObject(idColumn, UUID.class), ReadableAssetNames.GROUP);
   }
 
   /** Cause, acting person and interval, the columns every history table shares. */

@@ -2,7 +2,6 @@ import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'reac
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
-import ListItemButton from '@mui/material/ListItemButton'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
@@ -12,9 +11,7 @@ import { darkRoles, fontFamily, fontSize, gray, iconSize, shadow } from '@/share
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import StopIcon from '@mui/icons-material/Stop'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
@@ -22,7 +19,6 @@ import type { ChatAttachmentRef } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
-import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
 import { useChatAttachmentDraft } from '../hooks/useChatAttachmentDraft'
@@ -40,6 +36,9 @@ import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
+import { useChatAgentChoice } from './useChatAgentChoice'
+import MentionOption from './MentionOption'
+import { mentionGroups, mentionKey } from './mentionSuggestionText'
 import { useNarrowField } from './useNarrowField'
 import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
@@ -59,6 +58,14 @@ import {
 export interface SendOutcome {
   restoreDraft?: string
   onRestored?: () => void
+  /** The question's agent comes back with the draft. */
+  keepAgent?: boolean
+}
+
+/** The agent a question is sent to; it replaces the question's search scope. */
+export interface ChosenAgent {
+  id: string
+  name: string
 }
 
 interface ChatInputProps {
@@ -70,6 +77,7 @@ interface ChatInputProps {
     message: string,
     usedPrompt?: ChatActionMark,
     attachments?: ChatAttachmentRef[],
+    agent?: ChosenAgent,
   ) => void | SendOutcome | Promise<void | SendOutcome>
   /** Locks the whole input, typing included. */
   disabled?: boolean
@@ -225,6 +233,7 @@ export default function ChatInput({
 
   const { chatSpaceId, spaceRole, spaceLibraries, knowledgeGap, libraryChips, scopeNotice } =
     useSpaceLibraryScope(scope, referencedLibraryIds)
+  const { agents, agent, chooseAgent, clearAgent } = useChatAgentChoice(chatSpaceId)
   const {
     mention,
     highlightedIndex,
@@ -244,6 +253,9 @@ export default function ChatInput({
     referencedLibraryIds,
     setScopeAll,
     addReferencedLibrary,
+    agents,
+    chosenAgentId: agent?.id ?? null,
+    chooseAgent,
   })
 
   useEffect(() => {
@@ -299,12 +311,15 @@ export default function ChatInput({
         ? { id: selected.mark.id, title: selected.mark.title }
         : undefined
     const attachments = draft.take()
-    const outcome =
-      attachments.length > 0
+    const chosen = agent ? { id: agent.id, name: agent.name } : undefined
+    const outcome = chosen
+      ? onSend(trimmed, mark, attachments, chosen)
+      : attachments.length > 0
         ? onSend(trimmed, mark, attachments)
         : mark
           ? onSend(trimmed, mark)
           : onSend(trimmed)
+    clearAgent()
     setValue('')
     resetMention()
     actions.reset()
@@ -317,6 +332,7 @@ export default function ChatInput({
       if (!restoreDraft || !mountedRef.current) return
       setValue((current) => withRestoredQuestion(restoreDraft, current))
       draft.restore(attachments)
+      if (chosen && result.keepAgent) chooseAgent(chosen)
       result.onRestored?.()
     })
     return true
@@ -461,6 +477,8 @@ export default function ChatInput({
       <ChatScopeChipBar
         selected={actions.selected}
         onClearSelected={actions.clearSelected}
+        agentName={agent?.name ?? null}
+        onClearAgent={clearAgent}
         disabled={disabled}
         scope={scope}
         scopeLocked={scopeLocked}
@@ -653,72 +671,65 @@ export default function ChatInput({
                 borderColor: 'divider',
               }}
             >
-              Suchbereich eingrenzen
+              {agents.length > 0 ? 'Wissen oder Agent wählen' : 'Suchbereich eingrenzen'}
             </Typography>
             {suggestions.length > 0 ? (
-              <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
-                {suggestions.map((suggestion, index) => {
-                  const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
-                  const name = suggestion.kind === 'all' ? '@Space-Wissen' : suggestion.library.name
-                  const badge =
-                    suggestion.kind === 'all'
-                      ? 'Wissen des Space · hebt Eingrenzung auf'
-                      : 'Bibliothek · verengt die Suche'
-                  const query = mention?.query ?? ''
-                  const matchIndex =
-                    query.length > 0 ? name.toLowerCase().indexOf(query.toLowerCase()) : -1
-                  return (
-                    <ListItemButton
-                      key={key}
-                      id={`${mentionListboxId}-option-${index}`}
-                      role="option"
-                      aria-selected={index === highlightedIndex}
-                      selected={index === highlightedIndex}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      onClick={() => selectSuggestion(suggestion)}
-                      sx={{
-                        gap: 1.25,
-                        py: 1,
-                        '&.Mui-selected': {
-                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                        },
-                      }}
-                    >
-                      {suggestion.kind === 'all' ? (
-                        <AllInclusiveIcon sx={{ fontSize: iconSize.sm, color: 'text.primary' }} />
-                      ) : (
-                        <MenuBookOutlinedIcon
-                          sx={{ fontSize: iconSize.sm, color: 'text.primary' }}
-                        />
-                      )}
+              <List
+                id={mentionListboxId}
+                role="listbox"
+                aria-label={agents.length > 0 ? 'Suchbereich oder Agent' : 'Suchbereich'}
+                dense
+              >
+                {mentionGroups(suggestions).map((group, groupIndex) => (
+                  <Box component="li" role="presentation" key={group.kind} sx={{ p: 0 }}>
+                    {/* With agents on offer each group gets a visible heading of its own. */}
+                    {agents.length > 0 && (
                       <Typography
-                        component="span"
-                        noWrap
-                        sx={{ flex: 1, fontSize: fontSize.text, color: 'text.primary' }}
+                        id={`${mentionListboxId}-${group.kind}`}
+                        component="div"
+                        sx={{
+                          px: 1.5,
+                          pt: 1,
+                          pb: 0.5,
+                          fontFamily: fontFamily.mono,
+                          fontSize: fontSize.label,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          color: 'text.secondary',
+                          ...(groupIndex > 0 ? { borderTop: 1, borderColor: 'divider' } : {}),
+                        }}
                       >
-                        {matchIndex >= 0 ? (
-                          <>
-                            {name.slice(0, matchIndex)}
-                            <Box component="strong" sx={{ fontWeight: 600 }}>
-                              {name.slice(matchIndex, matchIndex + query.length)}
-                            </Box>
-                            {name.slice(matchIndex + query.length)}
-                          </>
-                        ) : (
-                          name
-                        )}
+                        {group.kind === 'agent' ? 'Agenten' : 'Wissen'}
                       </Typography>
-                      <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
-                        <MetaBadge>{badge}</MetaBadge>
-                      </Box>
-                    </ListItemButton>
-                  )
-                })}
+                    )}
+                    <Box
+                      component="ul"
+                      role="group"
+                      {...(agents.length > 0
+                        ? { 'aria-labelledby': `${mentionListboxId}-${group.kind}` }
+                        : { 'aria-label': 'Wissen' })}
+                      sx={{ listStyle: 'none', m: 0, p: 0 }}
+                    >
+                      {group.items.map(({ suggestion, index }) => (
+                        <MentionOption
+                          key={mentionKey(suggestion)}
+                          suggestion={suggestion}
+                          optionId={`${mentionListboxId}-option-${index}`}
+                          highlighted={index === highlightedIndex}
+                          query={mention?.query ?? ''}
+                          onHighlight={() => setHighlightedIndex(index)}
+                          onSelect={() => selectSuggestion(suggestion)}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
               </List>
             ) : (
               <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
-                Keine passende Bibliothek in diesem Space
+                {agents.length > 0
+                  ? 'Keine passende Bibliothek und kein passender Agent in diesem Space'
+                  : 'Keine passende Bibliothek in diesem Space'}
               </Typography>
             )}
           </Paper>

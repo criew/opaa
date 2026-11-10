@@ -1,1 +1,1 @@
-// Public interface of the agent theme; no other theme depends on it yet.
+export { listAvailableAgents } from './api/agentApi'

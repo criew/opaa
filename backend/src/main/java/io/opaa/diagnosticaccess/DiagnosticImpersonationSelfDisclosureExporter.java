@@ -10,6 +10,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The category {@code diagnostic-impersonation} of the self-disclosure: every "Sicht als" authority
  * the person holds, granted or revoked, with scope, validity and revocation. Holder, granting and
  * revoking person appear only as {@link SelfDisclosureLabels#YOU} or {@link
- * SelfDisclosureLabels#OTHER_PERSON}. Read in pages, each in a short read-only transaction.
+ * SelfDisclosureLabels#OTHER_PERSON}. The scope group of an authority she holds in force keeps its
+ * name; any other appears without it once she may no longer see the group ({@link
+ * ReadableAssetNames}). Read in pages, each in a short read-only transaction.
  */
 @Component
 public class DiagnosticImpersonationSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -50,9 +53,12 @@ public class DiagnosticImpersonationSelfDisclosureExporter implements SelfDisclo
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
 
+  private final ReadableAssetNames names;
+
   public DiagnosticImpersonationSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -68,35 +74,49 @@ public class DiagnosticImpersonationSelfDisclosureExporter implements SelfDisclo
         sink,
         "grants",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT d.id, d.holder_user_id, g.name AS scope, d.valid_from, d.valid_until,"
-                    + " d.granted_by_user_id, d.granted_at, d.revoked_by_user_id, d.revoked_at"
-                    + " FROM diagnostic_impersonation_grants d LEFT JOIN groups g ON g.id ="
-                    + " d.scope_group_id WHERE d.organization_id = ? AND (d.holder_user_id = ?"
-                    + " OR d.granted_by_user_id = ? OR d.revoked_by_user_id = ?)"
-                    + " AND (d.granted_at, d.id) > (?, ?) ORDER BY d.granted_at, d.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record =
-                      SelfDisclosureSectionReader.keyed(rs, "granted_at", "id");
-                  record.put("holder", who(rs.getObject("holder_user_id", UUID.class), person));
-                  record.put("scope", rs.getString("scope"));
-                  record.put("validFrom", instant(rs.getTimestamp("valid_from")));
-                  record.put("validUntil", instant(rs.getTimestamp("valid_until")));
-                  record.put(
-                      "grantedBy", who(rs.getObject("granted_by_user_id", UUID.class), person));
-                  record.put("grantedAt", instant(rs.getTimestamp("granted_at")));
-                  record.put(
-                      "revokedBy", who(rs.getObject("revoked_by_user_id", UUID.class), person));
-                  record.put("revokedAt", instant(rs.getTimestamp("revoked_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 person,
-                person,
-                person,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT d.id, d.holder_user_id, d.scope_group_id, g.name AS scope, d.valid_from,"
+                        + " d.valid_until, d.granted_by_user_id, d.granted_at, d.revoked_by_user_id,"
+                        + " d.revoked_at, (d.revoked_at IS NULL AND (d.valid_until IS NULL"
+                        + " OR d.valid_until > now())) AS in_force"
+                        + " FROM diagnostic_impersonation_grants d LEFT JOIN groups g ON g.id ="
+                        + " d.scope_group_id WHERE d.organization_id = ? AND (d.holder_user_id = ?"
+                        + " OR d.granted_by_user_id = ? OR d.revoked_by_user_id = ?)"
+                        + " AND (d.granted_at, d.id) > (?, ?) ORDER BY d.granted_at, d.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record =
+                          SelfDisclosureSectionReader.keyed(rs, "granted_at", "id");
+                      record.put("holder", who(rs.getObject("holder_user_id", UUID.class), person));
+                      record.put("scope", rs.getString("scope"));
+                      record.put("validFrom", instant(rs.getTimestamp("valid_from")));
+                      record.put("validUntil", instant(rs.getTimestamp("valid_until")));
+                      record.put(
+                          "grantedBy", who(rs.getObject("granted_by_user_id", UUID.class), person));
+                      record.put("grantedAt", instant(rs.getTimestamp("granted_at")));
+                      record.put(
+                          "revokedBy", who(rs.getObject("revoked_by_user_id", UUID.class), person));
+                      record.put("revokedAt", instant(rs.getTimestamp("revoked_at")));
+                      boolean heldNow =
+                          person.equals(rs.getObject("holder_user_id", UUID.class))
+                              && rs.getBoolean("in_force");
+                      if (!heldNow) {
+                        ReadableAssetNames.mark(
+                            record,
+                            "scope",
+                            rs.getObject("scope_group_id", UUID.class),
+                            ReadableAssetNames.GROUP);
+                      }
+                      return record;
+                    },
+                    subject.organizationId(),
+                    person,
+                    person,
+                    person,
+                    afterTime,
+                    afterId,
+                    limit)));
   }
 
   private static String who(UUID account, UUID person) {

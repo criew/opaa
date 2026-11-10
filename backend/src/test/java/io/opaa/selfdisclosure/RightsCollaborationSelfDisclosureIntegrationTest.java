@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,7 +182,10 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         .contains("\"asset\":\"sd2991 Geteiltes Asset\"", "\"grantedBy\":\"andere Person\"")
         .contains("\"recipient\":\"andere Person\"", "\"recipientGroup\":\"sd2991 Gruppe Mein\"")
         .contains("\"capability\":\"CREATE_SPACE\"")
-        .contains("\"name\":\"sd2991 Angelegt für andere\"", "\"createdBy\":\"Sie\"")
+        .contains("\"createdBy\":\"Sie\"")
+        // created for another person and not shared back: listed, but without its name today
+        .contains("\"name\":\"(kein Leserecht)\"")
+        .doesNotContain("sd2991 Angelegt für andere")
         .doesNotContain("Prompttext");
     // a grant another person gave a third one on the person's asset is not hers
     assertThat(records(entries.get("rights.json"), "updatedAt")).isEqualTo(3);
@@ -201,6 +205,246 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     assertThat(records(entries.get("favorites.json"), "asset")).isEqualTo(1);
   }
 
+  /**
+   * Every record naming an asset the person no longer reads - favorite, space assignment, created
+   * asset, grant she gave, rights history, succession case, library connection and its log entry -
+   * keeps its record, but the asset's name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void anAssetThePersonNoLongerReadsAppearsWithoutItsName() throws IOException {
+    UUID unreadable = asset("PROMPT_LIBRARY", "sd2991 Nicht mehr lesbar", other, person);
+    jdbc.update(
+        "INSERT INTO asset_favorites (asset_id, user_id, organization_id) VALUES (?, ?, ?)",
+        unreadable,
+        person,
+        organization);
+    UUID ownSpace =
+        jdbc.queryForObject(
+            "SELECT id FROM spaces WHERE name = 'sd2991 Mein Space' AND organization_id = ?",
+            UUID.class,
+            organization);
+    jdbc.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id) VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        ownSpace,
+        unreadable,
+        organization,
+        person);
+
+    grant(unreadable, "USER", third, null, person);
+    seedFormerRelation(unreadable);
+    UUID leftLibrary = library("sd2991 Nicht mehr lesbare Bibliothek", other);
+    seedFormerConnection(leftLibrary);
+
+    Map<String, String> entries = export(person);
+
+    // "sd2991 Nicht mehr lesbar" is also the start of the library's name
+    SoftAssertions.assertSoftly(
+        soft -> {
+          for (String entry : entries.keySet()) {
+            soft.assertThat(entries.get(entry))
+                .as(entry)
+                .doesNotContain("sd2991 Nicht mehr lesbar");
+          }
+          soft.assertThat(entries.get("favorites.json"))
+              .contains("\"asset\":\"sd2991 Geteiltes Asset\"", "\"asset\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("spaces.json"))
+              .contains("\"asset\":\"sd2991 Meine Prompts\"", "\"asset\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("rights.json"))
+              .contains("\"name\":\"sd2991 Meine Prompts\"", "\"asset\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("permission-history.json"))
+              .contains("\"asset\":\"sd2991 Geteiltes Asset\"", "\"asset\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("succession.json"))
+              .contains("\"object\":\"sd2991 Meine Prompts\"", "\"object\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("connected-accounts.json"))
+              .contains("\"library\":\"sd2991 Fremd verbundene Bibliothek\"")
+              .contains("\"library\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("connection-log.json"))
+              .contains("\"library\":\"(kein Leserecht)\"");
+        });
+  }
+
+  /**
+   * The person created {@code asset}, owned it until yesterday and changed its visibility, held a
+   * grant on it that has ended, and a succession case opened while it was hers.
+   */
+  private void seedFormerRelation(UUID asset) {
+    transferredCase(asset, person, other);
+    jdbc.update(
+        "INSERT INTO asset_grant_history (id, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, cause, actor_user_id, valid_from, valid_to, asset_type)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'VIEWER', 'GRANTED', ?, now() - interval '2 days',"
+            + " now() - interval '1 day', 'PROMPT_LIBRARY')",
+        UUID.randomUUID(),
+        asset,
+        organization,
+        person,
+        other);
+    jdbc.update(
+        "INSERT INTO asset_visibility_history (id, asset_id, organization_id, cause,"
+            + " actor_user_id, valid_from, asset_type)"
+            + " VALUES (?, ?, ?, 'EXTERNAL_ACCESS_CHANGED', ?, now(), 'PROMPT_LIBRARY')",
+        UUID.randomUUID(),
+        asset,
+        organization,
+        person);
+  }
+
+  /** The person connected {@code library} with her account and the connection was logged. */
+  private void seedFormerConnection(UUID library) {
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version, account_label, connected_by, connected_at, responsible_type,"
+            + " responsible_id) VALUES (?, ?, now(), now(), 0, 'ich-alt@anbieter.example', ?,"
+            + " now(), 'USER', ?)",
+        library,
+        profile,
+        person,
+        other);
+    jdbc.update(
+        "INSERT INTO connection_log (event_id, organization_id, recorded_at, event_type,"
+            + " actor_ref, owner_kind, person_ref, library_id, account_label, profile_id,"
+            + " profile_name, cause) VALUES (?, ?, now(), 'CONNECTED', ?, 'LIBRARY', NULL, ?,"
+            + " 'ich-alt@anbieter.example', ?, 'sd2991 Zugang', NULL)",
+        UUID.randomUUID(),
+        organization,
+        personPseudonym.toString(),
+        library,
+        profile);
+  }
+
+  /**
+   * A space the person left and an internal group she was removed from, both renamed since: every
+   * record naming them stays, but their names today are replaced by the neutral placeholder. Her
+   * current group keeps its name.
+   */
+  @Test
+  void aSpaceAndAGroupThePersonNoLongerSeesAppearWithoutTheirNames() throws IOException {
+    UUID leftSpace = space("sd2991 Verlassen Space", other, null);
+    UUID leftGroup = group("sd2991 Verlassen Gruppe");
+    UUID prompts =
+        jdbc.queryForObject(
+            "SELECT id FROM assets WHERE name = 'sd2991 Meine Prompts' AND organization_id = ?",
+            UUID.class,
+            organization);
+    seedFormerSpace(leftSpace, leftGroup, prompts);
+    seedFormerGroup(leftGroup, prompts);
+    String closedCase =
+        "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
+            + " first_seen_at, last_seen_at, closed_at, closed_by_user_id)"
+            + " VALUES (?, ?, 'OPEN_SUCCESSION', ?, ?, now(), now(), now(), ?)";
+    jdbc.update(closedCase, UUID.randomUUID(), organization, "SPACE", leftSpace, person);
+    jdbc.update(closedCase, UUID.randomUUID(), organization, "GROUP", leftGroup, person);
+
+    Map<String, String> entries = export(person);
+
+    SoftAssertions.assertSoftly(
+        soft -> {
+          for (String entry : entries.keySet()) {
+            soft.assertThat(entries.get(entry)).as(entry).doesNotContain("sd2991 Verlassen");
+          }
+          soft.assertThat(entries.get("spaces.json")).contains("\"space\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("space-membership-history.json"))
+              .contains("\"space\":\"(kein Leserecht)\"", "\"memberGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("succession.json"))
+              .contains("\"object\":\"sd2991 Space Abgeschlossen\"")
+              .contains("\"object\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("groups.json"))
+              .contains("\"group\":\"sd2991 Gruppe Mein\"", "\"group\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("permission-history.json"))
+              .contains("\"group\":\"sd2991 Gruppe Mein\"", "\"group\":\"(kein Leserecht)\"")
+              .contains("\"recipientGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("rights.json"))
+              .contains("\"recipientGroup\":\"sd2991 Gruppe Mein\"")
+              .contains("\"recipientGroup\":\"(kein Leserecht)\"");
+          soft.assertThat(entries.get("connected-accounts.json"))
+              .contains("\"responsibleGroup\":\"(kein Leserecht)\"");
+        });
+  }
+
+  /** The person was a member of {@code space} until yesterday and assigned an asset to it. */
+  private void seedFormerSpace(UUID space, UUID group, UUID asset) {
+    jdbc.update(
+        "INSERT INTO space_membership_history (id, space_id, organization_id, subject_type,"
+            + " subject_user_id, role, cause, actor_user_id, valid_from, valid_to)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'MEMBER', 'ADDED', ?, now() - interval '2 days',"
+            + " now() - interval '1 day')",
+        UUID.randomUUID(),
+        space,
+        organization,
+        person,
+        other);
+    jdbc.update(
+        "INSERT INTO space_membership_history (id, space_id, organization_id, subject_type,"
+            + " subject_group_id, role, cause, actor_user_id, valid_from)"
+            + " VALUES (?, ?, ?, 'GROUP', ?, 'MEMBER', 'ADDED', ?, now())",
+        UUID.randomUUID(),
+        space,
+        organization,
+        group,
+        person);
+    jdbc.update(
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+            + " created_by_user_id) VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        space,
+        asset,
+        organization,
+        person);
+  }
+
+  /**
+   * The person was a member of {@code group} until yesterday, appointed its steward, granted it a
+   * right and a capability and made it answer for a library connection.
+   */
+  private void seedFormerGroup(UUID group, UUID asset) {
+    jdbc.update(
+        "INSERT INTO group_membership_history (id, group_id, organization_id, user_id, cause,"
+            + " actor_user_id, valid_from, valid_to) VALUES (?, ?, ?, ?, 'ADDED', NULL,"
+            + " now() - interval '2 days', now() - interval '1 day')",
+        UUID.randomUUID(),
+        group,
+        organization,
+        person);
+    jdbc.update(
+        "INSERT INTO group_stewards (id, group_id, user_id, organization_id, appointed_by_user_id)"
+            + " VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        group,
+        other,
+        organization,
+        person);
+    grant(asset, "GROUP", null, group, person);
+    jdbc.update(
+        "INSERT INTO asset_grant_history (id, asset_id, organization_id, subject_type,"
+            + " subject_group_id, role, cause, actor_user_id, valid_from, asset_type)"
+            + " VALUES (?, ?, ?, 'GROUP', ?, 'VIEWER', 'GRANTED', ?, now(), 'PROMPT_LIBRARY')",
+        UUID.randomUUID(),
+        asset,
+        organization,
+        group,
+        person);
+    jdbc.update(
+        "INSERT INTO capability_grant_history (id, organization_id, capability, subject_type,"
+            + " subject_group_id, cause, actor_user_id, valid_from)"
+            + " VALUES (?, ?, 'CREATE_SPACE', 'GROUP', ?, 'GRANTED', ?, now())",
+        UUID.randomUUID(),
+        organization,
+        group,
+        person);
+    UUID library = library("sd2991 Gruppenverbindung", person);
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version, account_label, connected_by, connected_at, responsible_type,"
+            + " responsible_id) VALUES (?, ?, now(), now(), 0, 'ich-gruppe@anbieter.example', ?,"
+            + " now(), 'GROUP', ?)",
+        library,
+        profile,
+        person,
+        group);
+  }
+
   @Test
   void aSuccessionCaseGoesToWhoOwnedTheAssetWhenItWasFirstSeenNotToTheSuccessor()
       throws IOException {
@@ -208,6 +452,9 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     UUID handedOn = asset("PROMPT_LIBRARY", "sd2991 Abgegebenes Asset", other);
     transferredCase(takenOver, other, person);
     transferredCase(handedOn, person, other);
+    // both still read both assets through their shared group, so the names may appear
+    grant(takenOver, "GROUP", null, groupNamed("sd2991 Gruppe Mein"), null);
+    grant(handedOn, "GROUP", null, groupNamed("sd2991 Gruppe Mein"), null);
 
     String mine = export(person).get("succession.json");
     String theirs = export(other).get("succession.json");
@@ -381,6 +628,8 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     grant(prompts, "GROUP", null, ownGroup, person);
     grant(foreign, "GROUP", null, foreignGroup, other);
     grant(prompts, "USER", third, null, other);
+    // the person answers for this library's connection and reads it through her group
+    grant(foreignConnected, "GROUP", null, ownGroup, other);
     asset("PROMPT_LIBRARY", "sd2991 Angelegt für andere", other, person);
     jdbc.update(
         "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
@@ -476,6 +725,8 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         other,
         other);
     UUID closedSpace = space("sd2991 Space Abgeschlossen", other, null);
+    // still a member, so the succession case keeps the space's name
+    spaceMember(closedSpace, person, "MEMBER");
     String succession =
         "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
             + " asset_type, first_seen_at, last_seen_at, closed_at, closed_by_user_id)"
@@ -692,6 +943,14 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         UUID.randomUUID(),
         organization,
         asset);
+  }
+
+  private UUID groupNamed(String name) {
+    return jdbc.queryForObject(
+        "SELECT id FROM groups WHERE name = ? AND organization_id = ?",
+        UUID.class,
+        name,
+        organization);
   }
 
   private void user(UUID id, String subject, String email, String name) {

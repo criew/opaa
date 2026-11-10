@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import type { MetadataFilter, MetadataFilterOptionsResponse } from '@/shared/api/types'
@@ -21,6 +22,9 @@ interface ChatScopeChipBarProps {
   /** The action mark the next question carries, e.g. a prompt; null without one. */
   selected: SelectedChatAction | null
   onClearSelected: () => void
+  /** The agent chosen for the next question; it replaces the search scope of that question. */
+  agentName?: string | null
+  onClearAgent?: () => void
   /** Locks the whole input. */
   disabled: boolean
   scope: SearchScope
@@ -48,6 +52,8 @@ interface ChatScopeChipBarProps {
 export default function ChatScopeChipBar({
   selected,
   onClearSelected,
+  agentName = null,
+  onClearAgent,
   disabled,
   scope,
   scopeLocked,
@@ -77,6 +83,21 @@ export default function ChatScopeChipBar({
         gap: 0.75,
       }}
     >
+      {/* Set apart from the knowledge chips by icon, wording and square shape, not by colour
+          alone: an agent works on the question, a knowledge chip only narrows the search. */}
+      {agentName && (
+        <Chip
+          icon={<SmartToyOutlinedIcon />}
+          label={`Agent: ${agentName}`}
+          size="small"
+          variant="outlined"
+          color="secondary"
+          onDelete={disabled ? undefined : onClearAgent}
+          aria-label={`Agent ${agentName} entfernen`}
+          data-testid="chosen-agent-chip"
+          sx={{ borderRadius: 1 }}
+        />
+      )}
       {selected && (
         <Chip
           icon={<selected.source.Icon />}
