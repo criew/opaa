@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -209,10 +210,13 @@ class OpenSandboxClientTest {
           exchange.close();
         });
     server.start();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     try {
       OpenSandboxClient client =
           new OpenSandboxClient(
-              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
+              properties("http://127.0.0.1:" + server.getAddress().getPort()),
+              objectMapper,
+              meterRegistry);
 
       assertThatThrownBy(() -> client.open(Duration.ofMinutes(5), Duration.ofMillis(600)))
           .isInstanceOf(SandboxException.class)
@@ -250,10 +254,13 @@ class OpenSandboxClientTest {
           exchange.close();
         });
     server.start();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     try {
       OpenSandboxClient client =
           new OpenSandboxClient(
-              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
+              properties("http://127.0.0.1:" + server.getAddress().getPort()),
+              objectMapper,
+              meterRegistry);
 
       try (SandboxSession session = client.open(Duration.ofMinutes(5), Duration.ofSeconds(10))) {
         assertThatThrownBy(() -> session.run("print(1)", Duration.ofSeconds(10)))
@@ -261,6 +268,15 @@ class OpenSandboxClientTest {
             .hasMessageContaining("502");
       }
       assertThat(calls).last().isEqualTo("DELETE /v1/sandboxes/sbx-1");
+      assertThat(
+              meterRegistry
+                  .get("opaa.outbound.requests")
+                  .tag("target", "sandbox")
+                  .tag("outcome", "server_error")
+                  .tag("path_class", "interactive")
+                  .timer()
+                  .count())
+          .isEqualTo(1);
       client.close();
     } finally {
       server.stop(0);
@@ -299,10 +315,13 @@ class OpenSandboxClientTest {
           exchange.close();
         });
     server.start();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     try {
       OpenSandboxClient client =
           new OpenSandboxClient(
-              properties("http://127.0.0.1:" + server.getAddress().getPort()), objectMapper);
+              properties("http://127.0.0.1:" + server.getAddress().getPort()),
+              objectMapper,
+              meterRegistry);
       SandboxSession session = client.open(Duration.ofHours(3), Duration.ofSeconds(10));
 
       assertThat(session.run("print(1)", Duration.ofSeconds(5)).exitCode()).isZero();

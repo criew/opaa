@@ -4,6 +4,8 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.indexing.spi.RenewableCredential;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.outbound.ProxyAddress;
 import io.opaa.s3.S3AccessException;
@@ -51,6 +53,9 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  */
 @DataFlow("source-s3")
 final class AwsSdkS3ObjectStore implements S3ObjectStore {
+
+  private static final OutboundMetrics METRICS =
+      OutboundMetrics.global(OutboundTarget.CONNECTOR, "s3");
 
   /** Buckets per ListBuckets page; AWS allows up to 10,000. */
   static final int BUCKET_PAGE_SIZE = 1000;
@@ -111,8 +116,8 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             RunEndingFailures::endingCause);
     this.client =
         current == null
-            ? S3SdkClient.open(settings, guard)
-            : S3SdkClient.open(settings, S3ClientSettings.current(current), guard);
+            ? S3SdkClient.open(settings, guard, METRICS)
+            : S3SdkClient.open(settings, S3ClientSettings.current(current), guard, METRICS);
     this.s3 = client.s3();
   }
 

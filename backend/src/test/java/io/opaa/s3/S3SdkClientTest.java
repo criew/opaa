@@ -3,6 +3,9 @@ package io.opaa.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import java.net.URI;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -37,7 +40,11 @@ class S3SdkClientTest {
   void everyClientCarriesTheCompatibilitySettings() {
     S3RequestGuard guard = S3RequestGuard.targetCheckOnly(request -> {});
 
-    try (S3SdkClient client = S3SdkClient.open(settings(4), guard)) {
+    try (S3SdkClient client =
+        S3SdkClient.open(
+            settings(4),
+            guard,
+            new OutboundMetrics(new SimpleMeterRegistry(), OutboundTarget.CONNECTOR, "s3"))) {
       S3ServiceClientConfiguration configuration = client.s3().serviceClientConfiguration();
 
       assertThat(configuration.requestChecksumCalculation())
@@ -59,7 +66,10 @@ class S3SdkClientTest {
   @Test
   void zeroRetriesMeansASingleAttempt() {
     try (S3SdkClient client =
-        S3SdkClient.open(settings(0), S3RequestGuard.targetCheckOnly(request -> {}))) {
+        S3SdkClient.open(
+            settings(0),
+            S3RequestGuard.targetCheckOnly(request -> {}),
+            new OutboundMetrics(new SimpleMeterRegistry(), OutboundTarget.CONNECTOR, "s3"))) {
       assertThat(client.s3().serviceClientConfiguration().overrideConfiguration().retryStrategy())
           .get()
           .satisfies(strategy -> assertThat(strategy.maxAttempts()).isEqualTo(1));

@@ -7,11 +7,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.observability.OutboundMetrics;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.StubS3Server;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -833,6 +842,62 @@ class S3UploadedOriginalStoreTest {
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
     return ref;
+  }
+
+  @Test
+  void aStoreThatDoesNotAnswerInTimeCountsAsATimeoutOfTheOriginalStore() throws IOException {
+    CountDownLatch released = new CountDownLatch(1);
+    HttpServer silent = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    silent.createContext(
+        "/",
+        exchange -> {
+          try {
+            released.await();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    ExecutorService executor = Executors.newCachedThreadPool();
+    silent.setExecutor(executor);
+    silent.start();
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    Metrics.globalRegistry.add(meterRegistry);
+    UploadS3Properties properties =
+        new UploadS3Properties(
+            "http://127.0.0.1:" + silent.getAddress().getPort(),
+            null,
+            BUCKET,
+            "",
+            true,
+            "AKIASTUB",
+            "geheim",
+            tempDir,
+            new UploadS3Properties.TargetValidation(true, List.of()));
+    try (S3UploadedOriginalStore slow =
+        new S3UploadedOriginalStore(
+            properties,
+            request -> {},
+            java.time.Duration.ofMillis(300),
+            0,
+            java.time.Duration.ofMillis(1),
+            S3UploadedOriginalStore.LIST_PAGE_SIZE)) {
+      assertThatThrownBy(() -> slow.forEachStoredLibrary(organizationId, id -> {}))
+          .isInstanceOf(UploadStoreUnavailableException.class);
+    } finally {
+      Metrics.globalRegistry.remove(meterRegistry);
+      released.countDown();
+      silent.stop(0);
+      executor.shutdownNow();
+    }
+
+    Timer timer =
+        meterRegistry
+            .get(OutboundMetrics.REQUESTS)
+            .tag("target", "original_store")
+            .tag("outcome", "timeout")
+            .timer();
+    assertThat(timer.count()).isEqualTo(1);
   }
 
   private List<Path> ownTempFiles() {

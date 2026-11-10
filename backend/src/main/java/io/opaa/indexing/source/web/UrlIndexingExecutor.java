@@ -170,7 +170,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     run.progress().setTotal(allFiles.size());
     run.progress().report();
 
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("http_directory");
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
     var folderMirror = new SourceFolderMirror(folderService, run.library());
     String normalizedUrl = url;

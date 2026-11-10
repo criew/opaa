@@ -1870,6 +1870,8 @@ class LibraryDocumentServiceTest {
     when(library.getSourceCredentials()).thenReturn(sourceCredentials);
     // the credentials only reach originals on the origin of the library's own address
     lenient().when(library.getSourceUrl()).thenReturn(remoteBaseUrl + "/");
+    // the connector type names the kind of the measured outbound call
+    lenient().when(library.getSourceType()).thenReturn(SourceTypes.HTTP_DIRECTORY);
     return library;
   }
 

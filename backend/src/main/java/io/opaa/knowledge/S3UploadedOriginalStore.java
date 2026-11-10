@@ -1,6 +1,8 @@
 package io.opaa.knowledge;
 
 import io.opaa.compliance.DataFlow;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3FailureTranslator;
@@ -190,7 +192,8 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                 requestTimeout,
                 maxRetries,
                 retryBackoff),
-            S3RequestGuard.targetCheckOnly(targetPolicy));
+            S3RequestGuard.targetCheckOnly(targetPolicy),
+            OutboundMetrics.global(OutboundTarget.ORIGINAL_STORE, null));
     this.s3 = client.s3();
   }
 

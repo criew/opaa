@@ -38,8 +38,10 @@ class MetricDistributionIntegrationTest {
         "opaa.query.duration",
         "opaa.query.time_to_first_token",
         "opaa.ocr.duration",
+        "opaa.outbound.requests",
         "tasks.scheduled.execution",
-        "opaa.indexing.run.duration"
+        "opaa.indexing.run.duration",
+        "opaa.indexing.stage.duration"
       })
   void theLatencyTimersPublishHistogramBuckets(String timer) throws Exception {
     record(timer);
@@ -56,8 +58,9 @@ class MetricDistributionIntegrationTest {
   /**
    * One sample of {@code timer} with the tag keys production gives it, since Prometheus drops a
    * second tag set under the same name: through the production code for the HTTP, query and OCR
-   * timers and the time to the first token, and for {@code tasks.scheduled.execution} by observing
-   * a method by hand with the observation and convention the scheduler uses, as no scheduled job of
+   * timers and the time to the first token, through the global registry for the outbound calls of
+   * clients built outside the context, and for {@code tasks.scheduled.execution} by observing a
+   * method by hand with the observation and convention the scheduler uses, as no scheduled job of
    * the context is due. {@code gen_ai.client.operation} is covered by {@code
    * SpringAiMetricsIntegrationTest}.
    */
@@ -71,9 +74,16 @@ class MetricDistributionIntegrationTest {
       case "opaa.ocr.duration" ->
           indexingMetrics.recordTextRecognition(
               "recognized", "distribution-test", 0, Duration.ofSeconds(2));
+      case "opaa.outbound.requests" ->
+          OutboundMetrics.global(OutboundTarget.CONNECTOR, "distribution_test")
+              .record(
+                  OutboundPathClass.BACKGROUND,
+                  OutboundOutcome.SUCCESS,
+                  Duration.ofMillis(300).toNanos());
       case "opaa.indexing.run.duration" ->
           indexingMetrics.recordRunEnded(
               "FILESYSTEM", "full", "completed", "none", Duration.ofMinutes(3), 0);
+      case "opaa.indexing.stage.duration" -> IndexingStage.PARSE.recordNanos(5_000_000);
       case "tasks.scheduled.execution" -> {
         Method method = MetricDistributionIntegrationTest.class.getDeclaredMethod("scheduledTick");
         ScheduledTaskObservationContext context = new ScheduledTaskObservationContext(this, method);

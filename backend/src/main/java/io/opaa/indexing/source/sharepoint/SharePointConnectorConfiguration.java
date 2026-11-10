@@ -17,7 +17,8 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Registers the SharePoint and OneDrive connectors with the fixed addresses of Microsoft Graph and
- * Entra; both share one {@link GraphConnections} and the bounds of {@link SharePointProperties}.
+ * Entra; both use the bounds of {@link SharePointProperties}, each its own {@link GraphConnections}
+ * so their calls count under their own connector type.
  */
 @Configuration
 @EnableConfigurationProperties(SharePointProperties.class)
@@ -27,7 +28,14 @@ public class SharePointConnectorConfiguration {
   GraphConnections sharePointGraphConnections(
       SharePointProperties sharePointProperties, TargetAddressValidator targetAddressValidator) {
     return new GraphConnections(
-        sharePointProperties, targetAddressValidator, Sleeper.threadSleep());
+        sharePointProperties, targetAddressValidator, Sleeper.threadSleep(), "sharepoint");
+  }
+
+  @Bean
+  GraphConnections oneDriveGraphConnections(
+      SharePointProperties sharePointProperties, TargetAddressValidator targetAddressValidator) {
+    return new GraphConnections(
+        sharePointProperties, targetAddressValidator, Sleeper.threadSleep(), "onedrive");
   }
 
   @Bean
@@ -66,19 +74,19 @@ public class SharePointConnectorConfiguration {
 
   @Bean
   OneDriveSourceConnector oneDriveSourceConnector(
-      GraphConnections sharePointGraphConnections,
+      GraphConnections oneDriveGraphConnections,
       SourceSyncStateRepository sourceSyncStateRepository) {
     return new OneDriveSourceConnector(
         SharePointSourceConnector.API_BASE,
         OneDriveSourceConnector.AUTHORIZATION_TEMPLATE,
         SharePointSourceConnector.TOKEN_TEMPLATE,
-        sharePointGraphConnections,
+        oneDriveGraphConnections,
         sourceSyncStateRepository);
   }
 
   @Bean
   OneDriveIndexingExecutor oneDriveIndexingExecutor(
-      GraphConnections sharePointGraphConnections,
+      GraphConnections oneDriveGraphConnections,
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
@@ -88,7 +96,7 @@ public class SharePointConnectorConfiguration {
       SupportedDocumentFormats supportedDocumentFormats,
       Clock clock) {
     return new OneDriveIndexingExecutor(
-        sharePointGraphConnections,
+        oneDriveGraphConnections,
         documentIngestService,
         documentRepository,
         libraryFolderService,

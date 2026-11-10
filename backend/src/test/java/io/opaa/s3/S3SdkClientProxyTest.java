@@ -2,6 +2,9 @@ package io.opaa.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import io.opaa.test.RecordingHttpProxy;
 import java.net.URI;
 import java.time.Duration;
@@ -35,7 +38,10 @@ class S3SdkClientProxyTest {
               Duration.ofMillis(1));
 
       try (S3SdkClient client =
-          S3SdkClient.open(settings, S3RequestGuard.targetCheckOnly(request -> {}))) {
+          S3SdkClient.open(
+              settings,
+              S3RequestGuard.targetCheckOnly(request -> {}),
+              new OutboundMetrics(new SimpleMeterRegistry(), OutboundTarget.CONNECTOR, "s3"))) {
         client.s3().listBuckets();
       }
 

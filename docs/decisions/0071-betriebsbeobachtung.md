@@ -63,12 +63,13 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
 `http.server.requests`, `opaa.query.duration`, `opaa.query.time_to_first_token`,
-`opaa.ocr.duration`, `gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen
-Histogramm-Buckets an festen SLO-Schwellen (`management.metrics.distribution.slo`), je Timer über
-eine `OPAA_METRICS_SLO_*`-Variable einstellbar; die Long-Task-Timer daneben (`….active`) bleiben
-ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg
-aggregieren lassen, und statt des vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die
-Zahl der Reihen klein halten. Jede Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
+`opaa.ocr.duration`, `opaa.outbound.requests`, `gen_ai.client.operation` und
+`tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
+(`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
+einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
+Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
+vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
+Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
 (immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
 während eines Rolling Updates.
@@ -128,6 +129,42 @@ verknüpft. Eine Positivliste bleibt dicht, wenn eine Bibliothek neue Attribute 
 Trace-Kontext von außen ließe den Aufrufer die Trace-ID und damit die Stichprobe wählen, einer nach
 außen gäbe Modellanbietern und Quellen eine Kennung, die das eigene Log einer Anfrage zuordnet.
 
+### 8. Ausgehende Aufrufe: ein Messpunkt am Client, Ergebnisklassen statt Adressen
+
+Jeder Aufruf über den JDK-`HttpClient` an Rerank, Transkription, Texterkennung (`ocr`, `vision`),
+Code-Sandbox, Konnektoren, OIDC, Verzeichnisdienste und die Verbindungstests der Verwaltung für
+Chat- und Embedding-Modelle (`model_check`) geht durch `MeteredHttpClient`, den die Clients und
+Client-Fabriken um ihren Client legen. Was nicht über diesen Client geht, misst mit denselben
+`OutboundMetrics`: die Virenprüfung (`clamav`), den Verbindungsaufbau der Live-Transkription
+(`transcription`) und SMB je Austausch, das S3-SDK je Versuch über seine eigenen Metriken (Quellen
+als `connector`, die Originalablage als `original_store`). Ein Versuch, den OPAA vor dem Senden
+ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
+`opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
+(`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
+ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
+`opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein
+Label, Chat und Embedding misst Spring AI. `kind` nimmt nur feste Werte aus dem Code an: bei
+`connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`, `dropbox`,
+`google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`),
+für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`, `service_account` und `mcp`, bei
+`directory` den Anbieter (`keycloak`), sonst `none`. Damit bleibt die Zahl der Reihen begrenzt:
+höchstens rund 370 Kombinationen aus Ziel, Art, Ergebnis und Pfad, je mit den SLO-Buckets aus
+Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
+
+`opaa.model.role.available` liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für
+Chat und Embedding den letzten echten Aufruf des Modells der Rolle je Instanz; die Probe der
+Embedding-Health-Gruppe läuft über dasselbe beobachtete Modell und zählt mit. Aufrufe anderer
+Modelle zählen nicht. Den Stand setzt nur ein Wechsel des Modells der Rolle zurück, erkannt am
+Bezeichner beim Lesen; ein Verbindungsverlust oder Wiederaufbau des Invalidierungsbusses lässt ihn
+stehen, sonst spränge eine ausgefallene Rolle bei jedem Abbruch auf verfügbar. Es ruft kein Modell
+auf, und eine Rolle ohne Einrichtung hat keine Reihe.
+
+Ein Decorator am Client misst jeden Versuch, auch Wiederholungen nach 429, ohne Code je Client und
+ohne die Zielprüfung zu berühren: Er reicht die fertig geprüfte Anfrage nur weiter. Die statisch
+gebauten Clients des Quellzugriffs messen über die globale Registry, an die Spring Boot die
+Registry der Anwendung bindet. Ob ein 429 stört, hängt am Pfad: Im Hintergrund drosselt die
+Indexierung adaptiv, interaktiv wartet eine Person.
+
 ### 9. Indizierung und Verzeichnisabgleich: Konnektortyp als Label, Zustand aus der Datenbank
 
 Die Metriken der Indizierung tragen als `connector` den Schlüssel des Quellentyps klein geschrieben
@@ -135,8 +172,9 @@ Die Metriken der Indizierung tragen als `connector` den Schlüssel des Quellenty
 nennt; die Bibliothek ist nie ein Label. Ein Lauf zählt an seinem Ende in `opaa.indexing.runs` mit
 Betriebsart, Ergebnis und `failure_category` aus der festen Liste der Laufgründe; einen Lauf, den
 die Wiederherstellung nach Neustart, Ausfall oder Zeitüberschreitung beendet, zählt sie als
-`abandoned`. `opaa.indexing.run.duration` veröffentlicht SLO-Buckets wie die Timer aus
-Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`).
+`abandoned`. `opaa.indexing.run.duration` und `opaa.indexing.stage.duration` veröffentlichen
+SLO-Buckets wie die Timer aus Entscheidung 4 (`OPAA_METRICS_SLO_INDEXING_RUN`,
+`OPAA_METRICS_SLO_INDEXING_STAGE`).
 
 Läufe, letzter Erfolg und Überfälligkeit einer privaten Bibliothek zählen nicht unter ihrem
 Quellentyp, sondern unter `connector="private"`. Als `failure_category` gilt dort eine Positivliste:
@@ -169,7 +207,8 @@ behält der neue Plan die Entstehungszeit des ersten, denn so lange wartet die E
 ### 10. Hintergrundläufe zentral gemessen, installationsweite Werte von jeder Instanz
 
 Letzter Erfolg, Fehler und erwartetes Intervall jedes geplanten Laufs (`opaa.scheduled.*` mit
-`job`, dem Namen seiner Sperre) misst ein Handler an der Observation, die Spring um jeden Lauf
+`scheduled_job`, dem Namen seiner Sperre; nicht `job`, das Prometheus für den Scrape-Job vergibt
+und ein gleichnamiges Tag in `exported_job` umbenennt) misst ein Handler an der Observation, die Spring um jeden Lauf
 legt, nicht Code im Lauf; ein Lauf zählt nur dort als erfolgreich, wo er seine Sperre bekam, und ein
 abgeschalteter Lauf hat keine Reihe. Bis zum ersten Erfolg gilt der Start der Instanz als letzter
 Erfolg, damit ein Lauf, der nie gelingt, ebenso überfällig wird wie einer, der aufhört zu gelingen.
@@ -189,6 +228,36 @@ Zugänge, Gesprächsgedächtnis): Treffer, Fehlgriffe und Größe zeigten aktive
 Gesprächsanfänge. Eine Health-Gruppe, deren Prüfung ein
 Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis einer Prüfung von außen.
 
+### 11. Alarmmodell: Schweregrad, Bereich, Runbook und eine Quelle der Schwellen
+
+Jeder mitgelieferte Alarm trägt `severity` mit genau drei Stufen (`critical` weckt, `warning` wird
+ein Ticket, `info` zeigt nur), `component` mit dem betroffenen Bereich als Schlüssel der Verteilung
+und `runbook_url` auf seinen Abschnitt im Handbuch; die CI prüft alle drei, den Abschnitt und einen
+Testfall je Alarm. Quoten zählen erst ab einem Mindestvolumen im Fenster, damit wenig Verkehr in der
+Nacht keinen Fehlalarm auslöst. Weckende Alarme stehen nur auf Metriken von OPAA selbst
+(`opaa.*`, HTTP-Status, Bereitschaft der Pods), nicht auf `gen_ai.*`, deren Namen sich ändern
+(Entscheidung 3). Die Fehlerquote der Fragen ist `success / (success + error)`; abgewiesene Fragen
+und Client-Fehler ausgehender Aufrufe zählen nicht. Ein Wert, den eine Instanz nicht aus der
+Datenbank lesen kann, meldet `NaN` (Entscheidung 10); ein Vergleich darauf ist nie wahr, deshalb
+meldet ein eigener Alarm jeden dauerhaft unlesbaren Wert, und die Alarme des Revisionsprotokolls
+werten `NaN` selbst als Befund. Die Alarme stehen in Gruppen je Bereich, jede einzeln abschaltbar.
+
+Jeder Alarm trägt `namespace` der Installation, damit Grafana und die Inhibit-Regeln eines
+geteilten Alertmanagers die Installationen trennen.
+
+Die Dashboards bestehen aus einer Startseite mit einer Ampel je Baustein und einem Dashboard je
+Bereich; sie zeigen nichts je Person, keine aktiven Personen und keine Chats je Zeitraum
+(Entscheidung 1), und wie sich die Nutzung zusammensetzt nur als Anteil, nie als absolute Zahl über
+die Zeit. Eine Ampel liest den Zustand der Alarme ihres Bereichs (`ALERTS`), so steuert eine
+geänderte Schwelle Alarm und Ampel zugleich; der Chart legt die Dashboards deshalb nur mit den
+Alarmen an, und eine Ampel, deren Alarmgruppen alle abgeschaltet sind, zeigt „nicht gemessen“ statt
+dauerhaft Grün. Chart und Compose-Overlay liefern dieselben Dateien aus, die Compose-Regeln sind aus dem
+Chart gerendert, nicht nachgeschrieben. Ein eigener Grafana oder Alertmanager kommt nicht in den
+Chart: Ein Cluster hat seine Überwachung, und Compose ohne Alertmanager zeigt Alarme, stellt sie
+aber nicht zu. Grafana läuft nie unter dem Hostnamen von OPAA, sondern unter einem eigenen: Auf
+derselben Origin könnte ein Skript in Grafana die Sitzung von OPAA lesen und in ihrem Namen handeln,
+und ein anderer Port genügt nicht, weil Cookies keine Ports unterscheiden.
+
 ## Konsequenzen
 
 - Einfacher: p95 und Fehlerquote je Route, Modellaufruf und Lauf lassen sich in jedem üblichen
@@ -196,6 +265,9 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - Schwieriger: Eine Frage, die nur eine Kennung je Objekt beantworten könnte („welche Bibliothek
   löst die meisten Funde aus?“), beantwortet das Laufprotokoll der Bibliothek, nicht die Metrik.
   `opaa.indexing.suspicious.patterns` zählt deshalb nur nach Art des Musters.
+- Mit jedem neuen Alarm entsteht ein Runbook-Abschnitt und ein Testfall, sonst bricht die CI ab.
+  Eine im Chart geänderte Schwelle wirkt nur auf den Alarm, die Farben der Dashboards folgen den
+  Vorgaben.
 - Restrisiken: Ein Modellwechsel zeigt sich in `embedding-model` und `vector-store` erst nach Ablauf
   der Zwischenspeicherung. Werden die `gen_ai.*`-Namen umbenannt, brechen Dashboards darauf, bis sie
   nachgezogen sind. In sehr kleinen Installationen kann auch eine installationsweite Zahl auf wenige
@@ -213,4 +285,8 @@ Modell aufruft, prüft die Metrik nicht selbst; sie zeigt das letzte Ergebnis ei
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
 - Sperrliste der Span-Attribute — lässt jedes neue Attribut einer Bibliothek durch, Entscheidung 7.
 - `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.
+- Micrometer-Observation je ausgehendem Aufruf — legt je Reihe einen Long-Task-Timer und ein `error`-Tag dazu, Entscheidung 8.
+- Eigene Probe für `opaa.model.role.available` — kostete Modellaufrufe je Abruf, Entscheidung 8.
 - Letzter Erfolg je Bibliothek als eigene Reihe — Bibliothekskennung im Label, Entscheidung 9.
+- Alarme auf `gen_ai.*` oder Modellnamen — Namen ändern sich, ein weckender Alarm bräche still, Entscheidung 11.
+- Eigenes Grafana und Alertmanager im Chart — doppelt zur Überwachung des Clusters, Entscheidung 11.
