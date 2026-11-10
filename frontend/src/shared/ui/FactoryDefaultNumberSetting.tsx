@@ -107,7 +107,7 @@ export default function FactoryDefaultNumberSetting({
     const confirmed = await confirmAction({
       question: `Auf die Werkseinstellung von ${format(defaultValue)} zurücksetzen?`,
       consequence: warning ? `${warning} ${consequence}` : consequence,
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: warning || danger ? 'danger' : 'caution',
     })
     if (confirmed) await save(null)

@@ -15,7 +15,7 @@ import type {
 import { detachSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetTheNominative, assetThisAccusative } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
@@ -65,7 +65,6 @@ export default function AssetSpacesList({
   const [query, setQuery] = useState('')
   const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
-  const noun = assetTypeLabel(assetType)
 
   useEffect(() => {
     let cancelled = false
@@ -107,9 +106,9 @@ export default function AssetSpacesList({
 
   async function handleDetach(spaceId: string, spaceName: string) {
     const confirmed = await confirmAction({
-      question: `Zuordnung zum Space „${spaceName}“ lösen?`,
-      consequence: `Die ${noun} steht in diesem Space danach nicht mehr zur Verfügung.`,
-      confirmLabel: 'Lösen',
+      question: `Aus „${spaceName}“ entfernen?`,
+      consequence: `${assetTheNominative(assetType)} steht in diesem Space danach nicht mehr zur Verfügung.`,
+      confirmLabel: 'Entfernen',
       tone: 'neutral',
     })
     if (!confirmed) return
@@ -121,7 +120,7 @@ export default function AssetSpacesList({
       )
       onChanged?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
+      setError(err instanceof Error ? err.message : 'Entfernen fehlgeschlagen')
     }
   }
 
@@ -205,7 +204,7 @@ export default function AssetSpacesList({
                         {origin && association.narrowerReaderCircle && ' · '}
                         {association.narrowerReaderCircle && (
                           <Tooltip
-                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
+                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf ${assetThisAccusative(assetType)}.`}
                           >
                             <Box component="span" tabIndex={0}>
                               <StateDot tone="warning" label="nicht für alle Mitglieder lesbar" />
@@ -221,7 +220,7 @@ export default function AssetSpacesList({
                       context={`Zuordnung zum Space „${association.spaceName}“`}
                       sx={{ flex: 'none' }}
                     >
-                      Lösen
+                      Entfernen
                     </TextAction>
                   )}
                 </Box>

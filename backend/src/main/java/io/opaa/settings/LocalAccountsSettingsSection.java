@@ -34,6 +34,12 @@ class LocalAccountsSettingsSection implements SettingsSection {
     return "Lokale Benutzerverwaltung";
   }
 
+  /** Its values decide where invitations and reset links go and who may use them. */
+  @Override
+  public boolean requiresRecentLogin() {
+    return true;
+  }
+
   @Override
   public Set<String> tables() {
     return Set.of("local_auth_settings");

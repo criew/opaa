@@ -304,7 +304,8 @@ export default function LibraryCreatePage() {
   const handleCancel = async () => {
     if (isDirty) {
       const confirmed = await confirmAction({
-        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        question: 'Eingaben verwerfen?',
+        consequence: 'Der Assistent schließt, ohne etwas anzulegen; Ihre Eingaben gehen verloren.',
         confirmLabel: 'Verwerfen',
         tone: 'caution',
       })

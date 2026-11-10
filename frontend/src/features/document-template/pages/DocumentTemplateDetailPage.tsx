@@ -249,9 +249,9 @@ export default function DocumentTemplateDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Vorlage „${template?.name}“ löschen?`,
+      question: `„${template?.name}“ löschen?`,
       consequence:
-        'Das entfernt auch die Datei, die Rechte und die Space-Zuordnungen dieser Vorlage. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Die Datei, die Rechte und die Space-Zuordnungen dieser Vorlage werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

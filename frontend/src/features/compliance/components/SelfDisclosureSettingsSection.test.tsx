@@ -24,7 +24,7 @@ describe('SelfDisclosureSettingsSection', () => {
     expect(toggle).toBeChecked()
     await user.click(toggle)
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    await user.click(await screen.findByRole('button', { name: 'Abschalten' }))
+    await user.click(await screen.findByRole('button', { name: 'Ausschalten' }))
 
     await waitFor(async () => expect((await getSelfDisclosureSettings()).enabled).toBe(false))
     expect(screen.getByRole('switch', { name: 'Selbstauskunft anbieten' })).not.toBeChecked()

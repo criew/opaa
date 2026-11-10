@@ -356,7 +356,8 @@ Zustandswechsel.
 Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
 Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
-rote Primärfläche als Standardaktion.
+rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
+`danger` (5.10).
 
 **Kompakte Schaltflächen** (`size="small"`) stehen nur in Tabellenzeilen, Abschnittsköpfen,
 Filterzeilen und Werkzeugleisten. Seitenkopf, Formular- und Dialogfußzeile tragen die normale
@@ -554,8 +555,8 @@ erscheint nie.
   nicht neu zuordnen, solange die Nachfolge offen ist." in `warning`, nicht ausgegraut, außerhalb des
   Umschalters und als `aria-describedby` angebunden. Die Beschreibung des Umschalters folgt der
   sichtbaren Reihenfolge, Zustandszeilen eingeschlossen. Eine gewählte Kachel ist eine bestehende
-  Zuordnung: Sie bleibt lösbar und nennt denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo
-  das Lösen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
+  Zuordnung: Sie lässt sich entfernen und nennt denselben Grund vorab; nach dem Entfernen ist sie
+  gesperrt. Wo das Entfernen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
   dass die Zuordnung bis zum Abschluss der Nachfolge nicht wiederherzustellen ist. Im
   Space-Assistenten ist jede Wahl neu: Eine Vorauswahl aus „In Space verwenden" mit offener
   Nachfolge übernimmt er nicht, sagt das im Schritt „Inhalte" als Warnung und legt den Space erst an,
@@ -747,20 +748,32 @@ if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) retur
 in 16 px, die Folge darunter in 14 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
 starke Signalkante, bei gewichtigen Tönen zusätzlich ein Symbol neben dem Titel.
 
-**Die Schaltfläche trägt das Verb der Handlung** — „Löschen", „Abschalten", „Verwerfen",
-„Sperren". Nie „OK", nie „Ja". Wer nur die Schaltfläche liest, muss trotzdem wissen, was er
-zusagt.
+**Die Frage** lautet „`<Name>`“ `<Verb>`? — mit typografischen Anführungszeichen, ohne Objektart
+davor und ohne „wirklich“: `„Dienstanweisungen“ löschen?`, nicht
+`Bibliothek "Dienstanweisungen" wirklich löschen?`. Hat das Objekt keinen Namen, steht „Diesen Chat löschen?“.
+
+**Die Folge nennt, was verloren geht oder wen es trifft**, mit Zahl, wo sie bekannt ist („Der
+Ordner wird mit 7 Dokumenten darin gelöscht.“). „Diese Aktion kann nicht rückgängig gemacht
+werden“ allein ist keine Folge; das sagt der Ton `danger` bereits. Jede Bestätigung hat eine Folge.
+
+**Die Schaltfläche trägt genau das Verb aus der Frage** — „Löschen“, „Ausschalten“, „Verwerfen“,
+„Sperren“, nach der Verbliste in Abschnitt 6. Nie „OK“, „Ja“, „Weiter“, „Fortfahren“ oder
+„Bestätigen“. Wer nur die Schaltfläche liest, muss trotzdem wissen, was er zusagt.
 
 **Drei Töne**, mehr nicht:
 
 | Ton | Wofür | Kante | Vorgabefokus |
 | --- | --- | --- | --- |
-| `danger` | unwiderruflich: löschen, Zugang entziehen | Gefahr | **Abbrechen** |
-| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung |
-| `neutral` | Eingaben verwerfen, Zuordnung lösen | Rahmen | die Handlung |
+| `danger` | unwiderruflich: löschen, Freigabe widerrufen | Gefahr | **Abbrechen** |
+| `caution` | folgenreich, aber umkehrbar: ausschalten, einschalten | Warnung | die Handlung |
+| `neutral` | Eingaben verwerfen, Zuordnung entfernen | Rahmen | die Handlung |
 
 Bei `danger` liegt der Fokus bewusst auf „Abbrechen": Ein Enter aus dem Reflex heraus bricht dann
-ab, statt zu löschen.
+ab, statt zu löschen. Deshalb ist die Handlung dort eine rote Gefahr-Fläche, als einzige Ausnahme
+von 5.1.
+
+`frontend/src/shared/stores/confirmTexts.test.ts` liest jeden Aufruf von `confirmAction` aus dem
+Quelltext und prüft Frage, Folge und Schaltfläche gegen diese Regeln und die Verbliste.
 
 **Abbruch ist die sichere Antwort.** Escape, ein Klick daneben und eine verdrängende zweite
 Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
@@ -1005,6 +1018,22 @@ Verbindliche Begriffe:
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
 | Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
+
+**Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
+genau diese Verben; Ändern, Festlegen, Zurücksetzen, Übertragen und Ähnliches bleiben daneben
+erlaubt:
+
+| Verb | Wann |
+| --- | --- |
+| Löschen | das Objekt gibt es danach nicht mehr |
+| Entfernen | das Objekt bleibt, es verschwindet aus einer Liste oder Zuordnung |
+| Widerrufen | ein Token, eine Einladung oder eine Freigabe endet |
+| Trennen | die Verbindung zu einem fremden System endet |
+| Ausschalten · Einschalten | eine Funktion |
+| Sperren · Entsperren | ein Konto, ein Zugang, eine Quellart |
+| Verwerfen | ungespeicherte Eingaben |
+
+„Abschalten“, „Lösen“ (außer als Gegenstück zu „Anheften“), „Entziehen“ und „Beenden“ entfallen.
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
 „User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben

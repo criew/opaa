@@ -165,7 +165,7 @@ export default function MyChatAttachmentsSection() {
 
   const remove = async (attachment: ChatAttachment) => {
     const confirmed = await confirmAction({
-      question: `Anhang „${attachment.fileName}“ löschen?`,
+      question: `„${attachment.fileName}“ löschen?`,
       consequence: attachment.chatId
         ? 'Die Datei und ihr Text werden gelöscht; der Chat nennt sie danach nicht mehr als Quelle.'
         : 'Die Datei und ihr Text werden gelöscht.',

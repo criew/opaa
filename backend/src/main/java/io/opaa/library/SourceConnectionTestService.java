@@ -26,6 +26,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -83,19 +84,26 @@ public class SourceConnectionTestService {
     }
     SourceConnector connector = connectors.connector(sourceType);
     String url = request.sourceUrl() == null ? null : request.sourceUrl().toString();
+    // the rights checks of the target refuse before the probe (RefusedBeforeWork)
     Target target =
-        request.libraryId() == null && connector.descriptor().uploads() && !request.privateLibrary()
-            ? anyRelease(caller, url)
-            : target(
-                caller,
-                sourceType,
-                request.libraryId(),
-                request.connectionProfileId(),
-                request.privateLibrary(),
-                request.sourceCredentials(),
-                url,
-                request.sourcePath(),
-                () -> "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
+        RefusedBeforeWork.check(
+            () ->
+                request.libraryId() == null
+                        && connector.descriptor().uploads()
+                        && !request.privateLibrary()
+                    ? anyRelease(caller, url)
+                    : target(
+                        caller,
+                        sourceType,
+                        request.libraryId(),
+                        request.connectionProfileId(),
+                        request.privateLibrary(),
+                        request.sourceCredentials(),
+                        url,
+                        request.sourcePath(),
+                        () ->
+                            "sourceType passt nicht zum gespeicherten Quellentyp dieser"
+                                + " Bibliothek"));
     SourceSettings requested =
         new SourceSettings(
             request.sourcePath(),
@@ -148,16 +156,18 @@ public class SourceConnectionTestService {
     // towards a new library the release is checked before anything about the type is said
     Target target =
         request.libraryId() == null
-            ? target(
-                caller,
-                request.sourceType(),
-                null,
-                request.connectionProfileId(),
-                request.privateLibrary(),
-                request.sourceCredentials(),
-                url,
-                null,
-                null)
+            ? RefusedBeforeWork.check(
+                () ->
+                    target(
+                        caller,
+                        request.sourceType(),
+                        null,
+                        request.connectionProfileId(),
+                        request.privateLibrary(),
+                        request.sourceCredentials(),
+                        url,
+                        null,
+                        null))
             : null;
     SourceBrowser browser =
         connectors
@@ -169,16 +179,18 @@ public class SourceConnectionTestService {
     SourceConnector connector = connectors.connector(request.sourceType());
     if (target == null) {
       target =
-          target(
-              caller,
-              request.sourceType(),
-              request.libraryId(),
-              request.connectionProfileId(),
-              request.privateLibrary(),
-              request.sourceCredentials(),
-              url,
-              null,
-              browser::otherTypeMessage);
+          RefusedBeforeWork.check(
+              () ->
+                  target(
+                      caller,
+                      request.sourceType(),
+                      request.libraryId(),
+                      request.connectionProfileId(),
+                      request.privateLibrary(),
+                      request.sourceCredentials(),
+                      url,
+                      null,
+                      browser::otherTypeMessage));
     }
     String sourceUrl = connector.normalizeSourceUrl(target.url());
     if (sourceUrl == null) {

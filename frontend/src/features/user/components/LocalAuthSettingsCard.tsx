@@ -18,7 +18,8 @@ import { useUserAdminStore } from '../stores/userAdminStore'
 import FormField from '@/shared/ui/form/FormField'
 import PageSection from '@/shared/ui/PageSection'
 import { mailStatusOf } from '@/features/mail'
-import { localUserErrorMessage } from './localUserLabels'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
+import { LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
@@ -30,7 +31,7 @@ export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
 export const SELF_REGISTRATION_CONSEQUENCE =
   'Die Registrierung ist danach ein öffentlich erreichbares Formular. Es gilt nur für die unten ' +
   'eingetragenen Adress-Domänen, die Rate-Limits der Anmeldung greifen, jedes Konto wird mit dem ' +
-  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung" erzeugt. Das Einschalten ist ein ' +
+  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung“ erzeugt. Das Einschalten ist ein ' +
   'Protokollereignis und nach der Dienstvereinbarung mitbestimmungspflichtig.'
 
 export const PUBLIC_BASE_URL_HINT =
@@ -310,6 +311,7 @@ export default function LocalAuthSettingsCard() {
    */
   const [edited, setEdited] = useState<RulesDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const gate = useRecentLoginGate(LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE)
   const draft = edited ?? (settings ? draftOf(settings) : null)
 
   useEffect(() => {
@@ -337,14 +339,25 @@ export default function LocalAuthSettingsCard() {
     request: LocalAuthSettingsUpdateRequest,
     success: (saved: LocalAuthSettingsResponse) => string,
     discardDraft = false,
+    afterConfirmation = false,
   ) {
     setError(null)
     try {
       const saved = await saveSettings(request)
+      gate.settled()
       if (discardDraft) setEdited(null)
       notify(success(saved), 'success')
     } catch (err) {
-      setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
+      const refused = gate.refusal(
+        err,
+        () => void persist(request, success, discardDraft, true),
+        afterConfirmation,
+      )
+      if (refused === null) {
+        setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
+      } else if (refused) {
+        setError(refused)
+      }
     }
   }
 
@@ -366,9 +379,9 @@ export default function LocalAuthSettingsCard() {
     if (
       !next &&
       !(await confirmAction({
-        question: 'Lokale Anmeldung abschalten?',
+        question: 'Lokale Anmeldung ausschalten?',
         consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       }))
     ) {
@@ -614,6 +627,7 @@ export default function LocalAuthSettingsCard() {
           </Button>
         </Stack>
       </Box>
+      {gate.dialog}
     </PageSection>
   )
 }

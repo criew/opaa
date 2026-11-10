@@ -63,6 +63,8 @@ nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
   zum Suchindex dieser Installation.
 - **Virenscanner.** Seine Adresse empfängt jede aufgenommene Datei; er wird in jeder Installation
   unter [Virenprüfung](virenpruefung.md) eingetragen.
+- **Agenten.** Wer sie einschaltet, wird Eigentümer des Agenten „Recherche“; sie werden in jeder
+  Installation unter [Agenten einschalten](agenten.md) eingeschaltet.
 - **Identitätsanbieter und der Schalter der lokalen Konten.** Sie legen fest, wer sich anmeldet und
   wer welche Systemrolle erhält. Ein Import könnte den Kreis der Systemverwaltung erweitern oder die
   Systemverwaltung aussperren.
@@ -93,7 +95,9 @@ Bibliotheken, die Inaktivitätsschwelle der Verbindungen (sie hält Zugangsdaten
 nutzbar), der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes noch
 auffindbar bleibt) und die Plausibilitätsschwelle des Verzeichnisabgleichs (sie bestimmt, wie
 viele Mitgliedschaften und Konten ein Lauf ohne Bestätigung entzieht). Erst **Übernehmen** ändert
-die Installation, nach einer Rückfrage.
+die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrelevante Änderung oder
+ändert er Mailserver, E-Mail-Vorlagen oder die lokale Benutzerverwaltung, fragt OPAA vorher nach einer
+[erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen).
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

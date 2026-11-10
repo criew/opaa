@@ -151,7 +151,7 @@ export default function ExternalAccessTokenAdminSection({
 
   async function handleBlock(token: AdminExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ von ${token.ownerDisplayName} sperren?`,
+      question: `„${token.name}“ von ${token.ownerDisplayName} sperren?`,
       consequence: BLOCK_CONSEQUENCE,
       confirmLabel: 'Sperren',
       tone: 'danger',
@@ -174,7 +174,7 @@ export default function ExternalAccessTokenAdminSection({
     const confirmed = await confirmAction({
       question: `Alle Zugangstokens von ${token.ownerDisplayName} sperren?`,
       consequence: BLOCK_ALL_CONSEQUENCE,
-      confirmLabel: 'Alle sperren',
+      confirmLabel: 'Sperren',
       tone: 'danger',
     })
     if (!confirmed) return

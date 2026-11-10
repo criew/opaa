@@ -111,7 +111,11 @@ export default function PermissionTransferDialog({
   async function createPreview() {
     // The same confirmation question as in the sharing dialog (ADR-0036, Entscheidung 2): whoever
     // transfers to a group of an external provider confirms that explicitly.
-    if (targetType === 'GROUP' && targetGroup && !(await confirmGroupSubject(targetGroup))) {
+    if (
+      targetType === 'GROUP' &&
+      targetGroup &&
+      !(await confirmGroupSubject(targetGroup, 'transfer'))
+    ) {
       return
     }
     setBusy(true)

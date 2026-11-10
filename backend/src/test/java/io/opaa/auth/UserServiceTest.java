@@ -35,6 +35,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The race-related tests here follow the same simulation approach as {@code SpaceServiceTest}:
@@ -63,6 +64,7 @@ class UserServiceTest {
   private AuditorRoles auditorRoles;
   private AuditorRoleRequestRepository auditorRoleRequests;
   private AuditorCredentialRenewal credentialRenewal;
+  private PromotionSessionEnd promotionSessionEnd;
 
   /**
    * A settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
@@ -112,6 +114,7 @@ class UserServiceTest {
     auditorRoles = mock(AuditorRoles.class);
     auditorRoleRequests = mock(AuditorRoleRequestRepository.class);
     credentialRenewal = mock(AuditorCredentialRenewal.class);
+    promotionSessionEnd = mock(PromotionSessionEnd.class);
     when(credentialRenewal.renew(any(), any())).thenReturn(Optional.empty());
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
@@ -138,8 +141,10 @@ class UserServiceTest {
         auditorRoles,
         auditorRoleRequests,
         credentialRenewal,
+        promotionSessionEnd,
         auditEventRecorder,
         eventPublisher,
+        mock(PlatformTransactionManager.class),
         clock);
   }
 
@@ -339,12 +344,13 @@ class UserServiceTest {
     existing.setLastLoginAt(clock.instant().minus(Duration.ofMinutes(10)));
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "new@example.com", "New Name");
 
     assertThat(user.getEmail()).isEqualTo("new@example.com");
     assertThat(user.getDisplayName()).isEqualTo("New Name");
+    verify(userRepository).recordProviderClaims(existing.getId(), "new@example.com", "New Name");
+    verify(userRepository, never()).save(any());
     assertThat(onlyEvent().user()).isSameAs(existing);
     assertThat(onlyEvent().createdHere()).isFalse();
   }
@@ -362,13 +368,13 @@ class UserServiceTest {
     existing.setLastLoginAt(clock.instant().minus(Duration.ofMinutes(10)));
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
     clock.instant = clock.instant.plus(Duration.ofSeconds(30));
     userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
 
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1)).recordLastLogin(any(), any());
+    verify(userRepository, never()).save(any());
   }
 
   /** #833: once the threshold has elapsed, the next request must refresh lastLoginAt again. */
@@ -379,13 +385,12 @@ class UserServiceTest {
     existing.setLastLoginAt(clock.instant());
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     clock.instant = clock.instant.plus(Duration.ofMinutes(5));
     User user = userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "Same Name");
 
     assertThat(user.getLastLoginAt()).isEqualTo(clock.instant);
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1)).recordLastLogin(existing.getId(), clock.instant);
   }
 
   /**
@@ -399,12 +404,13 @@ class UserServiceTest {
     existing.setLastLoginAt(clock.instant());
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "new@example.com", "Same Name");
 
     assertThat(user.getEmail()).isEqualTo("new@example.com");
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1))
+        .recordProviderClaims(existing.getId(), "new@example.com", "Same Name");
+    verify(userRepository, never()).recordLastLogin(any(), any());
   }
 
   /** #833: same as the email case above, but for the independent displayName condition. */
@@ -415,12 +421,13 @@ class UserServiceTest {
     existing.setLastLoginAt(clock.instant());
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
         .thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "same@example.com", "New Name");
 
     assertThat(user.getDisplayName()).isEqualTo("New Name");
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1))
+        .recordProviderClaims(existing.getId(), "same@example.com", "New Name");
+    verify(userRepository, never()).recordLastLogin(any(), any());
   }
 
   /**

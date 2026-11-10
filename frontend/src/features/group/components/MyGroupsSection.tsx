@@ -25,6 +25,7 @@ import {
   useRequiredChoice,
 } from '@/features/principal'
 import { confirmGroupDeactivation } from './groupDeactivation'
+import { GROUP_DELETE_CONSEQUENCE } from './groupListLabels'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -137,8 +138,8 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
               size="small"
               onClick={async () => {
                 const confirmed = await confirmAction({
-                  question: `Gruppe "${group.name}" löschen?`,
-                  consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                  question: `„${group.name}“ löschen?`,
+                  consequence: GROUP_DELETE_CONSEQUENCE,
                   confirmLabel: 'Löschen',
                   tone: 'danger',
                 })

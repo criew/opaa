@@ -92,11 +92,7 @@ describe('OutboundProxySection', () => {
 
     await user.clear(await screen.findByLabelText('Proxy-Adresse'))
     await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
-    await answerConfirm(
-      user,
-      'Ausgangsproxy entfernen und alle Verbindungen direkt aufbauen?',
-      'Speichern',
-    )
+    await answerConfirm(user, 'Ausgangsproxy entfernen?', 'Entfernen')
 
     await waitFor(() => expect(sent).toEqual([{ proxyUrl: null, noProxy: [] }]))
   })
@@ -126,11 +122,7 @@ describe('OutboundProxySection', () => {
 
     await user.type(await screen.findByLabelText('Ausnahmeliste'), '*')
     await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
-    await answerConfirm(
-      user,
-      'Ausgangsproxy entfernen und alle Verbindungen direkt aufbauen?',
-      'Speichern',
-    )
+    await answerConfirm(user, 'Ausgangsproxy entfernen?', 'Entfernen')
 
     expect(
       await screen.findByText('Kein gültiger Eintrag der Ausnahmeliste: *.'),

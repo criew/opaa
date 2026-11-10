@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,14 +59,67 @@ class ExternalAccessQuotaTest {
   }
 
   @Test
-  void aSecondTokenOfTheSamePersonIsNotAffected() {
+  void aTokenOfAnotherPersonIsNotAffected() {
     UUID exhausted = UUID.randomUUID();
     UUID other = UUID.randomUUID();
+    ExternalAccessQuota perPerson =
+        withOwners(Map.of(exhausted, UUID.randomUUID(), other, UUID.randomUUID()));
     for (int i = 0; i < 3; i++) {
-      quota.requireWithinQuota(exhausted);
+      perPerson.requireWithinQuota(exhausted);
     }
 
-    assertThatCode(() -> quota.requireWithinQuota(other)).doesNotThrowAnyException();
+    assertThatCode(() -> perPerson.requireWithinQuota(other)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void theTokensOfOnePersonShareOneWindowOfTheSameSize() {
+    UUID person = UUID.randomUUID();
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    UUID third = UUID.randomUUID();
+    ExternalAccessQuota perPerson =
+        withOwners(Map.of(first, person, second, person, third, person));
+
+    perPerson.requireWithinQuota(first);
+    perPerson.requireWithinQuota(second);
+    perPerson.requireWithinQuota(second);
+
+    // a further token buys the person nothing, though its own window is empty
+    assertThatThrownBy(() -> perPerson.requireWithinQuota(third))
+        .isInstanceOf(TooManyRequestsException.class)
+        .hasMessageContaining("Kontingent");
+  }
+
+  @Test
+  void aRefusalOfThePersonsWindowLeavesTheTokensOwnWindowUntouched() {
+    UUID person = UUID.randomUUID();
+    UUID spent = UUID.randomUUID();
+    UUID fresh = UUID.randomUUID();
+    ExternalAccessQuota perPerson = withOwners(Map.of(spent, person, fresh, person));
+    for (int i = 0; i < 3; i++) {
+      perPerson.requireWithinQuota(spent);
+    }
+    clock.advance(Duration.ofMinutes(30));
+    for (int i = 0; i < 5; i++) {
+      assertThatThrownBy(() -> perPerson.requireWithinQuota(fresh))
+          .isInstanceOf(TooManyRequestsException.class);
+    }
+
+    // once the person's window has room again, the refused calls - still inside the hour - did not
+    // fill the token's own
+    clock.advance(Duration.ofMinutes(31));
+    for (int i = 0; i < 3; i++) {
+      perPerson.requireWithinQuota(fresh);
+    }
+  }
+
+  private ExternalAccessQuota withOwners(Map<UUID, UUID> ownerOfToken) {
+    return new ExternalAccessQuota(
+        settings,
+        clock,
+        () -> liveInstances,
+        tokenId -> Optional.empty(),
+        tokenId -> Optional.ofNullable(ownerOfToken.get(tokenId)));
   }
 
   @Test

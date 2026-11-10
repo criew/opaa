@@ -323,7 +323,7 @@ describe('AssetGrantsSection', () => {
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
-    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'An alle freigeben')
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'Freigeben')
 
     await waitFor(() => {
       expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
@@ -367,7 +367,7 @@ describe('AssetGrantsSection', () => {
       await screen.findByRole('combobox', { name: /^rolle für alle konten$/i }),
     )
     await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
-    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'An alle freigeben')
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'Freigeben')
 
     await waitFor(() =>
       expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
@@ -485,8 +485,8 @@ describe('AssetGrantsSection', () => {
     await userEventInstance.click(
       await screen.findByRole('button', { name: 'Weitere Aktionen für „Alice“' }),
     )
-    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
-    await answerConfirm(userEventInstance, 'Freigabe für "Alice" entziehen?', 'Entziehen')
+    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Widerrufen' }))
+    await answerConfirm(userEventInstance, 'Freigabe für „Alice“ widerrufen?', 'Widerrufen')
 
     await waitFor(() => {
       expect(mockRevokeAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, 'grant-1')
@@ -699,7 +699,7 @@ describe('AssetGrantsSection', () => {
     )
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
-    await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
+    await answerConfirm(userEventInstance, /^Für .Referat 50. freigeben\?$/, 'Freigeben')
 
     await waitFor(() => {
       expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
@@ -733,10 +733,10 @@ describe('AssetGrantsSection', () => {
     await userEventInstance.click(
       await screen.findByRole('button', { name: 'Weitere Aktionen für „Manager“' }),
     )
-    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
+    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Widerrufen' }))
 
     // The overlay lies over the sharing dialog; the question makes it unambiguous.
-    const question = 'Freigabe für "Manager" entziehen?'
+    const question = 'Freigabe für „Manager“ widerrufen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /eigene freigabe/i,
     )
@@ -774,7 +774,7 @@ describe('AssetGrantsSection', () => {
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
-    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    const question = /^Für „.*“ freigeben\?$/
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Verzeichnis Partner/,
     )
@@ -905,7 +905,7 @@ describe('AssetGrantsSection', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Weitere Aktionen für „Geschützte Gruppe“' }),
     )
-    expect(await screen.findByRole('menuitem', { name: 'Entziehen' })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Widerrufen' })).toBeInTheDocument()
   })
 
   /**
@@ -940,9 +940,8 @@ describe('AssetGrantsSection', () => {
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
-    // First the resolved origin, then the external provider's confirmation question.
-    await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
-    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    // One question names the resolved origin and the external provider together.
+    const question = /^Für „.*“ freigeben\?$/
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Verzeichnis Partner/,
     )

@@ -75,14 +75,12 @@ export default function OutboundProxySection() {
     if (busy || !changed) return
     const confirmed = await confirmAction({
       question:
-        proxyUrl === null
-          ? 'Ausgangsproxy entfernen und alle Verbindungen direkt aufbauen?'
-          : `Ausgangsproxy ${proxyUrl} speichern?`,
+        proxyUrl === null ? 'Ausgangsproxy entfernen?' : `Ausgangsproxy ${proxyUrl} speichern?`,
       consequence:
         proxyUrl === null
           ? 'Alle ausgehenden Verbindungen gehen ab sofort direkt hinaus. Die Änderung steht im Revisionsprotokoll.'
           : 'Ab sofort gehen alle ausgehenden HTTP(S)-Verbindungen über diesen Proxy, außer zu den Zielen der Ausnahmeliste – auch die Anmeldung über einen Identitätsanbieter. Ein falscher Proxy kann die Anmeldung über den Anbieter lahmlegen; das lokale Konto der Systemverwaltung bleibt nutzbar. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Speichern',
+      confirmLabel: proxyUrl === null ? 'Entfernen' : 'Speichern',
       tone: 'caution',
     })
     if (!confirmed) return

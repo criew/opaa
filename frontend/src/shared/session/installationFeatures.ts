@@ -12,23 +12,27 @@ let snapshot: FeatureFlags = {}
 export interface RuntimeSwitches {
   /** The switch "Vorlagen": document templates are offered. */
   documentTemplates: boolean
+  /** The switch "Agenten": agents are offered. */
+  agents: boolean
 }
 
-let runtimeSnapshot: RuntimeSwitches = { documentTemplates: false }
+let runtimeSnapshot: RuntimeSwitches = { documentTemplates: false, agents: false }
 
-/** Called by the runtime switch store on every change. */
-export function recordRuntimeSwitches(switches: RuntimeSwitches): void {
-  runtimeSnapshot = switches
+/** Called by the stores behind the runtime switches on every change, each with its own switches. */
+export function recordRuntimeSwitches(switches: Partial<RuntimeSwitches>): void {
+  runtimeSnapshot = { ...runtimeSnapshot, ...switches }
 }
 
 /** The asset types behind a runtime switch; off (or not yet read), the type is offered nowhere. */
 export const ASSET_TYPE_RUNTIME_SWITCHES: Partial<Record<AssetType, keyof RuntimeSwitches>> = {
   DOCUMENT_TEMPLATE: 'documentTemplates',
+  AGENT: 'agents',
 }
 
 /** The capabilities behind a runtime switch; off, the right is neither held nor named. */
 export const CAPABILITY_RUNTIME_SWITCHES: Partial<Record<Capability, keyof RuntimeSwitches>> = {
   CREATE_TEMPLATE: 'documentTemplates',
+  CREATE_AGENT: 'agents',
 }
 
 /** Called by `authStore` on every change of its flags. */
@@ -55,12 +59,13 @@ export const CAPABILITY_FEATURES: Partial<Record<Capability, FeatureName>> = {
 export function isAssetTypeOffered(
   assetType: AssetType | string | null | undefined,
   features: FeatureFlags = snapshot,
-  switches: RuntimeSwitches = runtimeSnapshot,
+  switches: Partial<RuntimeSwitches> = runtimeSnapshot,
 ): boolean {
   const feature = ASSET_TYPE_FEATURES[assetType as AssetType]
   const runtimeSwitch = ASSET_TYPE_RUNTIME_SWITCHES[assetType as AssetType]
   return (
-    (!feature || featureEnabledIn(features, feature)) && (!runtimeSwitch || switches[runtimeSwitch])
+    (!feature || featureEnabledIn(features, feature)) &&
+    (!runtimeSwitch || switches[runtimeSwitch] === true)
   )
 }
 

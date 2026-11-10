@@ -80,7 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request that is not authenticated, or refused by the budget per account
      * behind the chain, gives back its client and global token; one authenticated by an access
      * token ({@link OwnQuotaAuthentication}) its client token; one a later limit refused ({@link
-     * RateLimitAuthentication#markRefusedByLaterLimit}) its global token. Rationale: ADR-0033, 9.
+     * RateLimitAuthentication#markRefusedByLaterLimit}) or by its operation before any work ({@link
+     * RefusedBeforeWork}) its global token. Rationale: ADR-0033, 9.
      */
     AUTHENTICATED,
 
@@ -117,8 +118,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * AuthenticatedRequestMarkerFilter} - whatever address the request came from.
    *
    * @param name the stable label of the rule in logs and metrics
-   * @param method the HTTP method the rule applies to, or {@code null} for every method; a request
-   *     with another method is matched against the rules after it
+   * @param method the HTTP method the rule applies to, several separated by {@code |}, or {@code
+   *     null} for every method; a request with another method is matched against the rules after it
    */
   public record Rule(
       String name,
@@ -185,7 +186,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
       String method) {
 
     boolean appliesTo(HttpServletRequest request) {
-      return method == null || method.equalsIgnoreCase(request.getMethod());
+      if (method == null) {
+        return true;
+      }
+      for (String one : method.split("\\|")) {
+        if (one.equalsIgnoreCase(request.getMethod())) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 
@@ -416,7 +425,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             rule.perClient().release(admission.key(), admission.keyGrant());
           }
           if (RateLimitAuthentication.isMarked(
-              request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)) {
+                  request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)
+              || RateLimitAuthentication.isMarked(request, RefusedBeforeWork.ATTRIBUTE)) {
             releaseGlobal(admission);
           }
         }

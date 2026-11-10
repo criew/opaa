@@ -240,7 +240,7 @@ export default function SpaceMembersSection({
                       // A space membership knows no subject „Alle“ (ADR-0037,
                       // Entscheidung 3); the selection does not offer it here.
                       if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
-                      if (!(await confirmExternalSubject(subject))) return
+                      if (!(await confirmExternalSubject(subject, 'add'))) return
                       clearFailure()
                       try {
                         await addMember(spaceId, subject.type, subjectId, newMemberRole)

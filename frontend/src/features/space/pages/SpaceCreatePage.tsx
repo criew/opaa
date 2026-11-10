@@ -164,7 +164,7 @@ export default function SpaceCreatePage() {
     const subjectId = selectedSubjectId(subject)
     if (!choice.check(Boolean(subjectId))) return
     if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
-    if (!(await confirmExternalSubject(subject))) return
+    if (!(await confirmExternalSubject(subject, 'add'))) return
     const label =
       subject.type === 'GROUP' && subject.group
         ? groupLabel(subject.group)
@@ -183,7 +183,8 @@ export default function SpaceCreatePage() {
   const handleCancel = async () => {
     if (isDirty) {
       const confirmed = await confirmAction({
-        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        question: 'Eingaben verwerfen?',
+        consequence: 'Der Assistent schließt, ohne etwas anzulegen; Ihre Eingaben gehen verloren.',
         confirmLabel: 'Verwerfen',
         tone: 'caution',
       })
