@@ -49,6 +49,7 @@ describe('mock answer stream', () => {
 
     expect(events).toEqual([
       'started',
+      'run_started',
       'step_started',
       'step_finished',
       'step_started',

@@ -7,11 +7,15 @@ import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import type { ChatMessage, LiveAgentRun } from '../types/chat'
+import type { AgentRun } from '@/shared/api/types'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
-import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
+import ProvisionalAnswer, {
+  AGENT_PROVISIONAL_ANSWER_LABEL,
+  PROVISIONAL_ANSWER_LABEL,
+} from './ProvisionalAnswer'
 import { stepActivity, stepText } from './agentStepText'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
@@ -32,13 +36,31 @@ interface MessageListProps {
 export const THINKING_STATUS = 'Denkt nach …'
 export const LIMIT_REACHED_STATUS = 'Grenze erreicht, antwortet mit dem Gefundenen …'
 
-/** The status line of an agent run: its running step, its limit, or null for "Denkt nach …". */
+/**
+ * The status line of an agent run: once it ended, that its answer waits for the check of its
+ * Belege; before, its limit or its running step - the last one stays until the next begins, so
+ * each step is announced once - or null for "Denkt nach …".
+ */
 function runStatus(run: LiveAgentRun | null): string | null {
   if (!run) return null
-  const running = run.steps.find((step) => !step.status)
-  if (running && !run.ended) return stepActivity(running)
+  if (run.ended) return AGENT_PROVISIONAL_ANSWER_LABEL
   if (run.limitReached) return LIMIT_REACHED_STATUS
-  return null
+  const current = run.steps.find((step) => !step.status) ?? run.steps.at(-1)
+  return current ? stepActivity(current) : null
+}
+
+/** The steps of an ended run in the form the kept answer shows them. */
+function keptForm(run: LiveAgentRun): AgentRun {
+  return {
+    runId: run.runId ?? '',
+    endState: run.endState ?? 'COMPLETED',
+    steps: run.steps.map(({ tool, detail, hits, status }) => ({
+      tool,
+      detail,
+      hits,
+      status: status ?? 'DONE',
+    })),
+  }
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -208,14 +230,16 @@ export default function MessageList({
             sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: streaming ? 1 : 2 }}
           >
             <CircularProgress size={streaming ? 16 : 20} aria-hidden />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {streaming ? PROVISIONAL_ANSWER_LABEL : (runStatus(streamingRun) ?? THINKING_STATUS)}
+            <Typography variant="body2" noWrap sx={{ color: 'text.secondary', minWidth: 0 }}>
+              {runStatus(streamingRun) ?? (streaming ? PROVISIONAL_ANSWER_LABEL : THINKING_STATUS)}
             </Typography>
           </Box>
         )}
         {/* The steps so far stay readable at the reader's pace below the status line; they are no
-            live region, the status line announces each one. The kept answer carries them. */}
-        {isLoading && streamingRun && streamingRun.steps.length > 0 && (
+            live region, the status line announces each one. Once the run ended they move under
+            the provisional answer in the form the kept answer shows them, so nothing shifts when
+            it arrives. */}
+        {isLoading && streamingRun && !streamingRun.ended && streamingRun.steps.length > 0 && (
           <Box
             component="ol"
             aria-label="Schritte"
@@ -227,7 +251,12 @@ export default function MessageList({
             ))}
           </Box>
         )}
-        {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}
+        {isLoading && (streamingAnswer !== null || streamingRun?.ended) && (
+          <ProvisionalAnswer
+            text={streamingAnswer ?? ''}
+            run={streamingRun?.ended ? keptForm(streamingRun) : undefined}
+          />
+        )}
 
         {liveRegion}
         <div ref={bottomRef} />

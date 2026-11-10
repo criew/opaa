@@ -88,8 +88,13 @@ bestehenden Antwortstrom des Chats, in denselben Worten, in denen sie an der Nac
 Werkzeugargumente erscheinen nie. Die Antwort gilt als vorläufig, bis Belegprüfung und Speichern
 abgeschlossen sind. An der Nachricht stehen die Schritte getrennt vom Antworttext und gehen weder in
 den Gesprächsverlauf späterer Fragen noch in den Chattitel oder die Volltextsuche über Chats ein:
-Sie sind Nachweis der Antwort, kein Gesprächsinhalt. Schließt der Leser den Strom, endet der Lauf
-vor seinem nächsten Werkzeugaufruf, und nichts von ihm wird in (a) gespeichert.
+Sie sind Nachweis der Antwort, kein Gesprächsinhalt. Bricht die Person ab, endet der Lauf vor
+seinem nächsten Modell- oder Werkzeugaufruf, und nichts von ihm wird in (a) gespeichert. Ein
+geschlossener Strom allein genügt dafür nicht, der Server bemerkt ihn erst beim nächsten Schreiben,
+und das kann noch gelingen. Der Lauf nennt deshalb zu Beginn ein Stopp-Token; der Abbruch setzt
+damit einen Merker an der Reservierung des Laufs in der Datenbank, den der Lauf vor jedem Aufruf
+liest, gleich welche Instanz den Abbruch angenommen hat. Ein Lebenszeichen alle 10 Sekunden, auch
+während Modell oder Werkzeug arbeiten, hält Proxys offen und deckt einen verlorenen Leser auf.
 
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von

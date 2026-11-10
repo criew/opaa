@@ -138,6 +138,78 @@ describe('streamQuery', () => {
     expect(texts).toEqual(['Die Frist beträgt einen Monat.'])
   })
 
+  it('stops an agent run over its token when the person cancels', async () => {
+    let release: () => void = () => {}
+    const cancelled: unknown[] = []
+    server.use(
+      http.post('/api/v1/query/stream', () => {
+        const encoder = new TextEncoder()
+        return new HttpResponse(
+          new ReadableStream({
+            async start(controller) {
+              controller.enqueue(encoder.encode(event({ type: 'started' })))
+              controller.enqueue(
+                encoder.encode(
+                  event({
+                    type: 'run_started',
+                    runId: '00000000-0000-4000-8000-000000000001',
+                    cancelToken: 'geheim',
+                  }),
+                ),
+              )
+              await new Promise<void>((resolve) => {
+                release = resolve
+              })
+              controller.close()
+            },
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        )
+      }),
+      http.post('/api/v1/query/stream/cancel', async ({ request }) => {
+        cancelled.push(await request.json())
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const runs: LiveAgentRun[] = []
+    const abort = new AbortController()
+
+    const asked = streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+      onProvisional: () => {},
+      onAgentRun: (run) => runs.push(run),
+      signal: abort.signal,
+    })
+    await expect.poll(() => runs.length).toBe(1)
+    abort.abort()
+    await expect(asked).rejects.toBeDefined()
+    release()
+
+    await expect.poll(() => cancelled).toEqual([{ cancelToken: 'geheim' }])
+    expect(runs[0].runId).toBe('00000000-0000-4000-8000-000000000001')
+  })
+
+  it('asks no stop for an ordinary answer that is cancelled', async () => {
+    const cancelled: unknown[] = []
+    server.use(
+      http.post('/api/v1/query/stream', () => streamOf([event({ type: 'started' })])),
+      http.post('/api/v1/query/stream/cancel', () => {
+        cancelled.push(true)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const abort = new AbortController()
+    abort.abort()
+
+    await expect(
+      streamQuery('Frage?', 'chat-1', true, [], null, undefined, {
+        onProvisional: () => {},
+        signal: abort.signal,
+      }),
+    ).rejects.toBeDefined()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(cancelled).toEqual([])
+  })
+
   it('tells no agent run for an ordinary answer', async () => {
     server.use(
       http.post('/api/v1/query/stream', () =>

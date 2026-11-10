@@ -41,11 +41,20 @@ export function stepText(step: AgentRunStep | AgentRunStreamStep): string {
   return parts.join(' · ')
 }
 
+/** Longest sub-question the status line names; the step list shows it whole. */
+const STATUS_DETAIL_CHARS = 60
+
+function shortened(detail: string): string {
+  return detail.length <= STATUS_DETAIL_CHARS
+    ? detail
+    : `${detail.slice(0, STATUS_DETAIL_CHARS - 1).trimEnd()}…`
+}
+
 /** What the agent is doing while `step` runs, for the status line of the running answer. */
 export function stepActivity(step: AgentRunStreamStep): string {
   switch (step.tool) {
     case 'search_knowledge':
-      return step.detail ? `Sucht nach „${step.detail}“ …` : 'Sucht …'
+      return step.detail ? `Sucht nach „${shortened(step.detail)}“ …` : 'Sucht …'
     case 'read_document':
       return 'Liest ein Dokument …'
     case 'list_sources':

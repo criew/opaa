@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MessageList, { ANSWER_ARRIVED_ANNOUNCEMENT } from './MessageList'
-import { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
+import { AGENT_PROVISIONAL_ANSWER_LABEL, PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
 import type { ChatMessage, LiveAgentRun } from '../types/chat'
 
 describe('MessageList', () => {
@@ -253,11 +253,44 @@ describe('MessageList', () => {
       expect(screen.queryByText(/search_knowledge/)).not.toBeInTheDocument()
     })
 
-    it('names a reached limit, then marks the answer as provisional in the same status', () => {
+    it('keeps the last step in the status between two steps, so each is announced once', () => {
+      const between: LiveAgentRun = {
+        steps: [{ ...running.steps[0] }],
+        limitReached: false,
+        ended: false,
+      }
+      render(<MessageList messages={[question]} isLoading streamingRun={between} />)
+
+      expect(screen.getByText('Sucht nach „Rufbereitschaft“ …')).toBeInTheDocument()
+      expect(screen.queryByText('Denkt nach …')).not.toBeInTheDocument()
+    })
+
+    it('names a long sub-question shortened on one line', () => {
+      const long = 'Wie regelt die Dienstvereinbarung '.repeat(5).trim()
+      render(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={{
+            steps: [{ index: 0, tool: 'search_knowledge', detail: long }],
+            limitReached: false,
+            ended: false,
+          }}
+        />,
+      )
+
+      const status = screen.getByText(/^Sucht nach/)
+      expect(status.textContent!.length).toBeLessThanOrEqual('Sucht nach „“ …'.length + 60)
+      expect(status.textContent).toContain('…“')
+      expect(status.className).toMatch(/noWrap/)
+    })
+
+    it('names a reached limit, then shows the steps where the kept answer will show them', () => {
       const atLimit: LiveAgentRun = {
+        runId: '00000000-0000-4000-8000-000000000001',
         steps: [{ ...running.steps[0] }],
         limitReached: true,
-        ended: true,
+        ended: false,
       }
       const { rerender } = render(
         <MessageList messages={[question]} isLoading streamingRun={atLimit} />,
@@ -268,17 +301,25 @@ describe('MessageList', () => {
         <MessageList
           messages={[question]}
           isLoading
-          streamingRun={atLimit}
+          streamingRun={{ ...atLimit, ended: true, endState: 'LIMIT_CALLS' }}
           streamingAnswer="Die Dienstvereinbarung regelt die Rufbereitschaft."
         />,
       )
 
-      expect(screen.getByText(PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(status)
-      expect(PROVISIONAL_ANSWER_LABEL).toContain('Belege noch nicht geprüft')
-      expect(screen.getByRole('list', { name: 'Schritte' })).toBeInTheDocument()
-      expect(
-        within(screen.getByTestId('provisional-answer')).queryByRole('button'),
-      ).not.toBeInTheDocument()
+      expect(screen.getByText(AGENT_PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(
+        status,
+      )
+      expect(AGENT_PROVISIONAL_ANSWER_LABEL).toContain('Belege noch nicht geprüft')
+      expect(screen.queryByRole('list', { name: 'Schritte' })).not.toBeInTheDocument()
+      const provisional = screen.getByTestId('provisional-answer')
+      const text = within(provisional).getByText(
+        'Die Dienstvereinbarung regelt die Rufbereitschaft.',
+      )
+      const steps = within(provisional).getByRole('button', { name: /1 Schritt/ })
+      expect(steps).toHaveAttribute('aria-expanded', 'false')
+      expect(text.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(within(provisional).getByText('nicht geprüft')).toBeInTheDocument()
+      expect(within(provisional).queryByRole('button', { name: /Kopieren/ })).toBeNull()
     })
 
     it('shows no steps once the answer is complete', () => {

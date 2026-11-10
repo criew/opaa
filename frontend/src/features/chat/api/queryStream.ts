@@ -91,13 +91,34 @@ export async function streamQuery(
     }
     normalizeError(err)
   }
-  return readEvents(response.data, options.onProvisional, options.onAgentRun)
+  // An agent run is stopped for certain over its token: a closed connection is noticed by the
+  // server only at a later write, which may still succeed.
+  const run: RunHandle = {}
+  const stopRun = () => {
+    if (run.cancelToken) cancelRun(run.cancelToken)
+  }
+  options.signal?.addEventListener('abort', stopRun, { once: true })
+  try {
+    return await readEvents(response.data, options.onProvisional, options.onAgentRun, run)
+  } finally {
+    options.signal?.removeEventListener('abort', stopRun)
+  }
+}
+
+interface RunHandle {
+  cancelToken?: string
+}
+
+/** Asks the server to end the agent run of `cancelToken`; a failure changes nothing for the person. */
+function cancelRun(cancelToken: string): void {
+  client.post('/v1/query/stream/cancel', { cancelToken }).catch(() => {})
 }
 
 async function readEvents(
   body: ReadableStream<Uint8Array>,
   onProvisional: (text: string) => void,
   onAgentRun: ((run: LiveAgentRun) => void) | undefined,
+  handle: RunHandle,
 ): Promise<QueryResponse> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
@@ -127,6 +148,10 @@ async function readEvents(
             provisional = event.text ?? ''
             onProvisional(provisional)
             break
+          case 'run_started':
+            handle.cancelToken = event.cancelToken
+            tellRun({ ...run, ...(event.runId ? { runId: event.runId } : {}) })
+            break
           case 'step_started':
           case 'step_finished':
             if (event.step) tellRun({ ...run, steps: withStep(run.steps, event.step) })
@@ -135,7 +160,11 @@ async function readEvents(
             tellRun({ ...run, limitReached: true })
             break
           case 'run_finished':
-            tellRun({ ...run, ended: true })
+            tellRun({
+              ...run,
+              ended: true,
+              ...(event.endState ? { endState: event.endState } : {}),
+            })
             break
           case 'final':
             if (event.response) return event.response as QueryResponse

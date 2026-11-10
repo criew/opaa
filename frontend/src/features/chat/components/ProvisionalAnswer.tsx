@@ -1,8 +1,14 @@
 import Box from '@mui/material/Box'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
+import type { AgentRun } from '@/shared/api/types'
+import AgentRunSteps from './AgentRunSteps'
 
 export const PROVISIONAL_ANSWER_LABEL =
   'Antwort wird geschrieben … Vorläufig, Belege noch nicht geprüft.'
+
+/** The status of an agent's answer: it arrives whole, then its Belege are checked. */
+export const AGENT_PROVISIONAL_ANSWER_LABEL =
+  'Belege werden geprüft … Vorläufig, Belege noch nicht geprüft.'
 
 /** A citation marker the model has begun but not yet closed, at the end of the text. */
 const OPEN_MARKER_AT_END = /【[^】]*$/
@@ -10,6 +16,8 @@ const OPEN_MARKER_AT_END = /【[^】]*$/
 interface ProvisionalAnswerProps {
   /** The provisional text so far, citation markers included. */
   text: string
+  /** The ended agent run behind the answer, shown where the kept answer shows its steps. */
+  run?: AgentRun
 }
 
 /**
@@ -19,7 +27,7 @@ interface ProvisionalAnswerProps {
  * shown by the list's loading status above it, which stays mounted from "Denkt nach …" on so the
  * change is announced once.
  */
-export default function ProvisionalAnswer({ text }: ProvisionalAnswerProps) {
+export default function ProvisionalAnswer({ text, run }: ProvisionalAnswerProps) {
   return (
     <Box data-testid="provisional-answer" aria-busy="true" sx={{ px: 2, mb: 2 }}>
       <Box sx={{ borderLeft: 3, borderColor: 'divider', borderLeftStyle: 'dashed', pl: 2 }}>
@@ -27,6 +35,7 @@ export default function ProvisionalAnswer({ text }: ProvisionalAnswerProps) {
             cannot recognise yet. */}
         <MarkdownRenderer content={text.replace(OPEN_MARKER_AT_END, '')} />
       </Box>
+      {run && <AgentRunSteps run={run} />}
     </Box>
   )
 }

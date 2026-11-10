@@ -10,7 +10,8 @@ gefunden hat. Das dauert länger als eine gewöhnliche Antwort.
 ## Schritte lesen
 
 Während der Agent arbeitet, nennt die Zeile über der Antwort, was er gerade tut, etwa „Sucht nach
-„Dienstvereinbarung“ …“. Darunter wächst die Liste der Schritte. Jeder Schritt steht in einer
+„Dienstvereinbarung“ …“; eine lange Teilfrage steht dort gekürzt. Der Text bleibt stehen, bis der
+nächste Schritt beginnt. Darunter wächst die Liste der Schritte. Jeder Schritt steht in einer
 Zeile:
 
 - **Name des Schritts:** „Suche“, „Lesen“, „Übersicht“, „Berechnung“ oder „Rückfrage“, dahinter
@@ -19,9 +20,10 @@ Zeile:
 - **Zustand**, wenn etwas anders lief: „Läuft“, „Leer“, „Eingegrenzt“ (eine Einschränkung außerhalb
   Ihres Bereichs wurde übergangen), „Ungültig“, „Unbekannt“, „Verweigert“, „Grenze“ oder „Fehler“.
 
-Ist die Antwort geschrieben, steht in derselben Zeile „Vorläufig, Belege noch nicht geprüft“. Bis
-OPAA die Belege geprüft und die Antwort gespeichert hat, lässt sie sich weder kopieren noch
-exportieren. Danach erscheint sie wie jede Antwort mit ihren Belegen.
+Ist die Antwort geschrieben, steht in derselben Zeile „Belege werden geprüft … Vorläufig, Belege
+noch nicht geprüft.“ Die Antwort erscheint darunter, die Schritte schon zugeklappt an der Stelle,
+an der sie danach bleiben. Bis OPAA die Belege geprüft und die Antwort gespeichert hat, lässt sie
+sich weder kopieren noch exportieren. Danach erscheint sie wie jede Antwort mit ihren Belegen.
 
 An der fertigen Antwort stehen die Schritte zugeklappt, etwa als „3 Schritte“. Ein Klick klappt die
 Liste auf; sie bleibt im Chat, solange der Chat besteht. Die Laufkennung darunter brauchen Sie nur,
@@ -40,8 +42,8 @@ Suche über Ihre Chats gehen sie nicht ein.
 
 **Gut zu wissen:**
 
-- „Antwort abbrechen“ beendet den Agenten sofort, ohne weiteren Schritt. Nichts von der Frage wird
-  gespeichert, sie steht wieder im Eingabefeld.
+- „Antwort abbrechen“ beendet den Agenten vor seinem nächsten Schritt, auch wenn er gerade auf
+  das Modell wartet. Nichts von der Frage wird gespeichert, sie steht wieder im Eingabefeld.
 - Reißt die Verbindung ab, endet der Lauf ebenso; senden Sie die Frage erneut.
-- Bildschirmleser sagen jeden neuen Schritt einmal an. Die Liste bleibt stehen, bis die Antwort da
-  ist, und lässt sich in Ruhe lesen.
+- Bildschirmleser sagen jeden neuen Schritt einmal an. Die Liste wird nicht vorgelesen und lässt
+  sich in Ruhe lesen.

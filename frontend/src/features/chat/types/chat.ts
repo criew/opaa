@@ -15,9 +15,13 @@ export type MessageRole = 'user' | 'assistant'
  * status line until the final answer carries the kept steps.
  */
 export interface LiveAgentRun {
+  /** The run's id from run_started, as AgentRun.runId of the final answer. */
+  runId?: string
   steps: AgentRunStreamStep[]
   limitReached: boolean
   ended: boolean
+  /** How the run ended, from run_finished. */
+  endState?: AgentRun['endState']
 }
 
 export interface ChatMessage {

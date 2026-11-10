@@ -95,6 +95,9 @@ function eventStreamOf(response: {
       // provisional answer at once.
       const run = response.agentRun
       if (run) {
+        controller.enqueue(
+          frame({ type: 'run_started', runId: run.runId, cancelToken: `mock-${run.runId}` }),
+        )
         for (const [index, step] of run.steps.entries()) {
           if (cancelled) return
           const detail = step.tool === 'search_knowledge' ? step.detail : null
@@ -158,6 +161,8 @@ export const queryHandlers = [
       },
     )
   }),
+  // The stream above ends with the closed connection already; the stop answers alike for any token.
+  http.post('/api/v1/query/stream/cancel', () => new HttpResponse(null, { status: 204 })),
   http.post('/api/v1/query', async ({ request }) => {
     const body = (await request.json()) as QueryRequest
     if (!body.question || body.question.trim() === '') {
