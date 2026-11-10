@@ -297,6 +297,28 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
   })
 
+  it('walks „Quelle“ again after „Ändern“ swaps one connector for another', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+
+    await chooseType(user, /Webverzeichnis/, 'Handakte')
+    await user.type(
+      screen.getByLabelText('Adresse', { exact: true }),
+      'https://example.org/ablage/',
+    )
+    await next(user)
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+
+    await changeRow(user, 'Quellart')
+    await user.click(screen.getByRole('radio', { name: /RSS-Feed/ }))
+    await next(user)
+    // same step list, another source: „Weiter“ walks on instead of jumping past „Quelle“
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('heading', { level: 2, name: 'Quelle' })).toBeInTheDocument()
+  })
+
   it('names a missing name at the field and moves the focus into it', async () => {
     const user = userEvent.setup()
     await renderPage()

@@ -955,8 +955,9 @@ Fußzeile selbst nach.
   der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Der
   Fehlertext ist ein kurzer Satz in einer Form: „<Feld> fehlt" („Name fehlt", „Gruppe fehlt",
   „Word-Datei fehlt"). Lehnt der Server ein Feld ab, führt der Assistent zu dessen Schritt, setzt
-  die Meldung des Servers an das Feld und den Fokus hinein. Eine Fehlerzusammenfassung über dem
-  Schritt (P29) gibt es nur, wo ein Schritt mehrere Befunde zugleich meldet (Schritt „Quelle").
+  die Meldung des Servers an das Feld und den Fokus hinein, auch wenn ein Schritt mehrere Felder
+  zugleich meldet. Einzige Ausnahme ist der Schritt „Quelle" einer Wissensbibliothek: Seine Zeilen
+  und der Verbindungstest melden über eine Fehlerzusammenfassung über dem Schritt (P29).
   Fehlt das Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den
   Fokus dorthin, statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
 - **Prüfen.** Ein Assistent hat mindestens drei Schritte und endet mit „Prüfen": jede Antwort in

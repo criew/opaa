@@ -100,8 +100,8 @@ export default function LibraryCreatePage() {
   const setupRef = useRef<SourceSetupHandle>(null)
   // the row of „Quelle“ open on arrival: the first one, or the one „Ändern“ asked for
   const [initialRow, setInitialRow] = useState<SetupRowId | null>('connection')
-  // the step list „Ändern“ on the review step left from: while it holds, „Weiter“ leads straight
-  // back to „Prüfen“; a changed list (another source type) walks the new steps instead
+  // source type and step list „Ändern“ on the review step left from: while both hold, „Weiter“
+  // leads straight back to „Prüfen“; another source type walks its steps, „Quelle“ included
   const [reviewSteps, setReviewSteps] = useState<string | null>(null)
   const [stepFailed, setStepFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -203,7 +203,8 @@ export default function LibraryCreatePage() {
   const groupResponsible =
     consentProfile !== undefined && ownerType === 'GROUP' && selectedGroup !== null
   const steps = stepsFor(uploadLibrary, privateLibrary)
-  const returnToReview = reviewSteps === steps.join('|')
+  const reviewKey = `${sourceType}|${steps.join('|')}`
+  const returnToReview = reviewSteps === reviewKey
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
     admitsProfiles &&
@@ -396,7 +397,7 @@ export default function LibraryCreatePage() {
   /** „Ändern“ on the review step: to the step (and row) of the answer, and back after „Weiter“. */
   const changeAt = (step: string, row: SetupRowId | null = null) => {
     setInitialRow(row)
-    setReviewSteps(steps.join('|'))
+    setReviewSteps(reviewKey)
     setError(null)
     setActiveStep(steps.indexOf(step))
   }
