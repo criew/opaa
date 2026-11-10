@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -160,13 +160,21 @@ nach seiner Rotation abgreift, übernimmt die Sitzung, solange der Inhaber den N
 benutzt; dessen nächste Erneuerung ist dann ein Replay und beendet alle Sitzungen. Zwei Fristen: Leerlauf `refresh-token-ttl` (7 Tage, höchstens 30),
 absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für lokale `SYSTEM_ADMIN`
 `admin-refresh-token-ttl` 4 h und `admin-session-max-lifetime` 12 h; alle vier Werte werden beim
-Start validiert wie das Secret. Cookie `opaa_refresh`:
+Start validiert wie das Secret. Maßgeblich ist die Rolle bei der Ausstellung und bei jeder Rotation:
+Wird ein Konto mit laufender Sitzung zum `SYSTEM_ADMIN`, kürzt die nächste Rotation das Ende der
+Familie auf jetzt plus `admin-session-max-lifetime`; verlängert wird es nie. Cookie `opaa_refresh`:
 `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local`; `cookie-secure = false` ist für
 lokales HTTP zulässig und erzeugt im `oidc`-Profil eine `WARN`-Zeile. Das Access-Token hält die SPA
 nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`);
 das Cookie `XSRF-TOKEN` bleibt für die SPA lesbar und trägt ebenfalls `SameSite=Strict`.
 Widerruf in zwei Schichten: `jti`-Denylist (Caffeine-Cache, `expireAfterWrite = access-token-ttl`)
 und Sitzungszähler `session_generation` (Claim `sgen`); Logout und Passwortwechsel wirken sofort.
+Anmeldung, Rotation und das Ausstellen nach dem Passwortwechsel lesen `session_generation` mit
+`FOR SHARE` in derselben Transaktion, die das neue Refresh-Token schreibt, und prägen das
+Access-Token mit genau diesem Wert. „Alle Sitzungen beenden“ erhöht den Zähler vor dem Widerruf der
+Refresh-Tokens und wartet damit auf eine laufende Ausstellung; sein Widerruf sieht deren Token.
+Hat sich der Zähler seit der Passwortprüfung geändert, stellt die Anmeldung nichts aus (`401`), die
+Erneuerung antwortet mit `401` statt eines Access-Tokens zu einer beendeten Sitzung.
 `LocalTokenCleanupScheduler` (täglich 03:20) löscht Token-Zeilen spätestens sieben Tage nach Ablauf
 oder Widerruf, sperrt nach Inaktivität und verschickt Erinnerungen. **Keine Oberfläche und keine
 Schnittstelle gibt dieses Sitzungsjournal je Person aus.** Nach einer Rücksicherung: Secret rotieren,
@@ -246,7 +254,12 @@ Registrierung, deren Kontoarbeit auf `MailDispatchExecutor` läuft und deren Ant
 Frist kommt, damit die Antwortzeit nichts verrät (#1538). Ein `Failed` ist sichtbar: Log ohne
 Adresse, `last_failure_*`, Health-Indikator `mail`. Vorlagen: `MailTemplateKey` mit deutschen
 Standards je Schlüssel, Überschreibungen in `mail_templates`, JMustache strikt, nur deklarierte
-Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testversand.
+Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testversand. Über den
+Mailkanal laufen Einladungs- und Rücksetzlinks, auch die des Notanker-Kontos; das Ändern von
+SMTP-Zugang und Vorlagen verlangt deshalb wie die Einstellungen der lokalen Anmeldung eine frische
+Anmeldung (`@RequiresRecentLogin`), ebenso ein Einstellungsimport mit sicherheitsrelevanten
+Änderungen. „Passwort vergessen“ bleibt auch für Systemverwalter offen (Entscheidungen 9 und 11); geschützt
+wird der Kanal, über den der Link läuft, nicht der Weg zu ihm.
 
 ### 11. Kontolebenszyklus: Einladung, Zurücksetzen mit Link-Rückfall, Sperren als Regelweg, kein stiller Eingriff, Löschen nach dem DSGVO-Pfad
 

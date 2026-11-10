@@ -56,9 +56,9 @@ paths:
         password. On success the body carries a short-lived HS256 access token and the response sets
         the HttpOnly refresh cookie "opaa_refresh" (Path /api/v1/auth/local, SameSite=Strict,
         Secure). Every failure - unknown address, wrong password, locked, expired or not yet
-        activated account, local accounts switched off for a non-administrator - is the same 401
-        with the same body and the same response-time class; nothing tells the cases apart. Only
-        exists in the "oidc" profile.
+        activated account, local accounts switched off for a non-administrator, every session of
+        the account ended while the sign-in ran - is the same 401 with the same body and the same
+        response-time class; nothing tells the cases apart. Only exists in the "oidc" profile.
       requestBody:
         required: true
         content:
@@ -90,8 +90,9 @@ paths:
         as header X-XSRF-TOKEN). Presenting an active token revokes it and sets its successor of the
         same family; presenting an already rotated token is a replay that revokes every family and
         every session of the account. Unknown, expired and replayed tokens, an account that is no
-        longer login-capable and a regular account while local accounts are switched off are
-        answered alike: 401 and the cookie cleared. The SPA serialises its refresh calls: two
+        longer login-capable, a regular account while local accounts are switched off and every
+        session of the account ended while the rotation ran are answered alike: 401 and the cookie
+        cleared. The SPA serialises its refresh calls: two
         concurrent presentations of the same token are a replay (ADR-0033, Entscheidung 7). Never
         send an expired Bearer token along - the resource server refuses it before this handler.
       parameters:
@@ -158,7 +159,8 @@ paths:
         access token issued up to now, revokes every refresh family (PASSWORD_CHANGED) and answers
         like a login: a fresh access token without the pcr flag and a new "opaa_refresh" cookie
         for this session. Audited as LOCAL_PASSWORD_CHANGED. 409 for an account of an identity
-        provider.
+        provider. If every session of the account ends while the call runs, the password stays
+        changed and no new session is opened (the 401 of an ended session).
       requestBody:
         required: true
         content:

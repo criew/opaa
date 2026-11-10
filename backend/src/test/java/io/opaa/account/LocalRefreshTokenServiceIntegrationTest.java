@@ -134,6 +134,24 @@ class LocalRefreshTokenServiceIntegrationTest {
   }
 
   @Test
+  void aPromotionToSystemAdminCutsTheRunningFamilyToTheAdministratorsLifetime() {
+    IssuedRefreshToken first = service.issue(user.user());
+    jdbc.update("UPDATE users SET system_role = 'SYSTEM_ADMIN' WHERE id = ?", user.id());
+    Instant before = Instant.now();
+
+    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(first.value(), null);
+
+    LocalRefreshToken successor = service.findPresented(rotated.token().value()).orElseThrow();
+    assertThat(successor.getFamilyExpiresAt())
+        .isBeforeOrEqualTo(
+            before.plus(properties.adminSessionMaxLifetime()).plus(Duration.ofSeconds(5)));
+    assertThat(successor.getExpiresAt())
+        .isBeforeOrEqualTo(
+            before.plus(properties.adminRefreshTokenTtl()).plus(Duration.ofSeconds(5)));
+    assertThat(rotated.token().maxAge()).isLessThanOrEqualTo(properties.adminRefreshTokenTtl());
+  }
+
+  @Test
   void aReplayRevokesEveryFamilyOfTheAccountEndsEverySessionAndIsAudited() {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
