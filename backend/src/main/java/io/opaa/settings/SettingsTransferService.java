@@ -115,6 +115,17 @@ public class SettingsTransferService {
     return new SettingsDocument(FORMAT, FORMAT_VERSION, Instant.now(clock), exported);
   }
 
+  /**
+   * A security-relevant change, or any change of a section whose administration demands a recent
+   * sign-in.
+   */
+  private boolean demandsRecentLogin(SettingsImportResult.Change change) {
+    return change.securityRelevant()
+        || sections.stream()
+            .anyMatch(
+                section -> section.key().equals(change.section()) && section.requiresRecentLogin());
+  }
+
   /** What {@link #importDocument} would change, without changing anything. */
   public SettingsImportResult preview(CurrentUser actor, SettingsDocument document) {
     actor.requireSystemAdmin(ADMIN_ONLY);
@@ -138,7 +149,7 @@ public class SettingsTransferService {
                 correlationRef,
                 () -> {
                   List<SettingsImportResult.Change> changes = apply(actor, document);
-                  if (changes.stream().anyMatch(SettingsImportResult.Change::securityRelevant)) {
+                  if (changes.stream().anyMatch(this::demandsRecentLogin)) {
                     recentLogin.requireRecentLogin();
                   }
                   if (!changes.isEmpty()) {

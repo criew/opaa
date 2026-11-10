@@ -496,8 +496,8 @@ Anzeigenamen-Claim ändern sich ohne Bestätigung. Verlangt wird sie außerdem, 
 Systemverwaltung den [E-Mail-Versand](../administration/e-mail.md) (SMTP-Zugang oder eine Vorlage)
 oder die Regeln der lokalen Anmeldung ändert, denn darüber laufen Einladungen und Links zum
 Zurücksetzen von Passwörtern, und bevor sie einen
-[Einstellungsimport](../administration/einstellungen-uebertragen.md) mit sicherheitsrelevanten
-Änderungen übernimmt. Die Vorschau eines Imports kommt ohne Bestätigung aus.
+[Einstellungsimport](../administration/einstellungen-uebertragen.md) übernimmt, der diese
+Einstellungen oder einen anderen sicherheitsrelevanten Wert ändert. Die Vorschau eines Imports kommt ohne Bestätigung aus.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

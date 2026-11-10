@@ -792,6 +792,28 @@ class SettingsTransferIntegrationTest {
    */
   @Test
   void aSecurityRelevantImportWithoutARecentSignInIsRefusedAndChangesNothing() throws Exception {
+    assertImportRefusedWithoutRecentSignIn(
+        Map.of("mail", Map.of("fromAddress", "absender@fremd.example")));
+  }
+
+  /**
+   * Mail access, templates and the rules of the local sign-in demand a recent sign-in for every
+   * change in the administration, so the import does too, also for keys not marked
+   * security-relevant.
+   */
+  @Test
+  void anyChangeOfTheMailOrLocalSignInSectionsWithoutARecentSignInIsRefused() throws Exception {
+    Boolean resetEnabled =
+        jdbc.queryForObject(
+            "SELECT password_reset_enabled FROM local_auth_settings LIMIT 1", Boolean.class);
+    assertImportRefusedWithoutRecentSignIn(
+        Map.of(
+            "localAccounts", Map.of("passwordResetEnabled", !Boolean.TRUE.equals(resetEnabled))));
+    assertImportRefusedWithoutRecentSignIn(Map.of("mail", Map.of("fromName", "Fremder Absender")));
+  }
+
+  private void assertImportRefusedWithoutRecentSignIn(Map<String, Map<String, Object>> sections)
+      throws Exception {
     String before = export();
     UUID adminId =
         jdbc.queryForObject(
@@ -803,10 +825,7 @@ class SettingsTransferIntegrationTest {
         CurrentUser.of(adminId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Verwaltung");
     SettingsDocument document =
         new SettingsDocument(
-            SettingsTransferService.FORMAT,
-            SettingsTransferService.FORMAT_VERSION,
-            null,
-            Map.of("mail", Map.of("fromAddress", "absender@fremd.example")));
+            SettingsTransferService.FORMAT, SettingsTransferService.FORMAT_VERSION, null, sections);
     Jwt refreshed =
         Jwt.withTokenValue("refreshed")
             .header("alg", "none")

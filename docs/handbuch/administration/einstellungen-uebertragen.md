@@ -93,8 +93,8 @@ Bibliotheken, die Inaktivitätsschwelle der Verbindungen (sie hält Zugangsdaten
 nutzbar), der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes noch
 auffindbar bleibt) und die Plausibilitätsschwelle des Verzeichnisabgleichs (sie bestimmt, wie
 viele Mitgliedschaften und Konten ein Lauf ohne Bestätigung entzieht). Erst **Übernehmen** ändert
-die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrelevante Änderung, fragt
-OPAA vorher nach einer
+die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrelevante Änderung oder
+ändert er Mailserver, E-Mail-Vorlagen oder die lokale Benutzerverwaltung, fragt OPAA vorher nach einer
 [erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen).
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
