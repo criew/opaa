@@ -113,7 +113,14 @@ export default function AgentCreatePage() {
     })
   }
   if (fieldErrors.ownerId) {
-    summary.push({ text: `Eigentümer: ${fieldErrors.ownerId}`, onJump: () => undefined })
+    summary.push({
+      text: `Eigentümer: ${fieldErrors.ownerId}`,
+      onJump: () =>
+        (
+          document.querySelector<HTMLElement>('input[aria-label="Gruppe"]') ??
+          document.querySelector<HTMLElement>(`[aria-labelledby="${ID}-owner-label"] input`)
+        )?.focus(),
+    })
   }
 
   return (

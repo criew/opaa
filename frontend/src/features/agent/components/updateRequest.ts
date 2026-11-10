@@ -8,7 +8,8 @@ export function updateRequest(
   return {
     name: agent.name,
     description: agent.description ?? null,
-    instruction: agent.instruction,
+    // Without read access the backend keeps the stored instruction, whatever is sent.
+    instruction: agent.instruction ?? '',
     // Hidden libraries are not sent: the backend keeps those the editing person cannot read.
     libraryIds: agent.libraries.map((library) => library.id),
     toolNames: agent.toolNames,

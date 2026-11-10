@@ -69,7 +69,11 @@ class AgentResearchProvisioner {
         new AgentConfiguration(
             RESEARCH_INSTRUCTION,
             Set.of(),
-            Set.copyOf(AgentTools.ASSIGNABLE),
+            Set.of(
+                AgentTools.SEARCH_KNOWLEDGE,
+                AgentTools.READ_DOCUMENT,
+                AgentTools.LIST_SOURCES,
+                AgentTools.ASK_USER),
             AgentPlanStep.OFF,
             AgentLimits.INSTALLATION));
     Agent saved = agentRepository.saveAndFlush(agent);

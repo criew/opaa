@@ -21,6 +21,8 @@ export interface AssetTypeDefinition {
   title: string
   /** The singular noun as a sentence names it ("diese Bibliothek"). */
   noun: string
+  /** Set for a masculine noun ("der Agent"): its form outside the nominative ("Agenten"). */
+  masculineOblique?: string
   /** One sentence under the label in the type choice. */
   description: string
   Icon: SvgIconComponent
@@ -81,6 +83,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
     label: 'Agenten',
     title: 'Agent',
     noun: 'Agent',
+    masculineOblique: 'Agenten',
     description: 'Arbeitet eine Frage in mehreren Schritten mit Werkzeugen ab, im Chat per „@“.',
     Icon: SmartToyOutlinedIcon,
     routePrefix: '/agents',
@@ -124,6 +127,26 @@ export function assetTypeDefinition(
 /** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
 export function assetTypeLabel(assetType: AssetType | string | null | undefined): string {
   return assetTypeDefinition(assetType)?.noun ?? assetType ?? ''
+}
+
+/** "diese Bibliothek" / "diesen Agenten", the object of a sentence. */
+export function assetThisAccusative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `diesen ${definition.masculineOblique}`
+  return `diese ${assetTypeLabel(assetType)}`
+}
+
+/** "dieser Bibliothek" / "dieses Agenten". */
+export function assetThisGenitive(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `dieses ${definition.masculineOblique}`
+  return `dieser ${assetTypeLabel(assetType)}`
+}
+
+/** "Eine Bibliothek" / "Ein Agent", at the start of a sentence. */
+export function assetANominative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  return `${definition?.masculineOblique ? 'Ein' : 'Eine'} ${assetTypeLabel(assetType)}`
 }
 
 /** The name of an asset type, as the type marker of a mixed list shows it. */

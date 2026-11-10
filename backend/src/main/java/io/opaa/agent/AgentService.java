@@ -31,6 +31,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -164,7 +165,8 @@ public class AgentService {
               libraryNames.hiddenCount(agent),
               names.get(agent.getOwnerId()),
               succession.get(agent.getId()),
-              reach.getOrDefault(agent.getId(), AssetReach.NONE)));
+              reach.getOrDefault(agent.getId(), AssetReach.NONE),
+              true));
     }
     return views;
   }
@@ -179,11 +181,13 @@ public class AgentService {
 
   /**
    * Replaces name, purpose and configuration ({@code MANAGER}). Each change counts the revision up
-   * and writes {@code AGENT_CHANGED} with the names of the changed fields, never their values.
+   * and writes {@code AGENT_CHANGED} with the names of the changed fields, never their values. A
+   * caller who reaches the agent only through the system administration keeps the instruction.
    */
   @Transactional
   public AgentView update(UUID agentId, AgentUpdate request, CurrentUser caller) {
     requireEnabled();
+    agentRepository.lockById(agentId);
     Agent agent = load(agentId, caller);
     AssetRole role =
         authorization.requireRole(agent, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
@@ -194,9 +198,16 @@ public class AgentService {
     List<FieldError> errors = new ArrayList<>();
     String name = validateName(request.name(), errors);
     String description = validateDescription(request.description(), errors);
-    String instruction = validateInstruction(submitted.instruction(), errors);
+    String instruction =
+        readsContent(agent, caller)
+            ? validateInstruction(submitted.instruction(), errors)
+            : agent.configuration().instruction();
     Set<UUID> libraryIds =
-        validateLibraries(submitted.libraryIds(), agent.getLibraryIds(), readable, errors);
+        validateLibraries(
+            submitted.libraryIds(),
+            existingLibraryIds(agent.getLibraryIds(), agent.getOrganizationId()),
+            readable,
+            errors);
     Set<String> toolNames = validateTools(submitted.toolNames(), errors);
     AgentLimits limits = validateLimits(submitted.limits(), errors);
     throwIfAny(errors);
@@ -232,6 +243,7 @@ public class AgentService {
   @Transactional
   public void delete(UUID agentId, CurrentUser caller) {
     requireEnabled();
+    agentRepository.lockById(agentId);
     Agent agent = load(agentId, caller);
     authorization.requireRole(agent, caller.id(), caller.isSystemAdmin(), AssetRole.OWNER);
     shellService.registerDeleted(agent, caller.id());
@@ -277,28 +289,62 @@ public class AgentService {
         successionSource.findingsAmong(List.of(agent), false).get(agent.getId()),
         accessService
             .reachByAsset(Agent.ASSET_TYPE, Set.of(agent.getId()))
-            .getOrDefault(agent.getId(), AssetReach.NONE));
+            .getOrDefault(agent.getId(), AssetReach.NONE),
+        readsContent(agent, caller));
   }
 
-  /** The names of the assigned libraries the caller may read, in one query for all agents. */
+  /**
+   * Whether the caller reaches the agent by the formula, not only through the system
+   * administration; only then may they read and change its instruction.
+   */
+  private boolean readsContent(Agent agent, CurrentUser caller) {
+    return !caller.isSystemAdmin()
+        || accessService
+                .effectiveRoles(Agent.ASSET_TYPE, Set.of(agent.getId()), caller.id())
+                .get(agent.getId())
+            != null;
+  }
+
+  /** The ids among these that still name a library of the organization; a deleted one drops out. */
+  private Set<UUID> existingLibraryIds(Set<UUID> ids, UUID organizationId) {
+    Set<UUID> existing = new HashSet<>();
+    if (ids.isEmpty()) {
+      return existing;
+    }
+    for (KnowledgeLibrary library : libraryRepository.findAllById(ids)) {
+      if (library.getOrganizationId().equals(organizationId)) {
+        existing.add(library.getId());
+      }
+    }
+    return existing;
+  }
+
+  /**
+   * The names of the assigned libraries the caller may read and the ids of all that still exist, in
+   * one query for all agents.
+   */
   private LibraryNames libraryNames(List<Agent> agents, CurrentUser caller) {
     Set<UUID> assigned = new HashSet<>();
     agents.forEach(agent -> assigned.addAll(agent.getLibraryIds()));
     if (assigned.isEmpty()) {
-      return new LibraryNames(Map.of());
+      return new LibraryNames(Map.of(), Set.of());
     }
     Set<UUID> readable = libraryAccess.readableLibraryIds(caller.id(), caller.organizationId());
-    assigned.retainAll(readable);
     Map<UUID, String> names = new LinkedHashMap<>();
+    Set<UUID> existing = new HashSet<>();
     for (KnowledgeLibrary library : libraryRepository.findAllById(assigned)) {
       if (library.getOrganizationId().equals(caller.organizationId())) {
-        names.put(library.getId(), library.getName());
+        existing.add(library.getId());
+        if (readable.contains(library.getId())) {
+          names.put(library.getId(), library.getName());
+        }
       }
     }
-    return new LibraryNames(names);
+    return new LibraryNames(names, existing);
   }
 
-  private record LibraryNames(Map<UUID, String> readableNames) {
+  /** A deleted library counts as neither visible nor hidden; the next change drops it. */
+  private record LibraryNames(Map<UUID, String> readableNames, Set<UUID> existing) {
 
     List<AgentView.LibraryRef> visible(Agent agent) {
       return agent.getLibraryIds().stream()
@@ -312,7 +358,9 @@ public class AgentService {
 
     int hiddenCount(Agent agent) {
       return (int)
-          agent.getLibraryIds().stream().filter(id -> !readableNames.containsKey(id)).count();
+          agent.getLibraryIds().stream()
+              .filter(id -> existing.contains(id) && !readableNames.containsKey(id))
+              .count();
     }
   }
 
@@ -398,8 +446,8 @@ public class AgentService {
   /**
    * The libraries to store: those submitted that the editor may read, plus those already assigned
    * that the editor may not read - an editor cannot see them and so cannot have meant to remove
-   * them. A submitted library the editor may not read and that was not assigned before is refused,
-   * like an unknown one.
+   * them, as long as they still exist. A submitted library the editor may not read and that was not
+   * assigned before is refused, like an unknown one.
    */
   private static Set<UUID> validateLibraries(
       Set<UUID> submitted, Set<UUID> assigned, Set<UUID> readable, List<FieldError> errors) {
@@ -442,16 +490,23 @@ public class AgentService {
   }
 
   private static AgentLimits validateLimits(AgentLimits limits, List<FieldError> errors) {
-    requirePositive(limits.maxToolCalls(), "limits.maxToolCalls", errors);
-    requirePositive(limits.maxSearchCalls(), "limits.maxSearchCalls", errors);
-    requirePositive(limits.maxDurationSeconds(), "limits.maxDurationSeconds", errors);
-    requirePositive(limits.maxCollectedChars(), "limits.maxCollectedChars", errors);
+    requireInRange(limits.maxToolCalls(), 1_000, "limits.maxToolCalls", errors);
+    requireInRange(limits.maxSearchCalls(), 1_000, "limits.maxSearchCalls", errors);
+    requireInRange(limits.maxDurationSeconds(), 86_400, "limits.maxDurationSeconds", errors);
+    requireInRange(limits.maxCollectedChars(), 10_000_000, "limits.maxCollectedChars", errors);
     return limits;
   }
 
-  private static void requirePositive(Integer value, String field, List<FieldError> errors) {
-    if (value != null && value < 1) {
-      errors.add(new FieldError(field, "OUT_OF_RANGE", "Der Wert muss mindestens 1 sein."));
+  private static void requireInRange(
+      Integer value, int maximum, String field, List<FieldError> errors) {
+    if (value != null && (value < 1 || value > maximum)) {
+      errors.add(
+          new FieldError(
+              field,
+              "OUT_OF_RANGE",
+              "Der Wert muss zwischen 1 und "
+                  + String.format(Locale.GERMANY, "%,d", maximum)
+                  + " liegen."));
     }
   }
 }

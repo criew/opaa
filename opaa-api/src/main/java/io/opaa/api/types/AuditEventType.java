@@ -718,7 +718,7 @@ public enum AuditEventType {
    */
   EXTERNAL_ACCESS_SETTINGS_CHANGED,
 
-  /** The installation-wide switch for agents was turned on or off; before/after of the flag. */
+  /** The installation-wide settings of agents changed: before/after of the switch and the tools. */
   AGENT_SETTINGS_CHANGED,
 
   // Verbindungsprofile ("Zugänge", ADR-0041 Entscheidung 7)

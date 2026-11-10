@@ -110,7 +110,8 @@ paths:
         Replace name, purpose and configuration (MANAGER or above). A library is accepted only if
         the caller may read it; an assigned library the caller may not read stays assigned even
         when the request leaves it out, because the caller cannot see it. Every change counts the
-        revision up. The limits may only lower the installation's limits.
+        revision up. A caller reaching the agent only through the system administration cannot
+        change the instruction; it is kept. A run takes the lower of an agent's limit and the installation's.
       requestBody:
         required: true
         content:
@@ -184,6 +185,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
 components:
   schemas:
@@ -198,24 +201,25 @@ components:
       type: object
       description: >
         The limits of one run; a missing or null value leaves the installation's limit in force.
-        Each value is at least 1 and at most the installation's limit.
+        Each value is at least 1 and at most the stated maximum; a run takes the lower of this
+        value and the installation's limit, so a higher value has no effect.
       properties:
         maxToolCalls:
           type: integer
           nullable: true
-          description: Tool calls per run.
+          description: Tool calls per run, 1 to 1000.
         maxSearchCalls:
           type: integer
           nullable: true
-          description: Calls of the search tool per run.
+          description: Calls of the search tool per run, 1 to 1000.
         maxDurationSeconds:
           type: integer
           nullable: true
-          description: Wall-clock time of a run, in seconds.
+          description: Wall-clock time of a run, in seconds, 1 to 86400.
         maxCollectedChars:
           type: integer
           nullable: true
-          description: Characters of all tool results of a run.
+          description: Characters of all tool results of a run, 1 to 10000000.
 
     AgentLibrary:
       type: object
@@ -321,6 +325,10 @@ components:
           description: The purpose.
         instruction:
           type: string
+          nullable: true
+          description: >
+            Null when the caller reaches the agent only through the system administration: the
+            instruction is content, which management alone does not open.
         libraries:
           type: array
           description: The assigned libraries the caller may read, by name.

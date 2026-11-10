@@ -31,9 +31,9 @@ andere einrichten sollen.
 
 ## Grenzen
 
-Jeder Lauf hat Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge. Die Installation setzt
-sie in der [Konfiguration](../referenz/konfiguration.md); ein Agent kann sie unter „Ablauf →
-Erweitert“ nur senken, nie überschreiten.
+Jeder Lauf hat Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge. Ein Agent kann sie
+unter „Ablauf → Erweitert“ senken; ein Lauf nimmt immer den kleineren Wert aus Agent und
+Installation.
 
 **Gut zu wissen:**
 

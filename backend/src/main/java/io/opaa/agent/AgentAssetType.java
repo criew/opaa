@@ -47,6 +47,16 @@ class AgentAssetType implements AssetTypeDefinition {
   }
 
   @Override
+  public boolean masculine() {
+    return true;
+  }
+
+  @Override
+  public String oblique() {
+    return "Agenten";
+  }
+
+  @Override
   public String plural() {
     return "Agenten";
   }

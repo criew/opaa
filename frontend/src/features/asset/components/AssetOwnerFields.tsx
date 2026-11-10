@@ -8,7 +8,7 @@ import TextField from '@mui/material/TextField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { AssetOwnerType, AssetType, GroupListResponse } from '@/shared/api/types'
 import type { MyGroupsState } from '@/features/principal'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetANominative } from '../../../shared/assetTypes'
 
 interface AssetOwnerFieldsProps {
   idPrefix: string
@@ -54,7 +54,7 @@ export default function AssetOwnerFields({
           {error && <Alert severity="error">{error}</Alert>}
           {loaded && !error && groups.length === 0 && (
             <Alert severity="info">
-              Sie sind aktuell in keiner Gruppe Mitglied. Eine {assetTypeLabel(assetType)} mit
+              Sie sind aktuell in keiner Gruppe Mitglied. {assetANominative(assetType)} mit
               Gruppen-Eigentum lässt sich erst anlegen, sobald Sie einer Gruppe angehören.
             </Alert>
           )}

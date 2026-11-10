@@ -8,6 +8,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,7 +94,12 @@ public class AgentSettingsService {
     }
     if (!before.isEmpty()) {
       row.replace(enabled, tools, actor.id(), clock.instant());
-      settings.save(row);
+      try {
+        settings.saveAndFlush(row);
+      } catch (ObjectOptimisticLockingFailureException concurrent) {
+        throw new ConflictException(
+            "Die Einstellungen wurden gerade an anderer Stelle geändert. Bitte neu laden.");
+      }
       audit.recordUserAction(
           AuditEvent.builder()
               .organizationId(actor.organizationId())

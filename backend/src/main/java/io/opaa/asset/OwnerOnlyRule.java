@@ -29,10 +29,11 @@ public class OwnerOnlyRule {
   /** Refuses with {@code 403 OWNER_ONLY_ASSET} unless the asset may reach anyone but its owner. */
   public void requireShareable(OwnedAsset asset) {
     if (asset.isOwnerOnly()) {
-      String singular = assetTypes.require(asset.getAssetType()).singular();
+      String subject =
+          AssetTypeDefinition.capitalized(
+              assetTypes.require(asset.getAssetType()).thisNominative());
       throw new AccessDeniedException(
-          "Diese "
-              + singular
+          subject
               + " ist privat und gehört allein ihrer Besitzerin. Sie lässt sich weder teilen noch"
               + " übertragen noch für externe KI-Werkzeuge freigeben.",
           OWNER_ONLY_ASSET);

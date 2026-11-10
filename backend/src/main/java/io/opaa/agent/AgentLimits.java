@@ -1,8 +1,8 @@
 package io.opaa.agent;
 
 /**
- * The limits of one agent's run; {@code null} leaves the installation's limit in force. A value may
- * only lower a limit, never raise it above the installation's.
+ * The limits of one agent's run; {@code null} leaves the installation's limit in force. A run takes
+ * the lower of a value and the installation's limit, so a value can only lower a limit.
  *
  * @param maxToolCalls tool calls per run
  * @param maxSearchCalls calls of the search tool per run

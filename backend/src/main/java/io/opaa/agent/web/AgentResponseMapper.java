@@ -56,7 +56,7 @@ final class AgentResponseMapper {
     return new AgentResponse(
             agent.getId(),
             agent.getName(),
-            configuration.instruction(),
+            view.instructionReadable() ? configuration.instruction() : null,
             view.libraries().stream()
                 .map(library -> new AgentLibrary(library.id(), library.name()))
                 .toList(),

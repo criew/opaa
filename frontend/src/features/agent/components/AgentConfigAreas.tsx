@@ -10,6 +10,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import ValueRow from '@/shared/ui/ValueRow'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type {
   AgentLimits,
@@ -29,7 +30,6 @@ import {
   INSTRUCTION_PLACEHOLDER,
   LIMIT_FIELDS,
   PLAN_STEP_OPTIONS,
-  countLabel,
   limitsSummary,
   planStepLabel,
   toolLabel,
@@ -50,15 +50,28 @@ export function InstructionArea({
   canEdit: boolean
   save: Save
 }) {
-  const [draft, setDraft] = useState(agent.instruction)
+  const [draft, setDraft] = useState(agent.instruction ?? '')
   const id = 'agent-instruction'
+  if (agent.instruction === null) {
+    return (
+      <ValueRow
+        title="Auftrag"
+        value={
+          <Typography sx={{ fontSize: 13.5, ...muted }}>
+            Den Auftrag sieht nur, wer den Agenten selbst nutzen darf; Verwaltungsrechte genügen
+            dafür nicht.
+          </Typography>
+        }
+      />
+    )
+  }
   return (
     <EditableRow
       idPrefix={id}
       title="Auftrag"
       canEdit={canEdit}
       fieldLabels={{ instruction: 'Auftrag' }}
-      onOpen={() => setDraft(agent.instruction)}
+      onOpen={() => setDraft(agent.instruction ?? '')}
       onSave={() => save({ instruction: draft.trim() })}
       value={
         agent.instruction ? (
@@ -145,7 +158,9 @@ export function KnowledgeAndToolsArea({
         )}
         {agent.hiddenLibraryCount > 0 && (
           <Typography sx={{ fontSize: 12.5, mt: 0.5, ...muted }}>
-            {`Dazu ${countLabel(agent.hiddenLibraryCount, 'Bibliothek', 'Bibliotheken')}, die Sie nicht lesen dürfen. Sie bleibt beim Speichern erhalten und wird für Sie nie gelesen.`}
+            {agent.hiddenLibraryCount === 1
+              ? 'Dazu 1 Bibliothek, die Sie nicht lesen dürfen. Sie bleibt beim Speichern erhalten und wird für Sie nie gelesen.'
+              : `Dazu ${agent.hiddenLibraryCount} Bibliotheken, die Sie nicht lesen dürfen. Sie bleiben beim Speichern erhalten und werden für Sie nie gelesen.`}
           </Typography>
         )}
       </Box>
@@ -362,8 +377,8 @@ export function ProcedureArea({
               <Box>
                 <Typography sx={{ fontSize: 13.5 }}>{limitsSummary(agent.limits)}</Typography>
                 <Typography sx={{ fontSize: 12.5, ...muted }}>
-                  Ein leeres Feld übernimmt die Grenze der Installation; eine eigene Grenze liegt
-                  nie darüber.
+                  Ein leeres Feld übernimmt die Grenze der Installation; ein Lauf nimmt immer den
+                  kleineren Wert.
                 </Typography>
               </Box>
             }

@@ -1,6 +1,6 @@
 /**
- * Agents (ADR-0070, #1747): an asset type on the shell with instruction, libraries, tools, plan
- * step and limits, the installation-wide switch with the tools switched on, and the delivered agent
+ * Agents (ADR-0070): an asset type on the shell with instruction, libraries, tools, plan step and
+ * limits, the installation-wide switch with the tools switched on, and the delivered agent
  * "Recherche".
  *
  * <p><b>Dependencies.</b> This package builds on {@code io.opaa.asset} and asks {@code

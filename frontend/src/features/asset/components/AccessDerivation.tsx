@@ -12,7 +12,7 @@ import type {
 import { getAssetAccessDerivation } from '../api/assetApi'
 import { accessBasisLabel } from './assetLabels'
 import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetThisAccusative, assetThisGenitive } from '../../../shared/assetTypes'
 
 type AssetTarget = { kind: 'asset'; assetType: AssetType; assetId: string }
 type SpaceTarget = { kind: 'space'; spaceId: string; userId?: string }
@@ -92,11 +92,11 @@ function sinceTitle(path: AccessPathResponse): string | undefined {
   return path.since ? `Seit ${new Date(path.since).toLocaleDateString('de-DE')}` : undefined
 }
 
-const assetRolePhrases: Record<AssetRole, (noun: string) => [string, string]> = {
-  VIEWER: (noun) => ['darf', `diese ${noun} lesen`],
-  EDITOR: (noun) => ['darf', `diese ${noun} bearbeiten`],
-  MANAGER: (noun) => ['darf', `diese ${noun} verwalten`],
-  OWNER: (noun) => ['ist', `Eigentümer dieser ${noun}`],
+const assetRolePhrases: Record<AssetRole, (type: string) => [string, string]> = {
+  VIEWER: (type) => ['darf', `${assetThisAccusative(type)} lesen`],
+  EDITOR: (type) => ['darf', `${assetThisAccusative(type)} bearbeiten`],
+  MANAGER: (type) => ['darf', `${assetThisAccusative(type)} verwalten`],
+  OWNER: (type) => ['ist', `Eigentümer ${assetThisGenitive(type)}`],
 }
 
 const pluralVerbs: Record<string, string> = { darf: 'dürfen', ist: 'sind', hat: 'haben' }
@@ -112,9 +112,9 @@ function headline(
       ? role
         ? ['ist', `${spaceRoleLabel(role)} in diesem Space`]
         : ['hat', 'Zugriff auf diesen Space']
-      : (assetRolePhrases[role as AssetRole]?.(assetTypeLabel(target.assetType)) ?? [
+      : (assetRolePhrases[role as AssetRole]?.(target.assetType) ?? [
           'hat',
-          `Zugriff auf diese ${assetTypeLabel(target.assetType)}`,
+          `Zugriff auf ${assetThisAccusative(target.assetType)}`,
         ])
   return subjectName ? `${subjectName} ${verb} ${rest}` : `Sie ${pluralVerbs[verb]} ${rest}`
 }
@@ -137,7 +137,7 @@ function administrationSentence(
 ): string {
   const subject = subjectName ? `${subjectName} verwaltet` : 'Sie verwalten'
   const also = besideOtherWays ? ' zudem' : ''
-  return `${subject} diese ${assetTypeLabel(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
+  return `${subject} ${assetThisAccusative(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
 }
 
 /**

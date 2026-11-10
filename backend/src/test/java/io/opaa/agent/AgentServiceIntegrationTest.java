@@ -37,10 +37,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The acceptance criteria of #3670 on the service level: the switch hides every agent and the
- * right, the right is delivered to nobody, a library assignment never widens what the editing
- * person reads, list and single view agree, each change leaves one audit entry and switching on
- * provisions "Recherche" once per organization.
+ * The acceptance criteria on the service level: the switch hides every agent and the right, the
+ * right is delivered to nobody, a library assignment never widens what the editing person reads,
+ * list and single view agree, each change leaves one audit entry and switching on provisions
+ * "Recherche" once per organization.
  */
 @OpaaIntegrationTest
 class AgentServiceIntegrationTest {
@@ -159,6 +159,46 @@ class AgentServiceIntegrationTest {
   }
 
   @Test
+  void aDeletedLibraryIsNeitherHiddenNorKeptOnTheNextChange() {
+    grantCreateAgent(creator);
+    UUID agent = agentOf(callerOf(creator), "Recherchehilfe");
+    UUID gone = libraryOf("Altakten");
+    agentService.update(agent, withLibraries(Set.of(gone)), admin());
+    libraryFixtures.removeLibraries(gone);
+    libraries.remove(gone);
+
+    assertThat(agentService.get(agent, creator()).hiddenLibraryCount()).isZero();
+    AgentView saved = agentService.update(agent, withLibraries(Set.of()), creator());
+
+    assertThat(saved.agent().getLibraryIds()).isEmpty();
+  }
+
+  @Test
+  void theAdministrationAloneNeitherReadsNorChangesTheInstruction() {
+    grantCreateAgent(creator);
+    UUID agent = agentOf(callerOf(creator), "Auftragshilfe");
+    agentService.update(
+        agent,
+        new AgentUpdate(
+            "Auftragshilfe",
+            null,
+            new AgentConfiguration(
+                "Nur intern.",
+                Set.of(),
+                AgentTools.DEFAULT,
+                AgentPlanStep.OFF,
+                AgentLimits.INSTALLATION)),
+        creator());
+
+    assertThat(agentService.get(agent, admin()).instructionReadable()).isFalse();
+    agentService.update(agent, withLibraries(Set.of()), admin());
+
+    AgentView own = agentService.get(agent, creator());
+    assertThat(own.instructionReadable()).isTrue();
+    assertThat(own.agent().getInstruction()).isEqualTo("Nur intern.");
+  }
+
+  @Test
   void listAndSingleViewAgreeForEveryPerson() {
     grantCreateAgent(creator);
     UUID agent = agentOf(callerOf(creator), "Bescheidhilfe");
@@ -244,7 +284,11 @@ class AgentServiceIntegrationTest {
               assertThat(view.agent().getName()).isEqualTo("Recherche");
               assertThat(view.myRole()).isEqualTo(AssetRole.VIEWER);
               assertThat(view.agent().getToolNames())
-                  .containsExactlyInAnyOrderElementsOf(AgentTools.ASSIGNABLE);
+                  .containsExactlyInAnyOrder(
+                      AgentTools.SEARCH_KNOWLEDGE,
+                      AgentTools.READ_DOCUMENT,
+                      AgentTools.LIST_SOURCES,
+                      AgentTools.ASK_USER);
             });
     assertThat(
             jdbc.queryForObject(

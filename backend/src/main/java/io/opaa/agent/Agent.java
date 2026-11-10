@@ -107,7 +107,7 @@ public class Agent extends Asset {
     return seedKey != null;
   }
 
-  /** Replaces what a run uses and counts the revision up; the caller has validated every value. */
+  /** Replaces what a run uses; the caller has validated every value and counts the revision. */
   void configure(AgentConfiguration configuration) {
     this.instruction = configuration.instruction();
     this.planStep = configuration.planStep();
