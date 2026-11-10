@@ -176,10 +176,13 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     expect(address).toHaveValue('https://cloud.neu.example')
     await user.clear(address)
     await user.type(address, 'https://cloud.anders.example/svc')
-    expect(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
+    expect(address).toBeInvalid()
+    expect(address).toHaveFocus()
+    expect(connect).not.toHaveBeenCalled()
     await user.clear(address)
     await user.type(address, 'https://cloud.neu.example/remote.php/dav/files/svc')
-    await user.click(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
 
     await waitFor(() =>
       expect(connect).toHaveBeenCalledWith(
@@ -266,7 +269,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     expect(within(dialog).getByTestId('library-connection-address')).toHaveTextContent(
       'https://cloud.neu.example/remote.php/dav/files/svc',
     )
-    await user.click(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
 
     await waitFor(() =>
       expect(connect).toHaveBeenCalledWith(
@@ -303,15 +306,13 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
-    await user.click(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
 
     expect(await within(dialog).findByTestId('library-connection-test')).toHaveTextContent(
       /App-Passwort abgelehnt/,
     )
     expect(connect).not.toHaveBeenCalled()
-    expect(
-      within(dialog).queryByRole('button', { name: 'Prüfen und zuordnen' }),
-    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Zuordnen' })).not.toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'Trotzdem zuordnen' }))
     await waitFor(() =>
@@ -385,7 +386,8 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     ).toBeVisible()
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument()
     expect(within(dialog).queryByText(/nicht freigegeben/)).not.toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
+    expect(within(dialog).getByText('Bitte einen Zugang auswählen.')).toBeVisible()
     expect(asked.every((url) => url.includes('libraryId=library-1'))).toBe(true)
   })
 
@@ -611,7 +613,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
-    await user.click(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Zuordnen' }))
 
     expect(await screen.findByText(/hinterlegten Zugangsdaten verworfen/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Quelle bearbeiten' }))

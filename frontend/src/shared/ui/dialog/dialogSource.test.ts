@@ -10,8 +10,12 @@ const SOURCES = import.meta.glob('../../../**/*.tsx', {
   eager: true,
 }) as Record<string, string>
 
+// features and app only: shared/ui is where the building blocks themselves live
 const PRODUCTION = Object.entries(SOURCES).filter(
-  ([path]) => !path.includes('.test.') && !path.includes('/test/') && !path.includes('/mocks/'),
+  ([path]) =>
+    /^\.\.\/\.\.\/\.\.\/(features|app)\//.test(path) &&
+    !path.includes('.test.') &&
+    !path.includes('/mocks/'),
 )
 
 /** Labels of more than one word that are the action's own name, not a verb with its object. */
@@ -21,7 +25,8 @@ function submitLabels(source: string): string[] {
   const labels: string[] = []
   for (const match of source.matchAll(/submitLabel=(?:"([^"]*)"|\{([^}]*)\})/g)) {
     if (match[1] !== undefined) labels.push(match[1])
-    else for (const literal of match[2].matchAll(/'([^']*)'/g)) labels.push(literal[1])
+    // the branches of a condition, not the values it compares with
+    else for (const literal of match[2].matchAll(/[?:]\s*'([^']*)'/g)) labels.push(literal[1])
   }
   return labels
 }
@@ -40,8 +45,7 @@ describe('form dialogs in the source', () => {
     }
   })
 
-  it.each(PRODUCTION)('%s builds no dialog footer of its own', (path, source) => {
-    if (path.includes('/shared/ui/')) return
+  it.each(PRODUCTION)('%s builds no dialog footer of its own', (_path, source) => {
     expect(source).not.toMatch(/<DialogActions|<DialogTitle[\s>]/)
   })
 })

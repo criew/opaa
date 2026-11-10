@@ -635,7 +635,7 @@ describe('LlmModelManagementPage', () => {
     fireEvent.change(feld, { target: { value: '' } })
 
     expect(dialog.getByText(/keine gültige Zahl/)).toBeInTheDocument()
-    expect(dialog.getByRole('button', { name: 'Anlegen' })).toBeDisabled()
+    await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
     expect(aufrufe.filter((aufruf) => aufruf.method === 'POST')).toEqual([])
   })
 
@@ -798,19 +798,21 @@ describe('LlmModelManagementPage', () => {
     expect(gesendet.body).toEqual({ ...OLLAMA_COMBINATION, value: 'UNVERIFIED' })
   })
 
-  it('keeps saving disabled while the statement is unchanged', async () => {
+  it('closes without a request when the statement is unchanged', async () => {
     signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
     const user = userEvent.setup()
 
     renderChat()
     await screen.findByRole('table', { name: 'Chat-Modelle' })
     const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
 
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
     await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
     await user.click(within(dialog).getByRole('radio', { name: /^Ungeprüft/ }))
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(aufrufe.some((aufruf) => aufruf.path.endsWith('/tool-capability'))).toBe(false)
   })
 
   it('records a measured statement only with its measurement run', async () => {
@@ -825,9 +827,10 @@ describe('LlmModelManagementPage', () => {
     await user.click(within(dialog).getByRole('radio', { name: 'Gemessen' }))
 
     const speichern = within(dialog).getByRole('button', { name: 'Speichern' })
-    expect(speichern).toBeDisabled()
+    await user.click(speichern)
+    expect(within(dialog).getByText(/Bitte den Messlauf angeben/)).toBeVisible()
+    expect(aufrufe.some((aufruf) => aufruf.path.endsWith('/tool-capability'))).toBe(false)
     await user.type(within(dialog).getByRole('textbox', { name: /Messlauf/ }), 'tc-2026-11-09-1')
-    expect(speichern).toBeEnabled()
     await user.click(speichern)
 
     await waitFor(() =>
@@ -861,14 +864,14 @@ describe('LlmModelManagementPage', () => {
     const dialog = await openToolCapabilityDialog(user, 'Ollama lokal')
     expect(within(dialog).getByRole('radio', { name: 'Gemessen' })).toBeChecked()
     expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('tc-2026-11-09-1')
-    expect(within(dialog).queryByText(/Speichern ersetzt sie/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByText(/„Ersetzen“ überschreibt sie/)).not.toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('radio', { name: 'Manuell gesetzt' }))
 
-    expect(within(dialog).getByText(/Speichern ersetzt sie/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/„Ersetzen“ überschreibt sie/)).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
     expect(aufrufe.some((aufruf) => aufruf.path.endsWith('/tool-capability'))).toBe(false)
-    await user.click(within(dialog).getByRole('button', { name: 'Gemessene Angabe ersetzen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Ersetzen' }))
 
     await waitFor(() =>
       expect(within(rowOf('Ollama lokal')).getByText(/^manuell gesetzt · /)).toBeInTheDocument(),
@@ -892,7 +895,7 @@ describe('LlmModelManagementPage', () => {
     await user.click(within(dialog).getByRole('radio', { name: /^Nicht fähig/ }))
 
     expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('')
-    expect(within(dialog).getByRole('button', { name: 'Gemessene Angabe ersetzen' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Ersetzen' })).toBeEnabled()
 
     await user.click(within(dialog).getByRole('radio', { name: /^Fähig/ }))
     expect(within(dialog).getByRole('textbox', { name: /Messlauf/ })).toHaveValue('tc-2026-11-09-1')

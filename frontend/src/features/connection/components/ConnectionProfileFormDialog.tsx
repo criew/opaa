@@ -404,7 +404,7 @@ export default function ConnectionProfileFormDialog({
   return (
     <FormDialog
       open={open}
-      title={isEdit ? `„${profile.name}“ bearbeiten` : 'Zugang anlegen'}
+      title={isEdit ? `„${profile.name}“ bearbeiten` : 'Neuer Zugang'}
       submitLabel={
         !isEdit ? 'Anlegen' : reachesLibraries && shownPreview === null ? 'Weiter' : 'Speichern'
       }

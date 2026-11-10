@@ -178,10 +178,8 @@ export default function LibraryConnectionDialog({
       setError('Bitte einen Zugang auswählen.')
       return
     }
-    if (!addressFits) {
-      setError('Die Adresse muss unter der Server-Adresse des gewählten Zugangs liegen.')
-      return
-    }
+    // the address field names the reason itself; the dialog moves the focus there
+    if (!addressFits) return
     const checked = visible ?? (await test())
     if (passed(checked)) await connect(checked)
   }

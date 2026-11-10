@@ -115,8 +115,9 @@ describe('BulkMetadataDialog', () => {
     const user = userEvent.setup()
 
     const dialog = await screen.findByRole('dialog', { name: 'Feld für 4 Dokumente setzen' })
-    // Nothing chosen yet: the next step stays closed.
-    expect(within(dialog).getByRole('button', { name: 'Weiter' })).toBeDisabled()
+    // Nothing chosen yet: „Weiter“ names what is missing and stays on the step.
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    expect(within(dialog).getByText('Bitte einen Wert angeben.')).toBeVisible()
     await user.click(await within(dialog).findByRole('combobox', { name: /Dokumentart/ }))
     await user.click(await screen.findByRole('option', { name: 'Satzung/Ordnung' }))
     await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
@@ -134,8 +135,12 @@ describe('BulkMetadataDialog', () => {
         documentIds: ['doc-1', 'doc-2', 'doc-3', 'doc-gone'],
       }),
     )
-    expect(await within(dialog).findByText(/2 Dokumente aktualisiert, 1 unverändert/)).toBeVisible()
-    expect(within(dialog).getByText(/1 Dokument wurde abgewiesen/)).toBeVisible()
+    // the result is a view: the form dialog gives way to it
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    const outcome = await screen.findByRole('dialog', { name: 'Feld für 4 Dokumente setzen' })
+    expect(within(outcome).getByText(/2 Dokumente aktualisiert, 1 unverändert/)).toBeVisible()
+    expect(within(outcome).getByText(/1 Dokument wurde abgewiesen/)).toBeVisible()
+    expect(within(outcome).getByRole('button', { name: 'Schließen' })).toBeVisible()
     expect(onDone).toHaveBeenCalledWith(result)
   })
 

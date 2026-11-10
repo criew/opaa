@@ -207,8 +207,8 @@ export default function ToolCapabilityDialog({
       )}
       {replacesMeasured && (
         <Alert severity="warning" sx={{ mt: 2 }}>
-          Die bisherige Angabe ist gemessen ({current}). Speichern ersetzt sie; der Messlauf steht
-          danach nur noch im Protokoll.
+          Die bisherige Angabe ist gemessen ({current}). „Ersetzen“ überschreibt sie; der Messlauf
+          steht danach nur noch im Protokoll.
         </Alert>
       )}
     </FormDialog>

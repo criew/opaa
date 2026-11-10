@@ -80,7 +80,7 @@ describe('PromptEditorDialog', () => {
     await user.type(screen.getByLabelText('Befehl'), 'Vermerk')
     await user.click(screen.getByLabelText('Text'))
     await user.paste('Bitte {{ kein name }}')
-    await user.click(screen.getByRole('button', { name: 'Prompt speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Der Name eines Prompts besteht aus Kleinbuchstaben')
@@ -109,7 +109,7 @@ describe('PromptEditorDialog', () => {
     await user.type(screen.getByLabelText('Titel'), 'Vermerk')
     await user.click(screen.getByLabelText('Text'))
     await user.paste('Vermerk zu {{akte}}.')
-    await user.click(screen.getByRole('button', { name: 'Prompt speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('gibt es in dieser Bibliothek bereits')
@@ -134,7 +134,7 @@ describe('PromptEditorDialog', () => {
     await user.click(screen.getByRole('combobox', { name: 'Typ von frist' }))
     await user.click(await screen.findByRole('option', { name: 'Datum' }))
     await user.click(screen.getByLabelText('frist ist Pflicht'))
-    await user.click(screen.getByRole('button', { name: 'Prompt speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalled())
     expect(posts).toHaveLength(1)

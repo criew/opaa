@@ -234,19 +234,31 @@ describe('CapabilityManagementPage', () => {
     expect(screen.queryByRole('dialog', { name: /alle Konten/ })).not.toBeInTheDocument()
   })
 
-  it('previews the result and keeps "Speichern" off until something changes', async () => {
+  it('previews the result and keeps „Speichern“ available: without a change it just closes', async () => {
     renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     const panel = await openPanel(user, 'Interne Gruppen')
     expect(within(panel).getByRole('status')).toHaveTextContent('Keine Änderung.')
-    expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeEnabled()
 
     await user.click(within(panel).getByLabelText('Alle Konten'))
     expect(within(panel).getByRole('status')).toHaveTextContent(
       'Alle Konten dürfen interne Gruppen anlegen.',
     )
     expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeEnabled()
+  })
+
+  it('closes the panel without a request when „Speichern“ finds nothing changed', async () => {
+    const calls = recordCalls()
+    renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Interne Gruppen')
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(panel).not.toBeInTheDocument())
+    expect(calls).toEqual([])
   })
 
   it('explains the page to an account without the system role', async () => {

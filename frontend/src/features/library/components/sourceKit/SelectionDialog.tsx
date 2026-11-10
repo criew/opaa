@@ -481,6 +481,7 @@ function SelectionDialogBody({
                 <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
                   <Typography
                     component={entry.openable && !entry.selectable ? 'button' : 'span'}
+                    {...(entry.openable && !entry.selectable ? { type: 'button' } : {})}
                     aria-label={
                       entry.openable && !entry.selectable ? `„${entry.name}“ öffnen` : undefined
                     }

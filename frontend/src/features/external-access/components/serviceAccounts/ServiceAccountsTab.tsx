@@ -156,7 +156,7 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
 /**
  * The tab „Dienstkonten“ in „Anbindungen“: a list with one chevron row per account, from eight
  * accounts on with a search, and a detail view inside the tab (`?account=<id>`). Creating an
- * account leads straight to its first token; „Ohne Token beenden“ leaves it without one.
+ * account leads straight to its first token; „Abbrechen“ leaves it without one.
  */
 export default function ServiceAccountsTab() {
   const [searchParams] = useSearchParams()

@@ -115,6 +115,10 @@ export default function FormDialog({
     event.preventDefault()
     // React lets the event bubble through the portal into a form around the opening button.
     event.stopPropagation()
+    // Only the footer action submits: a plain <button> in the content has no `type` and would
+    // otherwise count as a submit button of the form.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    if (submitter && submitter.getAttribute('type') !== 'submit') return
     if (busy) return
     onSubmit()
     setSubmits((count) => count + 1)

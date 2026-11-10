@@ -88,7 +88,7 @@ export default function ConnectAccountDialog({
     <FormDialog
       titleId={titleId}
       title={`${target.reconnect ? 'Konto neu verbinden' : 'Konto verbinden'}: ${target.name}`}
-      submitLabel={target.reconnect ? 'Neu verbinden' : 'Verbinden'}
+      submitLabel="Verbinden"
       onSubmit={() => void handleSubmit()}
       onClose={onClose}
       busy={busy}

@@ -152,7 +152,12 @@ describe('FormDialog', () => {
     const onSubmit = vi.fn()
     renderWithProviders(
       <form onSubmit={outer}>
-        <FormDialog title="Wert ergänzen" submitLabel="Ergänzen" onSubmit={onSubmit} onClose={vi.fn()}>
+        <FormDialog
+          title="Wert ergänzen"
+          submitLabel="Ergänzen"
+          onSubmit={onSubmit}
+          onClose={vi.fn()}
+        >
           Inhalt
         </FormDialog>
       </form>,
@@ -161,6 +166,25 @@ describe('FormDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ergänzen' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(outer).not.toHaveBeenCalled()
+  })
+
+  it('submits through its footer action only, not through a plain button in the content', async () => {
+    const onSubmit = vi.fn()
+    const onOpen = vi.fn()
+    renderWithProviders(
+      <FormDialog
+        title="Auswahl ändern"
+        submitLabel="Übernehmen"
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      >
+        <button onClick={onOpen}>Ebene öffnen</button>
+      </FormDialog>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ebene öffnen' }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('puts the initial focus on „Abbrechen“ for a destroying confirmation', () => {

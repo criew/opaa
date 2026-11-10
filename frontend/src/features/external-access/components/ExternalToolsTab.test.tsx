@@ -82,7 +82,7 @@ function render(route = '/admin/connections/external-tools') {
 
 async function openSettings(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Einstellungen' }))
-  return screen.findByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' })
+  return screen.findByRole('dialog', { name: 'Einstellungen' })
 }
 
 /**
@@ -178,9 +178,7 @@ describe('ExternalToolsTab', () => {
   it('öffnet die Einstellungen direkt über den Verweis mit ?panel=settings', async () => {
     render('/admin/connections/external-tools?panel=settings')
 
-    expect(
-      await screen.findByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' }),
-    ).toBeVisible()
+    expect(await screen.findByRole('dialog', { name: 'Einstellungen' })).toBeVisible()
   })
 
   it('schaltet ein, speichert die geänderten Werte und zeigt danach den neuen Zustand', async () => {
