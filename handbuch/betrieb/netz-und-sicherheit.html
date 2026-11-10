@@ -348,6 +348,8 @@
       
         
       
+        
+      
     
     
     
@@ -517,6 +519,34 @@
     
   
     Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/agenten-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agenten verwenden
   
 
     
@@ -4425,6 +4455,14 @@ erreichbaren Betrieb ein <strong>TLS-terminierender Reverse-Proxy</strong> oder 
   über <code>proxy-buffering: "off"</code>, schalten es ausdrücklich ab. Komprimieren darf der Proxy den
   Strom nicht. Das Backend schickt alle 10 Sekunden ein Lebenszeichen, das Timeout begrenzt also
   die Pause zwischen zwei Ereignissen.</li>
+<li><strong>Lange Läufe eines Agenten durchlassen:</strong> Ein Agent arbeitet in mehreren Schritten und meldet
+  jeden im selben Antwortstrom, oft über Minuten. Solange Modell oder Werkzeug arbeiten, sendet
+  OPAA mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
+  die Schritte erscheinen, wenn sie geschehen; ein Lese-Timeout ab etwa 30 Sekunden genügt, auch
+  für Läufe über Minuten. Bricht die Person ab, schickt der Browser zusätzlich
+  <code>POST /api/v1/query/stream/cancel</code>; der Stopp liegt in der Datenbank und wirkt, gleich welche
+  Instanz ihn annimmt. Diese Anfrage zählt nicht gegen die Grenze für Fragen. Der Lauf endet vor
+  seinem nächsten Schritt, nichts davon wird gespeichert; ein Wiederaufnehmen gibt es nicht.</li>
 <li><strong>Den Download der Selbstauskunft nicht puffern</strong> (<code>/api/v1/me/self-disclosure/download</code>): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört <code>proxy-buffering: "off"</code> dazu.</li>
@@ -4492,6 +4530,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 <li><strong>Bilder</strong> lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
   an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
   <code>Content-Security-Policy</code> fremde Bilder.</li>
+<li><strong>Kopieren und Export</strong> wenden dieselben Regeln an, in jedem Format: Ein Bild wird zu „[Bild: …]“
+  mit der Adresse als Text, ein Link zu einem nicht erlaubten Ziel zu Linktext mit Adresse, HTML in
+  der Antwort zu Text. Ein anderes Programm, in das die Antwort eingefügt wird, lädt so nichts nach.</li>
 <li>
 <p><strong>Bedienung:</strong> Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
   Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
@@ -4938,9 +4979,9 @@ steht, erreicht über die Suche das Modell.</p>
 <p><strong>Was unabhängig vom Modell wirkt:</strong></p>
 <ul>
 <li><strong>Links und Bilder:</strong> Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
-  die Antwort nie (<a href="#erlaubte-linkziele-in-antworten">Erlaubte Linkziele in Antworten</a>). Ein Abfluss
-  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
-  Anweisung folgt.</li>
+  die Antwort nie, auch nicht in Kopie und Export
+  (<a href="#erlaubte-linkziele-in-antworten">Erlaubte Linkziele in Antworten</a>). Ein Abfluss über einen
+  präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der Anweisung folgt.</li>
 <li><strong>Rechte und Belege:</strong> Die Suche findet nur Dokumente, die die Person lesen darf, und die
   Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.</li>
 </ul>
@@ -4954,7 +4995,14 @@ steht, erreicht über die Suche das Modell.</p>
   Laufprotokoll und in einer Metrik
   (<a href="../referenz/wie-indexierung-arbeitet.html#was-mit-jedem-dokument-passiert">Wissensbibliotheken, Parsen und Chunken</a>
   und <a href="../referenz/wie-indexierung-arbeitet.html#laufprotokoll">Ergebnis je Dokument</a>).</li>
-<li><strong>MCP-Server:</strong> Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+<li><strong>Unsichtbare Zeichen in eigenen Texten:</strong> Frage, Prompt-Vorlage, Anweisung des Space und eines
+  Agenten erreichen das Modell ohne unsichtbare Zeichen und ohne Steuerzeichen der Schreibrichtung;
+  Prompt-Vorlagen und Anweisungen des Space werden schon so gespeichert. Was die Schrift braucht,
+  bleibt: verbindende und trennende Zeichen innerhalb eines Emoji und zwischen Buchstaben von
+  Schriften wie Persisch oder Devanagari, und ein Variantenwähler direkt nach einem Emoji, einer
+  Tastenkappe oder einem Zeichen solcher Schriften, nie nach einem lateinischen Buchstaben.</li>
+<li><strong>MCP-Server:</strong> Treffer sowie Namen und Beschreibungen der Bibliotheken sind für externe
+  KI-Werkzeuge als Fremdinhalt gekennzeichnet
   (<a href="../benutzer/ki-werkzeug-einrichten.html">Externe KI-Werkzeuge, Der MCP-Server</a>).</li>
 <li><strong>Messen:</strong> Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt (<a href="modell-endpunkte.html#modell-gegen-prompt-injection-messen">Modell gegen Prompt-Injection messen</a>).</li>
