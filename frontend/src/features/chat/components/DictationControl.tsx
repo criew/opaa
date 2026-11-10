@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
@@ -21,8 +22,13 @@ const buttonSx = { p: 1, borderRadius: '8px', alignSelf: 'flex-end' } as const
  * dictation is offered - an installation without transcription has no function to explain.
  */
 export default function DictationControl({ dictation, disabled = false }: DictationControlProps) {
-  if (!dictation.offered) return null
   const { status } = dictation
+  const takeOverRef = useRef<HTMLButtonElement>(null)
+  // The microphone button leaves with the start; the focus moves on to the way out of the recording.
+  useEffect(() => {
+    if (status === 'recording') takeOverRef.current?.focus()
+  }, [status])
+  if (!dictation.offered) return null
 
   const announcement =
     status === 'recording'
@@ -47,7 +53,8 @@ export default function DictationControl({ dictation, disabled = false }: Dictat
           <Tooltip title="Fertig, Text ins Eingabefeld">
             <IconButton
               onClick={() => void dictation.stop()}
-              aria-label="Aufnahme beenden"
+              ref={takeOverRef}
+              aria-label="Fertig, Text ins Eingabefeld"
               sx={{
                 ...buttonSx,
                 color: 'primary.main',

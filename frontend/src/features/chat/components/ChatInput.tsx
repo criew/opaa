@@ -107,6 +107,13 @@ export default function ChatInput({
   focusRequest = null,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
@@ -304,10 +311,10 @@ export default function ChatInput({
     // Sending by button would leave the focus on the button, which is locked from now on.
     inputRef.current?.focus()
     // A refused question comes back without its prompt, before any draft typed since, unless the
-    // input is gone.
+    // input is gone; a running dictation keeps it in the draft above the recording.
     void Promise.resolve(outcome).then((result) => {
       const restoreDraft = result?.restoreDraft
-      if (!restoreDraft || !inputRef.current) return
+      if (!restoreDraft || !mountedRef.current) return
       setValue((current) => withRestoredQuestion(restoreDraft, current))
       draft.restore(attachments)
       result.onRestored?.()
@@ -327,13 +334,29 @@ export default function ChatInput({
     })
   }, [])
   const dictation = useChatDictation({ onText: appendDictatedText, onError: setDictationError })
+  // Send during a recording: the final text joins the draft, and the send itself runs once the
+  // field is back, with the state of that moment - a question that cannot go out then (too long,
+  // answer running, upload pending) stays in the field.
+  const sendAfterDictationRef = useRef(false)
   const sendDictation = async () => {
     const text = await dictation.stop(false)
     if (!text) return
-    // A question that cannot go out now (too long, answer still running) stays in the field.
-    const question = withDictatedText(value, text)
-    if (!handleSend(question)) setValue(question)
+    sendAfterDictationRef.current = true
+    setValue((current) => withDictatedText(current, text))
   }
+  const wasDictatingRef = useRef(false)
+  useEffect(() => {
+    const wasDictating = wasDictatingRef.current
+    wasDictatingRef.current = dictation.busy
+    if (dictation.busy) return
+    if (sendAfterDictationRef.current) {
+      sendAfterDictationRef.current = false
+      handleSend()
+    } else if (wasDictating) {
+      // Discarded, failed or taken over: the field is back and gets the focus.
+      inputRef.current?.focus()
+    }
+  })
 
   const chooseAction = (index: number) => {
     const entry = actions.matches[index]

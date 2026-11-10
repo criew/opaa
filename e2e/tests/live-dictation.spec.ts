@@ -98,7 +98,7 @@ test.describe.serial('Live-Diktat', () => {
     const interim = page.getByTestId('dictation-interim')
     await expect(interim).toContainText('Welche Frist', { timeout: 15_000 })
     await expect(page.getByTestId('dictation-field')).toBeVisible()
-    await page.getByRole('button', { name: 'Aufnahme beenden' }).click()
+    await page.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }).click()
 
     const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
     await expect(input).toHaveValue(LIVE_TRANSCRIPT)
@@ -115,7 +115,7 @@ test.describe.serial('Live-Diktat', () => {
 
     await page.getByRole('button', { name: 'Spracheingabe starten' }).click()
     await expect.poll(async () => (await liveSessions()).dropped).toBe(before.dropped + 1)
-    await page.getByRole('button', { name: 'Aufnahme beenden' }).click()
+    await page.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }).click()
 
     await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(
       BATCH_TRANSCRIPT,

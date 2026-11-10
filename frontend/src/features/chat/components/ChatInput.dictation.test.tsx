@@ -97,7 +97,7 @@ describe('ChatInput dictation', () => {
       screen.getByTestId('dictation-interim'),
     )
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Aufnahme beenden' }))
+    await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('Welche Frist gilt live?'))
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
@@ -110,7 +110,7 @@ describe('ChatInput dictation', () => {
     render(<ChatInput onSend={vi.fn()} />)
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
-    await user.click(await screen.findByRole('button', { name: 'Aufnahme beenden' }))
+    await user.click(await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() => expect(mocks.transcribeRecording).toHaveBeenCalledTimes(1))
     expect(mocks.live).toBeNull()
@@ -124,7 +124,7 @@ describe('ChatInput dictation', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     expect(screen.getByTestId('dictation-field')).toHaveTextContent('Zum Bauantrag:')
-    await user.click(await screen.findByRole('button', { name: 'Aufnahme beenden' }))
+    await user.click(await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() =>
       expect(screen.getByRole('combobox')).toHaveValue('Zum Bauantrag: Welche Frist gilt?'),
@@ -179,6 +179,66 @@ describe('ChatInput dictation', () => {
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
   })
 
+  it('moves the focus to the take-over button on start and back to the field on discard', async () => {
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    const takeOver = await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
+    await waitFor(() => expect(takeOver).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'Aufnahme verwerfen' }))
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toHaveFocus())
+  })
+
+  it('leaves the focus in the field after sending during a recording', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Senden' }))
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('Welche Frist gilt?'))
+    expect(screen.getByRole('combobox')).toHaveFocus()
+  })
+
+  it('keeps a question that is too long in the field instead of sending it', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+    await user.click(screen.getByRole('combobox'))
+    await user.paste('x'.repeat(1995))
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Senden' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveValue(`${'x'.repeat(1995)} Welche Frist gilt?`),
+    )
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('keeps a refused question that comes back while dictating', async () => {
+    const user = userEvent.setup()
+    let refuse: (value: { restoreDraft: string }) => void = () => {}
+    const onSend = vi.fn(
+      () => new Promise<{ restoreDraft: string }>((resolve) => (refuse = resolve)),
+    )
+    render(<ChatInput onSend={onSend} />)
+    await user.type(screen.getByRole('combobox'), 'Erste Frage{Enter}')
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
+    await act(async () => refuse({ restoreDraft: 'Erste Frage' }))
+    expect(screen.getByTestId('dictation-field')).toHaveTextContent('Erste Frage')
+    await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveValue('Erste Frage Welche Frist gilt?'),
+    )
+  })
+
   it('discards the recording on Escape wherever the focus is', async () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
@@ -186,7 +246,7 @@ describe('ChatInput dictation', () => {
     await user.type(screen.getByRole('combobox'), 'Entwurf')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
-    await screen.findByRole('button', { name: 'Aufnahme beenden' })
+    await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
     await user.keyboard('{Escape}')
 
     expect(await screen.findByRole('combobox')).toHaveValue('Entwurf')

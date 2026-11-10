@@ -104,7 +104,7 @@ export default function DictationField({ dictation, draft }: DictationFieldProps
           <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
             Text wird erkannt …
           </Typography>
-          <LinearProgress sx={{ flex: 1 }} />
+          <LinearProgress aria-hidden="true" sx={{ flex: 1 }} />
         </Box>
       )}
     </Box>

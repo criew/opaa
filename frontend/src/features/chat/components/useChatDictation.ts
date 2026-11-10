@@ -39,7 +39,7 @@ export function useChatDictation({ onText, onError }: UseChatDictationOptions): 
   useEffect(() => {
     if (!busy) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return
       event.preventDefault()
       cancel()
     }

@@ -20,7 +20,7 @@ einer Frage sendet.
 ## Spracheingabe
 
 1. Das **Mikrofon** neben „Senden“ wählen und die Frage sprechen. Statt des Eingabefelds zeigt
-   ein Pegel, dass das Mikrofon hört; bleibt er flach, kommt nichts an.
+   ein Pegel, dass das Mikrofon hört; bleibt er beim Sprechen flach, das Mikrofon prüfen.
 2. „Fertig, Text ins Eingabefeld“ (Haken) wählen. Der Text steht im Eingabefeld und lässt sich
    korrigieren, dann selbst senden.
 3. Oder gleich „Senden“ wählen: Die Aufnahme endet und die Frage geht mit dem erkannten Text ab,
