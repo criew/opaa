@@ -1,5 +1,6 @@
 package io.opaa.mail;
 
+import io.opaa.observability.LocalHealthGroup;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Component;
  */
 @Component(MailHealthConfiguration.CONTRIBUTOR)
 @ConditionalOnProperty(name = "management.health.mail.enabled", matchIfMissing = true)
-public class MailHealthIndicator implements HealthIndicator {
+public class MailHealthIndicator implements HealthIndicator, LocalHealthGroup {
 
   private final MailSettingsService settingsService;
 
@@ -40,5 +41,10 @@ public class MailHealthIndicator implements HealthIndicator {
       // endpoint answers that with DOWN, never with a 500.
       return Health.down().build();
     }
+  }
+
+  @Override
+  public String healthGroup() {
+    return MailHealthConfiguration.GROUP;
   }
 }
