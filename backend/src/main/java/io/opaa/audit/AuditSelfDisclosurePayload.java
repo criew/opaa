@@ -204,6 +204,10 @@ final class AuditSelfDisclosurePayload {
         CONNECTION_LOG_RETENTION_CHANGED);
     put(
         keys,
+        Set.of("sandboxLogRetentionDays", "stepLogRetentionDays"),
+        AGENT_RUN_LOG_RETENTION_CHANGED);
+    put(
+        keys,
         Set.of("archiveAfterDays", "deleteAfterDays", "overridden"),
         CHAT_AUTO_CLEANUP_PERIODS_CHANGED);
     put(

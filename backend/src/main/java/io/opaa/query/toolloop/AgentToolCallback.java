@@ -111,12 +111,26 @@ final class AgentToolCallback implements ToolCallback {
     if (limit != null) {
       run.reachLimit(limit);
       run.recordStep(new AgentRunRecord.Step(name, null, null, StepStatus.LIMIT));
+      run.traceStep(name, StepStatus.LIMIT.name(), null, 0, limit.name());
       return LIMIT_REACHED + reminder;
     }
-    ToolCallOutcome outcome = execute(toolInput, run);
+    long started = System.nanoTime();
+    ToolCallOutcome outcome;
+    try {
+      outcome = execute(toolInput, run);
+    } catch (RuntimeException e) {
+      run.traceStep(name, StepStatus.ERROR.name(), null, millisSince(started), "TOOL_FAILED");
+      throw e;
+    }
+    run.traceStep(
+        name, outcome.result().stepStatus().name(), outcome.hits(), millisSince(started), null);
     run.recordCall(name, outcome);
     metrics.recordToolCall(name, outcome.result());
     return outcome.modelText() + reminder;
+  }
+
+  private static long millisSince(long startedNanos) {
+    return Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
   }
 
   private ToolCallOutcome execute(String toolInput, AgentRun run) {

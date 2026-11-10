@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  AgentRunLogRetention,
   ChatAutoCleanupRetention,
   ChatAutoCleanupRetentionUpdate,
   IncidentScopeRetention,
@@ -36,14 +37,20 @@ function incidentDefaults(): IncidentScopeRetention {
   return { retentionYears: 1, defaultRetentionYears: 1, overridden: false, pausedBy: [] }
 }
 
+function agentRunLogDefaults(): AgentRunLogRetention {
+  return { stepLogRetentionDays: 7, sandboxLogRetentionDays: 7 }
+}
+
 let chat = chatDefaults()
 let locked = lockedDefaults()
 let incident = incidentDefaults()
+let agentRunLog = agentRunLogDefaults()
 
 export function resetRetentionMockState() {
   chat = chatDefaults()
   locked = lockedDefaults()
   incident = incidentDefaults()
+  agentRunLog = agentRunLogDefaults()
 }
 
 function invalid(message: string) {
@@ -107,5 +114,19 @@ export const retentionHandlers = [
     }
     incident = { ...incident, retentionYears: body.retentionYears, overridden: true, pausedBy: [] }
     return HttpResponse.json(incident)
+  }),
+  http.get(`${BASE}/agent-run-logs`, () => HttpResponse.json(agentRunLog)),
+  http.put(`${BASE}/agent-run-logs`, async ({ request }) => {
+    const body = (await request.json()) as AgentRunLogRetention
+    if (
+      !within(body.stepLogRetentionDays, 1, 30) ||
+      !within(body.sandboxLogRetentionDays, 1, body.stepLogRetentionDays)
+    ) {
+      return invalid(
+        'Das Sandboxprotokoll darf nicht länger aufbewahrt werden als das Schrittprotokoll',
+      )
+    }
+    agentRunLog = { ...body }
+    return HttpResponse.json(agentRunLog)
   }),
 ]

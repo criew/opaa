@@ -1,0 +1,175 @@
+# Topic "agent-runs": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: agent-runs
+    description: Step log and sandbox log of agent runs, for troubleshooting.
+paths:
+  /api/v1/admin/agent-runs/{runId}/log:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getAgentRunLog
+      tags: [agent-runs]
+      summary: >
+        The step log and the sandbox log of exactly one agent run, for troubleshooting (system
+        admin of the run's own organization only). A mandatory reason; every call - accepted,
+        refused or failed - is recorded in audit_log as AUDIT_LOG_ACCESSED. The logs hold no
+        account reference, no search text and no script or file content, and there is no other
+        way into them: no list, no filter, no export. A run of another organization reads as
+        unknown.
+      parameters:
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory reason for this access; a missing or over-length one is rejected, and the
+            rejected attempt is itself recorded in audit_log.
+          schema:
+            type: string
+            maxLength: 1000
+      responses:
+        "200":
+          description: The steps and sandboxes of the run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRunLogResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/retention/agent-run-logs:
+    get:
+      operationId: getAgentRunLogRetention
+      tags: [agent-runs]
+      summary: >-
+        How many days the step log and the sandbox log of agent runs are kept (system admin only).
+        The deletion cannot be switched off.
+      responses:
+        "200":
+          description: The periods in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRunLogRetention"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateAgentRunLogRetention
+      tags: [agent-runs]
+      summary: >-
+        Sets both periods between 1 and 30 days, the sandbox log never longer than the step log
+        (system admin only). Acts from the next daily run. A change is the audit event
+        AGENT_RUN_LOG_RETENTION_CHANGED with before and after; a call that changes nothing writes
+        none.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentRunLogRetention"
+      responses:
+        "200":
+          description: The periods after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRunLogRetention"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  schemas:
+    AgentRunLogRetention:
+      type: object
+      required: [stepLogRetentionDays, sandboxLogRetentionDays]
+      properties:
+        stepLogRetentionDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Days the step log is kept.
+        sandboxLogRetentionDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Days the sandbox log is kept; never more than the step log.
+    AgentRunLogResponse:
+      type: object
+      required: [runId, steps, sandboxes]
+      properties:
+        runId:
+          type: string
+          format: uuid
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunLogStep"
+        sandboxes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunLogSandbox"
+    AgentRunLogStep:
+      type: object
+      required: [stepIndex, recordedAt, tool, status, durationMs]
+      properties:
+        stepIndex:
+          type: integer
+        recordedAt:
+          type: string
+          format: date-time
+        tool:
+          type: string
+        status:
+          type: string
+          description: How the step ended, e.g. DONE, EMPTY, ARGUMENT_IGNORED, LIMIT, ERROR.
+        hitCount:
+          type: integer
+          nullable: true
+        durationMs:
+          type: integer
+          format: int64
+        abortReason:
+          type: string
+          nullable: true
+          description: Why the step did not run or failed, e.g. LIMIT_CALLS or TOOL_FAILED.
+    AgentRunLogSandbox:
+      type: object
+      required:
+        [sessionRef, recordedAt, tool, status, scriptRuns, durationMs, fileCount, fileBytes]
+      properties:
+        sessionRef:
+          type: string
+          description: The sandbox's technical id as the sandbox server named it.
+        recordedAt:
+          type: string
+          format: date-time
+        tool:
+          type: string
+        status:
+          type: string
+          description: COMPLETED or FAILED.
+        scriptRuns:
+          type: integer
+        durationMs:
+          type: integer
+          format: int64
+        fileCount:
+          type: integer
+        fileBytes:
+          type: integer
+          format: int64
+        abortReason:
+          type: string
+          nullable: true
+          description: e.g. START_FAILED, SCRIPT_TIMEOUT or COLLECT_FAILED.

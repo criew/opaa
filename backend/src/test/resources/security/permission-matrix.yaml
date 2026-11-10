@@ -186,6 +186,9 @@ operations:
   listOwnDiagnosticContextEvents:            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   listDiagnosticContextEvents:               {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getDiagnosticContextEvent:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAgentRunLog:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAgentRunLogRetention:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateAgentRunLogRetention:                {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listDirectorySyncStatus:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getDirectorySyncSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateDirectorySyncSettings:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}

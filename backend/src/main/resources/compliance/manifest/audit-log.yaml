@@ -1067,6 +1067,9 @@ auditEvents:
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
     payloadKeys: [retentionMonths]
+  - id: AGENT_RUN_LOG_RETENTION_CHANGED
+    trigger: Die Aufbewahrungsfristen des Schrittprotokolls oder des Sandbox-Protokolls der Agenten ändern sich
+    payloadKeys: [sandboxLogRetentionDays, stepLogRetentionDays]
   - id: CHAT_AUTO_CLEANUP_PERIODS_CHANGED
     trigger: >-
       Die Fristen der automatischen Bereinigung der Chats in Spaces ändern sich oder kehren zur

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { contentWidth } from '@/shared/theme/tokens'
+import AgentRunLogRetentionSection from '../components/AgentRunLogRetentionSection'
 import ChatAutoCleanupRetentionSection from '../components/ChatAutoCleanupRetentionSection'
 import IncidentScopeRetentionSection from '../components/IncidentScopeRetentionSection'
 import LockedAccountChatRetentionSection from '../components/LockedAccountChatRetentionSection'
@@ -35,12 +36,13 @@ export default function PrivacySettingsPage() {
         <AreaPageHeader
           icon={PrivacyTipOutlinedIcon}
           title="Datenschutz"
-          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten und wie lange Chats und anlassbezogene Klärungen aufbewahrt werden."
+          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten und wie lange Chats, anlassbezogene Klärungen und die Protokolle der Agentenläufe aufbewahrt werden."
         />
         <SelfDisclosureSettingsSection />
         <ChatAutoCleanupRetentionSection />
         <LockedAccountChatRetentionSection />
         <IncidentScopeRetentionSection />
+        <AgentRunLogRetentionSection />
       </Box>
     </Box>
   )

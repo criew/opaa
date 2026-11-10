@@ -26,6 +26,9 @@ describe('AgentRunSteps', () => {
     expect(items[0]).toHaveTextContent('Wissen durchsucht: Reisekosten Inland · 4 Treffer')
     expect(items[1]).toHaveTextContent('Tagegeld · 0 Treffer · nichts gefunden')
     expect(screen.queryByText('nicht geprüft')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/Laufkennung für die Fehlersuche: 00000000-0000-0000-0000-000000000001/),
+    ).toBeInTheDocument()
   })
 
   it('marks a run that stopped at a limit as not checked', () => {

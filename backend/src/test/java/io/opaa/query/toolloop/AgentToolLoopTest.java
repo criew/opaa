@@ -40,6 +40,8 @@ import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
+import io.opaa.query.runlog.AgentRunLogWriter;
+import io.opaa.query.runlog.AgentStepLogEntry;
 import io.opaa.query.sandbox.SandboxException;
 import io.opaa.query.sandbox.SandboxSession.OutputEntry;
 import io.opaa.query.sandbox.SandboxSession.OutputFile;
@@ -81,6 +83,8 @@ import tools.jackson.databind.json.JsonMapper;
  * behind a real {@link ChatClient}, so the tool definitions and the loop are Spring AI's.
  */
 class AgentToolLoopTest {
+
+  private final AgentRunLogWriter runLogWriter = mock(AgentRunLogWriter.class);
 
   private static final Instant NOW = Instant.parse("2026-11-10T08:00:00Z");
 
@@ -168,6 +172,7 @@ class AgentToolLoopTest {
         new QueryMetrics(meters),
         provider(null),
         JsonMapper.builder().build(),
+        runLogWriter,
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -207,6 +212,25 @@ class AgentToolLoopTest {
             eq(run));
     verify(workspace).release(run.runId());
     assertThat(runs("custom", "completed")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theStepLogGetsEveryStepWithoutTheSubQuestion() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    ArgumentCaptor<List<AgentStepLogEntry>> steps = ArgumentCaptor.captor();
+    verify(runLogWriter).writeSteps(any(), eq(result.agentRun().runId()), steps.capture());
+    assertThat(steps.getValue())
+        .singleElement()
+        .satisfies(
+            step -> {
+              assertThat(step.tool()).isEqualTo(ToolNames.SEARCH_KNOWLEDGE);
+              assertThat(step.status()).isEqualTo("DONE");
+              assertThat(step.toString()).doesNotContain("Regeln");
+            });
   }
 
   @Test
