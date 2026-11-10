@@ -39,10 +39,11 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <p><b>Audio passes through and is never stored or logged</b>, and neither is recognised text. A
  * recording ends at the latest after {@link #HARD_LIMIT}, after {@link #IDLE_LIMIT} without audio,
- * or after more audio than {@link #HARD_LIMIT} holds; once committed, only {@link #DONE_LIMIT}
- * applies. A session therefore lasts at most {@code HARD_LIMIT + DONE_LIMIT}, below the slot's
- * {@code RealtimeTranscriptionSlots.STALE_AFTER}. The timers are this process's and end with its
- * sessions (ADR-0053).
+ * after more audio than {@link #HARD_LIMIT} holds, or once the audio runs ahead of real time by
+ * more than {@link #PACE_FACTOR} and {@link #PACE_ALLOWANCE}; once committed, only {@link
+ * #DONE_LIMIT} applies. A session therefore lasts at most {@code HARD_LIMIT + DONE_LIMIT}, below
+ * the slot's {@code RealtimeTranscriptionSlots.STALE_AFTER}. The timers are this process's and end
+ * with its sessions (ADR-0053).
  */
 class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
@@ -51,6 +52,15 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
   static final Duration IDLE_LIMIT = Duration.ofSeconds(30);
   static final Duration DONE_LIMIT = Duration.ofSeconds(15);
+
+  /**
+   * How much faster than real time the audio may arrive: a browser records in real time, so more is
+   * a client feeding a file, which would turn one session into many sessions' worth of model time.
+   */
+  static final int PACE_FACTOR = 2;
+
+  /** The audio a burst may carry ahead of the pace, for frames held back by the network. */
+  static final Duration PACE_ALLOWANCE = Duration.ofSeconds(10);
 
   /** The largest audio frame accepted: one second of 24 kHz PCM16 with room to spare. */
   static final int MAX_FRAME_BYTES = 64 * 1024;
@@ -109,6 +119,8 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     private volatile Instant committedAt;
     private long audioBytes;
     private volatile long maxAudioBytes;
+    private volatile long bytesPerSecond;
+    private volatile Instant readyAt;
     private volatile LiveSession upstream;
     private volatile boolean ended;
     private ScheduledFuture<?> tick;
@@ -219,7 +231,9 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
           session.close();
           return;
         }
-        live.maxAudioBytes = HARD_LIMIT.toSeconds() * session.sampleRate() * 2L;
+        live.bytesPerSecond = session.sampleRate() * 2L;
+        live.maxAudioBytes = HARD_LIMIT.toSeconds() * live.bytesPerSecond;
+        live.readyAt = clock.instant();
         live.upstream = session;
       }
       live.lastAudio = clock.instant();
@@ -248,11 +262,20 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     byte[] frame = new byte[message.getPayloadLength()];
     message.getPayload().get(frame);
     live.audioBytes += frame.length;
-    if (live.audioBytes > live.maxAudioBytes || !open.upstream().audio(frame)) {
+    if (live.audioBytes > live.maxAudioBytes
+        || aheadOfPace(live)
+        || !open.upstream().audio(frame)) {
       live.error(Reason.LIMIT);
       return;
     }
     live.lastAudio = clock.instant();
+  }
+
+  /** Whether more audio arrived than {@link #PACE_FACTOR} times the time since {@code ready}. */
+  private boolean aheadOfPace(Live live) {
+    long elapsedMillis = Duration.between(live.readyAt, clock.instant()).toMillis();
+    long allowedMillis = elapsedMillis * PACE_FACTOR + PACE_ALLOWANCE.toMillis();
+    return live.audioBytes * 1000 > allowedMillis * live.bytesPerSecond;
   }
 
   @Override

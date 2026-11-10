@@ -16,8 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * The quota of one access token (ADR-0035): a sliding hour window per token, its size read from the
- * channel settings on every call so a raised limit takes effect without a restart.
+ * The quota of one access token (ADR-0035): a sliding hour window per token and one per person over
+ * all her tokens, their size read from the channel settings on every call so a raised limit takes
+ * effect without a restart.
  *
  * <p>It stands <b>in place of</b> the limit per client address: behind a shared egress point
  * everyone shares one address, so {@code io.opaa.ratelimit.RateLimitFilter} gives back a token
@@ -51,7 +52,9 @@ public class ExternalAccessQuota implements AccessTokenQuota {
   private final Clock clock;
   private final IntSupplier liveInstances;
   private final ServiceAccountTokens serviceAccounts;
+  private final PersonalTokenOwners owners;
   private final Cache<UUID, Deque<Long>> windows;
+  private final Cache<UUID, Deque<Long>> ownerWindows;
   private volatile LiveCount liveCount;
 
   /** A number of live instances and when it was read, by this process's clock. */
@@ -62,8 +65,9 @@ public class ExternalAccessQuota implements AccessTokenQuota {
       ExternalAccessSettingsService settings,
       Clock clock,
       InstanceRegistry registry,
-      ServiceAccountTokens serviceAccounts) {
-    this(settings, clock, registry::liveCount, serviceAccounts);
+      ServiceAccountTokens serviceAccounts,
+      PersonalTokenOwners owners) {
+    this(settings, clock, registry::liveCount, serviceAccounts, owners);
   }
 
   ExternalAccessQuota(
@@ -76,16 +80,30 @@ public class ExternalAccessQuota implements AccessTokenQuota {
       Clock clock,
       IntSupplier liveInstances,
       ServiceAccountTokens serviceAccounts) {
+    this(settings, clock, liveInstances, serviceAccounts, tokenId -> Optional.empty());
+  }
+
+  ExternalAccessQuota(
+      ExternalAccessSettingsService settings,
+      Clock clock,
+      IntSupplier liveInstances,
+      ServiceAccountTokens serviceAccounts,
+      PersonalTokenOwners owners) {
     this.settings = settings;
     this.clock = clock;
     this.liveInstances = liveInstances;
     this.serviceAccounts = serviceAccounts;
-    this.windows =
-        Caffeine.newBuilder()
-            // Twice the window, so timestamps still inside it survive an idle stretch.
-            .expireAfterAccess(WINDOW.multipliedBy(2))
-            .maximumSize(MAX_TRACKED_TOKENS)
-            .build();
+    this.owners = owners;
+    this.windows = newWindows();
+    this.ownerWindows = newWindows();
+  }
+
+  private static Cache<UUID, Deque<Long>> newWindows() {
+    return Caffeine.newBuilder()
+        // Twice the window, so timestamps still inside it survive an idle stretch.
+        .expireAfterAccess(WINDOW.multipliedBy(2))
+        .maximumSize(MAX_TRACKED_TOKENS)
+        .build();
   }
 
   /**
@@ -95,7 +113,9 @@ public class ExternalAccessQuota implements AccessTokenQuota {
    * the token's, and a person already has her own limits.
    *
    * <p>A token of a service account counts in the one window of its account, under the account's
-   * own quota where it has one - more tokens buy a Fachverfahren no more requests.
+   * own quota where it has one - more tokens buy a Fachverfahren no more requests. A personal token
+   * counts in its own window and, with the same size, in the one window of its person, so more
+   * tokens buy a person no more requests either.
    */
   @Override
   public void requireWithinQuota(UUID accessTokenId) {
@@ -113,6 +133,26 @@ public class ExternalAccessQuota implements AccessTokenQuota {
             .orElseGet(() -> settings.current().values().tokenRateLimitPerHour());
     int limit = shareOf(configured, now);
     Deque<Long> window = windows.get(windowKey, key -> new ArrayDeque<>());
+    take(window, limit, now);
+    if (account.isPresent()) {
+      return;
+    }
+    Optional<UUID> owner = owners.ownerOf(accessTokenId);
+    if (owner.isEmpty()) {
+      return;
+    }
+    try {
+      take(ownerWindows.get(owner.get(), key -> new ArrayDeque<>()), limit, now);
+    } catch (TooManyRequestsException refused) {
+      synchronized (window) {
+        window.removeLastOccurrence(now);
+      }
+      throw refused;
+    }
+  }
+
+  /** Counts {@code now} in {@code window}, or refuses once it holds {@code limit} requests. */
+  private static void take(Deque<Long> window, int limit, long now) {
     synchronized (window) {
       long cutoff = now - WINDOW.toMillis();
       while (!window.isEmpty() && window.peekFirst() < cutoff) {
@@ -143,5 +183,6 @@ public class ExternalAccessQuota implements AccessTokenQuota {
   /** Forgets every window - for a test, and for nothing else. */
   void reset() {
     windows.invalidateAll();
+    ownerWindows.invalidateAll();
   }
 }

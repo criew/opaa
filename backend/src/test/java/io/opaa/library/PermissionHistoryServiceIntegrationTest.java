@@ -1047,7 +1047,9 @@ class PermissionHistoryServiceIntegrationTest {
    * change and deletion it leaves to {@code AssetShellService}, covered above; {@code
    * DocumentTemplateService} does the same for document templates. {@code PromptService} reads the
    * formula to offer the prompts a person may insert in the chat and to check an inserted one; it
-   * writes prompts only. {@code AssetCatalogService} reads the formula only to restrict the catalog
+   * writes prompts only. {@code AgentService} reads the formula to list agents and the libraries an
+   * agent may narrow to; an agent's grants, reach and history it leaves to {@code
+   * AssetShellService}. {@code AssetCatalogService} reads the formula only to restrict the catalog
    * to readable entries and writes nothing. {@code AssetOwnerNames} only reads the display names of
    * owning groups; {@code KnowledgeLibraryService} reaches groups only through it and through
    * {@code AssetGrantService}, and its write paths are covered above. {@code AssetFavoriteService}
@@ -1068,6 +1070,7 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetCatalogService",
           "AssetFavoriteService",
           "AssetOwnerNames",
+          "AgentService",
           "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",

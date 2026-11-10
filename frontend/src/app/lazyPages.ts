@@ -64,6 +64,11 @@ export const DocumentTemplateCreatePage = documentTemplate('DocumentTemplateCrea
 export const DocumentTemplateDetailPage = documentTemplate('DocumentTemplateDetailPage')
 export const DocumentTemplateSettingsPage = documentTemplate('DocumentTemplateSettingsPage')
 
+const agent = themePages(() => import('@/features/agent/routes'))
+export const AgentCreatePage = agent('AgentCreatePage')
+export const AgentDetailPage = agent('AgentDetailPage')
+export const AgentSettingsPage = agent('AgentSettingsPage')
+
 const group = themePages(() => import('@/features/group/routes'))
 export const GroupManagementPage = group('GroupManagementPage')
 export const ProviderGroupWorklistPage = group('ProviderGroupWorklistPage')

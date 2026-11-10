@@ -226,13 +226,12 @@ class RateLimitSecurityChainIntegrationTest {
   @Test
   void theSearchCeilingCountsSignedInSearchesOfAllClients() throws Exception {
     GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, environment, "search");
-    // one account per address, so that no budget per account answers before the ceiling
+    // one account per address, so that no budget per account answers before the ceiling; only
+    // searches, because the 404 of an unknown hit gives its token of the ceiling back
     for (int client = 1; client <= GLOBAL_SEARCH_CEILING; client++) {
       int status =
           searchOrFetch(
-                  signIn("198.51.100." + (140 + client)),
-                  "198.51.100." + (120 + client),
-                  client % 2 == 0)
+                  signIn("198.51.100." + (140 + client)), "198.51.100." + (120 + client), true)
               .andReturn()
               .getResponse()
               .getStatus();
@@ -248,7 +247,7 @@ class RateLimitSecurityChainIntegrationTest {
     String anna = signIn("198.51.100.160");
     for (int address = 1; address <= SEARCH_PER_ACCOUNT; address++) {
       int status =
-          searchOrFetch(anna, "198.51.100." + (160 + address), address % 2 == 0)
+          searchOrFetch(anna, "198.51.100." + (160 + address), true)
               .andReturn()
               .getResponse()
               .getStatus();
@@ -274,7 +273,8 @@ class RateLimitSecurityChainIntegrationTest {
 
   /**
    * A search without a question (refused as invalid) or the fetch of an unknown hit: both reach
-   * their handler without asking a model, and both count against the one search budget.
+   * their handler without asking a model, and both count against the one search budget per client
+   * and per account. The fetch's {@code 404} gives its token of the global ceiling back.
    */
   private ResultActions searchOrFetch(String bearer, String client, boolean search)
       throws Exception {
