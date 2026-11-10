@@ -6,9 +6,12 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.organization.Organization;
 import io.opaa.test.BareLibraries;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,9 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The nightly removal of chunks whose document row is gone: a chunk set goes from both stores once
- * two runs in a row found it orphaned, the chunks of a document that still exists stay, and the
- * proposed values of rejected model extractions are cleared.
+ * The nightly removal of chunks whose document row is gone: a chunk set goes from both stores in
+ * the first run once a second look after the wait still finds it orphaned, the chunks of a document
+ * that exists by then stay, and the proposed values of rejected model extractions are cleared.
  */
 @OpaaIntegrationTest
 class OrphanedChunkCleanupIntegrationTest {
@@ -35,15 +38,7 @@ class OrphanedChunkCleanupIntegrationTest {
   @BeforeEach
   void setUp() {
     BareLibraries.create(jdbcTemplate, libraryId);
-    jdbcTemplate.update(
-        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
-            + " indexed_at, checksum, status, source_type, library_id, organization_id,"
-            + " created_at) VALUES (?, 'bleibt.txt', 'bleibt.txt', 'text/plain', 1, 1, now(), ?,"
-            + " 'INDEXED', 'UPLOAD', ?, ?, now())",
-        existingDocument,
-        "checksum-" + existingDocument,
-        libraryId,
-        Organization.DEFAULT_ID);
+    insertDocument(existingDocument, "bleibt.txt");
   }
 
   @AfterEach
@@ -54,17 +49,12 @@ class OrphanedChunkCleanupIntegrationTest {
   }
 
   @Test
-  void removesTheChunksOfADeletedDocumentOnTheSecondSightingAndKeepsThoseOfAnExistingOne() {
+  void aFreshlyStartedInstanceRemovesAnOrphanInItsFirstRunAndKeepsTheChunksOfAnExistingDocument()
+      throws InterruptedException {
     seed(existingDocument, "Vermerk, der bleibt.");
     seed(deletedDocument, "Vermerk eines geloeschten Dokuments.");
 
-    cleanup.removeOrphans();
-
-    assertThat(vectorChunkStore.remainingOf(UUID.randomUUID(), List.of(deletedDocument)))
-        .as("kept after the first sighting")
-        .isPositive();
-
-    assertThat(cleanup.removeOrphans()).isGreaterThanOrEqualTo(1);
+    assertThat(cleanup.removeOrphans(Duration.ZERO)).isGreaterThanOrEqualTo(1);
 
     assertThat(vectorChunkStore.remainingOf(UUID.randomUUID(), List.of(deletedDocument))).isZero();
     assertThat(vectorChunkStore.remainingOf(UUID.randomUUID(), List.of(existingDocument)))
@@ -72,7 +62,29 @@ class OrphanedChunkCleanupIntegrationTest {
   }
 
   @Test
-  void theNightlyRunClearsEveryStoredProposedValue() {
+  void aChunkSetWhoseDocumentRowAppearsDuringTheWaitStays() throws Exception {
+    UUID arriving = UUID.randomUUID();
+    seed(arriving, "Vermerk eines Dokuments, dessen Zeile gleich kommt.");
+
+    CompletableFuture<Integer> run =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return cleanup.removeOrphans(Duration.ofSeconds(3));
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+              }
+            });
+    Thread.sleep(500);
+    insertDocument(arriving, "kommt.txt");
+    run.get(30, TimeUnit.SECONDS);
+
+    assertThat(vectorChunkStore.remainingOf(UUID.randomUUID(), List.of(arriving))).isPositive();
+  }
+
+  @Test
+  void clearsEveryStoredProposedValue() {
     UUID rejection = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO metadata_model_rejections (id, library_id, field_key, proposed_value,"
@@ -81,7 +93,7 @@ class OrphanedChunkCleanupIntegrationTest {
         rejection,
         libraryId);
 
-    cleanup.runNightly();
+    cleanup.clearProposedValues();
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -89,6 +101,20 @@ class OrphanedChunkCleanupIntegrationTest {
                 String.class,
                 rejection))
         .isNull();
+  }
+
+  private void insertDocument(UUID documentId, String name) {
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id,"
+            + " created_at) VALUES (?, ?, ?, 'text/plain', 1, 1, now(), ?,"
+            + " 'INDEXED', 'UPLOAD', ?, ?, now())",
+        documentId,
+        name,
+        name,
+        "checksum-" + documentId,
+        libraryId,
+        Organization.DEFAULT_ID);
   }
 
   private void seed(UUID documentId, String text) {

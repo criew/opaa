@@ -2,15 +2,19 @@ package io.opaa.indexing.maintenance;
 
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.instance.ScheduledRunLocks;
-import java.util.HashSet;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,11 +22,12 @@ import org.springframework.stereotype.Component;
  * longer exists - unreachable through any document, yet still found by the search of their library
  * - and clears the proposed values of rejected model extractions, which are no longer written.
  *
- * <p>A document id goes only once an earlier run on the same instance found it orphaned too, so a
- * chunk set is never removed in the run that first saw it; the ids of that earlier run are
- * process-local and start empty on every instance. The candidates come from {@code
- * chunk_full_text}, whose {@code document_id} index answers the anti-join without reading the
- * vector table. A failure is logged and leaves the next run to try again.
+ * <p>A document id goes only if it is still orphaned after {@link #SETTLE_TIME}: the run lists the
+ * candidates, waits, and removes those a second look finds orphaned too, so a chunk set seen in the
+ * middle of a write or a deletion is left alone. Nothing is kept between runs. The candidates come
+ * from {@code chunk_full_text}, whose {@code document_id} index answers the anti-join without
+ * reading the vector table. The wait runs on its own scheduler thread, not on the shared tick. A
+ * failure is logged and leaves the next run to try again.
  */
 @Component
 public class OrphanedChunkCleanup {
@@ -30,21 +35,32 @@ public class OrphanedChunkCleanup {
   /** Document ids per query; a run walks all of them in id order. */
   static final int BATCH_SIZE = 500;
 
-  /** How many orphaned ids one run remembers for the next; the rest wait for a later run. */
-  static final int MAX_REMEMBERED = 100_000;
+  /** How many orphaned ids one run looks at; the rest wait for the next run. */
+  static final int MAX_CANDIDATES = 100_000;
+
+  /** How long a candidate has to stay orphaned before its chunks go. */
+  static final Duration SETTLE_TIME = Duration.ofSeconds(60);
+
+  private static final String ORPHANED_AFTER =
+      "SELECT DISTINCT f.document_id FROM chunk_full_text f WHERE f.document_id > ?"
+          + " AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = f.document_id)"
+          + " ORDER BY f.document_id LIMIT ?";
+
+  private static final String STILL_ORPHANED =
+      "SELECT DISTINCT f.document_id FROM chunk_full_text f WHERE f.document_id = ANY(?)"
+          + " AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = f.document_id)";
 
   private static final Logger log = LoggerFactory.getLogger(OrphanedChunkCleanup.class);
 
   private final JdbcTemplate jdbcTemplate;
   private final VectorChunkStore vectorChunkStore;
-  private Set<UUID> seenByLastRun = Set.of();
 
   public OrphanedChunkCleanup(JdbcTemplate jdbcTemplate, VectorChunkStore vectorChunkStore) {
     this.jdbcTemplate = jdbcTemplate;
     this.vectorChunkStore = vectorChunkStore;
   }
 
-  @Scheduled(cron = "0 41 3 * * *")
+  @Scheduled(cron = "0 41 3 * * *", scheduler = "orphanedChunkCleanupScheduler")
   @SchedulerLock(
       name = "orphaned-chunk-cleanup",
       lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
@@ -52,13 +68,15 @@ public class OrphanedChunkCleanup {
   public void runNightly() {
     try {
       int cleared = clearProposedValues();
-      int removed = removeOrphans();
+      int removed = removeOrphans(SETTLE_TIME);
       if (cleared > 0) {
         log.info("Cleared the proposed value of {} rejected model extraction(s)", cleared);
       }
       if (removed > 0) {
         log.warn("Removed the chunks of {} document(s) whose row no longer exists", removed);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (RuntimeException e) {
       log.warn("Orphaned chunk cleanup failed, the next run tries again", e);
     }
@@ -77,37 +95,62 @@ public class OrphanedChunkCleanup {
   }
 
   /**
-   * Removes the chunks of every orphaned document id the previous call on this instance found
-   * orphaned too, and remembers the others for the next call.
+   * Removes the chunks of every document id that is orphaned now and still after {@code settle}.
    *
    * @return how many documents' chunks went
    */
-  public synchronized int removeOrphans() {
-    Set<UUID> seenNow = new HashSet<>();
+  int removeOrphans(Duration settle) throws InterruptedException {
+    List<UUID> candidates = candidates();
+    if (candidates.isEmpty()) {
+      return 0;
+    }
+    Thread.sleep(settle);
     int removed = 0;
+    for (int from = 0; from < candidates.size(); from += BATCH_SIZE) {
+      List<UUID> batch = candidates.subList(from, Math.min(from + BATCH_SIZE, candidates.size()));
+      List<UUID> stillOrphaned =
+          jdbcTemplate.queryForList(
+              STILL_ORPHANED, UUID.class, (Object) batch.toArray(UUID[]::new));
+      for (UUID documentId : stillOrphaned) {
+        vectorChunkStore.deleteByDocumentId(documentId);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
+  private List<UUID> candidates() {
+    List<UUID> candidates = new ArrayList<>();
     UUID after = new UUID(0, 0);
-    while (true) {
+    while (candidates.size() < MAX_CANDIDATES) {
       List<UUID> orphaned =
           jdbcTemplate.queryForList(
-              "SELECT DISTINCT f.document_id FROM chunk_full_text f WHERE f.document_id > ?"
-                  + " AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = f.document_id)"
-                  + " ORDER BY f.document_id LIMIT ?",
+              ORPHANED_AFTER,
               UUID.class,
               after,
-              BATCH_SIZE);
-      for (UUID documentId : orphaned) {
-        if (seenByLastRun.contains(documentId)) {
-          vectorChunkStore.deleteByDocumentId(documentId);
-          removed++;
-        } else if (seenNow.size() < MAX_REMEMBERED) {
-          seenNow.add(documentId);
-        }
-      }
+              Math.min(BATCH_SIZE, MAX_CANDIDATES - candidates.size()));
+      candidates.addAll(orphaned);
       if (orphaned.size() < BATCH_SIZE) {
-        seenByLastRun = seenNow;
-        return removed;
+        break;
       }
       after = orphaned.get(orphaned.size() - 1);
+    }
+    return candidates;
+  }
+
+  /** The thread of {@link #runNightly}: its wait blocks only this one, not the shared tick. */
+  @Configuration(proxyBeanMethods = false)
+  static class SchedulerConfiguration {
+
+    @Bean(destroyMethod = "shutdown")
+    TaskScheduler orphanedChunkCleanupScheduler() {
+      ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+      scheduler.setPoolSize(1);
+      scheduler.setThreadNamePrefix("orphaned-chunk-cleanup-");
+      scheduler.setDaemon(true);
+      scheduler.setWaitForTasksToCompleteOnShutdown(false);
+      scheduler.initialize();
+      return scheduler;
     }
   }
 }
