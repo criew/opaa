@@ -19,7 +19,7 @@ import type {
   DocumentTextSection,
 } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
-import { markHighlight } from '@/shared/theme/tokens'
+import { fontSize, markHighlight } from '@/shared/theme/tokens'
 import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import { getDocumentText } from '../api/libraryApi'
 import { downloadDocumentContent } from '../utils/documentContent'
@@ -248,14 +248,14 @@ export default function DocumentTextVersionDialog({
             </IconButton>
           </Tooltip>
         )}
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           Textfassung – das Layout des Originals wird nicht wiedergegeben.
         </Typography>
         <Typography
           role="status"
           sx={
             markState === 'changed' || markState === 'not-found'
-              ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
+              ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
               : visuallyHidden
           }
         >
@@ -306,7 +306,7 @@ export default function DocumentTextVersionDialog({
                           display: 'block',
                           width: '100%',
                           textAlign: 'left',
-                          fontSize: 13,
+                          fontSize: fontSize.text,
                           fontWeight: section === activeSection ? 600 : 400,
                           bgcolor: section === activeSection ? 'action.selected' : undefined,
                           py: 0.5,
@@ -322,7 +322,9 @@ export default function DocumentTextVersionDialog({
                   ))}
                 </Box>
                 {current.sectionsTruncated && (
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 1, px: 0.5 }}>
+                  <Typography
+                    sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, px: 0.5 }}
+                  >
                     Die Gliederung ist gekürzt.
                   </Typography>
                 )}
@@ -358,7 +360,7 @@ export default function DocumentTextVersionDialog({
                       key={index}
                       component={headingTag(section.level)}
                       sx={{
-                        fontSize: section.level === 1 ? 15 : 14,
+                        fontSize: section.level === 1 ? fontSize.title : fontSize.text,
                         fontWeight: 600,
                         mt: 2,
                         mb: 1,
@@ -375,7 +377,7 @@ export default function DocumentTextVersionDialog({
                     sx={{
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
-                      fontSize: '0.9375rem',
+                      fontSize: fontSize.title,
                       lineHeight: 1.6,
                       mb: 1.5,
                       ...(passage.chunkIndex === target && {

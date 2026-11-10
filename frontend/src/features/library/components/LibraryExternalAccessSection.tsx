@@ -16,6 +16,7 @@ import ValueRow from '@/shared/ui/ValueRow'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
+import { formatDate } from '@/shared/utils/formatDate'
 
 interface LibraryExternalAccessSectionProps {
   libraryId: string
@@ -36,11 +37,6 @@ function toDateInput(value: string): string {
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
   return `${date.getFullYear()}-${month}-${day}`
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('de-DE')
 }
 
 function tokenLine(count: number): string {

@@ -8,7 +8,7 @@ interface AssetNameFieldsProps {
   idPrefix: string
   name: string
   onNameChange: (name: string) => void
-  /** A missing name, said at the field (guidelines 5.14). */
+  /** A missing name, said at the field (guidelines 5.15). */
   nameError?: string | null
   /** Takes the focus when the name is missing. */
   nameInputRef?: Ref<HTMLInputElement>

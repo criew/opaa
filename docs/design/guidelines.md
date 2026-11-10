@@ -224,30 +224,27 @@ später über die Branding-Konfiguration nachladen; die Schriftstapel enden desh
 
 ### 3.2 Skala
 
-Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehören Markenmomenten
-(Anmeldeseite, Leerzustände):
+Sechs Schriftstufen in ganzen Pixeln, benannt im Theme (`fontSize` in
+`frontend/src/shared/theme/tokens.ts`). Andere Größen gibt es nicht, auch keine halben Pixel:
 
-| Stufe   | Größe     | Typische Verwendung                  |
-| ------- | --------- | ------------------------------------ |
-| 2xs     | 11 px     | Versal-Etiketten, Tabellen-Metadaten |
-| xs      | 12 px     | Metadaten, Chips, Eyebrow            |
-| sm      | 14 px     | Sekundärtext, Tabellen, Seitenleiste |
-| base    | 16 px     | Fließtext, Chat-Antworten            |
-| md      | 18 px     | Chat-Titel, hervorgehobener Text     |
-| lg      | 20 px     | h4-Äquivalent                        |
-| xl      | 24 px     | Abschnittsüberschriften (h3)         |
-| 2xl     | 30 px     | Seitenüberschriften (h2)             |
-| 3xl     | 36 px     | große Seitenköpfe                    |
-| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI     |
+| Stufe         | Größe | Verwendung                                                                 |
+| ------------- | ----- | -------------------------------------------------------------------------- |
+| `label`       | 11 px | Versal-Etiketten, Tabellenköpfe, Fußnotenzeichen                            |
+| `meta`        | 12 px | Chips und Etiketten (5.5), Metadaten neben einem Wert, Hilfetext am Feld    |
+| `text`        | 14 px | Fließtext, Feldwerte, Schaltflächen, Menüeinträge, Listen                   |
+| `title`       | 16 px | Titel von Bereichsseite, Dialog und Seitenpanel, Abschnittsköpfe; Chat-Text |
+| `detailTitle` | 20 px | Titel einer Detailseite                                                    |
+| `wizardTitle` | 24 px | Schritttitel im Assistenten, Einzweckseiten (Installation, Fehlerseite)     |
 
-Die Arbeitsflächen folgen zusätzlich dem **Feinraster** (#658): Fließtext
-14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
-Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
-bleiben das Vokabular für Markenmomente.
+Frage und Antwort im Chat stehen in 16 px (`MarkdownRenderer` mit `reading`), weil Antworten
+Lesetext sind; die übrige Oberfläche bleibt bei 14 px. **Kein Thema schreibt eine Schriftgröße als
+Zahl**: Komponenten nennen eine Stufe (`fontSize.meta`), Icons eine Icongröße (`iconSize`, 14–48
+px). ESLint weist eine Zahl als `fontSize` unter `features/` und `app/` ab, ein Theme-Test hält
+Stufen und Typografie-Varianten fest.
 
-**Titel einer Detailseite** (Asset, Space, Lauf), abweichend vom Seitentitel (27 px): 20 px / 28 px
-ab 600 px Breite, darunter 17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
-Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
+**Titel einer Detailseite** (Asset, Space, Lauf): 20 px ab 600 px Breite, darunter 16 px. Er
+steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine Leerzeilen. Bei
+320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
 
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
 
@@ -356,10 +353,14 @@ Zustandswechsel.
 | Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
-Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als Verb („Fragen",
-„Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
+Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
+Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion.
+
+**Kompakte Schaltflächen** (`size="small"`) stehen nur in Tabellenzeilen, Abschnittsköpfen,
+Filterzeilen und Werkzeugleisten. Seitenkopf, Formular- und Dialogfußzeile tragen die normale
+Größe.
 
 **Nur-Icon-Schaltflächen** tragen immer beides: ein deutsches `aria-label` mit konkretem Bezug
 („Original von bescheid.pdf öffnen") **und** einen `Tooltip`, der die Funktion beim Zeigen mit
@@ -438,7 +439,8 @@ Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & In
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
 schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
-Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
+Haarlinien-Schatten und Höhe 36 px für jedes einzeilige Feld, gleich welche MUI-Größe
+(`controlHeight` im Theme) — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
 das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
 sichtbare Beschriftung, sondern Platzhalter plus `aria-label`.
 Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
@@ -569,7 +571,7 @@ farbiger Chip.
 **Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
 (Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
 Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
-Etiketten nehmen Radius, Größe (12 px, `fontSize.xs`) und Gewicht aus `badgeShape`
+Etiketten nehmen Radius, Größe (12 px, `fontSize.meta`) und Gewicht aus `badgeShape`
 (`frontend/src/shared/theme/tokens.ts`), den Umriss aus `outlinedBadgeSx`
 (`frontend/src/shared/ui/badgeStyles.ts`); für ein reines Textetikett gibt es `MetaBadge`, das
 `MuiChip` des Themes hat dieselben Werte. Passt ein Etikett nicht in eine schmale Tabellenspalte,
@@ -716,7 +718,7 @@ if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) retur
 ```
 
 **Aufbau.** Die **Folge ist der Hauptinhalt**, nicht die Frage. Die Frage steht als Titel darüber
-in 17 px, die Folge darunter in 13,5 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
+in 16 px, die Folge darunter in 14 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
 starke Signalkante, bei gewichtigen Tönen zusätzlich ein Symbol neben dem Titel.
 
 **Die Schaltfläche trägt das Verb der Handlung** — „Löschen", „Abschalten", „Verwerfen",
@@ -967,6 +969,14 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
   unter genau diesem Wort.
 - **Keine Doppel-Labels** in Klammern („Token (Kennwort)") und kein künstlich allgemeines
   „Kennwort" für ein Token.
+
+**Datum und Zeit.** Ein Datum steht als „TT.MM.JJJJ“, ein Zeitpunkt als „TT.MM.JJJJ, HH:MM“,
+beide mit führender Null und in der Zeitzone des Browsers; Sekunden nur in Protokollen (Revision,
+Verbindungsprotokoll). Relative Angaben („vor 3 Tagen“) nur, wo die Dauer die Aussage ist, der
+genaue Zeitpunkt dann im Tooltip. Fehlt ein Wert, steht „–“; für kein Ablaufdatum steht
+„unbefristet“. Alle Formen kommen aus `frontend/src/shared/utils/formatDate.ts` (dort auch
+`formatNumber` für Zahlen); ESLint weist `toLocaleString`, `toLocaleDateString`,
+`toLocaleTimeString` und `Intl.DateTimeFormat` an jeder anderen Stelle ab.
 
 **Erklärtexte knapp.** Die Beschreibung unter einem Seiten- oder Abschnittstitel sagt in einem Satz,
 wofür die Seite da ist, höchstens zwei Zeilen bei 1280 px. Ein Hilfetext am Feld hat eine Zeile

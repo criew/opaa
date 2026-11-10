@@ -30,6 +30,7 @@ import LibraryDocumentUploadArea from './LibraryDocumentUploadArea'
 import LibraryFolderBreadcrumb from './LibraryFolderBreadcrumb'
 import LibraryFolderDialogs from './LibraryFolderDialogs'
 import TextRecognitionNotice from './TextRecognitionNotice'
+import { fontSize } from '@/shared/theme/tokens'
 
 export { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 
@@ -319,7 +320,7 @@ export default function LibraryDocumentsSection({
         {isUploadLibrary && canManage ? (
           <LibraryDocumentUploadArea upload={upload} />
         ) : (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {/* the one action is the head's main action; the sentence names no second one */}
             Noch keine Dokumente.
           </Typography>
@@ -542,7 +543,11 @@ function FilterSelect({
       displayEmpty
       onChange={(e) => onChange(String(e.target.value))}
       inputProps={{ 'aria-label': label }}
-      sx={{ flex: { xs: '1 1 120px', sm: 'none' }, minWidth: { xs: 0, sm: 150 }, fontSize: 13.5 }}
+      sx={{
+        flex: { xs: '1 1 120px', sm: 'none' },
+        minWidth: { xs: 0, sm: 150 },
+        fontSize: fontSize.text,
+      }}
     >
       {options.map(([key, text]) => (
         <MenuItem key={key} value={key}>

@@ -19,7 +19,7 @@ interface AssetOwnerFieldsProps {
   myGroups: MyGroupsState
   selectedGroup: GroupListResponse | null
   onSelectedGroupChange: (group: GroupListResponse | null) => void
-  /** A missing group, said at the field (guidelines 5.14). */
+  /** A missing group, said at the field (guidelines 5.15). */
   groupError?: string | null
   /** Takes the focus when the group is missing. */
   groupInputRef?: Ref<HTMLInputElement>

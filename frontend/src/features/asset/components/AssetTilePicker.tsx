@@ -13,6 +13,7 @@ import { useActiveAssetTypes } from '../../../shared/assetTypes'
 import { assetPickKey, type AssetPick, type AssetPickToggle } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The loaded tiles for one filter; a different key means the shown result is outdated. */
 interface Loaded {
@@ -384,7 +385,9 @@ export default function AssetTilePicker({
         <Alert severity="error">{error}</Alert>
       ) : tiles.length === 0 ? (
         emptyText && (
-          <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>{emptyText}</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
+            {emptyText}
+          </Typography>
         )
       ) : (
         <Box
@@ -416,7 +419,7 @@ export default function AssetTilePicker({
       )}
 
       {refreshing && tiles.length > 0 && (
-        <Typography sx={{ color: 'text.secondary', fontSize: 12.5 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.meta }}>
           Wird aktualisiert …
         </Typography>
       )}
@@ -441,7 +444,7 @@ export default function AssetTilePicker({
 
       {page + 1 < totalPages && !error && moreError?.key !== catalogKey && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             {sources.length} von {totalElements} angezeigt
           </Typography>
           <Button
@@ -456,7 +459,7 @@ export default function AssetTilePicker({
       )}
 
       {showSummary && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }} aria-live="polite">
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }} aria-live="polite">
           {value.length === 0
             ? 'Nichts ausgewählt.'
             : `Ausgewählt: ${value.map((pick) => pick.name).join(', ')}`}

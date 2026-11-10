@@ -1,4 +1,5 @@
 import type { DiscoveredLlmModel } from '@/shared/api/types'
+import { formatNumber } from '../../utils/formatDate'
 
 export type EndpointPresetKey = 'ollama' | 'openai' | 'anthropic'
 
@@ -82,20 +83,17 @@ const CAPABILITY_LABELS: Record<string, string> = {
   embedding: 'Einbettung',
 }
 
-const decimal = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 })
-const integer = new Intl.NumberFormat('de-DE')
-
 function parameterLabel(parameterSize: string): string {
   const match = /^(\d+(?:\.\d+)?)\s*([BMK])$/i.exec(parameterSize.trim())
   if (!match) return `${parameterSize} Parameter`
-  const amount = decimal.format(Number(match[1]))
+  const amount = formatNumber(Number(match[1]), { maximumFractionDigits: 1 })
   const unit = { B: 'Mrd.', M: 'Mio.', K: 'Tsd.' }[match[2].toUpperCase() as 'B' | 'M' | 'K']
   return `${amount} ${unit} Parameter`
 }
 
 function sizeLabel(bytes: number): string {
-  if (bytes >= 1e9) return `${decimal.format(bytes / 1e9)} GB`
-  return `${integer.format(Math.round(bytes / 1e6))} MB`
+  if (bytes >= 1e9) return `${formatNumber(bytes / 1e9, { maximumFractionDigits: 1 })} GB`
+  return `${formatNumber(Math.round(bytes / 1e6))} MB`
 }
 
 /** The facts the endpoint reported about a model, as short German phrases. */
@@ -103,7 +101,7 @@ export function describeModel(model: DiscoveredLlmModel): string[] {
   const parts: string[] = []
   if (model.parameterSize) parts.push(parameterLabel(model.parameterSize))
   if (model.sizeBytes) parts.push(sizeLabel(model.sizeBytes))
-  if (model.contextLength) parts.push(`Kontext ${integer.format(model.contextLength)} Token`)
+  if (model.contextLength) parts.push(`Kontext ${formatNumber(model.contextLength)} Token`)
   for (const capability of model.capabilities) {
     const label = CAPABILITY_LABELS[capability]
     if (label) parts.push(label)
@@ -142,5 +140,5 @@ export function transcriptionSuitable(model: DiscoveredLlmModel): boolean {
 }
 
 export function formatTokens(tokens: number): string {
-  return integer.format(tokens)
+  return formatNumber(tokens)
 }

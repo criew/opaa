@@ -15,6 +15,7 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccount, updateServiceAccount } from '../../api/serviceAccountApi'
 import { useErrorTitle } from './serviceAccountHooks'
+import { fontSize } from '@/shared/theme/tokens'
 
 type Field = 'name' | 'responsibleUserId' | 'rateLimitPerHour'
 
@@ -171,7 +172,7 @@ function FormDialog({
               slotProps={{ htmlInput: { maxLength: 1000 } }}
             />
             <Stack spacing={0.75}>
-              <FormLabel htmlFor="service-account-responsible" sx={{ fontSize: 12 }}>
+              <FormLabel htmlFor="service-account-responsible" sx={{ fontSize: fontSize.meta }}>
                 Verantwortliche Person
               </FormLabel>
               <UserPicker

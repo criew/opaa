@@ -47,6 +47,7 @@ import LibraryUploadInputs from '../components/LibraryUploadInputs'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
@@ -380,7 +381,7 @@ export default function LibraryDetailPage() {
             canEdit: mayChange,
             onSave: saveHeadline,
           }}
-          extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
+          extent={`${formatNumber(library.documentCount ?? 0)} ${
             (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
           }`}
           // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only; a full

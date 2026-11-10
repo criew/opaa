@@ -121,7 +121,7 @@ des Tabs, Navigation und Neuladen behalten sie; `?mockScenario=default` setzt zu
 | `small` | 1 Site · 1 Dokumentbibliothek · 2 Ordner je Ebene, 2 Ebenen · 2 Spaces · 1 Drive-Bereich · 1 Bucket · 2 Ordner (Nextcloud, SMB, Dropbox) | Erfolg | je Bibliothek 1 Auswahl; 1 Gruppe |
 | `scale` | 17 Sites × 25 Dokumentbibliotheken · 200 Ordner je Ebene, 8 Ebenen · 450 Spaces (jeder 10. persönlich) · 300 Drive-Bereiche · 600 Buckets, Präfixe 200 je Ebene · Nextcloud, SMB, Dropbox 200 Ordner je Ebene, 8 Ebenen · jeder 3. Name 80–120 Zeichen mit Umlauten, Nr. 7 mit dem Kompositum „Grundstücksverkehrsgenehmigungsakte“ | Erfolg, Zählung nach Anfrage | lange Bibliotheksnamen; Confluence 120 Spaces, SharePoint 25 Bibliotheken, übrige 50 Auswahlen (Ordnerpfade bis 8 Ebenen); 10 Läufe mit bis zu 140 Ereignissen; 302 Gruppen |
 | `empty` | 0 Einträge überall | Erfolg | 0 Dokumente, keine Läufe |
-| `slow` | wie `default`, Antwort nach 3 s (`sessionStorage` `opaa.mockSlowMs` überschreibt die Dauer) | wie `default`, nach 3 s | – |
+| `slow` | wie `default`, Antwort nach 3 s (`sessionStorage` `opaa.mockSlowMs` überschreibt die Dauer) | wie `default`, nach 3 s | Chat-Antwort: 2 s bis zum ersten Wort, dann Wort für Wort (feste Dauer, `opaa.mockSlowMs` wirkt hier nicht) |
 | `failed` | HTTP 403 (SharePoint, Drive, S3) bzw. 502 (Confluence, Nextcloud, SMB, Dropbox) mit deutscher Meldung | `reachable:false`, `credentialsVerified:false` mit passender Ablehnung; Webverzeichnis und RSS HTTP 502 | `lastScheduledRunsFailed`, 3 fehlgeschlagene Läufe |
 | `partial` | 6 Sites · 8 Bibliotheken · 30 Ordner, 4 Ebenen · 40 Spaces · 25 Bereiche · 30 Buckets · 30 Ordner; alle `complete:false` mit Meldung | Teilfehler je Bereich: jeder 2. Bereich scheitert (`details.scopes`, `details.libraries`, `details.folders`, `details.unreadableSpaces`) | Lauf mit 17 Fehlern |
 
@@ -138,6 +138,23 @@ Fixture-Bibliotheken je Quellart, Detailseite direkt aufrufbar: `library-filesys
 Ein neuer Bereich bekommt seine Szenarien, indem seine Mock-Handler `currentMockScenario()` aus
 `mockScenario.ts` abfragen und je Szenario andere Fixtures liefern; die Vorlage ist
 `frontend/src/features/library/mocks/sourceScenarioMock.ts`.
+
+## Mock-Profile
+
+`?mockProfile=<name>` wählt, wer angemeldet ist, und bleibt wie das Szenario im Tab. Quelle:
+`frontend/src/shared/mocks/mockProfile.ts`.
+
+| Profil | Angemeldet | Erreichbar wird |
+|---|---|---|
+| `admin` | Systemverwaltung (Vorgabe) | alles außer Revision |
+| `user` | Konto ohne Verwaltung | die Sicht ohne Bereich „Admin“ |
+| `auditor` | Rolle Revision | `/revision/rechtehistorie`, `/revision/verbindungsprotokoll`, `/revision/rollenantraege` |
+| `signed-out` | niemand; zwei Identitätsanbieter und lokale Konten mit Selbstregistrierung und Passwort-Rücksetzung | `/login`, `/register`, `/forgot-password`, `/set-password` |
+
+Der Einrichtungs-Assistent hängt nicht am Profil: `?mockInstallation=pending` öffnet ihn mit den
+Pflichtschritten, `?mockInstallation=embedding` mit allen optionalen Schritten; das Token der Mocks
+ist `opaa-installation-demo-0000000001`. Die laufende Chat-Antwort hält das Szenario `slow` fest:
+zwei Sekunden bis zum ersten Wort, danach Wort für Wort.
 
 ## capture.mjs
 

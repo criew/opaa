@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 
 /**
  * The error of one required wizard field: „Weiter“ stays active, and a missing answer shows its
- * message at the field and moves the focus into it (guidelines 5.14). `check` returns whether the
+ * message at the field and moves the focus into it (guidelines 5.15). `check` returns whether the
  * answer is there; the error clears as soon as a check passes or `clear` is called.
  */
 export function useFieldError<T extends HTMLElement = HTMLInputElement>(message: string) {

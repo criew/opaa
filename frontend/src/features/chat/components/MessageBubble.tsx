@@ -8,7 +8,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../types/chat'
 import type { ChatAttachmentRef } from '@/shared/api/types'
-import { blue, motion } from '@/shared/theme/tokens'
+import { blue, fontSize, iconSize, motion } from '@/shared/theme/tokens'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { AiAnswerMark } from './AiNotice'
 import { ChatAttachmentRefs } from './ChatAttachmentChips'
@@ -126,11 +126,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 justifyContent: 'flex-end',
                 gap: 0.5,
                 mb: 0.5,
-                fontSize: 12,
+                fontSize: fontSize.meta,
                 color: 'text.secondary',
               }}
             >
-              <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: 14 }} />
+              <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
               Prompt: {message.usedPromptTitle}
             </Typography>
           )}
@@ -157,12 +157,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 color: 'text.primary',
               })}
             >
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+              <Typography variant="body1" sx={{ fontSize: fontSize.title, whiteSpace: 'pre-wrap' }}>
                 {message.content}
               </Typography>
             </Box>
           ) : (
             <MarkdownRenderer
+              reading
               content={message.content}
               citations={citations}
               onCitationClick={handleCitationClick}
@@ -236,7 +237,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 mt: 1,
               }}
             >
-              <LockOutlinedIcon aria-hidden sx={{ fontSize: 16 }} />
+              <LockOutlinedIcon aria-hidden sx={{ fontSize: iconSize.sm }} />
               Private Quellen im Kontext: Diese Antwort wurde auch mit Ihren privaten Bibliotheken
               erstellt.
             </Typography>

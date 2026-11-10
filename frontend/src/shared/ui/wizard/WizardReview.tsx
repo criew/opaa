@@ -14,7 +14,7 @@ export interface WizardReviewEntry {
 
 /**
  * The step „Prüfen“ of every assistant: each answer in one row with „Ändern“ at a common right
- * edge (guidelines 5.14).
+ * edge (guidelines 5.15).
  */
 export default function WizardReview({ entries }: { entries: WizardReviewEntry[] }) {
   return (

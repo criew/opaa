@@ -12,13 +12,12 @@ import {
   getDocumentTemplateSettings,
   updateDocumentTemplateSettings,
 } from '../api/documentTemplateApi'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 function changedLine(settings: DocumentTemplateSettingsResponse): string | null {
   if (!settings.updatedAt) return null
-  const when = new Date(settings.updatedAt).toLocaleString('de-DE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
+  const when = formatDateTime(settings.updatedAt)
   return settings.updatedBy
     ? `Zuletzt geändert am ${when} von ${settings.updatedBy}.`
     : `Zuletzt geändert am ${when}.`
@@ -83,7 +82,7 @@ export default function DocumentTemplateSettingsSection() {
           {loadError}
         </Alert>
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Einstellung wird geladen …
         </Typography>
       ) : (
@@ -98,13 +97,13 @@ export default function DocumentTemplateSettingsSection() {
             }
             label="Vorlagen anbieten"
           />
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             {current.enabled
               ? 'Eingeschaltet: Wer das Anlegerecht „Vorlagen anlegen“ hat, legt Vorlagen an; der Katalog zeigt sie.'
               : 'Aus: Der Katalog zeigt keine Vorlagen, und niemand kann eine anlegen. Gespeicherte Vorlagen bleiben erhalten.'}
           </Typography>
           {changedLine(current) && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
               {changedLine(current)}
             </Typography>
           )}

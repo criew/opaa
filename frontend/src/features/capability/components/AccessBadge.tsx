@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined'
-import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { darkRoles, iconSize, lightRoles } from '@/shared/theme/tokens'
 import { outlinedBadgeSx } from '@/shared/ui/badgeStyles'
 import type { AccessLevel } from './capabilityAccess'
 
@@ -38,7 +38,7 @@ export default function AccessBadge({ tone, label }: { tone: AccessLevel; label:
         ...(tone === 'ADMIN_ONLY' && { borderStyle: 'dashed' }),
       }}
     >
-      <Icon aria-hidden="true" sx={{ fontSize: 14 }} />
+      <Icon aria-hidden="true" sx={{ fontSize: iconSize.xs }} />
       {label}
     </Box>
   )

@@ -12,8 +12,7 @@ import type { ChatSearchHit } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
 import HighlightedExcerpt from './HighlightedExcerpt'
 import MetaBadge from '@/shared/ui/MetaBadge'
-
-const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 /** The chat at the hit's message; a hit in the title alone opens the chat as usual. */
 function chatSearchHitPath(spaceId: string, hit: ChatSearchHit): string {
@@ -123,8 +122,7 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
                 </Stack>
                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.25 }}>
                   {placeOf(hit)}
-                  {hit.messageCreatedAt &&
-                    ` · ${dateTimeFormat.format(new Date(hit.messageCreatedAt))}`}
+                  {hit.messageCreatedAt && ` · ${formatDateTime(hit.messageCreatedAt)}`}
                 </Typography>
                 <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
                   <HighlightedExcerpt text={hit.excerpt} highlights={hit.highlights} />

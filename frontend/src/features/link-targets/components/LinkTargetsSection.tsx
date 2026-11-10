@@ -11,6 +11,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { updateLinkTargets } from '../api/linkTargetsApi'
+import { fontSize } from '@/shared/theme/tokens'
 
 /**
  * The allowed link targets of answers: links to the application's own address and to these origins
@@ -92,7 +93,7 @@ export default function LinkTargetsSection() {
           {loadError}
         </Alert>
       ) : origins === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Erlaubte Linkziele werden geladen …
         </Typography>
       ) : (

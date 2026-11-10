@@ -17,6 +17,7 @@ import { AccessBadge } from '@/features/capability'
 import { accessBadgeLabel, type Access } from '@/features/capability'
 import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { hostOf, type ProfileAttention } from './profileState'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface ProfileEntry {
   profile: ConnectionProfileResponse
@@ -32,12 +33,17 @@ interface OverviewProps {
   onOpen: (profileId: string) => void
 }
 
-const secondarySx = { fontSize: 12.5, color: 'text.secondary', mt: 0.25, pl: 1.75 } as const
+const secondarySx = {
+  fontSize: fontSize.meta,
+  color: 'text.secondary',
+  mt: 0.25,
+  pl: 1.75,
+} as const
 
 function ProfileCell({ entry }: { entry: ProfileEntry }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
         {entry.profile.name}
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
@@ -55,7 +61,7 @@ function ServerCell({ profile }: { profile: ConnectionProfileResponse }) {
       component="span"
       title={profile.serverUrl ?? undefined}
       sx={{
-        fontSize: 13,
+        fontSize: fontSize.text,
         display: 'block',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -70,7 +76,7 @@ function ServerCell({ profile }: { profile: ConnectionProfileResponse }) {
 function AccessCell({ access }: { access: Access | null }) {
   if (!access) {
     return (
-      <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         nicht geladen
       </Typography>
     )
@@ -81,7 +87,7 @@ function AccessCell({ access }: { access: Access | null }) {
 function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
   if (!attention) {
     return (
-      <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         <span aria-hidden="true">—</span>
         <span style={visuallyHidden}>nichts zu tun</span>
       </Typography>

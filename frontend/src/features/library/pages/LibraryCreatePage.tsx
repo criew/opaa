@@ -79,6 +79,7 @@ import {
 import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -566,7 +567,7 @@ export default function LibraryCreatePage() {
       onCreate={() => void handleCreate()}
     >
       {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           Quellarten werden geladen …
         </Typography>
       )}
@@ -600,7 +601,7 @@ export default function LibraryCreatePage() {
               value: type,
               label: displayNameOf(type),
               description: documentSourceTypeDescription(type),
-              icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+              icon: <SourceTypeIcon sourceType={type} fontSize={iconSize.lg} />,
               disabledReason: missingFor(type),
             }))}
           />

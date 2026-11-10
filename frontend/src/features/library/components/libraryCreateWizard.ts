@@ -4,7 +4,7 @@ import { readConsentIntent, type SourceConsentIntent } from './sourceConsent'
 import { sourceRegistration } from './sources/registry'
 
 /**
- * The wizard's steps, one word each (guidelines 5.14): the choice of type, the master data, the
+ * The wizard's steps, one word each (guidelines 5.15): the choice of type, the master data, the
  * source, the sharing and a last check of every answer before the library is created. An upload
  * library has no source step, a private one no sharing step: only its owner ever reads it.
  */

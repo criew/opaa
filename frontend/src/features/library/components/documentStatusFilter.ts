@@ -1,6 +1,7 @@
 import type { DocumentStatus } from '@/shared/api/types'
 import type { DocumentStatusCounts } from '../stores/documentStore'
 import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 const FILTER_STATUSES: readonly DocumentStatus[] = ['FAILED', 'PENDING']
 
@@ -25,7 +26,7 @@ export function statusFilterOptions(
   ).map((status) => [
     status,
     counts
-      ? `${DOCUMENT_STATUS_WORDS[status]} (${counts[status].toLocaleString('de-DE')})`
+      ? `${DOCUMENT_STATUS_WORDS[status]} (${formatNumber(counts[status])})`
       : DOCUMENT_STATUS_WORDS[status],
   ])
 }

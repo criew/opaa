@@ -23,7 +23,7 @@ import {
   passwordPolicyText,
 } from '@/shared/session/authMessages'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */
@@ -109,10 +109,10 @@ export default function ChangePasswordPage() {
     return (
       <AuthLayout>
         <PageHeading title="Passwort ändern" variant="h5" />
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 1 }}>
           Das Passwort dieses Kontos verwaltet Ihr Identitätsanbieter. Ändern Sie es dort.
         </Typography>
-        <Typography sx={{ mt: 3, fontSize: 13 }}>
+        <Typography sx={{ mt: 3, fontSize: fontSize.text }}>
           <Link component={RouterLink} to={AFTER_SIGN_IN_ROUTE}>
             Zurück zur Anwendung
           </Link>
@@ -143,7 +143,7 @@ export default function ChangePasswordPage() {
         sx={{ mt: 3 }}
       >
         <SectionEyebrow id="change-password-title">Neues Passwort wählen</SectionEyebrow>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           {passwordPolicyText(minLength)}
         </Typography>
         <Stack spacing={2}>
@@ -190,12 +190,12 @@ export default function ChangePasswordPage() {
       </Box>
       {/* A forced change locks every other route; without this the only way out would be closing
           the browser. */}
-      <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
+      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
         <Link
           component="button"
           type="button"
           onClick={() => void logout()}
-          sx={{ color: 'text.secondary', fontSize: 12 }}
+          sx={{ color: 'text.secondary', fontSize: fontSize.meta }}
         >
           Abmelden
         </Link>

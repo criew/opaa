@@ -4,7 +4,7 @@ export const STEP_MASTER_DATA = 'Stammdaten'
 export const STEP_REVIEW = 'Prüfen'
 
 /**
- * The steps of an assistant (guidelines 5.14): one word each, at least three, the first
+ * The steps of an assistant (guidelines 5.15): one word each, at least three, the first
  * „Stammdaten“ - optionally after a choice of type such as „Quellart“ - and the last „Prüfen“.
  * What needs fewer steps is a dialog.
  */

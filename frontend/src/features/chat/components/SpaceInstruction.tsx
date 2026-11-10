@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Collapse from '@mui/material/Collapse'
 import Typography from '@mui/material/Typography'
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SpaceInstructionProps {
   /** The instruction of the chat's space to the model. */
@@ -50,7 +51,7 @@ export default function SpaceInstruction({ text }: SpaceInstructionProps) {
           onKeyDown={handleEscape}
           sx={{ pt: 2, pb: 0.5 }}
         >
-          <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600 }}>
+          <Typography component="h2" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
             Anweisung des Space
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>

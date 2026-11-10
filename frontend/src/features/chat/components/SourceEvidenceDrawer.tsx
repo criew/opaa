@@ -33,7 +33,8 @@ import { downloadDocumentContent, hasOwnOriginal } from '@/features/library'
 import type { OpenableDocument } from '@/features/library'
 import { notify } from '@/shared/stores/notificationStore'
 import { downloadChatAttachment } from '../api/chatAttachmentApi'
-import { focusRingWidthPx, fontFamily } from '@/shared/theme/tokens'
+import { focusRingWidthPx, fontFamily, fontSize, iconSize } from '@/shared/theme/tokens'
+import { formatDate, formatDateTime } from '@/shared/utils/formatDate'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -94,7 +95,7 @@ interface EvidenceDoc {
 }
 
 function formatAnsweredAt(answeredAt: Date): string {
-  return `${answeredAt.toLocaleDateString('de-DE', { dateStyle: 'medium' })}, ${answeredAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+  return formatDateTime(answeredAt)
 }
 
 /** What happens to a source that is not updated, by the reason the backend reports. */
@@ -119,9 +120,7 @@ const FREEZE_REASONS: Record<SourceBlockReason, string> = {
  * and who is in charge - all three from the backend.
  */
 function freezeNotice(freeze: SourceFreeze): string {
-  const date = freeze.asOf
-    ? new Date(freeze.asOf).toLocaleDateString('de-DE', { dateStyle: 'medium' })
-    : 'unbekannt'
+  const date = freeze.asOf ? formatDate(freeze.asOf) : 'unbekannt'
   return `Stand vom ${date} – ${FREEZE_REASONS[freeze.block.reason]} (zuständig: ${freeze.block.responsible})`
 }
 
@@ -316,20 +315,20 @@ export default function SourceEvidenceDrawer({
           borderColor: 'divider',
         }}
       >
-        <Typography sx={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600 }}>
+        <Typography sx={{ flex: 1, minWidth: 0, fontSize: fontSize.title, fontWeight: 600 }}>
           Belege dieser Antwort
         </Typography>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">
-          <CloseIcon sx={{ fontSize: 18 }} />
+          <CloseIcon sx={{ fontSize: iconSize.md }} />
         </IconButton>
       </Box>
 
       {uncoveredSubQueries.length > 0 && (
-        <Box data-testid="uncovered-sub-queries" sx={{ px: 2.5, pt: 1.5, fontSize: 12.5 }}>
+        <Box data-testid="uncovered-sub-queries" sx={{ px: 2.5, pt: 1.5, fontSize: fontSize.meta }}>
           <Typography
             id={`${messageId}-uncovered`}
             component="h3"
-            sx={{ fontSize: 12.5, fontWeight: 600 }}
+            sx={{ fontSize: fontSize.meta, fontWeight: 600 }}
           >
             Ohne Fundstelle
           </Typography>
@@ -356,7 +355,7 @@ export default function SourceEvidenceDrawer({
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16 }} />
+                  <SearchIcon sx={{ fontSize: iconSize.sm }} />
                 </InputAdornment>
               ),
             },
@@ -367,7 +366,7 @@ export default function SourceEvidenceDrawer({
 
       <Box id={listId} sx={{ flex: 1, overflowY: 'auto', px: 2.5, pb: 2 }}>
         {visibleDocs.length === 0 ? (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', py: 2 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', py: 2 }}>
             {searching || hasCited
               ? 'Kein Beleg passt zur Suche.'
               : 'Diese Antwort zitiert keinen Beleg.'}
@@ -414,7 +413,7 @@ export default function SourceEvidenceDrawer({
                       sx={{
                         flex: 'none',
                         fontFamily: fontFamily.mono,
-                        fontSize: 10.5,
+                        fontSize: fontSize.label,
                         fontWeight: 600,
                         color: 'primary.main',
                       }}
@@ -428,7 +427,7 @@ export default function SourceEvidenceDrawer({
                     component="span"
                     noWrap
                     sx={{
-                      fontSize: 13,
+                      fontSize: fontSize.text,
                       fontWeight: 500,
                       color: doc.cited ? 'text.primary' : 'text.secondary',
                     }}
@@ -436,7 +435,10 @@ export default function SourceEvidenceDrawer({
                     {doc.fileName}
                   </Typography>
                   {!doc.cited && (
-                    <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                    <Typography
+                      component="span"
+                      sx={{ fontSize: fontSize.label, color: 'text.secondary' }}
+                    >
                       geprüft, nicht zitiert
                     </Typography>
                   )}
@@ -449,9 +451,12 @@ export default function SourceEvidenceDrawer({
                     >
                       <LockOutlinedIcon
                         aria-hidden
-                        sx={{ fontSize: 12, color: 'text.secondary' }}
+                        sx={{ fontSize: iconSize.xs, color: 'text.secondary' }}
                       />
-                      <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: fontSize.label, color: 'text.secondary' }}
+                      >
                         Private Quelle
                       </Typography>
                     </Box>
@@ -463,8 +468,13 @@ export default function SourceEvidenceDrawer({
                       component="span"
                       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
                     >
-                      <ReportProblemOutlinedIcon sx={{ fontSize: 13, color: 'error.main' }} />
-                      <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      <ReportProblemOutlinedIcon
+                        sx={{ fontSize: iconSize.xs, color: 'error.main' }}
+                      />
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: fontSize.label, color: 'text.secondary' }}
+                      >
                         Beleg nicht bestätigt
                       </Typography>
                     </Box>
@@ -475,7 +485,12 @@ export default function SourceEvidenceDrawer({
                   <Typography
                     component="span"
                     data-testid="source-location"
-                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                    sx={{
+                      display: 'block',
+                      fontSize: fontSize.meta,
+                      color: 'text.secondary',
+                      mt: 0.25,
+                    }}
                   >
                     {doc.locations.join(' · ')}
                   </Typography>
@@ -488,7 +503,12 @@ export default function SourceEvidenceDrawer({
                     component="span"
                     data-testid="source-filter-match"
                     aria-label="Metadatenfilter: ohne Angabe im gefilterten Feld"
-                    sx={{ display: 'block', fontSize: 11, color: 'text.secondary', mt: 0.25 }}
+                    sx={{
+                      display: 'block',
+                      fontSize: fontSize.label,
+                      color: 'text.secondary',
+                      mt: 0.25,
+                    }}
                   >
                     {doc.filterMatchLabel}
                   </Typography>
@@ -506,7 +526,7 @@ export default function SourceEvidenceDrawer({
                     <Typography
                       component="span"
                       data-testid="source-frozen"
-                      sx={{ fontSize: 11.5, color: 'warning.main', fontWeight: 600 }}
+                      sx={{ fontSize: fontSize.meta, color: 'warning.main', fontWeight: 600 }}
                     >
                       {freezeNotice(doc.freeze)}
                     </Typography>
@@ -517,7 +537,7 @@ export default function SourceEvidenceDrawer({
                     <Typography
                       component="span"
                       data-testid="source-attachment"
-                      sx={{ fontSize: 11.5, color: 'text.secondary', fontWeight: 600 }}
+                      sx={{ fontSize: fontSize.meta, color: 'text.secondary', fontWeight: 600 }}
                     >
                       Anhang
                     </Typography>
@@ -529,7 +549,7 @@ export default function SourceEvidenceDrawer({
                       underline="hover"
                       disabled={downloading === doc.documentId}
                       onClick={() => void handleDownloadOriginal(doc)}
-                      sx={{ fontSize: 11.5 }}
+                      sx={{ fontSize: fontSize.meta }}
                     >
                       Herunterladen
                     </Link>
@@ -540,7 +560,7 @@ export default function SourceEvidenceDrawer({
                       type="button"
                       underline="hover"
                       onClick={() => void handleOpenLocalOriginal(doc)}
-                      sx={{ fontSize: 11.5 }}
+                      sx={{ fontSize: fontSize.meta }}
                     >
                       Dokument öffnen
                     </Link>
@@ -557,7 +577,7 @@ export default function SourceEvidenceDrawer({
                         underline="hover"
                         disabled={downloading === doc.documentId}
                         onClick={() => void handleDownloadOriginal(doc)}
-                        sx={{ fontSize: 11.5 }}
+                        sx={{ fontSize: fontSize.meta }}
                       >
                         Herunterladen
                       </Link>
@@ -582,14 +602,14 @@ export default function SourceEvidenceDrawer({
               alignItems: 'center',
               gap: 0.25,
               mt: 1.5,
-              fontSize: 12.5,
+              fontSize: fontSize.meta,
             }}
           >
             Nicht zitierte anzeigen
             <ExpandMoreIcon
               aria-hidden
               sx={{
-                fontSize: 16,
+                fontSize: iconSize.sm,
                 transform: showUncited ? 'rotate(180deg)' : 'none',
                 '@media (prefers-reduced-motion: no-preference)': {
                   transition: 'transform 120ms',
@@ -604,7 +624,7 @@ export default function SourceEvidenceDrawer({
       </Box>
 
       <Box sx={{ px: 2.5, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.label, color: 'text.secondary' }}>
           Stand der Antwort: {formatAnsweredAt(answeredAt)}
         </Typography>
       </Box>

@@ -18,6 +18,7 @@ import {
 } from '@/features/principal'
 import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
+import { fontSize } from '@/shared/theme/tokens'
 
 const AUDIT_NOTICE =
   'Ruft die Systemverwaltung die Mitgliederliste ab, wird das im Nachweisprotokoll festgehalten.'
@@ -180,7 +181,7 @@ function GroupMembersDialogContent({
                 />
               </Box>
             ) : null}
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', pt: 1 }}>
               {isInternal ? AUDIT_NOTICE : PROVIDER_AUDIT_NOTICE}
             </Typography>
           </Stack>

@@ -16,6 +16,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -224,7 +225,7 @@ export default function FullSyncRhythmSection() {
           {loadError}
         </Alert>
       ) : rhythms === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Vollabgleich-Rhythmus wird geladen …
         </Typography>
       ) : (

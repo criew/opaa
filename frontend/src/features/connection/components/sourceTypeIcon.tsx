@@ -2,6 +2,7 @@ import ExtensionIcon from '@mui/icons-material/Extension'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceTypeEntry } from './sourceTypeDirectory'
+import { iconSize } from '@/shared/theme/tokens'
 
 /**
  * The one icon per source type: the detail page's header and the wizard's tile
@@ -11,7 +12,7 @@ import { sourceTypeEntry } from './sourceTypeDirectory'
  */
 export default function SourceTypeIcon({
   sourceType,
-  fontSize = 24,
+  fontSize = iconSize.lg,
 }: {
   sourceType: SourceTypeKey | undefined
   fontSize?: number

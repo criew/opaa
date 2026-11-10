@@ -1,4 +1,5 @@
 import type { AssetRole, Capability, SpaceRole } from '../api/types'
+import { formatNumber } from './formatDate'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
   MEMBER: 'Mitglied',
@@ -37,7 +38,7 @@ export function formatFileSize(bytes: number | null | undefined): string {
     value /= 1024
     unitIndex += 1
   }
-  return `${value.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[unitIndex]}`
+  return `${formatNumber(value, { maximumFractionDigits: 1 })} ${units[unitIndex]}`
 }
 
 /**

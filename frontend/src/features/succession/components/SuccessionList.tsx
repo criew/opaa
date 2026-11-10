@@ -8,6 +8,7 @@ import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
+import { fontSize } from '@/shared/theme/tokens'
 
 const PAGE_SIZE = 50
 
@@ -17,10 +18,10 @@ function EmptyState({ text }: { text: SuccessionTabText }) {
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', py: 1 }}>
       <TaskAltOutlinedIcon aria-hidden="true" sx={{ color: 'text.secondary', mt: 0.25 }} />
       <Box>
-        <Typography sx={{ fontSize: 14.5, fontWeight: 500 }}>
+        <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
           Zurzeit ist hier nichts offen.
         </Typography>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.25 }}>
           {text.emptyExample}
         </Typography>
       </Box>
@@ -77,8 +78,8 @@ export default function SuccessionList({
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 14, maxWidth: 760 }}>{text.intro}</Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1, mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, maxWidth: 760 }}>{text.intro}</Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, mb: 1.5 }}>
         {data.totalElements === 1 ? '1 Eintrag' : `${data.totalElements} Einträge`}, die ältesten
         zuerst.
       </Typography>

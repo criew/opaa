@@ -12,6 +12,7 @@ import { AssetOwnerFields } from '@/features/asset'
 import { AssetRightsFields } from '@/features/asset'
 import type { PendingGrant } from '@/features/asset'
 import type { useMyGroups } from '@/features/principal'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface CreateSharingStepProps {
   ownerType: AssetOwnerType
@@ -85,7 +86,7 @@ export default function CreateSharingStep({
             </FormHelperText>
           </FormControl>
         ) : (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Für die Verbindung der Quelle sind Sie verantwortlich: Sie erhalten die Warnung, bevor
             die Zustimmung beim Anbieter endet, und die Nachricht, wenn sie endet, und können die
             Quelle neu verbinden.

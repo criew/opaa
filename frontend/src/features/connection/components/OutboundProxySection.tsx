@@ -12,6 +12,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** One entry per line; blank lines drop out. */
 function entriesOf(text: string): string[] {
@@ -125,7 +126,7 @@ export default function OutboundProxySection() {
           {loadError}
         </Alert>
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Ausgangsproxy wird geladen …
         </Typography>
       ) : (
@@ -168,7 +169,7 @@ export default function OutboundProxySection() {
                 'Ein Eintrag je Zeile: ein Hostname (gilt auch für alle Subdomänen), eine IP-Adresse oder ein Netzbereich wie 10.0.0.0/8. Interne Ziele gehören hierher.'
               }
             />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Die Ausnahmeliste gibt keine internen Adressen frei. Welche internen Ziele OPAA
               überhaupt erreichen darf, legt der Betrieb über
               OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST fest.

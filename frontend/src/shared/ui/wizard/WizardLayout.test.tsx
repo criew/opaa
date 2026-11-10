@@ -30,7 +30,7 @@ function renderLayout(props: Partial<Parameters<typeof WizardLayout>[0]> = {}) {
   return { ...view, handlers }
 }
 
-describe('WizardLayout (guidelines 5.14)', () => {
+describe('WizardLayout (guidelines 5.15)', () => {
   it('names the object above and the step as the title, at the assistant width', () => {
     renderLayout()
 

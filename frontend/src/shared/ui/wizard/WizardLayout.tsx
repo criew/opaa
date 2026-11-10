@@ -3,12 +3,13 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '../../theme/tokens'
 import PageHeading from '../a11y/PageHeading'
 import BusyButton from '../a11y/BusyButton'
 import WizardStepBar from './WizardStepBar'
 import type { WizardSteps } from './wizardSteps'
 
-/** The content width of every assistant (guidelines 5.14); fields span all of it. */
+/** The content width of every assistant (guidelines 5.15); fields span all of it. */
 export const WIZARD_WIDTH = 720
 
 interface WizardLayoutProps {
@@ -41,7 +42,7 @@ interface WizardLayoutProps {
 }
 
 /**
- * The frame of every creation assistant (guidelines 5.14): the object above the step name as
+ * The frame of every creation assistant (guidelines 5.15): the object above the step name as
  * title, the step bar, the step's fields at {@link WIZARD_WIDTH} and the footer „Abbrechen“ ·
  * „Zurück“ · „Weiter“, in the last step „Anlegen“. Neither „Weiter“ nor „Anlegen“ is ever
  * disabled: a missing answer is reported at its field, a missing right by the hint „Anlegen“
@@ -92,7 +93,13 @@ export default function WizardLayout({
           variant="body2"
           sx={{ color: 'text.secondary', mb: 0.5 }}
         />
-        <Typography ref={titleRef} component="h2" variant="h2" tabIndex={-1} sx={{ mb: 3 }}>
+        <Typography
+          ref={titleRef}
+          component="h2"
+          variant="h2"
+          tabIndex={-1}
+          sx={{ fontSize: fontSize.wizardTitle, mb: 3 }}
+        >
           {step}
         </Typography>
         <WizardStepBar steps={steps} active={activeStep} />

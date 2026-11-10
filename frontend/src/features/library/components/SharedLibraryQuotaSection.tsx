@@ -13,6 +13,8 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 /** The limit in force in words; 0 is none. */
 function currentText(quota: SharedLibraryQuotaResponse): string {
@@ -218,7 +220,7 @@ export default function SharedLibraryQuotaSection() {
           {loadError}
         </Alert>
       ) : quota === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Speicherkontingent wird geladen …
         </Typography>
       ) : (
@@ -235,7 +237,7 @@ export default function SharedLibraryQuotaSection() {
             <Alert severity="warning" sx={{ mt: 2 }} data-testid="shared-library-quota-over">
               {quota.librariesOverQuota === 1
                 ? `1 geteilte Bibliothek belegt schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behält alle Dokumente und nimmt erst wieder etwas auf, wenn sie darunter liegt.`
-                : `${quota.librariesOverQuota.toLocaleString('de-DE')} geteilte Bibliotheken belegen schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behalten alle Dokumente und nehmen erst wieder etwas auf, wenn sie darunter liegen.`}
+                : `${formatNumber(quota.librariesOverQuota)} geteilte Bibliotheken belegen schon mehr als ${formatFileSize(quota.quotaBytes)}. Sie behalten alle Dokumente und nehmen erst wieder etwas auf, wenn sie darunter liegen.`}
             </Alert>
           )}
         </>
