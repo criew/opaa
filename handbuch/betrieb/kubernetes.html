@@ -3085,6 +3085,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#metriken-und-alarme" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4896,6 +4907,17 @@
     <span class="md-ellipsis">
       
         Netz und Eingang
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracing
       
     </span>
   </a>
@@ -7077,6 +7099,43 @@ Chart selbst auf den Backend-Service.</p>
 <td>leer</td>
 <td>—</td>
 <td>Hostnamen, Annotationen, Timeouts der Route, etwa <code>request: 600s</code>; nicht kürzer als <code>frontend.backendReadTimeout</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Wert</th>
+<th>Vorgabe</th>
+<th>Setzt</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tracing.enabled</code></td>
+<td><code>false</code></td>
+<td><code>OPAA_TRACING_ENABLED</code></td>
+<td>sendet Spans an einen Collector (<a href="ueberwachung-und-fehlerbehebung.html#korrelation-und-tracing">Korrelation und Tracing</a>)</td>
+</tr>
+<tr>
+<td><code>tracing.otlpEndpoint</code></td>
+<td>leer, Pflicht bei <code>enabled</code></td>
+<td><code>OPAA_TRACING_OTLP_ENDPOINT</code></td>
+<td>Adresse des Collectors mit Pfad</td>
+</tr>
+<tr>
+<td><code>tracing.samplingProbability</code></td>
+<td>leer, die Vorgabe der Anwendung</td>
+<td><code>OPAA_TRACING_SAMPLING_PROBABILITY</code></td>
+<td>Anteil der erfassten Anfragen</td>
+</tr>
+<tr>
+<td><code>tracing.egress</code></td>
+<td>leer</td>
+<td>—</td>
+<td>Ausgangsregeln des Backends zum Collector, solange das Tracing an ist und <code>networkPolicy.egress.enabled</code> gilt</td>
 </tr>
 </tbody>
 </table>

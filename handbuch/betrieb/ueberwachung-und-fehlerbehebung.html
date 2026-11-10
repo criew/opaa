@@ -3099,6 +3099,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#korrelation-und-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Korrelation und Tracing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnose-ohne-shell" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3899,6 +3910,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#korrelation-und-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Korrelation und Tracing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnose-ohne-shell" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4268,6 +4290,81 @@ aber ohne die Person, die sie erteilt hat.</p>
 Den Weg zum Empfänger öffnet eine Regel unter <code>networkPolicy.egress.backendRules</code>; das Zertifikat
 einer internen Zertifizierungsstelle kommt über <code>extraCACertificates</code> in den Vertrauensspeicher
 (<a href="kubernetes.html">Kubernetes</a>). Nicht gebaut ist ein Client-Zertifikat für TLS.</p>
+<h2 id="korrelation-und-tracing">Korrelation und Tracing<a class="headerlink" href="#korrelation-und-tracing" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Beispiel.</strong> Eine Person meldet „Beim Speichern kam ein Fehler“. Die Oberfläche zeigt die
+Kennung der Anfrage nicht; die Person liest sie in den Entwicklerwerkzeugen des Browsers (Reiter
+Netzwerk, Antwort-Header <code>X-Request-Id</code> oder Feld <code>requestId</code> der Fehlerantwort) und meldet sie
+mit. Der Betrieb sucht diese Kennung im Zugriffslog des Frontends und im Log des Backends und
+findet beide Zeilen der Anfrage, auch die eines Hintergrundlaufs, den sie angestoßen hat.</p>
+</blockquote>
+<ul>
+<li><strong>Request-ID:</strong> Jede Anfrage bekommt eine Kennung aus 32 Hexadezimalzeichen. Das Frontend
+  übernimmt eine mitgeschickte Kennung (<code>X-Request-Id</code>) nur, wenn sie 8 bis 64 Zeichen aus
+  Buchstaben, Ziffern, <code>-</code> und <code>_</code> hat; jede andere ersetzt es, ebenso das Backend bei einem Aufruf
+  ohne Frontend. Dieselbe Kennung steht am Ende der Zeile im Zugriffslog des Frontends, in jeder
+  Logzeile des Backends zur Anfrage, auch aus Hintergrundaufgaben, die sie startet, im
+  Antwort-Header <code>X-Request-Id</code> und im Feld <code>requestId</code> jeder Fehlerantwort. Logzeilen einzelner
+  Hilfs-Threads, etwa der Zeitüberwachung von Modellaufrufen oder des Mailversands, tragen sie
+  nicht.</li>
+<li><strong>Im Log:</strong> Im Textformat steht sie in eckigen Klammern vor dem Loggernamen, in <code>ecs</code>, <code>logstash</code>
+  und <code>gelf</code> als Feld <code>requestId</code>. Dort tragen Logzeilen eines Indexierungslaufs zusätzlich dessen
+  Kennung (<code>indexingRunId</code>), auch ein geplanter Lauf ohne Anfrage.</li>
+<li><strong>Im Revisionsprotokoll:</strong> Ein Eintrag ohne eigene Vorgangskennung trägt die Request-ID als
+  <code>request:&lt;id&gt;</code> in der Korrelationsangabe. Die Ausleitung an ein Sicherheitsmonitoring sendet sie
+  nicht. Schickt ein Aufrufer dieselbe gültige Kennung mehrfach, erscheinen Einträge verschiedener
+  Anfragen in der Suche nach Vorgang zusammen.</li>
+<li><strong>Personenbeziehbar über Verknüpfung:</strong> Für sich nennt die Kennung niemanden. Das Zugriffslog
+  enthält aber die Client-Adresse, manche Logzeilen des Backends die Kennung eines Kontos und das
+  Revisionsprotokoll die handelnde Person; über die Request-ID lassen sich diese Zeilen verbinden.
+  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht OPAA; solange das
+  Zugriffslog liegt, führt jeder Revisionseintrag über die Request-ID zur Client-Adresse. Die
+  Muster-Dienstvereinbarung lässt die Verknüpfung nur zur Fehlerbehebung an einer einzelnen
+  gemeldeten Anfrage und in der anlassbezogenen Klärung zu; das Revisionsprotokoll wird nur in der
+  Klärung einbezogen.</li>
+<li><strong>Tracing</strong>, ab Werk aus: Mit <code>OPAA_TRACING_ENABLED=true</code> sendet das Backend Spans über OTLP/HTTP
+  an einen Collector (<code>OPAA_TRACING_OTLP_ENDPOINT</code>, Pflicht, sonst bricht der Start ab), über den
+  <a href="netz-und-sicherheit.html#ausgangsproxy">Ausgangsproxy</a>, falls einer eingerichtet ist. Ausgewählt
+  wird nur ein kleiner Teil der Anfragen (<code>OPAA_TRACING_SAMPLING_PROBABILITY</code>). Einen mitgeschickten
+  <code>traceparent</code> verwerfen Frontend und Backend, die Auswahl trifft OPAA über eine selbst erzeugte
+  Trace-ID. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle, Quellen oder
+  Mailserver trägt einen <code>traceparent</code>, und keine Trace-ID erscheint in den Metriken. Ist das
+  Tracing aus, verlässt nichts die Installation.</li>
+<li><strong>Inhalt eines Spans:</strong> Name, Dauer, Methode, Routenmuster mit Platzhaltern statt IDs, Status,
+  Art des Fehlers, Modell und Tokenzahlen eines Modellaufrufs, Art der Datenbankoperation. Nicht
+  enthalten sind vollständige URL mit Parametern, Konto, SQL-Anweisung, Prompt, Antwort,
+  Fehlermeldung und Ereignisse. Den Aufruf <code>PUT /api/v1/me/quick-tour-hint</code> erfasst kein Span.</li>
+<li><strong>Collector:</strong> Er erhält die Trace-ID, die in den Formaten <code>ecs</code>, <code>logstash</code> und <code>gelf</code> auch in
+  den Logzeilen steht, und ist damit ein weiterer Zugriffsweg auf die Verknüpfung. Zugriff und Aufbewahrung regelt der Betrieb dort wie beim Log.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Standard</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OPAA_TRACING_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Export der Spans ein</td>
+</tr>
+<tr>
+<td><code>OPAA_TRACING_OTLP_ENDPOINT</code></td>
+<td>—</td>
+<td>Adresse des Collectors mit Pfad, etwa <code>http://otel-collector.monitoring:4318/v1/traces</code></td>
+</tr>
+<tr>
+<td><code>OPAA_TRACING_SAMPLING_PROBABILITY</code></td>
+<td><code>0.05</code></td>
+<td>Anteil der erfassten Anfragen, 0.0 bis 1.0</td>
+</tr>
+</tbody>
+</table>
+<p>Unter Kubernetes stehen die drei Werte unter <code>tracing</code> im Helm-Chart; <code>tracing.egress</code> öffnet den
+Weg zum Collector, solange das Tracing an ist (<a href="kubernetes.html">Kubernetes</a>).</p>
 <h2 id="diagnose-ohne-shell">Diagnose ohne Shell<a class="headerlink" href="#diagnose-ohne-shell" title="Permanent link">&para;</a></h2>
 <p>Actuator-Pfade sind nur über den Management-Port erreichbar, nicht über das Frontend. Unter Docker
 Compose ist das <code>localhost:8082</code> auf dem Host (<code>OPAA_BACKEND_MANAGEMENT_PORT</code>), unter Kubernetes

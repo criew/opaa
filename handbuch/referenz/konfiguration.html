@@ -6035,6 +6035,30 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Einträge je Zustellung höchstens</td>
 </tr>
 <tr>
+<td><strong>Tracing</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>OPAA_TRACING_ENABLED</code></td>
+<td><code>false</code></td>
+<td>nicht gesetzt (auskommentiert)</td>
+<td>Sendet Spans ohne Inhalte über OTLP/HTTP an einen Collector, über den Ausgangsproxy, falls einer eingerichtet ist; eingeschaltet ohne <code>OPAA_TRACING_OTLP_ENDPOINT</code> bricht der Start ab (siehe <a href="../betrieb/ueberwachung-und-fehlerbehebung.html#korrelation-und-tracing">„Korrelation und Tracing“</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_TRACING_OTLP_ENDPOINT</code></td>
+<td>— (leer)</td>
+<td>nicht gesetzt (auskommentiert)</td>
+<td>Adresse des Collectors mit Schema und Pfad, etwa <code>http://otel-collector.monitoring:4318/v1/traces</code></td>
+</tr>
+<tr>
+<td><code>OPAA_TRACING_SAMPLING_PROBABILITY</code></td>
+<td><code>0.05</code></td>
+<td>nicht gesetzt (auskommentiert)</td>
+<td>Anteil der Anfragen, deren Spans erfasst werden, 0.0 bis 1.0; Frontend und Backend verwerfen einen mitgeschickten <code>traceparent</code>, die Auswahl trifft OPAA über eine selbst erzeugte Trace-ID</td>
+</tr>
+<tr>
 <td><strong>E-Mail-Versand</strong></td>
 <td></td>
 <td></td>
