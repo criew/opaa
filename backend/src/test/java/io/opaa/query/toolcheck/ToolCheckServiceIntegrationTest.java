@@ -247,6 +247,9 @@ class ToolCheckServiceIntegrationTest {
         .perform(get(path + "/" + done.check().getId() + "/report"))
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith("text/markdown"))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(
+            header().string("Content-Security-Policy", org.hamcrest.Matchers.startsWith("sandbox")))
         .andExpect(
             header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".md")))
         .andExpect(content().string(org.hamcrest.Matchers.containsString(done.check().getRunId())));

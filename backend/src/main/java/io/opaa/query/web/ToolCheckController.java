@@ -47,13 +47,19 @@ public class ToolCheckController {
     return ToolCheckResponseMapper.toResponse(service.latest(modelId));
   }
 
+  /**
+   * The report as a download. It quotes model answers verbatim, so it goes out as bytes with {@code
+   * nosniff} and a sandboxing policy: a browser never renders it as a page of this origin.
+   */
   @GetMapping("/{checkId}/report")
-  public ResponseEntity<String> getLlmModelToolCheckReport(
+  public ResponseEntity<byte[]> getLlmModelToolCheckReport(
       @PathVariable UUID modelId, @PathVariable UUID checkId) {
     return ResponseEntity.ok()
         .contentType(new MediaType(MARKDOWN, StandardCharsets.UTF_8))
         .header(
             "Content-Disposition", "attachment; filename=\"werkzeugpruefung-" + checkId + ".md\"")
-        .body(service.reportMarkdown(modelId, checkId));
+        .header("X-Content-Type-Options", "nosniff")
+        .header("Content-Security-Policy", "sandbox; default-src 'none'")
+        .body(service.reportMarkdown(modelId, checkId).getBytes(StandardCharsets.UTF_8));
   }
 }
