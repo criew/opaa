@@ -111,6 +111,11 @@ class ModularArchitectureTest {
     ARCHITECTURE.llmRolesDependOnlyOnTheScaffold().check(mainClasses);
   }
 
+  @Test
+  void onlyTheAdministrationWritesTheRoleRows() {
+    ARCHITECTURE.onlyTheAdministrationWritesTheRoleRows().check(mainClasses);
+  }
+
   /** Guards the premise of the llm rule: every package it lists still has classes. */
   @Test
   void everyListedLlmPackageHasClasses() {

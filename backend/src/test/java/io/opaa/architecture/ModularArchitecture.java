@@ -268,6 +268,16 @@ public final class ModularArchitecture {
    */
   static final List<String> LLM_ACROSS_ROLES = List.of("llm.administration");
 
+  /** The stored row of an optional model role, relative to the root. */
+  static final String OPTIONAL_ROLE_SETTINGS = "llm.OptionalRoleSettings";
+
+  /** The methods that change the row of an optional model role. */
+  static final Set<String> ROLE_ROW_WRITERS =
+      Set.of("replaceEndpoint", "replaceOwn", "replaceRealtime");
+
+  /** The only package that creates or changes the row of an optional model role. */
+  static final String ROLE_ROW_ADMINISTRATION = "llm.administration";
+
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036,
    * Entscheidung 5): only rights, which stores the scope, and connections, which decides it, name
@@ -1081,6 +1091,36 @@ public final class ModularArchitecture {
 
   private static boolean isLlmPackage(String relative) {
     return relative.equals(LLM) || relative.startsWith(LLM + ".");
+  }
+
+  /**
+   * Creating a row of {@link #OPTIONAL_ROLE_SETTINGS} with a timestamp, or calling one of {@link
+   * #ROLE_ROW_WRITERS} on it, also by reference, only in {@link #ROLE_ROW_ADMINISTRATION} and in
+   * the row classes themselves; the row is public for that package, not for the roles.
+   */
+  ArchRule onlyTheAdministrationWritesTheRoleRows() {
+    String rowType = root + "." + OPTIONAL_ROLE_SETTINGS;
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + ROLE_ROW_ADMINISTRATION + " and the row classes",
+                javaClass ->
+                    !ROLE_ROW_ADMINISTRATION.equals(relative(javaClass.getPackageName()))
+                        && !topLevel(javaClass).isAssignableTo(rowType)))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "create or change the row of an optional model role",
+                access ->
+                    access.getTargetOwner().isAssignableTo(rowType)
+                        && (ROLE_ROW_WRITERS.contains(access.getName())
+                            || (access.getName().equals("<init>")
+                                && access.getTarget() instanceof CodeUnitAccessTarget target
+                                && !target.getRawParameterTypes().isEmpty()))))
+        .because(
+            "the administration writes every role row, with its audit entry and the cache it drops"
+                + " (ModelRoleAdministration)")
+        .allowEmptyShould(true);
   }
 
   /**
@@ -2111,6 +2151,7 @@ public final class ModularArchitecture {
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
+        onlyTheAdministrationWritesTheRoleRows(),
         onlyTheManifestDeltaStartsProcesses(),
         transactionCallbacksGoThroughTheHelper(),
         onlyTheRunRemovesThroughTheCleanupService(),

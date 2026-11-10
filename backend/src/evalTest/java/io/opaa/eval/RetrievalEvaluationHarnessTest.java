@@ -385,7 +385,7 @@ class RetrievalEvaluationHarnessTest {
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
   @Autowired private RerankModelRole rerankModelRole;
   @Autowired private SettingsEncryptor settingsEncryptor;
-  @Autowired private RerankEndpoints modelRoleEndpoints;
+  @Autowired private RerankEndpoints rerankEndpoints;
   // The production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
@@ -414,7 +414,7 @@ class RetrievalEvaluationHarnessTest {
     // so no client can have been cached from the seeded row.
     EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint());
     EvalRerankModel.installIfRequested(
-        jdbcTemplate, settingsEncryptor, modelRoleEndpoints, rerankModelRole);
+        jdbcTemplate, settingsEncryptor, rerankEndpoints, rerankModelRole);
     jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
     evalUserId = UUID.randomUUID();
     jdbcTemplate.update(

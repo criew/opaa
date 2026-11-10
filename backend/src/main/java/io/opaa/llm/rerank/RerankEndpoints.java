@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 public class RerankEndpoints extends OptionalRoleEndpoints<RerankEndpoint> {
 
   /** The topic the trigger on {@code rerank_model} announces. */
-  public static final String TOPIC = "rerank-model";
+  private static final String TOPIC = "rerank-model";
 
   private final RerankModelSettingsRepository rows;
 

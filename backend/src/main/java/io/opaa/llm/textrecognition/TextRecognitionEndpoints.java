@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class TextRecognitionEndpoints extends OptionalRoleEndpoints<TextRecognitionEndpoint> {
 
   /** The topic the trigger on {@code text_recognition_model} announces. */
-  public static final String TOPIC = "text-recognition-model";
+  private static final String TOPIC = "text-recognition-model";
 
   private final TextRecognitionModelSettingsRepository rows;
 

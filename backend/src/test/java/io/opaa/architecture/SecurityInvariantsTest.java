@@ -174,8 +174,23 @@ class SecurityInvariantsTest {
                   + " (ModelEndpointRules#sameEndpoint)"),
           Map.entry(
               "io.opaa.llm.OptionalRoleEndpoints#decrypt",
-              "loads the rerank and transcription endpoints with their own address and key; the"
-                  + " live upstream borrows the batch key only at its origin"),
+              "loads the rerank, transcription and text recognition endpoints, each with its own"
+                  + " address and key; the live upstream borrows the batch key only at its origin"),
+          Map.entry(
+              "io.opaa.llm.rerank.RerankEndpoints#load",
+              "the rerank key, bound to its row, goes into the endpoint with the stored address"),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionEndpoints#load",
+              "the text recognition key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#load",
+              "the transcription key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#realtimeOf",
+              "the live key goes to the stored live address; without one the batch key goes only"
+                  + " to the batch address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
           Map.entry(
               "io.opaa.mail.MailOutbox#decrypt",
               "queued mails (recipient, subject, body); no credential"),

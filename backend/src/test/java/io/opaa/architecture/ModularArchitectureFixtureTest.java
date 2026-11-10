@@ -170,15 +170,16 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * The scaffold names a role, a role names another role, and {@code llm.stray} is in no list; a
-   * role on the scaffold, the administration on every role and the web package pass.
+   * The scaffold names a role, a role names another role and the administration above it, and
+   * {@code llm.stray} is in no list; a role on the scaffold, the administration on every role and
+   * the web package pass.
    */
   @Test
   void anLlmEdgeBesideTheScaffoldIsReported() {
     Scenario scenario = new Scenario("llmroles");
 
     assertThat(scenario.violations(ModularArchitecture::llmRolesDependOnlyOnTheScaffold))
-        .hasSize(3)
+        .hasSize(4)
         .anySatisfy(
             violation ->
                 assertThat(violation)
@@ -193,10 +194,35 @@ class ModularArchitectureFixtureTest {
                         "rerank.RerankRole"))
         .anySatisfy(
             violation ->
+                assertThat(violation)
+                    .contains(
+                        "llm.rerank -> llm.administration lets a model role name a package",
+                        "rerank.RerankStatus"))
+        .anySatisfy(
+            violation ->
                 assertThat(violation).contains("llmroles.llm.stray is not assigned", "LLM_ROLES"))
-        .noneSatisfy(violation -> assertThat(violation).contains("RoleAdministration"))
+        .noneSatisfy(violation -> assertThat(violation).contains("RoleAdministration."))
         .noneSatisfy(violation -> assertThat(violation).contains("RoleApi"))
         .noneSatisfy(violation -> assertThat(violation).contains("TranscriptionRole."));
+  }
+
+  /**
+   * A role and the installation create or change a role row past the administration; the
+   * administration, also by constructor reference, and the row class itself pass.
+   */
+  @Test
+  void aRoleRowWrittenPastTheAdministrationIsReported() {
+    Scenario scenario = new Scenario("rolerows");
+
+    assertThat(scenario.violations(ModularArchitecture::onlyTheAdministrationWritesTheRoleRows))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("rerank.RerankRole.reset", "replaceEndpoint"))
+        .anySatisfy(
+            violation -> assertThat(violation).contains("installation.Installer.install", "<init>"))
+        .noneSatisfy(violation -> assertThat(violation).contains("RoleAdministration"))
+        .noneSatisfy(violation -> assertThat(violation).contains("Constructor <"));
   }
 
   /**

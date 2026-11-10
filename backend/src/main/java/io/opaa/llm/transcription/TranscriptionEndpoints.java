@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class TranscriptionEndpoints extends OptionalRoleEndpoints<TranscriptionEndpoint> {
 
   /** The topic the trigger on {@code transcription_model} announces. */
-  public static final String TOPIC = "transcription-model";
+  private static final String TOPIC = "transcription-model";
 
   private final TranscriptionModelSettingsRepository rows;
 
