@@ -68,7 +68,7 @@ export async function confirmDeactivate(
   onDone: () => void,
 ): Promise<void> {
   const confirmed = await confirmAction({
-    question: `Dienstkonto „${account.name}“ deaktivieren?`,
+    question: `„${account.name}“ deaktivieren?`,
     consequence: DEACTIVATE_CONSEQUENCE,
     confirmLabel: 'Deaktivieren',
     tone: 'danger',

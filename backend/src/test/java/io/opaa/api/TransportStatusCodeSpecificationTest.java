@@ -73,13 +73,15 @@ class TransportStatusCodeSpecificationTest {
   /**
    * The only operations that decide a {@code 401} themselves rather than inheriting the resource
    * server's: the sign-in (wrong credentials), the refresh (unknown, expired or replayed cookie),
-   * the handover (an unusable provider token), the push intake (a wrong signature on a call that
-   * carries no session at all) and the installation API (a missing or wrong installation token).
+   * the password change (every session ended while it ran), the handover (an unusable provider
+   * token), the push intake (a wrong signature on a call that carries no session at all) and the
+   * installation API (a missing or wrong installation token).
    */
   private static final Set<String> OWN_401 =
       Set.of(
           "localLogin",
           "localRefresh",
+          "localChangePassword",
           "localHandoverRedeem",
           "receivePush",
           "getInstallation",
@@ -199,6 +201,8 @@ class TransportStatusCodeSpecificationTest {
     String description = (String) map(spec, "info").get("description");
 
     assertThat(description).contains("401").contains("403").contains("404");
+    // the shared budget of the writing calls is infrastructure, so its 429 is described here
+    assertThat(description).contains("429").contains("writing call");
     for (String status : CROSS_CUTTING) {
       assertThat(description).as("info.description covers %s", status).contains(status);
     }

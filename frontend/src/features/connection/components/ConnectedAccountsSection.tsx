@@ -329,7 +329,7 @@ export default function ConnectedAccountsSection() {
     const confirmed = await confirmAction({
       question: reconnect ? `Konto bei „${name}“ neu verbinden?` : `Konto bei „${name}“ verbinden?`,
       consequence: AUTHORIZE_CONSEQUENCE,
-      confirmLabel: 'Weiter zum Anbieter',
+      confirmLabel: reconnect ? 'Neu verbinden' : 'Verbinden',
     })
     if (!confirmed) return
     setAuthorizing(profileId)

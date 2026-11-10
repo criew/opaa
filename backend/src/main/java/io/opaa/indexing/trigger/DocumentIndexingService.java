@@ -22,6 +22,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -111,7 +112,8 @@ public class DocumentIndexingService {
    */
   public IndexingJob triggerIndexing(
       UUID libraryId, CurrentUser caller, IndexingRunMode requestedRunMode) {
-    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, caller);
+    KnowledgeLibrary targetLibrary =
+        RefusedBeforeWork.check(() -> requireEditableLibrary(libraryId, caller));
     if (targetLibrary.isErasureRequested()) {
       throw new ConflictException("Die Bibliothek wird gelöscht und wird nicht mehr indiziert");
     }

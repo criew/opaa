@@ -129,7 +129,7 @@ export default function OwnExternalAccessTokensSection() {
 
   async function handleRevoke(token: OwnExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ widerrufen?`,
+      question: `„${token.name}“ widerrufen?`,
       consequence: REVOKE_CONSEQUENCE,
       confirmLabel: 'Widerrufen',
       tone: 'danger',

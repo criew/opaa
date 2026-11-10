@@ -72,7 +72,7 @@ public class AssetAuthorization {
       throw new NotFoundException(AssetTypes.notFoundMessage(definition));
     }
     if (!role.atLeast(required)) {
-      throw new AccessDeniedException("Kein Zugriff auf diese " + definition.singular());
+      throw new AccessDeniedException("Kein Zugriff auf " + definition.thisAccusative());
     }
     return role;
   }
@@ -96,12 +96,12 @@ public class AssetAuthorization {
             .get(asset.getId());
     if (role == null) {
       throw new AccessDeniedException(
-          "Für diese "
-              + definition.singular()
+          "Für "
+              + definition.thisAccusative()
               + " liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür nicht.");
     }
     if (!role.atLeast(required)) {
-      throw new AccessDeniedException("Kein Zugriff auf diese " + definition.singular());
+      throw new AccessDeniedException("Kein Zugriff auf " + definition.thisAccusative());
     }
     return role;
   }

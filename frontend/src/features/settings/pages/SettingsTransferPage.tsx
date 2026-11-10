@@ -2,15 +2,18 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import ImportExportOutlinedIcon from '@mui/icons-material/ImportExportOutlined'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { contentWidth } from '@/shared/theme/tokens'
 import SettingsExportSection from '../components/SettingsExportSection'
 import SettingsImportSection from '../components/SettingsImportSection'
+import { SETTINGS_IMPORT_RETURNED_HINT } from '../components/settingsRecentLogin'
 
 /** Export and import of the installation's settings in the administration (system admin only). */
 export default function SettingsTransferPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  useProviderReturn(SETTINGS_IMPORT_RETURNED_HINT)
 
   if (!isSystemAdmin) {
     return (

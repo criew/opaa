@@ -158,7 +158,7 @@ export default function ConnectionProfilesTab() {
         consequence: signsInItself(profile)
           ? `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'Der Dienstkonto-Schlüssel' : 'Das Client-Secret'} des Zugangs wird unwiderruflich gelöscht. Die Bibliotheken laufen erst wieder, wenn die Systemverwaltung ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'einen Schlüssel' : 'ein Secret'} am Zugang neu hinterlegt. Beim Anbieter widerruft OPAA nichts; das geschieht dort.${personsNotice(profile)}`
           : `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
-        confirmLabel: 'Alle trennen',
+        confirmLabel: 'Trennen',
         tone: 'danger',
       })
       if (!confirmed) return
@@ -176,7 +176,7 @@ export default function ConnectionProfilesTab() {
       !lock && typeLocked(profile.sourceType)
         ? `Die Quellart „${displayNameOf(profile.sourceType)}“ bleibt gesperrt: Die Bibliotheken des Zugangs laufen erst weiter, wenn auch ihre Sperre aufgehoben ist.`
         : undefined
-    if (!(await confirmLock(`den Zugang „${profile.name}“`, lock, remaining))) return
+    if (!(await confirmLock(profile.name, lock, remaining))) return
     try {
       await lockConnectionProfile(profile.id, lock)
       notify(
@@ -205,7 +205,7 @@ export default function ConnectionProfilesTab() {
     try {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
-        question: `Zugang „${profile.name}“ löschen?`,
+        question: `„${profile.name}“ löschen?`,
         consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
         confirmLabel: 'Löschen',
         tone: 'danger',

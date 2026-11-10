@@ -79,7 +79,7 @@ export default function ProviderRowMenu({
   async function makeDefault() {
     if (
       !(await confirmAction({
-        question: `„${provider.displayName}“ zum Standardanbieter machen?`,
+        question: `„${provider.displayName}“ zum Standard machen?`,
         consequence: DEFAULT_CONSEQUENCE,
         confirmLabel: 'Zum Standard machen',
         tone: 'caution',

@@ -105,7 +105,7 @@ test.describe.serial('Wechsel des Embedding-Modells (#3214)', () => {
           response.request().method() === 'POST' &&
           response.url().endsWith('/api/v1/admin/models/embedding/change'),
       ),
-      dialog.getByRole('button', { name: 'Wechsel starten' }).click(),
+      dialog.getByRole('button', { name: 'Wechseln' }).click(),
     ])
     expect(started.ok()).toBe(true)
 

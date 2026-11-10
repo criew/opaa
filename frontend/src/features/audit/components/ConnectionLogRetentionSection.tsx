@@ -72,7 +72,7 @@ export default function ConnectionLogRetentionSection() {
       consequence: shorter
         ? `Einträge, die älter als ${months(value)} sind, werden mit dem nächsten täglichen Lauf endgültig gelöscht. Die Änderung steht im Nachweisprotokoll.`
         : 'Die längere Frist gilt sofort. Bereits gelöschte Einträge kommen nicht zurück. Die Änderung steht im Nachweisprotokoll.',
-      confirmLabel: 'Frist ändern',
+      confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return

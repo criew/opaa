@@ -8,6 +8,8 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import MailServerSection from '../components/MailServerSection'
 import MailTemplatesSection from '../components/MailTemplatesSection'
+import { MAIL_CHANGE_RETURNED_HINT } from '../components/mailRecentLogin'
+import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 import { contentWidth } from '@/shared/theme/tokens'
 
 export type MailSettingsTab = 'server' | 'templates'
@@ -34,6 +36,9 @@ const tabs: Array<{ value: MailSettingsTab; label: string }> = [
 export default function MailSettingsPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { tab } = useParams()
+  // Saving the access or a template may send an identity-provider account to its provider for a
+  // confirmed sign-in; back here the page is new and the person saves again.
+  useProviderReturn(MAIL_CHANGE_RETURNED_HINT)
 
   // A typo in the path is not silently reinterpreted as the server tab: the address bar ends up
   // saying what is actually shown.

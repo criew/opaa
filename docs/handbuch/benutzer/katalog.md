@@ -34,7 +34,7 @@ Reiter für den Inhalt, für „Freigaben“ mit der Zeile „Herleitung“ („
 Oder „Neuen Space anlegen“: Der [Space-Assistent](space-anlegen.md) öffnet mit dem Arbeitsmittel als
 gewähltem Inhalt. Die Katalogkachel selbst bietet keine Zuordnung mehr an; sie liest und favorisiert.
 
-Gelöst wird eine Zuordnung im selben Reiter über „Lösen“, von der Verwaltung des
+Entfernt wird eine Zuordnung im selben Reiter über „Entfernen“, von der Verwaltung des
 Arbeitsmittels oder von Kuratoren und Administratoren des Space. Private Spaces, zu denen Sie nicht
 gehören, zählt der Reiter nur („+ 2 weitere Spaces, die Sie nicht sehen dürfen“).
 
