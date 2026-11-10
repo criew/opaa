@@ -36,7 +36,6 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -312,19 +311,6 @@ public class DocumentTemplateService {
   public AssetResponsibilityView unlock(UUID templateId, CurrentUser caller) {
     caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen entsperren.");
     return responsibilityService.unlock(load(templateId, caller), caller);
-  }
-
-  /**
-   * Those of the given templates that are locked right now, read from the table on every call.
-   * Whatever offers templates to an agent run leaves these out, so the run answers in the chat.
-   */
-  public Set<UUID> lockedAmong(Collection<UUID> templateIds) {
-    return responsibilityService.lockedAmong(templateIds);
-  }
-
-  /** Whether the template is locked right now; see {@link #lockedAmong}. */
-  public boolean isLocked(UUID templateId) {
-    return responsibilityService.isLocked(templateId);
   }
 
   /**

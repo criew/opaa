@@ -19,6 +19,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.template.DocumentTemplateCreation;
 import io.opaa.template.DocumentTemplateService;
+import io.opaa.template.RunTemplates;
 import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
@@ -44,6 +45,7 @@ class AgentResponsibilityIntegrationTest {
 
   @Autowired private AgentService agentService;
   @Autowired private DocumentTemplateService templateService;
+  @Autowired private RunTemplates runTemplates;
   @Autowired private ResponsibilityLockRun lockRun;
   @Autowired private ResponsibilityLockPeriod lockPeriod;
   @Autowired private UserRepository userRepository;
@@ -205,8 +207,8 @@ class AgentResponsibilityIntegrationTest {
 
     AssetResponsibilityView lockedAgent = agentService.get(agent, admin()).responsibility();
     assertThat(lockedAgent.lock().cause()).isEqualTo(AssetLockCause.NO_RESPONSIBLE);
-    assertThat(templateService.lockedAmong(Set.of(template))).containsExactly(template);
-    assertThat(templateService.isLocked(template)).isTrue();
+    assertThat(templateService.get(template, admin()).responsibility().lock().cause())
+        .isEqualTo(AssetLockCause.NO_RESPONSIBLE);
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM assets WHERE id IN (?, ?)", Long.class, agent, template))
@@ -222,16 +224,19 @@ class AgentResponsibilityIntegrationTest {
   }
 
   @Test
-  void aLockedTemplateIsReportedAndTheLockIsLiftedAgain() {
+  void aLockedTemplateIsOfferedToNoRunAndTheLockIsLiftedAgain() {
     UUID template = aTemplate("Vermerk", REFERAT);
+    assertThat(offeredTemplates()).containsExactly(template);
 
     templateService.lock(template, "Inhalt veraltet", admin());
-    assertThat(templateService.lockedAmong(List.of(template))).containsExactly(template);
+    assertThat(offeredTemplates()).isEmpty();
+    assertThat(runTemplates.forFilling(template, organization, administrator)).isEmpty();
     assertThat(templateService.get(template, admin()).responsibility().lock().reason())
         .isEqualTo("Inhalt veraltet");
 
     templateService.unlock(template, admin());
-    assertThat(templateService.isLocked(template)).isFalse();
+    assertThat(offeredTemplates()).containsExactly(template);
+    assertThat(runTemplates.forFilling(template, organization, administrator)).isPresent();
     assertThat(auditEvents(template))
         .containsExactly("DOCUMENT_TEMPLATE_CREATED", "ASSET_LOCKED", "ASSET_UNLOCKED");
   }
@@ -266,6 +271,12 @@ class AgentResponsibilityIntegrationTest {
         organization,
         "Referat " + group);
     return group;
+  }
+
+  private List<UUID> offeredTemplates() {
+    return runTemplates.available(organization, administrator).stream()
+        .map(RunTemplates.RunTemplate::id)
+        .toList();
   }
 
   private Set<UUID> usableIds(CurrentUser caller) {

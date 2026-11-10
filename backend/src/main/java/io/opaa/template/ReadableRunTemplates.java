@@ -1,5 +1,6 @@
 package io.opaa.template;
 
+import io.opaa.asset.AssetResponsibilityService;
 import io.opaa.permission.AssetAccessService;
 import java.util.Comparator;
 import java.util.List;
@@ -12,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * {@link RunTemplates} as delivered: every template the asker may read by the formula of the asset
  * shell - the template list's rule, without the administration's floor - while the switch
- * "Vorlagen" is on.
+ * "Vorlagen" is on, minus every locked template. The lock is read from the database on every call,
+ * so it holds on every instance from the next call.
  */
 @Service
 @Transactional(readOnly = true)
@@ -22,16 +24,19 @@ class ReadableRunTemplates implements RunTemplates {
   private final AssetAccessService accessService;
   private final DocumentTemplateRepository repository;
   private final DocumentTemplateFiles files;
+  private final AssetResponsibilityService responsibilities;
 
   ReadableRunTemplates(
       DocumentTemplateSettingsService settings,
       AssetAccessService accessService,
       DocumentTemplateRepository repository,
-      DocumentTemplateFiles files) {
+      DocumentTemplateFiles files,
+      AssetResponsibilityService responsibilities) {
     this.settings = settings;
     this.accessService = accessService;
     this.repository = repository;
     this.files = files;
+    this.responsibilities = responsibilities;
   }
 
   @Override
@@ -41,8 +46,10 @@ class ReadableRunTemplates implements RunTemplates {
     }
     Set<UUID> readable =
         accessService.readableAssetIds(DocumentTemplate.ASSET_TYPE, userId, organizationId);
+    Set<UUID> locked = responsibilities.lockedAmong(readable);
     return repository.findAllById(readable).stream()
         .filter(template -> organizationId.equals(template.getOrganizationId()))
+        .filter(template -> !locked.contains(template.getId()))
         .sorted(
             Comparator.comparing(DocumentTemplate::getName).thenComparing(DocumentTemplate::getId))
         .map(ReadableRunTemplates::runTemplate)
@@ -56,7 +63,7 @@ class ReadableRunTemplates implements RunTemplates {
     }
     Set<UUID> readable =
         accessService.readableAssetIds(DocumentTemplate.ASSET_TYPE, userId, organizationId);
-    if (!readable.contains(templateId)) {
+    if (!readable.contains(templateId) || responsibilities.isLocked(templateId)) {
       return Optional.empty();
     }
     return repository
