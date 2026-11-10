@@ -95,13 +95,13 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await openNewLibraryWizard(page)
 
     // Step 1: source type - one tile per source type, "Upload" preselected.
-    await expectWizardStep(page, 'Woher kommt das Wissen?')
+    await expectWizardStep(page, 'Quellart')
     const uploadTile = page.getByRole('radio', { name: /^Upload/ })
     await expect(uploadTile).toHaveAttribute('aria-checked', 'true')
     await nextStep(page)
 
-    // An UPLOAD library has no source, so the next step is already "Name & Beschreibung".
-    await expectWizardStep(page, 'Name & Beschreibung')
+    // Step 2: master data; an UPLOAD library has no source, so "Freigaben" follows.
+    await expectWizardStep(page, 'Stammdaten')
     await page.getByLabel('Name', { exact: true }).fill(UPLOAD_LIBRARY)
     await page.getByLabel('Beschreibung (optional)').fill('Handakte des Assistenten-Durchlaufs')
     await nextStep(page)
@@ -114,7 +114,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByText(UPLOAD_LIBRARY)).toBeVisible()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+      page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
     ])
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
@@ -127,19 +127,24 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await walkThroughSharingTab(page)
   })
 
-  test('Konnektorbibliothek: Schritt „Quelle einrichten" mit Zeitplan, vorbelegter Name, Freigaben', async ({
+  test('Konnektorbibliothek: Stammdaten, Schritt „Quelle" mit Zeitplan, Freigaben', async ({
     authenticatedPage: page,
   }) => {
     await openNewLibraryWizard(page)
 
-    await expectWizardStep(page, 'Woher kommt das Wissen?')
+    await expectWizardStep(page, 'Quellart')
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await nextStep(page)
 
-    // Step 2: source setup - the rows „Verbindung“ with its connection test and „Zeitplan“ with the
+    // Step 2: master data, before the source
+    await expectWizardStep(page, 'Stammdaten')
+    await page.getByLabel('Name', { exact: true }).fill(CONNECTOR_LIBRARY)
+    await nextStep(page)
+
+    // Step 3: source setup - the rows „Verbindung“ with its connection test and „Zeitplan“ with the
     // immediate first run, which exists for every connector type. It stays off here: this is
     // about the path, not about a run.
-    await expectWizardStep(page, 'Quelle einrichten')
+    await expectWizardStep(page, 'Quelle')
     await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 3, name: 'Zeitplan' })).toBeVisible()
@@ -147,19 +152,12 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await nextStep(page)
 
-    // Step 3: the name comes prefilled from the source - here its hostname - and stays editable.
-    await expectWizardStep(page, 'Name & Beschreibung')
-    const nameField = page.getByLabel('Name', { exact: true })
-    await expect(nameField).toHaveValue('rss-feed')
-    await nameField.fill(CONNECTOR_LIBRARY)
-    await nextStep(page)
-
     await expectWizardStep(page, 'Freigaben')
     await nextStep(page)
     await expectWizardStep(page, 'Prüfen')
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+      page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
     ])
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 

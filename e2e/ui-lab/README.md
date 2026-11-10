@@ -191,7 +191,7 @@ cd e2e && node ui-lab/calibrate.mjs
 Misst `calibration/good.html` und `calibration/bad.html` genau so wie `capture.mjs` und bricht
 mit Exit-Code 1 ab, wenn ein Ergebnis von der Erwartung abweicht: die gute Seite ohne
 Budgetüberschreitung in beiden Schemata, hell ohne axe-Befund, dunkel ohne Kontrastbefund, die schlechte mit Kontrastbefund in beiden
-Schemata, mit `label`, `button-name` und `target-size` und über allen drei Zählbudgets. Eine
+Schemata, mit `label`, `button-name` und `target-size` und über allen vier Zählbudgets. Eine
 Gegenprobe misst die gute Seite auf dem verworfenen Weg, mit Umschalten des Schemas in der
 Sitzung: Die Theme-Übergänge sind dann noch nicht abgeschlossen, und axe meldet Kontrastfehler,
 die es im direkt geladenen Schema nicht gibt.
