@@ -49,7 +49,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * like a presentation of the then rotated token, once; losing the renewal within the grace period
  * to a concurrent one is a replay, so two renewals of the same token never both win. A rotation and
  * {@link #issueForSession} write under a share lock on the account's session generation, so no
- * token they write outlives a concurrent act that ends every session.
+ * token they write outlives a concurrent act that ends every session. Every act that revokes
+ * refresh tokens and ends sessions, the replay handling included, writes or locks the account's
+ * credentials row before it touches a token row; that one order rules out a deadlock with a
+ * rotation and lets the act see the successor of a rotation it waited for.
  *
  * <p>Transactions: successor insert and the conditional updates form one transaction that is rolled
  * back when the rotation was lost, so the loser leaves no active successor behind; the replay
@@ -345,13 +348,17 @@ public class LocalRefreshTokenService {
    * The replay response, in one transaction of its own: revoke the family, end every session of the
    * account and what a session could have created ({@link LocalAccountSessionsEndedEvent}), audit
    * and warn - but only when the family still had an active member; a second replay of an already
-   * dead family changes no state and writes no event.
+   * dead family changes no state and writes no event, so a stale token cannot end the sessions of
+   * the account again and again. The account's credentials row is locked first, like every other
+   * act that ends sessions: a rotation of the family in flight commits before, and its successor is
+   * then counted and revoked here.
    */
   private void handleReuse(LocalRefreshToken presented, Instant now) {
     UUID userId = presented.getUserId();
     Integer revoked =
         transactions.execute(
             status -> {
+              credentials.findForUpdate(userId);
               int rows =
                   repository.revokeFamily(
                       presented.getFamilyId(), RevocationReason.REUSE_DETECTED, now);

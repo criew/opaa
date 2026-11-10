@@ -160,9 +160,11 @@ nach seiner Rotation abgreift, übernimmt die Sitzung, solange der Inhaber den N
 benutzt; dessen nächste Erneuerung ist dann ein Replay und beendet alle Sitzungen. Zwei Fristen: Leerlauf `refresh-token-ttl` (7 Tage, höchstens 30),
 absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für lokale `SYSTEM_ADMIN`
 `admin-refresh-token-ttl` 4 h und `admin-session-max-lifetime` 12 h; alle vier Werte werden beim
-Start validiert wie das Secret. Maßgeblich ist die Rolle bei der Ausstellung und bei jeder Rotation:
-Wird ein Konto mit laufender Sitzung zum `SYSTEM_ADMIN`, kürzt die nächste Rotation das Ende der
-Familie auf jetzt plus `admin-session-max-lifetime`; verlängert wird es nie. Cookie `opaa_refresh`:
+Start validiert wie das Secret. Wird ein Konto zum `SYSTEM_ADMIN`, enden mit der Rollenänderung
+alle seine Sitzungen (Zähler erhöht, Refresh-Tokens als `ADMIN` widerrufen); die nächste Anmeldung
+läuft unter den Fristen der Systemverwaltung. Zur zweiten Sicherung gilt bei jeder Rotation die
+Rolle der Rotation: Sie kürzt das Ende der Familie höchstens auf jetzt plus
+`admin-session-max-lifetime` und verlängert es nie. Cookie `opaa_refresh`:
 `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local`; `cookie-secure = false` ist für
 lokales HTTP zulässig und erzeugt im `oidc`-Profil eine `WARN`-Zeile. Das Access-Token hält die SPA
 nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`);
@@ -171,8 +173,15 @@ Widerruf in zwei Schichten: `jti`-Denylist (Caffeine-Cache, `expireAfterWrite = 
 und Sitzungszähler `session_generation` (Claim `sgen`); Logout und Passwortwechsel wirken sofort.
 Anmeldung, Rotation und das Ausstellen nach dem Passwortwechsel lesen `session_generation` mit
 `FOR SHARE` in derselben Transaktion, die das neue Refresh-Token schreibt, und prägen das
-Access-Token mit genau diesem Wert. „Alle Sitzungen beenden“ erhöht den Zähler vor dem Widerruf der
-Refresh-Tokens und wartet damit auf eine laufende Ausstellung; sein Widerruf sieht deren Token.
+Access-Token mit genau diesem Wert. Jeder Akt, der Refresh-Tokens widerruft und Sitzungen beendet
+(Sperre, Zurücksetzen, Passwortwechsel, Übergabe, Beförderung, Abschalten der lokalen Anmeldung,
+erkannte Wiederverwendung), schreibt oder sperrt zuerst die Zeile in `local_credentials` und erst
+danach Token-Zeilen. Diese eine Reihenfolge schließt eine Verklemmung mit einer Rotation aus, und
+der Akt wartet auf eine laufende Ausstellung, deren Token sein Widerruf dann sieht. Die erkannte
+Wiederverwendung beendet die Sitzungen nur, wenn die Familie noch ein aktives Mitglied hatte; ein
+abgelaufener oder schon widerrufener Familienstrang beendet die Sitzungen nicht erneut, damit ein
+altes Token keinen wiederholten Rauswurf auslöst. Das Abmelden widerruft nur die eigene Familie und
+schreibt `local_credentials` nicht.
 Hat sich der Zähler seit der Passwortprüfung geändert, stellt die Anmeldung nichts aus (`401`), die
 Erneuerung antwortet mit `401` statt eines Access-Tokens zu einer beendeten Sitzung.
 `LocalTokenCleanupScheduler` (täglich 03:20) löscht Token-Zeilen spätestens sieben Tage nach Ablauf
@@ -257,8 +266,8 @@ Standards je Schlüssel, Überschreibungen in `mail_templates`, JMustache strikt
 Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testversand. Über den
 Mailkanal laufen Einladungs- und Rücksetzlinks, auch die des Notanker-Kontos; das Ändern von
 SMTP-Zugang und Vorlagen verlangt deshalb wie die Einstellungen der lokalen Anmeldung eine frische
-Anmeldung (`@RequiresRecentLogin`), ebenso ein Einstellungsimport mit sicherheitsrelevanten
-Änderungen. „Passwort vergessen“ bleibt auch für Systemverwalter offen (Entscheidungen 9 und 11); geschützt
+Anmeldung (`@RequiresRecentLogin`), ebenso ein Einstellungsimport, der eine dieser drei
+Einstellungen oder einen anderen sicherheitsrelevanten Wert ändert. „Passwort vergessen“ bleibt auch für Systemverwalter offen (Entscheidungen 9 und 11); geschützt
 wird der Kanal, über den der Link läuft, nicht der Weg zu ihm.
 
 ### 11. Kontolebenszyklus: Einladung, Zurücksetzen mit Link-Rückfall, Sperren als Regelweg, kein stiller Eingriff, Löschen nach dem DSGVO-Pfad

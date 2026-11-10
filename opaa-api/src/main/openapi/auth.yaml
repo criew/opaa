@@ -176,6 +176,8 @@ paths:
                 $ref: "#/components/schemas/LocalTokenResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "409":
           $ref: "#/components/responses/Conflict"
         "429":

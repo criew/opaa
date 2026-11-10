@@ -59,6 +59,7 @@ public class UserService {
   private final AuditorRoles auditorRoles;
   private final AuditorRoleRequestRepository auditorRoleRequests;
   private final AuditorCredentialRenewal credentialRenewal;
+  private final PromotionSessionEnd promotionSessionEnd;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final TransactionTemplate columnWrites;
@@ -75,6 +76,7 @@ public class UserService {
       AuditorRoles auditorRoles,
       AuditorRoleRequestRepository auditorRoleRequests,
       AuditorCredentialRenewal credentialRenewal,
+      PromotionSessionEnd promotionSessionEnd,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       PlatformTransactionManager transactionManager,
@@ -89,6 +91,7 @@ public class UserService {
     this.auditorRoles = auditorRoles;
     this.auditorRoleRequests = auditorRoleRequests;
     this.credentialRenewal = credentialRenewal;
+    this.promotionSessionEnd = promotionSessionEnd;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.columnWrites = new TransactionTemplate(transactionManager);
@@ -497,6 +500,8 @@ public class UserService {
             AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED,
             previousRole,
             role);
+        // sessions opened under a regular account's lifetimes end with the promotion
+        promotionSessionEnd.endSessionsOfPromoted(saved, actorUserId);
       } else if (role == SystemRole.AUDITOR) {
         recordRoleChange(
             saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);

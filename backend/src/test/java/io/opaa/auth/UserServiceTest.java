@@ -64,6 +64,7 @@ class UserServiceTest {
   private AuditorRoles auditorRoles;
   private AuditorRoleRequestRepository auditorRoleRequests;
   private AuditorCredentialRenewal credentialRenewal;
+  private PromotionSessionEnd promotionSessionEnd;
 
   /**
    * A settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
@@ -113,6 +114,7 @@ class UserServiceTest {
     auditorRoles = mock(AuditorRoles.class);
     auditorRoleRequests = mock(AuditorRoleRequestRepository.class);
     credentialRenewal = mock(AuditorCredentialRenewal.class);
+    promotionSessionEnd = mock(PromotionSessionEnd.class);
     when(credentialRenewal.renew(any(), any())).thenReturn(Optional.empty());
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
@@ -139,6 +141,7 @@ class UserServiceTest {
         auditorRoles,
         auditorRoleRequests,
         credentialRenewal,
+        promotionSessionEnd,
         auditEventRecorder,
         eventPublisher,
         mock(PlatformTransactionManager.class),

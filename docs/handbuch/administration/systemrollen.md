@@ -44,4 +44,6 @@ Anmeldedaten eines Identitätsanbieters meldet OPAA allen Personen der Revision.
 **Gut zu wissen:**
 
 - Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
+- Wird ein lokales Konto zur Systemverwaltung, enden seine laufenden Sitzungen; die Person meldet
+  sich neu an.
 - Eine Systemrolle hat keine Rechtehistorie; ihre Änderungen stehen im Nachweisprotokoll.

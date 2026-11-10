@@ -44,6 +44,7 @@ class UserServiceStaleRowIntegrationTest {
   @Autowired private AuditorRoles auditorRoles;
   @Autowired private AuditorRoleRequestRepository auditorRoleRequests;
   @Autowired private AuditorCredentialRenewal credentialRenewal;
+  @Autowired private PromotionSessionEnd promotionSessionEnd;
   @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private PlatformTransactionManager transactionManager;
@@ -126,6 +127,7 @@ class UserServiceStaleRowIntegrationTest {
         auditorRoles,
         auditorRoleRequests,
         credentialRenewal,
+        promotionSessionEnd,
         auditEventRecorder,
         eventPublisher,
         transactionManager,

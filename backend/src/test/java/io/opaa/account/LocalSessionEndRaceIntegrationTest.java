@@ -11,8 +11,11 @@ import static org.mockito.Mockito.mock;
 import io.opaa.account.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.account.LocalRefreshTokenService.RotationResult;
 import io.opaa.account.web.LocalAuthController;
+import io.opaa.api.dto.LocalChangePasswordRequest;
 import io.opaa.api.dto.LocalLoginRequest;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.UserRepository;
@@ -146,6 +149,36 @@ class LocalSessionEndRaceIntegrationTest {
   }
 
   @Test
+  void aPasswordChangeWhoseSessionsEndBeforeTheNewSessionOpensIsUnauthorized() {
+    LocalPasswordService racing =
+        mock(LocalPasswordService.class, AdditionalAnswers.delegatesTo(passwords));
+    doAnswer(
+            invocation -> {
+              Object changed =
+                  passwords.changePassword(
+                      invocation.getArgument(0),
+                      invocation.getArgument(1),
+                      invocation.getArgument(2));
+              endAllSessions();
+              return changed;
+            })
+        .when(racing)
+        .changePassword(any(), anyString(), anyString());
+    LocalChangePasswordRequest request = new LocalChangePasswordRequest();
+    request.setCurrentPassword(LocalAccountFixtures.PASSWORD);
+    request.setNewPassword("Ein-ganz-neues-Passwort!2026");
+    CurrentUser caller =
+        CurrentUser.of(account.id(), account.user().getOrganizationId(), SystemRole.USER, "Konto");
+
+    Throwable refused =
+        catchThrowable(
+            () -> controller(loginService, racing, refreshTokens).changePassword(caller, request));
+
+    assertThat(refused).isInstanceOf(UnauthorizedException.class);
+    assertThat(activeRefreshTokens()).isZero();
+  }
+
+  @Test
   void anEndOfAllSessionsThatWaitsOnARotationAlsoRevokesItsSuccessor() throws Exception {
     IssuedRefreshToken presented = refreshTokens.issue(account.user());
     AtomicReference<Thread> ending = new AtomicReference<>();
@@ -179,6 +212,62 @@ class LocalSessionEndRaceIntegrationTest {
                 successor))
         .isTrue();
     assertThat(activeRefreshTokens()).isZero();
+  }
+
+  @Test
+  void aReplayThatWaitsOnARotationOfItsFamilyAlsoRevokesTheSuccessor() throws Exception {
+    IssuedRefreshToken first = refreshTokens.issue(account.user());
+    RotationResult.Rotated used =
+        (RotationResult.Rotated) refreshTokens.rotate(first.value(), null);
+    // the first rotation lies beyond the grace period, so presenting the token again is a replay
+    jdbc.update(
+        "UPDATE local_refresh_tokens SET revoked_at = revoked_at - interval '1 hour' WHERE id = ?",
+        first.id());
+    long generationBefore = sessionGeneration();
+    AtomicReference<Thread> replaying = new AtomicReference<>();
+    AtomicReference<RotationResult> replay = new AtomicReference<>();
+    // delegates every call to the real repository; the rotation's write is followed by the replay
+    LocalRefreshTokenRepository racing =
+        (LocalRefreshTokenRepository)
+            Proxy.newProxyInstance(
+                LocalRefreshTokenRepository.class.getClassLoader(),
+                new Class<?>[] {LocalRefreshTokenRepository.class},
+                (proxy, method, args) -> {
+                  Object result = invoke(method, args);
+                  if (method.getName().equals("rotateIfActive")) {
+                    Integer rotationPid =
+                        jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class);
+                    replaying.set(
+                        Thread.ofPlatform()
+                            .start(() -> replay.set(refreshTokens.rotate(first.value(), null))));
+                    await().atMost(Duration.ofSeconds(20)).until(() -> waitsBehind(rotationPid));
+                  }
+                  return result;
+                });
+
+    RotationResult result = rotationServiceOver(racing).rotate(used.token().value(), null);
+    replaying.get().join(Duration.ofSeconds(30));
+
+    assertThat(result).isInstanceOf(RotationResult.Rotated.class);
+    assertThat(replay.get()).isEqualTo(new RotationResult.Reused(account.id()));
+    UUID successor = ((RotationResult.Rotated) result).token().id();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT revocation_reason FROM local_refresh_tokens WHERE id = ?",
+                String.class,
+                successor))
+        .isEqualTo(RevocationReason.REUSE_DETECTED.name());
+    assertThat(activeRefreshTokens()).isZero();
+    assertThat(sessionGeneration()).isGreaterThan(generationBefore);
+  }
+
+  private long sessionGeneration() {
+    Long generation =
+        jdbc.queryForObject(
+            "SELECT session_generation FROM local_credentials WHERE user_id = ?",
+            Long.class,
+            account.id());
+    return generation == null ? 0 : generation;
   }
 
   private Object invoke(Method method, Object[] args) throws Throwable {
@@ -220,12 +309,17 @@ class LocalSessionEndRaceIntegrationTest {
 
   private LocalAuthController controller(
       LocalLoginService login, LocalRefreshTokenService refresh) {
+    return controller(login, passwords, refresh);
+  }
+
+  private LocalAuthController controller(
+      LocalLoginService login, LocalPasswordService password, LocalRefreshTokenService refresh) {
     return new LocalAuthController(
         login,
         accessTokens,
         refresh,
         revocation,
-        passwords,
+        password,
         credentials,
         userService,
         cookies,
