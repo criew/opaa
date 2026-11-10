@@ -1,5 +1,6 @@
 package io.opaa.query.answer;
 
+import io.opaa.chat.AgentRunRecord;
 import java.io.IOException;
 
 /**
@@ -27,4 +28,20 @@ public interface AnswerStreamListener {
   default void beforeKeeping() throws IOException {
     idle();
   }
+
+  /**
+   * An agent run's tool call at {@code index} begins (ADR-0070): {@code tool} is the tool's name,
+   * {@code detail} what the call is about in the person's words, {@code null} when not yet known.
+   * Never sent on an ordinary turn.
+   */
+  default void stepStarted(int index, String tool, String detail) throws IOException {}
+
+  /** The step at {@code index} ended as it is kept with the answer. */
+  default void stepFinished(int index, AgentRunRecord.Step step) throws IOException {}
+
+  /** The run reached {@code limit} and answers with what it has; sent once per run. */
+  default void limitReached(AgentRunRecord.EndState limit) throws IOException {}
+
+  /** The run ended in {@code endState}; its provisional answer and the kept turn follow. */
+  default void runFinished(AgentRunRecord.EndState endState) throws IOException {}
 }

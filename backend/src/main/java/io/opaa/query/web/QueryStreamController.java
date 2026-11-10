@@ -40,7 +40,7 @@ public class QueryStreamController {
   public QueryStreamController(
       QueryService queryService, JsonMapper jsonMapper, FailureDescriber exceptionHandler) {
     this.queryService = queryService;
-    this.jsonMapper = jsonMapper;
+    this.jsonMapper = QueryEventStream.mapper(jsonMapper);
     this.exceptionHandler = exceptionHandler;
   }
 

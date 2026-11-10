@@ -314,6 +314,147 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void aStreamedRunReportsEachStepAndItsEndThenTheProvisionalAnswerBeforeKeepingIt()
+      throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    String text = "Regel 【source: doc-1#0 | regeln.pdf】, Frist 【source: doc-2#0 | fristen.pdf】.";
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer(text));
+
+    loop().handle(turn(stream));
+
+    var order = org.mockito.Mockito.inOrder(stream, chatService);
+    order.verify(stream).started();
+    order.verify(stream).stepStarted(0, ToolNames.SEARCH_KNOWLEDGE, "Regeln");
+    order
+        .verify(stream)
+        .stepFinished(
+            0, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, "Regeln", 1, StepStatus.DONE));
+    order.verify(stream).stepStarted(1, ToolNames.SEARCH_KNOWLEDGE, "Fristen");
+    order
+        .verify(stream)
+        .stepFinished(
+            1, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, "Fristen", 1, StepStatus.DONE));
+    order.verify(stream).runFinished(EndState.COMPLETED);
+    order.verify(stream).provisional(text, true);
+    order.verify(stream).beforeKeeping();
+    order
+        .verify(chatService)
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(stream, never()).limitReached(any());
+  }
+
+  @Test
+  void theStepsStayOutOfTheConversationWindowOfLaterQuestions() {
+    when(retrieval.retrieveAsGiven(eq("Dienstvereinbarung"), anySet(), any()))
+        .thenReturn(result(passageOne));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Dienstvereinbarung\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps()).hasSize(2);
+    ArgumentCaptor<Message> window = ArgumentCaptor.captor();
+    verify(chatMemory, times(2)).add(eq("key"), window.capture());
+    assertThat(window.getAllValues())
+        .extracting(Message::getText)
+        .containsExactly("Wie lauten Regel und Frist?", "Fertig.");
+  }
+
+  @Test
+  void aStepStartShowsNoRawArgumentSuchAsADocumentId() throws Exception {
+    withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.READ_DOCUMENT);
+    when(chunkLookup.findRange(eq("doc-1"), eq(0), eq(2), anySet()))
+        .thenReturn(List.of(passageOne));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall(
+                "call-2",
+                ToolNames.READ_DOCUMENT,
+                "{\"dokument\":\"doc-1\",\"abschnitt\":0,\"umfang\":\"umgebung\"}"),
+            answer("Fertig."));
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+
+    loop().handle(turn(stream));
+
+    verify(stream).stepStarted(1, ToolNames.READ_DOCUMENT, null);
+    verify(stream)
+        .stepFinished(
+            1, new AgentRunRecord.Step(ToolNames.READ_DOCUMENT, "regeln.pdf", 1, StepStatus.DONE));
+  }
+
+  @Test
+  void aReaderThatLeavesDuringARunEndsItBeforeTheNextToolCallAndKeepsNothing() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    org.mockito.Mockito.doThrow(new java.io.IOException("gone"))
+        .when(stream)
+        .stepStarted(eq(1), any(), any());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(
+                List.of(
+                    new Generation(
+                        AssistantMessage.builder()
+                            .toolCalls(
+                                List.of(
+                                    new AssistantMessage.ToolCall(
+                                        "call-1",
+                                        "function",
+                                        ToolNames.SEARCH_KNOWLEDGE,
+                                        "{\"frage\":\"Regeln\"}"),
+                                    new AssistantMessage.ToolCall(
+                                        "call-2",
+                                        "function",
+                                        ToolNames.SEARCH_KNOWLEDGE,
+                                        "{\"frage\":\"Fristen\"}")))
+                            .build()))),
+            answer("Nie gelesen."));
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval).retrieveAsGiven(eq("Regeln"), anySet(), any());
+    verify(retrieval, never()).retrieveAsGiven(eq("Fristen"), anySet(), any());
+    verify(chatModel, times(1)).call(any(Prompt.class));
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(chatMemory, never()).add(any(), any(Message.class));
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aStreamedRunAnnouncesTheLimitOnceWhenItReachesIt() throws Exception {
+    List<ChatResponse> script = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      script.add(toolCall("call-" + i, "{\"frage\":\"Regeln\"}"));
+    }
+    script.add(answer("Bisher gefunden."));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(script.get(0), script.subList(1, script.size()).toArray(ChatResponse[]::new));
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+
+    loop().handle(turn(stream));
+
+    var order = org.mockito.Mockito.inOrder(stream);
+    order.verify(stream).limitReached(EndState.LIMIT_CALLS);
+    order
+        .verify(stream)
+        .stepFinished(
+            3, new AgentRunRecord.Step(ToolNames.SEARCH_KNOWLEDGE, null, null, StepStatus.LIMIT));
+    order.verify(stream).runFinished(EndState.LIMIT_CALLS);
+    verify(stream, times(1)).limitReached(any());
+    verify(stream, never()).stepStarted(eq(3), any(), any());
+  }
+
+  @Test
   void anAgentInstructionCannotCloseItsOwnBlock() {
     String system =
         AgentPrompt.systemText(

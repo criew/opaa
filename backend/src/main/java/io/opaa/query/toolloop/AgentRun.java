@@ -45,6 +45,7 @@ public final class AgentRun {
   private long collectedChars;
   private EndState limitReached;
   private String question;
+  private volatile AgentRunEvents events = AgentRunEvents.NONE;
 
   AgentRun(
       UUID organizationId,
@@ -103,6 +104,23 @@ public final class AgentRun {
     return blockId;
   }
 
+  /** Tells {@code listener} the run's steps and its limit from now on. */
+  void listen(AgentRunEvents listener) {
+    this.events = listener == null ? AgentRunEvents.NONE : listener;
+  }
+
+  /**
+   * Announces the tool call about to run as the next step; a listener that throws keeps the call
+   * from running.
+   */
+  void startStep(String toolName, String detail) {
+    int index;
+    synchronized (this) {
+      index = steps.size();
+    }
+    events.stepStarted(index, toolName, detail);
+  }
+
   AgentLimits limits() {
     return limits;
   }
@@ -134,14 +152,20 @@ public final class AgentRun {
   }
 
   /** Counts a call that ran, with the characters it handed to the model and its passages. */
-  synchronized void recordCall(String toolName, ToolCallOutcome outcome) {
-    toolCalls++;
-    callsPerTool.merge(toolName, 1, Integer::sum);
-    collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
-    passages.addAll(outcome.passages());
-    steps.add(
+  void recordCall(String toolName, ToolCallOutcome outcome) {
+    AgentRunRecord.Step step =
         new AgentRunRecord.Step(
-            toolName, outcome.detail(), outcome.hits(), outcome.result().stepStatus()));
+            toolName, outcome.detail(), outcome.hits(), outcome.result().stepStatus());
+    int index;
+    synchronized (this) {
+      toolCalls++;
+      callsPerTool.merge(toolName, 1, Integer::sum);
+      collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
+      passages.addAll(outcome.passages());
+      index = steps.size();
+      steps.add(step);
+    }
+    events.stepFinished(index, step);
   }
 
   /**
@@ -160,15 +184,27 @@ public final class AgentRun {
   }
 
   /** Notes a step that did not run, e.g. a call of an unknown tool. */
-  synchronized void recordStep(AgentRunRecord.Step step) {
-    steps.add(step);
+  void recordStep(AgentRunRecord.Step step) {
+    int index;
+    synchronized (this) {
+      index = steps.size();
+      steps.add(step);
+    }
+    events.stepFinished(index, step);
   }
 
-  /** Marks the run as ended at {@code limit}; the first limit reached is the one that stays. */
-  synchronized void reachLimit(EndState limit) {
-    if (limitReached == null) {
+  /**
+   * Marks the run as ended at {@code limit}; the first limit reached is the one that stays and the
+   * only one announced.
+   */
+  void reachLimit(EndState limit) {
+    synchronized (this) {
+      if (limitReached != null) {
+        return;
+      }
       limitReached = limit;
     }
+    events.limitReached(limit);
   }
 
   /**

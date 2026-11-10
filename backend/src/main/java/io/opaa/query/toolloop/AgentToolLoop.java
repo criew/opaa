@@ -186,6 +186,7 @@ class AgentToolLoop implements AgentTurnHandler {
     }
     try {
       signal(turn, AnswerStreamListener::started);
+      run.listen(events(turn));
       QueryResult result = runAndKeep(turn, spec, run, client);
       metrics.recordRun(
           spec.builtin(),
@@ -261,6 +262,32 @@ class AgentToolLoop implements AgentTurnHandler {
     } catch (IOException readerGone) {
       throw new AnswerReaderGoneException(readerGone);
     }
+  }
+
+  /**
+   * The run's steps and limit as stream events of a streamed request; a reader that went away ends
+   * the run at the next of them, before a further tool call.
+   */
+  private static AgentRunEvents events(AgentTurn turn) {
+    if (turn.stream() == null) {
+      return AgentRunEvents.NONE;
+    }
+    return new AgentRunEvents() {
+      @Override
+      public void stepStarted(int index, String tool, String detail) {
+        signal(turn, stream -> stream.stepStarted(index, tool, detail));
+      }
+
+      @Override
+      public void stepFinished(int index, AgentRunRecord.Step step) {
+        signal(turn, stream -> stream.stepFinished(index, step));
+      }
+
+      @Override
+      public void limitReached(EndState limit) {
+        signal(turn, stream -> stream.limitReached(limit));
+      }
+    };
   }
 
   @FunctionalInterface
@@ -356,6 +383,10 @@ class AgentToolLoop implements AgentTurnHandler {
     if (text.isBlank() && endState != EndState.COMPLETED) {
       text = NO_ANSWER_AT_LIMIT;
     }
+    // The answer is shown as provisional while its citations are validated and the turn is kept.
+    String provisional = text;
+    signal(turn, stream -> stream.runFinished(endState));
+    signal(turn, stream -> stream.provisional(provisional, true));
     String answer = CitationMarkerRepair.repair(text, passages);
     List<CitationValidator.ValidatedCitation> citations =
         citationValidator.validate(citationParser.extractCitations(answer), passages, answer);

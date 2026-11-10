@@ -1,8 +1,13 @@
 package io.opaa.query.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.opaa.api.dto.AgentRunEndState;
+import io.opaa.api.dto.AgentRunStepStatus;
+import io.opaa.api.dto.AgentRunStreamStep;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.QueryStreamEvent;
+import io.opaa.chat.AgentRunRecord;
 import io.opaa.query.answer.AnswerStreamListener;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -22,6 +27,22 @@ final class QueryEventStream implements AnswerStreamListener {
   private final HttpServletResponse response;
   private final JsonMapper jsonMapper;
   private OutputStream out;
+
+  /**
+   * The application's mapper with the agent-only fields of an event left out while unset: an
+   * ordinary turn's frames stay byte for byte those of a stream without agents.
+   */
+  static JsonMapper mapper(JsonMapper jsonMapper) {
+    return jsonMapper.rebuild().addMixIn(QueryStreamEvent.class, AgentFieldsWhenSet.class).build();
+  }
+
+  private abstract static class AgentFieldsWhenSet {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract AgentRunStreamStep getStep();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract AgentRunEndState getEndState();
+  }
 
   QueryEventStream(HttpServletResponse response, JsonMapper jsonMapper) {
     this.response = response;
@@ -64,6 +85,38 @@ final class QueryEventStream implements AnswerStreamListener {
   public void beforeKeeping() throws IOException {
     started();
     idle();
+  }
+
+  @Override
+  public void stepStarted(int index, String tool, String detail) throws IOException {
+    send(
+        new QueryStreamEvent(QueryStreamEvent.TypeEnum.STEP_STARTED)
+            .step(new AgentRunStreamStep(index, tool).detail(detail)));
+  }
+
+  @Override
+  public void stepFinished(int index, AgentRunRecord.Step step) throws IOException {
+    send(
+        new QueryStreamEvent(QueryStreamEvent.TypeEnum.STEP_FINISHED)
+            .step(
+                new AgentRunStreamStep(index, step.tool())
+                    .detail(step.detail())
+                    .hits(step.hits())
+                    .status(AgentRunStepStatus.valueOf(step.status().name()))));
+  }
+
+  @Override
+  public void limitReached(AgentRunRecord.EndState limit) throws IOException {
+    send(
+        new QueryStreamEvent(QueryStreamEvent.TypeEnum.LIMIT_REACHED)
+            .endState(AgentRunEndState.valueOf(limit.name())));
+  }
+
+  @Override
+  public void runFinished(AgentRunRecord.EndState endState) throws IOException {
+    send(
+        new QueryStreamEvent(QueryStreamEvent.TypeEnum.RUN_FINISHED)
+            .endState(AgentRunEndState.valueOf(endState.name())));
   }
 
   /** The closing event of a complete turn; commits first if nothing was streamed. */
