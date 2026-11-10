@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -277,6 +278,67 @@ class OpenSandboxClientTest {
                   .timer()
                   .count())
           .isEqualTo(1);
+      client.close();
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void theScriptStartsWithoutTheTokenOfItsExecutionAgent() throws IOException {
+    List<String> createBodies = new CopyOnWriteArrayList<>();
+    List<String> commandBodies = new CopyOnWriteArrayList<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/",
+        exchange -> {
+          String call = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+          String request =
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+          String body = "";
+          int status = 200;
+          if (call.equals("POST /v1/sandboxes")) {
+            createBodies.add(request);
+            body = "{\"id\":\"sbx-3\"}";
+            status = 202;
+          } else if (call.endsWith("/command")) {
+            commandBodies.add(request);
+            body = "{\"type\":\"execution_complete\"}\n";
+          } else if (call.startsWith("DELETE")) {
+            status = 204;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(status, status == 204 ? -1 : bytes.length);
+          if (status != 204) {
+            exchange.getResponseBody().write(bytes);
+          }
+          exchange.close();
+        });
+    server.start();
+    try {
+      OpenSandboxClient client =
+          new OpenSandboxClient(
+              properties("http://127.0.0.1:" + server.getAddress().getPort()),
+              objectMapper,
+              new SimpleMeterRegistry());
+      try (SandboxSession session = client.open(Duration.ofMinutes(5), Duration.ofSeconds(10))) {
+        session.run("print(1)", Duration.ofSeconds(5));
+      }
+
+      // execd hands its environment to the script; with the token the script could call execd
+      // on loopback and run as root. The start command therefore unsets exactly that variable.
+      List<String> tokenVariables =
+          List.copyOf(objectMapper.readTree(createBodies.getFirst()).path("env").propertyNames());
+      assertThat(tokenVariables).hasSize(1);
+      List<String> argv =
+          objectMapper
+              .readTree(commandBodies.getFirst())
+              .path("argv")
+              .valueStream()
+              .map(JsonNode::asString)
+              .toList();
+      assertThat(argv)
+          .containsExactly("env", "-u", tokenVariables.getFirst(), "python3", "/workspace/main.py");
       client.close();
     } finally {
       server.stop(0);
