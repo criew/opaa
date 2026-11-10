@@ -630,12 +630,28 @@ zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escap
 schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
 `frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
 
+**Ansichten im Seitenpanel folgen dem Belegfenster des Chats** (5.8). Das Panel öffnet rechts
+neben dem Inhalt, der dahinter lesbar bleibt, und ist unter 600 px Bildschirmbreite
+bildschirmfüllend. Sein Kopf trägt nur den Titel der Ansicht und rechts das ✕ mit einem Namen,
+der das Panel nennt („Belegfenster schließen“); eine Trennlinie setzt den Kopf vom Inhalt ab.
+Darunter folgen, wo die Ansicht sie braucht, ein Suchfeld über der Liste und die Liste selbst; keine
+Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialog"` mit `aria-label`);
+öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
+Auslöser zurück. Escape und ein Klick daneben schließen es.
+
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
 - **Leer:** ein Satz, was hier stünde, plus die eine Handlung, die ihn füllt. Keine
   Illustrationsfriedhöfe.
 - **Laden:** Skeleton in `bg-3` ohne Layoutsprung; laufende Hintergrundvorgänge bleiben über
-  Seitenwechsel sichtbar (Muster Indizierung).
+  Seitenwechsel sichtbar (Muster Indizierung). Auch die Chat-Liste der Seitenleiste lädt mit
+  Skeleton-Zeilen in der Form ihrer Einträge, nicht mit einem Spinner.
+- **Laufende Antwort im Chat:** Die einzige Stelle, an der ein Spinner mit sichtbarem Text steht.
+  Die Zeile ist eine Auskunft, kein Ladezustand: Spinner und ein kurzer Satz, was gerade geschieht
+  („Denkt nach …“, „Antwort wird geschrieben …“, bei Agenten der laufende Schritt). Den Baustein
+  liefert der Chat (`ChatStatusLine` in `frontend/src/features/chat/components/`); sonst nutzt ihn
+  niemand. Er bleibt von der Frage bis zur fertigen Antwort stehen und wechselt nur seinen Text,
+  den ein Screenreader höflich ansagt; Spinnergröße und Abstände ändern sich dabei nicht.
 - **Fehler:** deutsch, ruhig, mit nächstem Schritt. Signalfarbe nur am betroffenen Element,
   nicht flächig.
 
@@ -669,6 +685,20 @@ Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Ak
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
 Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259).
+
+**Während die Antwort entsteht** steht sie vorläufig unter der Statuszeile (5.7), ohne Fußnoten,
+Belegknopf und Aktionen. Der Hinweis, dass die Belege noch nicht geprüft sind, steht genau einmal,
+in der Statuszeile; die fertige Antwort ersetzt die vorläufige an derselben Stelle. Das gilt auch
+für Agentenläufe: Ihre Schritte stehen unter derselben Statuszeile, die den laufenden Schritt nennt.
+
+**Kopf des Chats.** Der Kopf steht von Anfang an, auch im leeren Chat, mit „Neuer Chat“ als
+Titel, bis der Chat einen eigenen hat. Nichts rutscht, wenn die erste Antwort fertig ist oder der
+Titel eintrifft: Die erste Nachricht steht während der laufenden und nach der fertigen Antwort an
+derselben Stelle (geprüft in `e2e/tests/chat-streaming.spec.ts`).
+
+**KI-Hinweis einmal je Fläche.** Der Hinweis auf die KI-Nutzung steht im leeren Chat einmal in
+der Mitte, sobald eine Frage gestellt ist, einmal als ruhige Zeile unter dem Eingabefeld – nie an
+beiden Stellen zugleich.
 
 ### 5.9 Popup-Benachrichtigungen
 
