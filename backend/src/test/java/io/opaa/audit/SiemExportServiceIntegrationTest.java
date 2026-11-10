@@ -149,6 +149,39 @@ class SiemExportServiceIntegrationTest {
         .doesNotContain("geheim");
   }
 
+  // regression guard: the request id of an entry stays in the protocol; the rendered message
+  // carries neither the id nor the correlation ref around it
+  @Test
+  void theRequestIdOfAnEntryDoesNotGoOut() {
+    SiemExportService service = service(true);
+    service.cursor();
+    String requestId = UUID.randomUUID().toString().replace("-", "");
+    auditLogService.record(
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseudonym-of-the-actor",
+            AuditEventType.LIBRARY_CREATED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            "lib-correlated",
+            "Korrelation",
+            null,
+            null,
+            AuditOutcome.SUCCESS,
+            null,
+            "request:" + requestId));
+
+    service.run();
+
+    assertThat(ours())
+        .hasSize(1)
+        .first()
+        .asString()
+        .contains("cs3=lib-correlated")
+        .doesNotContain(requestId)
+        .doesNotContain("request:");
+  }
+
   /** The one payload the export carries: the seal of a month, read from the seal table. */
   @Test
   void theMonthSealGoesOutWithItsHashAndNothingElseOfThePayload() {

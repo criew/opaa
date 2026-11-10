@@ -22,6 +22,8 @@ export type DictationStatus = 'idle' | 'starting' | 'recording' | 'processing'
 
 /** A recording ends on its own after this long; the person can always stop earlier. */
 export const MAX_DICTATION_MS = 120_000
+/** How many level readings the recording keeps for its level display. */
+export const LEVEL_HISTORY = 48
 /** A recording ends on its own after this long without sound. */
 export const DICTATION_SILENCE_MS = 15_000
 
@@ -104,14 +106,19 @@ export interface Dictation {
   status: DictationStatus
   mode: DictationMode
   start: () => Promise<void>
-  /** Ends the recording and hands it to the transport. */
-  stop: () => Promise<void>
+  /**
+   * Ends the recording and resolves the final text, or `null` when there is none. With `deliver`
+   * (the default) the text also goes to `onFinalText`; without, the caller takes it, e.g. to send.
+   */
+  stop: (deliver?: boolean) => Promise<string | null>
   /** Ends the recording and drops it; nothing is sent. */
   cancel: () => void
   /** The live text while speaking, not yet final; always empty in batch mode. */
   interimText: string
   finalText: string | null
   elapsedSeconds: number
+  /** The recent input levels while recording (RMS, 0..1), oldest first; empty otherwise. */
+  levels: number[]
   error: string | null
 }
 
@@ -132,6 +139,7 @@ export function useDictation({
   const liveRef = useRef<LiveTranscription | null>(null)
   const [finalText, setFinalText] = useState<string | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [levels, setLevels] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const recordingRef = useRef<Recording | null>(null)
@@ -141,7 +149,7 @@ export function useDictation({
   const limitTimerRef = useRef<number | null>(null)
   const tickTimerRef = useRef<number | null>(null)
   const onFinalTextRef = useRef(onFinalText)
-  const stopRef = useRef<() => Promise<void>>(async () => {})
+  const stopRef = useRef<() => Promise<unknown>>(async () => null)
   const failRef = useRef<() => void>(() => {})
 
   useEffect(() => {
@@ -160,46 +168,54 @@ export function useDictation({
     tickTimerRef.current = null
   }, [])
 
-  const stop = useCallback(async () => {
-    if (statusRef.current !== 'recording') return
-    const recording = recordingRef.current
-    recordingRef.current = null
-    clearTimers()
-    if (!recording) return
-    const generation = generationRef.current
-    const live = liveRef.current
-    liveRef.current = null
-    changeStatus('processing')
-    // Asked before the recording stops, so the last frames still reach live.
-    const liveText = live ? live.finish().catch(() => '') : Promise.resolve('')
-    try {
-      let clip: Blob | null
+  const stop = useCallback(
+    async (deliver = true): Promise<string | null> => {
+      if (statusRef.current !== 'recording') return null
+      const recording = recordingRef.current
+      recordingRef.current = null
+      clearTimers()
+      if (!recording) return null
+      const generation = generationRef.current
+      const live = liveRef.current
+      liveRef.current = null
+      changeStatus('processing')
+      setLevels([])
+      // Asked before the recording stops, so the last frames still reach live.
+      const liveText = live ? live.finish().catch(() => '') : Promise.resolve('')
       try {
-        clip = await recording.stop()
-      } catch {
-        live?.cancel()
-        if (generation === generationRef.current) setError(RECORDING_FAILED)
-        return
+        let clip: Blob | null
+        try {
+          clip = await recording.stop()
+        } catch {
+          live?.cancel()
+          if (generation === generationRef.current) setError(RECORDING_FAILED)
+          return null
+        }
+        const fromLive = (await liveText).trim()
+        if (generation !== generationRef.current) return null
+        const pending = fromLive ? Promise.resolve(fromLive) : transport.transcribe(clip)
+        clip = null
+        const text = (await pending).trim()
+        if (generation !== generationRef.current) return null
+        setFinalText(text)
+        if (!text) {
+          setError(NOTHING_RECOGNISED)
+          return null
+        }
+        if (deliver) onFinalTextRef.current(text)
+        return text
+      } catch (err) {
+        if (generation === generationRef.current) setError(transcriptionError(err))
+        return null
+      } finally {
+        if (generation === generationRef.current) {
+          setInterimText('')
+          changeStatus('idle')
+        }
       }
-      const fromLive = (await liveText).trim()
-      if (generation !== generationRef.current) return
-      const pending = fromLive ? Promise.resolve(fromLive) : transport.transcribe(clip)
-      clip = null
-      const text = (await pending).trim()
-      if (generation !== generationRef.current) return
-      setFinalText(text)
-      if (text) onFinalTextRef.current(text)
-      else setError(NOTHING_RECOGNISED)
-    } catch (err) {
-      if (generation !== generationRef.current) return
-      setError(transcriptionError(err))
-    } finally {
-      if (generation === generationRef.current) {
-        setInterimText('')
-        changeStatus('idle')
-      }
-    }
-  }, [changeStatus, clearTimers, transport])
+    },
+    [changeStatus, clearTimers, transport],
+  )
 
   useEffect(() => {
     stopRef.current = stop
@@ -219,6 +235,11 @@ export function useDictation({
         silenceMs: DICTATION_SILENCE_MS,
         onSilence: () => void stopRef.current(),
         onFailure: () => failRef.current(),
+        onLevel: (rms) => {
+          if (generation === generationRef.current && statusRef.current === 'recording') {
+            setLevels((previous) => [...previous, rms].slice(-LEVEL_HISTORY))
+          }
+        },
       })
     } catch (err) {
       if (generation === generationRef.current) {
@@ -261,6 +282,7 @@ export function useDictation({
     recordingRef.current?.cancel()
     recordingRef.current = null
     setElapsedSeconds(0)
+    setLevels([])
     changeStatus('idle')
   }, [changeStatus, clearTimers])
 
@@ -293,6 +315,7 @@ export function useDictation({
     interimText,
     finalText,
     elapsedSeconds,
+    levels,
     error,
   }
 }

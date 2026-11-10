@@ -91,6 +91,7 @@ final class DataFlowDiagram {
       case IDENTITY -> "Identität";
       case STORAGE -> "Speicher";
       case SECURITY -> "Sicherheit";
+      case OPERATIONS -> "Betrieb";
     };
   }
 
@@ -98,7 +99,7 @@ final class DataFlowDiagram {
   static boolean leftOfOpaa(DataFlowGroup group) {
     return switch (group) {
       case MODEL, MAIL, IDENTITY -> true;
-      case CONNECTOR, STORAGE, SECURITY -> false;
+      case CONNECTOR, STORAGE, SECURITY, OPERATIONS -> false;
     };
   }
 

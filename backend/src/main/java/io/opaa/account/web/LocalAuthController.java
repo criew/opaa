@@ -12,7 +12,6 @@ import io.opaa.account.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.account.LocalRefreshTokenService.RotationResult;
 import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.account.RevocationReason;
-import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.dto.LocalChangePasswordRequest;
 import io.opaa.api.dto.LocalLoginRequest;
 import io.opaa.api.dto.LocalReauthenticateRequest;
@@ -27,6 +26,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.observability.RequestIds;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -248,7 +248,7 @@ public class LocalAuthController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .header(HttpHeaders.SET_COOKIE, cookies.clear().toString())
         .body(
-            new ErrorResponse(
+            RequestIds.errorResponse(
                 SESSION_INVALID, HttpStatus.UNAUTHORIZED.value(), Instant.now(clock)));
   }
 

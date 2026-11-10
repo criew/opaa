@@ -6,6 +6,8 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.ChatResponses;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.sourceaccess.LoggedName;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -197,7 +200,12 @@ public class ModelMetadataExtractor {
       var chatClient = chatModelResolver.resolveChatClient(callTimeout);
       CompletableFuture<String> call =
           CompletableFuture.supplyAsync(
-              () -> chatClient.prompt().user(prompt).call().content(), callExecutor);
+              () -> {
+                ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
+                chatModelResolver.recordUsage(ModelCallPurpose.AUXILIARY, chatClient, response);
+                return response == null ? null : ChatResponses.textOrNull(response);
+              },
+              callExecutor);
       String raw = call.get(callTimeout.toMillis(), TimeUnit.MILLISECONDS);
       ModelExtractionAnswer answer = ModelExtractionAnswer.parse(raw);
       if (answer.values().isEmpty() && answer.keywords().isEmpty()) {

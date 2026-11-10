@@ -3,6 +3,7 @@ package io.opaa.account;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.observability.RequestIds;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -79,7 +80,7 @@ public class LocalAdminNetworkFilter extends OncePerRequestFilter {
 
   private void refuse(HttpServletResponse response) throws IOException {
     ErrorResponse body =
-        new ErrorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
+        RequestIds.errorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
     body.setCode(CODE);
     response.setStatus(HttpStatus.FORBIDDEN.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);

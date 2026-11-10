@@ -53,6 +53,12 @@ info:
     key a stored credential needs. Each such operation declares the status it can produce and names
     the dependency in its own description; an operation that declares neither cannot produce
     either.
+
+    # Request id
+
+    Every answer carries the header `X-Request-Id`, and an `ErrorResponse` repeats it as
+    `requestId`. A caller may send its own `X-Request-Id`: it is kept when it consists of 8 to 64
+    letters, digits, `-` or `_`, and replaced by a generated id otherwise.
   version: 0.1.0
   license:
     name: AGPL-3.0

@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.observability.RequestIds;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -57,14 +58,15 @@ public class AuditEventRecorder {
    * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}. An optional {@link
    * AuditEvent.Builder#correlationRef} links the per-document entries one person's bulk operation
    * writes together (metadata Sammelzuweisung); without one, the reference {@link AuditCorrelation}
-   * binds applies.
+   * binds applies, and without that the request's ({@link #orRequest}).
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
     requireNoSubject(event, "recordUserAction");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     String correlationRef =
-        event.correlationRef() != null ? event.correlationRef() : AuditCorrelation.current();
+        orRequest(
+            event.correlationRef() != null ? event.correlationRef() : AuditCorrelation.current());
     auditLogService.record(
         AuditLogEntry.withoutSubject(
             event.organizationId(),
@@ -113,7 +115,7 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             event.reason(),
-            null));
+            orRequest(null)));
   }
 
   /**
@@ -149,7 +151,7 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             null,
-            event.correlationRef()));
+            orRequest(event.correlationRef())));
   }
 
   /**
@@ -176,7 +178,7 @@ public class AuditEventRecorder {
               toJson(event.after()),
               event.outcome(),
               event.reason(),
-              event.correlationRef()));
+              orRequest(event.correlationRef())));
       return;
     }
     UUID subjectId = Objects.requireNonNull(event.subjectId(), "subject");
@@ -199,7 +201,15 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             event.reason(),
-            event.correlationRef()));
+            orRequest(event.correlationRef())));
+  }
+
+  /**
+   * {@code correlationRef}, or the reference of the request being served when it is empty: the
+   * entries one call writes form one operation of the protocol, findable by the request id.
+   */
+  private static String orRequest(String correlationRef) {
+    return correlationRef != null ? correlationRef : RequestIds.auditReference();
   }
 
   private static UUID requireUserActor(AuditEvent event) {
@@ -273,7 +283,7 @@ public class AuditEventRecorder {
             toJson(scope),
             outcome,
             reason,
-            null));
+            orRequest(null)));
   }
 
   /**
@@ -306,7 +316,7 @@ public class AuditEventRecorder {
             toJson(scope),
             outcome,
             reason,
-            null));
+            orRequest(null)));
   }
 
   /**
@@ -336,7 +346,7 @@ public class AuditEventRecorder {
             toJson(scope),
             outcome,
             reason,
-            null));
+            orRequest(null)));
   }
 
   /**
