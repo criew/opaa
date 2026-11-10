@@ -642,8 +642,9 @@ gehören nicht dazu.
   Prüfung einzeln begründet.
 - **Gehärtete Dienste bleiben gehärtet.** `frontend`, der Texterkennungsdienst, der Prometheus des
   Monitorings und der Sandbox-Dienst laufen mit Read-only Filesystem, ohne Capabilities
-  (`cap_drop: [ALL]`) und mit `no-new-privileges`; fehlt eine der drei Angaben, schlägt die
-  Prüfung fehl.
+  (`cap_drop: [ALL]`) und mit `no-new-privileges`. Die Prüfung schlägt fehl, wenn eine der drei
+  Angaben fehlt oder der Dienst sie wieder aufweicht: `privileged: true`, `cap_add`, ein Profil
+  `seccomp:unconfined` oder `apparmor:unconfined`, `pid`, `ipc` oder `network_mode` auf `host`.
 
 Eigene Dateien wie `.env.docker` oder eine `docker-compose.override.yml` prüft sie nicht.
 

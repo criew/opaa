@@ -9,7 +9,8 @@
 #   as OPAA_AUTH_DEV_PUBLISHED_ADDRESS (the input of the dev profile's start refusal),
 # - publishes any port of a service that UNPUBLISHED_SERVICES names, even on loopback,
 # - leaves out read_only: true, cap_drop: [ALL] or security_opt no-new-privileges on a service that
-#   HARDENED_SERVICES names,
+#   HARDENED_SERVICES names, or undoes them there with privileged: true, any cap_add, an unconfined
+#   seccomp or AppArmor profile, or pid, ipc or network_mode: host (lists in block or flow style),
 # - carries a fixed secret: a key ending in SECRET, PASSWORD, PASSWD, TOKEN, API_KEY, SECRET_KEY,
 #   SECRET_ACCESS_KEY, ENCRYPTION_KEY or PRIVATE_KEY with a literal value or a ${VAR:-default}
 #   default, unless SECRET_EXCEPTIONS names file, service and key with a reason.
@@ -74,6 +75,26 @@ declare -A used_exceptions=()
 declare -A seen_services=()
 # "file|service|setting" for every hardening setting found: read_only, cap_drop, no_new_privileges.
 declare -A hardening=()
+# "file|service" -> the settings that undo the hardening (privileges, capabilities, host namespaces).
+declare -A loosened=()
+loosen() {
+  loosened["$1|$2"]+=" line $3: $4;"
+}
+# One list item of a service key: cap_drop ALL and no-new-privileges harden, an added capability
+# or an unconfined seccomp or AppArmor profile loosens.
+hardening_item() {
+  local file="$1" scope="$2" number="$3" key="$4" value="$5"
+  [[ -n "$value" ]] || return 0
+  case "$key" in
+  cap_drop) [[ "$value" == ALL ]] && hardening["$file|$scope|cap_drop"]=1 ;;
+  cap_add) loosen "$file" "$scope" "$number" "cap_add: $value" ;;
+  security_opt)
+    [[ "$value" =~ ^no-new-privileges([:=]true)?$ ]] && hardening["$file|$scope|no_new_privileges"]=1
+    [[ "$value" =~ ^(seccomp|apparmor)[:=]unconfined$ ]] && loosen "$file" "$scope" "$number" "security_opt: $value"
+    ;;
+  esac
+  return 0
+}
 unpublished() {
   local entry
   for entry in "${UNPUBLISHED_SERVICES[@]}"; do
@@ -156,7 +177,8 @@ check_env_file() {
 
 check_compose_file() {
   local file="$1" number=0 line indent ports_indent=-1 item="" item_line=0 item_indent=-1
-  local frontend_bind=0 published_address=0 top="" scope="" host_ip service_key="" setting
+  local frontend_bind=0 published_address=0 top="" scope="" host_ip service_key="" setting flow_item
+  local -a flow_items
   # Ends a long-syntax ports item: it must name host_ip 127.0.0.1.
   finish_item() {
     if [[ -n "$item" ]]; then
@@ -203,19 +225,28 @@ check_compose_file() {
       seen_services["$file|$scope"]=1
       service_key=""
     fi
-    # The hardening settings of a service: keys at its first level, list items below them.
+    # The hardening settings of a service: keys at its first level, their list items in block or
+    # flow style.
     if [[ "$top" == services ]] && ((indent >= 4)); then
       if ((indent == 4)) && [[ "$line" =~ ^[[:space:]]+([a-z_]+):[[:space:]]*(.*)$ ]]; then
         service_key="${BASH_REMATCH[1]}"
         setting="$(scalar "${BASH_REMATCH[2]}")"
-        [[ "$service_key" == read_only && "$setting" == true ]] && hardening["$file|$scope|read_only"]=1
-        [[ "$service_key" == cap_drop && "$setting" =~ ^\[[[:space:]]*[\"\']?ALL[\"\']?[[:space:]]*\]$ ]] &&
-          hardening["$file|$scope|cap_drop"]=1
+        case "$service_key" in
+        read_only) [[ "$setting" == true ]] && hardening["$file|$scope|read_only"]=1 ;;
+        privileged) [[ "${setting,,}" == true ]] && loosen "$file" "$scope" "$number" "privileged: true" ;;
+        pid | ipc | network_mode)
+          [[ "$setting" == host ]] && loosen "$file" "$scope" "$number" "$service_key: host" ;;
+        esac
+        if [[ "$setting" =~ ^\[(.*)\]$ ]]; then
+          IFS=',' read -ra flow_items <<<"${BASH_REMATCH[1]}"
+          for flow_item in "${flow_items[@]}"; do
+            hardening_item "$file" "$scope" "$number" "$service_key" "$(scalar "$flow_item")"
+          done
+        elif [[ "$service_key" == cap_add && -n "$setting" && "$setting" != '[]' ]]; then
+          loosen "$file" "$scope" "$number" "cap_add"
+        fi
       elif [[ "$line" =~ ^[[:space:]]*-[[:space:]]+(.*)$ ]]; then
-        setting="$(scalar "${BASH_REMATCH[1]}")"
-        [[ "$service_key" == cap_drop && "$setting" == ALL ]] && hardening["$file|$scope|cap_drop"]=1
-        [[ "$service_key" == security_opt && "$setting" =~ ^no-new-privileges([:=]true)?$ ]] &&
-          hardening["$file|$scope|no_new_privileges"]=1
+        hardening_item "$file" "$scope" "$number" "$service_key" "$(scalar "${BASH_REMATCH[1]}")"
       fi
     fi
     if [[ "$line" =~ ^[[:space:]]*ports:[[:space:]]*(.*)$ ]]; then
@@ -290,6 +321,9 @@ for entry in "${HARDENED_SERVICES[@]}"; do
     [[ -v hardening["$h_file|$h_service|${setting%%:*}"] ]] ||
       error "$h_file" 1 "$h_service lacks ${setting#*:}; HARDENED_SERVICES in .github/scripts/check_compose_defaults.sh keeps its hardening."
   done
+  if [[ -v loosened["$h_file|$h_service"] ]]; then
+    error "$h_file" 1 "$h_service undoes its hardening:${loosened["$h_file|$h_service"]} HARDENED_SERVICES in .github/scripts/check_compose_defaults.sh refuses privileged, cap_add, unconfined profiles and host namespaces."
+  fi
 done
 
 if ((${#files[@]} == 0)); then
