@@ -72,6 +72,32 @@ class AgentWorkspaceIntegrationTest {
   }
 
   @Test
+  void aStopAskedOnOneInstanceIsSeenByTheInstanceRunningTheRun() {
+    AgentWorkspace running = workspace();
+    AgentWorkspace other = workspace();
+    UUID run = UUID.randomUUID();
+    UUID neighbour = UUID.randomUUID();
+    running.tryReserve(run);
+    running.tryReserve(neighbour);
+    running.armCancel(run, "token-of-the-run");
+    running.armCancel(neighbour, "token-of-the-neighbour");
+    assertThat(running.cancelRequested(run)).isFalse();
+
+    other.cancel("unknown-token");
+    assertThat(running.cancelRequested(run)).isFalse();
+    other.cancel("token-of-the-run");
+
+    assertThat(running.cancelRequested(run)).isTrue();
+    assertThat(running.cancelRequested(neighbour)).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM agent_run_reservations WHERE cancel_token_hash = ?",
+                Integer.class,
+                "token-of-the-run"))
+        .isZero();
+  }
+
+  @Test
   void aReleasedPlaceIsFreeAtOnce() {
     AgentWorkspace workspace = workspace();
     UUID run = UUID.randomUUID();

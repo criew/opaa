@@ -11,6 +11,12 @@ interface AgentRunEvents {
 
   AgentRunEvents NONE = new AgentRunEvents() {};
 
+  /**
+   * Throws when the run must end now - the person stopped it, its reader went away, the instance
+   * stops. Asked before every tool call and every model call.
+   */
+  default void checkpoint() {}
+
   /** The tool call at {@code index} is about to run. */
   default void stepStarted(int index, String tool, String detail) {}
 

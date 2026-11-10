@@ -2,6 +2,7 @@ package io.opaa.query.answer;
 
 import io.opaa.chat.AgentRunRecord;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Receives a streamed answer on the thread that asked for it. A method that throws ends the stream:
@@ -28,6 +29,12 @@ public interface AnswerStreamListener {
   default void beforeKeeping() throws IOException {
     idle();
   }
+
+  /**
+   * An agent run holds its place (ADR-0070): {@code runId} names it, {@code cancelToken} is the
+   * secret that ends it from any instance. Never sent on an ordinary turn.
+   */
+  default void runStarted(UUID runId, String cancelToken) throws IOException {}
 
   /**
    * An agent run's tool call at {@code index} begins (ADR-0070): {@code tool} is the tool's name,

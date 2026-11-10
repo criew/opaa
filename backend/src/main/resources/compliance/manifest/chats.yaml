@@ -277,7 +277,7 @@ nonPersonalTables:
   locked_account_chat_cleanup_settings: [id, enabled, delete_after_days, updated_at]
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   agent_workspace: [id]
-  agent_run_reservations: [run_id, expires_at]
+  agent_run_reservations: [run_id, expires_at, cancel_token_hash, cancel_requested_at]
   agent_run_log_retention_settings:
     [id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at]
   chat_library_references: [chat_id, library_id, organization_id]

@@ -152,7 +152,15 @@ public class RateLimitConfiguration {
     // These endpoints sit behind the sign-in (the push intake behind its secret): only requests
     // that authenticated keep their token of the global ceiling.
     List<Rule> rules = new ArrayList<>();
-    rules.add(rule(counters, "query", "^/api/v1/query", properties.query(), AUTHENTICATED));
+    // The stop button of a streamed agent run spends no question: a person whose budget is used up
+    // must still be able to stop the run that used it.
+    rules.add(
+        rule(
+            counters,
+            "query",
+            "^/api/v1/query(?!/stream/cancel$)",
+            properties.query(),
+            AUTHENTICATED));
     rules.add(
         rule(counters, "indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
     rules.add(

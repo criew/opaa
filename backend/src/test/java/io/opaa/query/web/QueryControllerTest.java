@@ -28,6 +28,7 @@ import io.opaa.common.ServiceUnavailableException;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.query.AgentRunCancellation;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
@@ -67,6 +68,7 @@ class QueryControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private QueryService queryService;
+  @MockitoBean private AgentRunCancellation cancellation;
   @MockitoBean private MetadataFilterOptionsService metadataFilterOptionsService;
   @MockitoBean private UserService userService;
 
@@ -693,6 +695,8 @@ class QueryControllerTest {
             call -> {
               AnswerStreamListener listener = listenerOf(call);
               listener.started();
+              listener.runStarted(
+                  UUID.fromString("00000000-0000-4000-8000-000000000001"), "geheim");
               listener.stepStarted(0, "search_knowledge", "Dienstvereinbarung");
               listener.stepFinished(
                   0,
@@ -728,6 +732,13 @@ class QueryControllerTest {
     assertThat(body.split("\n\n"))
         .satisfiesExactly(
             started -> assertThat(started).startsWith("event: started\n"),
+            runStarted ->
+                assertThat(runStarted)
+                    .isEqualTo(
+                        "event: run_started\ndata: {\"type\":\"run_started\","
+                            + "\"cancelToken\":\"geheim\",\"error\":null,\"response\":null,"
+                            + "\"runId\":\"00000000-0000-4000-8000-000000000001\","
+                            + "\"text\":null}"),
             stepStarted ->
                 assertThat(stepStarted)
                     .isEqualTo(
@@ -763,6 +774,32 @@ class QueryControllerTest {
                     .isEqualTo(
                         "event: reset\ndata: {\"type\":\"reset\",\"error\":null,\"response\":null,\"text\":\"Antwort.\"}"),
             last -> assertThat(last).startsWith("event: final\n"));
+  }
+
+  @Test
+  void theStopButtonHandsTheTokenOnAndAnswersAlikeForEveryToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query/stream/cancel")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"cancelToken\": \"geheim\"}"))
+        .andExpect(status().isNoContent());
+
+    verify(cancellation).cancel("geheim");
+  }
+
+  @Test
+  void theStopButtonNeedsAToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query/stream/cancel")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"cancelToken\": \"\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(cancellation);
   }
 
   /** A turn the model answered without streaming still arrives as a stream with its final event. */

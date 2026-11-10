@@ -1,10 +1,12 @@
 package io.opaa.query.web;
 
 import io.opaa.api.dto.QueryRequest;
+import io.opaa.api.dto.QueryStreamCancelRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.FailureDescriber;
 import io.opaa.metadata.web.MetadataFilterMapper;
+import io.opaa.query.AgentRunCancellation;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import io.opaa.query.answer.AnswerReaderGoneException;
@@ -14,9 +16,11 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -36,10 +40,15 @@ public class QueryStreamController {
   private final QueryService queryService;
   private final JsonMapper jsonMapper;
   private final FailureDescriber exceptionHandler;
+  private final AgentRunCancellation cancellation;
 
   public QueryStreamController(
-      QueryService queryService, JsonMapper jsonMapper, FailureDescriber exceptionHandler) {
+      QueryService queryService,
+      JsonMapper jsonMapper,
+      FailureDescriber exceptionHandler,
+      AgentRunCancellation cancellation) {
     this.queryService = queryService;
+    this.cancellation = cancellation;
     this.jsonMapper = QueryEventStream.mapper(jsonMapper);
     this.exceptionHandler = exceptionHandler;
   }
@@ -78,5 +87,13 @@ public class QueryStreamController {
       return;
     }
     events.complete(QueryResponseMapper.toResponse(result));
+  }
+
+  /** The stop button of an agent turn; the token is the authorization, see the specification. */
+  @PostMapping("/query/stream/cancel")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void cancelQueryStream(
+      @Valid @RequestBody QueryStreamCancelRequest request, @Caller CurrentUser caller) {
+    cancellation.cancel(request.getCancelToken());
   }
 }

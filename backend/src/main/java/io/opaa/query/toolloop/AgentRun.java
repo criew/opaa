@@ -109,11 +109,17 @@ public final class AgentRun {
     this.events = listener == null ? AgentRunEvents.NONE : listener;
   }
 
+  /** Ends the run here when it must end, before a model call or a tool call. */
+  void checkpoint() {
+    events.checkpoint();
+  }
+
   /**
-   * Announces the tool call about to run as the next step; a listener that throws keeps the call
-   * from running.
+   * Announces the tool call about to run as the next step, after the {@link #checkpoint}; a
+   * listener that throws keeps the call from running.
    */
   void startStep(String toolName, String detail) {
+    events.checkpoint();
     int index;
     synchronized (this) {
       index = steps.size();

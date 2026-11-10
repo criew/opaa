@@ -26,6 +26,7 @@ import io.opaa.chat.ChatAttachmentView;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
@@ -35,6 +36,7 @@ import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.AgentTurn;
 import io.opaa.query.QueryResult;
+import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.citation.ChatSourceAssembler;
@@ -85,6 +87,7 @@ import tools.jackson.databind.json.JsonMapper;
 class AgentToolLoopTest {
 
   private final AgentRunLogWriter runLogWriter = mock(AgentRunLogWriter.class);
+  private final ActiveAnswerStreams activeStreams = new ActiveAnswerStreams();
 
   private static final Instant NOW = Instant.parse("2026-11-10T08:00:00Z");
 
@@ -173,6 +176,7 @@ class AgentToolLoopTest {
         provider(null),
         JsonMapper.builder().build(),
         runLogWriter,
+        activeStreams,
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -345,6 +349,126 @@ class AgentToolLoopTest {
         .verify(chatService)
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
     verify(stream, never()).limitReached(any());
+  }
+
+  @Test
+  void aStopAskedDuringAModelCallEndsTheRunBeforeTheToolEvenThoughEveryWriteSucceeds()
+      throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.atomic.AtomicBoolean stopped =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    when(workspace.cancelRequested(any())).thenAnswer(call -> stopped.get());
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              // the person presses stop while the model works; the connection still takes writes
+              stopped.set(true);
+              return toolCall("call-1", "{\"frage\":\"Regeln\"}");
+            });
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval, never()).retrieveAsGiven(any(), anySet(), any());
+    verify(stream, never()).stepStarted(anyInt(), any(), any());
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
+  }
+
+  @Test
+  void theRunStartsWithTheTokenThatStopsIt() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+
+    QueryResult result = loop().handle(turn(stream));
+
+    ArgumentCaptor<String> token = ArgumentCaptor.captor();
+    verify(stream).runStarted(eq(result.agentRun().runId()), token.capture());
+    verify(workspace).armCancel(result.agentRun().runId(), token.getValue());
+    assertThat(token.getValue()).hasSizeGreaterThanOrEqualTo(32);
+  }
+
+  @Test
+  void aStreamedRunPingsItsReaderWhileTheModelWorks() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              Thread.sleep(300);
+              return answer("Fertig.");
+            });
+    AgentToolLoop pinging = loop();
+    pinging.heartbeat = Duration.ofMillis(40);
+
+    pinging.handle(turn(stream));
+
+    // one ping before the model call, the rest from the clock while the model works
+    verify(stream, org.mockito.Mockito.atLeast(4)).idle();
+  }
+
+  @Test
+  void aPingThatFindsTheReaderGoneEndsTheRunBeforeTheTool() throws Exception {
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    org.mockito.Mockito.doNothing().doThrow(new java.io.IOException("gone")).when(stream).idle();
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              Thread.sleep(300);
+              return toolCall("call-1", "{\"frage\":\"Regeln\"}");
+            });
+    AgentToolLoop pinging = loop();
+    pinging.heartbeat = Duration.ofMillis(40);
+
+    assertThatThrownBy(() -> pinging.handle(turn(stream)))
+        .isInstanceOf(AnswerReaderGoneException.class);
+
+    verify(retrieval, never()).retrieveAsGiven(any(), anySet(), any());
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void theStopOfTheInstanceEndsAWaitingRunAtOnceWithShuttingDown() throws Exception {
+    activeStreams.start();
+    AnswerStreamListener stream = mock(AnswerStreamListener.class);
+    java.util.concurrent.CountDownLatch modelCalled = new java.util.concurrent.CountDownLatch(1);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            call -> {
+              modelCalled.countDown();
+              try {
+                new java.util.concurrent.CountDownLatch(1).await();
+              } catch (InterruptedException e) {
+                // as the HTTP client of a model call reports an interrupted wait
+                throw new IllegalStateException("model call interrupted", e);
+              }
+              return answer("Nie.");
+            });
+    Thread stopper =
+        Thread.ofPlatform()
+            .start(
+                () -> {
+                  try {
+                    modelCalled.await();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  }
+                  activeStreams.stop();
+                });
+
+    assertThatThrownBy(() -> loop().handle(turn(stream)))
+        .isInstanceOfSatisfying(
+            ServiceUnavailableException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ActiveAnswerStreams.SHUTTING_DOWN));
+
+    stopper.join();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+    verify(chatService, never())
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    verify(workspace).release(any());
+    assertThat(runs("custom", "aborted")).isEqualTo(1.0);
   }
 
   @Test

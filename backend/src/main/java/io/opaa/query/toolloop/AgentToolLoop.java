@@ -22,6 +22,7 @@ import io.opaa.query.AgentTurn;
 import io.opaa.query.AgentTurnHandler;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
+import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.ConversationWindowMessages;
@@ -32,6 +33,7 @@ import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.runlog.AgentRunLogWriter;
 import io.opaa.retrieval.ChunkGroupingKey;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
@@ -44,6 +46,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.AdvisorParams;
@@ -97,6 +101,8 @@ class AgentToolLoop implements AgentTurnHandler {
   static final String NO_ANSWER_AT_LIMIT =
       "Der Lauf wurde an einer Grenze beendet, bevor eine Antwort entstand.";
 
+  static final Duration HEARTBEAT = Duration.ofSeconds(10);
+
   private final ObjectProvider<AgentRunSpecResolver> specResolver;
   private final ObjectProvider<AgentToolSwitches> toolSwitches;
   private final ToolRegistry registry;
@@ -114,7 +120,19 @@ class AgentToolLoop implements AgentTurnHandler {
   private final ObservationRegistry observationRegistry;
   private final ObjectMapper objectMapper;
   private final AgentRunLogWriter runLogWriter;
+  private final ActiveAnswerStreams activeAnswerStreams;
   private final Clock clock;
+
+  /**
+   * Pings the readers of this instance's streamed runs while their run works, one daemon thread for
+   * all of them (ADR-0053): per instance on purpose, a ping lives within its request.
+   */
+  private final ScheduledExecutorService pinger =
+      Executors.newSingleThreadScheduledExecutor(
+          Thread.ofPlatform().name("agent-stream-ping").daemon().factory());
+
+  /** Time between two pings of a streamed run, the same as on the ordinary path. */
+  Duration heartbeat = HEARTBEAT;
 
   AgentToolLoop(
       ObjectProvider<AgentRunSpecResolver> specResolver,
@@ -134,6 +152,7 @@ class AgentToolLoop implements AgentTurnHandler {
       ObjectProvider<ObservationRegistry> observationRegistry,
       ObjectMapper objectMapper,
       AgentRunLogWriter runLogWriter,
+      ActiveAnswerStreams activeAnswerStreams,
       Clock clock) {
     this.specResolver = specResolver;
     this.toolSwitches = toolSwitches;
@@ -152,6 +171,7 @@ class AgentToolLoop implements AgentTurnHandler {
     this.observationRegistry = observationRegistry.getIfAvailable(() -> ObservationRegistry.NOOP);
     this.objectMapper = objectMapper;
     this.runLogWriter = runLogWriter;
+    this.activeAnswerStreams = activeAnswerStreams;
     this.clock = clock;
   }
 
@@ -184,9 +204,18 @@ class AgentToolLoop implements AgentTurnHandler {
       metrics.recordRejected();
       throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
     }
+    AgentRunStream stream = null;
     try {
       signal(turn, AnswerStreamListener::started);
-      run.listen(events(turn));
+      if (turn.stream() != null) {
+        stream =
+            new AgentRunStream(
+                turn.stream(), run.runId(), workspace, activeAnswerStreams, pinger, heartbeat);
+        run.listen(stream);
+        String cancelToken = UUID.randomUUID().toString();
+        workspace.armCancel(run.runId(), cancelToken);
+        signal(turn, reader -> reader.runStarted(run.runId(), cancelToken));
+      }
       QueryResult result = runAndKeep(turn, spec, run, client);
       metrics.recordRun(
           spec.builtin(),
@@ -194,7 +223,10 @@ class AgentToolLoop implements AgentTurnHandler {
           Duration.between(started, clock.instant()));
       return result;
     } catch (RuntimeException e) {
-      boolean aborted = e instanceof AnswerReaderGoneException;
+      // whatever the interrupted model call threw, the reader is told that the instance stops
+      RuntimeException failure =
+          stream != null && stream.shuttingDown() ? ActiveAnswerStreams.shuttingDown() : e;
+      boolean aborted = failure instanceof AnswerReaderGoneException || failure != e;
       metrics.recordRun(
           spec.builtin(),
           aborted ? AgentRunResult.ABORTED : AgentRunResult.ERROR,
@@ -203,12 +235,20 @@ class AgentToolLoop implements AgentTurnHandler {
         // the run id is the only key into the step log of a run that left no answer behind
         log.warn("Agent run {} failed: {}", run.runId(), e.getClass().getSimpleName());
       }
-      throw e;
+      throw failure;
     } finally {
+      if (stream != null) {
+        stream.close();
+      }
       closeResources(run);
       runLogWriter.writeSteps(run.organizationId(), run.runId(), run.trace());
       release(run);
     }
+  }
+
+  @PreDestroy
+  void stopPinger() {
+    pinger.shutdownNow();
   }
 
   /** Closes what the run's tools opened, e.g. its sandbox; a failure is logged, never thrown. */
@@ -262,32 +302,6 @@ class AgentToolLoop implements AgentTurnHandler {
     } catch (IOException readerGone) {
       throw new AnswerReaderGoneException(readerGone);
     }
-  }
-
-  /**
-   * The run's steps and limit as stream events of a streamed request; a reader that went away ends
-   * the run at the next of them, before a further tool call.
-   */
-  private static AgentRunEvents events(AgentTurn turn) {
-    if (turn.stream() == null) {
-      return AgentRunEvents.NONE;
-    }
-    return new AgentRunEvents() {
-      @Override
-      public void stepStarted(int index, String tool, String detail) {
-        signal(turn, stream -> stream.stepStarted(index, tool, detail));
-      }
-
-      @Override
-      public void stepFinished(int index, AgentRunRecord.Step step) {
-        signal(turn, stream -> stream.stepFinished(index, step));
-      }
-
-      @Override
-      public void limitReached(EndState limit) {
-        signal(turn, stream -> stream.limitReached(limit));
-      }
-    };
   }
 
   @FunctionalInterface
@@ -351,6 +365,7 @@ class AgentToolLoop implements AgentTurnHandler {
         run.reachLimit(EndState.LIMIT_DURATION);
       }
       closing = closing || run.limitReached() != null;
+      run.checkpoint();
       signal(turn, AnswerStreamListener::idle);
       // The closing call offers no tools: the model answers with what the steps collected.
       response = call(client, system, history, closing ? List.of() : callbacks, toolContext);
@@ -417,6 +432,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 completeness);
     AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps());
 
+    run.checkpoint();
     signal(turn, AnswerStreamListener::beforeKeeping);
     List<ChatAttachment> generatedFiles = finishResources(run);
     Chat chat = turn.chat();
