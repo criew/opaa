@@ -19,7 +19,7 @@ describe('badge shape', () => {
     return { radius: style.borderRadius, weight: style.fontWeight, size: style.fontSize }
   }
 
-  const pill = { radius: `${radius.pill}px`, weight: '500', size: `${fontSize.xs}px` }
+  const pill = { radius: `${radius.pill}px`, weight: '500', size: `${fontSize.meta}px` }
 
   it.each(['light', 'dark'] as const)('MetaBadge is a pill in 12 px, weight 500 (%s)', (scheme) => {
     render(

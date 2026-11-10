@@ -11,6 +11,7 @@ import {
   useRequiredChoice,
 } from '@/features/principal'
 import type { UserSummary } from '@/shared/api/types'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface InitialStewardsSectionProps {
   stewards: UserSummary[]
@@ -49,7 +50,7 @@ export default function InitialStewardsSection({
   return (
     <Box>
       <SectionHead>Verantwortlich</SectionHead>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
         Verantwortliche pflegen die Gruppe; Mitglied werden sie dadurch nicht.
         {canRemoveSelf
           ? ' Benennen Sie niemanden, werden Sie selbst verantwortlich.'

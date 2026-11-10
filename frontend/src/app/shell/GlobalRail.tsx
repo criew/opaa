@@ -28,7 +28,7 @@ import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { catalogScopePrefixes } from '@/shared/assetTypes'
 import { createRailTheme } from '@/shared/theme/theme'
-import { darkRoles, railRoles, shadow } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, iconSize, railRoles, shadow } from '@/shared/theme/tokens'
 
 const RAIL_WIDTH = 64
 
@@ -165,10 +165,13 @@ export default function GlobalRail() {
                 '&:hover': { bgcolor: active ? roles.bg3 : roles.bg2 },
               }}
             >
-              <Icon sx={{ fontSize: 18 }} />
+              <Icon sx={{ fontSize: iconSize.md }} />
               {/* The design labels the tiles at micro size; 9.5px matches the sidebar's own
                   micro-caption step. The icon alone would leave the tile ambiguous. */}
-              <Typography component="span" sx={{ fontSize: 9.5, fontWeight: 500, lineHeight: 1 }}>
+              <Typography
+                component="span"
+                sx={{ fontSize: fontSize.label, fontWeight: 500, lineHeight: 1 }}
+              >
                 {destination.label}
               </Typography>
             </ButtonBase>
@@ -205,7 +208,7 @@ export default function GlobalRail() {
                   width: 30,
                   height: 30,
                   bgcolor: 'primary.main',
-                  fontSize: 11,
+                  fontSize: fontSize.label,
                   fontWeight: 600,
                 }}
               >

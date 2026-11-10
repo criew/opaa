@@ -8,6 +8,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ChatNoteItem } from '@/shared/api/types'
 import { isConversationNoteVisible } from './conversationNoteVisibility'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface ConversationNoteProps {
   /** The chat's note points, oldest first. */
@@ -156,7 +157,7 @@ export default function ConversationNote({
               onKeyDown={handleEscape}
               sx={{ pt: 2, pb: 0.5 }}
             >
-              <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600 }}>
+              <Typography component="h2" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
                 Gesprächsnotiz
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>

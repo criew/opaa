@@ -20,6 +20,7 @@ import ScopePicker from '../ScopePicker'
 import { displayPath } from '../../sourceCore/paths'
 import { TEXT_LINK } from '../rowStyles'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { fontSize } from '@/shared/theme/tokens'
 
 type Found = { driveId: string; driveName: string | null } | { refusal: string }
 
@@ -130,7 +131,7 @@ function DriveState({
   let body: React.ReactNode
   if (drive.loading) {
     body = (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         OneDrive wird ermittelt …
       </Typography>
     )
@@ -138,15 +139,19 @@ function DriveState({
     const detail = plainMessage(drive.refusal)
     body = (
       <>
-        <Typography sx={{ fontSize: 13.5, color: 'text.primary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }}>
           Das OneDrive ließ sich nicht ermitteln.
         </Typography>
-        {detail && <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{detail}</Typography>}
+        {detail && (
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            {detail}
+          </Typography>
+        )}
       </>
     )
   } else if (values.driveId !== '') {
     body = (
-      <Typography sx={{ fontSize: 13.5, overflowWrap: 'anywhere' }}>
+      <Typography sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}>
         „{oneDriveLabel(values)}“ – das OneDrive Ihres verbundenen Microsoft-Kontos.
       </Typography>
     )
@@ -163,7 +168,10 @@ function DriveState({
         </Box>
       )}
       {issue && (
-        <Typography id={`${id}-error`} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+        <Typography
+          id={`${id}-error`}
+          sx={{ fontSize: fontSize.meta, color: 'error.main', mt: 0.5 }}
+        >
           {issue}
         </Typography>
       )}

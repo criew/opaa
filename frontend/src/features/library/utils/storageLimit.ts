@@ -1,3 +1,5 @@
+import { formatNumber } from '@/shared/utils/formatDate'
+
 export const BYTES_PER_GB = 1024 * 1024 * 1024
 
 const MIN_LIMIT_BYTES = 1024 * 1024
@@ -32,7 +34,7 @@ export function parseLimit(
 
 /** A limit in bytes as the field shows it, in GB with a decimal comma. */
 export function limitDraft(bytes: number): string {
-  return (bytes / BYTES_PER_GB).toLocaleString('de-DE', {
+  return formatNumber(bytes / BYTES_PER_GB, {
     maximumFractionDigits: 6,
     useGrouping: false,
   })

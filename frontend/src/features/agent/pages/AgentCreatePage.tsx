@@ -13,7 +13,7 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { CATALOG_ROUTE, agentRoute } from '@/shared/routes'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { useAgentStore } from '../stores/agentStore'
@@ -126,11 +126,11 @@ export default function AgentCreatePage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box component="form" noValidate onSubmit={handleSubmit} sx={{ maxWidth: 640 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neuer Katalogeintrag
         </Typography>
         <PageHeading title="Neuer Agent" />
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 1, mb: 3 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 1, mb: 3 }}>
           Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen
           darf, und mit den Werkzeugen Suchen und Lesen. Auftrag, Wissen und Ablauf richten Sie
           danach auf seiner Seite ein.

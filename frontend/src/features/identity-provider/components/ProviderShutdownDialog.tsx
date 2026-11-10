@@ -14,6 +14,7 @@ import { getOidcProviderImpact } from '../api/identityProviderApi'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
+import { fontSize } from '@/shared/theme/tokens'
 
 export type ProviderShutdownAction = 'disable' | 'delete'
 
@@ -133,15 +134,15 @@ export default function ProviderShutdownDialog({
         },
       }}
     >
-      <DialogTitle id="provider-shutdown-question" sx={{ fontSize: 17, pb: 1 }}>
+      <DialogTitle id="provider-shutdown-question" sx={{ fontSize: fontSize.title, pb: 1 }}>
         {`„${provider.displayName}“ ${deleting ? 'löschen' : 'deaktivieren'}?`}
       </DialogTitle>
       <DialogContent sx={{ pt: 0 }}>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
           {deleting ? DELETE_CONSEQUENCE : DISABLE_CONSEQUENCE}
         </Typography>
         {isLastEnabled && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
             {LAST_PROVIDER_CONSEQUENCE}
           </Typography>
         )}
@@ -150,11 +151,11 @@ export default function ProviderShutdownDialog({
             <Typography
               id="provider-shutdown-connections"
               component="h3"
-              sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}
+              sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
             >
               Verbundene Konten
             </Typography>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {EFFECT_TEXT[effect]}
             </Typography>
           </Box>

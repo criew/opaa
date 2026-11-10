@@ -22,6 +22,7 @@ import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 export default function ChatPage() {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
@@ -307,7 +308,7 @@ export default function ChatPage() {
                   <Typography
                     component="span"
                     noWrap
-                    sx={{ fontSize: 18, fontWeight: 600, minWidth: 0 }}
+                    sx={{ fontSize: fontSize.title, fontWeight: 600, minWidth: 0 }}
                   >
                     {chatTitle}
                   </Typography>
@@ -316,7 +317,11 @@ export default function ChatPage() {
                   <EditOutlinedIcon
                     aria-hidden
                     className="rename-hint"
-                    sx={{ fontSize: 15, color: 'text.secondary', transition: 'opacity 120ms' }}
+                    sx={{
+                      fontSize: iconSize.sm,
+                      color: 'text.secondary',
+                      transition: 'opacity 120ms',
+                    }}
                   />
                 )}
               </Box>

@@ -19,6 +19,7 @@ import { successionAwareMessage } from '@/features/succession'
 import { transferAssetOwnership } from '../api/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
 import { assetThisAccusative } from '../../../shared/assetTypes'
+import { fontSize } from '@/shared/theme/tokens'
 
 export interface AssetOwnerSectionProps {
   assetType: AssetType
@@ -125,7 +126,7 @@ export default function AssetOwnerSection({
     >
       {open && (
         <Stack spacing={2}>
-          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+          <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
             Eigentum übergeben
           </Typography>
           {error && <Alert severity="error">{error}</Alert>}

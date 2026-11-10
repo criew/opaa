@@ -9,6 +9,7 @@ import type { ChatAttachmentRef } from '@/shared/api/types'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { formatFileSize } from '@/shared/utils/labels'
 import type { DraftAttachment } from '../hooks/useChatAttachmentDraft'
+import { fontSize } from '@/shared/theme/tokens'
 
 function phaseText(item: DraftAttachment): string {
   if (item.phase === 'uploading') return 'wird hochgeladen'
@@ -79,7 +80,10 @@ export function ChatAttachmentDraftChips({ items, notice, onRemove, disabled }: 
       })}
       {notice && (
         <Box component="li">
-          <Typography role="status" sx={{ fontSize: 12, color: 'text.secondary', py: 0.25 }}>
+          <Typography
+            role="status"
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary', py: 0.25 }}
+          >
             {notice}
           </Typography>
         </Box>

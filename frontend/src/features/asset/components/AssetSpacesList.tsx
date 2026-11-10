@@ -17,6 +17,8 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTheNominative, assetThisAccusative } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
 
 /** From this many spaces the list gets a search. */
 const SEARCH_FROM = 8
@@ -32,14 +34,6 @@ interface AssetSpacesListProps {
   canManage: boolean
   /** Called after an association was detached. */
   onChanged?: () => void
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
@@ -172,7 +166,10 @@ export default function AssetSpacesList({
             sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
           >
             {matching.length === 0 && (
-              <Typography component="li" sx={{ py: 1.25, fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography
+                component="li"
+                sx={{ py: 1.25, fontSize: fontSize.text, color: 'text.secondary' }}
+              >
                 Kein Space entspricht dieser Suche.
               </Typography>
             )}
@@ -197,12 +194,12 @@ export default function AssetSpacesList({
                     <Typography
                       noWrap
                       title={association.spaceName}
-                      sx={{ fontSize: 13.5, fontWeight: 600 }}
+                      sx={{ fontSize: fontSize.text, fontWeight: 600 }}
                     >
                       {association.spaceName}
                     </Typography>
                     {(origin || association.narrowerReaderCircle) && (
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         {origin}
                         {origin && association.narrowerReaderCircle && ' · '}
                         {association.narrowerReaderCircle && (

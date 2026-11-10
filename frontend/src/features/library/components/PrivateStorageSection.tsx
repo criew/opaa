@@ -28,6 +28,8 @@ import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 /** A size in words; 0 is unlimited. */
 function sizeOrUnlimited(bytes: number): string {
@@ -59,7 +61,7 @@ const RUN_CATEGORY_LABELS: Record<string, string> = {
  * Nothing is derived from other numbers of the answer.
  */
 function maskedCount(number: MaskedNumber): string {
-  if (number.value != null) return number.value.toLocaleString('de-DE')
+  if (number.value != null) return formatNumber(number.value)
   if (number.fewerThanPersons != null) return `weniger als ${number.fewerThanPersons}`
   return 'nicht ausgewiesen'
 }
@@ -260,7 +262,7 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
         </Table>
       )}
 
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine Zahl
         auf einzelne Personen schließen lässt. Den Verbrauch einer einzelnen Person zeigt OPAA der
         Verwaltung nicht.
@@ -317,7 +319,7 @@ export default function PrivateStorageSection() {
           {loadError}
         </Alert>
       ) : quota === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Speicherkontingent wird geladen …
         </Typography>
       ) : (

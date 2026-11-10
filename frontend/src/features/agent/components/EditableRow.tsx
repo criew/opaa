@@ -1,3 +1,4 @@
+import { fontSize } from '@/shared/theme/tokens'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -112,7 +113,7 @@ export default function EditableRow({
               setOpen(true)
             }}
             aria-label={`${title} ändern`}
-            sx={{ fontSize: 13.5 }}
+            sx={{ fontSize: fontSize.text }}
           >
             Ändern
           </Link>

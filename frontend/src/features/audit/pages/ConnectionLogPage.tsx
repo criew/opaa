@@ -31,6 +31,7 @@ import {
   ownerLabel,
 } from '../components/connectionLogLabels'
 import { contentWidth } from '@/shared/theme/tokens'
+import { formatProtocolTime } from '@/shared/utils/formatDate'
 
 const ALL = ''
 
@@ -228,7 +229,7 @@ export default function ConnectionLogPage() {
                   <TableBody>
                     {result.entries.map((entry) => (
                       <TableRow key={entry.eventId}>
-                        <TableCell>{new Date(entry.recordedAt).toLocaleString('de-DE')}</TableCell>
+                        <TableCell>{formatProtocolTime(entry.recordedAt)}</TableCell>
                         <TableCell>{eventTypeLabel(entry.eventType)}</TableCell>
                         <TableCell>{entry.cause ? endCauseLabel(entry.cause) : '—'}</TableCell>
                         <TableCell>{ownerKindLabel(entry.ownerKind)}</TableCell>

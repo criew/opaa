@@ -23,6 +23,7 @@ import {
   type OverviewEntry,
 } from './directorySyncState'
 import { formatDateTime, outcomeLabel, outcomeTone } from './directorySyncLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 const TONE_COLOR: Record<StatusTone, string> = {
   neutral: 'text.disabled',
@@ -31,7 +32,12 @@ const TONE_COLOR: Record<StatusTone, string> = {
   error: 'error.main',
 }
 
-const secondarySx = { fontSize: 12.5, color: 'text.secondary', mt: 0.25, pl: 1.75 } as const
+const secondarySx = {
+  fontSize: fontSize.meta,
+  color: 'text.secondary',
+  mt: 0.25,
+  pl: 1.75,
+} as const
 
 /**
  * A state as a dot before its word, the dot on the first line when the word wraps - the column
@@ -60,7 +66,7 @@ function StateText({
           bgcolor: TONE_COLOR[tone],
         }}
       />
-      <Typography component="span" sx={{ fontSize: 13, fontWeight: strong ? 600 : 500 }}>
+      <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: strong ? 600 : 500 }}>
         {label}
       </Typography>
     </Box>
@@ -70,7 +76,7 @@ function StateText({
 /** An empty cell: a dash for the eye, the statement for the screen reader. */
 function Nothing({ label }: { label: string }) {
   return (
-    <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+    <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
       <span aria-hidden="true">—</span>
       <span style={visuallyHidden}>{label}</span>
     </Typography>
@@ -94,7 +100,12 @@ function ProviderCell({ entry }: { entry: OverviewEntry }) {
       />
       <Box sx={{ minWidth: 0 }}>
         <Typography
-          sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'break-word', hyphens: 'auto' }}
+          sx={{
+            fontSize: fontSize.text,
+            fontWeight: 600,
+            overflowWrap: 'break-word',
+            hyphens: 'auto',
+          }}
         >
           {provider.displayName}
         </Typography>
@@ -143,9 +154,10 @@ function LastRunCell({ entry, now }: { entry: OverviewEntry; now: Date }) {
 function NextRunCell({ entry, now }: { entry: OverviewEntry; now: Date }) {
   const next = nextRunOf(entry.provider, entry.status, now)
   if (next.kind === 'NONE') return <Nothing label="kein Lauf geplant" />
-  if (next.kind === 'DUE') return <Typography sx={{ fontSize: 13 }}>jetzt fällig</Typography>
+  if (next.kind === 'DUE')
+    return <Typography sx={{ fontSize: fontSize.text }}>jetzt fällig</Typography>
   return (
-    <Typography sx={{ fontSize: 13 }}>
+    <Typography sx={{ fontSize: fontSize.text }}>
       <time dateTime={next.at.toISOString()}>{clockLabel(next.at, now)}</time>
     </Typography>
   )
@@ -226,7 +238,7 @@ function OverviewList({ entries, onOpen, now }: OverviewProps) {
                 rowGap: 0.75,
                 m: 0,
                 mt: 1.25,
-                '& dt': { fontSize: 12, color: 'text.secondary', pt: '1px' },
+                '& dt': { fontSize: fontSize.meta, color: 'text.secondary', pt: '1px' },
                 '& dd': { m: 0 },
               }}
             >

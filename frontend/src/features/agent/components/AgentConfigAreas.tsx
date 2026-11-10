@@ -1,3 +1,4 @@
+import { fontSize } from '@/shared/theme/tokens'
 import { useEffect, useMemo, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -57,7 +58,7 @@ export function InstructionArea({
       <ValueRow
         title="Auftrag"
         value={
-          <Typography sx={{ fontSize: 13.5, ...muted }}>
+          <Typography sx={{ fontSize: fontSize.text, ...muted }}>
             Den Auftrag sieht nur, wer den Agenten selbst nutzen darf; Verwaltungsrechte genügen
             dafür nicht.
           </Typography>
@@ -75,11 +76,13 @@ export function InstructionArea({
       onSave={() => save({ instruction: draft.trim() })}
       value={
         agent.instruction ? (
-          <Typography sx={{ fontSize: 13.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          <Typography
+            sx={{ fontSize: fontSize.text, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+          >
             {agent.instruction}
           </Typography>
         ) : (
-          <Typography sx={{ fontSize: 13.5, ...muted }}>
+          <Typography sx={{ fontSize: fontSize.text, ...muted }}>
             Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von OPAA.
           </Typography>
         )
@@ -146,18 +149,20 @@ export function KnowledgeAndToolsArea({
 
   const libraryValue =
     agent.libraries.length === 0 && agent.hiddenLibraryCount === 0 ? (
-      <Typography sx={{ fontSize: 13.5 }}>Alles, was die aufrufende Person lesen darf</Typography>
+      <Typography sx={{ fontSize: fontSize.text }}>
+        Alles, was die aufrufende Person lesen darf
+      </Typography>
     ) : (
       <Box>
         {agent.libraries.length > 0 && (
-          <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: 13.5 }}>
+          <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: fontSize.text }}>
             {agent.libraries.map((library) => (
               <li key={library.id}>{library.name}</li>
             ))}
           </Box>
         )}
         {agent.hiddenLibraryCount > 0 && (
-          <Typography sx={{ fontSize: 12.5, mt: 0.5, ...muted }}>
+          <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, ...muted }}>
             {agent.hiddenLibraryCount === 1
               ? 'Dazu 1 Bibliothek, die Sie nicht lesen dürfen. Sie bleibt beim Speichern erhalten und wird für Sie nie gelesen.'
               : `Dazu ${agent.hiddenLibraryCount} Bibliotheken, die Sie nicht lesen dürfen. Sie bleiben beim Speichern erhalten und werden für Sie nie gelesen.`}
@@ -182,14 +187,14 @@ export function KnowledgeAndToolsArea({
         editor={(errors) => (
           <Box id="agent-libraries-libraryIds" role="group" aria-labelledby="agent-libraries-label">
             <FieldLabel id="agent-libraries-label">Bibliotheken</FieldLabel>
-            <Typography sx={{ fontSize: 12.5, mb: 1, ...muted }}>
+            <Typography sx={{ fontSize: fontSize.meta, mb: 1, ...muted }}>
               Ohne Auswahl liest der Agent alles, was die aufrufende Person lesen darf. Eine Auswahl
               grenzt ein, erweitert aber nie: Wer eine Bibliothek nicht lesen darf, erhält auch über
               den Agenten nichts daraus.
             </Typography>
             {libraryError && <FormHelperText error>{libraryError}</FormHelperText>}
             {libraries === null && !libraryError && (
-              <Typography sx={{ fontSize: 13.5, ...muted }}>
+              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
                 Bibliotheken werden geladen …
               </Typography>
             )}
@@ -204,12 +209,12 @@ export function KnowledgeAndToolsArea({
               </Box>
             )}
             {libraries !== null && libraries.length === 0 && (
-              <Typography sx={{ fontSize: 13.5, ...muted }}>
+              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
                 Sie dürfen noch keine Bibliothek lesen.
               </Typography>
             )}
             {libraries !== null && libraries.length > 0 && shown.length === 0 && (
-              <Typography sx={{ fontSize: 13.5, ...muted }}>
+              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
                 Keine Bibliothek passt zu „{filter.trim()}“.
               </Typography>
             )}
@@ -252,7 +257,7 @@ export function KnowledgeAndToolsArea({
           })
         }}
         value={
-          <Typography sx={{ fontSize: 13.5 }}>
+          <Typography sx={{ fontSize: fontSize.text }}>
             {agent.toolNames.map(toolLabel).join(' · ')}
           </Typography>
         }
@@ -273,13 +278,15 @@ export function KnowledgeAndToolsArea({
                 }
                 label={
                   <Box>
-                    <Typography sx={{ fontSize: 13.5 }}>{tool.label}</Typography>
-                    <Typography sx={{ fontSize: 12.5, ...muted }}>{tool.description}</Typography>
+                    <Typography sx={{ fontSize: fontSize.text }}>{tool.label}</Typography>
+                    <Typography sx={{ fontSize: fontSize.meta, ...muted }}>
+                      {tool.description}
+                    </Typography>
                   </Box>
                 }
               />
             ))}
-            <Typography sx={{ fontSize: 12.5, mt: 0.5, ...muted }}>
+            <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, ...muted }}>
               Ein Werkzeug, das die Systemverwaltung abgeschaltet hat, bietet ein Lauf nicht an.
             </Typography>
             {errors.toolNames && <FormHelperText error>{errors.toolNames}</FormHelperText>}
@@ -313,7 +320,9 @@ export function ProcedureArea({
         fieldLabels={{ planStep: 'Plan' }}
         onOpen={() => setPlanDraft(agent.planStep)}
         onSave={() => save({ planStep: planDraft })}
-        value={<Typography sx={{ fontSize: 13.5 }}>{planStepLabel(agent.planStep)}</Typography>}
+        value={
+          <Typography sx={{ fontSize: fontSize.text }}>{planStepLabel(agent.planStep)}</Typography>
+        }
         editor={() => (
           <Box id="agent-plan-planStep">
             <FieldLabel id="agent-plan-label">Plan</FieldLabel>
@@ -329,8 +338,8 @@ export function ProcedureArea({
                   control={<Radio size="small" />}
                   label={
                     <Box>
-                      <Typography sx={{ fontSize: 13.5 }}>{option.label}</Typography>
-                      <Typography sx={{ fontSize: 12.5, ...muted }}>
+                      <Typography sx={{ fontSize: fontSize.text }}>{option.label}</Typography>
+                      <Typography sx={{ fontSize: fontSize.meta, ...muted }}>
                         {option.description}
                       </Typography>
                     </Box>
@@ -355,7 +364,7 @@ export function ProcedureArea({
           id="agent-advanced-header"
           sx={{ px: 0 }}
         >
-          <Typography component="span" sx={{ fontSize: 15, fontWeight: 600 }}>
+          <Typography component="span" sx={{ fontSize: fontSize.title, fontWeight: 600 }}>
             Erweitert
           </Typography>
         </AccordionSummary>
@@ -375,8 +384,10 @@ export function ProcedureArea({
             }}
             value={
               <Box>
-                <Typography sx={{ fontSize: 13.5 }}>{limitsSummary(agent.limits)}</Typography>
-                <Typography sx={{ fontSize: 12.5, ...muted }}>
+                <Typography sx={{ fontSize: fontSize.text }}>
+                  {limitsSummary(agent.limits)}
+                </Typography>
+                <Typography sx={{ fontSize: fontSize.meta, ...muted }}>
                   Ein leeres Feld übernimmt die Grenze der Installation; ein Lauf nimmt immer den
                   kleineren Wert.
                 </Typography>

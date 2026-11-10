@@ -15,6 +15,7 @@ import type { GroupStewardResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface GroupStewardsSectionProps {
   groupId: string
@@ -91,13 +92,13 @@ export default function GroupStewardsSection({
           {error}
         </Alert>
       )}
-      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
         Verantwortliche pflegen die Gruppe; Mitglied werden sie dadurch nicht. Wechseln Sie die
         Aufgabe, benennen Sie bitte zuerst eine Nachfolge und geben Sie die Verantwortung dann ab.
       </Typography>
       <Stack spacing={1}>
         {stewards.length === 0 && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Für diese Gruppe ist niemand verantwortlich.
           </Typography>
         )}
@@ -124,14 +125,14 @@ export default function GroupStewardsSection({
           </Box>
         ))}
         {dismissalBlocked && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {amSteward
               ? 'Sie sind die letzte verantwortliche Person. Benennen Sie eine Nachfolge, um die Verantwortung abgeben zu können.'
               : 'Dies ist die letzte verantwortliche Person. Sie kann erst entlassen werden, wenn eine Nachfolge benannt ist.'}
           </Typography>
         )}
         {isOnlySteward && isSystemAdmin && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Dies ist die letzte verantwortliche Person. Als Systemverwaltung können Sie sie
             entlassen — etwa wenn ihr Konto das Haus verlässt. Die Gruppe steht danach ohne
             Verantwortliche da, bis eine neue benannt wird.

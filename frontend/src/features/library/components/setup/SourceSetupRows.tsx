@@ -23,6 +23,7 @@ import ErrorSummary, { type SummaryEntry } from '@/shared/ui/feedback/ErrorSumma
 import { scheduleSummary } from './scheduleSummary'
 import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from '../sourceCore/setupTypes'
 import SummaryRow from './SummaryRow'
+import { fontSize } from '@/shared/theme/tokens'
 
 const ROW_TITLES: Record<SetupRowId, string> = {
   connection: 'Verbindung',
@@ -355,7 +356,9 @@ export default function SourceSetupRows<V>({
     return (
       <Box sx={{ mt: 3 }}>
         {saveError && (
-          <Typography sx={{ fontSize: 13, color: 'error.main', mb: 1.5 }}>{saveError}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'error.main', mb: 1.5 }}>
+            {saveError}
+          </Typography>
         )}
         <Stack
           direction="row"
@@ -448,7 +451,7 @@ export default function SourceSetupRows<V>({
                     confluence={rhythm}
                   />
                   {issueAt(SCHEDULE_FIELD) && (
-                    <Typography sx={{ fontSize: 12, color: 'error.main' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'error.main' }}>
                       {issueAt(SCHEDULE_FIELD)}
                     </Typography>
                   )}

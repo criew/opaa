@@ -1,6 +1,7 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RetentionLoadStateProps {
   loadError: string | null
@@ -21,7 +22,7 @@ export default function RetentionLoadState({ loadError, onRetry }: RetentionLoad
       {loadError}
     </Alert>
   ) : (
-    <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+    <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
       Frist wird geladen …
     </Typography>
   )

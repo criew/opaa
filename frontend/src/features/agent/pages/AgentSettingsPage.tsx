@@ -14,7 +14,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageSection from '@/shared/ui/PageSection'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import { getAgentSettings, updateAgentSettings } from '../api/agentApi'
 import { AGENT_TOOLS } from '../components/agentTexts'
 
@@ -98,7 +98,7 @@ export default function AgentSettingsPage() {
                 }
                 label="Agenten in dieser Installation anbieten"
               />
-              <Typography sx={{ fontSize: 12.5, mt: 0.5, maxWidth: '80ch', ...muted }}>
+              <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, maxWidth: '80ch', ...muted }}>
                 Ausgeschaltet sind Agenten, ihr Anlegerecht und ihre Seiten nirgends sichtbar und
                 über die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt OPAA den
                 Agenten „Recherche“ an, sichtbar für alle Konten und danach frei änderbar. Wer
@@ -106,7 +106,7 @@ export default function AgentSettingsPage() {
               </Typography>
             </PageSection>
             <PageSection title="Werkzeuge">
-              <Typography sx={{ fontSize: 12.5, mb: 1, maxWidth: '80ch', ...muted }}>
+              <Typography sx={{ fontSize: fontSize.meta, mb: 1, maxWidth: '80ch', ...muted }}>
                 Ein abgeschaltetes Werkzeug bietet kein Lauf an, auch wenn ein Agent es nennt.
               </Typography>
               <Box role="group" aria-label="Freigeschaltete Werkzeuge">
@@ -130,8 +130,8 @@ export default function AgentSettingsPage() {
                     }
                     label={
                       <Box>
-                        <Typography sx={{ fontSize: 13.5 }}>{tool.label}</Typography>
-                        <Typography sx={{ fontSize: 12.5, ...muted }}>
+                        <Typography sx={{ fontSize: fontSize.text }}>{tool.label}</Typography>
+                        <Typography sx={{ fontSize: fontSize.meta, ...muted }}>
                           {tool.description}
                         </Typography>
                       </Box>

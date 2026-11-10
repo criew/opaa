@@ -20,6 +20,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from './tokenLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const SWITCH_CONSEQUENCE =
   'Beschäftigte können Zugangstokens für externe KI-Werkzeuge erzeugen. Das Ausschalten wirkt ' +
@@ -296,11 +297,11 @@ function SettingsForm({
           <Typography
             id="external-tools-settings-heading"
             component="h2"
-            sx={{ fontSize: 18, fontWeight: 600 }}
+            sx={{ fontSize: fontSize.title, fontWeight: 600 }}
           >
             Einstellungen für externe KI-Werkzeuge
           </Typography>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
             Gilt für die ganze Installation. Jede Änderung außer dem Einleitungstext wird
             protokolliert.
           </Typography>
@@ -332,17 +333,17 @@ function SettingsForm({
             }
             label="Externe KI-Werkzeuge zulassen"
           />
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             {storedStateLine(settings)}
           </Typography>
-          <Typography sx={{ fontSize: 13, mt: 1.5 }}>{SWITCH_CONSEQUENCE}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, mt: 1.5 }}>{SWITCH_CONSEQUENCE}</Typography>
           <Alert severity="info" sx={{ mt: 1.5 }}>
             {CODETERMINATION_HINT}
           </Alert>
         </PanelSection>
 
         <PanelSection id="external-tools-settings-limits" title="Grenzen">
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
             Laufzeit und Anfragen gelten je Zugangstoken, Abflussalarm und Netzbereiche für alle
             Zugriffe zusammen. Die Anfragegrenze ist eine Lastbremse, kein Schutz vor Massenabfluss:
             Was in einer Nacht nicht geht, geht in neunzig Tagen.
@@ -401,7 +402,7 @@ function SettingsForm({
           id="external-tools-settings-reminder"
           title="Erinnerung vor Ablauf einer Freigabe"
         >
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
             So viele Tage vor dem Ende der Befristung erinnert eine E-Mail die Person, die die
             Freigabe einer Bibliothek zuletzt gesetzt hat. 0 schaltet die Erinnerung ab; die
             Freigabe erlischt trotzdem, nur unangekündigt.
@@ -436,7 +437,7 @@ function SettingsForm({
           id="external-tools-settings-instructions"
           title="Einleitungstext für externe KI-Werkzeuge"
         >
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
             Er wird dem Modell des externen KI-Werkzeugs beim Verbindungsaufbau mitgegeben, damit es
             erkennt, welche Fragen hierher gehören. Seine Änderung ändert keine Reichweite und wird
             nicht protokolliert.

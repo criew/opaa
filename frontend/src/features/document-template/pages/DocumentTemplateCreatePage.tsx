@@ -21,6 +21,7 @@ import { CATALOG_ROUTE, documentTemplateRoute } from '@/shared/routes'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { createDocumentTemplate } from '../api/documentTemplateApi'
 import TemplateFilePicker from '../components/TemplateFilePicker'
+import { fontSize } from '@/shared/theme/tokens'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Wem gehört die Vorlage?', 'Rechte'] as const
@@ -97,11 +98,15 @@ export default function DocumentTemplateCreatePage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
           Neue Vorlage
         </Typography>
         <PageHeading title="Neue Vorlage" visuallyHidden />
-        <Typography component="div" sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} aria-hidden>
+        <Typography
+          component="div"
+          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
+          aria-hidden
+        >
           {STEP_TITLES[activeStep]}
         </Typography>
         <WizardStepBar steps={STEPS} active={activeStep} />
@@ -133,7 +138,7 @@ export default function DocumentTemplateCreatePage() {
           )}
           {activeStep === 1 && (
             <>
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 Eine Gruppe als Eigentümerin übersteht jeden Personalwechsel — für Vorlagen, die ein
                 Referat gemeinsam pflegt, ist sie die haltbarere Wahl.
               </Typography>
@@ -172,7 +177,7 @@ export default function DocumentTemplateCreatePage() {
           </Button>
           <Box sx={{ flex: 1 }} />
           {activeStep === lastStep && pendingGrants.length > 0 && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {pendingGrants.length === 1
                 ? '1 Freigabe vorgemerkt'
                 : `${pendingGrants.length} Freigaben vorgemerkt`}

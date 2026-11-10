@@ -32,6 +32,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
+import { fontSize } from '@/shared/theme/tokens'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -80,11 +81,11 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
     <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>{group.name}</Typography>
           {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
           <MetaBadge>{group.releasedForUse ? 'freigegeben' : 'nicht freigegeben'}</MetaBadge>
           {group.deactivated && <MetaBadge>deaktiviert</MetaBadge>}
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
         </Stack>
@@ -170,7 +171,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             }
             label="Zur Verwendung freigeben"
           />
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Erst freigegeben kann jemand anderes diese Gruppe berechtigen. Name und Herkunft werden
             damit für alle sichtbar, denen die Gruppe zur Auswahl steht.
           </Typography>
@@ -180,7 +181,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 
         <SectionHead>Wirkung</SectionHead>
         <Stack spacing={1} sx={{ mb: 2, alignItems: 'flex-start' }}>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {group.deactivated
               ? 'Die Gruppe ist deaktiviert und wirkt zurzeit für niemanden. Ihre Freigaben, Space-Mitgliedschaften und Anlegerechte sind gespeichert und gelten mit dem Reaktivieren wieder.'
               : 'Eine deaktivierte Gruppe wirkt vorübergehend für niemanden – etwa bei einem ruhenden Projekt. Alles bleibt gespeichert und gilt mit dem Reaktivieren wieder.'}
@@ -212,7 +213,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
         <SectionHead>Mitglieder</SectionHead>
         <Stack spacing={1}>
           {members.length === 0 && (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Diese Gruppe hat noch keine Mitglieder.
             </Typography>
           )}
@@ -316,7 +317,7 @@ export default function MyGroupsSection() {
         spacing={1}
         sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', mb: 2 }}
       >
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           Gruppen, für die Sie verantwortlich sind. Sie pflegen deren Mitglieder, geben sie zur
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>

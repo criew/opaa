@@ -14,6 +14,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
+import { fontSize } from '@/shared/theme/tokens'
 
 const MIN_DAILY_LIMIT = 1
 const MAX_DAILY_LIMIT = 10
@@ -117,7 +118,7 @@ export default function SelfDisclosureSettingsSection() {
           {loadError}
         </Alert>
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Einstellungen werden geladen …
         </Typography>
       ) : (
@@ -134,7 +135,7 @@ export default function SelfDisclosureSettingsSection() {
             }
             label="Selbstauskunft anbieten"
           />
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, mt: 0.5 }}>
             {enabled
               ? 'Eingeschaltet: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
               : 'Abgeschaltet: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}

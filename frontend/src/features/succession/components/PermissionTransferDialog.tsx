@@ -26,6 +26,7 @@ import { UserPicker } from '@/features/principal'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { GroupPicker } from '@/features/principal'
 import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from '@/features/principal'
+import { fontSize } from '@/shared/theme/tokens'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -168,7 +169,9 @@ export default function PermissionTransferDialog({
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>{intro}</Typography>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+          {intro}
+        </Typography>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -258,7 +261,9 @@ export default function PermissionTransferDialog({
           )}
 
           <Box>
-            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>Umfang</Typography>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
+              Umfang
+            </Typography>
             {scopes.map((scope) => (
               <FormControlLabel
                 key={scope}
@@ -275,9 +280,9 @@ export default function PermissionTransferDialog({
 
           {preview && (
             <Alert severity="info">
-              <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>Vorschau</Typography>
-              <Typography sx={{ fontSize: 13.5 }}>{preview.summary}</Typography>
-              <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>Vorschau</Typography>
+              <Typography sx={{ fontSize: fontSize.text }}>{preview.summary}</Typography>
+              <Typography sx={{ fontSize: fontSize.meta, mt: 0.5 }}>
                 Die Vorschau ist 30 Minuten gültig und selbst ein Protokollereignis. Erst die
                 Bestätigung überträgt.
               </Typography>

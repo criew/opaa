@@ -14,7 +14,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { OidcProviderResponse } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
@@ -55,11 +55,15 @@ function ClaimCell({ provider }: { provider: OidcProviderResponse }) {
         {rolesClaim ? 'Rollen aus dem Token' : 'Rollen in OPAA verwaltet'}
       </Box>
       {rolesClaim && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', overflowWrap: 'anywhere' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
+        >
           {rollenwerte.length > 0 ? rollenwerte.join(', ') : 'keine Rollenwerte gesetzt'}
         </Typography>
       )}
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', overflowWrap: 'anywhere' }}>
+      <Typography
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
+      >
         {groupsClaim ? `Gruppen aus ${groupsClaim}` : 'Keine Gruppen aus dem Token'}
       </Typography>
     </>
@@ -125,7 +129,12 @@ function ProviderCard({
     <Box sx={{ py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
         <Typography
-          sx={{ fontSize: 12, color: 'text.secondary', fontFamily: fontFamily.mono, mt: 0.5 }}
+          sx={{
+            fontSize: fontSize.meta,
+            color: 'text.secondary',
+            fontFamily: fontFamily.mono,
+            mt: 0.5,
+          }}
         >
           {position}
         </Typography>
@@ -135,10 +144,12 @@ function ProviderCard({
           tone={provider.enabled ? 'accent' : 'muted'}
         />
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{provider.displayName}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
+            {provider.displayName}
+          </Typography>
           <Typography
             sx={{
-              fontSize: 12,
+              fontSize: fontSize.meta,
               color: 'text.secondary',
               fontFamily: fontFamily.mono,
               overflowWrap: 'anywhere',
@@ -158,7 +169,9 @@ function ProviderCard({
           />
         </Box>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75, fontSize: 12.5 }}>
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75, fontSize: fontSize.meta }}
+      >
         <ProviderStateDot state={state} />
         <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
         {isPerInstance(state) && (
@@ -169,13 +182,13 @@ function ProviderCard({
         {provider.isDefault && <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>}
       </Box>
       {state === 'unreachable' && provider.registryMessage && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
           {provider.registryMessage}
         </Typography>
       )}
       <Typography
         sx={{
-          fontSize: 12,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
           fontFamily: fontFamily.mono,
           mt: 0.5,
@@ -184,7 +197,7 @@ function ProviderCard({
       >
         {provider.clientId}
       </Typography>
-      <Box sx={{ fontSize: 12.5, mt: 0.5 }}>
+      <Box sx={{ fontSize: fontSize.meta, mt: 0.5 }}>
         <ClaimCell provider={provider} />
       </Box>
     </Box>
@@ -258,8 +271,12 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
         sx={{
           minWidth: 860,
           tableLayout: 'fixed',
-          '& th': { fontFamily: fontFamily.mono, fontSize: 10, letterSpacing: '0.08em' },
-          '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
+          '& th': {
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.label,
+            letterSpacing: '0.08em',
+          },
+          '& td': { fontSize: fontSize.text, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
         }}
       >
         <TableHead>
@@ -294,13 +311,16 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                       tone={provider.enabled ? 'accent' : 'muted'}
                     />
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 600 }}>
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: fontSize.text, fontWeight: 600 }}
+                      >
                         {provider.displayName}
                       </Typography>
                       <Tooltip title={provider.issuerUri}>
                         <Typography
                           sx={{
-                            fontSize: 12,
+                            fontSize: fontSize.meta,
                             color: 'text.secondary',
                             fontFamily: fontFamily.mono,
                             overflow: 'hidden',
@@ -319,7 +339,10 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                     <ProviderStateDot state={state} />
                     <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
                     {isPerInstance(state) && (
-                      <Box component="span" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                      <Box
+                        component="span"
+                        sx={{ color: 'text.secondary', fontSize: fontSize.meta }}
+                      >
                         · {PER_INSTANCE_NOTE}
                       </Box>
                     )}
@@ -328,7 +351,7 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                        erreichbar" alone does not say whether the address is wrong or the service
                        is down. */}
                   {state === 'unreachable' && provider.registryMessage && (
-                    <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
                       {provider.registryMessage}
                     </Typography>
                   )}
@@ -339,7 +362,11 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                   )}
                 </TableCell>
                 <TableCell
-                  sx={{ fontFamily: fontFamily.mono, fontSize: 12, overflowWrap: 'anywhere' }}
+                  sx={{
+                    fontFamily: fontFamily.mono,
+                    fontSize: fontSize.meta,
+                    overflowWrap: 'anywhere',
+                  }}
                 >
                   {provider.clientId}
                 </TableCell>

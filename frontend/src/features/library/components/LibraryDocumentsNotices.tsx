@@ -7,6 +7,7 @@ import StateDot from '@/shared/ui/StateDot'
 import Typography from '@mui/material/Typography'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface LibraryDocumentsNoticesProps {
   libraryId: string
@@ -131,13 +132,15 @@ function UploadRejections({ messages, onClose }: { messages: string[]; onClose: 
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         {/* one form for every reason: what was not uploaded, the reason below it */}
         {groupByReason(messages).map(({ reason, files }) => (
-          <Box key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
+          <Box key={reason} sx={{ fontSize: fontSize.text, lineHeight: '22px' }}>
             <StateDot
               tone="error"
               label={files.length > 0 ? `Nicht hochgeladen: ${files.join(', ')}` : reason}
             />
             {reason && files.length > 0 && (
-              <Typography sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary', pl: 2 }}>
+              <Typography
+                sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'text.secondary', pl: 2 }}
+              >
                 {reason}
               </Typography>
             )}

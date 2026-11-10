@@ -531,7 +531,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
 
     // „Zuletzt benutzt" wird mit dem Widerruf gelöscht - es beantwortete „darf ich das widerrufen?".
     await gotoOwnTokens(personPage)
-    await expect(lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('—')
+    await expect(lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('–')
   })
 })
 

@@ -1,3 +1,4 @@
+import { formatNumber } from '@/shared/utils/formatDate'
 import type { AgentLimits, AgentPlanStep } from '@/shared/api/types'
 
 export interface ToolText {
@@ -69,9 +70,7 @@ export const LIMIT_FIELDS: { key: LimitKey; label: string; unit: string }[] = [
 export function limitsSummary(limits: AgentLimits): string {
   const own = LIMIT_FIELDS.filter((field) => limits[field.key] != null)
   if (own.length === 0) return 'Grenzen der Installation'
-  return own
-    .map((field) => `${field.label}: ${limits[field.key]?.toLocaleString('de-DE')}`)
-    .join(' · ')
+  return own.map((field) => `${field.label}: ${formatNumber(limits[field.key] ?? 0)}`).join(' · ')
 }
 
 export function countLabel(count: number, one: string, many: string): string {
