@@ -527,8 +527,8 @@ erscheint nie.
   nicht neu zuordnen, solange die Nachfolge offen ist." in `warning`, nicht ausgegraut, außerhalb des
   Umschalters und als `aria-describedby` angebunden. Die Beschreibung des Umschalters folgt der
   sichtbaren Reihenfolge, Zustandszeilen eingeschlossen. Eine gewählte Kachel ist eine bestehende
-  Zuordnung: Sie bleibt lösbar und nennt denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo
-  das Lösen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
+  Zuordnung: Sie lässt sich entfernen und nennt denselben Grund vorab; nach dem Entfernen ist sie
+  gesperrt. Wo das Entfernen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
   dass die Zuordnung bis zum Abschluss der Nachfolge nicht wiederherzustellen ist. Im
   Space-Assistenten ist jede Wahl neu: Eine Vorauswahl aus „In Space verwenden" mit offener
   Nachfolge übernimmt er nicht, sagt das im Schritt „Inhalte" als Warnung und legt den Space erst an,

@@ -571,7 +571,7 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
                 <RowMenu
                   name={subjectName}
                   items={[
-                    { label: 'Entziehen', onClick: () => void handleRevoke(grant), danger: true },
+                    { label: 'Widerrufen', onClick: () => void handleRevoke(grant), danger: true },
                   ]}
                 />
               </Box>

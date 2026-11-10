@@ -158,7 +158,7 @@ export default function SpaceCreatePage() {
     const subjectId = selectedSubjectId(subject)
     if (!choice.check(Boolean(subjectId))) return
     if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
-    if (!(await confirmExternalSubject(subject))) return
+    if (!(await confirmExternalSubject(subject, 'add'))) return
     const label =
       subject.type === 'GROUP' && subject.group
         ? groupLabel(subject.group)

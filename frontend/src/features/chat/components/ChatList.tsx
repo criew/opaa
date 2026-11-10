@@ -293,7 +293,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
   async function handleDelete(chat: ChatSummary) {
     const confirmed = await confirmAction({
       question: `„${chatTitle(chat)}“ löschen?`,
-      consequence: 'Alle Nachrichten des Chats werden gelöscht.',
+      consequence: 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })

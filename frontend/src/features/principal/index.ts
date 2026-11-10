@@ -10,6 +10,7 @@ export {
   confirmGroupSubject,
   confirmResolvedGroupById,
   emptySubjectSelection,
+  externalGroupConsequence,
   groupLabel,
   groupNotSelectableReason,
   PROTECTED_GROUP_SEARCH_HINT,

@@ -143,7 +143,7 @@ describe('LibraryExternalAccessSection', () => {
 
     await user.click(await screen.findByRole('button', { name: /^Ändern/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Externer Zugang' })
-    await user.click(within(dialog).getByRole('button', { name: 'Freigabe beenden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Freigabe widerrufen' }))
     await answerConfirm(user, 'Freigabe für externe KI-Werkzeuge widerrufen?', 'Widerrufen')
 
     await waitFor(() =>

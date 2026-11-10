@@ -86,7 +86,7 @@ describe('PermissionTransferDialog', () => {
     await user.click(external)
     await user.click(screen.getByRole('button', { name: /vorschau erstellen/i }))
 
-    await answerConfirm(user, /^Für „.*“ freigeben\?$/, 'Abbrechen')
+    await answerConfirm(user, /^Rechte an „.*“ übertragen\?$/, 'Abbrechen')
     expect(previews).toBe(0)
   })
 

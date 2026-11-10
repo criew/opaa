@@ -426,11 +426,11 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     )
 
     await openConnection(user)
-    await user.click(await screen.findByRole('button', { name: 'Zugang lösen' }))
+    await user.click(await screen.findByRole('button', { name: 'Zuordnung entfernen' }))
     await answerConfirm(user, 'Zuordnung zu „Nextcloud intern“ entfernen?', 'Abbrechen')
     expect(release).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'Zugang lösen' }))
+    await user.click(screen.getByRole('button', { name: 'Zuordnung entfernen' }))
     await answerConfirm(user, 'Zuordnung zu „Nextcloud intern“ entfernen?', 'Entfernen')
     await waitFor(() => expect(release).toHaveBeenCalledWith('library-1'))
   })
@@ -458,7 +458,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     await openConnection(user)
     expect(await screen.findByRole('button', { name: 'Zugang wechseln' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Zugang lösen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zuordnung entfernen' })).not.toBeInTheDocument()
   })
 
   it('offers „Zugang zuordnen“ for a library with its own address of a type with profiles', async () => {
@@ -523,7 +523,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
       await openConnection(user)
       expect(await screen.findByRole('button', { name: 'Zugang wechseln' })).toBeVisible()
-      expect(screen.queryByRole('button', { name: 'Zugang lösen' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Zuordnung entfernen' })).not.toBeInTheDocument()
     })
 
     it('offers only the profiles the owner has a connected account on, one for persons only included', async () => {

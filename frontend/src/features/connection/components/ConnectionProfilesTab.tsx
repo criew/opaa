@@ -176,7 +176,7 @@ export default function ConnectionProfilesTab() {
       !lock && typeLocked(profile.sourceType)
         ? `Die Quellart „${displayNameOf(profile.sourceType)}“ bleibt gesperrt: Die Bibliotheken des Zugangs laufen erst weiter, wenn auch ihre Sperre aufgehoben ist.`
         : undefined
-    if (!(await confirmLock(`den Zugang „${profile.name}“`, lock, remaining))) return
+    if (!(await confirmLock(profile.name, lock, remaining))) return
     try {
       await lockConnectionProfile(profile.id, lock)
       notify(

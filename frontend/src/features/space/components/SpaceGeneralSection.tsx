@@ -223,7 +223,8 @@ export default function SpaceGeneralSection({
               sx={{ justifyContent: 'space-between', alignItems: { md: 'center' } }}
             >
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Löschen: Chats, Mitgliedschaften und Zuordnungen gehen verloren. Nicht umkehrbar.
+                Löschen: Mitgliedschaften und Zuordnungen gehen verloren. Ein Space mit Chats lässt
+                sich nur archivieren.
               </Typography>
               <Button
                 color="error"
@@ -233,7 +234,7 @@ export default function SpaceGeneralSection({
                   const confirmed = await confirmAction({
                     question: 'Diesen Space löschen?',
                     consequence:
-                      'Mitgliedschaften und Zuordnungen des Space werden gelöscht; die zugeordneten Bibliotheken bleiben bestehen.',
+                      'Mitgliedschaften und Zuordnungen des Space werden gelöscht; die zugeordneten Arbeitsmittel bleiben bestehen.',
                     confirmLabel: 'Löschen',
                     tone: 'danger',
                   })

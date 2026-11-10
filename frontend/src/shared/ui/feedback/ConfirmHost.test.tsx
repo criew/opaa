@@ -71,9 +71,13 @@ describe('ConfirmHost', () => {
   it('resolves true only on the confirming button', async () => {
     const user = userEvent.setup()
     renderWithProviders(<div />)
-    const antwort = confirmAction({ question: 'Fortfahren?', confirmLabel: 'Fortfahren' })
+    const antwort = confirmAction({
+      question: '„Entwurf“ verwerfen?',
+      consequence: 'Die Eingaben gehen verloren.',
+      confirmLabel: 'Verwerfen',
+    })
 
-    await user.click(await screen.findByRole('button', { name: 'Fortfahren' }))
+    await user.click(await screen.findByRole('button', { name: 'Verwerfen' }))
 
     await expect(antwort).resolves.toBe(true)
   })
@@ -81,7 +85,11 @@ describe('ConfirmHost', () => {
   it('resolves false on cancel', async () => {
     const user = userEvent.setup()
     renderWithProviders(<div />)
-    const antwort = confirmAction({ question: 'Fortfahren?', confirmLabel: 'Fortfahren' })
+    const antwort = confirmAction({
+      question: '„Entwurf“ verwerfen?',
+      consequence: 'Die Eingaben gehen verloren.',
+      confirmLabel: 'Verwerfen',
+    })
 
     await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
 
@@ -91,7 +99,11 @@ describe('ConfirmHost', () => {
   it('resolves false on Escape', async () => {
     const user = userEvent.setup()
     renderWithProviders(<div />)
-    const antwort = confirmAction({ question: 'Fortfahren?', confirmLabel: 'Fortfahren' })
+    const antwort = confirmAction({
+      question: '„Entwurf“ verwerfen?',
+      consequence: 'Die Eingaben gehen verloren.',
+      confirmLabel: 'Verwerfen',
+    })
     await screen.findByRole('dialog')
 
     await user.keyboard('{Escape}')
@@ -103,7 +115,8 @@ describe('ConfirmHost', () => {
   it('rests the focus on cancel for a destructive action', async () => {
     renderWithProviders(<div />)
     void confirmAction({
-      question: 'Konto löschen?',
+      question: '„Bauamt“ löschen?',
+      consequence: 'Das Konto und seine Chats werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })
@@ -117,6 +130,7 @@ describe('ConfirmHost', () => {
     renderWithProviders(<div />)
     void confirmAction({
       question: 'Selbstregistrierung einschalten?',
+      consequence: 'Die Registrierung ist danach öffentlich erreichbar.',
       confirmLabel: 'Einschalten',
       tone: 'caution',
     })
@@ -128,8 +142,16 @@ describe('ConfirmHost', () => {
   it('answers a displaced request with false instead of leaving it pending', async () => {
     const user = userEvent.setup()
     renderWithProviders(<div />)
-    const erste = confirmAction({ question: 'Erste Frage?', confirmLabel: 'Ja' })
-    const zweite = confirmAction({ question: 'Zweite Frage?', confirmLabel: 'Auch ja' })
+    const erste = confirmAction({
+      question: 'Erste Frage?',
+      consequence: 'Erste Folge.',
+      confirmLabel: 'Ja',
+    })
+    const zweite = confirmAction({
+      question: 'Zweite Frage?',
+      consequence: 'Zweite Folge.',
+      confirmLabel: 'Auch ja',
+    })
 
     // `window.confirm` blocked the thread and could not overlap. Without this rule
     // the `await` of the displaced request would hang forever.

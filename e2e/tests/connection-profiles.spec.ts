@@ -313,7 +313,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await gotoConnectionProfiles(adminPage)
     let profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
     await profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` }).click()
-    await acceptConfirm(adminPage, `Den Zugang „${PROFILE_NAME}“ sperren?`)
+    await acceptConfirm(adminPage, `„${PROFILE_NAME}“ sperren?`)
     await expect(profilePanel).toContainText('Gesperrt')
 
     await openSourceTab(page, stockLibraryId)
@@ -330,7 +330,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await gotoConnectionProfiles(adminPage)
     profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
     await profilePanel.getByRole('button', { name: `Sperre von ${PROFILE_NAME} aufheben` }).click()
-    await acceptConfirm(adminPage, `Den Zugang „${PROFILE_NAME}“ entsperren?`)
+    await acceptConfirm(adminPage, `„${PROFILE_NAME}“ entsperren?`)
     await expect(profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` })).toBeVisible()
 
     await openSourceTab(page, stockLibraryId)

@@ -176,8 +176,8 @@ export default function ChatsPage() {
             : `${chatCount(targets.length)} löschen?`,
         consequence:
           targets.length === 1
-            ? 'Alle Nachrichten des Chats werden gelöscht.'
-            : 'Alle Nachrichten dieser Chats werden gelöscht.',
+            ? 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.'
+            : 'Alle Nachrichten, Notizen und Anhänge dieser Chats werden gelöscht.',
         confirmLabel: 'Löschen',
         tone: 'danger',
       })

@@ -75,10 +75,29 @@ export function groupLabel(group: SelectableGroupResponse): string {
  * misclick between two groups of the same name would release an internal matter to a partner
  * portal. Without an external group nothing asks back.
  */
-export async function confirmExternalSubject(selection: SubjectSelection): Promise<boolean> {
+export async function confirmExternalSubject(
+  selection: SubjectSelection,
+  action: SubjectAction = 'grant',
+): Promise<boolean> {
   const group = selection.type === 'GROUP' ? selection.group : null
   if (!group) return true
-  return confirmGroupSubject(group)
+  return confirmGroupSubject(group, action)
+}
+
+/**
+ * What the chosen subject receives; it decides question and verb of the confirmation, so that the
+ * button names the action of the page (guidelines 5.10): a right, a space membership or the
+ * rights of a successor. Handing over ownership asks once itself, with
+ * {@link externalGroupConsequence} in its consequence.
+ */
+export type SubjectAction = 'grant' | 'add' | 'transfer'
+
+/** The sentence that names a group of an external provider as such, for any confirmation. */
+export function externalGroupConsequence(group: SelectableGroupResponse): string {
+  return (
+    `„${groupLabel(group)}“ stammt aus dem Anbieter „${group.provider?.displayName}“, der ` +
+    'einer anderen Organisation gehört. Wer dort Mitglied ist, entscheidet nicht diese Stelle.'
+  )
 }
 
 /**
@@ -87,33 +106,52 @@ export async function confirmExternalSubject(selection: SubjectSelection): Promi
  * provider it is the same confirmation question as in the selection. Without this path the
  * question could be bypassed via the identifier.
  */
-export async function confirmGroupSubject(group: SelectableGroupResponse): Promise<boolean> {
-  if (group.provider?.external) {
-    return confirmAction({
-      question: `Für „${groupLabel(group)}“ freigeben?`,
-      consequence:
-        `„${groupLabel(group)}“ stammt aus dem Anbieter „${group.provider.displayName}“, der ` +
-        'einer anderen Organisation gehört. Wer dort Mitglied ist, entscheidet nicht diese Stelle.',
-      confirmLabel: 'Freigeben',
-      tone: 'caution',
-    })
+export async function confirmGroupSubject(
+  group: SelectableGroupResponse,
+  action: SubjectAction = 'grant',
+): Promise<boolean> {
+  if (!group.provider?.external) return true
+  const name = groupLabel(group)
+  const consequence = externalGroupConsequence(group)
+  switch (action) {
+    case 'add':
+      return confirmAction({
+        question: `„${name}“ aufnehmen?`,
+        consequence,
+        confirmLabel: 'Aufnehmen',
+        tone: 'caution',
+      })
+    case 'transfer':
+      return confirmAction({
+        question: `Rechte an „${name}“ übertragen?`,
+        consequence,
+        confirmLabel: 'Übertragen',
+        tone: 'caution',
+      })
+    default:
+      return confirmAction({
+        question: `Für „${name}“ freigeben?`,
+        consequence,
+        confirmLabel: 'Freigeben',
+        tone: 'caution',
+      })
   }
-  return true
 }
 
 /**
  * The confirmation for the identifier path: it shows what the selection otherwise shows — name,
- * origin, source path and size of the resolved group —, before a right is granted.
+ * origin, source path and size of the resolved group —, before a right is granted. For a group of
+ * an external provider the same single question names that origin as well.
  */
 export async function confirmResolvedGroupById(group: SelectableGroupResponse): Promise<boolean> {
-  const confirmed = await confirmAction({
-    question: `Recht an „${groupLabel(group)}“ erteilen?`,
-    consequence: groupDetailLine(group),
-    confirmLabel: 'Erteilen',
+  return confirmAction({
+    question: `Für „${groupLabel(group)}“ freigeben?`,
+    consequence: group.provider?.external
+      ? `${groupDetailLine(group)}\n\n${externalGroupConsequence(group)}`
+      : groupDetailLine(group),
+    confirmLabel: 'Freigeben',
     tone: 'caution',
   })
-  if (!confirmed) return false
-  return confirmGroupSubject(group)
 }
 
 /**

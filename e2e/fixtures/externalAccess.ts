@@ -282,7 +282,7 @@ export async function setLibraryReleaseInDialog(
     await expect(dialog).toBeHidden()
     await expect(row).toContainText(/Freigegeben bis/)
   } else {
-    await dialog.getByRole('button', { name: 'Freigabe beenden' }).click()
+    await dialog.getByRole('button', { name: 'Freigabe widerrufen' }).click()
     const confirm = page.getByRole('dialog').filter({ has: page.locator('#confirm-question') })
     await expect(confirm).toContainText('Freigabe für externe KI-Werkzeuge widerrufen?')
     await confirm.locator('#confirm-accept').click()
