@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 /**
  * Admits a DOCX file as document template and reads its placeholders. It reads the package and its
  * text, it never fills or renders it: the tags are text here, and filling happens in the sandbox
- * alone (#3673), so no tag can run code in the backend.
+ * alone, so no tag can run code in the backend.
  *
  * <p>Refused are files above {@link #MAX_BYTES}, anything but a Word document ({@code .docx}, the
  * plain WordprocessingML main part), packages with macros or ActiveX controls, packages whose XML

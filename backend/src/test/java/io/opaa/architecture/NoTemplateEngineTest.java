@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A document template is filled in the sandbox alone, never in the backend process: a template
- * engine evaluating a user's tags here would let a template run code beside the data (#3673). So no
- * main class may use a template or script engine, except the mail templates the system
- * administration writes ({@code io.opaa.mail.MailTemplateService}, logic-less Mustache).
+ * engine evaluating a user's tags here would let a template run code beside the data. So no main
+ * class may use a template or script engine, except the mail templates the system administration
+ * writes ({@code io.opaa.mail.MailTemplateService}, logic-less Mustache).
  */
 class NoTemplateEngineTest {
 

@@ -28,10 +28,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The acceptance criteria of #3673 on the service level: the switch "Vorlagen" off as delivered
- * hides every template path and the right; creating needs CREATE_TEMPLATE, which nobody holds as
- * delivered; an admitted file keeps its bytes and placeholders, a broken file or one with macros is
- * refused; and every change writes one audit entry.
+ * The acceptance criteria of document templates on the service level: the switch "Vorlagen" off as
+ * delivered hides every template path and the right; creating needs CREATE_TEMPLATE, which nobody
+ * holds as delivered; an admitted file keeps its bytes and placeholders, a broken file or one with
+ * macros is refused; and every change writes one audit entry.
  */
 @OpaaIntegrationTest
 class DocumentTemplateServiceIntegrationTest {
