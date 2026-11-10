@@ -512,10 +512,21 @@ class AgentToolLoopTest {
               activeStreams.stop();
               return "Titel";
             });
+    // what follows the commit must not meet an interrupt that turns a kept turn into a failure
+    java.util.concurrent.atomic.AtomicBoolean interruptedAfterKeeping =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    org.mockito.Mockito.doAnswer(
+            call -> {
+              interruptedAfterKeeping.compareAndSet(false, Thread.currentThread().isInterrupted());
+              return null;
+            })
+        .when(chatMemory)
+        .add(any(), any(Message.class));
 
     QueryResult result = loop().handle(turn(stream));
 
     assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    assertThat(interruptedAfterKeeping).isFalse();
     assertThat(Thread.currentThread().isInterrupted()).isFalse();
     assertThat(runs("custom", "aborted")).isZero();
   }

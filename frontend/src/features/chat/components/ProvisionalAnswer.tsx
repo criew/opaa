@@ -7,8 +7,7 @@ export const PROVISIONAL_ANSWER_LABEL =
   'Antwort wird geschrieben … Vorläufig, Belege noch nicht geprüft.'
 
 /** The status of an agent's answer: it arrives whole, then its Belege are checked. */
-export const AGENT_PROVISIONAL_ANSWER_LABEL =
-  'Belege werden geprüft … Vorläufig.'
+export const AGENT_PROVISIONAL_ANSWER_LABEL = 'Belege werden geprüft … Vorläufig.'
 
 /** A citation marker the model has begun but not yet closed, at the end of the text. */
 const OPEN_MARKER_AT_END = /【[^】]*$/

@@ -7,6 +7,7 @@ const STEP_NAMES: Record<string, string> = {
   list_sources: 'Übersicht',
   run_code: 'Berechnung',
   ask_user: 'Rückfrage',
+  fill_template: 'Vorlage',
 }
 
 const UNKNOWN_STEP = 'Werkzeug'

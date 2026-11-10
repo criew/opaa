@@ -170,14 +170,14 @@ public class RateLimitConfiguration {
     // must still be able to stop the run that used it. It counts in a budget of its own as large as
     // that of the questions - at most one stop per question - with its own installation ceiling.
     rules.add(
-        rule(counters, "query", "^/api/v1/query(?!/stream/cancel$)", properties.query(), AUTHENTICATED));
-    rules.add(
         rule(
             counters,
-            "query-cancel",
-            QUERY_CANCEL_PATTERN,
+            "query",
+            "^/api/v1/query(?!/stream/cancel$)",
             properties.query(),
             AUTHENTICATED));
+    rules.add(
+        rule(counters, "query-cancel", QUERY_CANCEL_PATTERN, properties.query(), AUTHENTICATED));
     rules.add(
         rule(counters, "indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
     rules.add(
