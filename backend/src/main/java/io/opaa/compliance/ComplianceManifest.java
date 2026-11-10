@@ -98,7 +98,9 @@ public record ComplianceManifest(
     /** A store holding data of the installation itself. */
     STORAGE,
     /** A security service of the operator, such as a malware scanner. */
-    SECURITY
+    SECURITY,
+    /** A monitoring service of the operator, such as a trace collector. */
+    OPERATIONS
   }
 
   /** Where the value of a setting is held. */

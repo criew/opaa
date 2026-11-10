@@ -900,6 +900,35 @@ opaa:
       keyed: ${OPAA_ENCRYPTION_KEYED_FORMAT:true}
 
 management:
+  # Optional OpenTelemetry tracing (ADR-0071): off unless OPAA_TRACING_ENABLED, then spans go to
+  # OPAA_TRACING_OTLP_ENDPOINT over OTLP/HTTP (the only transport of the JDK sender on the
+  # classpath). io.opaa.observability.RequestIdFilter hides a caller's traceparent, so every request
+  # starts its own trace and the ratio decides on an id OPAA drew; TracingConfiguration keeps only
+  # allowlisted span attributes. No trace id becomes an exemplar of a metric.
+  tracing:
+    export:
+      enabled: ${OPAA_TRACING_ENABLED:false}
+    sampling:
+      probability: ${OPAA_TRACING_SAMPLING_PROBABILITY:0.05}
+    exemplars:
+      include: none
+    # A trace ends at the installation's edge: no outgoing call carries a traceparent, so no model
+    # provider, source or mail server gets an id that the own log ties to a request.
+    propagation:
+      produce: ""
+  opentelemetry:
+    # No OTEL_* variable of the container switches an export on behind the OPAA_* keys.
+    map-environment-variables: false
+    tracing:
+      sampler: trace-id-ratio
+      export:
+        otlp:
+          endpoint: ${OPAA_TRACING_OTLP_ENDPOINT:}
+          transport: http
+  logging:
+    export:
+      otlp:
+        enabled: false
   endpoints:
     web:
       exposure:
@@ -933,6 +962,7 @@ management:
       slo:
         "[http.server.requests]": ${OPAA_METRICS_SLO_HTTP:100ms,250ms,500ms,1s,2500ms,5s,10s,30s}
         "[opaa.query.duration]": ${OPAA_METRICS_SLO_QUERY:1s,2500ms,5s,10s,20s,30s,60s,120s}
+        "[opaa.query.time_to_first_token]": ${OPAA_METRICS_SLO_TTFT:500ms,1s,2s,3s,5s,10s,20s,30s}
         "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
         "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
         "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
@@ -942,6 +972,11 @@ logging:
   # The stack trace of the plain-text log with every exception message unable to forge an entry;
   # the conversion word is registered by io.opaa.observability.SafeLogMessages.
   exception-conversion-word: "%opaaEx"
+  pattern:
+    # The request id of the plain-text log, "[<id>] " before the logger name, nothing outside a
+    # request; the structured formats carry every MDC field (requestId, indexingRunId, traceId,
+    # spanId) as its own field. An id has at least 8 characters, so only the empty "[] " has 3.
+    correlation: "%replace([%X{requestId}] ){'^...$', ''}"
   level:
     org.hibernate.orm.connections.pooling: WARN
     # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included - and the

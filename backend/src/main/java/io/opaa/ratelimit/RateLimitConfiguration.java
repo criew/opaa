@@ -5,6 +5,7 @@ import static io.opaa.ratelimit.RateLimitFilter.Counting.AUTHENTICATED_BY_HANDLE
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.observability.RequestIdFilter;
 import io.opaa.ratelimit.RateLimitFilter.Counting;
 import io.opaa.ratelimit.RateLimitFilter.Rule;
 import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
@@ -23,7 +24,6 @@ import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilte
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -223,7 +223,7 @@ public class RateLimitConfiguration {
         new FilterRegistrationBean<>(
             new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper, clock));
     registration.addUrlPatterns("/api/*");
-    registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+    registration.setOrder(RequestIdFilter.ORDER + 5);
     return registration;
   }
 

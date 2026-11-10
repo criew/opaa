@@ -193,6 +193,34 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "tracing": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "tracing": {
+            "required": [
+              "otlpEndpoint"
+            ],
+            "properties": {
+              "otlpEndpoint": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -396,6 +424,32 @@
           "type": "string",
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
           "description": "Duration such as 30s or PT30S; empty keeps the application default"
+        }
+      }
+    },
+    "tracing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "otlpEndpoint": {
+          "type": "string",
+          "pattern": "^(https?://\\S+)?$",
+          "description": "OTLP/HTTP address of the trace collector including the path, e.g. http://otel-collector.monitoring:4318/v1/traces"
+        },
+        "samplingProbability": {
+          "type": "string",
+          "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)?$",
+          "description": "Share of requests traced, 0.0 to 1.0; empty keeps the application default"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "NetworkPolicy egress rules of the backend to the collector, while tracing is on and networkPolicy.egress is enabled"
         }
       }
     },

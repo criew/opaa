@@ -416,3 +416,54 @@ dataFlows:
     trigger: Ein Werkzeugaufruf run_code in einer Frage mit Präfix „@test “
     switchOff: Abschaltbar, Voreinstellung aus; braucht zusätzlich opaa.spike.tool-loop.enabled
     settings: [opaa.sandbox.enabled, opaa.sandbox.base-url]
+  - id: trace-export
+    group: OPERATIONS
+    viaOutboundProxy: true
+    target: >-
+      Der Trace-Collector des Betriebs (OpenTelemetry, OTLP/HTTP), meist im eigenen Netz; ist ein
+      Ausgangsproxy eingestellt, geht die Verbindung über ihn, außer die Adresse steht in seinen
+      Ausnahmen
+    data: >-
+      Je erfasster Anfrage und Hintergrundaufgabe Spans mit Zeitpunkt, Dauer, Trace- und Span-ID und
+      nur den freigegebenen Merkmalen: Methode, Routenvorlage ohne Kennungen und Suchparameter,
+      Status, Ergebnisklasse, Fehlerklasse, Zieldienst, Modell, Tokenzahlen. Keine Adresse mit Pfad
+      oder Abfrage, kein Konto, keine Anmeldedaten, kein SQL, keine Frage, Antwort, Suchtext oder
+      Fehlermeldung. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle,
+      Quellen oder Mailserver trägt einen Kopf traceparent, auch nicht bei eingeschaltetem Tracing,
+      und ein mitgeschickter traceparent eines Aufrufers wird verworfen
+    trigger: >-
+      Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent),
+      gezogen über eine Trace-ID, die OPAA selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
+    switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse bricht der Start ab
+    settings:
+      - management.tracing.export.enabled
+      - management.opentelemetry.tracing.export.otlp.endpoint
+      - management.tracing.sampling.probability
+settings:
+  - key: management.tracing.export.enabled
+    source: PROPERTY
+    defaultValue: "false"
+    effect: Ob Traces an den Trace-Collector des Betriebs gehen
+    bearings: [DATA_FLOW]
+    helm:
+      values: tracing.enabled
+      defaultValue: "false"
+  - key: management.opentelemetry.tracing.export.otlp.endpoint
+    source: PROPERTY
+    defaultValue: ""
+    effect: Adresse des Trace-Collectors; Pflicht bei eingeschaltetem Tracing
+    bearings: [DATA_FLOW]
+    helm:
+      values: tracing.otlpEndpoint
+      defaultValue: ""
+  - key: management.tracing.sampling.probability
+    source: PROPERTY
+    defaultValue: "0.05"
+    range: 0.0 bis 1.0
+    effect: >-
+      Anteil der Anfragen, die als Trace erfasst werden; bei 1.0 entsteht beim Collector ein
+      lückenloses Ablaufprotokoll jeder Anfrage mit Zeitstempel
+    bearings: [DATA, EVALUATION]
+    helm:
+      values: tracing.samplingProbability
+      defaultValue: ""

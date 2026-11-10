@@ -1,4 +1,4 @@
-# ADR-0071: Betriebsbeobachtung — Metriken und Health ohne eigene Datenhaltung
+# ADR-0071: Betriebsbeobachtung — Metriken, Health und Korrelation ohne eigene Datenhaltung
 
 ## Status
 
@@ -50,7 +50,11 @@ keiner Metrik.
 Eigene Metriken heißen `opaa.<bereich>.<größe>` in Micrometer-Schreibweise mit Basiseinheiten.
 Die `gen_ai.*`-Metriken (`gen_ai.client.operation`, `gen_ai.client.token.usage`) liefert Spring AI
 aus den Observations der Chat- und Embedding-Clients; OPAA baut sie nicht nach und benennt sie
-nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Jede
+nicht um, solange die OpenTelemetry-Konventionen dafür nicht veröffentlicht sind. Was sie nicht
+unterscheiden, zählt OPAA selbst: `opaa.model.tokens` trägt den Zweck eines Aufrufs des
+Chat-Modells (Antwort, Zerlegung, Notiz, Nebenaufgaben, Agent) und als `model` den Namen aus der
+Modellverwaltung, nicht den Namen, den die Antwort des Anbieters nennt. Titel und Metadaten teilen
+sich den Zweck Nebenaufgaben, damit keine Reihe die neuen Chats eines Zeitraums zählt. Jede
 Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-query-response`,
 `include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
 Standardwert der Bibliothek keine Inhalte in Observations, Logs oder Spans bringt; eine Prüfung
@@ -58,16 +62,21 @@ verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad dekla
 
 ### 4. Latenz als Histogramm mit SLO-Buckets, Reihen mit Anwendung, Host und Build
 
-`http.server.requests`, `opaa.query.duration`, `opaa.ocr.duration`, `gen_ai.client.operation` und
-`tasks.scheduled.execution` veröffentlichen Histogramm-Buckets an festen SLO-Schwellen
-(`management.metrics.distribution.slo`), je Timer über eine `OPAA_METRICS_SLO_*`-Variable
-einstellbar; die Long-Task-Timer daneben (`….active`) bleiben ohne Buckets. Feste Buckets statt
-Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg aggregieren lassen, und statt des
-vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die Zahl der Reihen klein halten. Jede
-Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
+`http.server.requests`, `opaa.query.duration`, `opaa.query.time_to_first_token`,
+`opaa.ocr.duration`, `gen_ai.client.operation` und `tasks.scheduled.execution` veröffentlichen
+Histogramm-Buckets an festen SLO-Schwellen (`management.metrics.distribution.slo`), je Timer über
+eine `OPAA_METRICS_SLO_*`-Variable einstellbar; die Long-Task-Timer daneben (`….active`) bleiben
+ohne Buckets. Feste Buckets statt Perzentilen im Prozess, weil sich nur Buckets über Pods hinweg
+aggregieren lassen, und statt des vollen Perzentil-Histogramms, weil wenige Buckets je Reihe die
+Zahl der Reihen klein halten. Jede Reihe trägt `application` und `host` (Rechnername, unter Kubernetes der Pod); nicht `instance`,
 weil Prometheus dieses Label selbst setzt und ein gleichnamiges umbenennt. `opaa.build.info`
 (immer 1, mit `version` und `commit`) zeigt, welcher Build wo läuft, auch einen gemischten Stand
 während eines Rolling Updates.
+
+Das SLO der Chat-Fragen ist `success / (success + error)` aus `opaa.query.count`. Anfragefehler —
+ungültige Eingabe, fehlende Berechtigung, nicht gefunden, archivierter Space, kein Chat-Modell
+eingerichtet — zählen als `status=rejected`, ohne Dauer und ohne Abbruchursache, und bleiben
+außerhalb des SLO, weil sie nichts über den Zustand des Dienstes sagen.
 
 ### 5. Management-Port, Health-Gruppen und Probe-Modell
 
@@ -95,6 +104,29 @@ Metriken gegen Entscheidung 2 und die Metriktabelle des Handbuchs, und eine wöc
 lesende Prüfroutine sucht fehlende Metriken und tote Metrikbezüge in Dashboards und Alarmen. Eine
 Metrik, die erst nach einer Störung nachgerüstet wird, fehlt genau in der Störung, für die sie
 gebraucht worden wäre.
+
+### 7. Korrelation durchgängig, Tracing optional und an der Installation endend
+
+Jede Anfrage trägt eine Request-ID: nginx und `RequestIdFilter` übernehmen eine mitgeschickte
+`X-Request-Id` nur bei 8 bis 64 Zeichen aus `[A-Za-z0-9_-]` und erzeugen sonst eine. Sie steht im
+Zugriffslog, im MDC jeder Logzeile der Anfrage und ihrer Hintergrundaufgaben in Spring-Executoren
+(`MdcTaskDecorator`), im
+Antwort-Header, in `ErrorResponse.requestId` und, wo ein Eintrag keine eigene Vorgangskennung hat,
+als `request:<id>` in `correlation_ref` des Revisionsprotokolls; die Ausleitung an das
+Sicherheitsmonitoring (ADR-0055) sendet `correlation_ref` nicht. Tracing über OpenTelemetry ist ab
+Werk aus; eingeschaltet trägt ein Span nur Attribute einer Positivliste (`AllowlistedSpanExporter`),
+keine Ereignisse und Links, und die Vorgabe der Stichprobe ist 5 %. Ein Trace endet an der
+Installation: Frontend und Backend verwerfen `traceparent`, `tracestate`, `baggage` und B3 des
+Aufrufers, kein ausgehender Aufruf trägt einen `traceparent`, keine Trace-ID wird Exemplar einer
+Metrik.
+
+Die Request-ID nennt niemanden, ist aber personenbeziehbar über Verknüpfung: Zugriffslog mit
+Client-Adresse, Logzeilen mit Konto und Revisionsprotokoll lassen sich über sie verbinden. Die
+Netzadresse bleibt aus dem Protokollsatz (ADR-0068 Entscheidung 4); den Weg über die Verknüpfung
+regelt die Dienstvereinbarung, und das SIEM bekommt die Kennung nicht, damit dort niemand selbst
+verknüpft. Eine Positivliste bleibt dicht, wenn eine Bibliothek neue Attribute einführt. Ein
+Trace-Kontext von außen ließe den Aufrufer die Trace-ID und damit die Stichprobe wählen, einer nach
+außen gäbe Modellanbietern und Quellen eine Kennung, die das eigene Log einer Anfrage zuordnet.
 
 ### 9. Indizierung und Verzeichnisabgleich: Konnektortyp als Label, Zustand aus der Datenbank
 
@@ -142,12 +174,17 @@ behält der neue Plan die Entstehungszeit des ersten, denn so lange wartet die E
   der Zwischenspeicherung. Werden die `gen_ai.*`-Namen umbenannt, brechen Dashboards darauf, bis sie
   nachgezogen sind. In sehr kleinen Installationen kann auch eine installationsweite Zahl auf wenige
   Personen deuten; feine Zeitauflösung und Kanalaufteilung bleiben deshalb aus Dashboards heraus.
+  Eine vom Aufrufer gewählte gültige Request-ID kann Einträge verschiedener Anfragen in der Abfrage
+  des Revisionsprotokolls nach Vorgang zusammenlegen; das wird hingenommen, weil die Kennung nichts
+  freischaltet und nur die Suche betrifft. Traces über Dienstgrenzen hinweg gibt es nicht.
 
 ## Verworfene Alternativen
 
 - Nutzungs- und Kostentabellen mit Cockpit in der Oberfläche — zweites Auswertungssystem mit Personenbezug, Entscheidung 1.
-- Eigene `opaa.model.*`-Nachbauten der `gen_ai.*`-Metriken — doppelte Pflege, Namen sollen der Konvention folgen.
+- Eigene `opaa.model.*`-Nachbauten der `gen_ai.*`-Metriken — doppelte Pflege, Namen sollen der Konvention folgen; `opaa.model.tokens` baut nichts nach, sondern ergänzt den Zweck.
 - Perzentile im Prozess (Summaries) — nicht über Pods aggregierbar.
 - Gemeinsames Tag `instance` — kollidiert mit dem Label, das Prometheus jedem Ziel gibt.
 - Endpunkt-Cache für Health — greift für Gruppenpfade nicht und hielte Ergebnisse je Person.
+- Sperrliste der Span-Attribute — lässt jedes neue Attribut einer Bibliothek durch, Entscheidung 7.
+- `traceparent` annehmen und weitergeben — der Aufrufer wählte die Stichprobe, Dritte bekämen eine zuordenbare Kennung.
 - Letzter Erfolg je Bibliothek als eigene Reihe — Bibliothekskennung im Label, Entscheidung 9.

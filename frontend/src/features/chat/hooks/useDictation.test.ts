@@ -81,6 +81,49 @@ describe('useDictation', () => {
     expect(result.current.status).toBe('idle')
   })
 
+  it('hands the text to the caller instead of the input when asked to keep it', async () => {
+    const microphone = fakeMicrophone()
+    const onFinalText = vi.fn()
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText,
+        transport: transportAnswering('Hallo Welt'),
+        startRecording: microphone.startRecording,
+      }),
+    )
+
+    await act(() => result.current.start())
+    let text: string | null = null
+    await act(async () => {
+      text = await result.current.stop(false)
+    })
+
+    expect(text).toBe('Hallo Welt')
+    expect(onFinalText).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('idle')
+  })
+
+  it('keeps the recent input levels while recording and forgets them afterwards', async () => {
+    const microphone = fakeMicrophone()
+    const { result } = renderHook(() =>
+      useDictation({
+        onFinalText: vi.fn(),
+        transport: transportAnswering('Hallo'),
+        startRecording: microphone.startRecording,
+      }),
+    )
+
+    await act(() => result.current.start())
+    act(() => {
+      microphone.recordings[0].options.onLevel?.(0.1)
+      microphone.recordings[0].options.onLevel?.(0.2)
+    })
+    expect(result.current.levels).toEqual([0.1, 0.2])
+
+    act(() => result.current.cancel())
+    expect(result.current.levels).toEqual([])
+  })
+
   it('discards a cancelled recording without sending anything', async () => {
     const microphone = fakeMicrophone()
     const transport = transportAnswering('nie')

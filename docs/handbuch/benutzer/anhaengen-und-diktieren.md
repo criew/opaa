@@ -19,15 +19,20 @@ einer Frage sendet.
 
 ## Spracheingabe
 
-1. Das **Mikrofon** neben „Senden“ wählen und die Frage sprechen.
-2. „Aufnahme beenden“ wählen. Der Text steht im Eingabefeld.
-3. Prüfen und selbst senden. **Gesendet wird nie automatisch.**
+1. Das **Mikrofon** neben „Senden“ wählen und die Frage sprechen. Statt des Eingabefelds zeigt
+   ein Pegel, dass das Mikrofon hört; bleibt er beim Sprechen flach, das Mikrofon prüfen.
+2. „Fertig, Text ins Eingabefeld“ (Haken) wählen. Der Text steht im Eingabefeld und lässt sich
+   korrigieren, dann selbst senden.
+3. Oder gleich „Senden“ wählen: Die Aufnahme endet und die Frage geht mit dem erkannten Text ab,
+   ohne Korrektur.
+
+Verwerfen: das Kreuz neben dem Haken oder die Taste Esc. Dann bleibt das Eingabefeld, wie es war.
 
 Hat die Installation zusätzlich ein Live-Transkript eingerichtet, erscheint der Text schon beim
-Sprechen grau und kursiv unter dem Eingabefeld. In das Eingabefeld kommt er erst nach „Aufnahme
-beenden“, als endgültiger Text. Bleibt der graue Text aus oder bricht er ab, ist das kein Fehler:
-Der Text kommt dann wie sonst nach dem Ende der Aufnahme. Einen Schalter dafür gibt es nicht; das
-Mikrofon nutzt Live von selbst, wenn es verfügbar ist.
+Sprechen grau im Eingabefeld. Eingesetzt und gesendet wird erst der endgültige Text nach dem Ende
+der Aufnahme. Bleibt der graue Text aus oder bricht er ab, ist das kein Fehler: Der Text kommt dann
+wie sonst nach dem Ende der Aufnahme. Einen Schalter dafür gibt es nicht; das Mikrofon nutzt Live
+von selbst, wenn es verfügbar ist.
 
 Die Aufnahme wird nicht gespeichert. Fehlen Büroklammer oder Mikrofon, hat die Installation die
 Funktion nicht eingeschaltet.
