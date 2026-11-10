@@ -83,10 +83,13 @@ class CapabilityServiceIntegrationTest {
     foreignHistoryIds = historyIds();
     member = persistUser(SystemRole.USER);
     admin = persistUser(SystemRole.SYSTEM_ADMIN);
+    // agents are switched off by default; their capability exists only while they are on
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = true WHERE id = 1");
   }
 
   @AfterEach
   void cleanUp() {
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = false WHERE id = 1");
     if (foreignHistoryIds != null) {
       List<UUID> ownHistory = new ArrayList<>(historyIds());
       ownHistory.removeAll(foreignHistoryIds);

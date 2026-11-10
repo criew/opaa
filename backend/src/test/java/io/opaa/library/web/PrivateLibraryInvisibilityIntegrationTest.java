@@ -316,6 +316,10 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listPrompts",
             "getPrompt",
             "listAvailablePrompts",
+            "listAgents",
+            "getAgent",
+            "getAgentAvailability",
+            "getAgentSettings",
             "fetchSearchHit",
             "listSearchableLibraries",
             "listSourceTypes",
@@ -478,6 +482,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("deletePrompt", same());
     probes.put("updatePromptLibrary", same("{\"name\": \"Vorlagen\"}"));
     probes.put("deletePromptLibrary", same());
+    // an agent is another asset type; switched off, every agent path answers alike
+    probes.put(
+        "updateAgent",
+        same(
+            "{\"name\": \"Prüfhilfe\", \"instruction\": \"\", \"libraryIds\": [\"{library}\"],"
+                + " \"toolNames\": [], \"planStep\": \"OFF\", \"limits\": {}}"));
     // the counting operations; disconnecting and deleting run in both phases alike
     probes.put("reportOrphanedLibraries", same("{}"));
     probes.put(

@@ -1046,15 +1046,17 @@ class PermissionHistoryServiceIntegrationTest {
    * list prompt libraries; the grants, reach and history of a prompt library's creation, reach
    * change and deletion it leaves to {@code AssetShellService}, covered above. {@code
    * PromptService} reads the formula to offer the prompts a person may insert in the chat and to
-   * check an inserted one; it writes prompts only. {@code AssetCatalogService} reads the formula
-   * only to restrict the catalog to readable entries and writes nothing. {@code AssetOwnerNames}
-   * only reads the display names of owning groups; {@code KnowledgeLibraryService} reaches groups
-   * only through it and through {@code AssetGrantService}, and its write paths are covered above.
-   * {@code AssetFavoriteService} reads the formula only to refuse a favorite on an asset the caller
-   * cannot read; it writes favorites only. {@code ProfileFullSync} only reads the grants of a
-   * library to tell its managers that a changed profile forces a full sync; it writes notifications
-   * only. {@code ConsentResponsibles} only reads the grants and groups of a library to check who
-   * may answer for its source consent and to tell them; it writes nothing. {@code
+   * check an inserted one; it writes prompts only. {@code AgentService} reads the formula to list
+   * agents and the libraries an agent may narrow to; an agent's grants, reach and history it leaves
+   * to {@code AssetShellService}. {@code AssetCatalogService} reads the formula only to restrict
+   * the catalog to readable entries and writes nothing. {@code AssetOwnerNames} only reads the
+   * display names of owning groups; {@code KnowledgeLibraryService} reaches groups only through it
+   * and through {@code AssetGrantService}, and its write paths are covered above. {@code
+   * AssetFavoriteService} reads the formula only to refuse a favorite on an asset the caller cannot
+   * read; it writes favorites only. {@code ProfileFullSync} only reads the grants of a library to
+   * tell its managers that a changed profile forces a full sync; it writes notifications only.
+   * {@code ConsentResponsibles} only reads the grants and groups of a library to check who may
+   * answer for its source consent and to tell them; it writes nothing. {@code
    * McpServerProfileService} only reads a group to check that the group answering for an MCP server
    * exists in the caller's organization; it writes no grant or membership. {@code
    * GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}: it switches a
@@ -1068,6 +1070,7 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetCatalogService",
           "AssetFavoriteService",
           "AssetOwnerNames",
+          "AgentService",
           "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",
