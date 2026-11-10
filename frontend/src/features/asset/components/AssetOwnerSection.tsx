@@ -18,7 +18,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { successionAwareMessage } from '@/features/succession'
 import { transferAssetOwnership } from '../api/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetThisAccusative } from '../../../shared/assetTypes'
 
 export interface AssetOwnerSectionProps {
   assetType: AssetType
@@ -51,7 +51,6 @@ export default function AssetOwnerSection({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const noun = assetTypeLabel(assetType)
   const kindLabel = ownerType === 'GROUP' ? 'Gruppe' : 'Person'
 
   function reset() {
@@ -79,7 +78,7 @@ export default function AssetOwnerSection({
     const confirmed = await confirmAction({
       question: `Eigentum an „${targetLabel}" übergeben?`,
       consequence:
-        `Die Zuständigkeit für diese ${noun} geht damit über. Sie behalten Ihre Rolle nur, wenn ` +
+        `Die Zuständigkeit für ${assetThisAccusative(assetType)} geht damit über. Sie behalten Ihre Rolle nur, wenn ` +
         'sie Ihnen gesondert eingeräumt wird — die Eigentümerrolle geht mit.',
       confirmLabel: 'Übergeben',
       tone: 'danger',

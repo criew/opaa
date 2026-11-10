@@ -143,6 +143,19 @@ export function assetThisGenitive(assetType: AssetType | string | null | undefin
   return `dieser ${assetTypeLabel(assetType)}`
 }
 
+/** "dieser Bibliothek" / "diesem Agenten", after "zu". */
+export function assetThisDative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  if (definition?.masculineOblique) return `diesem ${definition.masculineOblique}`
+  return `dieser ${assetTypeLabel(assetType)}`
+}
+
+/** "Die Bibliothek" / "Der Agent", at the start of a sentence. */
+export function assetTheNominative(assetType: AssetType | string | null | undefined): string {
+  const definition = assetTypeDefinition(assetType)
+  return `${definition?.masculineOblique ? 'Der' : 'Die'} ${assetTypeLabel(assetType)}`
+}
+
 /** "Eine Bibliothek" / "Ein Agent", at the start of a sentence. */
 export function assetANominative(assetType: AssetType | string | null | undefined): string {
   const definition = assetTypeDefinition(assetType)
