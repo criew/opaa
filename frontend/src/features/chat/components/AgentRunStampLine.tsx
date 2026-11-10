@@ -16,20 +16,16 @@ function revisionText(stamp: AgentRunStamp): string {
   return `Fassung ${stamp.agentRevision}`
 }
 
-function agentText(stamp: AgentRunStamp): string {
-  const name = stamp.agentName ? `Agent „${stamp.agentName}“` : 'Agent'
-  return `${name} · ${revisionText(stamp)}`
-}
-
 interface AgentRunStampLineProps {
   run: AgentRun
 }
 
 /**
- * The draft mark and version stamp under an agent answer: one quiet line with the label "Entwurf",
- * the agent and its revision - "mit Fassung N erstellt, aktuell Fassung M" once the agent has
- * changed - and, opened, the libraries, templates and model the answer was made with. A run kept
- * before stamps were recorded shows the draft mark alone.
+ * The draft mark and version stamp under an agent answer: one quiet line with the label "Entwurf"
+ * and the agent's revision - "mit Fassung N erstellt, aktuell Fassung M" once the agent has
+ * changed - and, opened, the libraries, templates and model the answer was made with. The agent
+ * itself is named once, at the question. A run kept before stamps were recorded shows the draft
+ * mark alone.
  */
 export default function AgentRunStampLine({ run }: AgentRunStampLineProps) {
   const [open, setOpen] = useState(false)
@@ -47,7 +43,7 @@ export default function AgentRunStampLine({ run }: AgentRunStampLineProps) {
             aria-controls={open ? detailsId : undefined}
             sx={{ gap: 0.5, borderRadius: 1, color: 'text.secondary', typography: 'body2' }}
           >
-            {agentText(stamp)}
+            {revisionText(stamp)}
             <ExpandMoreIcon
               aria-hidden
               fontSize="small"

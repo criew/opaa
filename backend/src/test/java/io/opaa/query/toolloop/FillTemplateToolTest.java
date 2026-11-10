@@ -186,8 +186,7 @@ class FillTemplateToolTest {
 
   @Test
   void theResultCarriesTheRunsStampWithTheFilledTemplateAndTheDraftNotice() {
-    run.stampWith(
-        new AgentRunStamp(UUID.randomUUID(), "Prüfhilfe", 3, List.of(), List.of(), "modell-a"));
+    run.stampWith("Prüfhilfe", new AgentRunStamp(3, List.of(), List.of(), "modell-a"));
     sandboxes.listed = List.of(new OutputEntry("Bericht.docx", 100));
     sandboxes.readable.put("Bericht.docx", FILLED);
     sandboxes.next = new ScriptRun(0, "{\"files\":[\"Bericht.docx\"],\"errors\":[]}", "", false);
@@ -207,7 +206,7 @@ class FillTemplateToolTest {
 
   @Test
   void aFillingThatAttachesNothingDoesNotJoinTheStamp() {
-    run.stampWith(new AgentRunStamp(UUID.randomUUID(), "Prüfhilfe", 3, List.of(), List.of(), null));
+    run.stampWith("Prüfhilfe", new AgentRunStamp(3, List.of(), List.of(), null));
     sandboxes.next = new ScriptRun(2, "{\"files\":[],\"errors\":[\"kaputt\"]}", "", false);
 
     tool().call(args(bericht.id(), data().put("betreff", "Test")), run);

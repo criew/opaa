@@ -7,18 +7,18 @@ import java.util.stream.Collectors;
 
 /**
  * The version stamp of an agent answer (Fassungsstempel), kept with the answer in its agent run
- * (ADR-0070, Entscheidung 4, Bestand a) and deleted with the chat: which agent in which revision,
- * the libraries the run could search, the templates it filled and the model - each as it was at the
- * time of the run. Every stamped answer is an unchecked draft.
+ * (ADR-0070, Entscheidung 4, Bestand a) and deleted with the chat: the agent's revision, the
+ * libraries the run could search, the templates it filled and the model - each as it was at the
+ * time of the run. Which agent ran is named once, by {@link AgentRunRecord#agentId()} and {@link
+ * AgentRunRecord#agentName()}. Every stamped answer is an unchecked draft.
  *
- * @param libraries the run's search scope by id and name at the time, never a library the asker
- *     could not read.
+ * @param agentRevision the agent's revision ("Fassung") the run used.
+ * @param libraries the run's search scope by id and name at the time, sorted by name, never a
+ *     library the asker could not read.
  * @param templates the templates the run filled, each with the revision it filled.
  * @param model the chat model's identifier, {@code null} when unknown.
  */
 public record AgentRunStamp(
-    UUID agentId,
-    String agentName,
     int agentRevision,
     List<SearchedLibraryRef> libraries,
     List<TemplateRef> templates,
@@ -39,12 +39,12 @@ public record AgentRunStamp(
     }
     List<TemplateRef> more = new ArrayList<>(templates);
     more.add(template);
-    return new AgentRunStamp(agentId, agentName, agentRevision, libraries, more, model);
+    return new AgentRunStamp(agentRevision, libraries, more, model);
   }
 
   /** The draft notice with agent and revision, for a copied or exported answer. */
-  public String shortText() {
-    return DRAFT_NOTICE + " · Agent „" + agentName + "“, Fassung " + agentRevision;
+  public String shortText(String agentName) {
+    return DRAFT_NOTICE + agentText(agentName);
   }
 
   /**
@@ -52,9 +52,8 @@ public record AgentRunStamp(
    * document properties, so it travels with the file. {@code filled} is the template of this file,
    * {@code null} for none.
    */
-  public String documentText(TemplateRef filled) {
-    StringBuilder text = new StringBuilder(DRAFT_NOTICE);
-    text.append(" · Agent „").append(agentName).append("“, Fassung ").append(agentRevision);
+  public String documentText(String agentName, TemplateRef filled) {
+    StringBuilder text = new StringBuilder(DRAFT_NOTICE).append(agentText(agentName));
     if (filled != null) {
       text.append(" · Vorlage „")
           .append(filled.name())
@@ -70,6 +69,12 @@ public record AgentRunStamp(
       text.append(" · Modell ").append(model);
     }
     return text.toString();
+  }
+
+  private String agentText(String agentName) {
+    String agent =
+        agentName == null || agentName.isBlank() ? " · Agent" : " · Agent „" + agentName + "“";
+    return agent + ", Fassung " + agentRevision;
   }
 
   /** A filled template by id, name at the time and the revision filled. */

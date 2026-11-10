@@ -1,4 +1,12 @@
 /**
+ * The text an image of an answer is shown as instead of being loaded - in the chat, in the HTML of
+ * a copy and in every copied or exported Markdown. The address follows it separately.
+ */
+export function blockedImageText(alt: string | null | undefined): string {
+  return `[Bild: ${alt?.trim() || 'ohne Beschreibung'}]`
+}
+
+/**
  * Whether a link in an answer or a document preview may be clickable: only an http(s) target whose
  * origin is exactly the application's own or one the administration allows - no subdomain or
  * suffix match. Relative and protocol-relative links resolve against the page first. Everything

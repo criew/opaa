@@ -5,6 +5,7 @@ import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../types/chat'
 import type { ChatAttachmentRef } from '@/shared/api/types'
@@ -133,6 +134,25 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             >
               <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
               Prompt: {message.usedPromptTitle}
+            </Typography>
+          )}
+          {/* The agent the question was sent to - icon and name, set apart from a prompt line. */}
+          {isUser && message.agentName && (
+            <Typography
+              component="div"
+              data-testid="question-agent"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 0.5,
+                mb: 0.5,
+                fontSize: fontSize.meta,
+                color: 'text.secondary',
+              }}
+            >
+              <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
+              Agent: {message.agentName}
             </Typography>
           )}
           {isUser && message.attachments && (

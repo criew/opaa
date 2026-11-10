@@ -186,7 +186,7 @@ class AgentToolLoop implements AgentTurnHandler {
       throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
     }
     try {
-      run.stampWith(stamp(spec, run, client));
+      run.stampWith(spec.name(), stamp(spec, run, client));
       signal(turn, AnswerStreamListener::started);
       QueryResult result = runAndKeep(turn, spec, run, client);
       metrics.recordRun(
@@ -219,8 +219,6 @@ class AgentToolLoop implements AgentTurnHandler {
    */
   private AgentRunStamp stamp(AgentRunSpec spec, AgentRun run, ChatClient client) {
     return new AgentRunStamp(
-        spec.agentId(),
-        spec.name() == null ? "" : spec.name(),
         spec.version(),
         chatSourceAssembler.searchedLibraries(run.searchScope()),
         List.of(),
@@ -401,7 +399,9 @@ class AgentToolLoop implements AgentTurnHandler {
                 searchQueries,
                 Map.of(),
                 completeness);
-    AgentRunRecord record = new AgentRunRecord(run.runId(), endState, run.steps(), run.stamp());
+    AgentRunRecord record =
+        new AgentRunRecord(
+            run.runId(), endState, run.steps(), spec.agentId(), spec.name(), run.stamp());
 
     signal(turn, AnswerStreamListener::beforeKeeping);
     List<ChatAttachment> generatedFiles = finishResources(run);

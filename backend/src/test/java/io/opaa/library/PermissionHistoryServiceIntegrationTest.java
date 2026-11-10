@@ -1050,29 +1050,35 @@ class PermissionHistoryServiceIntegrationTest {
    * nothing. {@code PromptService} reads the formula to offer the prompts a person may insert in
    * the chat and to check an inserted one; it writes prompts only. {@code AgentService} reads the
    * formula to list agents and the libraries an agent may narrow to; an agent's grants, reach and
-   * history it leaves to {@code AssetShellService}. {@code AssetCatalogService} reads the formula
-   * only to restrict the catalog to readable entries and writes nothing. {@code AssetOwnerNames}
-   * only reads the display names of owning groups; {@code KnowledgeLibraryService} reaches groups
-   * only through it and through {@code AssetGrantService}, and its write paths are covered above.
-   * {@code AssetFavoriteService} reads the formula only to refuse a favorite on an asset the caller
-   * cannot read; it writes favorites only. {@code ProfileFullSync} only reads the grants of a
-   * library to tell its managers that a changed profile forces a full sync; it writes notifications
-   * only. {@code ConsentResponsibles} only reads the grants and groups of a library to check who
-   * may answer for its source consent and to tell them; it writes nothing. {@code
-   * McpServerProfileService} only reads a group to check that the group answering for an MCP server
-   * exists in the caller's organization; it writes no grant or membership. {@code
-   * GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}: it switches a
-   * group off or on and cuts its membership intervals, and is covered by {@link
-   * #readabilityWritePaths} through that method.
+   * history it leaves to {@code AssetShellService}. {@code AgentChoice} reads the formula to offer
+   * the agents a person may choose in a chat and to check a chosen one; it writes nothing. {@code
+   * AssetCatalogService} reads the formula only to restrict the catalog to readable entries and
+   * writes nothing. {@code AssetOwnerNames} only reads the display names of owning groups; {@code
+   * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
+   * and its write paths are covered above. {@code AssetFavoriteService} reads the formula only to
+   * refuse a favorite on an asset the caller cannot read; it writes favorites only. {@code
+   * ProfileFullSync} only reads the grants of a library to tell its managers that a changed profile
+   * forces a full sync; it writes notifications only. {@code ConsentResponsibles} only reads the
+   * grants and groups of a library to check who may answer for its source consent and to tell them;
+   * it writes nothing. {@code McpServerProfileService} only reads a group to check that the group
+   * answering for an MCP server exists in the caller's organization; it writes no grant or
+   * membership. {@code GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}:
+   * it switches a group off or on and cuts its membership intervals, and is covered by {@link
+   * #readabilityWritePaths} through that method. {@code ReadableAssetNames} only reads the formula,
+   * the group memberships and the group selection rule to decide whether a self-disclosure or an
+   * own list may show the name of an asset or group today; it writes nothing.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
+          "ReadableAssetNames",
           "AssetAuthorization",
           "AssetCatalogService",
           "AssetFavoriteService",
           "AssetOwnerNames",
           "AgentService",
+          "AgentChoice",
+          "AgentCurrentRevisions",
           "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",

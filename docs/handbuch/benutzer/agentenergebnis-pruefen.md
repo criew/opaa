@@ -3,8 +3,9 @@
 **Ziel:** Sie wissen, womit eine Agentenantwort entstanden ist, und behandeln sie als Entwurf.
 {: .kopf }
 
-1. Unter der Antwort eines Agenten steht „Entwurf“ und daneben der Agent mit seiner Fassung, etwa
-   Agent „Prüfhilfe“ · Fassung 3.
+1. Unter der Antwort eines Agenten steht „Entwurf“ und daneben die Fassung des Agenten, etwa
+   Fassung 3. Welcher Agent geantwortet hat, steht als „Agent: Name“ an Ihrer Frage
+   ([Agenten verwenden](agenten-verwenden.md)).
 2. Die Zeile anklicken: Darunter stehen die Bibliotheken, in denen der Agent suchen konnte, die
    ausgefüllten Vorlagen mit ihrer Fassung und das Modell, jeweils mit dem Namen zum Zeitpunkt der
    Antwort.

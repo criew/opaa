@@ -7,6 +7,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSink.RecordWriter;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -22,11 +23,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The category {@code documents} of the self-disclosure, a directory only: the person's uploads
- * into libraries other than her private ones (name, date, library), then the documents of her
- * private libraries, connector-fed ones included, with path and folder in the source. The path of
- * an uploaded document is the locator of its stored original and never goes out; contents,
- * originals and technical source keys never either. Read in pages, each in a short read-only
- * transaction.
+ * into libraries other than her private ones (name, date, library, its name only while she may
+ * still read it, {@link ReadableAssetNames}), then the documents of her private libraries,
+ * connector-fed ones included, with path and folder in the source. The path of an uploaded document
+ * is the locator of its stored original and never goes out; contents, originals and technical
+ * source keys never either. Read in pages, each in a short read-only transaction.
  */
 @Component
 public class DocumentSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -65,10 +66,12 @@ public class DocumentSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
+  private final ReadableAssetNames names;
 
   public DocumentSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
   }
@@ -94,7 +97,7 @@ public class DocumentSelfDisclosureExporter implements SelfDisclosureExporter {
           readOnly.execute(
               s ->
                   jdbc.query(
-                      "SELECT d.id, d.file_name, d.created_at, a.name FROM documents d"
+                      "SELECT d.id, d.library_id, d.file_name, d.created_at, a.name FROM documents d"
                           + " JOIN assets a ON a.id = d.library_id"
                           + " WHERE d.uploaded_by_user_id = ? AND d.organization_id = ?"
                           + " AND d.id > ? AND NOT EXISTS ("
@@ -106,6 +109,10 @@ public class DocumentSelfDisclosureExporter implements SelfDisclosureExporter {
                         record.put("createdAt", rs.getTimestamp("created_at").toInstant());
                         record.put("library", rs.getString("name"));
                         record.put("_id", rs.getObject("id", UUID.class));
+                        ReadableAssetNames.mark(
+                            record,
+                            rs.getObject("library_id", UUID.class),
+                            KnowledgeLibrary.ASSET_TYPE.value());
                         return record;
                       },
                       subject.accountId(),
@@ -116,6 +123,7 @@ public class DocumentSelfDisclosureExporter implements SelfDisclosureExporter {
       if (page == null || page.isEmpty()) {
         return;
       }
+      names.apply(subject.accountId(), page, "library");
       if (writer == null) {
         writer = sink.section("uploads");
       }

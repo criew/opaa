@@ -178,6 +178,8 @@ public final class ChatResponseMapper {
                             .detail(step.detail())
                             .hits(step.hits()))
                 .toList())
+        .agentId(run.agentId())
+        .agentName(run.agentName())
         .stamp(toStamp(run.stamp(), currentAgentRevision));
   }
 
@@ -187,8 +189,6 @@ public final class ChatResponseMapper {
       return null;
     }
     return new io.opaa.api.dto.AgentRunStamp(
-            stamp.agentId(),
-            stamp.agentName(),
             stamp.agentRevision(),
             stamp.libraries().stream()
                 .map(library -> new SearchedLibrary(library.id(), library.name()))

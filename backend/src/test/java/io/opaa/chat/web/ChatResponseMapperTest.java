@@ -94,18 +94,19 @@ class ChatResponseMapperTest {
             UUID.randomUUID(),
             AgentRunRecord.EndState.COMPLETED,
             List.of(),
+            agent,
+            "Prüfhilfe",
             new AgentRunStamp(
-                agent,
-                "Prüfhilfe",
                 3,
                 List.of(new SearchedLibraryRef(library, "Erlasse")),
                 List.of(new AgentRunStamp.TemplateRef(template, "Bescheid", 2)),
                 "modell-a"));
 
-    io.opaa.api.dto.AgentRunStamp stamp = ChatResponseMapper.toAgentRun(run, 5).getStamp();
+    io.opaa.api.dto.AgentRun mapped = ChatResponseMapper.toAgentRun(run, 5);
+    io.opaa.api.dto.AgentRunStamp stamp = mapped.getStamp();
 
-    assertThat(stamp.getAgentId()).isEqualTo(agent);
-    assertThat(stamp.getAgentName()).isEqualTo("Prüfhilfe");
+    assertThat(mapped.getAgentId()).isEqualTo(agent);
+    assertThat(mapped.getAgentName()).isEqualTo("Prüfhilfe");
     assertThat(stamp.getAgentRevision()).isEqualTo(3);
     assertThat(stamp.getCurrentAgentRevision()).isEqualTo(5);
     assertThat(stamp.getLibraries().getFirst().getId()).isEqualTo(library);

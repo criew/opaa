@@ -783,6 +783,15 @@ components:
         runId:
           type: string
           format: uuid
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The agent that ran; null on runs kept before the agent was recorded.
+        agentName:
+          type: string
+          nullable: true
+          description: The agent's name at the time of the run, shown at the answer.
         endState:
           $ref: "#/components/schemas/AgentRunEndState"
         steps:
@@ -799,18 +808,13 @@ components:
 
     AgentRunStamp:
       type: object
-      required: [agentId, agentName, agentRevision, libraries, templates]
+      required: [agentRevision, libraries, templates]
       description: >
         With what an agent answer was made, as it was at the time of the run and kept with the
-        answer: the agent and its revision, the libraries the run could search, the templates it
-        filled and the model. Names are those at the time of the run and do not follow a rename.
+        answer: the agent's revision, the libraries the run could search, the templates it filled
+        and the model. The agent itself is the run's agentId and agentName. Names are those at the
+        time of the run and do not follow a rename.
       properties:
-        agentId:
-          type: string
-          format: uuid
-        agentName:
-          type: string
-          description: The agent's name at the time of the run.
         agentRevision:
           type: integer
           minimum: 1

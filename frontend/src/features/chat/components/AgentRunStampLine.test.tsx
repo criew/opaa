@@ -11,9 +11,9 @@ const RUN: AgentRun = {
   runId: '00000000-0000-0000-0000-000000000001',
   endState: 'COMPLETED',
   steps: [],
+  agentId: '00000000-0000-0000-0000-0000000000a1',
+  agentName: 'Prüfhilfe',
   stamp: {
-    agentId: '00000000-0000-0000-0000-0000000000a1',
-    agentName: 'Prüfhilfe',
     agentRevision: 3,
     currentAgentRevision: 3,
     libraries: [
@@ -26,12 +26,14 @@ const RUN: AgentRun = {
 }
 
 describe('AgentRunStampLine', () => {
-  it('marks the answer as a draft and names agent and revision, details on demand', async () => {
+  it('marks the answer as a draft and names the revision, details on demand', async () => {
     renderWithProviders(<AgentRunStampLine run={RUN} />)
 
     expect(screen.getByRole('img', { name: 'Entwurf, nicht geprüft' })).toHaveTextContent('Entwurf')
-    const toggle = screen.getByRole('button', { name: /Agent „Prüfhilfe“ · Fassung 3/ })
+    const toggle = screen.getByRole('button', { name: /Fassung 3/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    // the agent is named once, at the question; the stamp line does not repeat it
+    expect(screen.queryByText(/Prüfhilfe/)).not.toBeInTheDocument()
     expect(screen.queryByText('Erlasse, Satzungen')).not.toBeInTheDocument()
 
     await userEvent.click(toggle)

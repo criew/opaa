@@ -143,7 +143,9 @@ record ChatTranscript(
     if (run == null) {
       return null;
     }
-    return run.stamp() == null ? AgentRunStamp.DRAFT_NOTICE : safe(run.stamp().shortText());
+    return run.stamp() == null
+        ? AgentRunStamp.DRAFT_NOTICE
+        : safe(run.stamp().shortText(run.agentName()));
   }
 
   private static ChatSource resolve(List<ChatSource> sources, CitationMarker marker) {

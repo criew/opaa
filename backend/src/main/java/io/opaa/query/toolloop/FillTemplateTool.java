@@ -385,7 +385,7 @@ class FillTemplateTool implements AgentTool {
               formats,
               outputDir,
               pdfDeadline(timeout),
-              stamp == null ? null : stamp.documentText(filled)));
+              stamp == null ? null : stamp.documentText(run.agentName(), filled)));
       result = session.runInstalled(SCRIPT, List.of(JOB_PATH), timeout);
       sandbox.scriptRan(result);
       reported = ScriptResult.read(result.stdout(), objectMapper);

@@ -47,6 +47,7 @@ public final class AgentRun {
   private EndState limitReached;
   private String question;
   private AgentRunStamp stamp;
+  private String agentName;
 
   AgentRun(
       UUID organizationId,
@@ -242,9 +243,18 @@ public final class AgentRun {
     return toolCalls;
   }
 
-  /** Sets the stamp the loop builds at the start: agent, revision, scope by name and model. */
-  synchronized void stampWith(AgentRunStamp base) {
+  /**
+   * Sets the stamp the loop builds at the start - revision, scope by name and model - and the
+   * agent's name it goes with.
+   */
+  synchronized void stampWith(String agentName, AgentRunStamp base) {
+    this.agentName = agentName;
     this.stamp = base;
+  }
+
+  /** The agent's name the run's stamp goes with, {@code null} when none is known. */
+  synchronized String agentName() {
+    return agentName;
   }
 
   /**

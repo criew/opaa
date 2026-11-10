@@ -69,7 +69,9 @@ class ChatTranscriptTest {
                 UUID.randomUUID(),
                 AgentRunRecord.EndState.COMPLETED,
                 List.of(),
-                new AgentRunStamp(UUID.randomUUID(), "Prüfhilfe", 3, List.of(), List.of(), null)));
+                UUID.randomUUID(),
+                "Prüfhilfe",
+                new AgentRunStamp(3, List.of(), List.of(), null)));
     ChatTurn unstamped =
         new ChatTurn(
             UUID.randomUUID(),

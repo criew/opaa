@@ -1083,8 +1083,8 @@ class ChatServiceIntegrationTest {
               .toList();
 
       AgentRunStamp first = answers.get(0).getAgentRun().stamp();
-      assertThat(first.agentId()).isEqualTo(agent);
-      assertThat(first.agentName()).isEqualTo("Prüfhilfe");
+      assertThat(answers.get(0).getAgentRun().agentId()).isEqualTo(agent);
+      assertThat(answers.get(0).getAgentRun().agentName()).isEqualTo("Prüfhilfe");
       assertThat(first.agentRevision()).isEqualTo(1);
       assertThat(first.libraries())
           .containsExactly(new SearchedLibraryRef(library, "Testbibliothek"));
@@ -1111,9 +1111,9 @@ class ChatServiceIntegrationTest {
         UUID.randomUUID(),
         AgentRunRecord.EndState.COMPLETED,
         List.of(),
+        agent,
+        "Prüfhilfe",
         new AgentRunStamp(
-            agent,
-            "Prüfhilfe",
             revision,
             List.of(new SearchedLibraryRef(library, "Testbibliothek")),
             List.of(new AgentRunStamp.TemplateRef(TEMPLATE_ID, "Bescheid", 3)),

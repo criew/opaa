@@ -188,9 +188,9 @@ describe('chatAsMarkdown', () => {
         runId: 'run-1',
         endState: 'COMPLETED' as const,
         steps: [],
+        agentId: 'agent-1',
+        agentName: 'Prüfhilfe',
         stamp: {
-          agentId: 'agent-1',
-          agentName: 'Prüfhilfe',
           agentRevision: 3,
           libraries: [],
           templates: [],

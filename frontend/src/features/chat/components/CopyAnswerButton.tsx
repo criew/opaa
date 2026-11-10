@@ -98,7 +98,7 @@ export default function CopyAnswerButton({
       copyNote(branding.aiNotice, branding.productName, answeredAt),
       agentRun,
     )
-    void copy(plainTextWithNote(answerAsPlainText(content), note))
+    void copy(plainTextWithNote(answerAsPlainText(content, { allowedOrigins }), note))
   }
 
   return (
@@ -117,7 +117,7 @@ export default function CopyAnswerButton({
       <Tooltip title={copied ? 'Kopiert' : 'Als Markdown kopieren, ohne Fußnoten'}>
         <ButtonBase
           aria-label={copied ? 'Antwort kopiert' : 'Antwort kopieren'}
-          onClick={() => copyMarkdown(answerAsMarkdown(content))}
+          onClick={() => copyMarkdown(answerAsMarkdown(content, { allowedOrigins }))}
           sx={(theme) => ({
             ...segmentSx(theme),
             // The segments round off the pill themselves instead of a clipping container, so the
@@ -167,7 +167,7 @@ export default function CopyAnswerButton({
         <MenuItem
           onClick={() => {
             setMenuAnchor(null)
-            copyMarkdown(answerWithSources(content, citations))
+            copyMarkdown(answerWithSources(content, citations, { allowedOrigins }))
           }}
         >
           <ListItemText

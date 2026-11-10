@@ -453,8 +453,8 @@ public class ChatService {
   /**
    * The last {@code maxMessages} persisted messages as Spring AI messages, in turn order - ordered
    * by the application-assigned {@code sequence} (see {@link ChatMessage}'s Javadoc), not {@code
-   * created_at}. The content is the persisted text verbatim; the conversation window's own
-   * normalization happens at its entrance, in {@code QueryService}.
+   * created_at}. The content is the persisted text as is; the conversation window normalizes it at
+   * its entrance, {@code ConversationWindowMessages#reloaded}.
    */
   @Transactional(readOnly = true)
   public List<Message> historyAsSpringAiMessages(UUID chatId, int maxMessages) {
@@ -727,8 +727,8 @@ public class ChatService {
       List<ChatTurn> turns, UUID organizationId, UUID userId) {
     Set<UUID> agentIds = new LinkedHashSet<>();
     for (ChatTurn turn : turns) {
-      if (turn.getAgentRun() != null && turn.getAgentRun().stamp() != null) {
-        agentIds.add(turn.getAgentRun().stamp().agentId());
+      if (isStamped(turn)) {
+        agentIds.add(turn.getAgentRun().agentId());
       }
     }
     if (agentIds.isEmpty()) {
@@ -738,11 +738,15 @@ public class ChatService {
     return turns.stream()
         .map(
             turn ->
-                turn.getAgentRun() == null || turn.getAgentRun().stamp() == null
-                    ? turn
-                    : turn.withCurrentAgentRevision(
-                        current.get(turn.getAgentRun().stamp().agentId())))
+                isStamped(turn)
+                    ? turn.withCurrentAgentRevision(current.get(turn.getAgentRun().agentId()))
+                    : turn)
         .toList();
+  }
+
+  private static boolean isStamped(ChatTurn turn) {
+    AgentRunRecord run = turn.getAgentRun();
+    return run != null && run.stamp() != null && run.agentId() != null;
   }
 
   /** When the automatic chat cleanup deletes the chat archived at {@code archivedAt}, if ever. */
