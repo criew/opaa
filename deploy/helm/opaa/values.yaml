@@ -715,9 +715,12 @@ metrics:
   # prometheus.io/* annotations on the backend pod, for scrapers configured by annotations.
   podAnnotations: false
   # Who may reach the management port while metrics are on (NetworkPolicy peers). The default
-  # matches the Prometheus pods of the Prometheus Operator in any namespace.
+  # matches the Prometheus pods of the Prometheus Operator in the namespace monitoring only; a
+  # Prometheus elsewhere needs its namespace here.
   scrapeFrom:
-    - namespaceSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
       podSelector:
         matchLabels:
           app.kubernetes.io/name: prometheus

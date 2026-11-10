@@ -54,6 +54,34 @@ Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Sc
 Host: Den Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor
 (`runsc`) als Laufzeit der Sandboxen.
 
+## Plattenplatz und Härtung unter Compose
+
+**Plattenplatz:** Eine Sandbox hat eine Grenze für Laufzeit, Speicher und Prozesse, aber keine für
+den Plattenplatz. Was ein Skript schreibt, landet im Datenverzeichnis von Docker auf dem Host, bis
+die Sandbox gelöscht ist. Ein Skript kann so die Platte füllen, auf der auch die Datenbank des
+Stapels liegt. Der Sandbox-Dienst kann Docker keine Größengrenze je Sandbox mitgeben. Deshalb gilt
+für jeden Betrieb mit Sandbox:
+
+- **Eigenes Dateisystem für Docker:** Das Datenverzeichnis von Docker (`data-root`, Vorgabe
+  `/var/lib/docker`) liegt auf einem eigenen Dateisystem, nicht auf dem des Betriebssystems. Eine
+  volle Platte hält dann die Container an, nicht den Host.
+- **Grenze je Container, wo Docker sie kann:** Mit dem Speichertreiber `overlay2` auf XFS mit
+  Projektquoten (Mount-Option `pquota`) setzt `"storage-opts": ["overlay2.size=2G"]` in
+  `/etc/docker/daemon.json` eine Grenze für jeden neuen Container. Andere Aufbauten, etwa der
+  containerd-Image-Speicher, übergehen die Angabe teils ohne Meldung. Ob sie wirkt, zeigt
+  `docker run --rm --storage-opt size=20m python:3.13-slim sh -c 'dd if=/dev/zero of=/tmp/f bs=1M count=50'`:
+  Der Befehl muss mit „No space left on device“ scheitern.
+- **Füllstand überwachen:** Ein Alarm auf den freien Platz dieses Dateisystems, wie für die Datenbank.
+
+**Härtung des Dienstes:** Der Sandbox-Dienst läuft mit Read-only Filesystem, ohne Capabilities und
+mit `no-new-privileges`. Schreiben darf er nur unter `/tmp` und in sein Volume
+`opensandbox-state` mit seinem eigenen Zustand. Die Images des Dienstes und seines
+Ausführungsagenten, das Basis-Image von `opaa/sandbox-python` und dessen Python-Pakete sind auf
+Version und Prüfsumme festgelegt; ein `docker compose pull` holt deshalb nie still einen anderen
+Stand. Neue Fassungen kommen mit einem OPAA-Update. Danach den Stapel mit `up -d --build` neu
+starten, damit auch das Sandbox-Image neu gebaut wird, und `run_code` einmal von einem Agenten
+ausführen lassen.
+
 ## Kubernetes
 
 OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa der Dienst in
