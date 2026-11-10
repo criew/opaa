@@ -12,7 +12,7 @@ import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingInfoService;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;

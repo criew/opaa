@@ -29,9 +29,10 @@ import org.junit.jupiter.api.Test;
  * ModularArchitecture}. Reads the compiled classes directly, without a Spring context.
  *
  * <p>Beside modules, edges, layers and cycles it holds the order inside {@code indexing} and {@code
- * connection}, the isolation of the connectors, the place of the web layer and the release of
- * connector libraries. Every list must match the code: an unassigned package fails naming both
- * lists, and a listed package, an allowed edge or a named class that is gone fails as well.
+ * connection}, the model roles below {@code llm}, the isolation of the connectors, the place of the
+ * web layer and the release of connector libraries. Every list must match the code: an unassigned
+ * package fails naming both lists, and a listed package, an allowed edge or a named class that is
+ * gone fails as well.
  */
 class ModularArchitectureTest {
 
@@ -103,6 +104,30 @@ class ModularArchitectureTest {
             .map(name -> name.substring("io.opaa.".length()))
             .collect(Collectors.toSet());
     assertThat(packages).containsAll(ModularArchitecture.CONNECTION_PACKAGES);
+  }
+
+  @Test
+  void llmRolesDependOnlyOnTheScaffold() {
+    ARCHITECTURE.llmRolesDependOnlyOnTheScaffold().check(mainClasses);
+  }
+
+  @Test
+  void onlyTheAdministrationWritesTheRoleRows() {
+    ARCHITECTURE.onlyTheAdministrationWritesTheRoleRows().check(mainClasses);
+  }
+
+  /** Guards the premise of the llm rule: every package it lists still has classes. */
+  @Test
+  void everyListedLlmPackageHasClasses() {
+    Set<String> packages =
+        mainClasses.stream()
+            .map(JavaClass::getPackageName)
+            .filter(name -> name.startsWith("io.opaa."))
+            .map(name -> name.substring("io.opaa.".length()))
+            .collect(Collectors.toSet());
+    assertThat(packages)
+        .containsAll(ModularArchitecture.LLM_ROLES)
+        .containsAll(ModularArchitecture.LLM_ACROSS_ROLES);
   }
 
   @Test

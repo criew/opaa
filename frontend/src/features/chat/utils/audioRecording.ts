@@ -21,6 +21,8 @@ export interface RecordingOptions {
   silenceMs?: number
   /** Called once when the recorder fails mid-recording; the microphone is already released. */
   onFailure?: () => void
+  /** Receives the input level (RMS of float samples, 0..1) a few times per second. */
+  onLevel?: (rms: number) => void
 }
 
 /** Preference order: Opus in WebM everywhere it exists, MP4 for older Safari. */
@@ -144,7 +146,7 @@ export async function startRecording(options: RecordingOptions = {}): Promise<Re
  * counts while the audio context runs: a suspended context reads zeros, which is no silence.
  */
 function watchSilence(stream: MediaStream, options: RecordingOptions): () => void {
-  const { onSilence, silenceMs } = options
+  const { onSilence, silenceMs, onLevel } = options
   const AudioContextClass = typeof window !== 'undefined' ? window.AudioContext : undefined
   if (!onSilence || !silenceMs || !AudioContextClass) return () => {}
 
@@ -169,7 +171,9 @@ function watchSilence(stream: MediaStream, options: RecordingOptions): () => voi
     analyser.getFloatTimeDomainData(samples)
     let sum = 0
     for (const sample of samples) sum += sample * sample
-    if (Math.sqrt(sum / samples.length) > SILENCE_RMS) {
+    const rms = Math.sqrt(sum / samples.length)
+    onLevel?.(rms)
+    if (rms > SILENCE_RMS) {
       lastSound = Date.now()
     } else if (!fired && Date.now() - lastSound >= silenceMs) {
       fired = true

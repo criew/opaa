@@ -418,7 +418,7 @@ let lastChatModel = null
 // --- Reranking (set-up assistant, ADR-0060) ----------------------------------------------------
 //
 // POST .../rerank scores every candidate in the order it was sent, in either request spelling
-// io.opaa.llm.RerankClient negotiates: {model, query, documents} answers with "results", {query,
+// io.opaa.llm.rerank.RerankClient negotiates: {model, query, documents} answers with "results", {query,
 // texts} with a bare array. Under the prefix /reranker the stub also lists one model, so the
 // assistant's rerank step can offer a choice; the chat address (no prefix) keeps answering the
 // model list with 404, which the chat step relies on to show its input by hand.

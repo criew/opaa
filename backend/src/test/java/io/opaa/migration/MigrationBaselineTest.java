@@ -41,6 +41,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
   /** The rows the migrations deliver; every other table starts empty. */
   private static final Map<String, Long> SEEDED_ROW_COUNTS =
       Map.ofEntries(
+          Map.entry("agent_workspace", 1L),
           Map.entry("audit_retention_settings", 1L),
           Map.entry("branding_settings", 1L),
           Map.entry("capability_grant_history", 8L),
@@ -230,6 +231,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "space_memberships",
             "spaces",
             // assistant
+            "agent_run_reservations",
+            "agent_workspace",
             "chat_attachment_chunks",
             "chat_attachments",
             "chat_cleanup_hold_requests",

@@ -1,6 +1,6 @@
 package io.opaa.eval;
 
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 
 /**
  * What a variant measurement needs to know about the rerank model role — before a variant, to

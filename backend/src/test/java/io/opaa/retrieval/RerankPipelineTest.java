@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
-import io.opaa.llm.RerankClient.ScoredCandidate;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankClient.ScoredCandidate;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.config.RetrievalConfiguration;

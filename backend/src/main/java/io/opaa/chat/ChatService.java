@@ -488,6 +488,19 @@ public class ChatService {
   }
 
   /**
+   * The libraries of the chat's space that the caller may read, whatever the chat's own chip bar
+   * says: the scope an agent run narrows further by the agent's libraries, since a chosen agent
+   * replaces the chat's search scope.
+   */
+  public Set<UUID> spaceLibraryScope(Chat chat, Set<UUID> readableLibraryIds) {
+    Set<UUID> scoped =
+        new LinkedHashSet<>(
+            spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId()));
+    scoped.retainAll(readableLibraryIds);
+    return scoped;
+  }
+
+  /**
    * The scope the first question of a chat not yet created in {@code spaceId} would search - the
    * same rule as {@link #effectiveLibraryScope}, applied to the chip bar's settings. The user must
    * be a member of the space.
@@ -595,11 +608,39 @@ public class ChatService {
       AnswerEvidence evidence,
       List<UUID> attachmentIds,
       List<UUID> answerAttachmentIds) {
+    return appendTurn(
+        chat,
+        question,
+        usedPrompt,
+        answer,
+        sources,
+        evidence,
+        attachmentIds,
+        answerAttachmentIds,
+        null);
+  }
+
+  /**
+   * The same turn, keeping {@code agentRun} - the steps and end of the agent run that gave the
+   * answer, {@code null} for any other answer - on the answer's message.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat,
+      String question,
+      UsedPrompt usedPrompt,
+      String answer,
+      List<ChatSource> sources,
+      AnswerEvidence evidence,
+      List<UUID> attachmentIds,
+      List<UUID> answerAttachmentIds,
+      AgentRunRecord agentRun) {
     // An archived space accepts no new turn; QueryService#query checks this early, this call
     // guards a space archived in between.
     requireSpaceNotArchived(chat.getSpaceId());
     String serializedSources = serializeSources(sources);
     String serializedEvidence = serializeEvidence(evidence);
+    String serializedAgentRun = serializeJson(agentRun, "agent run");
     String derivedTitle = deriveTitle(question);
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
@@ -615,6 +656,7 @@ public class ChatService {
                 answer,
                 serializedSources,
                 serializedEvidence,
+                serializedAgentRun,
                 derivedTitle,
                 attachmentIds,
                 answerAttachmentIds);
@@ -699,7 +741,32 @@ public class ChatService {
         parseSources(message.getSources()),
         message.getUsedPrompt(),
         message.getCreatedAt(),
-        parseEvidence(message.getAnswerEvidence()));
+        parseEvidence(message.getAnswerEvidence()),
+        parseAgentRun(message.getAgentRun()));
+  }
+
+  private AgentRunRecord parseAgentRun(String agentRunJson) {
+    if (agentRunJson == null || agentRunJson.isBlank()) {
+      return null;
+    }
+    try {
+      return objectMapper.readValue(agentRunJson, AgentRunRecord.class);
+    } catch (JacksonException e) {
+      log.warn("Failed to parse persisted agent run, treating as absent", e);
+      return null;
+    }
+  }
+
+  private String serializeJson(Object value, String what) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (JacksonException e) {
+      log.warn("Failed to serialize {}, storing none", what, e);
+      return null;
+    }
   }
 
   private AnswerEvidence parseEvidence(String evidenceJson) {

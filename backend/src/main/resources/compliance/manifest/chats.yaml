@@ -12,7 +12,8 @@ data:
         person:
           columns: [author_id]
       - name: chat_messages
-        personalColumns: [content, content_tsv, sources, answer_evidence, used_prompt_title, created_at]
+        personalColumns:
+          [content, content_tsv, sources, answer_evidence, agent_run, used_prompt_title, created_at]
         nonPersonalColumns: [id, chat_id, sequence, role, used_prompt_id]
         person:
           via: chats
@@ -222,6 +223,8 @@ nonPersonalTables:
   chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]
   locked_account_chat_cleanup_settings: [id, enabled, delete_after_days, updated_at]
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
+  agent_workspace: [id]
+  agent_run_reservations: [run_id, expires_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
   prompts:

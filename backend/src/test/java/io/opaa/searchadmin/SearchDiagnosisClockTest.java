@@ -15,7 +15,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.OptionalRoleStatus;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;

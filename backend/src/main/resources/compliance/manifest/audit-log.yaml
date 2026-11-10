@@ -906,17 +906,59 @@ auditEvents:
     trigger: Ein Chatmodell wird in der Modellverwaltung angelegt
     details: Der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“ (apiKeyChange)
     payloadKeys:
-      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+      [
+        active,
+        apiKeyChange,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_CHANGED
-    trigger: Ein Chatmodell wird geändert
+    trigger: >-
+      Ein Chatmodell wird geändert, auch seine Werkzeugfähigkeit oder deren Rücksetzen nach einer
+      Änderung von Adresse oder Modell-Kennung
     details: >-
       Der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“,
-      „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+      „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert. Die Werkzeugfähigkeit mit Wert,
+      Grundlage, Datum und Verweis auf den Messlauf, ohne Person
     payloadKeys:
-      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+      [
+        active,
+        apiKeyChange,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_DELETED
     trigger: Ein Chatmodell wird gelöscht
-    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+    payloadKeys:
+      [
+        active,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_ACTIVATED
     trigger: Ein Chatmodell wird zum systemweit aktiven Modell
     payloadKeys: [active]
@@ -933,14 +975,17 @@ auditEvents:
     payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, model]
   - id: TRANSCRIPTION_MODEL_CHANGED
     trigger: >-
-      Schalter, Adresse, Modell, Sprache, Begriffsliste oder Zugangsschlüssel des
+      Schalter, Adresse, Modell, Sprache, Begriffsliste, Zugangsschlüssel oder Live-Dienst des
       Transkriptionsmodells werden geändert, durch die Systemverwaltung oder beim Abschluss der
       Installation
     details: >-
-      Vorher und nachher, die Begriffsliste der Installation im Wortlaut; der Zugangsschlüssel nur
-      als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“, „geändert“ oder „entfernt“
-      (apiKeyChange), nie mit dem Wert
-    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model, vocabulary]
+      Vorher und nachher, die Begriffsliste der Installation im Wortlaut; beim Live-Dienst
+      Protokoll, Adresse, Modell und Höchstzahl der Sitzungen; die Zugangsschlüssel nur als
+      „gesetzt ja/nein“ und, wenn sie sich ändern, als „gesetzt“, „geändert“ oder „entfernt“
+      (apiKeyChange, realtimeApiKeyChange), nie mit dem Wert
+    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model, realtimeApiKeyChange,
+      realtimeApiKeySet, realtimeMaxSessions, realtimeModel, realtimeProtocol, realtimeUrl,
+      vocabulary]
   - id: TEXT_RECOGNITION_MODEL_CHANGED
     trigger: >-
       Schalter, Verbindungstyp, Adresse, Modell oder Zugangsschlüssel der Texterkennung werden
@@ -1053,12 +1098,14 @@ auditEvents:
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
       Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
       ob ein eigener gesetzt ist;
-      beim Transkriptionsmodell Adresse, Modell und Sprache; bei der Texterkennung Verbindungstyp,
+      beim Transkriptionsmodell Adresse, Modell und Sprache, beim Live-Dienst Protokoll, Adresse,
+      Modell und ob ein Schlüssel gesetzt ist; bei der Texterkennung Verbindungstyp,
       Adresse und, bei einem Vision-Modell, das Modell; beim Virenscanner Adresse, Port, Frist und
       Verhalten bei nicht geprüften Dateien
     payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, connectionType, defaultColorScheme,
       encryption, fromAddress, host, issuerUri, language, model, onUnavailable, passwordSet, port,
-      primaryColor, productName, signInMode, step, timeoutSeconds, username]
+      primaryColor, productName, realtimeApiKeySet, realtimeModel, realtimeProtocol, realtimeUrl,
+      signInMode, step, timeoutSeconds, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     details: >-

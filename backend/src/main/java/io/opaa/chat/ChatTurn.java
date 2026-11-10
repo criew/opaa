@@ -23,6 +23,7 @@ public final class ChatTurn {
   private final UsedPrompt usedPrompt;
   private final Instant createdAt;
   private final AnswerEvidence evidence;
+  private final AgentRunRecord agentRun;
   private final List<ChatAttachment> attachments;
 
   public ChatTurn(
@@ -55,7 +56,20 @@ public final class ChatTurn {
       UsedPrompt usedPrompt,
       Instant createdAt,
       AnswerEvidence evidence) {
-    this(id, chatId, role, content, sources, usedPrompt, createdAt, evidence, List.of());
+    this(id, chatId, role, content, sources, usedPrompt, createdAt, evidence, null);
+  }
+
+  public ChatTurn(
+      UUID id,
+      UUID chatId,
+      ChatRole role,
+      String content,
+      List<ChatSource> sources,
+      UsedPrompt usedPrompt,
+      Instant createdAt,
+      AnswerEvidence evidence,
+      AgentRunRecord agentRun) {
+    this(id, chatId, role, content, sources, usedPrompt, createdAt, evidence, agentRun, List.of());
   }
 
   private ChatTurn(
@@ -67,9 +81,11 @@ public final class ChatTurn {
       UsedPrompt usedPrompt,
       Instant createdAt,
       AnswerEvidence evidence,
+      AgentRunRecord agentRun,
       List<ChatAttachment> attachments) {
     this.attachments = attachments == null ? List.of() : List.copyOf(attachments);
     this.evidence = evidence;
+    this.agentRun = agentRun;
     this.id = id;
     this.chatId = chatId;
     this.role = role;
@@ -113,6 +129,11 @@ public final class ChatTurn {
     return evidence;
   }
 
+  /** The agent run that gave this answer, or {@code null}. */
+  public AgentRunRecord getAgentRun() {
+    return agentRun;
+  }
+
   /** The attachments sent with this question that still exist; empty otherwise. */
   public List<ChatAttachment> getAttachments() {
     return attachments;
@@ -124,6 +145,6 @@ public final class ChatTurn {
       return this;
     }
     return new ChatTurn(
-        id, chatId, role, content, sources, usedPrompt, createdAt, evidence, attachments);
+        id, chatId, role, content, sources, usedPrompt, createdAt, evidence, agentRun, attachments);
   }
 }

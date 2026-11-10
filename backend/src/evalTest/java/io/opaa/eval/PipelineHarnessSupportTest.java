@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.llm.OptionalRoleStatus;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;

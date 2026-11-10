@@ -82,7 +82,7 @@ describe('ChatInput dictation', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the live text dimmed while speaking and takes the final live text', async () => {
+  it('shows the live text in the field while speaking and takes the final live text', async () => {
     mocks.realtime = true
     vi.stubGlobal('AudioContext', class {})
     vi.stubGlobal('AudioWorkletNode', class {})
@@ -93,8 +93,11 @@ describe('ChatInput dictation', () => {
     await waitFor(() => expect(mocks.live).not.toBeNull())
     act(() => mocks.live?.onText('Welche Frist'))
     expect(await screen.findByTestId('dictation-interim')).toHaveTextContent('Welche Frist')
-    expect(screen.getByTestId('dictation-interim')).toHaveStyle({ fontStyle: 'italic' })
-    await user.click(screen.getByRole('button', { name: 'Aufnahme beenden' }))
+    expect(screen.getByTestId('dictation-field')).toContainElement(
+      screen.getByTestId('dictation-interim'),
+    )
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('Welche Frist gilt live?'))
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
@@ -107,7 +110,7 @@ describe('ChatInput dictation', () => {
     render(<ChatInput onSend={vi.fn()} />)
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
-    await user.click(await screen.findByRole('button', { name: 'Aufnahme beenden' }))
+    await user.click(await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() => expect(mocks.transcribeRecording).toHaveBeenCalledTimes(1))
     expect(mocks.live).toBeNull()
@@ -117,13 +120,15 @@ describe('ChatInput dictation', () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByRole('combobox')
-    await user.type(input, 'Zum Bauantrag:')
+    await user.type(screen.getByRole('combobox'), 'Zum Bauantrag:')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
-    await user.click(await screen.findByRole('button', { name: 'Aufnahme beenden' }))
+    expect(screen.getByTestId('dictation-field')).toHaveTextContent('Zum Bauantrag:')
+    await user.click(await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
-    await waitFor(() => expect(input).toHaveValue('Zum Bauantrag: Welche Frist gilt?'))
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveValue('Zum Bauantrag: Welche Frist gilt?'),
+    )
     expect(mocks.transcribeRecording).toHaveBeenCalledTimes(1)
     expect(onSend).not.toHaveBeenCalled()
     expect(mocks.tracksStopped).toBe(1)
@@ -140,6 +145,114 @@ describe('ChatInput dictation', () => {
     expect(mocks.tracksStopped).toBe(1)
     expect(screen.getByRole('combobox')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Spracheingabe starten' })).toBeInTheDocument()
+  })
+
+  it('sends at once with the final text when send is pressed while recording', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+    await user.type(screen.getByRole('combobox'), 'Zum Bauantrag:')
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Senden' }))
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('Zum Bauantrag: Welche Frist gilt?'))
+    expect(mocks.tracksStopped).toBe(1)
+    expect(screen.getByRole('combobox')).toHaveValue('')
+  })
+
+  it('sends the final live text, never the interim text', async () => {
+    mocks.realtime = true
+    vi.stubGlobal('AudioContext', class {})
+    vi.stubGlobal('AudioWorkletNode', class {})
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await waitFor(() => expect(mocks.live).not.toBeNull())
+    act(() => mocks.live?.onText('Welche Frist'))
+    await user.click(screen.getByRole('button', { name: 'Senden' }))
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('Welche Frist gilt live?'))
+    expect(onSend).toHaveBeenCalledTimes(1)
+    expect(mocks.transcribeRecording).not.toHaveBeenCalled()
+  })
+
+  it('moves the focus to the take-over button on start and back to the field on discard', async () => {
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    const takeOver = await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
+    await waitFor(() => expect(takeOver).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'Aufnahme verwerfen' }))
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toHaveFocus())
+  })
+
+  it('leaves the focus in the field after sending during a recording', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Senden' }))
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('Welche Frist gilt?'))
+    expect(screen.getByRole('combobox')).toHaveFocus()
+  })
+
+  it('keeps a question that is too long in the field instead of sending it', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+    await user.click(screen.getByRole('combobox'))
+    await user.paste('x'.repeat(1995))
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await user.click(await screen.findByRole('button', { name: 'Senden' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveValue(`${'x'.repeat(1995)} Welche Frist gilt?`),
+    )
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('keeps a refused question that comes back while dictating', async () => {
+    const user = userEvent.setup()
+    let refuse: (value: { restoreDraft: string }) => void = () => {}
+    const onSend = vi.fn(
+      () => new Promise<{ restoreDraft: string }>((resolve) => (refuse = resolve)),
+    )
+    render(<ChatInput onSend={onSend} />)
+    await user.type(screen.getByRole('combobox'), 'Erste Frage{Enter}')
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
+    await act(async () => refuse({ restoreDraft: 'Erste Frage' }))
+    expect(screen.getByTestId('dictation-field')).toHaveTextContent('Erste Frage')
+    await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveValue('Erste Frage Welche Frist gilt?'),
+    )
+  })
+
+  it('discards the recording on Escape wherever the focus is', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+    await user.type(screen.getByRole('combobox'), 'Entwurf')
+
+    await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
+    await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
+    await user.keyboard('{Escape}')
+
+    expect(await screen.findByRole('combobox')).toHaveValue('Entwurf')
+    expect(mocks.transcribeRecording).not.toHaveBeenCalled()
+    expect(mocks.tracksStopped).toBe(1)
+    expect(onSend).not.toHaveBeenCalled()
   })
 
   it('shows no microphone while the installation has no usable transcription', async () => {

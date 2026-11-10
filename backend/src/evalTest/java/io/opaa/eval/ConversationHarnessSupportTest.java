@@ -13,7 +13,7 @@ import io.opaa.chat.ChatNoteProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.OptionalRoleState;
 import io.opaa.llm.OptionalRoleStatus;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;

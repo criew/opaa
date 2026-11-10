@@ -18,6 +18,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.LibraryAccessService;
@@ -100,6 +101,7 @@ public class QueryService {
   private final PromptService promptService;
   private final Optional<ToolLoopQueryHandler> toolLoopQueryHandler;
   private final NeighborChunkExpansion neighborChunkExpansion;
+  private final AgentTurnHandler agentTurnHandler;
 
   public QueryService(
       KnowledgeRetrieval knowledgeRetrieval,
@@ -118,7 +120,8 @@ public class QueryService {
       MetadataFilterValidator metadataFilterValidator,
       PromptService promptService,
       Optional<ToolLoopQueryHandler> toolLoopQueryHandler,
-      NeighborChunkExpansion neighborChunkExpansion) {
+      NeighborChunkExpansion neighborChunkExpansion,
+      AgentTurnHandler agentTurnHandler) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
     this.searchScopeResolver = searchScopeResolver;
@@ -136,6 +139,7 @@ public class QueryService {
     this.promptService = promptService;
     this.toolLoopQueryHandler = toolLoopQueryHandler;
     this.neighborChunkExpansion = neighborChunkExpansion;
+    this.agentTurnHandler = agentTurnHandler;
   }
 
   /**
@@ -253,6 +257,36 @@ public class QueryService {
       UUID usedPromptId,
       AnswerStreamListener answerListener,
       List<UUID> attachmentIds) {
+    return query(
+        question,
+        chatId,
+        caller,
+        useKnowledge,
+        requestedLibraryIds,
+        requestedMetadataFilter,
+        usedPromptId,
+        answerListener,
+        attachmentIds,
+        null);
+  }
+
+  /**
+   * The same query with the agent {@code agentId} chosen ({@code null}: none). A turn with an agent
+   * runs through the {@link AgentTurnHandler} instead of the ordinary path (ADR-0070): it needs a
+   * persisted chat of the caller and takes no new attachments (400 otherwise), and it is not
+   * streamed. Without an agent nothing changes - one search, one model call, no tool definitions.
+   */
+  public QueryResult query(
+      String question,
+      UUID chatId,
+      CurrentUser caller,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      MetadataFilter requestedMetadataFilter,
+      UUID usedPromptId,
+      AnswerStreamListener answerListener,
+      List<UUID> attachmentIds,
+      UUID agentId) {
     UUID currentUserId = caller.id();
     List<UUID> requestedAttachments = attachmentIds == null ? List.of() : attachmentIds;
     QueryClock clock = new QueryClock();
@@ -327,6 +361,32 @@ public class QueryService {
               searchScope.isEmpty() && attachments.isEmpty()
                   ? QueryMetrics.Mode.NO_SEARCH
                   : QueryMetrics.Mode.RAG;
+
+          if (agentId != null) {
+            if (chat.isEmpty()) {
+              throw new ValidationException("Einen Agenten gibt es nur in einem eigenen Chat");
+            }
+            if (!attachments.newAttachmentIds().isEmpty()) {
+              throw new ValidationException(
+                  "Anhänge lassen sich einem Agenten noch nicht mitsenden");
+            }
+            clock.mode = QueryMetrics.Mode.AGENT;
+            return agentTurnHandler.handle(
+                new AgentTurn(
+                    question,
+                    chat.get(),
+                    caller.organizationId(),
+                    currentUserId,
+                    readableLibraryIds,
+                    agentId,
+                    conversationKey,
+                    notePoints,
+                    spaceInstruction,
+                    usedPrompt,
+                    metadataFilter,
+                    startTime,
+                    answerListener));
+          }
 
           // A present tool-loop handler may take over the whole turn, with exactly the
           // rights and scope just resolved above; an empty result leaves everything below
@@ -594,6 +654,7 @@ public class QueryService {
         || failure instanceof NotFoundException
         || failure instanceof ConflictException
         || failure instanceof PayloadTooLargeException
+        || failure instanceof TooManyRequestsException
         || failure instanceof NoActiveChatModelException;
   }
 

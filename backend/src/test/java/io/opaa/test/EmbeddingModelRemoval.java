@@ -2,7 +2,7 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
-import io.opaa.llm.InstalledEmbeddingModel;
+import io.opaa.llm.embedding.InstalledEmbeddingModel;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 

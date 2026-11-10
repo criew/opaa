@@ -1069,7 +1069,10 @@ class QueryIntegrationTest {
         metadataFilterValidator,
         promptService,
         Optional.empty(),
-        neighborChunkExpansion);
+        neighborChunkExpansion,
+        turn -> {
+          throw new AssertionError("no agent in this test");
+        });
   }
 
   /**

@@ -17,7 +17,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadStoreUnavailableException;
-import io.opaa.llm.TextRecognitionModelRole.ActiveTextRecognition;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole.ActiveTextRecognition;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
@@ -34,8 +34,8 @@ import org.springframework.scheduling.annotation.Scheduled;
  * Catches up on uploaded scans for text recognition (ADR-0069): an upload library has no runs, so
  * its scans rejected as without text - before text recognition was switched on, or left by a busy
  * instance, a failure of the service or an exhausted budget - are read here, in every library, in
- * passes of at most {@link io.opaa.llm.TextRecognitionProperties#maxPagesPerRun()} pages. Source
- * libraries catch up in their next run, which reads a rejected document again anyway.
+ * passes of at most {@link io.opaa.llm.textrecognition.TextRecognitionProperties#maxPagesPerRun()}
+ * pages. Source libraries catch up in their next run, which reads a rejected document again anyway.
  *
  * <p>A pass runs on its own scheduler under a cluster-wide lock (ADR-0053, Entscheidung 7), so one
  * instance at a time works through the backlog; each document is ingested with the conditional
@@ -49,8 +49,8 @@ public class TextRecognitionBacklog {
 
   /**
    * No further document is started after this. With the hard deadline of one document ({@link
-   * io.opaa.llm.TextRecognitionProperties#MAX_DOCUMENT_TIMEOUT}) and its embedding the pass stays
-   * below {@link #LOCK_AT_MOST_FOR}.
+   * io.opaa.llm.textrecognition.TextRecognitionProperties#MAX_DOCUMENT_TIMEOUT}) and its embedding
+   * the pass stays below {@link #LOCK_AT_MOST_FOR}.
    */
   static final Duration PASS_DURATION = Duration.ofMinutes(50);
 
@@ -59,7 +59,8 @@ public class TextRecognitionBacklog {
 
   /**
    * Covers the clock skew between instances and stays below {@link
-   * io.opaa.llm.TextRecognitionProperties#MIN_CATCH_UP_INTERVAL}, so every due time can take it.
+   * io.opaa.llm.textrecognition.TextRecognitionProperties#MIN_CATCH_UP_INTERVAL}, so every due time
+   * can take it.
    */
   static final String LOCK_AT_LEAST_FOR = "PT10S";
 

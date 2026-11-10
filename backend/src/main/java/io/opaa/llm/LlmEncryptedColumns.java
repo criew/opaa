@@ -14,32 +14,41 @@ public class LlmEncryptedColumns implements EncryptedColumns {
   public static final EncryptedColumn CHAT_MODEL_KEY =
       EncryptedColumn.settings("llm_models", "api_key_ciphertext");
 
-  static final EncryptedColumn RERANK_MODEL_KEY =
+  private static final EncryptedColumn RERANK_MODEL_KEY =
       EncryptedColumn.settings("rerank_model", "api_key_ciphertext");
-  static final EncryptedColumn TRANSCRIPTION_MODEL_KEY =
+  private static final EncryptedColumn TRANSCRIPTION_MODEL_KEY =
       EncryptedColumn.settings("transcription_model", "api_key_ciphertext");
-  static final EncryptedColumn TRANSCRIPTION_REALTIME_KEY =
+  private static final EncryptedColumn TRANSCRIPTION_REALTIME_KEY =
       EncryptedColumn.settings("transcription_model", "realtime_api_key_ciphertext");
-  static final EncryptedColumn TEXT_RECOGNITION_MODEL_KEY =
+  private static final EncryptedColumn TEXT_RECOGNITION_MODEL_KEY =
       EncryptedColumn.settings("text_recognition_model", "api_key_ciphertext");
-  static final EncryptedColumn EMBEDDING_MODEL_KEY =
+
+  /** {@code embedding_model.api_key_ciphertext}, the single row. */
+  public static final EncryptedColumn EMBEDDING_MODEL_KEY =
       EncryptedColumn.settings("embedding_model", "api_key_ciphertext");
-  static final EncryptedColumn PREVIOUS_EMBEDDING_MODEL_KEY =
+
+  /** {@code embedding_model_previous.api_key_ciphertext}, the single row. */
+  public static final EncryptedColumn PREVIOUS_EMBEDDING_MODEL_KEY =
       EncryptedColumn.settings("embedding_model_previous", "api_key_ciphertext");
 
   /** The binding of the key of the single rerank model row. */
   public static CipherBinding rerankModelKey() {
-    return RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID);
+    return RERANK_MODEL_KEY.row(OptionalRoleSettings.SINGLETON_ID);
+  }
+
+  /** The binding of the key of the single transcription model row. */
+  public static CipherBinding transcriptionModelKey() {
+    return TRANSCRIPTION_MODEL_KEY.row(OptionalRoleSettings.SINGLETON_ID);
   }
 
   /** The binding of the live key of the single transcription model row. */
-  static CipherBinding transcriptionRealtimeKey() {
-    return TRANSCRIPTION_REALTIME_KEY.row(TranscriptionModelSettings.SINGLETON_ID);
+  public static CipherBinding transcriptionRealtimeKey() {
+    return TRANSCRIPTION_REALTIME_KEY.row(OptionalRoleSettings.SINGLETON_ID);
   }
 
   /** The binding of the key of the single text recognition model row. */
-  static CipherBinding textRecognitionModelKey() {
-    return TEXT_RECOGNITION_MODEL_KEY.row(TextRecognitionModelSettings.SINGLETON_ID);
+  public static CipherBinding textRecognitionModelKey() {
+    return TEXT_RECOGNITION_MODEL_KEY.row(OptionalRoleSettings.SINGLETON_ID);
   }
 
   @Override

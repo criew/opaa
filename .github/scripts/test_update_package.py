@@ -1070,7 +1070,7 @@ def test_every_pull_request_on_templates_or_handbook_renders_their_diagrams() ->
         assert f"'{path}'" in paths, path
     assert RELEASE_INSTALL in body
     assert body.index(RELEASE_INSTALL) < body.index("update_package.py diagrams")
-    assert "steps.filter.outputs.diagrams" in body
+    assert "needs.paths.outputs.diagrams" in body
 
 
 def test_only_templates_update_note_handbook_and_fact_sheets_get_drawn_diagrams() -> None:

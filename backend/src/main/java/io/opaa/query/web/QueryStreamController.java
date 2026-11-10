@@ -65,7 +65,8 @@ public class QueryStreamController {
               MetadataFilterMapper.toDomain(request.getMetadataFilter()),
               request.getUsedPromptId(),
               events,
-              request.getAttachmentIds());
+              request.getAttachmentIds(),
+              request.getAgentId());
     } catch (AnswerReaderGoneException readerGone) {
       log.debug("Answer stream ended, its reader went away: {}", readerGone.getMessage());
       return;

@@ -11,7 +11,7 @@ import io.opaa.knowledge.ErasureCause;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
-import io.opaa.llm.InstalledEmbeddingModel;
+import io.opaa.llm.embedding.InstalledEmbeddingModel;
 import io.opaa.organization.Organization;
 import io.opaa.test.EmbeddingModelRemoval;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;

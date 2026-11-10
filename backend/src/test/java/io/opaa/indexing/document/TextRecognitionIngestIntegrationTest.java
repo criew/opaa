@@ -17,7 +17,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.llm.ModelRoleEndpoints;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoints;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -58,7 +58,7 @@ class TextRecognitionIngestIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private ModelRoleEndpoints endpoints;
+  @Autowired private TextRecognitionEndpoints endpoints;
   @Autowired private TextRecognitionBlocks blocks;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;

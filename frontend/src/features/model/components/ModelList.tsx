@@ -15,6 +15,7 @@ import type { LlmModelResponse } from '@/shared/api/types'
 import { fontFamily } from '@/shared/theme/tokens'
 import { MODEL_TABLE_SX } from './modelTableStyles'
 import ModelRowMenu from './ModelRowMenu'
+import { TOOL_CAPABILITY_LABELS, toolCapabilityBasisLine } from './toolCapability'
 
 interface ModelListProps {
   models: LlmModelResponse[]
@@ -37,6 +38,27 @@ function StateCell({ active }: { active: boolean }) {
         }}
       />
       <Box component="span">{active ? 'Aktiv' : 'Nicht aktiv'}</Box>
+    </Box>
+  )
+}
+
+function toolCapabilityText(model: LlmModelResponse): string {
+  const basis = toolCapabilityBasisLine(model.toolCapability)
+  const label = TOOL_CAPABILITY_LABELS[model.toolCapability.value]
+  return basis ? `${label} (${basis})` : label
+}
+
+/** The tool capability and, once checked, how and when — never who. */
+function ToolCapabilityCell({ model }: { model: LlmModelResponse }) {
+  const basis = toolCapabilityBasisLine(model.toolCapability)
+  return (
+    <Box>
+      <Box component="span">{TOOL_CAPABILITY_LABELS[model.toolCapability.value]}</Box>
+      {basis && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', overflowWrap: 'anywhere' }}>
+          {basis}
+        </Typography>
+      )}
     </Box>
   )
 }
@@ -92,6 +114,9 @@ function ModelCard({
       <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
         {model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'}
       </Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+        Werkzeuge: {toolCapabilityText(model)}
+      </Typography>
     </Box>
   )
 }
@@ -119,13 +144,14 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
       role="region"
       aria-label="Tabelle Chat-Modelle, horizontal scrollbar"
     >
-      <Table size="small" aria-label="Chat-Modelle" sx={{ minWidth: 720, ...MODEL_TABLE_SX }}>
+      <Table size="small" aria-label="Chat-Modelle" sx={{ minWidth: 860, ...MODEL_TABLE_SX }}>
         <TableHead>
           <TableRow>
             <TableCell>Modell</TableCell>
-            <TableCell sx={{ width: '32%' }}>Endpunkt</TableCell>
-            <TableCell sx={{ width: '15%' }}>Zustand</TableCell>
-            <TableCell sx={{ width: '15%' }}>Zugang</TableCell>
+            <TableCell sx={{ width: '28%' }}>Endpunkt</TableCell>
+            <TableCell sx={{ width: '13%' }}>Zustand</TableCell>
+            <TableCell sx={{ width: '13%' }}>Zugang</TableCell>
+            <TableCell sx={{ width: '18%' }}>Werkzeuge</TableCell>
             <TableCell align="right" sx={{ width: 56 }}>
               <span style={visuallyHidden}>Aktionen</span>
             </TableCell>
@@ -170,6 +196,9 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
                 <StateCell active={model.active} />
               </TableCell>
               <TableCell>{model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'}</TableCell>
+              <TableCell>
+                <ToolCapabilityCell model={model} />
+              </TableCell>
               <TableCell align="right">
                 <ModelRowMenu model={model} onEdit={onEdit} />
               </TableCell>
