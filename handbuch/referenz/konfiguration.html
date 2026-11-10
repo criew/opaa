@@ -2622,6 +2622,8 @@
       
         
       
+        
+      
     
     
     
@@ -2859,6 +2861,34 @@
     
   
     Texterkennung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../betrieb/sandbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sandbox für Agenten
   
 
     
@@ -5343,6 +5373,54 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>60</code></td>
 <td><code>60</code></td>
 <td>Schonfrist des Aufräumlaufs für verwaiste Originale: Minuten, die ein abgelegtes Original alt sein muss, bevor der Lauf es überhaupt melden oder entfernen darf — ein Upload, dessen Zeile gerade entsteht oder dessen Verarbeitung noch läuft, ist kein verwaistes Original. Ein Melde-Aufruf darf die Frist je Aufruf anheben, nie unterschreiten. Siehe <a href="../betrieb/originalablage.html#verwaiste-originale-aufräumen">„Verwaiste Originale aufräumen"</a></td>
+</tr>
+<tr>
+<td><strong>Sandbox für Agenten</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_ENABLED</code></td>
+<td><code>false</code></td>
+<td>nicht gesetzt; das Overlay <code>docker-compose.sandbox.yml</code> setzt <code>true</code></td>
+<td>Bietet Agenten das Werkzeug <code>run_code</code> an; eingeschaltet ohne <code>OPAA_SANDBOX_BASE_URL</code> oder <code>OPAA_SANDBOX_API_KEY</code> startet das Backend nicht (siehe <a href="../betrieb/sandbox.html">Sandbox für Agenten</a>). Bei mehreren Instanzen auf allen gleich</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_BASE_URL</code></td>
+<td><code>http://opensandbox-server:8090</code></td>
+<td>wie Vorgabe</td>
+<td>Adresse des Sandbox-Dienstes (OpenSandbox)</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_API_KEY</code></td>
+<td>–</td>
+<td>aus dem Overlay</td>
+<td>API-Schlüssel des Sandbox-Dienstes</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_IMAGE</code></td>
+<td><code>opaa/sandbox-python:1</code></td>
+<td>wie Vorgabe</td>
+<td>Image einer Sandbox</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_RUN_TIMEOUT</code></td>
+<td><code>60s</code></td>
+<td>nicht gesetzt</td>
+<td>Zeitgrenze eines Skripts; die Restzeit des Agentenlaufs kann sie verkürzen</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_MAX_LIFETIME</code></td>
+<td><code>15m</code></td>
+<td>nicht gesetzt</td>
+<td>Längste Lebensdauer einer Sandbox, mindestens Laufzeit eines Agentenlaufs plus zweimal Schlussaufruf plus 2 Minuten; höchstens <code>max_sandbox_timeout_seconds</code> des Dienstes</td>
+</tr>
+<tr>
+<td><code>OPAA_SANDBOX_CPU</code>, <code>OPAA_SANDBOX_MEMORY</code></td>
+<td><code>1</code>, <code>1Gi</code></td>
+<td>nicht gesetzt</td>
+<td>Grenzen einer Sandbox</td>
 </tr>
 <tr>
 <td><strong>Texterkennung</strong></td>
