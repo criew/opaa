@@ -33,6 +33,12 @@ class MailSettingsSection implements SettingsSection {
     return "E-Mail-Versand";
   }
 
+  /** Its values decide where invitations and reset links go and who may use them. */
+  @Override
+  public boolean requiresRecentLogin() {
+    return true;
+  }
+
   @Override
   public Set<String> tables() {
     return Set.of("mail_settings");

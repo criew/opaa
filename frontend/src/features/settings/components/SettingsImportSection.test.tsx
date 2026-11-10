@@ -3,7 +3,9 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '@/test/test-utils'
+import { renderWithProviders, setMockAuthState } from '@/test/test-utils'
+import { useAuthStore } from '@/shared/session/authStore'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import { mockSettings, resetMockSettings } from '../mocks/settingsHandlers'
 import { settingsDocumentFixture } from '../mocks/settingsFixtures'
@@ -48,6 +50,57 @@ describe('SettingsImportSection', () => {
 
     await waitFor(() => expect(mockSettings.sections.auditRetention.retentionMonths).toBe(48))
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('asks for a confirmed sign-in and takes the file over afterwards without a new choice', async () => {
+    let imports = 0
+    setMockAuthState()
+    useAuthStore.setState({ mode: 'oidc', sessionKind: 'local', token: 'old-token' })
+    server.use(
+      http.post('/api/v1/system/settings/import', () => {
+        imports += 1
+        if (imports === 1) {
+          return HttpResponse.json(
+            {
+              code: 'RECENT_LOGIN_REQUIRED',
+              reason: 'AUTH_TIME_TOO_OLD',
+              message: 'Bitte bestätigen Sie Ihre Identität durch erneute Anmeldung.',
+            },
+            { status: 403 },
+          )
+        }
+        // falls through to the regular handler, which takes the document over
+        return undefined
+      }),
+      http.post('*/api/v1/auth/local/reauthenticate', () =>
+        HttpResponse.json({
+          accessToken: 'recent-token',
+          expiresInSeconds: 900,
+          tokenType: 'Bearer',
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    const { input } = renderSection()
+    const document = settingsDocumentFixture()
+    document.sections.linkTargets.allowedOrigins = ['https://intranet.stadt.example']
+
+    await user.upload(input, settingsFile(JSON.stringify(document)))
+    await screen.findByRole('table', { name: 'Änderungen durch den Import' })
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }))
+    await user.click(await screen.findByRole('button', { name: 'Übernehmen' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Sicherheitsrelevante Einstellungen/)).toBeInTheDocument()
+    await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+    await waitFor(() =>
+      expect(mockSettings.sections.linkTargets.allowedOrigins).toEqual([
+        'https://intranet.stadt.example',
+      ]),
+    )
+    expect(imports).toBe(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('marks a security-relevant change in the preview', async () => {

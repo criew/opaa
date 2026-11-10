@@ -52,6 +52,11 @@ Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel w
 der Chat-Modelle ([Schlüssel und Geheimnisse](../betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
 
+Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt OPAA vor dem Speichern des
+Zugangs und einer Vorlage nach einer
+[erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen),
+wenn die letzte nicht gerade eben war; die Testnachricht braucht keine.
+
 ## Zustellung über die Warteschlange
 
 OPAA verschickt auf zwei Wegen:

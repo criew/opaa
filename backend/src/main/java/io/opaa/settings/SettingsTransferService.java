@@ -7,6 +7,7 @@ import io.opaa.audit.AuditCorrelation;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.TooManyRequestsException;
@@ -44,9 +45,11 @@ import tools.jackson.databind.node.ObjectNode;
  * is, a key a section does not carry keeps its value, and a document equal to the installation
  * changes and writes nothing. The changes of one import share a correlation reference with its
  * {@link AuditEventType#SETTINGS_IMPORTED} entry, which also names the changed security-relevant
- * keys as {@code <section>.<key>}, never their values. Preview and import together are bounded by
- * an installation-wide counter ({@link #CALLS_PER_WINDOW} per {@link #WINDOW}), counted before the
- * transaction so a rolled-back preview still counts.
+ * keys as {@code <section>.<key>}, never their values. An import that changes a security-relevant
+ * key demands a recent sign-in ({@link RecentLoginPolicy}) and otherwise rolls back; the preview
+ * does not. Preview and import together are bounded by an installation-wide counter ({@link
+ * #CALLS_PER_WINDOW} per {@link #WINDOW}), counted before the transaction so a rolled-back preview
+ * still counts.
  */
 @Service
 public class SettingsTransferService {
@@ -72,6 +75,7 @@ public class SettingsTransferService {
   private final TransactionTemplate transactions;
   private final InstallationCounters counters;
   private final AuditEventRecorder audit;
+  private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
   public SettingsTransferService(
@@ -79,11 +83,13 @@ public class SettingsTransferService {
       PlatformTransactionManager transactionManager,
       InstallationCounters counters,
       AuditEventRecorder audit,
+      RecentLoginPolicy recentLogin,
       Clock clock) {
     this.sections = sorted(sections);
     this.transactions = new TransactionTemplate(transactionManager);
     this.counters = counters;
     this.audit = audit;
+    this.recentLogin = recentLogin;
     this.clock = clock;
   }
 
@@ -109,6 +115,17 @@ public class SettingsTransferService {
     return new SettingsDocument(FORMAT, FORMAT_VERSION, Instant.now(clock), exported);
   }
 
+  /**
+   * A security-relevant change, or any change of a section whose administration demands a recent
+   * sign-in.
+   */
+  private boolean demandsRecentLogin(SettingsImportResult.Change change) {
+    return change.securityRelevant()
+        || sections.stream()
+            .anyMatch(
+                section -> section.key().equals(change.section()) && section.requiresRecentLogin());
+  }
+
   /** What {@link #importDocument} would change, without changing anything. */
   public SettingsImportResult preview(CurrentUser actor, SettingsDocument document) {
     actor.requireSystemAdmin(ADMIN_ONLY);
@@ -132,6 +149,9 @@ public class SettingsTransferService {
                 correlationRef,
                 () -> {
                   List<SettingsImportResult.Change> changes = apply(actor, document);
+                  if (changes.stream().anyMatch(this::demandsRecentLogin)) {
+                    recentLogin.requireRecentLogin();
+                  }
                   if (!changes.isEmpty()) {
                     record(actor, changes);
                   }
