@@ -1,8 +1,13 @@
 package io.opaa.llm;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /** Persistence for {@link LlmModel}. */
@@ -18,4 +23,12 @@ public interface LlmModelRepository extends JpaRepository<LlmModel, UUID> {
    * database invariant it is itself protected by.
    */
   List<LlmModel> findAllByActiveTrue();
+
+  /**
+   * The row of {@code id}, locked until the caller's transaction ends - so that an edit of the
+   * address and a recorded tool capability never interleave on the same model.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT m FROM LlmModel m WHERE m.id = :id")
+  Optional<LlmModel> findLockedById(@Param("id") UUID id);
 }

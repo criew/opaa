@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.ToolCapability;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatAttachmentService;
@@ -21,6 +22,7 @@ import io.opaa.chat.ChatAttachmentView;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.ToolCallingNotCapableException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.ModelCallPurpose;
 import io.opaa.observability.QueryMetrics;
@@ -84,7 +86,7 @@ class SpikeToolLoopQueryHandlerTest {
         ChatClient.builder(
                 chatModel, io.micrometer.observation.ObservationRegistry.NOOP, null, null)
             .build();
-    when(activeChatModelResolver.resolveChatClient()).thenReturn(chatClient);
+    when(activeChatModelResolver.resolveToolCallingChatClient()).thenReturn(chatClient);
     when(chatMemory.get(any())).thenReturn(List.of());
     handler =
         new SpikeToolLoopQueryHandler(
@@ -128,6 +130,35 @@ class SpikeToolLoopQueryHandlerTest {
 
     assertThat(result).isEmpty();
     verifyNoInteractions(activeChatModelResolver, chatSourceAssembler);
+  }
+
+  /**
+   * A turn that needs tools meets a model not recorded as capable: refused with the German notice,
+   * never answered without its tools - no model call, no search, nothing persisted.
+   */
+  @Test
+  void aModelNotRecordedAsToolCapableRefusesTheTurnInsteadOfAnsweringWithoutTools() {
+    when(activeChatModelResolver.resolveToolCallingChatClient())
+        .thenThrow(new ToolCallingNotCapableException(ToolCapability.UNVERIFIED));
+
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    "@test Wie melde ich mich an?",
+                    Optional.empty(),
+                    UUID.randomUUID(),
+                    "conv-key",
+                    null,
+                    Set.of(UUID.randomUUID()),
+                    MetadataFilter.NONE,
+                    System.currentTimeMillis(),
+                    null))
+        .isInstanceOf(ToolCallingNotCapableException.class)
+        .hasMessageContaining("braucht Werkzeugaufrufe");
+
+    verify(chatModel, never()).call(any(Prompt.class));
+    verifyNoInteractions(knowledgeRetrieval, chatService, chatNoteExtractionService);
+    verify(chatMemory, never()).add(any(), any(org.springframework.ai.chat.messages.Message.class));
   }
 
   /**

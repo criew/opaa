@@ -22,8 +22,10 @@ paths:
         the provider is unreachable, overloaded or rate-limiting, and while no chat model is
         active at all; 502 once the provider answered but not usefully, which is the shape of a
         misconfiguration (unknown model identifier, rejected key) rather than of a passing
-        disturbance. The 503 carries Retry-After where the provider named a waiting time. Nothing
-        of the turn is persisted in either case.
+        disturbance. The 503 carries Retry-After where the provider named a waiting time. A turn
+        that needs tool calls is refused with 503 and code CHAT_MODEL_NOT_TOOL_CAPABLE while the
+        active chat model is not recorded as capable of them; it is never answered without its
+        tools. Nothing of the turn is persisted in any of these cases.
       requestBody:
         required: true
         content:
