@@ -25,6 +25,7 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { CATALOG_ROUTE, documentTemplateRoute } from '@/shared/routes'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { createDocumentTemplate } from '../api/documentTemplateApi'
 import TemplateFilePicker from '../components/TemplateFilePicker'
@@ -120,7 +121,15 @@ export default function DocumentTemplateCreatePage() {
       notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(documentTemplateRoute(created.id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Die Vorlage konnte nicht angelegt werden')
+      // A refused unit takes the server's word to its step and field; anything else stays here.
+      const refusedUnit = apiFieldErrors(err).find((field) => field.field === 'responsible')
+      if (refusedUnit) {
+        setActiveStep(STEP_SHARING)
+        setReturnToReview(true)
+        responsibleCheck.fail(refusedUnit.message)
+      } else {
+        setError(err instanceof Error ? err.message : 'Die Vorlage konnte nicht angelegt werden')
+      }
       setSubmitting(false)
     }
   }

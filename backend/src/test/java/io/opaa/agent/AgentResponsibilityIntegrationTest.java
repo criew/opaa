@@ -198,24 +198,19 @@ class AgentResponsibilityIntegrationTest {
 
   @Test
   void aLockSetWhileTheUnitChangesIsNotOverwritten() throws Exception {
-    UUID agent = anAgent("Vergabeprüfung", REFERAT);
-    Agent stored = stored(agent);
+    // a template, because changing it takes no row lock of its own: only the responsibility row
+    // serializes the change of the unit against a concurrent lock
+    UUID template = aTemplate("Vermerk", REFERAT);
     TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
-    CompletableFuture<Void> concurrentLock =
+    CompletableFuture<?> concurrentLock =
         transaction.execute(
             status -> {
-              agentService.update(
-                  agent,
-                  new AgentUpdate(
-                      stored.getName(),
-                      null,
-                      stored.configuration(),
-                      ResponsibleUnit.ofFunction("Referat Z4")),
-                  admin());
-              CompletableFuture<Void> lock =
+              templateService.update(
+                  template, "Vermerk", null, ResponsibleUnit.ofFunction("Referat Z4"), admin());
+              CompletableFuture<?> lock =
                   CompletableFuture.runAsync(
-                      () -> agentService.lock(agent, "Anweisung wird überarbeitet", admin()));
+                      () -> templateService.lock(template, "Inhalt veraltet", admin()));
               // the lock waits for the row the change holds until it commits
               assertThatThrownBy(() -> lock.get(500, TimeUnit.MILLISECONDS))
                   .isInstanceOf(TimeoutException.class);
@@ -223,9 +218,10 @@ class AgentResponsibilityIntegrationTest {
             });
     concurrentLock.get(10, TimeUnit.SECONDS);
 
-    AssetResponsibilityView after = agentService.get(agent, admin()).responsibility();
+    AssetResponsibilityView after = templateService.get(template, admin()).responsibility();
     assertThat(after.function()).isEqualTo("Referat Z4");
-    assertThat(after.lock().reason()).isEqualTo("Anweisung wird überarbeitet");
+    assertThat(after.lock()).isNotNull();
+    assertThat(after.lock().reason()).isEqualTo("Inhalt veraltet");
   }
 
   @Test
