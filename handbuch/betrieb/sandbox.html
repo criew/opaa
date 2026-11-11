@@ -4431,8 +4431,9 @@ mit <code>no-new-privileges</code>. Schreiben darf er nur unter <code>/tmp</code
 <code>opensandbox-state</code> mit seinem eigenen Zustand. Die Images des Dienstes und seines
 Ausführungsagenten, das Basis-Image von <code>opaa/sandbox-python</code> und dessen Python-Pakete sind auf
 Version und Prüfsumme festgelegt; ein <code>docker compose pull</code> holt deshalb nie still einen anderen
-Stand. Die Pakete von LibreOffice kommen aus dem Debian-Release des Basis-Images mit seinen
-Sicherheitsupdates zum Zeitpunkt des Baus. Neue Fassungen kommen mit einem OPAA-Update. Danach den
+Stand. pip ist im fertigen Image nicht enthalten. Die Debian-Pakete des Images kommen aus dem
+Debian-Release des Basis-Images mit seinen Sicherheitsupdates zum Zeitpunkt des Baus. Neue
+Fassungen kommen mit einem OPAA-Update. Danach den
 Stapel mit <code>up -d --build</code> neu starten, damit auch das Sandbox-Image neu gebaut wird, und <code>run_code</code>
 und <code>fill_template</code> einmal von einem Agenten ausführen lassen.</p>
 <h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
