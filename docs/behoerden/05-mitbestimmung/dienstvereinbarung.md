@@ -324,7 +324,9 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
    zur Nutzung.
 3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
    vorher; eine Entscheidung stützt sich nie allein auf sie.
-4. Die Nutzung von Agenten wird nicht erhoben; es gilt Nummer 10 Nr. 13.
+4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die
+   Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis, getrennt nach
+   mitgeliefertem und angelegten Agenten. Es gilt Nummer 10 Nr. 13.
 
 #### 15. Änderungen und Updates
 

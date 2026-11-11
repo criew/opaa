@@ -205,8 +205,10 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   geprüft“ mit dem Fassungsstempel: Agent und Fassung, durchsuchbare Bibliotheken, Vorlagen und
   Modell. Den Stempel sieht nur die Person an ihrer Antwort und in ihrer Selbstauskunft; eine Datei
   nimmt ihn beim Weitergeben mit ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)).
-- **Keine Nutzungserhebung:** Wer wann welchen Agenten aufgerufen hat, steht nur an der Antwort im
-  Chat der Person. Das Aufrufen steht nicht im Protokoll, und keine Ansicht zählt oder listet es.
+- **Keine Nutzungserhebung je Person:** Die Nutzung je Person, je Space und je angelegtem Agenten
+  wird nicht erhoben; die Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis,
+  getrennt nach mitgeliefertem und angelegten Agenten. Wer wann welchen Agenten aufgerufen hat,
+  steht nur an der Antwort im Chat der Person, nicht im Protokoll.
 - **Schritt- und Sandboxprotokoll:** für die Fehlersuche, ohne Konto, ohne Teilfrage, ohne
   Skript und ohne Inhalte, mit kurzer Frist; die Systemverwaltung liest es nur für einen Lauf mit
   Laufkennung und Begründung, jeder Abruf steht im Protokoll ({{faktenblatt:datenkatalog#agent-run-logs}}).

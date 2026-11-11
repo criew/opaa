@@ -19,7 +19,7 @@ class AgentRunStampDescription implements InstanceStateSource {
 
   private static final String RETENTION =
       "Wie der Chat: bis die Person ihn löscht, die Bereinigung des Space oder die Löschung nach"
-          + " Sperre des Kontos greift";
+          + " Sperre des Kontos greift, und sofort beim Entfernen des Personenbezugs des Kontos";
 
   @Override
   public List<DataSetDescription> dataSetDescriptions() {
@@ -48,7 +48,7 @@ class AgentRunStampDescription implements InstanceStateSource {
                     RETENTION),
                 new ProtocolField(
                     "Vorlagen",
-                    "Name und Fassung jeder ausgefüllten Vorlage",
+                    "Kennung, Name und Fassung jeder ausgefüllten Vorlage",
                     "Nach welcher Vorlage eine Datei entstand",
                     RETENTION),
                 new ProtocolField(
@@ -59,12 +59,18 @@ class AgentRunStampDescription implements InstanceStateSource {
                     "Die Person an ihrer Antwort im Chat und in einer kopierten oder exportierten"
                         + " Antwort; eine Datei nach Vorlage trägt den Stempel in Fußzeile und"
                         + " Dokumenteigenschaften"),
-                new QueryPath("Selbstauskunft", "Die Person in ihrer eigenen Selbstauskunft")),
+                new QueryPath("Selbstauskunft", "Die Person in ihrer eigenen Selbstauskunft"),
+                new QueryPath(
+                    "Betriebsmetriken",
+                    "Zählen Agentenläufe nur installationsweit nach Ergebnis, getrennt nach"
+                        + " mitgeliefertem und angelegten Agenten, und Werkzeugaufrufe nach Werkzeug"
+                        + " und Ergebnis; ohne Person, Space, Namen oder Kennung eines Agenten")),
             List.of(
                 "Keine Ansicht für Verwaltung, Revision oder Eigentümer eines Agenten",
                 "Keine Auswertung, wer wann welchen Agenten, welche Fassung, welche Bibliothek,"
-                    + " welche Vorlage oder welches Modell genutzt hat",
-                "Keine Zählung der Nutzung je Agent oder je Person",
+                    + " welche Vorlage oder welches Modell genutzt hat. Über die Datenbank ist der"
+                    + " Stempel mit dem Chat seiner Person verknüpfbar; die Anwendung bietet das nicht",
+                "Keine Zählung der Nutzung je Person, je Space und je selbst angelegtem Agenten",
                 "Kein Eintrag im Revisionsprotokoll für den Aufruf eines Agenten")));
   }
 }

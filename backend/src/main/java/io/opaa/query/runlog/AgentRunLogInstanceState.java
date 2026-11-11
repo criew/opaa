@@ -53,8 +53,10 @@ class AgentRunLogInstanceState implements InstanceStateSource {
     return List.of(stepLog(stepRetention), sandboxLog(sandboxRetention));
   }
 
-  static final String STEP_LOG_ID = "agent-step-log";
-  static final String SANDBOX_LOG_ID = "agent-sandbox-log";
+  /** Ids sort the step log before the sandbox log in the disclosure. */
+  static final String STEP_LOG_ID = "agent-run-log";
+
+  static final String SANDBOX_LOG_ID = "agent-run-log-sandbox";
 
   private static String retention(Optional<Integer> days) {
     return days.map(
@@ -79,7 +81,8 @@ class AgentRunLogInstanceState implements InstanceStateSource {
           "Keine Oberfläche, nur die eine Schnittstelle für einen Lauf",
           "Keine Liste der Läufe und keine Suche über Läufe",
           "Kein Filter, keine Gruppierung und keine Sortierung nach Person; das Protokoll hat"
-              + " keinen Kontobezug",
+              + " keinen Kontobezug. Über die Datenbank ist es mit der Laufkennung im Chat einer"
+              + " Person verknüpfbar; die Anwendung bietet das nicht",
           "Kein Export und kein Vollabzug",
           "Keine Teilfrage, kein Suchtext, kein Skript und kein Dateiinhalt, auch nicht abgeleitet");
 

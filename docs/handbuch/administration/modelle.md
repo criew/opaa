@@ -41,8 +41,8 @@ Werkzeugbeschreibungen stillschweigend ab. Die Angabe gilt deshalb für diesen E
 Laufzeit.
 
 Werkzeuge nutzt nur eine Frage an einen [Agenten](agenten.md); der gewöhnliche Chat braucht die
-Angabe nicht. Welche Kombinationen geprüft sind, steht unter
-[Geprüfte Kombinationen](../betrieb/agenten-betreiben.md#geprüfte-kombinationen).
+Angabe nicht. Was vor dem Einschalten der Agenten zu prüfen ist, steht unter
+[Agenten betreiben](../betrieb/agenten-betreiben.md#nach-dem-update).
 
 1. Im Zeilenmenü „Werkzeugfähigkeit festlegen“.
 2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen.

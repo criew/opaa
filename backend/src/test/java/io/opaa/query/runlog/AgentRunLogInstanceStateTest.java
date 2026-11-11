@@ -4,42 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.compliance.ComplianceManifest.TableRef;
+import io.opaa.compliance.ComplianceManifestLoader;
 import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class AgentRunLogInstanceStateTest {
 
-  private static final List<String> STEP_LOG_COLUMNS =
-      List.of(
-          "run_id",
-          "step_index",
-          "recorded_at",
-          "organization_id",
-          "tool",
-          "status",
-          "hit_count",
-          "duration_ms",
-          "abort_reason");
-
-  private static final List<String> SANDBOX_LOG_COLUMNS =
-      List.of(
-          "run_id",
-          "session_ref",
-          "recorded_at",
-          "organization_id",
-          "tool",
-          "status",
-          "script_runs",
-          "duration_ms",
-          "file_count",
-          "file_bytes",
-          "abort_reason");
-
   @Test
-  void describesEveryColumnOfBothLogsWithPurposeAndRetention() {
+  void describesEveryColumnTheManifestListsForBothLogs() {
     AgentRunLogRetentionSettingsRepository repository =
         mock(AgentRunLogRetentionSettingsRepository.class);
     when(repository.findSingleton()).thenReturn(Optional.empty());
@@ -50,13 +27,14 @@ class AgentRunLogInstanceStateTest {
     assertThat(dataSets)
         .extracting(DataSetDescription::id)
         .containsExactly(
-            AgentRunLogInstanceState.STEP_LOG_ID, AgentRunLogInstanceState.SANDBOX_LOG_ID);
+            AgentRunLogInstanceState.STEP_LOG_ID, AgentRunLogInstanceState.SANDBOX_LOG_ID)
+        .isSorted();
     assertThat(dataSets.get(0).fields())
         .extracting(ProtocolField::name)
-        .containsExactlyElementsOf(STEP_LOG_COLUMNS);
+        .containsExactlyInAnyOrderElementsOf(manifestColumns("agent_step_log"));
     assertThat(dataSets.get(1).fields())
         .extracting(ProtocolField::name)
-        .containsExactlyElementsOf(SANDBOX_LOG_COLUMNS);
+        .containsExactlyInAnyOrderElementsOf(manifestColumns("agent_sandbox_log"));
     for (DataSetDescription dataSet : dataSets) {
       assertThat(dataSet.fields())
           .allSatisfy(
@@ -67,5 +45,19 @@ class AgentRunLogInstanceStateTest {
       assertThat(dataSet.queryPaths()).hasSize(1);
       assertThat(dataSet.absentQueryPaths()).isNotEmpty();
     }
+  }
+
+  private static List<String> manifestColumns(String table) {
+    TableRef ref =
+        ComplianceManifestLoader.load().data().stream()
+            .flatMap(entry -> entry.tables().stream())
+            .filter(candidate -> candidate.name().equals(table))
+            .findFirst()
+            .orElseThrow();
+    List<String> columns = new ArrayList<>(ref.personalColumns());
+    if (ref.nonPersonalColumns() != null) {
+      columns.addAll(ref.nonPersonalColumns());
+    }
+    return columns;
   }
 }
