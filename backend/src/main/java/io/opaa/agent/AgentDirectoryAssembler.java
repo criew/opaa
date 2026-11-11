@@ -27,8 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Reads the agent directory of the caller's organization, independent of the caller's rights on the
  * single objects; the right to the directory is {@link AgentDirectoryService}'s to check. A library
- * is read for its name only, never for its content, and a lock only for since when - its reason
- * stays with the system administration and the managers of the object.
+ * is read for its name only, never for its content, and a private library not at all: it does not
+ * exist for anyone but its owner (ADR-0041), so it drops out of the list of an agent like a deleted
+ * one. A lock is read only for since when - its reason stays with the system administration and the
+ * managers of the object.
  */
 @Component
 class AgentDirectoryAssembler {
@@ -135,7 +137,7 @@ class AgentDirectoryAssembler {
       return names;
     }
     for (KnowledgeLibrary library : libraryRepository.findAllById(assigned)) {
-      if (library.getOrganizationId().equals(organizationId)) {
+      if (library.getOrganizationId().equals(organizationId) && !library.isOwnerOnly()) {
         names.put(library.getId(), library.getName());
       }
     }
