@@ -509,6 +509,7 @@ class SecurityInvariantsTest {
   static final List<String> SIGN_IN_ENTRIES =
       List.of(
           "io.opaa.auth.UserProvisioningFilter#doFilterInternal",
+          "io.opaa.auth.AuditorRoles#onRevoked",
           "io.opaa.group.TokenGroupProvisioner#onUserProvisioned",
           "io.opaa.space.PersonalSpaceProvisioner#onUserProvisioned");
 
