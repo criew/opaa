@@ -170,7 +170,7 @@ describe('quick tour', () => {
 
       const dialog = await screen.findByRole('dialog', { name: 'Fragen stellen' })
       expect(dialog).toHaveAccessibleDescription(
-        'Fragen Sie in eigenen Worten. Jede Antwort nennt ihre Fundstellen als Ziffern; ein Klick zeigt die Stelle im Dokument.',
+        'Schreiben Sie Ihre Frage hier hinein, so wie Sie einen Menschen fragen würden. In der Antwort stehen kleine Zahlen: Jede zeigt, aus welchem Dokument die Information stammt. Ein Klick auf die Zahl öffnet genau diese Stelle.',
       )
       await waitFor(() =>
         expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
@@ -222,7 +222,7 @@ describe('quick tour', () => {
       ).toBeInTheDocument()
       expect(screen.getByText('2 von 5')).toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Schritt 2 von 5: Worauf die Antwort sich stützt. @Space-Wissen ist das Wissen',
+        'Schritt 2 von 5: Worauf die Antwort sich stützt. OPAA sucht die Antwort in Dokumenten',
       )
 
       await user.keyboard('{ArrowLeft}')

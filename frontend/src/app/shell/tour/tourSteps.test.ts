@@ -25,10 +25,10 @@ describe('tourStepsFor', () => {
     expect(user.title).toBe('Alles Weitere im Menü')
     expect(user.anchor).toBe('menu')
     expect(user.text).toBe(
-      'Im Menü wechseln Sie zwischen Ihrem privaten Bereich und Spaces, finden im Katalog alle Bibliotheken und Prompts und starten über Ihr Profil diesen Rundgang erneut.',
+      'Hinter diesem Knopf finden Sie Ihren privaten Bereich, die Spaces Ihrer Teams und den Katalog mit Bibliotheken und Prompts – und über Ihr Profil starten Sie diesen Rundgang noch einmal.',
     )
     expect(admin.text).toBe(
-      'Im Menü wechseln Sie zwischen Ihrem privaten Bereich und Spaces, finden im Katalog alle Bibliotheken und Prompts, verwalten unter „Admin“ Konten, Gruppen und Modelle und starten über Ihr Profil diesen Rundgang erneut.',
+      'Hinter diesem Knopf finden Sie Ihren privaten Bereich, die Spaces Ihrer Teams und den Katalog mit Bibliotheken und Prompts, unter „Admin“ die Verwaltung von Konten, Gruppen und KI-Modellen – und über Ihr Profil starten Sie diesen Rundgang noch einmal.',
     )
     expect(admin.text.match(/\./g)).toHaveLength(1)
   })
@@ -39,32 +39,32 @@ describe('tourStepsFor', () => {
       {
         anchor: 'chat-input',
         title: 'Fragen stellen',
-        text: 'Fragen Sie in eigenen Worten. Jede Antwort nennt ihre Fundstellen als Ziffern; ein Klick zeigt die Stelle im Dokument.',
+        text: 'Schreiben Sie Ihre Frage hier hinein, so wie Sie einen Menschen fragen würden. In der Antwort stehen kleine Zahlen: Jede zeigt, aus welchem Dokument die Information stammt. Ein Klick auf die Zahl öffnet genau diese Stelle.',
       },
       {
         anchor: 'space-knowledge',
         title: 'Worauf die Antwort sich stützt',
-        text: '@Space-Wissen ist das Wissen, das diesem Space zugeordnet ist und das Sie lesen dürfen. Mit @ wählen Sie einzelne Bibliotheken.',
+        text: 'OPAA sucht die Antwort in Dokumenten, die Sie lesen dürfen. „@Space-Wissen“ heißt: alle Dokumente, die zu diesem Space gehören. Tippen Sie @, wenn nur bestimmte Bibliotheken – also Sammlungen von Dokumenten – gelten sollen.',
       },
       {
         anchor: 'spaces',
         title: 'Privat oder im Team',
-        text: 'Im privaten Bereich arbeiten Sie allein. Ein Space teilt Chats und Wissen mit seinen Mitgliedern.',
+        text: 'Ihren privaten Bereich sehen nur Sie. Ein Space ist wie ein gemeinsamer Ordner für ein Team: Alle Mitglieder sehen dieselben Chats und Dokumente.',
       },
       {
         anchor: 'catalog',
         title: 'Wissen finden',
-        text: 'Der Katalog zeigt alle Bibliotheken und Prompts, die Sie lesen dürfen. Von dort ordnen Sie sie einem Space zu.',
+        text: 'Im Katalog finden Sie alle Bibliotheken, die Sie lesen dürfen, und alle Prompts – das sind fertige Vorlagen für Fragen. Von hier aus fügen Sie sie einem Space hinzu.',
       },
       {
         anchor: 'admin',
         title: 'Systemverwaltung',
-        text: 'Unter „Admin“ verwalten Sie Konten, Gruppen und Modelle; diesen Eintrag sehen nur Personen in der Systemverwaltung.',
+        text: 'Unter „Admin“ richten Sie OPAA für alle ein: Konten, Gruppen und die KI-Modelle. Diesen Eintrag sehen nur Personen aus der Systemverwaltung.',
       },
       {
         anchor: 'profile',
         title: 'Rundgang wiederholen',
-        text: 'Über Ihr Profil starten Sie diesen Rundgang jederzeit erneut.',
+        text: 'Sie möchten den Rundgang noch einmal sehen? Klicken Sie auf Ihr Profil und dann auf „Rundgang starten“.',
       },
     ])
     expect(steps[0].withAnswerSample).toBe(true)
