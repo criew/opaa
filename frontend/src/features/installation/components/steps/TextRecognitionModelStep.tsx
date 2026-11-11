@@ -15,7 +15,7 @@ import {
   TEXT_RECOGNITION_PURPOSE,
   TEXT_RECOGNITION_VISION_NOTICE,
 } from '@/shared/ui/textRecognition/textRecognitionTexts'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
@@ -161,7 +161,7 @@ export default function TextRecognitionModelStep({
         </SectionHead>
         <Stack spacing={STEP_RHYTHM.betweenGroups}>
           <Box>
-            <FieldLabel id={serviceLabelId}>Dienst</FieldLabel>
+            <FormFieldLabel id={serviceLabelId}>Dienst</FormFieldLabel>
             <ChoiceTileGroup<Service>
               aria-labelledby={serviceLabelId}
               tiles={SERVICE_TILES}
@@ -172,7 +172,7 @@ export default function TextRecognitionModelStep({
           </Box>
           {service === 'own' && (
             <Box>
-              <FieldLabel id={connectionLabelId}>Anbindung</FieldLabel>
+              <FormFieldLabel id={connectionLabelId}>Anbindung</FormFieldLabel>
               <ChoiceTileGroup<TextRecognitionConnectionType>
                 aria-labelledby={connectionLabelId}
                 tiles={CONNECTION_TILES}

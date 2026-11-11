@@ -27,15 +27,14 @@ class AgentMetrics {
   static final String UNKNOWN_TOOL = "unknown";
 
   private final MeterRegistry registry;
-  private final Counter rejected;
+  private final Counter rejectedFull;
+  private final Counter rejectedPersonLimit;
 
   AgentMetrics(
       MeterRegistry registry, AgentWorkspace workspace, AgentToolLoopProperties properties) {
     this.registry = registry;
-    this.rejected =
-        Counter.builder(WORKSPACE_REJECTED)
-            .description("Agent requests refused before the run because the workspace was full")
-            .register(registry);
+    this.rejectedFull = rejected(registry, "full");
+    this.rejectedPersonLimit = rejected(registry, "person_limit");
     Gauge.builder(WORKSPACE_OCCUPIED, workspace, AgentWorkspace::occupied)
         .description("Running agent runs holding a workspace reservation, installation-wide")
         .register(registry);
@@ -68,8 +67,20 @@ class AgentMetrics {
         .increment();
   }
 
-  void recordRejected() {
-    rejected.increment();
+  /**
+   * Counts a request refused before its run, tagged {@code reason}: {@code full} when every place
+   * was taken, {@code person_limit} when the person already held their share.
+   */
+  void recordRejected(AgentWorkspace.Reservation reason) {
+    (reason == AgentWorkspace.Reservation.PERSON_LIMIT_REACHED ? rejectedPersonLimit : rejectedFull)
+        .increment();
+  }
+
+  private static Counter rejected(MeterRegistry registry, String reason) {
+    return Counter.builder(WORKSPACE_REJECTED)
+        .tag("reason", reason)
+        .description("Agent requests refused before the run for want of a workspace place")
+        .register(registry);
   }
 
   void recordUnverifiableCitations(boolean builtin, int count) {

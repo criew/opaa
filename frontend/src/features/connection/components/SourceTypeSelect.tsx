@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeDescriptor, SourceTypeKey } from '@/shared/api/types'
 import SourceTypeIcon from './sourceTypeIcon'
@@ -29,7 +29,7 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
   const nameOf = (key: string) => types.find((type) => type.type === key)?.displayName ?? key
 
   return (
-    <TextField
+    <FormField
       select
       required
       size="small"
@@ -102,6 +102,6 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
           </MenuItem>
         )
       })}
-    </TextField>
+    </FormField>
   )
 }

@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.eval.ToolCallingJudge.Outcome;
-import io.opaa.eval.ToolCallingRunner.Transcript;
+import io.opaa.query.toolcheck.ToolCallingCase;
+import io.opaa.query.toolcheck.ToolCallingCaseBase;
+import io.opaa.query.toolcheck.ToolCallingJudge;
+import io.opaa.query.toolcheck.ToolCallingJudge.Outcome;
+import io.opaa.query.toolcheck.ToolCallingRunner;
+import io.opaa.query.toolcheck.ToolCallingRunner.Transcript;
+import io.opaa.query.toolcheck.ToolCallingTool;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -58,7 +63,7 @@ class ToolCallingWireTest {
 
     Transcript t = runner(false).run(caseVa01(), model());
 
-    assertThat(ToolCallingJudge.judge(caseVa01(), t).outcome()).isEqualTo(Outcome.PASSED);
+    assertThat(ToolCallingJudge.judge(caseVa01(), t, tool()).outcome()).isEqualTo(Outcome.PASSED);
     assertThat(t.finalAnswer()).isEqualTo("144 Euro im Jahr.");
     assertToolOfferedAndAnswered();
   }
@@ -91,7 +96,7 @@ class ToolCallingWireTest {
     assertThat(JSON.readTree(t.toolCalls().getFirst().arguments()).get("query").asString())
         .isEqualTo("Hundesteuer zweiter Hund");
     assertThat(t.finalAnswer()).isEqualTo("144 Euro im Jahr.");
-    assertThat(ToolCallingJudge.judge(caseVa01(), t).outcome()).isEqualTo(Outcome.PASSED);
+    assertThat(ToolCallingJudge.judge(caseVa01(), t, tool()).outcome()).isEqualTo(Outcome.PASSED);
     assertToolOfferedAndAnswered();
   }
 
@@ -131,15 +136,16 @@ class ToolCallingWireTest {
         Duration.ofSeconds(10));
   }
 
-  private static ToolCallingRunner runner(boolean streaming) throws IOException {
-    return new ToolCallingRunner(
-        ToolCallingMockTool.load(ToolCallingMockTool.corpusDir()),
-        streaming,
-        Duration.ofSeconds(10));
+  private static ToolCallingTool tool() {
+    return ToolCallingTool.mock(ToolCallingCaseBase.load());
   }
 
-  private static ToolCallingCase caseVa01() throws IOException {
-    return ToolCallingDatasetTest.cases().stream()
+  private static ToolCallingRunner runner(boolean streaming) {
+    return new ToolCallingRunner(tool(), streaming, Duration.ofSeconds(10));
+  }
+
+  private static ToolCallingCase caseVa01() {
+    return ToolCallingCaseBase.load().cases().stream()
         .filter(c -> c.id().equals("va-01"))
         .findFirst()
         .orElseThrow();

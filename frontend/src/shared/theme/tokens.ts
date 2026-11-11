@@ -345,6 +345,15 @@ export const contentWidth = {
   notice: 720,
 } as const
 
+/**
+ * Widths of forms (guidelines 5.2): a settings form is one column of `column` px, a field holding
+ * only a number is `number` px wide.
+ */
+export const formWidth = {
+  column: 640,
+  number: 160,
+} as const
+
 /** Radii (guidelines 4.2). `md` is the 10px default for cards, inputs, buttons, dialogs. */
 export const radius = {
   xs: 4,

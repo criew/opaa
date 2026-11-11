@@ -3025,7 +3025,8 @@ describe('LibraryDetailPage', () => {
           documentIds: ['doc-1', 'doc-2'],
         }),
       )
-      await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+      const result = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
+      await user.click(await within(result).findByRole('button', { name: 'Schließen' }))
       expect(
         await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
       ).toBeInTheDocument()

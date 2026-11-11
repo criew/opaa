@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from 'react'
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
@@ -107,12 +107,12 @@ export default function BaseUrlField({
         )
       }}
       renderInput={(params) => (
-        <TextField
+        <FormField
           {...params}
           label="Basis-Adresse"
           required
           inputRef={inputRef}
-          placeholder="Vorlage wählen oder Adresse eintragen"
+          placeholder="z. B. http://ollama:11434/v1"
           helperText={BASE_URL_HELP_TEXT}
           slotProps={{
             ...params.slotProps,

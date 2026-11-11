@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
@@ -176,7 +176,7 @@ function TokenDialog({
         <Stack spacing={2.5} sx={{ mt: 1 }}>
           {formError && <Alert severity="error">{formError}</Alert>}
           <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
-          <TextField
+          <FormField
             label="Name"
             placeholder="Produktion"
             value={name}
@@ -187,7 +187,7 @@ function TokenDialog({
             size="small"
             fullWidth
           />
-          <TextField
+          <FormField
             label="Läuft ab"
             type="date"
             value={expiry}
@@ -198,7 +198,6 @@ function TokenDialog({
             size="small"
             sx={{ maxWidth: 240 }}
             slotProps={{
-              inputLabel: { shrink: true },
               htmlInput: {
                 min: toDateInputValue(earliestExpiryDate()),
                 max: toDateInputValue(maxExpiryDate(maxDays)),

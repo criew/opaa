@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { addLibraryMetadataFieldValue } from '../../api/libraryMetadataApi'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
@@ -57,7 +57,7 @@ export default function AddValueButton({
         busyAnnouncement="Der Wert wird ergänzt"
       >
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
+          <FormField
             size="small"
             label="Code"
             value={code}
@@ -68,7 +68,7 @@ export default function AddValueButton({
             error={codeMissing}
             helperText={codeMissing ? 'Bitte einen Code angeben.' : undefined}
           />
-          <TextField
+          <FormField
             size="small"
             label="Bezeichnung"
             value={label}

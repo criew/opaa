@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -257,12 +258,24 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
         usage.getCompletionTokens());
   }
 
+  /**
+   * A fresh, uncached model for {@code model}, active or not, built like the client of the active
+   * entry but without retries - e.g. to measure an entry before it is relied on. One call then
+   * lasts at most {@code requestTimeout}, so a caller can bound how long it goes without news.
+   */
+  public ChatModel chatModelFor(LlmModel model, Duration requestTimeout) {
+    ObservationRegistry observationRegistry =
+        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
+    return new ReasoningTextStrippingChatModel(
+        chatModelBuilder(model, observationRegistry, requestTimeout, 0).build());
+  }
+
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */
   private ChatClient newChatClient(LlmModel model, Duration requestTimeout) {
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     OpenAiChatModel chatModel =
-        chatModelBuilder(model, observationRegistry, requestTimeout).build();
+        chatModelBuilder(model, observationRegistry, requestTimeout, null).build();
     ChatClient client =
         ChatClient.builder(
                 new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
@@ -274,10 +287,14 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
   /**
    * The builder both clients share; only {@code requestTimeout} distinguishes them. It goes onto
    * the options, not onto the HTTP client: the SDK carries a per-request timeout that overrides
-   * whatever the client was built with, so a timeout set there would be ignored.
+   * whatever the client was built with, so a timeout set there would be ignored. {@code maxRetries}
+   * {@code null} keeps the SDK's default.
    */
   private OpenAiChatModel.Builder chatModelBuilder(
-      LlmModel model, ObservationRegistry observationRegistry, Duration requestTimeout) {
+      LlmModel model,
+      ObservationRegistry observationRegistry,
+      Duration requestTimeout,
+      Integer maxRetries) {
     String apiKey =
         model.getApiKeyCiphertext() == null
             ? ""
@@ -295,6 +312,9 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     }
     if (requestTimeout != null) {
       optionsBuilder.timeout(requestTimeout);
+    }
+    if (maxRetries != null) {
+      optionsBuilder.maxRetries(maxRetries);
     }
     OpenAiChatOptions options = optionsBuilder.build();
     return OpenAiChatModel.builder()

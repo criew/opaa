@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import {
@@ -16,7 +16,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 /**
  * The access with which this provider's directory run reads. The realm is never
@@ -77,15 +77,15 @@ export default function DirectoryConnectorSection({
         </Alert>
       )}
 
-      <Stack spacing={1.5}>
-        <TextField
+      <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
+        <FormField
           size="small"
           fullWidth
           label="Dienstkonto (Client-ID)"
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
         />
-        <TextField
+        <FormField
           size="small"
           fullWidth
           type="password"
@@ -98,10 +98,11 @@ export default function DirectoryConnectorSection({
           value={clientSecret}
           onChange={(e) => setClientSecret(e.target.value)}
         />
-        <TextField
+        <FormField
           size="small"
           fullWidth
-          label="Adresse der Admin-API (optional)"
+          label="Adresse der Admin-API"
+          optional
           helperText="Leer lassen, wenn OPAA sie unter der Adresse des Anbieters erreicht."
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}

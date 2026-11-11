@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ConnectionProfileRef,
@@ -239,7 +239,7 @@ export default function LibraryConnectionDialog({
               liegt nicht unter dem Zugang „{next.name}“. Tragen Sie die Adresse ein, unter der die
               Bibliothek künftig liest.
             </Alert>
-            <TextField
+            <FormField
               label="Neue Adresse"
               size="small"
               fullWidth

@@ -19,7 +19,8 @@ import { executePermissionTransfer, previewPermissionTransfer } from '../api/per
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { UserPicker } from '@/features/principal'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { GroupPicker } from '@/features/principal'
 import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from '@/features/principal'
 import { fontSize } from '@/shared/theme/tokens'
@@ -200,7 +201,7 @@ export default function PermissionTransferDialog({
 
       <Stack spacing={2}>
         <Box>
-          <FieldLabel htmlFor="transfer-source">{sourceLabel}</FieldLabel>
+          <FormFieldLabel htmlFor="transfer-source">{sourceLabel}</FormFieldLabel>
           {choosesSource ? (
             <UserPicker
               inputId="transfer-source"
@@ -220,8 +221,8 @@ export default function PermissionTransferDialog({
 
         {targetKinds.length > 1 && (
           <Box>
-            <FieldLabel htmlFor="transfer-target-type">Art des Ziels</FieldLabel>
-            <TextField
+            <FormField
+              label="Art des Ziels"
               id="transfer-target-type"
               select
               fullWidth
@@ -237,13 +238,13 @@ export default function PermissionTransferDialog({
                   {kind === 'GROUP' ? 'Gruppe' : 'Person'}
                 </MenuItem>
               ))}
-            </TextField>
+            </FormField>
           </Box>
         )}
 
         {targetType === 'GROUP' ? (
           <Box>
-            <FieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FieldLabel>
+            <FormFieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FormFieldLabel>
             {/* The shared group search: server-side selection with origin,
                  „extern" marker and the eligibility rules - instead of the full
                  administration list in a select field. */}
@@ -264,7 +265,7 @@ export default function PermissionTransferDialog({
           </Box>
         ) : (
           <Box>
-            <FieldLabel htmlFor="transfer-target-user">{targetUserLabel}</FieldLabel>
+            <FormFieldLabel htmlFor="transfer-target-user">{targetUserLabel}</FormFieldLabel>
             <UserPicker
               inputId="transfer-target-user"
               ariaLabel={targetUserLabel}

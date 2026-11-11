@@ -9,12 +9,11 @@ import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CreateGroupDialog from './CreateGroupDialog'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
@@ -103,8 +102,8 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-name`}>Name der Gruppe</FieldLabel>
-            <TextField
+            <FormField
+              label="Name der Gruppe"
               id={`my-group-${group.id}-name`}
               fullWidth
               value={name}
@@ -113,14 +112,13 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-description`}>Beschreibung</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
               id={`my-group-${group.id}-description`}
               fullWidth
               value={description}
               onChange={(e) => setDraft({ groupId: group.id, name, description: e.target.value })}
               multiline
-              minRows={2}
               size="small"
             />
           </Box>

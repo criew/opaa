@@ -93,6 +93,29 @@ export async function acceptConfirmDialogs(page: Page): Promise<void> {
   );
 }
 
+const recentLoginConfirmed = new WeakSet<Page>();
+
+/**
+ * Confirms „Anmeldung bestätigen" with the bootstrap administrator's password whenever it opens on
+ * this page. Mail settings and the rules of the local sign-in demand a recent sign-in, and a page
+ * that was reloaded after signing in holds a refreshed token, which never counts as one. Only for
+ * pages of the bootstrap administrator; a scenario about the dialog itself drives it by hand.
+ */
+export async function confirmRecentLoginAsBootstrapAdmin(page: Page): Promise<void> {
+  if (recentLoginConfirmed.has(page)) return;
+  recentLoginConfirmed.add(page);
+  await page.addLocatorHandler(
+    page.getByRole("dialog", { name: "Anmeldung bestätigen" }).getByLabel("Ihr Passwort"),
+    async (password) => {
+      await password.fill(bootstrapAdmin.password);
+      await page
+        .getByRole("dialog", { name: "Anmeldung bestätigen" })
+        .getByRole("button", { name: "Bestätigen" })
+        .click();
+    },
+  );
+}
+
 /**
  * The account list of the administration (#1601: „Benutzer" has two areas, each its own route),
  * waited for until the list itself has loaded - the table if there is a row, otherwise its empty
@@ -113,6 +136,7 @@ export async function openAccountList(page: Page): Promise<void> {
 
 /** The settings area of the administration's user page, waited for until its card has loaded. */
 export async function openLocalAuthSettings(page: Page): Promise<void> {
+  await confirmRecentLoginAsBootstrapAdmin(page);
   await page.goto("/admin/users/settings");
   await expect(page.getByRole("switch", { name: "Lokale Anmeldung aktiv" })).toBeVisible({
     timeout: 20_000,
@@ -127,6 +151,7 @@ export async function openLocalAuthSettings(page: Page): Promise<void> {
  * takes effect without a restart.
  */
 export async function configureSmtp(page: Page): Promise<void> {
+  await confirmRecentLoginAsBootstrapAdmin(page);
   await page.goto("/admin/mail/server");
   await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible({
     timeout: 20_000,

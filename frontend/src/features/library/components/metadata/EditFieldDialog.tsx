@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { updateLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -69,7 +69,7 @@ export default function EditFieldDialog({
       }
     >
       <Stack spacing={2} sx={{ mt: 1 }}>
-        <TextField
+        <FormField
           size="small"
           label="Feldname"
           value={label}

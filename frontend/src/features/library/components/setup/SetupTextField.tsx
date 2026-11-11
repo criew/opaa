@@ -1,6 +1,5 @@
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
 
 interface SetupTextFieldProps {
@@ -39,11 +38,9 @@ export default function SetupTextField({
 }: SetupTextFieldProps) {
   return (
     <Box sx={{ maxWidth: width === 'short' ? 240 : undefined }}>
-      <FieldLabel htmlFor={id}>
-        {label}
-        {optional ? ' (optional)' : ''}
-      </FieldLabel>
-      <TextField
+      <FormField
+        label={label}
+        optional={optional}
         id={id}
         size="small"
         fullWidth
@@ -66,7 +63,6 @@ export default function SetupTextField({
         }
         placeholder={placeholder}
         multiline={multiline}
-        minRows={multiline ? 2 : undefined}
         maxRows={multiline ? 6 : undefined}
         slotProps={{
           input: { readOnly },

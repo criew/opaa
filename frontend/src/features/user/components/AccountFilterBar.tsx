@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import type { LocalAccountState, SystemRole } from '@/shared/api/types'
 import { useOidcProviderStore } from '@/features/identity-provider'
 import {
@@ -21,7 +22,7 @@ import {
 export const SEARCH_DEBOUNCE_MS = 300
 
 const REVIEW_OPTIONS: Array<{ value: LocalUserReviewFilter; label: string }> = [
-  { value: 'ALL', label: 'Alle Konten' },
+  { value: 'ALL', label: 'Alle Auflagen' },
   { value: 'WITHOUT_EXPIRY', label: 'Ohne Ablaufdatum' },
   { value: 'INACTIVE', label: 'Länger als 90 Tage nicht genutzt' },
 ]
@@ -107,11 +108,12 @@ export default function AccountFilterBar() {
           slotProps={{ htmlInput: { 'aria-label': 'Konten suchen', 'data-list-search': '' } }}
         />
       </Box>
-      <TextField
+      <FormField
         size="small"
         select
         sx={selectSx}
         label="Herkunft"
+        hideLabel
         value={originValue(filters)}
         onChange={(e) => update(originPatch(e.target.value))}
       >
@@ -124,12 +126,13 @@ export default function AccountFilterBar() {
             {provider.enabled ? '' : ' (deaktiviert)'}
           </MenuItem>
         ))}
-      </TextField>
-      <TextField
+      </FormField>
+      <FormField
         size="small"
         select
         sx={selectSx}
         label="Zustand"
+        hideLabel
         value={filters.status ?? 'ALL'}
         onChange={(e) =>
           update({
@@ -143,12 +146,13 @@ export default function AccountFilterBar() {
             {LOCAL_ACCOUNT_STATE_LABEL[state]}
           </MenuItem>
         ))}
-      </TextField>
-      <TextField
+      </FormField>
+      <FormField
         size="small"
         select
         sx={selectSx}
         label="Rolle"
+        hideLabel
         value={filters.role ?? 'ALL'}
         onChange={(e) =>
           update({ role: e.target.value === 'ALL' ? null : (e.target.value as SystemRole) })
@@ -160,12 +164,13 @@ export default function AccountFilterBar() {
             {SYSTEM_ROLE_LABEL[role]}
           </MenuItem>
         ))}
-      </TextField>
-      <TextField
+      </FormField>
+      <FormField
         size="small"
         select
         sx={{ minWidth: 180, flex: '0 1 220px' }}
         label="Auflage"
+        hideLabel
         value={filters.review}
         onChange={(e) => update({ review: e.target.value as LocalUserReviewFilter })}
       >
@@ -174,7 +179,7 @@ export default function AccountFilterBar() {
             {option.label}
           </MenuItem>
         ))}
-      </TextField>
+      </FormField>
     </Stack>
   )
 }

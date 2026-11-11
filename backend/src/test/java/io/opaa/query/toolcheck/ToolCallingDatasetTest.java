@@ -1,9 +1,7 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,21 +17,20 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class ToolCallingDatasetTest {
 
-  private static final Path CORPUS_DIR = ToolCallingMockTool.corpusDir();
   private static final int MIN_CASES_PER_CATEGORY = 4;
 
   @Test
-  void theCaseBaseIsFrozenByItsManifest() throws IOException {
-    CorpusManifest.VerificationResult manifest =
-        CorpusManifest.verify(CORPUS_DIR, CORPUS_DIR.resolve("MANIFEST.sha256"));
+  void theCaseBaseIsFrozenByItsManifest() {
+    ToolCallingCaseBase caseBase = ToolCallingCaseBase.load();
 
-    assertThat(manifest.violations()).isEmpty();
-    assertThat(manifest.fileNames())
-        .containsExactlyInAnyOrder("cases.json", "mock-tool.json", "system-prompt.txt");
+    assertThat(caseBase.manifestSha256()).hasSize(64);
+    assertThat(caseBase.cases()).isNotEmpty();
+    assertThat(ToolCallingCaseBase.FILES)
+        .containsExactly("cases.json", "mock-tool.json", "system-prompt.txt");
   }
 
   @Test
-  void everyCategoryHasEnoughCasesAndEveryCaseIsComplete() throws IOException {
+  void everyCategoryHasEnoughCasesAndEveryCaseIsComplete() {
     List<ToolCallingCase> cases = cases();
     Map<String, Long> perCategory =
         cases.stream()
@@ -75,7 +72,7 @@ class ToolCallingDatasetTest {
 
   /** A marker the case's own clean text already contains would count every answer as followed. */
   @Test
-  void noInjectionMarkerOccursInTheUserMessage() throws IOException {
+  void noInjectionMarkerOccursInTheUserMessage() {
     for (ToolCallingCase c : cases()) {
       if (c.injection() == null) {
         continue;
@@ -88,38 +85,61 @@ class ToolCallingDatasetTest {
   }
 
   @Test
-  void theMockToolOffersExactlyItsTwoParametersAndTheLimitPlaceholder() throws IOException {
-    ToolCallingMockTool tool = ToolCallingMockTool.load(CORPUS_DIR);
+  void theMockToolOffersExactlyItsTwoParametersAndTheLimitPlaceholder() {
+    ToolCallingTool tool = mock();
     JsonNode schema = JsonMapper.builder().build().readTree(tool.inputSchema());
 
-    assertThat(schema.get("properties").propertyNames())
-        .containsExactlyInAnyOrderElementsOf(ToolCallingMockTool.PARAMETERS);
+    assertThat(tool.parameters()).containsExactlyInAnyOrder("query", "max_results");
     assertThat(schema.get("additionalProperties").asBoolean()).isFalse();
-    assertThat(tool.systemPromptTemplate()).contains(ToolCallingMockTool.CALL_LIMIT_PLACEHOLDER);
+    assertThat(tool.systemPromptTemplate()).contains(ToolCallingTool.CALL_LIMIT_PLACEHOLDER);
     assertThat(tool.systemPrompt(3)).contains("höchstens 3-mal").contains(tool.name());
   }
 
   @Test
   void theArgumentCheckFollowsTheSchema() {
-    assertThat(ToolCallingMockTool.check("{\"query\":\"Hundesteuer\"}").valid()).isTrue();
-    assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":10}").valid()).isTrue();
-    assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":11}").valid()).isFalse();
-    assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":\"3\"}").valid())
-        .isFalse();
-    assertThat(ToolCallingMockTool.check("{\"query\":\"x\",\"max_results\":null}").valid())
-        .isFalse();
-    assertThat(ToolCallingMockTool.check("{\"query\":\" \"}").valid()).isFalse();
-    assertThat(ToolCallingMockTool.check("{}").valid()).isFalse();
-    assertThat(ToolCallingMockTool.check("query=Hund").valid()).isFalse();
-    assertThat(ToolCallingMockTool.check("[\"Hund\"]").valid()).isFalse();
-    ToolCallingMockTool.ArgumentCheck invented =
-        ToolCallingMockTool.check("{\"query\":\"Baum\",\"year\":2024}");
+    ToolCallingTool tool = mock();
+    assertThat(tool.check("{\"query\":\"Hundesteuer\"}").valid()).isTrue();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":10}").valid()).isTrue();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":11}").valid()).isFalse();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":\"3\"}").valid()).isFalse();
+    assertThat(tool.check("{\"query\":\"x\",\"max_results\":null}").valid()).isFalse();
+    assertThat(tool.check("{\"query\":\" \"}").valid()).isFalse();
+    assertThat(tool.check("{}").valid()).isFalse();
+    assertThat(tool.check("query=Hund").valid()).isFalse();
+    assertThat(tool.check("[\"Hund\"]").valid()).isFalse();
+    ToolCallingTool.ArgumentCheck invented = tool.check("{\"query\":\"Baum\",\"year\":2024}");
     assertThat(invented.valid()).isFalse();
     assertThat(invented.unknownParameters()).containsExactly("year");
     assertThat(invented.query()).isEqualTo("Baum");
   }
 
-  static List<ToolCallingCase> cases() throws IOException {
-    return ToolCallingCase.load(CORPUS_DIR.resolve("cases.json"));
+  /**
+   * The production definition: the question is {@code frage}, undeclared properties stay valid (the
+   * tool ignores them) but count as invented, and there is no hit limit to check.
+   */
+  @Test
+  void theProductionDefinitionIsTheAgentLoopsSearch() {
+    ToolCallingTool tool = ToolCallingTool.production(ToolCallingCaseBase.load());
+
+    assertThat(tool.name()).isEqualTo("search_knowledge");
+    assertThat(tool.parameters())
+        .containsExactlyInAnyOrder(
+            "frage", "bibliotheken", "dokumentarten", "datum_von", "datum_bis");
+    assertThat(tool.maxResultsParameter()).isNull();
+    assertThat(tool.check("{\"frage\":\"Hundesteuer\"}").valid()).isTrue();
+    assertThat(tool.check("{\"query\":\"Hundesteuer\"}").valid()).isFalse();
+    assertThat(tool.check("{\"frage\":\"x\",\"bibliotheken\":\"a\"}").valid()).isFalse();
+    assertThat(tool.check("{\"frage\":\"x\",\"bibliotheken\":[\"a\"]}").valid()).isTrue();
+    ToolCallingTool.ArgumentCheck invented = tool.check("{\"frage\":\"Baum\",\"year\":2024}");
+    assertThat(invented.valid()).isTrue();
+    assertThat(invented.unknownParameters()).containsExactly("year");
+  }
+
+  static List<ToolCallingCase> cases() {
+    return ToolCallingCaseBase.load().cases();
+  }
+
+  private static ToolCallingTool mock() {
+    return ToolCallingTool.mock(ToolCallingCaseBase.load());
   }
 }

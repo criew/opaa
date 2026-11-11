@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import WizardLayout from '@/shared/ui/wizard/WizardLayout'
 import WizardReview from '@/shared/ui/wizard/WizardReview'
 import { useFieldError } from '@/shared/ui/wizard/useFieldError'
@@ -171,8 +170,8 @@ export default function AgentCreatePage() {
             danach auf seiner Seite ein.
           </Typography>
           <Box>
-            <FieldLabel htmlFor={`${ID}-name`}>Name</FieldLabel>
-            <TextField
+            <FormField
+              label="Name"
               id={`${ID}-name`}
               value={name}
               onChange={(e) => {
@@ -189,13 +188,13 @@ export default function AgentCreatePage() {
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`${ID}-purpose`}>Zweck (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Zweck"
+              optional
               id={`${ID}-purpose`}
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               multiline
-              minRows={2}
               fullWidth
               helperText={PURPOSE_HELP}
               slotProps={{ htmlInput: { maxLength: PURPOSE_MAX } }}

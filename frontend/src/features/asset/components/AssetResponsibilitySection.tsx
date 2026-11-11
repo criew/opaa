@@ -3,11 +3,10 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { formatDate } from '@/shared/utils/formatDate'
@@ -238,13 +237,13 @@ export default function AssetResponsibilitySection({
       >
         <Box>
           <Typography sx={{ color: 'text.secondary', mb: 2 }}>{lockConsequence}</Typography>
-          <FieldLabel htmlFor={`${idPrefix}-lock-reason`}>Grund</FieldLabel>
-          <TextField
+
+          <FormField
+            label="Grund"
             id={`${idPrefix}-lock-reason`}
             fullWidth
             size="small"
             multiline
-            minRows={2}
             value={reason}
             onChange={(e) => {
               setReason(e.target.value)

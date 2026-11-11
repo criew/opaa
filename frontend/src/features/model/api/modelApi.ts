@@ -11,6 +11,7 @@ import type {
   LlmModelTestRequest,
   LlmModelTestResponse,
   LlmModelToolCapabilityRequest,
+  LlmModelToolCheckResponse,
   ModelRoleTestRequest,
   RerankModelSettingsRequest,
   RerankModelSettingsResponse,
@@ -22,6 +23,7 @@ import type {
   TranscriptionRealtimeTestRequest,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
+import { isAxiosError } from 'axios'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // managed chat models ('s admin API) - SYSTEM_ADMIN only, same as the group/branding
@@ -83,6 +85,53 @@ export async function setLlmModelToolCapability(
     const { data } = await client.put<LlmModelResponse>(
       `/v1/admin/models/${modelId}/tool-capability`,
       request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Starts a run of the tool-calling case base against the model; 409 while another check runs. */
+export async function startLlmModelToolCheck(
+  modelId: string,
+  repetitions: number,
+): Promise<LlmModelToolCheckResponse> {
+  try {
+    const { data } = await client.post<LlmModelToolCheckResponse>(
+      `/v1/admin/models/${modelId}/tool-checks`,
+      { repetitions },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The newest check of the model, `null` when there is none. */
+export async function getLatestLlmModelToolCheck(
+  modelId: string,
+): Promise<LlmModelToolCheckResponse | null> {
+  try {
+    const { data } = await client.get<LlmModelToolCheckResponse>(
+      `/v1/admin/models/${modelId}/tool-checks/latest`,
+    )
+    return data
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) return null
+    normalizeError(err)
+  }
+}
+
+/** The Markdown report of a completed check. */
+export async function getLlmModelToolCheckReport(
+  modelId: string,
+  checkId: string,
+): Promise<string> {
+  try {
+    const { data } = await client.get<string>(
+      `/v1/admin/models/${modelId}/tool-checks/${checkId}/report`,
+      { responseType: 'text' },
     )
     return data
   } catch (err) {
