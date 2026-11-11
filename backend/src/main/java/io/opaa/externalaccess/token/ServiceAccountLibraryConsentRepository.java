@@ -17,7 +17,9 @@ public interface ServiceAccountLibraryConsentRepository
 
   /**
    * The open row of one pair, in force or run out; there is at most one. Locked until the caller's
-   * transaction ends, so a change and a withdrawal of the same consent never interleave.
+   * transaction ends, so no write lands between its read and the caller's write. A change and a
+   * withdrawal also lock the account's row first, so the later one reads what the earlier
+   * committed, a replacing row included.
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<ServiceAccountLibraryConsent> findByServiceAccountIdAndLibraryIdAndEndedAtIsNull(

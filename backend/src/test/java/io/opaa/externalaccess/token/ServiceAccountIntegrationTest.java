@@ -141,6 +141,53 @@ class ServiceAccountIntegrationTest {
     assertThat(searchableLibraries(rawValue)).containsExactly(consentedLibraryId.toString());
   }
 
+  /**
+   * A withdrawal that waits behind a change of the same consent reads what the change committed and
+   * ends the consent it wrote, instead of finding none and succeeding without effect.
+   */
+  @Test
+  void aWithdrawalWaitingBehindAChangeEndsTheConsentThatChangeWrote() throws Exception {
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    AtomicReference<Thread> withdrawal = new AtomicReference<>();
+    new TransactionTemplate(transactionManager)
+        .executeWithoutResult(
+            status -> {
+              consentService.set(
+                  asOwner(),
+                  consentedLibraryId,
+                  accountId,
+                  clock.instant().plus(Duration.ofDays(10)));
+              withdrawal.set(
+                  Thread.ofPlatform()
+                      .start(
+                          () -> {
+                            try {
+                              consentService.revoke(asOwner(), consentedLibraryId, accountId);
+                            } catch (Throwable e) {
+                              failure.set(e);
+                            }
+                          }));
+              try {
+                withdrawal.get().join(Duration.ofMillis(500));
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+              }
+            });
+    assertThat(withdrawal.get().join(Duration.ofSeconds(30))).isTrue();
+    assertThat(failure.get()).isNull();
+
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT COUNT(*) FROM service_account_library_consents"
+                    + " WHERE service_account_id = ? AND library_id = ? AND ended_at IS NULL",
+                Long.class,
+                accountId,
+                consentedLibraryId))
+        .as("open consents after the withdrawal")
+        .isZero();
+  }
+
   @Test
   void aWithdrawnConsentEmptiesTheViewAndKeepsItsRow() throws Exception {
     consentService.revoke(asOwner(), consentedLibraryId, accountId);
