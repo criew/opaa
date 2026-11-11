@@ -2,10 +2,6 @@ import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -27,6 +23,7 @@ import {
 } from '@/shared/ui/modelDiscovery/modelDiscovery'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
 import { controlHeight, fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -112,13 +109,11 @@ export default function LlmModelFormDialog({
   const addressRef = useRef<HTMLInputElement>(null)
 
   const isEdit = model !== null
-  const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Chat-Modell anlegen'
+  const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Neues Modell'
   const requiredHintId = 'llm-model-form-required-hint'
   const preset = presetOf(draft.baseUrl)
   const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
   const temperatureFieldId = 'llm-model-form-temperature'
-  // MUI gives the helper line of a TextField with `id` the ID `<id>-helper-text`.
-  const temperatureHelperId = `${temperatureFieldId}-helper-text`
 
   function isValid() {
     return (
@@ -219,6 +214,17 @@ export default function LlmModelFormDialog({
   }
 
   async function handleTest(modelIdentifier = draft.modelIdentifier) {
+    if (draft.baseUrl.trim() === '' || modelIdentifier.trim() === '') {
+      setTestResult({
+        success: false,
+        message: 'Bitte zuerst Basis-Adresse und Modell-Kennung angeben.',
+      })
+      return
+    }
+    if (temperatureUnreadable) {
+      setTestResult({ success: false, message: TEMPERATURE_UNREADABLE_HINT })
+      return
+    }
     const ticket = ++latestTest.current
     setTestResult(null)
     setTesting(true)
@@ -301,216 +307,206 @@ export default function LlmModelFormDialog({
           : '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
-      <DialogTitle>{titel}</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {resetsToolCapability && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Basis-Adresse oder Modell-Kennung geändert: Die Werkzeugfähigkeit ist nach dem Speichern
-            wieder ungeprüft.
-          </Alert>
-        )}
-        <Stack spacing={3.5} sx={{ mt: 1 }}>
-          <Box component="section" aria-labelledby="llm-model-endpoint-head">
-            <SectionHead component="h3" id="llm-model-endpoint-head">
-              1 · Endpunkt
-            </SectionHead>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
+    <FormDialog
+      open={open}
+      title={titel}
+      submitLabel={isEdit ? 'Speichern' : 'Anlegen'}
+      onSubmit={() => void handleSubmit()}
+      onClose={close}
+      busy={submitting}
+      busyAnnouncement="Das Modell wird gespeichert"
+      // Enter in the address field fetches the models of the endpoint
+      submitOnEnter={false}
+      secondaryAction={
+        <BusyButton
+          variant="outlined"
+          onClick={() => void handleTest()}
+          busy={testing}
+          busyAnnouncement="Verbindung wird getestet"
+        >
+          Verbindung testen
+        </BusyButton>
+      }
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {resetsToolCapability && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Basis-Adresse oder Modell-Kennung geändert: Die Werkzeugfähigkeit ist nach dem Speichern
+          wieder ungeprüft.
+        </Alert>
+      )}
+      <Stack spacing={3.5} sx={{ mt: 1 }}>
+        <Box component="section" aria-labelledby="llm-model-endpoint-head">
+          <SectionHead component="h3" id="llm-model-endpoint-head">
+            1 · Endpunkt
+          </SectionHead>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
+          >
+            <BaseUrlField
+              value={draft.baseUrl}
+              inputRef={addressRef}
+              onType={changeBaseUrl}
+              onChoose={choosePreset}
+              onSubmit={() => runDiscovery()}
+            />
+            <BusyButton
+              variant="outlined"
+              busy={discovery.state.status === 'loading'}
+              // DiscoveryStatus announces the loading; the button stays silent.
+              busyAnnouncement=""
+              disabled={draft.baseUrl.trim() === ''}
+              onClick={() => runDiscovery()}
+              sx={{ flexShrink: 0, height: controlHeight.regular, whiteSpace: 'nowrap' }}
             >
-              <BaseUrlField
-                value={draft.baseUrl}
-                inputRef={addressRef}
-                onType={changeBaseUrl}
-                onChoose={choosePreset}
-                onSubmit={() => runDiscovery()}
-              />
-              <BusyButton
-                variant="outlined"
-                busy={discovery.state.status === 'loading'}
-                // DiscoveryStatus announces the loading; the button stays silent.
-                busyAnnouncement=""
-                disabled={draft.baseUrl.trim() === ''}
-                onClick={() => runDiscovery()}
-                sx={{ flexShrink: 0, height: controlHeight.regular, whiteSpace: 'nowrap' }}
-              >
-                Modelle abrufen
-              </BusyButton>
-            </Stack>
-            <TextField
-              label="API-Schlüssel (optional)"
-              type="password"
-              value={apiKeyInput}
-              disabled={apiKeyClearRequested}
-              onChange={(e) => {
-                setApiKeyTouched(true)
-                setApiKeyClearRequested(false)
-                setApiKeyInput(e.target.value)
-              }}
-              helperText={
-                apiKeyClearRequested
-                  ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
-                  : isEdit
-                    ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
-                    : preset?.needsKey
-                      ? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
-                      : 'Lokal betriebene Modellserver brauchen meist keinen.'
-              }
-              size="small"
-              fullWidth
-              autoComplete="new-password"
-              sx={{ mt: 2 }}
-            />
-            {model?.apiKeySet && (
-              <Box sx={{ mt: 0.5 }}>
-                {apiKeyClearRequested ? (
-                  <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
-                    Entfernen rückgängig machen
-                  </Button>
-                ) : (
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => {
-                      setApiKeyClearRequested(true)
-                      setApiKeyTouched(false)
-                      setApiKeyInput('')
-                    }}
-                    aria-label={`Gespeicherten Schlüssel entfernen: ${model.displayName}`}
-                  >
-                    Gespeicherten Schlüssel entfernen
-                  </Button>
-                )}
-              </Box>
-            )}
-            <DiscoveryStatus state={discovery.state} idleHint={idleHint} />
-          </Box>
-
-          <Box component="section" aria-labelledby="llm-model-model-head">
-            <SectionHead component="h3" id="llm-model-model-head">
-              2 · Modell
-            </SectionHead>
-            <ModelIdentifierField
-              value={draft.modelIdentifier}
-              models={discovery.models}
-              loading={discovery.state.status === 'loading'}
-              onInputChange={(modelIdentifier) => {
-                setDraft((current) => ({ ...current, modelIdentifier }))
-                setContextLength(null)
-              }}
-              onSelect={selectModel}
-            />
-            {testing && (
-              <Typography
-                role="status"
-                sx={{ mt: 1, fontSize: fontSize.meta, color: 'text.secondary' }}
-              >
-                Verbindung wird getestet …
-              </Typography>
-            )}
-            {testResult && (
-              <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mt: 1.5 }}>
-                {testResult.message}
-              </Alert>
-            )}
-          </Box>
-
-          <Box component="section" aria-labelledby="llm-model-display-head">
-            <SectionHead component="h3" id="llm-model-display-head">
-              3 · Anzeige und Antwort
-            </SectionHead>
-            <Stack spacing={2}>
-              <TextField
-                label="Anzeigename"
-                required
-                value={draft.displayName}
-                onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
-                helperText="So erscheint das Modell in der Liste."
-                size="small"
-                fullWidth
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  id={temperatureFieldId}
-                  label="Temperatur (optional)"
-                  type="number"
-                  value={draft.temperature}
-                  onChange={(e) => {
-                    // An unreadable number (such as „0,7“ depending on the browser) yields an
-                    // empty value as well; it must not be silently saved as „keine Temperatur“.
-                    setTemperatureUnreadable(e.target.validity.badInput)
-                    setDraft({ ...draft, temperature: e.target.value })
-                  }}
-                  error={temperatureUnreadable}
-                  helperText={
-                    temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
-                  }
-                  slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
+              Modelle abrufen
+            </BusyButton>
+          </Stack>
+          <TextField
+            label="API-Schlüssel (optional)"
+            type="password"
+            value={apiKeyInput}
+            disabled={apiKeyClearRequested}
+            onChange={(e) => {
+              setApiKeyTouched(true)
+              setApiKeyClearRequested(false)
+              setApiKeyInput(e.target.value)
+            }}
+            helperText={
+              apiKeyClearRequested
+                ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
+                : isEdit
+                  ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
+                  : preset?.needsKey
+                    ? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
+                    : 'Lokal betriebene Modellserver brauchen meist keinen.'
+            }
+            size="small"
+            fullWidth
+            autoComplete="new-password"
+            sx={{ mt: 2 }}
+          />
+          {model?.apiKeySet && (
+            <Box sx={{ mt: 0.5 }}>
+              {apiKeyClearRequested ? (
+                <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
+                  Entfernen rückgängig machen
+                </Button>
+              ) : (
+                <Button
                   size="small"
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  label="Maximale Antwortlänge (Token)"
-                  required
-                  type="number"
-                  value={draft.maxTokens}
-                  onChange={(e) => {
-                    setMaxTokensTouched(true)
-                    setDraft({ ...draft, maxTokens: e.target.value })
+                  color="error"
+                  onClick={() => {
+                    setApiKeyClearRequested(true)
+                    setApiKeyTouched(false)
+                    setApiKeyInput('')
                   }}
-                  helperText={
-                    contextLength
-                      ? `Kontextfenster des Modells: ${formatTokens(contextLength)} Token. Vorgeschlagen ist höchstens die Hälfte davon.`
-                      : undefined
-                  }
-                  slotProps={{ htmlInput: { min: 1, max: contextLength ?? undefined } }}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-              </Stack>
-            </Stack>
-          </Box>
-          {!isValid() && (
-            <Typography id={requiredHintId} variant="caption" sx={{ color: 'text.secondary' }}>
-              {REQUIRED_FIELDS_HINT}
+                  aria-label={`Gespeicherten Schlüssel entfernen: ${model.displayName}`}
+                >
+                  Gespeicherten Schlüssel entfernen
+                </Button>
+              )}
+            </Box>
+          )}
+          <DiscoveryStatus state={discovery.state} idleHint={idleHint} />
+        </Box>
+
+        <Box component="section" aria-labelledby="llm-model-model-head">
+          <SectionHead component="h3" id="llm-model-model-head">
+            2 · Modell
+          </SectionHead>
+          <ModelIdentifierField
+            value={draft.modelIdentifier}
+            models={discovery.models}
+            loading={discovery.state.status === 'loading'}
+            onInputChange={(modelIdentifier) => {
+              setDraft((current) => ({ ...current, modelIdentifier }))
+              setContextLength(null)
+            }}
+            onSelect={selectModel}
+          />
+          {testing && (
+            <Typography
+              role="status"
+              sx={{ mt: 1, fontSize: fontSize.meta, color: 'text.secondary' }}
+            >
+              Verbindung wird getestet …
             </Typography>
           )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={() => void handleTest()}
-          disabled={
-            testing ||
-            temperatureUnreadable ||
-            draft.baseUrl.trim() === '' ||
-            draft.modelIdentifier.trim() === ''
-          }
-        >
-          {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-        </Button>
-        <Box sx={{ flex: 1 }} />
-        <Button onClick={close} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleSubmit()}
-          disabled={submitting || !isValid() || temperatureUnreadable}
-          aria-describedby={
-            !isValid() ? requiredHintId : temperatureUnreadable ? temperatureHelperId : undefined
-          }
-        >
-          {isEdit ? 'Speichern' : 'Anlegen'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          {testResult && (
+            <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mt: 1.5 }}>
+              {testResult.message}
+            </Alert>
+          )}
+        </Box>
+
+        <Box component="section" aria-labelledby="llm-model-display-head">
+          <SectionHead component="h3" id="llm-model-display-head">
+            3 · Anzeige und Antwort
+          </SectionHead>
+          <Stack spacing={2}>
+            <TextField
+              label="Anzeigename"
+              required
+              value={draft.displayName}
+              onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+              helperText="So erscheint das Modell in der Liste."
+              size="small"
+              fullWidth
+            />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                id={temperatureFieldId}
+                label="Temperatur (optional)"
+                type="number"
+                value={draft.temperature}
+                onChange={(e) => {
+                  // An unreadable number (such as „0,7“ depending on the browser) yields an
+                  // empty value as well; it must not be silently saved as „keine Temperatur“.
+                  setTemperatureUnreadable(e.target.validity.badInput)
+                  setDraft({ ...draft, temperature: e.target.value })
+                }}
+                error={temperatureUnreadable}
+                helperText={
+                  temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
+                }
+                slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Maximale Antwortlänge (Token)"
+                required
+                type="number"
+                value={draft.maxTokens}
+                onChange={(e) => {
+                  setMaxTokensTouched(true)
+                  setDraft({ ...draft, maxTokens: e.target.value })
+                }}
+                helperText={
+                  contextLength
+                    ? `Kontextfenster des Modells: ${formatTokens(contextLength)} Token. Vorgeschlagen ist höchstens die Hälfte davon.`
+                    : undefined
+                }
+                slotProps={{ htmlInput: { min: 1, max: contextLength ?? undefined } }}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+          </Stack>
+        </Box>
+        {!isValid() && (
+          <Typography id={requiredHintId} variant="caption" sx={{ color: 'text.secondary' }}>
+            {REQUIRED_FIELDS_HINT}
+          </Typography>
+        )}
+      </Stack>
+    </FormDialog>
   )
 }

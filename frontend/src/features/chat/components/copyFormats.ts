@@ -1,3 +1,4 @@
+import type { AgentRun } from '@/shared/api/types'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   CLAIMED_MARKER_RE,
@@ -6,6 +7,7 @@ import {
 } from '@/shared/ui/markdown/citations'
 import type { OutwardPolicy } from '@/shared/ui/markdown/outwardMarkdown'
 import { answerForOutside } from '@/shared/ui/markdown/outwardMarkdown'
+import { plainNoteText } from './copyNote'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
@@ -167,6 +169,24 @@ export function answerAsPlainText(content: string, policy: OutwardPolicy = {}): 
 }
 
 export { copyNote } from './copyNote'
+
+/**
+ * The draft notice of an agent answer with agent and revision, so the mark travels with a copied
+ * or exported answer; `null` for an answer without an agent run.
+ */
+export function agentDraftNote(run: AgentRun | undefined): string | null {
+  if (!run) return null
+  const notice = 'Entwurf, nicht geprüft'
+  if (!run.stamp) return notice
+  const agent = run.agentName ? `Agent „${plainNoteText(run.agentName)}“` : 'Agent'
+  return `${notice} · ${agent}, Fassung ${run.stamp.agentRevision}`
+}
+
+/** The copy note led by the draft notice of an agent answer, the note alone otherwise. */
+export function noteWithDraft(note: string, run: AgentRun | undefined): string {
+  const draft = agentDraftNote(run)
+  return draft ? `${draft} · ${note}` : note
+}
 
 /** Markdown followed by a rule and the note as its own paragraph. */
 export function markdownWithNote(markdown: string, note: string): string {

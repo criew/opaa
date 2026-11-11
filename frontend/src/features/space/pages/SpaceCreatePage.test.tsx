@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
@@ -32,19 +32,29 @@ describe('SpaceCreatePage (#594)', () => {
     useSpaceStore.setState({ createNewSpace: mockCreateNewSpace })
   })
 
-  it('renders the stepper and blocks "Weiter" until a name is entered', async () => {
+  it('renders the stepper and names a missing name at the field on "Weiter"', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
     expect(screen.getByRole('heading', { level: 1, name: 'Neuer Space' })).toBeInTheDocument()
-    expect(screen.getByText('1 · Grunddaten')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    expect(screen.getByText('1 · Stammdaten')).toBeInTheDocument()
     expect(screen.getByText('2 · Mitglieder')).toBeInTheDocument()
     expect(screen.getByText('3 · Inhalte')).toBeInTheDocument()
-    expect(screen.getByText('4 · Zusammenfassung')).toBeInTheDocument()
+    expect(screen.getByText('4 · Prüfen')).toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
-    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
+    const next = screen.getByRole('button', { name: 'Weiter' })
+    expect(next).toBeEnabled()
+    await user.click(next)
+    const name = screen.getByLabelText(/Name/)
+    expect(name).toHaveAccessibleDescription('Name fehlt')
+    expect(name).toHaveFocus()
+    expect(document.title).toMatch(/^Fehler: Stammdaten/)
+
+    await user.type(name, 'Widerspruchsstelle')
+    expect(name).not.toHaveAccessibleDescription('Name fehlt')
+    await user.click(next)
+    expect(screen.getByRole('heading', { level: 2, name: 'Mitglieder' })).toHaveFocus()
   })
 
   it('explains a missing Anlegerecht instead of hiding the button (#1813)', async () => {
@@ -61,10 +71,13 @@ describe('SpaceCreatePage (#594)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    const createButton = screen.getByRole('button', { name: 'Space anlegen' })
-    expect(createButton).toBeDisabled()
-    // the reason is not merely on the page, it is attached to the button that cannot be used
+    const createButton = screen.getByRole('button', { name: 'Anlegen' })
+    expect(createButton).toBeEnabled()
+    // the reason is not merely on the page, it is attached to the button, which leads to it
     expect(createButton).toHaveAccessibleDescription(hint.textContent ?? '')
+    await user.click(createButton)
+    expect(hint.closest('[role="alert"]')).toHaveFocus()
+    expect(mockCreateNewSpace).not.toHaveBeenCalled()
   })
 
   it('leaves the button usable while the capabilities are still unknown (#1813)', async () => {
@@ -77,7 +90,7 @@ describe('SpaceCreatePage (#594)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     expect(screen.queryByText(/Ihnen fehlt das Anlegerecht/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Anlegen' })).toBeEnabled()
   })
 
   it('keeps entered values when going back a step', async () => {
@@ -90,6 +103,22 @@ describe('SpaceCreatePage (#594)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     expect(screen.getByLabelText(/Name/)).toHaveValue('Widerspruchsstelle')
+  })
+
+  it('leads from „Ändern“ to the step of the answer and with „Weiter“ back to „Prüfen“', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Mitglieder$/ }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Mitglieder' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toHaveFocus()
   })
 
   it('shows the summary and creates the space with its members', async () => {
@@ -105,7 +134,7 @@ describe('SpaceCreatePage (#594)', () => {
     expect(screen.getByText('Widerspruchsstelle')).toBeInTheDocument()
     expect(screen.getByText('Referat 12')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(mockCreateNewSpace).toHaveBeenCalledWith(
       'Widerspruchsstelle',
@@ -115,6 +144,7 @@ describe('SpaceCreatePage (#594)', () => {
       [],
     )
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
+    expect(await screen.findByText('„Widerspruchsstelle“ wurde angelegt.')).toBeInTheDocument()
   })
 
   it('#1923: offers the chat cleanup switch, off by default, and passes it on', async () => {
@@ -136,7 +166,7 @@ describe('SpaceCreatePage (#594)', () => {
         'Inaktive Chats werden nach 90 Tagen archiviert und nach weiteren 365 Tagen gelöscht.',
       ),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], true, [])
   })
@@ -224,7 +254,7 @@ describe('SpaceCreatePage (#594)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(screen.getByText('Chats')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Ändern\s*Chats$/ })).toBeInTheDocument()
     expect(
       screen.getByText('Inaktive Chats werden automatisch archiviert und später gelöscht.'),
     ).toBeInTheDocument()
@@ -240,7 +270,7 @@ describe('SpaceCreatePage (#594)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(screen.queryByText('Chats')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Ändern\s*Chats$/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Inaktive Chats werden/)).not.toBeInTheDocument()
   })
 
@@ -262,7 +292,7 @@ describe('SpaceCreatePage (#594)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
     expect(screen.getByText(/Referat 5 Projektteam · Gruppe · Kurator/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
     expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [
       { subjectType: 'GROUP', subjectId: 'group-phoenix', role: 'CURATOR' },
     ])
@@ -303,7 +333,7 @@ describe('SpaceCreatePage (#594)', () => {
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
     await noteAlice(user)
-    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(mockCreateNewSpace).toHaveBeenCalledTimes(1)
     expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [
@@ -320,13 +350,13 @@ describe('SpaceCreatePage (#594)', () => {
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
     await noteAlice(user)
-    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(
       await screen.findByText(/Der Space wurde nicht angelegt: Benutzer nicht gefunden/),
     ).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Anlegen' })).toBeEnabled()
   }, 15000)
 
   it('asks before cancelling once something was entered', async () => {
@@ -355,7 +385,7 @@ describe('SpaceCreatePage (#594)', () => {
       await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
       expect(screen.getByText(NO_KNOWLEDGE_SUMMARY)).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
       expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [])
     })
 
@@ -372,7 +402,7 @@ describe('SpaceCreatePage (#594)', () => {
       await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
       expect(screen.queryByText(NO_KNOWLEDGE_SUMMARY)).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
       expect(mockCreateNewSpace).toHaveBeenCalledWith(
         'Widerspruchsstelle',
         '',
@@ -516,9 +546,52 @@ describe('SpaceCreatePage (#594)', () => {
       expect(tile).toHaveAttribute('aria-disabled', 'true')
 
       await user.click(screen.getByRole('button', { name: 'Weiter' }))
-      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
       expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [])
+    })
+
+    // „Anlegen“ before the preselection's catalog entry is in: the click is announced as busy and
+    // taken up once the entry is decided, never swallowed.
+    it('creates after the preselection is decided when „Anlegen“ comes first', async () => {
+      let answer: () => void = () => {}
+      const answered = new Promise<void>((resolve) => {
+        answer = resolve
+      })
+      server.use(
+        http.get('/api/v1/catalog', async () => {
+          await answered
+          return HttpResponse.json({
+            entries: [],
+            page: 0,
+            size: 50,
+            totalElements: 0,
+            totalPages: 0,
+          })
+        }),
+      )
+      mockLocationState = {
+        preselect: {
+          assetType: 'PROMPT_LIBRARY',
+          assetId: 'prompt-library-referat-50',
+          name: 'Formulierungshilfen Referat 50',
+        },
+      }
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+
+      expect(screen.getByRole('button', { name: 'Anlegen' })).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByText('Space wird angelegt')).toBeInTheDocument()
+      expect(mockCreateNewSpace).not.toHaveBeenCalled()
+
+      answer()
+      await waitFor(() => expect(mockCreateNewSpace).toHaveBeenCalledTimes(1))
     })
   })
 })

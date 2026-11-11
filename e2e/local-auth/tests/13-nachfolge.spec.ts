@@ -56,7 +56,7 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     }
     await Promise.all([
       owner.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
-      owner.getByRole("button", { name: "Space anlegen" }).click(),
+      owner.getByRole("button", { name: "Anlegen", exact: true }).click(),
     ]);
     await leavingContext.close();
 
@@ -92,7 +92,7 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     }
     await dialog.getByRole("button", { name: "Vorschau erstellen" }).click();
     await expect(dialog.getByText("Vorschau", { exact: true })).toBeVisible();
-    await dialog.getByRole("button", { name: "Übertragung bestätigen" }).click();
+    await dialog.getByRole("button", { name: "Übertragen" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(entry).toHaveCount(0);
     await adminContext.close();

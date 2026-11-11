@@ -8,6 +8,7 @@ import {
   createLibraryWithDocuments,
   expectCitedSource,
   indexedDocumentStates,
+  nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
 } from "../../fixtures/chat";
@@ -128,6 +129,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     await openNewLibraryWizard(page);
     await page.getByRole("radio", { name: /Webverzeichnis/ }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await nameNewLibrary(page, "E2E Assistent");
     await page.getByLabel("Adresse", { exact: true }).fill(`http://${PROBE_HOST}/`);
     await page.getByRole("button", { name: "Verbindung testen" }).click();
     await expect(

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -15,6 +14,8 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
 import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const MIN_DAILY_LIMIT = 1
 const MAX_DAILY_LIMIT = 10
@@ -107,20 +108,13 @@ export default function SelfDisclosureSettingsSection() {
       description="Jede Person lädt ihre gespeicherten Daten unter „Meine Daten“ selbst herunter. Abschalten lässt sich das nur für die ganze Installation; das Recht auf Auskunft bei der Behörde bleibt unberührt."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Einstellungen konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Einstellungen werden geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <FormControlLabel

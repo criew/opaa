@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
@@ -22,6 +19,7 @@ import { plainMessage } from './sourceCore/plainMessage'
 import { PATH_SEPARATOR } from './sourceCore/paths'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
 import { formatDateTime, formatNumber } from '@/shared/utils/formatDate'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** The run list offers „Nur mit Fehlern“ from this many runs on. */
 const FILTER_FROM = 5
@@ -335,35 +333,29 @@ function RunDetail({
           </Typography>
         ))}
       </Disclosure>
-      <Dialog
+      <ViewDialog
         open={allOf !== null}
         onClose={() => setAllOf(null)}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby={`run-events-title-${run.id}`}
+        titleId={`run-events-title-${run.id}`}
+        title={`${allOf?.label ?? ''} · ${count(allOf?.events.length ?? 0)}`}
       >
-        <DialogTitleWithClose id={`run-events-title-${run.id}`} onClose={() => setAllOf(null)}>
-          {allOf?.label} · {count(allOf?.events.length ?? 0)}
-        </DialogTitleWithClose>
-        <DialogContent>
-          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-            {allOf?.events.map((event, index) => (
-              <Box
-                component="li"
-                key={`${event.reference ?? ''}-${index}`}
-                sx={{ py: 0.75, borderBottom: 1, borderColor: 'divider' }}
-              >
-                <Typography sx={{ ...LINE, overflowWrap: 'anywhere' }}>
-                  {event.reference ?? '–'}
-                </Typography>
-                <Typography sx={{ ...LINE, color: 'text.secondary' }}>
-                  {plainMessage(event.message)}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </DialogContent>
-      </Dialog>
+        <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+          {allOf?.events.map((event, index) => (
+            <Box
+              component="li"
+              key={`${event.reference ?? ''}-${index}`}
+              sx={{ py: 0.75, borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Typography sx={{ ...LINE, overflowWrap: 'anywhere' }}>
+                {event.reference ?? '–'}
+              </Typography>
+              <Typography sx={{ ...LINE, color: 'text.secondary' }}>
+                {plainMessage(event.message)}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </ViewDialog>
     </Box>
   )
 }

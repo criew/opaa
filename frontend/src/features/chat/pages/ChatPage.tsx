@@ -5,7 +5,6 @@ import ButtonBase from '@mui/material/ButtonBase'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/MessageList'
@@ -23,6 +22,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The header's title until the chat has one of its own. */
 const NEW_CHAT_TITLE = 'Neuer Chat'
@@ -244,8 +244,8 @@ export default function ChatPage() {
 
   if (isLoadingChat) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }

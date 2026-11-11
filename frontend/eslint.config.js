@@ -60,6 +60,33 @@ const NO_COMPACT_DIALOG_ACTION = {
   message: 'Buttons in a dialog footer have the regular size (guidelines 5.1).',
 }
 
+// Guidelines 5.6: a dialog or side panel is one of the building blocks in shared/ui/dialog.
+const DIALOG_MESSAGE =
+  'Dialogs and side panels come from @/shared/ui/dialog (FormDialog, ViewDialog, SecretDialog, SidePanel), confirmations from confirmAction (guidelines 5.6, 5.10).'
+const NO_RAW_DIALOG = {
+  paths: [
+    {
+      name: '@mui/material',
+      importNames: [
+        'Dialog',
+        'DialogActions',
+        'DialogContent',
+        'DialogContentText',
+        'DialogTitle',
+        'Drawer',
+        'SwipeableDrawer',
+      ],
+      message: DIALOG_MESSAGE,
+    },
+  ],
+  patterns: [
+    {
+      group: ['@mui/material/Dialog*', '@mui/material/Drawer', '@mui/material/SwipeableDrawer'],
+      message: DIALOG_MESSAGE,
+    },
+  ],
+}
+
 export default defineConfig([
   globalIgnores(['dist', 'dist-prototype', 'public/mockServiceWorker.js']),
   {
@@ -115,6 +142,18 @@ export default defineConfig([
         ...NO_FONT_SIZE_NUMBER,
       ],
     },
+  },
+  // Guidelines 5.6: no dialog or drawer of its own outside shared/ui. Two files keep a drawer that
+  // is no dialog of the admin area: the navigation of the shell on narrow screens, and the
+  // evidence panel of the chat, the pattern for a view in a side panel (reworked with #3743).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/shared/ui/**',
+      'src/app/shell/AppShell.tsx',
+      'src/features/chat/components/SourceEvidenceDrawer.tsx',
+    ],
+    rules: { 'no-restricted-imports': ['error', NO_RAW_DIALOG] },
   },
   // Theme boundaries; rules in frontend/AGENTS.md.
   themeBoundaries,

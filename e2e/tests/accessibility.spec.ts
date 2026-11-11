@@ -4,6 +4,7 @@ import {
   askQuestion,
   chatSidebarEntries,
   clearSearchScope,
+  nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
 } from "../fixtures/chat";
@@ -336,9 +337,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // Der Schritt „Quelle einrichten" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
+  // Der Schritt „Quelle" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
   // frisch angelegten, wählbaren Zugang.
-  test("Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata", async ({
+  test("Wissens-Assistent: Schritt Quelle mit Zugangswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     const profileName = `A11y Zugang ${Date.now()}`;
@@ -350,6 +351,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await openNewLibraryWizard(page);
       await page.getByRole("radio", { name: /RSS-Feed/ }).click();
       await page.getByRole("button", { name: "Weiter", exact: true }).click();
+      await nameNewLibrary(page, "E2E Assistent");
       await expect(
         page
           .getByRole("radiogroup", { name: "Zugang" })
@@ -376,7 +378,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   }) => {
     await gotoConnectionProfiles(page);
     await page.getByRole("button", { name: "Neuer Zugang" }).click();
-    const form = page.getByRole("dialog", { name: "Zugang anlegen" });
+    const form = page.getByRole("dialog", { name: "Neuer Zugang" });
     await form.getByRole("combobox", { name: /Quellart/ }).click();
     const locked = page
       .locator('[role="option"][aria-disabled="true"]')
@@ -772,7 +774,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       .getByRole("button", { name: "Einstellungen", exact: true })
       .click();
     const panel = page.getByRole("dialog", {
-      name: "Einstellungen für externe KI-Werkzeuge",
+      name: "Einstellungen",
     });
     await expect(
       panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),

@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import { DEV_USER_HEADER } from '../fixtures/libraries'
 import type { Page, Response } from '@playwright/test'
-import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, nameNewLibrary, openNewLibraryWizard } from '../fixtures/chat'
 
 // Deterministic, generic, fully invented RSS-2.0 fixtures for a fictional "Beispielbehörde" -
 // served statically by the "rss-feed" service (e2e/docker-compose.e2e.yml), reachable from the
@@ -53,14 +53,13 @@ async function createRssLibrary(page: Page, name: string, feedUrl: string): Prom
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await nameNewLibrary(page, name)
   await page.getByLabel('Adresse', { exact: true }).fill(feedUrl)
   // The run each scenario measures is the one it triggers itself: an immediate first run from the
   // wizard can finish before the detail page polls, and the explicit trigger then measures a
   // second run over an unchanged feed instead.
   await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
   await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
-  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()
@@ -255,6 +254,7 @@ test.describe('RSS-Feed-Quelle: Inhaltsselektor im Verbindungstest (#3396)', () 
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /RSS-Feed/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await nameNewLibrary(page, 'E2E Assistent')
     await page.getByLabel('Adresse', { exact: true }).fill(FEED_URL_OK)
     await page.getByRole('button', { name: 'Ändern Umfang' }).click()
     await page.getByLabel('Inhaltsselektor (optional)').fill('main')

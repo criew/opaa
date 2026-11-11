@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -31,6 +30,9 @@ import { RECENT_PAGE_SIZE } from '../stores/chatListStore'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -89,7 +91,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
   const isLoading = useChatListStore((s) => s.isLoading)
-  const error = useChatListStore((s) => s.error)
+  const loadError = useChatListStore((s) => s.loadError)
   const loadChats = useChatListStore((s) => s.loadChats)
   const renameChat = useChatListStore((s) => s.renameChat)
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
@@ -222,7 +224,9 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     const title = renameValue.trim()
     setRenamingChatId(null)
     if (!title) return
-    await renameChat(spaceId, chatId, title)
+    if (!(await renameChat(spaceId, chatId, title))) {
+      reportActionFailure('Der Chat konnte nicht umbenannt werden.')
+    }
   }
 
   function handlePin(chat: ChatSummary, pinned: boolean) {
@@ -233,12 +237,22 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     }
     refocusMovedChatIdRef.current = chat.id
     pinFocusChatIdRef.current = chat.id
-    void setChatPinned(spaceId, chat.id, pinned).finally(() => {
-      // Deferred past the render of a rollback, whose effect still needs the id.
-      setTimeout(() => {
-        if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
-      }, 0)
-    })
+    void setChatPinned(spaceId, chat.id, pinned)
+      .then((held) => {
+        if (!held && useChatListStore.getState().error) {
+          reportActionFailure(
+            pinned
+              ? 'Der Chat konnte nicht angeheftet werden.'
+              : 'Der Chat konnte nicht gelöst werden.',
+          )
+        }
+      })
+      .finally(() => {
+        // Deferred past the render of a rollback, whose effect still needs the id.
+        setTimeout(() => {
+          if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
+        }, 0)
+      })
   }
 
   /**
@@ -278,10 +292,16 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     return (shown[index + 1] ?? shown[index - 1])?.id ?? null
   }
 
+  /** A failed action on the list is a notice of its own; the list and its load state stay. */
+  function reportActionFailure(fallback: string) {
+    notify(useChatListStore.getState().error ?? fallback, 'error')
+  }
+
   async function handleArchive(chat: ChatSummary) {
     const neighbour = neighbourOf(chat.id)
     const archived = await setChatArchived(spaceId, chat.id, true)
     if (!archived) {
+      reportActionFailure('Der Chat konnte nicht archiviert werden.')
       actionButtonRefs.current?.get(chat.id)?.focus()
       return
     }
@@ -299,7 +319,10 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
       tone: 'danger',
     })
     if (!confirmed) return
-    await deleteChatFromList(spaceId, chat.id)
+    if (!(await deleteChatFromList(spaceId, chat.id))) {
+      reportActionFailure('Der Chat konnte nicht gelöscht werden.')
+      return
+    }
     if (location.pathname === `/spaces/${spaceId}/chats/${chat.id}`) {
       navigate(`/spaces/${spaceId}/chats/new`, { replace: true })
     }
@@ -577,22 +600,23 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
         </Box>
       </Box>
 
-      {error && (
-        <Typography role="alert" variant="body2" sx={{ color: 'error.main', mb: 1 }}>
-          {error}
-        </Typography>
-      )}
-
       {chats === undefined && isLoading ? (
-        <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={20} />
-        </Box>
-      ) : !chats || chats.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }} variant="body2">
-          Keine aktiven Chats in diesem Space.
-        </Typography>
+        <LoadingState shape="lines" count={4} />
+      ) : (chats === undefined || chats.length === 0) && loadError ? (
+        // Failed and empty never stand together: without a list there is only the notice.
+        <LoadError
+          message="Chats konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void loadChats(spaceId)}
+        />
       ) : (
-        renderChats(chats)
+        <>
+          {!chats || chats.length === 0 ? (
+            <EmptyState message="Noch keine aktiven Chats in diesem Space." />
+          ) : (
+            renderChats(chats)
+          )}
+        </>
       )}
     </Box>
   )

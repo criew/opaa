@@ -1,19 +1,21 @@
 import { useState } from 'react'
-import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
-import PageHeading from '@/shared/ui/a11y/PageHeading'
-import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
+import WizardLayout from '@/shared/ui/wizard/WizardLayout'
+import WizardReview from '@/shared/ui/wizard/WizardReview'
+import { useFieldError } from '@/shared/ui/wizard/useFieldError'
+import { STEP_MASTER_DATA, STEP_REVIEW } from '@/shared/ui/wizard/wizardSteps'
 import {
   AssetNameFields,
   AssetOwnerFields,
   AssetRightsFields,
   applyPendingGrantsAfterCreation,
+  masterDataReview,
+  sharingReview,
   type PendingGrant,
 } from '@/features/asset'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
@@ -21,15 +23,14 @@ import { CATALOG_ROUTE, documentTemplateRoute } from '@/shared/routes'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { createDocumentTemplate } from '../api/documentTemplateApi'
 import TemplateFilePicker from '../components/TemplateFilePicker'
-import { fontSize } from '@/shared/theme/tokens'
 
-const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
-const STEP_TITLES = ['Stammdaten', 'Wem gehört die Vorlage?', 'Rechte'] as const
+const STEPS = [STEP_MASTER_DATA, 'Freigaben', STEP_REVIEW] as const
+const STEP_SHARING = 1
 
 /**
- * The creation wizard of a document template: name, description and the Word file, then owner
- * and rights - the steps of the other asset wizards. The file is checked only on creation; a
- * rejection names what is wrong with it.
+ * The creation wizard of a document template: Stammdaten with name, description and the Word
+ * file, Freigaben (owner and rights), Prüfen - the steps of the other asset wizards. The file is
+ * checked only on creation; a rejection names what is wrong with it.
  */
 export default function DocumentTemplateCreatePage() {
   const navigate = useNavigate()
@@ -37,13 +38,17 @@ export default function DocumentTemplateCreatePage() {
   const myGroups = useMyGroups()
 
   const [activeStep, setActiveStep] = useState(0)
+  const [returnToReview, setReturnToReview] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [name, setName] = useState('')
+  const nameCheck = useFieldError('Name fehlt')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const fileCheck = useFieldError<HTMLButtonElement>('Word-Datei fehlt')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
+  const groupCheck = useFieldError('Gruppe fehlt')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
   const missingCapability = isMissing('CREATE_TEMPLATE')
@@ -51,8 +56,6 @@ export default function DocumentTemplateCreatePage() {
     : null
   const isDirty =
     name.trim() !== '' || description.trim() !== '' || file !== null || pendingGrants.length > 0
-  const lastStep = STEPS.length - 1
-  const stepComplete = name.trim() !== '' && file !== null
 
   const handleCancel = async () => {
     if (isDirty) {
@@ -68,16 +71,30 @@ export default function DocumentTemplateCreatePage() {
   }
 
   const handleNext = () => {
-    if (activeStep === 1 && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
+    if (activeStep === 0) {
+      // both fields report at once; the focus goes to the first one missing
+      const fileThere = fileCheck.check(file !== null)
+      const nameThere = nameCheck.check(name.trim() !== '')
+      if (!nameThere || !fileThere) return
+    }
+    if (
+      activeStep === STEP_SHARING &&
+      !groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
+    ) {
       return
     }
+    setActiveStep((step) => (returnToReview ? STEPS.length - 1 : step + 1))
+    setReturnToReview(false)
+  }
+
+  const changeAt = (step: number) => {
+    setReturnToReview(true)
     setError(null)
-    setActiveStep((step) => step + 1)
+    setActiveStep(step)
   }
 
   const handleCreate = async () => {
-    if (!file) return
+    if (!file || submitting) return
     setSubmitting(true)
     setError(null)
     try {
@@ -89,6 +106,7 @@ export default function DocumentTemplateCreatePage() {
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
       })
       await applyPendingGrantsAfterCreation('DOCUMENT_TEMPLATE', created.id, pendingGrants)
+      notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(documentTemplateRoute(created.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Die Vorlage konnte nicht angelegt werden')
@@ -96,121 +114,103 @@ export default function DocumentTemplateCreatePage() {
     }
   }
 
+  const sharing = {
+    ownerType,
+    selectedGroup,
+    pendingGrants,
+    onChangeSharing: () => changeAt(STEP_SHARING),
+  }
+
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
-          Neue Vorlage
-        </Typography>
-        <PageHeading title="Neue Vorlage" visuallyHidden />
-        <Typography
-          component="div"
-          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
-          aria-hidden
-        >
-          {STEP_TITLES[activeStep]}
-        </Typography>
-        <WizardStepBar steps={STEPS} active={activeStep} />
-
-        {missingCapability && (
-          <Alert severity="info" sx={{ mb: 2 }} id="document-template-create-capability-hint">
-            {missingCapability}
-          </Alert>
-        )}
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-          {activeStep === 0 && (
-            <>
-              <AssetNameFields
-                idPrefix="document-template-create"
-                name={name}
-                onNameChange={setName}
-                description={description}
-                onDescriptionChange={setDescription}
-                namePlaceholder="z. B. Vermerk Referat 50"
-              />
-              <TemplateFilePicker file={file} onFileChange={setFile} />
-            </>
-          )}
-          {activeStep === 1 && (
-            <>
-              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-                Eine Gruppe als Eigentümerin übersteht jeden Personalwechsel — für Vorlagen, die ein
-                Referat gemeinsam pflegt, ist sie die haltbarere Wahl.
-              </Typography>
-              <AssetOwnerFields
-                idPrefix="document-template-create"
-                assetType="DOCUMENT_TEMPLATE"
-                ownerType={ownerType}
-                onOwnerTypeChange={setOwnerType}
-                myGroups={myGroups}
-                selectedGroup={selectedGroup}
-                onSelectedGroupChange={setSelectedGroup}
-              />
-            </>
-          )}
-          {activeStep === 2 && (
-            <AssetRightsFields
-              pendingGrants={pendingGrants}
-              onPendingGrantsChange={setPendingGrants}
-            />
-          )}
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            mt: 4,
-            pt: 2,
-            borderTop: 1,
-            borderColor: 'divider',
-          }}
-        >
-          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
-            Abbrechen
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          {activeStep === lastStep && pendingGrants.length > 0 && (
-            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-              {pendingGrants.length === 1
-                ? '1 Freigabe vorgemerkt'
-                : `${pendingGrants.length} Freigaben vorgemerkt`}
-            </Typography>
-          )}
-          {activeStep > 0 && (
-            <Button
-              variant="outlined"
-              onClick={() => setActiveStep((step) => step - 1)}
-              disabled={submitting}
-            >
-              Zurück
-            </Button>
-          )}
-          {activeStep < lastStep ? (
-            <Button variant="contained" onClick={handleNext} disabled={!stepComplete}>
-              {activeStep === 1 ? 'Weiter zu Rechten' : 'Weiter'}
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={() => void handleCreate()}
-              disabled={submitting || missingCapability !== null || !stepComplete}
-              aria-describedby={
-                missingCapability !== null ? 'document-template-create-capability-hint' : undefined
-              }
-            >
-              {submitting ? 'Wird angelegt …' : 'Vorlage anlegen'}
-            </Button>
-          )}
-        </Box>
-      </Box>
-    </Box>
+    <WizardLayout
+      object="Neue Vorlage"
+      steps={STEPS}
+      activeStep={activeStep}
+      failed={nameCheck.error !== null || fileCheck.error !== null || groupCheck.error !== null}
+      createBlockedBy={missingCapability}
+      error={error}
+      footerNote={
+        activeStep === STEP_SHARING && pendingGrants.length > 0
+          ? pendingGrants.length === 1
+            ? '1 Freigabe vorgemerkt'
+            : `${pendingGrants.length} Freigaben vorgemerkt`
+          : null
+      }
+      footerSeparated={activeStep !== STEPS.length - 1}
+      submitting={submitting}
+      createAnnouncement="Vorlage wird angelegt"
+      onCancel={() => void handleCancel()}
+      onBack={() => {
+        setReturnToReview(false)
+        setActiveStep((step) => step - 1)
+      }}
+      onNext={handleNext}
+      onCreate={() => void handleCreate()}
+    >
+      {activeStep === 0 && (
+        <>
+          <AssetNameFields
+            idPrefix="document-template-create"
+            name={name}
+            onNameChange={(next) => {
+              nameCheck.clear()
+              setName(next)
+            }}
+            nameError={nameCheck.error}
+            nameInputRef={nameCheck.ref}
+            description={description}
+            onDescriptionChange={setDescription}
+            namePlaceholder="z. B. Vermerk Referat 50"
+          />
+          <TemplateFilePicker
+            file={file}
+            onFileChange={(next) => {
+              fileCheck.clear()
+              setFile(next)
+            }}
+            error={fileCheck.error}
+            buttonRef={fileCheck.ref}
+          />
+        </>
+      )}
+      {activeStep === STEP_SHARING && (
+        <>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Eine Gruppe als Eigentümerin übersteht jeden Personalwechsel — für Vorlagen, die ein
+            Referat gemeinsam pflegt, ist sie die haltbarere Wahl.
+          </Typography>
+          <AssetOwnerFields
+            idPrefix="document-template-create"
+            assetType="DOCUMENT_TEMPLATE"
+            ownerType={ownerType}
+            onOwnerTypeChange={(next) => {
+              groupCheck.clear()
+              setOwnerType(next)
+            }}
+            myGroups={myGroups}
+            selectedGroup={selectedGroup}
+            onSelectedGroupChange={(group) => {
+              groupCheck.clear()
+              setSelectedGroup(group)
+            }}
+            groupError={groupCheck.error}
+            groupInputRef={groupCheck.ref}
+          />
+          <AssetRightsFields
+            pendingGrants={pendingGrants}
+            onPendingGrantsChange={setPendingGrants}
+          />
+        </>
+      )}
+      {activeStep === STEPS.length - 1 && (
+        <WizardReview
+          entries={[
+            ...masterDataReview({ name, description, onChangeMasterData: () => changeAt(0) }),
+            { label: 'Word-Datei', value: file?.name ?? '', onChange: () => changeAt(0) },
+            ...sharingReview(sharing),
+          ]}
+        />
+      )}
+    </WizardLayout>
   )
 }

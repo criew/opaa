@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Typography from '@mui/material/Typography'
 import type { DirectorySyncSettingsResponse } from '@/shared/api/types'
 import { getDirectorySyncSettings, updateDirectorySyncSettings } from '../api/directorySyncApi'
 import FactoryDefaultNumberSetting from '@/shared/ui/FactoryDefaultNumberSetting'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function percentLabel(percent: number): string {
   return `${percent} %`
@@ -50,20 +48,13 @@ export default function DirectorySyncThresholdSection() {
       description="Würde ein Lauf mehr als diesen Anteil der Mitgliedschaften, Gruppen oder Konten entfernen, einfrieren oder sperren, legt er seinen Plan zur Bestätigung vor, statt zu schreiben. Gilt für alle Anbieter."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Plausibilitätsschwelle konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : settings === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Plausibilitätsschwelle wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <FactoryDefaultNumberSetting
           key={`${settings.changeThresholdPercent}-${settings.overridden}`}

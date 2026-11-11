@@ -69,9 +69,5 @@ describe('smbSource', () => {
       sourceCredentials: 'RATHAUS\\svc-opaa:geheim',
       sourceSettings: { folders: ['/'] },
     })
-    expect(configuration!.nameFromSource(values({ folders: '/Bauamt/Akten' }))).toBe('Akten')
-    expect(
-      configuration!.nameFromSource(values({ sourceUrl: 'smb://srv/Gemeinsame%20Daten' })),
-    ).toBe('Gemeinsame Daten')
   })
 })

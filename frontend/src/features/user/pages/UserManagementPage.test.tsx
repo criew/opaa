@@ -257,7 +257,6 @@ describe('UserManagementPage', () => {
     const menu = await openRowMenu(user, 'Maria Weber')
     await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
     await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
     await user.click(await screen.findByRole('option', { name: 'Revision' }))
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
@@ -325,8 +324,8 @@ describe('UserManagementPage', () => {
     const next = await screen.findByRole('dialog', { name: 'Rolle von „Thomas Klein“ ändern' })
     // The select shows the role of THIS account, not the discarded one of the previous …
     expect(within(next).getByRole('combobox', { name: 'Rolle' })).toHaveTextContent('Nutzer')
-    // … and without an own change there is nothing to save.
-    expect(within(next).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // … and without an own change „Speichern“ sends nothing.
+    expect(within(next).getByRole('button', { name: 'Speichern' })).toBeEnabled()
   }, 20000)
 
   it('refuses the role change of an account whose provider manages the roles', async () => {
@@ -713,7 +712,8 @@ describe('UserManagementPage', () => {
     ).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText(/E-Mail-Adresse/), 'ohne.grund@stadt.example')
     await user.type(within(dialog).getByLabelText('Anzeigename'), 'O. Grund')
-    expect(within(dialog).getByRole('button', { name: 'Anlegen' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
+    expect(within(dialog).getByText('Bitte den Anlagegrund angeben.')).toBeVisible()
   }, 20000)
 
   it('locks and unlocks a local account and updates its row', async () => {

@@ -11,6 +11,7 @@ import type { Theme } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import type { AgentRun } from '@/shared/api/types'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
@@ -20,6 +21,7 @@ import {
   answerWithSources,
   copyNote,
   markdownWithNote,
+  noteWithDraft,
   plainTextWithNote,
 } from './copyFormats'
 import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
@@ -31,6 +33,8 @@ interface CopyAnswerButtonProps {
   citations: CitationIndex
   /** The date the note names - when the answer was given. */
   answeredAt: Date
+  /** The agent run of an agent answer: its draft notice leads the note. */
+  agentRun?: AgentRun
 }
 
 /**
@@ -71,6 +75,7 @@ export default function CopyAnswerButton({
   content,
   citations,
   answeredAt,
+  agentRun,
 }: CopyAnswerButtonProps) {
   const { copied, copy } = useClipboardCopy('Die Antwort')
   const branding = useBrandingStore((s) => s.branding)
@@ -81,12 +86,18 @@ export default function CopyAnswerButton({
   // Every format ends with the note; the two Markdown formats also travel as HTML. Text the
   // person marks by hand and copies themselves is not touched - there is no copy handler.
   function copyMarkdown(markdown: string) {
-    const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
+    const note = noteWithDraft(
+      copyNote(branding.aiNotice, branding.productName, answeredAt),
+      agentRun,
+    )
     void copy(markdownWithNote(markdown, note), () => htmlFor(markdown, note, allowedOrigins))
   }
 
   function copyPlainText() {
-    const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
+    const note = noteWithDraft(
+      copyNote(branding.aiNotice, branding.productName, answeredAt),
+      agentRun,
+    )
     void copy(plainTextWithNote(answerAsPlainText(content, { allowedOrigins }), note))
   }
 

@@ -749,6 +749,7 @@ export default function ChatInput({
         highlightedIndex={actions.highlightedIndex}
         isLoading={actions.isLoading}
         error={actions.error}
+        onRetry={actions.reload}
         onHighlight={actions.setHighlightedIndex}
         onSelect={(entry) => chooseAction(actions.matches.indexOf(entry))}
         onClose={actions.close}

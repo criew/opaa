@@ -1,17 +1,15 @@
 import { useCallback, useState } from 'react'
 import Box from '@mui/material/Box'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { fontFamily, fontSize, markHighlight } from '@/shared/theme/tokens'
 import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
 import { downloadBlob } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
@@ -102,30 +100,45 @@ export default function DocumentTextPreviewDialog({
       : mark?.of === previewDocument
         ? mark.state
         : 'none'
+  const status = (
+    <Typography
+      role="status"
+      sx={
+        markState === 'not-found'
+          ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
+          : markState === 'no-anchor'
+            ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'text.secondary' }
+            : visuallyHidden
+      }
+    >
+      {markState === 'not-found'
+        ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
+        : markState === 'no-anchor'
+          ? NO_ANCHOR_NOTICE
+          : markState === 'marked'
+            ? 'Fundstelle markiert.'
+            : markState === 'scrolled'
+              ? 'Zur Fundstelle gescrollt.'
+              : ''}
+    </Typography>
+  )
   return (
-    <Dialog
+    <ViewDialog
       open={previewDocument != null}
       onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      scroll="paper"
-      aria-labelledby={TITLE_ID}
+      width="editor"
+      titleId={TITLE_ID}
+      title={previewDocument?.fileName}
+      titleActions={
+        previewDocument && (
+          <DownloadOriginalButton
+            onDownload={() => downloadBlob(previewDocument.blob, previewDocument.fileName)}
+          />
+        )
+      }
+      contentRef={markPassage}
+      toolbar={status}
     >
-      <DialogTitleWithClose
-        id={TITLE_ID}
-        onClose={onClose}
-        actions={
-          previewDocument && (
-            <DownloadOriginalButton
-              onDownload={() => downloadBlob(previewDocument.blob, previewDocument.fileName)}
-            />
-          )
-        }
-      >
-        <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-          {previewDocument?.fileName}
-        </Typography>
-      </DialogTitleWithClose>
       <GlobalStyles
         styles={{
           [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: markHighlight },
@@ -134,45 +147,23 @@ export default function DocumentTextPreviewDialog({
           },
         }}
       />
-      <Typography
-        role="status"
-        sx={
-          markState === 'not-found'
-            ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
-            : markState === 'no-anchor'
-              ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'text.secondary' }
-              : visuallyHidden
-        }
-      >
-        {markState === 'not-found'
-          ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
-          : markState === 'no-anchor'
-            ? NO_ANCHOR_NOTICE
-            : markState === 'marked'
-              ? 'Fundstelle markiert.'
-              : markState === 'scrolled'
-                ? 'Zur Fundstelle gescrollt.'
-                : ''}
-      </Typography>
-      <DialogContent dividers ref={markPassage}>
-        {previewDocument?.contentType === 'text/markdown' ? (
-          <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
-        ) : (
-          <Box
-            component="pre"
-            sx={{
-              m: 0,
-              fontFamily: fontFamily.mono,
-              fontSize: fontSize.text,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
-            {previewDocument?.content}
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
+      {previewDocument?.contentType === 'text/markdown' ? (
+        <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
+      ) : (
+        <Box
+          component="pre"
+          sx={{
+            m: 0,
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.text,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {previewDocument?.content}
+        </Box>
+      )}
+    </ViewDialog>
   )
 }
 

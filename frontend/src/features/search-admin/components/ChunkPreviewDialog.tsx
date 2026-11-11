@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -24,6 +18,8 @@ import { getSearchChunk } from '../api/searchAdminApi'
 import { formatMetadataValue } from '../utils/searchAdminLabels'
 import ChunkContent from './ChunkContent'
 import { fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
 
@@ -74,88 +70,74 @@ export default function ChunkPreviewDialog({
   const metadataEntries = chunk ? visibleChunkMetadata(chunk.metadata, metadataEnabled) : []
 
   return (
-    <Dialog
+    <ViewDialog
       open={chunkId != null}
       onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      scroll="paper"
-      aria-labelledby={CHUNK_DIALOG_TITLE_ID}
+      width="editor"
+      titleId={CHUNK_DIALOG_TITLE_ID}
+      title="Chunk-Vorschau"
     >
-      <DialogTitle id={CHUNK_DIALOG_TITLE_ID}>Chunk-Vorschau</DialogTitle>
-      <DialogContent dividers>
-        {error && <Alert severity="error">{error}</Alert>}
-        {!error && !chunk && (
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <CircularProgress size={20} />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Chunk wird geladen …
+      {error && <Alert severity="error">{error}</Alert>}
+      {!error && !chunk && <LoadingState shape="lines" count={6} />}
+      {chunk && (
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="body2">
+              Dokument: <strong>{chunk.documentTitle ?? '—'}</strong>
             </Typography>
-          </Stack>
-        )}
-        {chunk && (
-          <Stack spacing={2}>
-            <Box>
-              <Typography variant="body2">
-                Dokument: <strong>{chunk.documentTitle ?? '—'}</strong>
+            <Typography variant="body2">Bibliothek: {chunk.libraryName ?? '—'}</Typography>
+            <Typography variant="body2">Chunk-Index: {chunk.chunkIndex ?? '—'}</Typography>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                Chunk-ID: <code>{chunk.chunkId}</code>
               </Typography>
-              <Typography variant="body2">Bibliothek: {chunk.libraryName ?? '—'}</Typography>
-              <Typography variant="body2">Chunk-Index: {chunk.chunkIndex ?? '—'}</Typography>
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-                  Chunk-ID: <code>{chunk.chunkId}</code>
-                </Typography>
-                <IconButton
-                  size="small"
-                  aria-label="Chunk-ID kopieren"
-                  onClick={() => void navigator.clipboard?.writeText(chunk.chunkId).catch(() => {})}
-                >
-                  <ContentCopyIcon fontSize="inherit" />
-                </IconButton>
-              </Stack>
-            </Box>
-            <Box>
-              <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
-                Inhalt
+              <IconButton
+                size="small"
+                aria-label="Chunk-ID kopieren"
+                onClick={() => void navigator.clipboard?.writeText(chunk.chunkId).catch(() => {})}
+              >
+                <ContentCopyIcon fontSize="inherit" />
+              </IconButton>
+            </Stack>
+          </Box>
+          <Box>
+            <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
+              Inhalt
+            </Typography>
+            {isRecognizedText(chunk.metadata.anchor) && (
+              <Box sx={{ mb: 0.75 }}>
+                <RecognizedTextNotice size="text" />
+              </Box>
+            )}
+            <ChunkContent content={chunk.content} />
+          </Box>
+          <Box>
+            <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
+              Metadaten
+            </Typography>
+            {metadataEntries.length === 0 ? (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Zu diesem Chunk sind keine Metadaten gespeichert.
               </Typography>
-              {isRecognizedText(chunk.metadata.anchor) && (
-                <Box sx={{ mb: 0.75 }}>
-                  <RecognizedTextNotice size="text" />
-                </Box>
-              )}
-              <ChunkContent content={chunk.content} />
-            </Box>
-            <Box>
-              <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>
-                Metadaten
-              </Typography>
-              {metadataEntries.length === 0 ? (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Zu diesem Chunk sind keine Metadaten gespeichert.
-                </Typography>
-              ) : (
-                <Table size="small" aria-label="Chunk-Metadaten">
-                  <TableBody>
-                    {metadataEntries.map(([key, value]) => (
-                      <TableRow key={key}>
-                        <TableCell component="th" scope="row" sx={{ width: '30%' }}>
-                          <code>{key}</code>
-                        </TableCell>
-                        <TableCell sx={{ wordBreak: 'break-word' }}>
-                          {formatMetadataValue(value)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </Box>
-          </Stack>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Schließen</Button>
-      </DialogActions>
-    </Dialog>
+            ) : (
+              <Table size="small" aria-label="Chunk-Metadaten">
+                <TableBody>
+                  {metadataEntries.map(([key, value]) => (
+                    <TableRow key={key}>
+                      <TableCell component="th" scope="row" sx={{ width: '30%' }}>
+                        <code>{key}</code>
+                      </TableCell>
+                      <TableCell sx={{ wordBreak: 'break-word' }}>
+                        {formatMetadataValue(value)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Box>
+        </Stack>
+      )}
+    </ViewDialog>
   )
 }
