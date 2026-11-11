@@ -1066,7 +1066,10 @@ class PermissionHistoryServiceIntegrationTest {
    * it switches a group off or on and cuts its membership intervals, and is covered by {@link
    * #readabilityWritePaths} through that method. {@code ReadableAssetNames} only reads the formula,
    * the group memberships and the group selection rule to decide whether a self-disclosure or an
-   * own list may show the name of an asset or group today; it writes nothing.
+   * own list may show the name of an asset or group today; it writes nothing. {@code
+   * AssetResponsibilityService} resolves a group only to name and check the responsible unit of an
+   * asset and writes its own responsibility rows and locks; responsibility carries no read right,
+   * so it moves no library into or out of anybody's readable set.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1076,6 +1079,7 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetCatalogService",
           "AssetFavoriteService",
           "AssetOwnerNames",
+          "AssetResponsibilityService",
           "AgentService",
           "AgentChoice",
           "AgentCurrentRevisions",
