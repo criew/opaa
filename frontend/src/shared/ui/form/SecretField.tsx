@@ -14,6 +14,11 @@ import { controlHeight, fontSize } from '../../theme/tokens'
 interface SecretFieldProps {
   id: string
   label: string
+  /**
+   * What the toggle calls its field, where the label is a phrase that reads badly in front of
+   * „anzeigen“ (a repetition field: „Wiederholung“). Defaults to the label.
+   */
+  toggleName?: string
   value: string
   onChange: (next: string) => void
   /** A secret is stored and still serves: the field shows „gesetzt“ until it is replaced. */
@@ -39,6 +44,7 @@ interface SecretFieldProps {
 export default function SecretField({
   id,
   label,
+  toggleName = label,
   value,
   onChange,
   stored = false,
@@ -131,7 +137,7 @@ export default function SecretField({
                     size="small"
                     edge="end"
                     onClick={toggleShown}
-                    aria-label={shown ? `${label} verbergen` : `${label} anzeigen`}
+                    aria-label={shown ? `${toggleName} verbergen` : `${toggleName} anzeigen`}
                   >
                     {shown ? (
                       <VisibilityOffOutlined fontSize="small" />

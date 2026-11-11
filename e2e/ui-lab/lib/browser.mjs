@@ -68,7 +68,10 @@ export async function pinVariant(page, variant) {
 /** sessionStorage key of `currentMockProfile()` in frontend/src/shared/mocks/mockProfile.ts. */
 const MOCK_PROFILE_KEY = 'opaa.mockProfile'
 
-/** Mock profiles of the frontend; `signed-out` opens the pages before the sign-in. */
+/**
+ * `MOCK_PROFILES` in frontend/src/shared/mocks/mockProfile.ts, kept in step by hand;
+ * `signed-out` opens the pages before the sign-in.
+ */
 export const MOCK_PROFILES = ['admin', 'user', 'auditor', 'signed-out']
 
 /**

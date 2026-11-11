@@ -210,6 +210,7 @@ export default function VerifyEmailPage() {
           <SecretField
             id="verify-email-repeat"
             label="Passwort wiederholen"
+            toggleName="Wiederholung"
             value={repeated}
             onChange={setRepeated}
             autoComplete="new-password"

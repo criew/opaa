@@ -199,6 +199,7 @@ export default function SetPasswordPage() {
           <SecretField
             id="set-password-repeat"
             label="Neues Passwort wiederholen"
+            toggleName="Wiederholung"
             value={repeated}
             onChange={setRepeated}
             autoComplete="new-password"

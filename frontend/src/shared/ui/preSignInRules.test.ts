@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 /** The application's source text, read in by Vite (`?raw`), as in `states/stateRules.test.ts`. */
-const SOURCES = import.meta.glob('/src/**/*.tsx', {
+const SOURCES = import.meta.glob('/src/**/*.{ts,tsx}', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -13,6 +13,13 @@ const PRODUCTION_FILES = Object.keys(SOURCES).filter(
 
 /** Every page before the session lives in the theme `auth`. */
 const BEFORE_SIGN_IN = PRODUCTION_FILES.filter((path) => path.includes('/features/auth/'))
+
+/** `color` set to the accent in any spelling: a palette path, a theme callback, a token. */
+const ACCENT_COLOR = /\bcolor:\s*[^,}]*(?<!text\.)\b(primary|accent)\b/
+
+/** A raw input from MUI, by its own path or by name from the package root. */
+const RAW_INPUT_IMPORT =
+  /@mui\/material\/(TextField|OutlinedInput|InputAdornment)'|import\s*(?:type\s*)?\{[^}]*\b(TextField|OutlinedInput|InputAdornment)\b[^}]*\}\s*from\s*'@mui\/material'/
 
 function matching(files: string[], pattern: RegExp): string[] {
   return files.filter((path) => pattern.test(SOURCES[path]))
@@ -49,12 +56,33 @@ describe('section heads (guidelines 2.3 and 3.3)', () => {
     expect(enclosingObject(source, source.indexOf('textTransform'))).toBe(source.slice(10))
   })
 
+  it.each([
+    "color: 'primary.main'",
+    'color: "primary.dark"',
+    'color: (theme) => theme.palette.primary.main',
+    'color: theme.vars.palette.primary.main',
+    'color: accent[600]',
+    "color: active ? 'primary.main' : 'text.secondary'",
+  ])('recognises the accent in %s', (declaration) => {
+    expect(ACCENT_COLOR.test(`{ ${declaration}, textTransform: 'uppercase' }`)).toBe(true)
+  })
+
+  it.each([
+    "color: 'text.primary'",
+    "color: 'text.secondary'",
+    "borderColor: 'primary.main'",
+    "bgcolor: 'primary.main'",
+    "color: 'text.secondary', '&:hover': { borderColor: 'primary.main' }",
+  ])('leaves %s alone', (declaration) => {
+    expect(ACCENT_COLOR.test(`{ ${declaration}, textTransform: 'uppercase' }`)).toBe(false)
+  })
+
   // Accent stays with action and state; an uppercase label that names a section is grey.
   it('never colours an uppercase label in the accent', () => {
     const offenders = PRODUCTION_FILES.filter((path) => {
       const source = SOURCES[path]
       return [...source.matchAll(/textTransform: 'uppercase'/g)].some((match) =>
-        /\bcolor: ['"`]primary\b/.test(enclosingObject(source, match.index)),
+        ACCENT_COLOR.test(enclosingObject(source, match.index)),
       )
     })
     expect(offenders).toEqual([])
@@ -66,10 +94,22 @@ describe('pages before the sign-in (guidelines 5.1, 5.2 and 5.12)', () => {
     expect(BEFORE_SIGN_IN.length).toBeGreaterThan(10)
   })
 
+  it.each([
+    "import TextField from '@mui/material/TextField'",
+    "import { TextField } from '@mui/material'",
+    "import { Box, OutlinedInput, Stack } from '@mui/material'",
+    "import {\n  Box,\n  InputAdornment,\n} from '@mui/material'",
+  ])('recognises the raw input in %s', (statement) => {
+    expect(RAW_INPUT_IMPORT.test(statement)).toBe(true)
+  })
+
+  it('takes no other import for a raw input', () => {
+    expect(RAW_INPUT_IMPORT.test("import { Box, Stack } from '@mui/material'")).toBe(false)
+    expect(RAW_INPUT_IMPORT.test("import FormField from '@/shared/ui/form/FormField'")).toBe(false)
+  })
+
   it('builds every field from FormField or SecretField', () => {
-    expect(
-      matching(BEFORE_SIGN_IN, /@mui\/material\/(TextField|OutlinedInput|InputAdornment)'/),
-    ).toEqual([])
+    expect(matching(BEFORE_SIGN_IN, RAW_INPUT_IMPORT)).toEqual([])
     expect(matching(BEFORE_SIGN_IN, /FormFieldLabel/)).toEqual([])
   })
 

@@ -1,5 +1,5 @@
 import Typography from '@mui/material/Typography'
-import { fontSize } from '../theme/tokens'
+import { fontFamily, fontSize } from '../theme/tokens'
 
 interface SectionHeadProps {
   children: string
@@ -25,7 +25,7 @@ export default function SectionHead({
       id={id}
       component={component}
       sx={{
-        fontFamily: 'monospace',
+        fontFamily: fontFamily.mono,
         fontSize: fontSize.label,
         fontWeight: 500,
         letterSpacing: '0.08em',

@@ -30,6 +30,29 @@ describe('SecretField', () => {
     expect(screen.getByRole('button', { name: 'Passwort verbergen' })).toBeInTheDocument()
   })
 
+  // accessibility.md 2.1: revealing a long generated password may not be a mouse-only action.
+  it('reaches the toggle by keyboard', async () => {
+    render(<Harness />)
+    screen.getByLabelText('Passwort').focus()
+
+    await userEvent.tab()
+
+    expect(screen.getByRole('button', { name: 'Passwort anzeigen' })).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'text')
+  })
+
+  // „Passwort wiederholen anzeigen“ is no sentence; the repetition field names its toggle itself.
+  it('names the toggle after toggleName where the label does not read in front of the verb', async () => {
+    render(<Harness label="Passwort wiederholen" toggleName="Wiederholung" />)
+    expect(screen.queryByRole('button', { name: /wiederholen/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Wiederholung anzeigen' }))
+
+    expect(screen.getByLabelText('Passwort wiederholen')).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: 'Wiederholung verbergen' })).toBeInTheDocument()
+  })
+
   it('offers a secret that is being set to the password manager as a new one', () => {
     render(<Harness />)
     expect(screen.getByLabelText('Passwort')).toHaveAttribute('autocomplete', 'new-password')
