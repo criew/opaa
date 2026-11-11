@@ -22,13 +22,14 @@ import {
   getPrivateStorageSummary,
   updatePrivateStorageQuota,
 } from '../api/privateStorageApi'
+import SectionHead from '@/shared/ui/SectionHead'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -201,9 +202,7 @@ function QuotaForm({
 function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
   return (
     <Box data-testid="private-storage-summary" sx={{ mt: 3 }}>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
-        Übersicht (nur Summen, ohne Namen)
-      </Typography>
+      <SectionHead component="h3">Übersicht (nur Summen, ohne Namen)</SectionHead>
       <Stack spacing={0.5} sx={{ mb: 2 }}>
         <Typography variant="body2">
           Besitzerinnen privater Bibliotheken:{' '}
@@ -216,7 +215,11 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
       </Stack>
 
       {summary.profiles.length > 0 && (
-        <Table size="small" aria-label="Belegter Speicher je Zugang" sx={{ mb: 2, maxWidth: 560 }}>
+        <Table
+          size="small"
+          aria-label="Belegter Speicher je Zugang"
+          sx={{ mb: 2, maxWidth: contentWidth.form }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Zugang</TableCell>
@@ -238,7 +241,7 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
         <Table
           size="small"
           aria-label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
-          sx={{ mb: 2, maxWidth: 560 }}
+          sx={{ mb: 2, maxWidth: contentWidth.form }}
         >
           <TableHead>
             <TableRow>

@@ -7,7 +7,7 @@ import {
   SharedLibraryQuotaSection,
 } from '@/features/library'
 import { LinkTargetsSection } from '@/features/link-targets'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 /**
  * The „Einstellungen“ tab of the connections area: installation-wide values that belong to no
@@ -18,7 +18,9 @@ import { fontSize } from '@/shared/theme/tokens'
 export default function ConnectionSettingsTab() {
   return (
     <>
-      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
+      <Typography
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
+      >
         Diese Werte gelten für die ganze Installation, nicht für einen einzelnen Zugang.
       </Typography>
       <OutboundProxySection />

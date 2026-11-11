@@ -41,7 +41,9 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 1. **Ein Signal je Element.** Ein Badge oder Chip trägt nicht zugleich Icon, Punkt, Rahmen,
    Tönung und Zusatztext. Chips selbst: [guidelines.md](./guidelines.md), 5.5. – Sicht
 2. **Reiter** sind Text mit Unterstrich: keine Pillen, keine Icons, keine Zähler, kein
-   „Neu“-Badge. – Sicht
+   „Neu“-Badge. Die Anzahl der Liste steht neben dem Seitentitel
+   ([guidelines.md](./guidelines.md), 4.6). – Sicht; `AreaTabs` kennt keinen Zähler
+   (Quelltext-Test)
 3. **Keine Schmuck-Icons** vor Überschriften, Kacheltiteln oder Labels, wenn sie nichts
    unterscheiden. Icons der Kachelauswahl: [guidelines.md](./guidelines.md), 5.11. – Sicht
 4. Keine getönten Flächen oder Verläufe als Schmuck: [guidelines.md](./guidelines.md), 1 und 4.3.
@@ -152,7 +154,12 @@ zwei Einträgen.
 45. **„Ändern“ nur als Textlink** an einer gemeinsamen rechten Kante, nie als Knopf. – Sicht
     (Querbögen)
 46. **Eine Inhaltsbreite** für Reiterleiste, Zeilen und Fußleiste; sie springt nicht zwischen
-    Assistent, Prüfen, Bearbeiten und Detail. – Sicht (Querbögen)
+    Assistent, Prüfen, Bearbeiten und Detail. Es gibt drei Breiten je Seitentyp (720, 880,
+    1180 px), Erklärtexte in Lesebreite, und jede Bereichsseite beginnt mit demselben Kopf aus
+    Titel, Anzahl und Anlege-Knopf; ein Plus-Icon steht nur dort, in der Seitenleiste und im
+    Leerzustand ([guidelines.md](./guidelines.md), 4.6 und 5.1). – Sicht (Querbögen) und
+    Quelltext-Test (`pageGrid.test.tsx`: keine `maxWidth`-Zahl unter `features/`, Plus-Icon
+    nur aus `CreateButton`)
 47. **Keine doppelten Trennlinien:** Die Unterkante der Reiterleiste ist der erste Trenner; danach
     je ein Trenner zwischen den Abschnitten und einer vor den Knöpfen. – Sicht
 48. **Zeilenraster** Titel | Inhalt | „Ändern“ für zusammengefasste Abschnitte, gleich in

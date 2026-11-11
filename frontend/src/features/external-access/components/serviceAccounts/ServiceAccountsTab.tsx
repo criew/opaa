@@ -5,8 +5,8 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { ServiceAccountResponse } from '@/shared/api/types'
 import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
 import ListSearch from '@/shared/ui/ListSearch'
@@ -21,7 +21,7 @@ import { AccountState, DetailFrame } from './ServiceAccountParts'
 import { confirmDeactivate, useServiceAccountDetail } from './serviceAccountHooks'
 import { MISSING_PERSON, formatDate, soonLabel, tokenCountLabel } from './serviceAccountLabels'
 import { useServiceAccounts } from './useServiceAccounts'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 /** The query parameter that opens one account in the tab, so that the detail has an address. */
 const ACCOUNT_PARAM = 'account'
@@ -132,7 +132,7 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
                     fontSize: fontSize.text,
                     color: 'text.secondary',
                     mb: 1.5,
-                    maxWidth: '70ch',
+                    maxWidth: readingWidth,
                   }}
                 >
                   Widerruft alle Tokens sofort; das Dienstkonto bleibt zur Nachvollziehbarkeit
@@ -191,36 +191,15 @@ export default function ServiceAccountsTab() {
 
   const list = (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          mb: 2.5,
-        }}
+      <Typography
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', maxWidth: readingWidth, mb: 2.5 }}
       >
-        <Typography
-          sx={{
-            fontSize: fontSize.text,
-            color: 'text.secondary',
-            maxWidth: 640,
-            flex: '1 1 320px',
-          }}
-        >
-          Eigene, lesende Zugänge für Verfahren, unabhängig von einzelnen Beschäftigten. Welche
-          Bibliotheken ein Dienstkonto sieht, entscheidet die Verwaltung der Bibliothek.
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreating(true)}
-          disabled={Boolean(error)}
-        >
-          Dienstkonto anlegen
-        </Button>
-      </Box>
+        Eigene, lesende Zugänge für Verfahren, unabhängig von einzelnen Beschäftigten. Welche
+        Bibliotheken ein Dienstkonto sieht, entscheidet die Verwaltung der Bibliothek.
+      </Typography>
+      <CreateButton onClick={() => setCreating(true)} disabled={Boolean(error)}>
+        Dienstkonto anlegen
+      </CreateButton>
 
       {error ? (
         <LoadError
@@ -235,15 +214,15 @@ export default function ServiceAccountsTab() {
           framed
           message="Noch keine Dienstkonten."
           action={
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setCreating(true)}>
+            <CreateButton placement="empty" onClick={() => setCreating(true)}>
               Dienstkonto anlegen
-            </Button>
+            </CreateButton>
           }
         />
       ) : (
         <>
           {all.length >= SEARCH_THRESHOLD && (
-            <Box sx={{ mb: 1.5, maxWidth: 360 }}>
+            <Box sx={{ mb: 1.5, maxWidth: fieldWidth.medium }}>
               <ListSearch
                 value={query}
                 onChange={setQuery}

@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 /**
  * The retention periods of the agent run logs as this instance holds them, and both logs described
  * field by field for the staff council (ADR-0070, Entscheidung 4, Bestand b; ADR-0073, Entscheidung
- * 7). A new column of {@code agent_step_log} or {@code agent_sandbox_log}, or a new way to read
- * them, changes these lists in the same change.
+ * 7). A new column of the step log or the sandbox log, or a new way to read them, changes these
+ * lists in the same change.
  */
 @Component
 class AgentRunLogInstanceState implements InstanceStateSource {

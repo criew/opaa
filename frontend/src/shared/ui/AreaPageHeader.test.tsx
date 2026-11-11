@@ -21,6 +21,24 @@ const BEREICHSSEITEN = [
   'SearchIndexingAdminPage.tsx',
   'PrivacySettingsPage.tsx',
   'SettingsPage.tsx',
+  'ConnectionsAdminPage.tsx',
+  'AuditorRoleRequestsPage.tsx',
+  'ConnectionLogPage.tsx',
+  'RightsHistoryPage.tsx',
+  'CapabilityManagementPage.tsx',
+  'DirectorySyncPage.tsx',
+  'DocumentTemplateSettingsPage.tsx',
+  'ProviderGroupWorklistPage.tsx',
+  'MalwareScanSettingsPage.tsx',
+  'SettingsTransferPage.tsx',
+  'SuccessionPage.tsx',
+  'AgentSettingsPage.tsx',
+]
+
+const REVISIONSSEITEN = [
+  'AuditorRoleRequestsPage.tsx',
+  'ConnectionLogPage.tsx',
+  'RightsHistoryPage.tsx',
 ]
 
 /**
@@ -134,7 +152,7 @@ describe('AreaPageHeader', () => {
   it.each(ADMINISTRATIONSSEITEN)('%s takes its content width from the tokens', (datei) => {
     const quelltext = quelltextVon(datei)
 
-    expect(quelltext).toContain('contentWidth.areaContent')
+    expect(quelltext).toContain('contentWidth.list')
     expect(quelltext).not.toMatch(/maxWidth: \d/)
   })
 
@@ -161,14 +179,19 @@ describe('AreaPageHeader', () => {
     expect(quelltext).toContain("from '@mui/icons-material/")
   })
 
-  it('gives every area its own mark', () => {
-    const zeichen = BEREICHSSEITEN.map((datei) => {
+  // A mark is an anchor within one area navigation: the pages of „Revision" are compared among
+  // themselves, all others with each other.
+  it.each([
+    ['Revision', REVISIONSSEITEN],
+    ['the other areas', BEREICHSSEITEN.filter((datei) => !REVISIONSSEITEN.includes(datei))],
+  ])('gives every page of %s its own mark', (_bereich, seiten) => {
+    const zeichen = seiten.map((datei) => {
       const treffer = quelltextVon(datei).match(/icon=\{(\w+)\}/)
       if (!treffer) throw new Error(`Kein Zeichen in ${datei}`)
       return treffer[1]
     })
 
-    expect(new Set(zeichen).size).toBe(BEREICHSSEITEN.length)
+    expect(new Set(zeichen).size).toBe(seiten.length)
   })
 
   it.each(BEREICHSSEITEN)('%s uses PageHeading directly only where access is refused', (datei) => {

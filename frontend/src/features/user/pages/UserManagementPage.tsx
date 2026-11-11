@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import AddIcon from '@mui/icons-material/Add'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { AccountResponse, LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -87,62 +85,48 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      {/* The primary action in the head of the area, not in the filter row: five filters and
-         a button in one row wrap, and the wrap then puts the action
-         below half a set of filters. To its left, flush with the table, the hint about the
-         requirement – only if there is one. */}
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <LocalUserReviewHint
-            summary={summary}
-            // The jump resets every other filter: the hint
-            // names a number across all local accounts, and a standing origin, role or
-            // state selection would then show fewer rows than the number promises.
-            onShowWithoutExpiry={() =>
-              void setFilters({
-                review: 'WITHOUT_EXPIRY',
-                status: null,
-                role: null,
-                query: '',
-                providerType: 'LOCAL',
-                providerId: null,
-              })
-            }
-            onShowInvited={() =>
-              void setFilters({
-                status: 'INVITED',
-                review: 'ALL',
-                role: null,
-                query: '',
-                providerType: 'LOCAL',
-                providerId: null,
-              })
-            }
-          />
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
-        >
-          Konto anlegen
-        </Button>
-      </Stack>
+      <CreateButton onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}>
+        Konto anlegen
+      </CreateButton>
+      {/* Flush with the table, the hint about the requirement – only if there is one. */}
+      <Box sx={{ minWidth: 0, mb: 1.5, '&:empty': { display: 'none' } }}>
+        <LocalUserReviewHint
+          summary={summary}
+          // The jump resets every other filter: the hint
+          // names a number across all local accounts, and a standing origin, role or
+          // state selection would then show fewer rows than the number promises.
+          onShowWithoutExpiry={() =>
+            void setFilters({
+              review: 'WITHOUT_EXPIRY',
+              status: null,
+              role: null,
+              query: '',
+              providerType: 'LOCAL',
+              providerId: null,
+            })
+          }
+          onShowInvited={() =>
+            void setFilters({
+              status: 'INVITED',
+              review: 'ALL',
+              role: null,
+              query: '',
+              providerType: 'LOCAL',
+              providerId: null,
+            })
+          }
+        />
+      </Box>
       <AccountFilterBar />
       <AccountList
         currentUserId={currentUserId}
         createAction={
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
+          <CreateButton
+            placement="empty"
             onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
           >
             Konto anlegen
-          </Button>
+          </CreateButton>
         }
         onEdit={(user) => setForm((f) => ({ open: true, user, opening: f.opening + 1 }))}
         onSetupLink={setHandover}
@@ -232,7 +216,7 @@ export default function UserManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Benutzer" gutterBottom />
         <Alert severity="info">
           Die Benutzerverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -244,7 +228,7 @@ export default function UserManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={BadgeOutlinedIcon}
           title="Benutzer"
