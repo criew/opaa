@@ -8,12 +8,15 @@ documents were cited, for the person who reads the numbers.
 """
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
 from pathlib import Path
 
 CONFIRMATION = "Plan bestätigt."
+# A citation in the answer text: 【source: <documentId>#<chunk> | <fileName>】
+MARKER = re.compile(r"【source:\s*[a-zA-Z0-9\-]+#\d+\s*\|([^】【\r\n]+)】")
 
 
 def call(base, headers, method, path, body=None, timeout=600):
@@ -51,7 +54,8 @@ def summary(answer, seconds):
         "stepCount": len(steps),
         "toolCalls": tools,
         "limitSteps": sum(1 for step in steps if step["status"] == "LIMIT"),
-        "cited": sorted({source.get("fileName") for source in answer.get("sources", [])}),
+        "retrieved": sorted({source.get("fileName") for source in answer.get("sources", [])}),
+        "cited": sorted({name.strip() for name in MARKER.findall(answer["answer"])}),
         "answer": answer["answer"],
     }
 
@@ -91,12 +95,14 @@ def main():
         )
         result = summary(worked, work_seconds)
         cited = set(result["cited"])
+        forbidden = set(case.get("forbidden_documents", []))
         result.update(
             {
                 "id": case["id"],
                 "planRun": summary(plan, plan_seconds),
                 "missingExpected": sorted(set(case["expected_documents"]) - cited),
-                "citedForbidden": sorted(set(case.get("forbidden_documents", [])) & cited),
+                "citedForbidden": sorted(forbidden & cited),
+                "retrievedForbidden": sorted(forbidden & set(result["retrieved"])),
             }
         )
         report.append(result)
