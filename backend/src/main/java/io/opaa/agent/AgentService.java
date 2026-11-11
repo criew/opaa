@@ -28,6 +28,7 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.template.DocumentTemplate;
 import io.opaa.template.DocumentTemplateRepository;
+import io.opaa.template.DocumentTemplateSettingsService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -52,7 +53,8 @@ import org.springframework.transaction.annotation.Transactional;
  * address. A library is assigned only if the editor may read it; an assigned library the editor may
  * not read stays assigned and is shown only as a count, never by name. Assigning grants nothing: a
  * run reads only what the calling person may read (ADR-0070, Entscheidung 3). Document templates
- * follow the same rule; a run fills only those the asker may read as well.
+ * follow the same rule; a run fills only those the asker may read as well. While the switch
+ * "Vorlagen" is off, a change keeps the stored templates and no view names or counts one.
  */
 @Service
 @Transactional(readOnly = true)
@@ -76,6 +78,7 @@ public class AgentService {
   private final LibraryAccessService libraryAccess;
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentTemplateRepository templateRepository;
+  private final DocumentTemplateSettingsService templateSettings;
   private final AuditEventRecorder auditEventRecorder;
 
   AgentService(
@@ -91,6 +94,7 @@ public class AgentService {
       LibraryAccessService libraryAccess,
       KnowledgeLibraryRepository libraryRepository,
       DocumentTemplateRepository templateRepository,
+      DocumentTemplateSettingsService templateSettings,
       AuditEventRecorder auditEventRecorder) {
     this.agentRepository = agentRepository;
     this.agentSwitch = agentSwitch;
@@ -104,6 +108,7 @@ public class AgentService {
     this.libraryAccess = libraryAccess;
     this.libraryRepository = libraryRepository;
     this.templateRepository = templateRepository;
+    this.templateSettings = templateSettings;
     this.auditEventRecorder = auditEventRecorder;
   }
 
@@ -226,7 +231,7 @@ public class AgentService {
     Set<String> toolNames = validateTools(submitted.toolNames(), errors);
     AgentLimits limits = validateLimits(submitted.limits(), errors);
     Set<UUID> templateIds =
-        submitted.templateIds() == null
+        submitted.templateIds() == null || !templateSettings.isEnabled()
             ? agent.getTemplateIds()
             : validateTemplates(
                 submitted.templateIds(),
@@ -395,7 +400,7 @@ public class AgentService {
   private AssignedNames templateNames(List<Agent> agents, CurrentUser caller) {
     Set<UUID> assigned = new HashSet<>();
     agents.forEach(agent -> assigned.addAll(agent.getTemplateIds()));
-    if (assigned.isEmpty()) {
+    if (assigned.isEmpty() || !templateSettings.isEnabled()) {
       return new AssignedNames(Map.of(), Set.of());
     }
     Set<UUID> readable =

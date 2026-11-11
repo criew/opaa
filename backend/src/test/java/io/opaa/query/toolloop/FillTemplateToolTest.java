@@ -104,11 +104,15 @@ class FillTemplateToolTest {
   }
 
   @Test
-  void withoutAnAssignedTemplateTheAskerMayReadTheToolIsNotOffered() {
+  void withoutAnyTemplateTheOfferSaysSoAndAskForAChatAnswer() {
     when(templates.available(run.organizationId(), run.userId(), run.templateIds()))
         .thenReturn(List.of());
 
-    assertThat(tool().offer(run)).isEmpty();
+    ToolOffer offer = tool().offer(run).orElseThrow();
+
+    assertThat(offer.description()).isEqualTo(FillTemplateTool.NONE_AVAILABLE);
+    assertThat(JSON.readTree(offer.inputSchema()).at("/properties/vorlage/enum").isMissingNode())
+        .isTrue();
   }
 
   @Test

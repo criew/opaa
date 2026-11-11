@@ -48,7 +48,7 @@ Eine Vorlage nutzt ein Agent erst, wenn sie ihm zugeordnet ist: auf der Seite de
 Reiter „Wissen und Werkzeuge“ unter „Vorlagen“ ([Agent anlegen](agent-anlegen.md)). Dieselbe
 Vorlage kann mehreren Agenten dienen. Ein Agent mit dem Werkzeug „Vorlage ausfüllen“ bekommt in
 jedem Lauf seine Vorlagen angeboten, die die fragende Person lesen darf, jeweils mit ihren
-Platzhaltern; ohne eine solche Vorlage bietet der Lauf das Werkzeug nicht an. Das Modell liefert nur die Werte, etwa
+Platzhaltern. Einem Agenten ohne zugeordnete Vorlage bietet der Lauf das Werkzeug nicht an. Das Modell liefert nur die Werte, etwa
 Aktenzeichen und Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
 [Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
 Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert
@@ -56,9 +56,9 @@ nicht, bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste
 und eine Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert
 das Befüllen.
 
-Sind Vorlagen ausgeschaltet, darf die Person die Vorlage nicht lesen, gehört sie nicht zum Agenten
-oder ist die Sandbox nicht erreichbar, entsteht keine Datei: Der Agent antwortet im Chat und sagt
-das dazu.
+Sind Vorlagen ausgeschaltet, darf die Person keine der zugeordneten Vorlagen lesen, gehört die
+gewählte Vorlage nicht zum Agenten oder ist die Sandbox nicht erreichbar, entsteht keine Datei:
+Der Agent antwortet im Chat und sagt das dazu.
 
 **Rollen an der Vorlage:**
 

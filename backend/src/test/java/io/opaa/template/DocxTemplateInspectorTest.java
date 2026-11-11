@@ -292,6 +292,27 @@ class DocxTemplateInspectorTest {
         .isFalse();
   }
 
+  @Test
+  void aContentTypeIsComparedWithoutParametersAndTheMainPartFollowsItsRelationship()
+      throws IOException {
+    DocxActiveContent check = new DocxActiveContent(ParserLimitProperties.DEFAULTS);
+    String document =
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml";
+    byte[] plain = TestDocx.withParagraphs("Text");
+    byte[] dde = TestDocx.withFieldCode(" DDEAUTO cmd \"/c calc\" ");
+
+    assertThat(check.isPassive(withContentType(plain, document, document + ";a=b"))).isTrue();
+    assertThat(check.isPassive(withContentType(dde, document, document + "; a=b"))).isFalse();
+    assertThat(check.isPassive(withContentType(plain, document, "application/xml"))).isFalse();
+    assertThat(
+            check.isPassive(
+                withContentType(
+                    plain,
+                    document,
+                    "application/vnd.ms-word.template.macroEnabledTemplate.main+xml ; a=b")))
+        .isFalse();
+  }
+
   /** {@code docx} with the content type {@code from} declared as {@code to}. */
   private static byte[] withContentType(byte[] docx, String from, String to) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -97,12 +97,12 @@ public final class AgentRun {
     return searchScope;
   }
 
-  /** The chat's metadata filter; a tool argument may only add conditions to it. */
   /** The document templates assigned to the agent of this run, fixed at its start. */
   public Set<UUID> templateIds() {
     return templateIds;
   }
 
+  /** The chat's metadata filter; a tool argument may only add conditions to it. */
   public MetadataFilter metadataFilter() {
     return metadataFilter;
   }

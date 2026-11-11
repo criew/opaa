@@ -36,7 +36,9 @@ Unter „Vorlagen“ wählen Sie eine oder mehrere [Vorlagen](vorlage-anlegen.md
 dürfen; dieselbe Vorlage kann mehreren Agenten dienen. Die Zeile erscheint nur, wenn die
 Systemverwaltung Vorlagen eingeschaltet hat. Der Agent füllt eine Vorlage aus, wenn er zusätzlich
 das Werkzeug „Vorlage ausfüllen“ hat, und hängt das Ergebnis als Word-Datei und PDF an die
-Antwort. Ohne zugeordnete Vorlage bietet ein Lauf das Werkzeug nicht an.
+Antwort. Ohne zugeordnete Vorlage bietet ein Lauf das Werkzeug nicht an; ist keine zugeordnete
+Vorlage nutzbar, etwa weil Vorlagen ausgeschaltet sind, antwortet der Agent im Chat und sagt das
+dazu.
 
 Ein Lauf nutzt nur die zugeordneten Vorlagen, die die aufrufende Person lesen darf. Wie bei den
 Bibliotheken zählt die Seite eine Vorlage, die Sie nicht lesen dürfen, nur; beim Speichern bleibt

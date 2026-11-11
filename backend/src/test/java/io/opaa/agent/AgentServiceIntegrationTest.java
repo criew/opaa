@@ -244,6 +244,40 @@ class AgentServiceIntegrationTest {
   }
 
   @Test
+  void whileTemplatesAreSwitchedOffNoTemplateIsAssignedNamedOrCounted() {
+    grantCreateAgent(creator);
+    templateSettings.update(true, admin());
+    grantCreateTemplate(creator);
+    grantCreateTemplate(administrator);
+    UUID agent = agentOf(callerOf(creator), "Berichtshilfe");
+    UUID own = templateOf(creator(), "Bericht");
+    UUID other = templateOf(creator(), "Vermerk");
+    UUID hidden = templateOf(admin(), "Personalvermerk");
+    agentService.update(agent, withTemplates(Set.of(own, hidden)), admin());
+
+    templateSettings.update(false, admin());
+    AgentView changed = agentService.update(agent, withTemplates(Set.of(other)), creator());
+
+    assertThat(changed.agent().getTemplateIds()).containsExactlyInAnyOrder(own, hidden);
+    assertThat(changed.templates()).isEmpty();
+    assertThat(changed.hiddenTemplateCount()).isZero();
+    assertThat(agentService.get(agent, creator()).templates()).isEmpty();
+    assertThat(agentService.list(creator()))
+        .filteredOn(view -> view.agent().getId().equals(agent))
+        .singleElement()
+        .satisfies(
+            view -> {
+              assertThat(view.templates()).isEmpty();
+              assertThat(view.hiddenTemplateCount()).isZero();
+            });
+
+    templateSettings.update(true, admin());
+    assertThat(agentService.get(agent, creator()).templates())
+        .extracting(AgentView.TemplateRef::id)
+        .containsExactly(own);
+  }
+
+  @Test
   void theAdministrationAloneNeitherReadsNorChangesTheInstruction() {
     grantCreateAgent(creator);
     UUID agent = agentOf(callerOf(creator), "Auftragshilfe");
