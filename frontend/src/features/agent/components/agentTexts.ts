@@ -34,6 +34,11 @@ export const AGENT_TOOLS: ToolText[] = [
     label: 'Rückfragen',
     description: 'Fragt bei Unklarem nach; der Lauf endet mit der Frage.',
   },
+  {
+    name: 'fill_template',
+    label: 'Vorlage ausfüllen',
+    description: 'Legt das Ergebnis als Word-Datei und PDF nach einer zugeordneten Vorlage ab.',
+  },
 ]
 
 export function toolLabel(name: string): string {

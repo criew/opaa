@@ -22,6 +22,8 @@ import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
+import org.apache.poi.openxml4j.opc.PackageRelationshipCollection;
+import org.apache.poi.openxml4j.opc.PackageRelationshipTypes;
 import org.apache.poi.openxml4j.opc.TargetMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +47,14 @@ public class DocxActiveContent {
 
   private static final Logger log = LoggerFactory.getLogger(DocxActiveContent.class);
 
-  private static final String MACRO_MAIN_CONTENT_TYPE =
-      "application/vnd.ms-word.document.macroEnabled.main+xml";
+  /**
+   * The only main parts admitted: a Word document or a Word template. A macro-enabled main part is
+   * refused as macros, any other main part as active content.
+   */
+  private static final Set<String> ADMITTED_MAIN_CONTENT_TYPES =
+      Set.of(
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml");
 
   private static final String HYPERLINK =
       "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink";
@@ -181,6 +189,7 @@ public class DocxActiveContent {
   }
 
   static void requireNoActiveContent(OPCPackage pkg) throws IOException {
+    requireAdmittedMainPart(pkg);
     List<PackagePart> parts;
     try {
       parts = pkg.getParts();
@@ -189,8 +198,8 @@ public class DocxActiveContent {
     }
     for (PackagePart part : parts) {
       String name = part.getPartName().getName().toLowerCase(Locale.ROOT);
-      String contentType = part.getContentType().toLowerCase(Locale.ROOT);
-      if (contentType.equals(MACRO_MAIN_CONTENT_TYPE.toLowerCase(Locale.ROOT))
+      String contentType = normalized(part.getContentType());
+      if (contentType.contains("macroenabled")
           || contentType.contains("vbaproject")
           || contentType.contains("vbadata")
           || name.contains("vbaproject")
@@ -199,6 +208,9 @@ public class DocxActiveContent {
       }
       if (contentType.contains("activex") || name.startsWith("/word/activex/")) {
         throw activeX();
+      }
+      if (contentType.endsWith(".main+xml") && !ADMITTED_MAIN_CONTENT_TYPES.contains(contentType)) {
+        throw activeContent();
       }
       if (part.isRelationshipPart()) {
         continue;
@@ -219,6 +231,36 @@ public class DocxActiveContent {
     for (PackageRelationship relationship : pkg.getRelationships()) {
       requirePassive(relationship);
     }
+  }
+
+  /**
+   * The part the package's {@code officeDocument} relationship names is the main part, whatever its
+   * name; there is exactly one, and it is a Word document or a Word template.
+   */
+  private static void requireAdmittedMainPart(OPCPackage pkg) throws IOException {
+    PackageRelationshipCollection main =
+        pkg.getRelationshipsByType(PackageRelationshipTypes.CORE_DOCUMENT);
+    if (main.size() != 1) {
+      throw activeContent();
+    }
+    PackagePart part = pkg.getPart(main.getRelationship(0));
+    if (part == null) {
+      throw new IOException("Main part missing");
+    }
+    String contentType = normalized(part.getContentType());
+    if (contentType.contains("macroenabled")) {
+      throw macros();
+    }
+    if (!ADMITTED_MAIN_CONTENT_TYPES.contains(contentType)) {
+      throw activeContent();
+    }
+  }
+
+  /** A content type without parameters, trimmed and in lower case, as every comparison reads it. */
+  static String normalized(String contentType) {
+    String type = contentType == null ? "" : contentType;
+    int parameters = type.indexOf(';');
+    return (parameters < 0 ? type : type.substring(0, parameters)).trim().toLowerCase(Locale.ROOT);
   }
 
   /**

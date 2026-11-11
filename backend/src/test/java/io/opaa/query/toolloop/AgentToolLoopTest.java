@@ -865,6 +865,73 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void aToolWithNothingToOfferThisRunIsNotOfferedAndSeesTheAgentsTemplates() {
+    UUID template = UUID.randomUUID();
+    spec =
+        new AgentRunSpec(
+            agentId,
+            3,
+            null,
+            Set.of(),
+            Set.of(ToolNames.FILL_TEMPLATE),
+            AgentLimits.SYSTEM,
+            false,
+            false,
+            "Berichtshilfe",
+            Set.of(template));
+    switchedOn = Set.of(ToolNames.FILL_TEMPLATE);
+    List<Set<UUID>> seen = new ArrayList<>();
+    extraTools = List.of(new WithheldTool(seen));
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Ohne Vorlage."));
+
+    loop().handle(turn());
+
+    ArgumentCaptor<Prompt> prompt = ArgumentCaptor.captor();
+    verify(chatModel).call(prompt.capture());
+    assertThat(
+            prompt.getValue().getOptions() instanceof ToolCallingChatOptions options
+                ? options.getToolCallbacks()
+                : List.of())
+        .isNullOrEmpty();
+    assertThat(seen).containsExactly(Set.of(template));
+  }
+
+  /** A tool named fill_template that has nothing to offer, as without a fillable template. */
+  private record WithheldTool(List<Set<UUID>> seen) implements AgentTool {
+
+    @Override
+    public String name() {
+      return ToolNames.FILL_TEMPLATE;
+    }
+
+    @Override
+    public ToolRightsClass rightsClass() {
+      return ToolRightsClass.ISOLATED;
+    }
+
+    @Override
+    public String description() {
+      return "Befüllt eine Vorlage.";
+    }
+
+    @Override
+    public String inputSchema() {
+      return "{\"type\":\"object\"}";
+    }
+
+    @Override
+    public Optional<ToolOffer> offer(AgentRun run) {
+      seen.add(run.templateIds());
+      return Optional.empty();
+    }
+
+    @Override
+    public ToolCallOutcome call(tools.jackson.databind.JsonNode arguments, AgentRun run) {
+      throw new AssertionError("a tool that is not offered is never called");
+    }
+  }
+
+  @Test
   void aFullWorkspaceRefusesTheRequestBeforeAnyModelCall() {
     when(workspace.tryReserve(any())).thenReturn(false);
 

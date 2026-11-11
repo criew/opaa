@@ -68,6 +68,14 @@ class TemplateTagScannerTest {
   }
 
   @Test
+  void anIndexFromTheEndIsRefusedWithAHintToCountFromTheStart() {
+    assertThatThrownBy(() -> TemplateTagScanner.scan("{{ posten[-1] }}"))
+        .isInstanceOf(io.opaa.common.ValidationException.class)
+        .hasMessageContaining("„posten[-1]“")
+        .hasMessageContaining("„posten[0]“");
+  }
+
+  @Test
   void aValueUsedOnlyInAConditionIsACondition() {
     assertThat(TemplateTagScanner.scan("{% if eilig %}EILT{% else %}normal{% endif %}"))
         .containsExactly(new TemplatePlaceholder("eilig", PlaceholderKind.CONDITION, List.of()));

@@ -95,13 +95,14 @@ class FillTemplateTool implements AgentTool {
   static final String NO_CHAT = "Vorlagen können nur in einem Chat eines Space befüllt werden.";
 
   static final String NOT_AVAILABLE =
-      "Diese Vorlage ist nicht verfügbar: Vorlagen sind ausgeschaltet, die Vorlage ist gesperrt,"
-          + " oder die Person darf sie nicht lesen."
+      "Diese Vorlage ist nicht verfügbar: Vorlagen sind ausgeschaltet, die Vorlage gehört nicht zu"
+          + " diesem Agenten, sie ist gesperrt, oder die Person darf sie nicht lesen."
           + FALLBACK;
 
   static final String NONE_AVAILABLE =
       "Befüllt eine Dokumentvorlage. Zurzeit steht in diesem Lauf keine Vorlage zur Verfügung"
-          + " (Vorlagen sind ausgeschaltet, gesperrt, oder die Person darf keine Vorlage lesen). Rufe das"
+          + " (Vorlagen sind ausgeschaltet, die Vorlagen sind diesem Agenten nicht zugeordnet oder"
+          + " gesperrt, oder die Person darf keine von ihnen lesen). Rufe das"
           + " Werkzeug nicht auf; antworte im Chat und sage der Person in einem Satz, dass keine"
           + " Datei nach Vorlage erstellt werden kann.";
 
@@ -166,18 +167,25 @@ class FillTemplateTool implements AgentTool {
     return schema(List.of());
   }
 
-  /** The templates the asker may fill now, each with the schema of its placeholders. */
+  /**
+   * The agent's templates the asker may fill now, each with the schema of its placeholders. Nothing
+   * for an agent without templates; an agent whose templates none can be filled now is offered the
+   * tool with the request to answer in the chat and say so.
+   */
   @Override
-  public ToolOffer offer(AgentRun run) {
+  public Optional<ToolOffer> offer(AgentRun run) {
+    if (run.templateIds().isEmpty()) {
+      return Optional.empty();
+    }
     List<RunTemplate> templates =
         run.chatId() == null || run.spaceId() == null
             ? List.of()
-            : runTemplates.available(run.organizationId(), run.userId());
+            : runTemplates.available(run.organizationId(), run.userId(), run.templateIds());
     if (templates.isEmpty()) {
-      return new ToolOffer(NONE_AVAILABLE, schema(List.of()));
+      return Optional.of(new ToolOffer(NONE_AVAILABLE, schema(List.of())));
     }
     List<RunTemplate> offered = templates.subList(0, Math.min(MAX_OFFERED, templates.size()));
-    return new ToolOffer(description(offered, run.blockId()), schema(offered));
+    return Optional.of(new ToolOffer(description(offered, run.blockId()), schema(offered)));
   }
 
   /**
@@ -309,7 +317,7 @@ class FillTemplateTool implements AgentTool {
           ToolCallResult.INVALID_ARGUMENTS, "Die Kennung der Vorlage fehlt oder ist ungültig.");
     }
     Optional<TemplateToFill> found =
-        runTemplates.forFilling(templateId, run.organizationId(), run.userId());
+        runTemplates.forFilling(templateId, run.organizationId(), run.userId(), run.templateIds());
     if (found.isEmpty()) {
       return new ToolCallOutcome(
           NOT_AVAILABLE, ToolCallResult.DENIED, DETAIL_NOT_AVAILABLE, null, List.of());

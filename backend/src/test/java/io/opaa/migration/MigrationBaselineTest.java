@@ -245,6 +245,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "agent_seeds",
             "agent_settings",
             "agent_settings_tools",
+            "agent_templates",
             "agent_tools",
             "agents",
             "chat_attachment_chunks",

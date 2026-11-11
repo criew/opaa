@@ -12,6 +12,7 @@ import io.opaa.api.dto.AgentCreateRequest;
 import io.opaa.api.dto.AgentLibrary;
 import io.opaa.api.dto.AgentResponse;
 import io.opaa.api.dto.AgentSettingsResponse;
+import io.opaa.api.dto.AgentTemplate;
 import io.opaa.api.dto.AgentUpdateRequest;
 import io.opaa.api.dto.AssetReachResponse;
 import io.opaa.asset.web.AssetResponsibilityResponseMapper;
@@ -51,7 +52,8 @@ final class AgentResponseMapper {
                     limits.getMaxToolCalls(),
                     limits.getMaxSearchCalls(),
                     limits.getMaxDurationSeconds(),
-                    limits.getMaxCollectedChars())),
+                    limits.getMaxCollectedChars()),
+            request.getTemplateIds() == null ? null : Set.copyOf(request.getTemplateIds())),
         AssetResponsibilityResponseMapper.toUnit(request.getResponsible()));
   }
 
@@ -67,6 +69,10 @@ final class AgentResponseMapper {
                 .map(library -> new AgentLibrary(library.id(), library.name()))
                 .toList(),
             view.hiddenLibraryCount(),
+            view.templates().stream()
+                .map(template -> new AgentTemplate(template.id(), template.name()))
+                .toList(),
+            view.hiddenTemplateCount(),
             ordered(configuration.toolNames()),
             configuration.planStep(),
             new io.opaa.api.dto.AgentLimits()

@@ -28,6 +28,7 @@ import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -303,17 +304,19 @@ class AgentResponsibilityIntegrationTest {
   @Test
   void aLockedTemplateIsOfferedToNoRunAndTheLockIsLiftedAgain() {
     UUID template = aTemplate("Vermerk", REFERAT);
-    assertThat(offeredTemplates()).containsExactly(template);
+    assertThat(offeredTemplates(template)).containsExactly(template);
 
     templateService.lock(template, "Inhalt veraltet", admin());
-    assertThat(offeredTemplates()).isEmpty();
-    assertThat(runTemplates.forFilling(template, organization, administrator)).isEmpty();
+    assertThat(offeredTemplates(template)).isEmpty();
+    assertThat(runTemplates.forFilling(template, organization, administrator, Set.of(template)))
+        .isEmpty();
     assertThat(templateService.get(template, admin()).responsibility().lock().reason())
         .isEqualTo("Inhalt veraltet");
 
     templateService.unlock(template, admin());
-    assertThat(offeredTemplates()).containsExactly(template);
-    assertThat(runTemplates.forFilling(template, organization, administrator)).isPresent();
+    assertThat(offeredTemplates(template)).containsExactly(template);
+    assertThat(runTemplates.forFilling(template, organization, administrator, Set.of(template)))
+        .isPresent();
     assertThat(auditEvents(template))
         .containsExactly("DOCUMENT_TEMPLATE_CREATED", "ASSET_LOCKED", "ASSET_UNLOCKED");
   }
@@ -354,8 +357,8 @@ class AgentResponsibilityIntegrationTest {
     return group;
   }
 
-  private List<UUID> offeredTemplates() {
-    return runTemplates.available(organization, administrator).stream()
+  private List<UUID> offeredTemplates(UUID templateUnderTest) {
+    return runTemplates.available(organization, administrator, Set.of(templateUnderTest)).stream()
         .map(RunTemplates.RunTemplate::id)
         .toList();
   }

@@ -21,6 +21,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -217,30 +218,38 @@ class DocumentTemplateServiceIntegrationTest {
   }
 
   @Test
-  void anAgentRunMayFillOnlyTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
+  void anAgentRunMayFillOnlyAssignedTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
     settingsService.update(true, admin());
     grantCreateTemplate(author);
     DocumentTemplate template =
         templateService.create(creation("Bericht"), caller(author)).template();
+    DocumentTemplate unassigned =
+        templateService.create(creation("Vermerk"), caller(author)).template();
+    Set<UUID> assigned = Set.of(template.getId());
 
-    assertThat(runTemplates.available(organization, author))
+    assertThat(runTemplates.available(organization, author, assigned))
         .extracting(RunTemplates.RunTemplate::id, RunTemplates.RunTemplate::placeholders)
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple(
                 template.getId(),
                 List.of(new TemplatePlaceholder("titel", PlaceholderKind.FIELD, List.of()))));
-    assertThat(runTemplates.forFilling(template.getId(), organization, author))
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned))
         .get()
         .extracting(RunTemplates.TemplateToFill::fileName)
         .isEqualTo("vorlage.docx");
-    assertThat(runTemplates.available(organization, colleague)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), organization, colleague)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author)).isEmpty();
+    assertThat(runTemplates.forFilling(unassigned.getId(), organization, author, assigned))
+        .isEmpty();
+    assertThat(runTemplates.available(organization, author, Set.of())).isEmpty();
+    assertThat(runTemplates.available(organization, colleague, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, colleague, assigned))
+        .isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author, assigned))
+        .isEmpty();
 
     settingsService.update(false, admin());
 
-    assertThat(runTemplates.available(organization, author)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), organization, author)).isEmpty();
+    assertThat(runTemplates.available(organization, author, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned)).isEmpty();
   }
 
   private DocumentTemplateCreation creation(String name) {
