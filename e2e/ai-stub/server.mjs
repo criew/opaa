@@ -406,6 +406,154 @@ function agentStep(messages) {
   return { message: { role: 'assistant', content }, finish: 'stop' }
 }
 
+// --- Agent loop without code (agents of the catalog) -------------------------------------------
+//
+// Any other request that offers an agent tool is a turn of a plain agent. The script follows the
+// person's question: one search_knowledge call per text in quotes („…“, at most two; without one,
+// a single search for the whole question), then the closing answer, which cites per step only the
+// passages that step found for its term - so the sources of a two-step run are known per step.
+// Trigger words in the question change the script:
+//   E2E-AGENT-PAUSE      the model call after the first tool result waits until
+//                        POST /control/agent-release (at most AGENT_HOLD_LIMIT_MS), so a scenario
+//                        can watch the steps of a running agent, cancel it or fill the workspace;
+//                        GET /control/agent-hold counts the calls waiting
+//   E2E-AGENT-RUECKFRAGE the first call is ask_user; the reply of the person carries no trigger
+//                        and gets the ordinary script
+//   E2E-AGENT-GRENZE     searches again after every result until a limit of the run ends it
+//   E2E-AGENT-DATEI      after the searches fill_template, with values made up from its schema
+const AGENT_TOOL_NAMES = [
+  'search_knowledge',
+  'read_document',
+  'list_sources',
+  'ask_user',
+  'fill_template',
+]
+const AGENT_PAUSE_TRIGGER = 'E2E-AGENT-PAUSE'
+const AGENT_ASK_TRIGGER = 'E2E-AGENT-RUECKFRAGE'
+const AGENT_LIMIT_TRIGGER = 'E2E-AGENT-GRENZE'
+const AGENT_FILE_TRIGGER = 'E2E-AGENT-DATEI'
+const AGENT_QUESTION_BACK = 'Welchen Zeitraum meinen Sie?'
+const AGENT_HOLD_LIMIT_MS = 45_000
+const AGENT_ANSWER = 'Ergebnis des Agenten.'
+
+let agentHeld = []
+
+function offersAgentTools(body) {
+  return AGENT_TOOL_NAMES.some((name) => offersTool(body, name))
+}
+
+/** Waits until a scenario releases the agent calls, the reader went away or the limit passed. */
+function holdAgentCall(res) {
+  return new Promise((resolve) => {
+    const release = () => {
+      clearTimeout(timer)
+      agentHeld = agentHeld.filter((held) => held !== release)
+      resolve()
+    }
+    const timer = setTimeout(release, AGENT_HOLD_LIMIT_MS)
+    agentHeld.push(release)
+    res.on('close', release)
+  })
+}
+
+function quotedTerms(question) {
+  return [...question.matchAll(/„([^“\n]{2,80})“/g)].slice(0, 2).map((match) => match[1])
+}
+
+/** The citation markers of the passages of a tool result whose text contains `term`. */
+function citationsFound(result, term) {
+  const markers = (text) => [...text.matchAll(CITATION_PATTERN)].map((match) => match[0])
+  if (!term) {
+    return markers(result)
+  }
+  const matching = [...result.matchAll(PASSAGE_PATTERN)]
+    .map((passage) => passage[1])
+    .filter((passage) => passage.toLowerCase().includes(term.toLowerCase()))
+    .flatMap(markers)
+  return matching.length > 0 ? matching : markers(result)
+}
+
+/** Values for the placeholders of a template, made up from the JSON schema of its tool call. */
+function valueOf(schema, name, term) {
+  if (schema?.type === 'boolean') return true
+  if (schema?.type === 'array') {
+    return [1, 2].map((index) => valueOf(schema.items, `${name} ${index}`, term))
+  }
+  if (schema?.type === 'object' && schema.properties) {
+    return Object.fromEntries(
+      Object.entries(schema.properties).map(([field, fieldSchema]) => [
+        field,
+        valueOf(fieldSchema, `${name} ${field}`, term),
+      ]),
+    )
+  }
+  return term ? `${term} (${name})` : `Wert ${name}`
+}
+
+function fillTemplateArguments(body, term) {
+  const tool = body.tools.find((candidate) => candidate?.function?.name === 'fill_template')
+  const parameters = tool.function.parameters
+  const schema = typeof parameters === 'string' ? JSON.parse(parameters) : parameters
+  return {
+    vorlage: schema.properties?.vorlage?.enum?.[0],
+    daten: valueOf(schema.properties?.daten ?? { type: 'object' }, 'wert', term),
+    format: 'docx_und_pdf',
+  }
+}
+
+/** The next step of a plain agent's script: a tool call, or the closing answer. */
+async function plainAgentStep(body, messages, res) {
+  const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
+  const results = toolResultsOfTurn(messages)
+  const terms = quotedTerms(question)
+
+  if (question.includes(AGENT_ASK_TRIGGER) && offersTool(body, 'ask_user') && results.length === 0) {
+    return {
+      message: toolCallMessage('ask_user', { frage: AGENT_QUESTION_BACK }),
+      finish: 'tool_calls',
+    }
+  }
+  if (question.includes(AGENT_PAUSE_TRIGGER) && results.length === 1) {
+    await holdAgentCall(res)
+  }
+  if (question.includes(AGENT_LIMIT_TRIGGER)) {
+    return {
+      message: toolCallMessage('search_knowledge', { frage: `${question} (${results.length + 1})` }),
+      finish: 'tool_calls',
+    }
+  }
+  const searches = terms.length > 0 ? terms : [question]
+  if (results.length < searches.length) {
+    return {
+      message: toolCallMessage('search_knowledge', { frage: searches[results.length] }),
+      finish: 'tool_calls',
+    }
+  }
+  if (
+    question.includes(AGENT_FILE_TRIGGER) &&
+    offersTool(body, 'fill_template') &&
+    !results.some((result) => result.name === 'fill_template')
+  ) {
+    return {
+      message: toolCallMessage('fill_template', fillTemplateArguments(body, terms[0])),
+      finish: 'tool_calls',
+    }
+  }
+  const citations = [
+    ...new Set(
+      results
+        .filter((result) => result.name === 'search_knowledge')
+        .flatMap((result, index) => citationsFound(result.content, terms[index])),
+    ),
+  ]
+  const filled = results.find((result) => result.name === 'fill_template')
+  const note = filled ? ` Die Vorlage wurde befüllt: ${filled.content.slice(0, 300)}` : ''
+  return {
+    message: { role: 'assistant', content: `${AGENT_ANSWER}${note} ${citations.join(' ')}`.trim() },
+    finish: 'stop',
+  }
+}
+
 // Every managed chat model in this suite points at this same
 // stub, so a scenario that activates a *different* model and then asks a chat question cannot
 // otherwise tell whether the answer actually came from the newly activated model or from a stale,
@@ -509,6 +657,18 @@ const server = createServer({ shouldUpgradeCallback: isWebSocketUpgrade }, async
       return
     }
 
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/control/agent-release')) {
+      const released = agentHeld.length
+      for (const release of [...agentHeld]) release()
+      sendJson(res, 200, { released })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/control/agent-hold')) {
+      sendJson(res, 200, { waiting: agentHeld.length })
+      return
+    }
+
     if (req.method === 'POST' && matchesEndpoint(req.url, '/control/realtime')) {
       const body = JSON.parse(await readBody(req))
       dropLiveSessions = body.drop === true
@@ -592,8 +752,13 @@ const server = createServer({ shouldUpgradeCallback: isWebSocketUpgrade }, async
         })
         return
       }
-      if (offersTool(body, RUN_CODE_TOOL)) {
-        const step = agentStep(messages)
+      if (offersTool(body, RUN_CODE_TOOL) || offersAgentTools(body)) {
+        const step = offersTool(body, RUN_CODE_TOOL)
+          ? agentStep(messages)
+          : await plainAgentStep(body, messages, res)
+        if (res.destroyed) {
+          return
+        }
         sendJson(res, 200, {
           id: 'chatcmpl-stub',
           object: 'chat.completion',
