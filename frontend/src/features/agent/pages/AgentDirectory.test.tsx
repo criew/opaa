@@ -50,7 +50,13 @@ describe('Agentenverzeichnis', () => {
     expect(screen.getByRole('button', { name: 'Als CSV exportieren' })).toBeVisible()
     expect(screen.getByRole('table', { name: 'Agenten' })).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Vergabeprüfung' }))
+    expect(screen.getByRole('link', { name: 'Vergabeprüfung' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/agent-directory\/agents\//),
+    )
+    // The whole row is the link: a click on its purpose cell opens the detail as well.
+    const row = screen.getByRole('link', { name: 'Vergabeprüfung' }).closest('tr')!
+    await user.click(within(row).getAllByRole('cell')[1])
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Vergabeprüfung' })).toBeVisible()
     expect(screen.getByText('Nenne jede Abweichung mit Fundstelle und Paragraf.')).toBeVisible()

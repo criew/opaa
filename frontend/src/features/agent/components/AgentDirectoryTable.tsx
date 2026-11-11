@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router'
-import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -7,8 +7,12 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import type { AgentDirectoryResponsibility } from '@/shared/api/types'
 import { adminTableSx } from '@/shared/ui/list/adminListStyles'
+import { fontSize } from '@/shared/theme/tokens'
 import { formatDate, formatNumber, MISSING_VALUE } from '@/shared/utils/formatDate'
 import { responsibilityLabel } from './agentDirectoryTexts'
+
+/** Cells never wrap: a long value is cut off and named in full by its tooltip. */
+const oneLineSx = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
 
 export interface DirectoryRow {
   id: string
@@ -57,20 +61,32 @@ export default function AgentDirectoryTable({
             onClick={() => void navigate(routeOf(row.id))}
           >
             <TableCell>
-              <Button
-                variant="text"
-                size="small"
-                sx={{ p: 0, minWidth: 0, textAlign: 'left', justifyContent: 'flex-start' }}
+              <Link
+                href={routeOf(row.id)}
+                underline="none"
+                title={row.name}
                 onClick={(event) => {
+                  event.preventDefault()
                   event.stopPropagation()
                   void navigate(routeOf(row.id))
                 }}
+                sx={{
+                  display: 'block',
+                  fontSize: fontSize.text,
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  ...oneLineSx,
+                }}
               >
                 {row.name}
-              </Button>
+              </Link>
             </TableCell>
-            <TableCell>{row.description ?? MISSING_VALUE}</TableCell>
-            <TableCell>{responsibilityLabel(row.responsibility)}</TableCell>
+            <TableCell sx={oneLineSx} title={row.description ?? undefined}>
+              {row.description ?? MISSING_VALUE}
+            </TableCell>
+            <TableCell sx={oneLineSx} title={responsibilityLabel(row.responsibility)}>
+              {responsibilityLabel(row.responsibility)}
+            </TableCell>
             <TableCell align="right">{formatNumber(row.revision)}</TableCell>
             <TableCell>{row.locked ? formatDate(row.lockedSince) : MISSING_VALUE}</TableCell>
           </TableRow>
