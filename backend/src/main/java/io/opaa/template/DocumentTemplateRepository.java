@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 /** The document templates - rights and reach are the shell's, never asked here. */
 public interface DocumentTemplateRepository extends JpaRepository<DocumentTemplate, UUID> {
 
+  /** Every one of the organization, readable or not - for the agent directory only. */
+  List<DocumentTemplate> findByOrganizationId(UUID organizationId);
+
   /**
    * Locks the template's row until the transaction ends, before its file is replaced: two
    * replacements, also on two instances, each count their own revision.

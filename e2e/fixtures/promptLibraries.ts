@@ -47,9 +47,10 @@ export async function createKnowledgeLibraryViaApi(
 
 /**
  * Legt als Systemverwaltung eine interne Gruppe mit einem Mitglied an und gibt sie zur Verwendung
- * frei - erst dann bietet der Rechtedialog sie auch Personen ohne Systemrolle an.
+ * frei - erst dann bietet der Rechtedialog sie auch Personen ohne Systemrolle an. Gibt die Kennung
+ * der Gruppe zurück.
  */
-export async function createReleasedGroupViaApi(name: string, memberQuery: string): Promise<void> {
+export async function createReleasedGroupViaApi(name: string, memberQuery: string): Promise<string> {
   const api = await apiAs('dev-admin')
   try {
     const group = await created<{ id: string }>(await api.post('/api/v1/groups', { data: { name } }))
@@ -64,6 +65,7 @@ export async function createReleasedGroupViaApi(name: string, memberQuery: strin
       data: { releasedForUse: true },
     })
     expect(release.status(), await release.text()).toBe(200)
+    return group.id
   } finally {
     await api.dispose()
   }

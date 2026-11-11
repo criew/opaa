@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
+import SectionHead from '@/shared/ui/SectionHead'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { BrandingImageKind } from '@/shared/branding/brandingStore'
 import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '@/shared/branding/brandingStore'
@@ -98,7 +98,7 @@ export default function BrandingSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Branding" gutterBottom />
         <Alert severity="info">
           Das Branding wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite nicht
@@ -244,7 +244,7 @@ export default function BrandingSettingsPage() {
         overflowY: 'auto',
       }}
     >
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={PaletteOutlinedIcon}
           title="Branding"
@@ -345,13 +345,9 @@ export default function BrandingSettingsPage() {
 
             <AccentContrastWarning primaryColor={primaryColor} />
 
-            <Divider />
-
             {imageSlots.map((slot) => (
               <Box key={slot.kind}>
-                <Typography variant="subtitle2" component="h2" gutterBottom>
-                  {BRANDING_IMAGES[slot.kind].label}
-                </Typography>
+                <SectionHead>{BRANDING_IMAGES[slot.kind].label}</SectionHead>
                 <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
                   {slot.description} PNG oder JPEG, höchstens{' '}
                   {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
@@ -396,12 +392,8 @@ export default function BrandingSettingsPage() {
               </Box>
             ))}
 
-            <Divider />
-
             <Box>
-              <Typography variant="subtitle2" component="h2" gutterBottom>
-                {BRANDING_LABELS.preview}
-              </Typography>
+              <SectionHead>{BRANDING_LABELS.preview}</SectionHead>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
                 {BRANDING_TEXTS.previewHint}
               </Typography>

@@ -45,7 +45,7 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from './assetLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
@@ -386,7 +386,7 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
         value={expiryInput}
         onChange={(e) => setExpiryInput(e.target.value)}
         size="small"
-        sx={{ maxWidth: 220 }}
+        sx={{ maxWidth: fieldWidth.short }}
       />
 
       <Stack direction="row" spacing={1}>

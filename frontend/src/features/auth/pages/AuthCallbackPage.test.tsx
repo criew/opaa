@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { User, UserManager } from 'oidc-client-ts'
@@ -63,6 +63,38 @@ describe('AuthCallbackPage', () => {
   afterEach(() => {
     clearHandoverInFlight()
     vi.restoreAllMocks()
+  })
+
+  // The callback is a page before the session like the others: same frame, one main landmark.
+  it('waits inside the frame of the sign-in pages', () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      handleOidcCallback: vi.fn(() => new Promise<never>(() => {})),
+    })
+
+    renderCallback()
+
+    const main = screen.getByRole('main')
+    expect(within(main).getByRole('heading', { level: 1, name: 'Anmeldung' })).toBeInTheDocument()
+    expect(within(main).getByRole('status')).toHaveTextContent('Anmeldung wird abgeschlossen …')
+  })
+
+  it('reports a failed callback inside the same frame, with the way back', async () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      error: 'Die Anmeldung ist fehlgeschlagen.',
+      handleOidcCallback: vi.fn().mockResolvedValue({ kind: 'failed' }),
+    })
+
+    renderCallback()
+
+    const main = screen.getByRole('main')
+    expect(within(main).getByRole('heading', { level: 1, name: 'Anmeldung' })).toBeInTheDocument()
+    expect(within(main).getByRole('alert')).toHaveTextContent('Die Anmeldung ist fehlgeschlagen.')
+    await userEvent.click(within(main).getByRole('button', { name: 'Zur Anmeldung' }))
+    expect(await screen.findByText('Anmelden')).toBeInTheDocument()
   })
 
   it('goes on to the handover page when the callback carried one', async () => {

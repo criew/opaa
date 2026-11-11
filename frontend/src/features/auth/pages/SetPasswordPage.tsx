@@ -2,17 +2,17 @@ import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
 import NewPasswordField from '../components/NewPasswordField'
-import PasswordField from '../components/PasswordField'
-import SectionEyebrow from '../components/SectionEyebrow'
+import SecretField from '@/shared/ui/form/SecretField'
+import SectionHead from '@/shared/ui/SectionHead'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { TextLink } from '@/shared/ui/DetailSection'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { FieldValidationError } from '@/shared/session/authApi'
@@ -23,7 +23,7 @@ import {
   setPassword,
 } from '../api/selfServiceApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { FORGOT_PASSWORD_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
+import { FORGOT_PASSWORD_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   LINK_INVALID_MESSAGE,
@@ -39,14 +39,6 @@ const HEADING = 'Passwort festlegen'
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */
 const FIELDS = ['newPassword', 'repeatedPassword'] as const
-
-function SignInLink({ children = 'Zur Anmeldung' }: { children?: string }) {
-  return (
-    <Link component={RouterLink} to={LOGIN_ROUTE}>
-      {children}
-    </Link>
-  )
-}
 
 /**
  * Redeems the link of an invitation or of a password reset - one page for both, with a heading that
@@ -162,9 +154,7 @@ export default function SetPasswordPage() {
           }
         >
           {passwordResetEnabled ? (
-            <Link component={RouterLink} to={FORGOT_PASSWORD_ROUTE}>
-              Neuen Link anfordern
-            </Link>
+            <TextLink to={FORGOT_PASSWORD_ROUTE}>Neuen Link anfordern</TextLink>
           ) : (
             <SignInLink />
           )}
@@ -188,7 +178,9 @@ export default function SetPasswordPage() {
         noValidate
         sx={{ mt: 3 }}
       >
-        <SectionEyebrow id="set-password-title">Neues Passwort wählen</SectionEyebrow>
+        <SectionHead id="set-password-title" underline={false}>
+          Neues Passwort wählen
+        </SectionHead>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           {passwordPolicyText(minLength)}
         </Typography>
@@ -204,14 +196,15 @@ export default function SetPasswordPage() {
             onGenerated={setRepeated}
             inputRef={newPasswordRef}
           />
-          <PasswordField
+          <SecretField
             id="set-password-repeat"
             label="Neues Passwort wiederholen"
+            toggleName="Wiederholung"
             value={repeated}
             onChange={setRepeated}
             autoComplete="new-password"
             disabled={busy}
-            errorMessage={fieldErrors.repeatedPassword}
+            error={fieldErrors.repeatedPassword}
             inputRef={repeatedRef}
           />
           <Button
@@ -224,9 +217,7 @@ export default function SetPasswordPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <SignInLink>Zurück zur Anmeldung</SignInLink>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }

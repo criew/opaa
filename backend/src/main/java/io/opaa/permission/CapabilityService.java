@@ -31,9 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The one evaluation of an installation-wide {@link Capability} (ADR-0036, Entscheidung 5): {@code
  * hasCapability(user, capability) = SYSTEM_ADMIN OR grant to ALL_ACCOUNTS OR grant to the account
- * OR grant to one of its groups}. A capability opens a creation path and never an existing content
- * - nothing in this class widens what {@code LibraryAccessService#readableLibraryIds} returns, and
- * the role {@code AUDITOR} confers no capability of its own.
+ * OR grant to one of its groups}. A {@code CREATE_} capability opens a creation path and never an
+ * existing content; {@code VIEW_AGENT_DIRECTORY} opens descriptions of agents and templates, never
+ * knowledge - nothing in this class widens what {@code LibraryAccessService#readableLibraryIds}
+ * returns, and the role {@code AUDITOR} confers no capability of its own.
  *
  * <p>{@code CREATE_CONNECTOR_LIBRARY} is granted per scope (ADR-0036, Entscheidung 5): every check
  * of it names the scope, and a check without one is a programming error. Which scopes exist and
@@ -67,22 +68,29 @@ public class CapabilityService {
           Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen",
           Capability.CREATE_AGENT, "Agenten anlegen",
-          Capability.CREATE_TEMPLATE, "Vorlagen anlegen");
+          Capability.CREATE_TEMPLATE, "Vorlagen anlegen",
+          Capability.VIEW_AGENT_DIRECTORY, "Agentenverzeichnis einsehen");
 
   /**
-   * What each capability creates, as the object of a sentence - the piece the overview's plain-text
-   * line puts between "Alle Konten dürfen" and "anlegen". Separate from {@link #LABELS} because a
-   * German noun that opens a label is capitalised and the same noun inside a sentence is not.
+   * What each capability permits, as the end of a sentence - the piece the overview's plain-text
+   * line puts after "Alle Konten dürfen". Separate from {@link #LABELS} because a German noun that
+   * opens a label is capitalised and the same noun inside a sentence is not.
    */
-  private static final Map<Capability, String> CREATABLES =
+  private static final Map<Capability, String> PERMITS =
       Map.of(
-          Capability.CREATE_SPACE, "Spaces",
-          Capability.CREATE_LIBRARY, "Bibliotheken für Uploads",
-          Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken",
-          Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
-          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken",
-          Capability.CREATE_AGENT, "Agenten",
-          Capability.CREATE_TEMPLATE, "Vorlagen");
+          Capability.CREATE_SPACE, "Spaces anlegen",
+          Capability.CREATE_LIBRARY, "Bibliotheken für Uploads anlegen",
+          Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken anlegen",
+          Capability.CREATE_INTERNAL_GROUP, "interne Gruppen anlegen",
+          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen",
+          Capability.CREATE_AGENT, "Agenten anlegen",
+          Capability.CREATE_TEMPLATE, "Vorlagen anlegen",
+          Capability.VIEW_AGENT_DIRECTORY, "das Agentenverzeichnis einsehen");
+
+  /**
+   * The rights that read rather than create; the interface calls them "Recht", not "Anlegerecht".
+   */
+  private static final Set<Capability> READING = EnumSet.of(Capability.VIEW_AGENT_DIRECTORY);
 
   /**
    * The capabilities that belong to an installation-wide feature (ADR-0044): while it is off, the
@@ -164,9 +172,14 @@ public class CapabilityService {
     return LABELS.get(capability);
   }
 
-  /** What the capability creates, as the object of a sentence - see {@code CREATABLES}. */
-  public static String creatable(Capability capability) {
-    return CREATABLES.get(capability);
+  /** What the capability permits, as the end of a sentence - see {@code PERMITS}. */
+  public static String permits(Capability capability) {
+    return PERMITS.get(capability);
+  }
+
+  /** "Anlegerecht" for a right to create, "Recht" for the right to read the agent directory. */
+  public static String kind(Capability capability) {
+    return READING.contains(capability) ? "Recht" : "Anlegerecht";
   }
 
   /**
@@ -247,7 +260,9 @@ public class CapabilityService {
 
   /** The refusal of a missing capability, also the notice before the attempt. */
   public static String missing(Capability capability) {
-    return "Ihnen fehlt das Anlegerecht „"
+    return "Ihnen fehlt das "
+        + kind(capability)
+        + " „"
         + label(capability)
         + "“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.";
   }
@@ -528,7 +543,7 @@ public class CapabilityService {
         .object(
             AuditObjectType.SYSTEM_SETTING,
             capabilityObjectId(grant.getCapability()),
-            "Anlegerecht: " + label(grant.getCapability()))
+            kind(grant.getCapability()) + ": " + label(grant.getCapability()))
         .outcome(AuditOutcome.SUCCESS);
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("capability", grant.getCapability().name());

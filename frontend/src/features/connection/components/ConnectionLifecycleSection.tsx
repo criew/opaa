@@ -14,7 +14,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import FormField from '@/shared/ui/form/FormField'
 import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
-import { formWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 import LoadError from '@/shared/ui/states/LoadError'
@@ -267,7 +267,7 @@ export default function ConnectionLifecycleSection() {
         <Stack
           role="group"
           aria-label="Schwellen und Fristen der Verbindungen"
-          sx={{ maxWidth: 860 }}
+          sx={{ maxWidth: contentWidth.detail }}
         >
           {entries.map((entry) => (
             <SettingRow

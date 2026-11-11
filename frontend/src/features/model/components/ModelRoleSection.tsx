@@ -11,6 +11,7 @@ import type {
   SearchModelRoleState,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
+import SectionHead from '@/shared/ui/SectionHead'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   isVocabularyTooLong,
@@ -482,13 +483,9 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           )}
           {kind === 'transcription' && (
             <Box component="section" aria-labelledby={`${prefix}-live-heading`}>
-              <Typography
-                id={`${prefix}-live-heading`}
-                component="h3"
-                sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
-              >
+              <SectionHead id={`${prefix}-live-heading`} component="h3">
                 {REALTIME_TEXTS.sectionLabel}
-              </Typography>
+              </SectionHead>
               <Typography role="status" sx={{ fontSize: fontSize.text, mb: 1.5 }}>
                 Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
               </Typography>

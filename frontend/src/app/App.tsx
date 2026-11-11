@@ -74,6 +74,8 @@ import {
   AgentCreatePage,
   AgentDetailPage,
   AgentSettingsPage,
+  AgentDirectoryPage,
+  AgentDirectoryDetailPage,
   ProviderGroupWorklistPage,
   RegisterPage,
   RightsHistoryPage,
@@ -107,6 +109,7 @@ const ADMIN_SECTIONS = [
   { label: 'E-Mail', to: '/admin/mail' },
   { label: 'Virenprüfung', to: '/admin/malware-scan' },
   { label: 'Agenten', to: '/admin/agents' },
+  { label: 'Agentenverzeichnis', to: '/agent-directory' },
   { label: 'Vorlagen', to: DOCUMENT_TEMPLATE_SETTINGS_ROUTE },
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
@@ -378,6 +381,16 @@ export default function App() {
                   )}
                   <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
                   <Route path="admin/agents" element={<AgentSettingsPage />} />
+                  {/* Not under /admin: the staff council holds the right without administering. */}
+                  <Route path="agent-directory" element={<AgentDirectoryPage />} />
+                  <Route
+                    path="agent-directory/agents/:agentId"
+                    element={<AgentDirectoryDetailPage />}
+                  />
+                  <Route
+                    path="agent-directory/templates/:templateId"
+                    element={<AgentDirectoryDetailPage />}
+                  />
                   <Route
                     path="admin/succession"
                     element={<Navigate to="/admin/succession/open" replace />}

@@ -17,7 +17,7 @@ export default function SettingsTransferPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Einstellungen übertragen" gutterBottom />
         <Alert severity="info">
           Die Einstellungen überträgt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht
@@ -29,7 +29,7 @@ export default function SettingsTransferPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={ImportExportOutlinedIcon}
           title="Einstellungen übertragen"

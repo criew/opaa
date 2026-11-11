@@ -3,20 +3,20 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { useEffect } from 'react'
-import { Navigate, Link as RouterLink, useLocation } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import type { SignInProvider } from '@/shared/session/types'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { TextLink } from '@/shared/ui/DetailSection'
 import AuthLayout from '../components/AuthLayout'
 import LocalSignInForm from '../components/LocalSignInForm'
-import SectionEyebrow from '../components/SectionEyebrow'
+import SectionHead from '@/shared/ui/SectionHead'
 import { LAST_PROVIDER_STORAGE_KEY, useAuthStore } from '@/shared/session/authStore'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { SYSTEM_LOGIN_ROUTE } from '@/shared/routes'
@@ -214,7 +214,9 @@ export default function LoginPage() {
       {/* The providers come first - most people of an installation sign in there. */}
       {hasChoice && (
         <Box component="section" role="group" aria-labelledby="login-choice-title">
-          <SectionEyebrow id="login-choice-title">Identitätsanbieter</SectionEyebrow>
+          <SectionHead id="login-choice-title" underline={false}>
+            Identitätsanbieter
+          </SectionHead>
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
             {providers.length > 1
               ? 'Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.'
@@ -264,14 +266,12 @@ export default function LoginPage() {
         </Typography>
       </Stack>
 
-      {/* ADR-0033, Entscheidung 4: while the management is switched off, this quiet link is the
+      {/* ADR-0033, Entscheidung 4: while the management is switched off, this link is the
           only visible way to the local system administrators' sign-in. */}
       {!hasLocalForm && (
-        <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
-          <Link component={RouterLink} to={SYSTEM_LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
-            Anmeldung für die Systemverwaltung
-          </Link>
-        </Typography>
+        <TextLink to={SYSTEM_LOGIN_ROUTE} sx={{ mt: 2 }}>
+          Anmeldung für die Systemverwaltung
+        </TextLink>
       )}
     </AuthLayout>
   )

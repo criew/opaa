@@ -1,24 +1,20 @@
 import { useId, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
-import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Link as RouterLink } from 'react-router'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
-import SectionEyebrow from './SectionEyebrow'
+import FormField from '@/shared/ui/form/FormField'
+import SecretField from '@/shared/ui/form/SecretField'
+import SectionHead from '@/shared/ui/SectionHead'
+import { TextLink } from '@/shared/ui/DetailSection'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '@/shared/routes'
 import { fontSize, radius } from '@/shared/theme/tokens'
 
 interface LocalSignInFormProps {
-  /** Eyebrow of the section; also the accessible name of the form. */
+  /** Head of the section; also the accessible name of the form. */
   title: string
   /** One sentence above the fields saying whose accounts these are. */
   description: string
@@ -53,7 +49,6 @@ export default function LocalSignInForm({
   const isSigningIn = useAuthStore((s) => s.isSigningIn)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [passwordVisible, setPasswordVisible] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
   const busy = isSigningIn || disabled
 
@@ -69,60 +64,32 @@ export default function LocalSignInForm({
 
   return (
     <Box component="form" aria-labelledby={titleId} onSubmit={submit} noValidate>
-      <SectionEyebrow id={titleId}>{title}</SectionEyebrow>
+      <SectionHead id={titleId} underline={false}>
+        {title}
+      </SectionHead>
       <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
         {description}
       </Typography>
       <Stack spacing={2}>
-        <Box>
-          <FormFieldLabel htmlFor={emailId}>E-Mail-Adresse</FormFieldLabel>
-          <TextField
-            id={emailId}
-            inputRef={emailRef}
-            type="email"
-            size="small"
-            fullWidth
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={busy}
-          />
-        </Box>
-        <Box>
-          <FormFieldLabel htmlFor={passwordId}>Passwort</FormFieldLabel>
-          <TextField
-            id={passwordId}
-            type={passwordVisible ? 'text' : 'password'}
-            size="small"
-            fullWidth
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={busy}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip title={passwordVisible ? 'Passwort verbergen' : 'Passwort anzeigen'}>
-                      <IconButton
-                        aria-label={passwordVisible ? 'Passwort verbergen' : 'Passwort anzeigen'}
-                        edge="end"
-                        size="small"
-                        onClick={() => setPasswordVisible((visible) => !visible)}
-                      >
-                        {passwordVisible ? (
-                          <VisibilityOffOutlinedIcon fontSize="small" />
-                        ) : (
-                          <VisibilityOutlinedIcon fontSize="small" />
-                        )}
-                      </IconButton>
-                    </Tooltip>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-        </Box>
+        <FormField
+          id={emailId}
+          label="E-Mail-Adresse"
+          inputRef={emailRef}
+          type="email"
+          size="small"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={busy}
+        />
+        <SecretField
+          id={passwordId}
+          label="Passwort"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          disabled={busy}
+        />
         <Stack
           direction="row"
           spacing={1.5}
@@ -136,15 +103,7 @@ export default function LocalSignInForm({
           >
             {isSigningIn ? 'Anmeldung läuft …' : 'Anmelden'}
           </Button>
-          {showPasswordReset && (
-            <Link
-              component={RouterLink}
-              to={FORGOT_PASSWORD_ROUTE}
-              sx={{ fontSize: fontSize.text }}
-            >
-              Passwort vergessen?
-            </Link>
-          )}
+          {showPasswordReset && <TextLink to={FORGOT_PASSWORD_ROUTE}>Passwort vergessen?</TextLink>}
         </Stack>
         {showSelfRegistration && (
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>

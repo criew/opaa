@@ -7,6 +7,7 @@ import type { RssAttachmentProfile, RssFeedSourceValues } from '../../../utils/r
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { UrlConnectionFields } from './GenericSetupFields'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 /** „Verbindung“ as every web source. */
 export function RssFeedConnectionFields(props: SetupFieldsProps<RssFeedSourceValues>) {
@@ -42,7 +43,7 @@ export function RssFeedScopeFields({
         placeholder="#inhalt"
         mono
       />
-      <Box sx={{ maxWidth: 480 }}>
+      <Box sx={{ maxWidth: fieldWidth.long }}>
         <FormField
           select
           label="Anlagenprofil"

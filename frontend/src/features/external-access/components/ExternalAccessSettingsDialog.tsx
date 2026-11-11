@@ -16,8 +16,8 @@ import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from './tokenLabels'
-import { fontSize } from '@/shared/theme/tokens'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const SWITCH_CONSEQUENCE =
   'Beschäftigte können Zugangstokens für externe KI-Werkzeuge erzeugen. Das Ausschalten wirkt ' +

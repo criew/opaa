@@ -9,7 +9,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 import PageSection from '@/shared/ui/PageSection'
-import { formWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -200,7 +200,11 @@ export default function FullSyncRhythmSection() {
       ) : rhythms === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Stack role="group" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
+        <Stack
+          role="group"
+          aria-label="Vollabgleich-Rhythmus je Quellart"
+          sx={{ maxWidth: contentWidth.form }}
+        >
           {rhythms.map((rhythm) => (
             <RhythmRow
               key={`${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`}

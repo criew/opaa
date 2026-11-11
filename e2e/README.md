@@ -299,6 +299,16 @@ Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANT
 Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
 des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
+Für **Agenten** (#3680) spielt der Stub jede Anfrage, die ein Werkzeug des Agenten anbietet, nach
+einem festen Skript: je ein `search_knowledge` pro Text in „…“ der Frage (höchstens zwei, sonst eine
+Suche mit der ganzen Frage), dann eine Antwort, die je Schritt nur die Fundstellen mit diesem
+Begriff zitiert. Auslösewörter ändern das Skript: `E2E-AGENT-PAUSE` hält den Modellaufruf nach dem
+ersten Werkzeugergebnis fest, bis `POST /control/agent-release` ihn freigibt (`GET
+/control/agent-hold` zählt die wartenden Aufrufe); `E2E-AGENT-RUECKFRAGE` beginnt mit `ask_user`;
+`E2E-AGENT-GRENZE` sucht immer weiter, bis eine Grenze den Lauf beendet; `E2E-AGENT-DATEI` füllt
+nach der Suche `fill_template` mit Werten, die er aus dem Schema des Werkzeugs erfindet.
+Anfragen mit `run_code` spielen weiter das Skript des Ziels `sandbox`.
+
 Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
 `400` scheitern, wie ein Anbieter, der eine Anfrage ablehnt. Ein 4xx wiederholt der Client des
 Backends nicht, die Meldung „Fehler im KI-Dienst" steht also sofort im Chat statt nach einer
@@ -834,6 +844,24 @@ lassen.
   (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
   Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
   her.
+
+- `tests/agents-schalter-anlegerecht.spec.ts`, `tests/agents-teilen-und-wahl.spec.ts`,
+  `tests/agents-lauf.spec.ts`, `tests/agents-sperre.spec.ts` (#3680, Epic #1747) — das Agenten-Paket
+  mit dem KI-Stub (siehe dort). **Schalter aus:** keine `@`-Agentenwahl, kein Katalogeintrag
+  „Agenten“ oder „Vorlagen“, die Schnittstelle antwortet 404, der gewöhnliche Chat antwortet wie
+  bisher. **Anlegerecht:** ohne `CREATE_AGENT` fehlt die Kachel und der Assistent nennt den Grund;
+  die verantwortliche Stelle ist Pflicht im Schritt „Freigaben“; nach der Freigabe der
+  Systemverwaltung entsteht der Agent. **Teilen und Wahl:** Freigabe an eine Gruppe, das Mitglied
+  wählt den Agenten, eine fremde Person im selben Space nicht; Agent- und Wissens-Einträge und Chips
+  sind unterscheidbar, `@Agent` mit `/Prompt` läuft über den Agenten. **Lauf:** Schritte erscheinen
+  im Strom durch den nginx des Frontend-Containers, während der Lauf am Stub festgehalten wird;
+  Belege aus beiden Schritten, Fassungsstempel, „Entwurf“; Stopp, Rückfrage, Grenze, volles
+  Platzlimit (zwei gleichzeitige Läufe von zwei Personen, Vorgabe) und Personenlimit (ein Lauf je Person, Vorgabe) und ein Modell ohne Werkzeugfähigkeit. **Sperre:**
+  gesperrter Agent fehlt in der Auswahl, ein offener Chat meldet die Sperre beim Senden. Schalter,
+  Werkzeugfähigkeit des Modells und Vorlagen-Schalter sind installationsweit; jedes Szenario stellt
+  den Stand davor wieder her. Die Datei nach Vorlage (DOCX und PDF, gesperrte Vorlage) braucht die
+  Sandbox und läuft im Ziel `sandbox` (`sandbox/tests/agent-vorlage.spec.ts`, nicht in der CI).
+  Noch offen: das Agentenverzeichnis (#3679), die Planbestätigung des Agenten „Recherche“ (#3674).
 
 - `tests/lifecycle.spec.ts` (#3465, Epic #3462) — die Wege, die eine Installation umziehen und
   Bestände übergeben oder entfernen. **Einstellungen übertragen:** Export über die Oberfläche, eine

@@ -229,10 +229,10 @@ Sechs Schriftstufen in ganzen Pixeln, benannt im Theme (`fontSize` in
 
 | Stufe         | Größe | Verwendung                                                                 |
 | ------------- | ----- | -------------------------------------------------------------------------- |
-| `label`       | 11 px | Versal-Etiketten, Tabellenköpfe, Fußnotenzeichen                            |
+| `label`       | 11 px | Versal-Etiketten, Abschnittsüberschriften (4.6), Tabellenköpfe, Fußnotenzeichen |
 | `meta`        | 12 px | Chips und Etiketten (5.5), Metadaten neben einem Wert, Hilfetext am Feld    |
 | `text`        | 14 px | Fließtext, Feldwerte, Schaltflächen, Menüeinträge, Listen                   |
-| `title`       | 16 px | Titel von Bereichsseite, Dialog und Seitenpanel, Abschnittsköpfe; Chat-Text |
+| `title`       | 16 px | Titel von Bereichsseite, Dialog und Seitenpanel; Chat-Text                  |
 | `detailTitle` | 20 px | Titel einer Detailseite                                                    |
 | `wizardTitle` | 24 px | Schritttitel im Assistenten, Einzweckseiten (Installation, Fehlerseite)     |
 
@@ -256,8 +256,10 @@ steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber kei
   UI-Texte) · 1.5 (Fließtext) · 1.7 (lange Lesetexte, z. B. Chat-Antworten).
 - **Laufweiten:** −0.02em (Überschriften ab xl) · −0.005em (Fließtext) · +0.08em
   (Versal-Etiketten).
-- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten): 11–12 px, Versalien,
-  +0.08em, Gewicht 500, Farbe `accent` über Überschriften bzw. `fg-3` in Tabellen.
+- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten, Abschnittskopf): 11–12 px,
+  Versalien, +0.08em, Gewicht 500, Farbe `fg-2` bzw. `fg-3` in Tabellen. Nie `accent`: Blau bleibt
+  Handlung und Zustand vorbehalten (2.3), auch auf den Seiten vor der Anmeldung und im
+  Installationsassistenten.
 
 ---
 
@@ -341,6 +343,46 @@ Belegfenster, Drawer); Kurve `cubic-bezier(0.22, 1, 0.36, 1)` (ease-out). Nur `t
 `opacity` animieren. Unter `prefers-reduced-motion` entfallen Bewegungen bzw. schrumpfen auf
 Zustandswechsel.
 
+### 4.6 Seitenraster
+
+**Seitenkopf.** Jede Bereichsseite – eine Seite hinter einer Bereichsnavigation, etwa in
+Administration, Anbindungen, Revision oder „Ihre Einstellungen" – beginnt mit `AreaPageHeader`
+(`frontend/src/shared/ui/AreaPageHeader.tsx`): Zeichen und Titel, daneben die Anzahl der Liste,
+rechts der Anlege-Knopf (5.1), darunter höchstens zwei Zeilen Beschreibung. Zwischen Kopf und
+Inhalt stehen nur Reiter, Hinweise und die Filterzeile.
+
+- **Anzahl:** mit Substantiv neben dem Titel („3 Anbieter", „1 Konto"); solange ein Filter die
+  Liste kürzt, „12 von 40 Konten". Sie steht nicht über der Tabelle, nicht in der Fußzeile und
+  nicht im Reiter (Prüfliste P2).
+- **Seiten mit Reitern:** Anzahl und Anlege-Knopf gehören zum gewählten Reiter, stehen aber im
+  Kopf und wechseln mit dem Reiter. Der Inhalt des Reiters schreibt dafür `AreaPageCount` und
+  `CreateButton`; beide erscheinen im Kopf der Seite, gleich wo sie im Reiter stehen.
+
+**Drei Inhaltsbreiten** (`contentWidth` in `frontend/src/shared/theme/tokens.ts`):
+
+| Token    | Breite  | Seitentyp                                                         |
+| -------- | ------- | ----------------------------------------------------------------- |
+| `form`   | 720 px  | Formular, Assistent, Seite aus Lesetext (Hinweis, kein Zugriff)   |
+| `detail` | 880 px  | Detailseite eines Arbeitsmittels oder Space, samt Einstellungen   |
+| `list`   | 1180 px | Bereichsseite mit Liste oder Tabelle                              |
+
+Seiten derselben Art haben dieselbe Breite; die rechte Kante springt nicht beim Wechsel zwischen
+zwei Menüpunkten (Prüfliste P46). **Kein Thema schreibt eine Breite als Zahl.** Ein einzelnes
+Feld oder ein kleiner Block, der seinen Behälter nicht füllen soll, nimmt eine Stufe aus
+`fieldWidth` (240, 360, 480 px).
+
+**Erklärtexte in Lesebreite.** Ein erklärender Absatz ist höchstens 72 Zeichen breit
+(`readingWidth`), auch über einer breiten Tabelle. Die Beschreibung im Seitenkopf und unter einer
+Abschnittsüberschrift hält das von selbst ein.
+
+**Eine Abschnittsüberschrift.** Abschnitte einer Seite beginnen mit `SectionHead`: Versalien in
+11 px auf einer Haarlinie. `PageSection` (Bereichsseite) und `DetailSection` (Reiter einer
+Detailseite) setzen sie mit Beschreibung und Aktion zusammen. Eine fette Zeile als zweite Form
+gibt es nicht. Den Abstand zum Inhalt davor (32 px) setzt der Baustein, nicht die Seite.
+
+Ein Quelltext-Test (`frontend/src/shared/ui/pageGrid.test.tsx`) hält Breiten, Plus-Icon und
+Reiter ohne Zähler fest; `AreaPageHeader.test.tsx` führt die Liste der Bereichsseiten.
+
 ---
 
 ## 5 · Komponentenregeln
@@ -354,7 +396,9 @@ Zustandswechsel.
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
 Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
-Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
+Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche:
+der Anlege-Knopf oder „Speichern". Was nur ein Panel oder einen Dialog öffnet („Einstellungen"), ist
+sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
 `danger` (5.10).
@@ -368,9 +412,13 @@ Größe.
 der Maus erklärt („Original öffnen"). Ein Icon allein ist keine Beschriftung — weder für
 Sehende, die das Symbol nicht kennen, noch für Screenreader.
 
-**Anlege-Knöpfe** — die Schaltfläche oben rechts über einer Übersicht oder Verwaltungsliste, die
-ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
-die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
+**Anlege-Knöpfe** — die Schaltfläche, die ein neues Objekt anlegt — stehen rechts im Seitenkopf
+(4.6), nie unter Reitern, neben einem Hinweis oder Erklärtext oder im Abschnittskopf. Sie kommen
+aus `CreateButton` (`frontend/src/shared/ui/CreateButton.tsx`), tragen das Plus-Icon (`Add`) vor
+der Beschriftung und sind die primäre Schaltfläche der Seite. **Ein Knopf mit Plus-Icon steht nur
+im Seitenkopf, in der Seitenleiste und im Leerzustand** (dort sekundär, `placement="empty"`). Ist
+der Knopf gesperrt, nennt ein Tooltip den Grund (`disabledReason`). Die Beschriftung nennt das
+Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
 und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
 Je Objekt gibt es eine Beschriftung: Seitenkopf, Leerzustand und Menüeinträge wie der
@@ -427,7 +475,8 @@ beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"
 ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
 Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
 zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
-Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs ohne Formular
+(„Zur Anmeldung" nach Installation, Kontoübergabe und gescheiterter Rückkehr vom Anbieter)
 sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
 Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
@@ -435,6 +484,23 @@ Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
 Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
+
+**Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
+Passwort festlegen, E-Mail-Adresse bestätigen, Kontoübergabe) folgen denselben Regeln und
+Bausteinen wie die Anwendung (`FormField`, `SecretField`, `TextLink`, `SectionHead`):
+
+- Die Primärschaltfläche trägt das Verb der Seite, nicht ihren Titel: „Anmelden", „Registrieren",
+  „Link anfordern", „Passwort festlegen".
+- Der Rückweg heißt überall „Zur Anmeldung" und steht als Textlink unter dem Formular, nach einem
+  Ergebnishinweis unter diesem. Andere Wortlaute („Zurück zur Anmeldung", „Sie haben schon ein
+  Konto?") gibt es nicht.
+- Frei stehende Verweise („Passwort vergessen?", „Anmeldung für die Systemverwaltung", „Neuen Link
+  anfordern") sind Textlinks in 14 px, unterstrichen beim Zeigen; nur der Link im Satz („Noch kein
+  Konto? Konto registrieren") bleibt dauerhaft unterstrichen.
+- Identitätsanbieter stehen zuerst, der vorgeschlagene gefüllt; die lokale Anmeldung darunter ist
+  dann sekundär (eine primäre Schaltfläche je Fläche).
+
+`preSignInRules.test.ts` prüft Wortlaut, Bausteine und Verben im Quelltext.
 
 ### 5.2 Formularfelder
 
@@ -1016,10 +1082,18 @@ eines Panels ist eine h2 unter der h1 der Seite (siehe
 [Barrierefreiheits-Richtlinie](./accessibility.md), 2.3). Ein Panel braucht keine Überschrift, wenn
 es nichts weiter zu gliedern gibt.
 
+**Eine Form der Abschnittsüberschrift.** Wo eine Überschrift gliedert, ist sie ein `SectionHead`
+(4.6), auf Bereichs- wie auf Detailseiten.
+
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
 Eine einzelne Einstellung mit Feld ist dieselbe Zeile aus `SettingValueRow` (5.16).
+
+**Abschnittsköpfe sind überall grau.** Der Versal-Abschnittskopf (`SectionHead`, Eyebrow-Muster
+aus 3.3) steht in `fg-2`, auch auf den Seiten vor der Anmeldung („Identitätsanbieter", „Konto
+dieser Installation") und über dem Schritttitel des Installationsassistenten. Akzentfarbe an einem
+Abschnittskopf gibt es nicht (2.3; Prüfliste P54, geprüft durch `preSignInRules.test.ts`).
 
 ### 5.13 Seitenleiste des Space
 

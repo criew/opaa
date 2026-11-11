@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
-import Typography from '@mui/material/Typography'
+import AuthLayout from '../components/AuthLayout'
+import AuthLoading from '../components/AuthLoading'
+import AuthNotice from '../components/AuthNotice'
 import { useAuthStore } from '@/shared/session/authStore'
 import { isHandoverInFlight } from '@/shared/session/handoverFlow'
-import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { AFTER_SIGN_IN_ROUTE, HANDOVER_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 
+const HEADING = 'Anmeldung'
+
 export default function AuthCallbackPage() {
-  usePageTitle('Anmeldung')
   const handleOidcCallback = useAuthStore((s) => s.handleOidcCallback)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isLoading = useAuthStore((s) => s.isLoading)
@@ -59,29 +59,16 @@ export default function AuthCallbackPage() {
   }, [isAuthenticated, mode, callbackFailed, handoverCallback, navigate])
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        gap: 2,
-      }}
-    >
+    <AuthLayout>
       {error ? (
-        <>
-          <Typography color="error">{error}</Typography>
+        <AuthNotice heading={HEADING} severity="error" message={error}>
           <Button variant="outlined" onClick={() => navigate(LOGIN_ROUTE, { replace: true })}>
             Zur Anmeldung
           </Button>
-        </>
+        </AuthNotice>
       ) : (
-        <>
-          <CircularProgress />
-          <Typography>Anmeldung wird abgeschlossen …</Typography>
-        </>
+        <AuthLoading heading={HEADING} message="Anmeldung wird abgeschlossen …" />
       )}
-    </Box>
+    </AuthLayout>
   )
 }

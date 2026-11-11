@@ -57,10 +57,7 @@ describe('SystemLoginPage', () => {
     expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
     expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
     expect(screen.getByText(/Nur für lokale Systemverwalter-Konten/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Zur regulären Anmeldung' })).toHaveAttribute(
-      'href',
-      '/login',
-    )
+    expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toHaveAttribute('href', '/login')
   })
 
   it('offers no self-service links', () => {

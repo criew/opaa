@@ -1,7 +1,7 @@
 import type { FilesystemSourceValues } from '../../../utils/filesystemSource'
 import type { GenericSourceValues } from '../../../utils/librarySourceConfig'
 import Stack from '@mui/material/Stack'
-import SecretField from '../SecretField'
+import SecretField from '@/shared/ui/form/SecretField'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import { credentialsKept } from '../../sourceCore/common'

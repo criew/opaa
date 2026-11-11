@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 /** The agents - rights and reach are the shell's, never asked here. */
 public interface AgentRepository extends JpaRepository<Agent, UUID> {
 
+  /** Every one of the organization, readable or not - for the agent directory only. */
+  List<Agent> findByOrganizationId(UUID organizationId);
+
   /**
    * Locks the agent's row until the transaction ends, before it is read for a change: two changes
    * to one agent, also on two instances, run one after the other on the committed state.
