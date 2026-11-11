@@ -14,10 +14,13 @@ test("abgeschalteter Rundgang zeigt weder Hinweis noch Menüeintrag", async ({ p
   await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
     route: "/login/system",
   });
-  await expect(page.getByRole("textbox", { name: "Nachricht eingeben" })).toBeVisible({
-    timeout: 20_000,
-  });
-  await expect(page.getByRole("dialog", { name: "Neu hier?" })).toHaveCount(0);
+  // Either the input or a hint wrongly shown, which hides the input while it is open: the
+  // assertion below then names the hint instead of a missing input.
+  const hint = page.getByRole("dialog", { name: "Neu hier?" });
+  await expect(
+    page.getByRole("textbox", { name: "Nachricht eingeben" }).or(hint),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(hint).toHaveCount(0);
 
   await page.getByRole("button", { name: "Profil und Einstellungen" }).click();
   await expect(page.getByRole("menuitem", { name: "Einstellungen" })).toBeVisible();

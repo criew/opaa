@@ -21,8 +21,8 @@ Wissen finden.
 
 1. „Rundgang starten“. Jeder Schritt hebt ein Element hervor und erklärt es kurz.
 2. Mit „Weiter“ und „Zurück“ oder den Pfeiltasten blättern; „Fertig“, ✕ oder Escape beendet ihn.
-3. Später noch einmal: Profil, „Rundgang starten“. Außerhalb eines Chats öffnet OPAA dafür zuerst
-   einen neuen Chat.
+3. Später noch einmal: Profil, „Rundgang starten“; auf schmalen Bildschirmen liegt das Profil im
+   Menü („Menü öffnen“). Außerhalb eines Chats öffnet OPAA dafür zuerst einen neuen Chat.
 
 „Nicht jetzt“ oder Escape schließt den Hinweis ohne Rundgang. Beide Antworten gelten für Ihr Konto
 auf jedem Gerät; der Hinweis kommt nicht wieder, der Rundgang bleibt im Profil erreichbar.

@@ -8,6 +8,7 @@ import {
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
+import { expectNoSeriousA11yViolations } from "../../fixtures/a11y";
 
 /**
  * The quick tour for new users against a stack with the tour switched on: the hint "Neu hier?" on
@@ -55,29 +56,56 @@ async function signInAsAdmin(browser: Browser): Promise<{ context: BrowserContex
   return { context, page };
 }
 
-/** The number of steps the hint announces ("Ein Rundgang in n Schritten ..."). */
-async function announcedSteps(page: Page): Promise<number> {
+/** More stations than any tour has; ends a walk that never reaches "Fertig". */
+const MAX_STATIONS = 30;
+
+async function readAnnouncedSteps(page: Page): Promise<number> {
   const text = await hint(page).getByText(/^Ein Rundgang in \d+ Schritten/).innerText();
   return Number(/in (\d+) Schritten/.exec(text)?.[1]);
 }
 
 /**
- * Pages through the open tour with "Weiter" up to "Fertig" and returns the titles of all stations,
- * checking "n von m" on the way.
+ * The number of steps the hint announces ("Ein Rundgang in n Schritten ..."), read until two
+ * readings agree: conditional stations count only once their element is on screen, and the
+ * page may still be adding one (the paper clip arrives with the space).
  */
-async function walkThroughTour(page: Page): Promise<string[]> {
+async function announcedSteps(page: Page): Promise<number> {
+  let current = -1;
+  await expect
+    .poll(
+      async () => {
+        const previous = current;
+        current = await readAnnouncedSteps(page);
+        return current === previous;
+      },
+      { intervals: [250] },
+    )
+    .toBe(true);
+  return current;
+}
+
+/**
+ * Pages through the open tour with "Weiter" up to "Fertig" and returns the titles of all stations
+ * and the final m of "n von m". The total is read anew at every station, because a conditional
+ * station may join while the page is still settling.
+ */
+async function walkThroughTour(page: Page): Promise<{ titles: string[]; total: number }> {
   const counter = tourCard(page).getByText(/^\d+ von \d+$/);
-  const total = Number(/von (\d+)/.exec(await counter.innerText())?.[1]);
   const titles: string[] = [];
-  for (let step = 1; step <= total; step++) {
-    await expect(counter).toHaveText(`${step} von ${total}`);
+  for (let step = 1; step <= MAX_STATIONS; step++) {
+    await expect(counter).toHaveText(new RegExp(`^${step} von \\d+$`));
+    const total = Number(/von (\d+)/.exec(await counter.innerText())?.[1]);
     titles.push((await tourCard(page).getByRole("heading").innerText()).trim());
-    const primary = tourCard(page).getByRole("button", { name: step < total ? "Weiter" : "Fertig" });
+    const isLast = step === total;
+    const primary = tourCard(page).getByRole("button", { name: isLast ? "Fertig" : "Weiter" });
     await expect(primary).toBeFocused();
     await primary.click();
+    if (isLast) {
+      await expect(tourCard(page)).toHaveCount(0);
+      return { titles, total };
+    }
   }
-  await expect(tourCard(page)).toHaveCount(0);
-  return titles;
+  throw new Error(`The tour did not end within ${MAX_STATIONS} stations`);
 }
 
 async function startTourFromProfileMenu(page: Page): Promise<void> {
@@ -93,6 +121,7 @@ test.describe("Rundgang für neue Nutzer", () => {
     await expect(hint(first.page)).toBeVisible({ timeout: 20_000 });
     await expect(first.page.getByRole("button", { name: "Rundgang starten" })).toBeFocused();
     expect(await announcedSteps(first.page)).toBeGreaterThan(1);
+    await expectNoSeriousA11yViolations(first.page, "Hinweis „Neu hier?“ über dem leeren Chat");
 
     // Only an answer closes the hint, a click beside it does not.
     await first.page.mouse.click(5, 5);
@@ -126,6 +155,7 @@ test.describe("Rundgang für neue Nutzer", () => {
     await startTourFromProfileMenu(page);
     await expect(tourCard(page, "Fragen stellen")).toBeVisible();
     await expect(page.getByRole("button", { name: "Weiter" })).toBeFocused();
+    await expectNoSeriousA11yViolations(page, "Rundgang, Station „Fragen stellen“");
     await page.keyboard.press("ArrowRight");
     await expect(tourCard(page, "Antworten prüfen")).toBeVisible();
     await page.keyboard.press("ArrowLeft");
@@ -144,7 +174,8 @@ test.describe("Rundgang für neue Nutzer", () => {
     await expect(tourCard(page, "Fragen stellen")).toBeVisible();
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/[^/]+$/);
 
-    const titles = await walkThroughTour(page);
+    const { titles, total } = await walkThroughTour(page);
+    expect(titles).toHaveLength(total);
     expect(titles[0]).toBe("Fragen stellen");
     expect(titles).toContain("Systemverwaltung");
     expect(titles.at(-1)).toBe("Rundgang wiederholen");
@@ -188,8 +219,9 @@ test.describe("Rundgang für neue Nutzer", () => {
       hint(page).getByRole("button", { name: "Rundgang starten" }).click(),
     ]);
     await expect(tourCard(page, "Fragen stellen")).toBeVisible();
-    const titles = await walkThroughTour(page);
-    expect(titles).toHaveLength(announced);
+    const { titles, total } = await walkThroughTour(page);
+    expect(titles).toHaveLength(total);
+    expect(total).toBe(announced);
     expect(titles).not.toContain("Systemverwaltung");
     await expect(chatInput(page)).toBeFocused();
 
