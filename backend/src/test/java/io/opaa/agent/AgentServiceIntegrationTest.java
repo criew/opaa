@@ -22,6 +22,10 @@ import io.opaa.library.LibraryCreationBuilder;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.CapabilityService;
+import io.opaa.template.DocumentTemplateCreation;
+import io.opaa.template.DocumentTemplateService;
+import io.opaa.template.DocumentTemplateSettingsService;
+import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import io.opaa.test.OwnOrganizationFixtures;
@@ -38,9 +42,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The acceptance criteria on the service level: the switch hides every agent and the right, the
- * right is delivered to nobody, a library assignment never widens what the editing person reads,
- * list and single view agree, each change leaves one audit entry and switching on provisions
- * "Recherche" once per organization.
+ * right is delivered to nobody, a library or template assignment never widens what the editing
+ * person reads, list and single view agree, each change leaves one audit entry and switching on
+ * provisions "Recherche" once per organization.
  */
 @OpaaIntegrationTest
 class AgentServiceIntegrationTest {
@@ -56,6 +60,8 @@ class AgentServiceIntegrationTest {
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private DocumentTemplateService templateService;
+  @Autowired private DocumentTemplateSettingsService templateSettings;
 
   private UUID organization;
   private UUID foreignOrganization;
@@ -85,6 +91,7 @@ class AgentServiceIntegrationTest {
     for (String tool : List.of("search_knowledge", "read_document", "list_sources", "ask_user")) {
       jdbc.update("INSERT INTO agent_settings_tools (settings_id, tool_name) VALUES (1, ?)", tool);
     }
+    jdbc.update("DELETE FROM document_template_settings");
     libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
     libraries.clear();
     for (UUID id : List.of(organization, foreignOrganization)) {
@@ -172,6 +179,104 @@ class AgentServiceIntegrationTest {
     AgentView saved = agentService.update(agent, withLibraries(Set.of()), creator());
 
     assertThat(saved.agent().getLibraryIds()).isEmpty();
+  }
+
+  @Test
+  void anAssignedTemplateNeverWidensWhatTheEditingPersonReadsAndCountsTheRevision() {
+    grantCreateAgent(creator);
+    templateSettings.update(true, admin());
+    grantCreateTemplate(creator);
+    grantCreateTemplate(administrator);
+    UUID agent = agentOf(callerOf(creator), "Berichtshilfe");
+    UUID own = templateOf(creator(), "Bericht");
+    UUID hidden = templateOf(admin(), "Personalvermerk");
+
+    assertThatThrownBy(() -> agentService.update(agent, withTemplates(Set.of(hidden)), creator()))
+        .isInstanceOf(FieldValidationException.class)
+        .satisfies(
+            error ->
+                assertThat(((FieldValidationException) error).fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::code)
+                    .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("templateIds", "UNKNOWN")));
+
+    AgentView assigned = agentService.update(agent, withTemplates(Set.of(own)), creator());
+    assertThat(assigned.templates())
+        .extracting(AgentView.TemplateRef::name)
+        .containsExactly("Bericht");
+    assertThat(assigned.agent().getRevision()).isEqualTo(2);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT after FROM audit_log WHERE object_id = ?"
+                    + " AND event_type = 'AGENT_CHANGED'",
+                String.class,
+                agent.toString()))
+        .contains("templates")
+        .doesNotContain("Bericht\"");
+
+    // The administration adds a template the creator cannot read; her next save keeps it hidden.
+    agentService.update(agent, withTemplates(Set.of(own, hidden)), admin());
+    AgentView seen = agentService.update(agent, withTemplates(Set.of(own)), creator());
+    assertThat(seen.agent().getTemplateIds()).containsExactlyInAnyOrder(own, hidden);
+    assertThat(seen.templates()).extracting(AgentView.TemplateRef::id).containsExactly(own);
+    assertThat(seen.hiddenTemplateCount()).isOne();
+
+    // A change that leaves the templates out keeps them and counts no revision.
+    int revision = seen.agent().getRevision();
+    AgentView unchanged =
+        agentService.update(
+            agent,
+            new AgentUpdate(
+                "Berichtshilfe",
+                null,
+                new AgentConfiguration(
+                    "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, AgentLimits.INSTALLATION)),
+            creator());
+    assertThat(unchanged.agent().getTemplateIds()).containsExactlyInAnyOrder(own, hidden);
+    assertThat(unchanged.agent().getRevision()).isEqualTo(revision);
+
+    // A deleted template drops out of the assignment.
+    templateService.delete(hidden, admin());
+    AgentView afterDeletion = agentService.get(agent, creator());
+    assertThat(afterDeletion.agent().getTemplateIds()).containsExactly(own);
+    assertThat(afterDeletion.hiddenTemplateCount()).isZero();
+  }
+
+  @Test
+  void whileTemplatesAreSwitchedOffNoTemplateIsAssignedNamedOrCounted() {
+    grantCreateAgent(creator);
+    templateSettings.update(true, admin());
+    grantCreateTemplate(creator);
+    grantCreateTemplate(administrator);
+    UUID agent = agentOf(callerOf(creator), "Berichtshilfe");
+    UUID own = templateOf(creator(), "Bericht");
+    UUID other = templateOf(creator(), "Vermerk");
+    UUID hidden = templateOf(admin(), "Personalvermerk");
+    agentService.update(agent, withTemplates(Set.of(own)), creator());
+    agentService.update(agent, withTemplates(Set.of(own, hidden)), admin());
+
+    templateSettings.update(false, admin());
+    AgentView changed = agentService.update(agent, withTemplates(Set.of(other)), creator());
+
+    assertThat(changed.agent().getTemplateIds()).containsExactlyInAnyOrder(own, hidden);
+    assertThat(changed.templates()).isEmpty();
+    assertThat(changed.hiddenTemplateCount()).isZero();
+    assertThat(agentService.get(agent, creator()).templates()).isEmpty();
+    assertThat(agentService.list(creator()))
+        .filteredOn(view -> view.agent().getId().equals(agent))
+        .singleElement()
+        .satisfies(
+            view -> {
+              assertThat(view.templates()).isEmpty();
+              assertThat(view.hiddenTemplateCount()).isZero();
+            });
+
+    templateSettings.update(true, admin());
+    assertThat(agentService.get(agent, creator()).templates())
+        .extracting(AgentView.TemplateRef::id)
+        .containsExactly(own);
   }
 
   @Test
@@ -344,6 +449,41 @@ class AgentServiceIntegrationTest {
             .getId();
     libraries.add(id);
     return id;
+  }
+
+  private UUID templateOf(CurrentUser caller, String name) {
+    return templateService
+        .create(
+            new DocumentTemplateCreation(
+                name,
+                null,
+                null,
+                null,
+                TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}"))),
+            caller)
+        .template()
+        .getId();
+  }
+
+  private static AgentUpdate withTemplates(Set<UUID> templateIds) {
+    return new AgentUpdate(
+        "Berichtshilfe",
+        null,
+        new AgentConfiguration(
+            "",
+            Set.of(),
+            AgentTools.DEFAULT,
+            AgentPlanStep.OFF,
+            AgentLimits.INSTALLATION,
+            templateIds));
+  }
+
+  private void grantCreateTemplate(UUID userId) {
+    jdbc.update(
+        "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
+            + " subject_user_id) VALUES (gen_random_uuid(), ?, 'CREATE_TEMPLATE', 'USER', ?)",
+        organization,
+        userId);
   }
 
   private Set<UUID> listedBy(CurrentUser caller) {

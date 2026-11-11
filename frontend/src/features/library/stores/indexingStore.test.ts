@@ -6,6 +6,7 @@ import {
   useIndexingStore,
 } from './indexingStore'
 import { resetAllStores } from '@/shared/session/resettableStores'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { IndexingStatusResponse } from '@/shared/api/types'
 
 const { mockTriggerIndexing, mockGetIndexingStatus, mockGetIndexingRuns } = vi.hoisted(() => ({
@@ -34,13 +35,22 @@ function runningStatus(overrides: Partial<IndexingStatusResponse> = {}): Indexin
   }
 }
 
+/** The notices the store has reported through `notify`, oldest first. */
+function notices() {
+  return useNotificationStore
+    .getState()
+    .queue.map(({ message, severity }) => ({ message, severity }))
+}
+
+function lastNotice() {
+  return notices().at(-1)?.message
+}
+
 describe('indexingStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useIndexingStore.setState({
-      runsByLibrary: {},
-      snackbar: { open: false, message: '', severity: 'success' },
-    })
+    useIndexingStore.setState({ runsByLibrary: {} })
+    useNotificationStore.getState().reset()
   })
 
   afterEach(() => {
@@ -51,14 +61,6 @@ describe('indexingStore', () => {
 
   it('starts with idle state for a library with no run yet', () => {
     expect(useIndexingStore.getState().runsByLibrary['library-a']).toBeUndefined()
-  })
-
-  it('closes snackbar', () => {
-    useIndexingStore.setState({
-      snackbar: { open: true, message: 'Test', severity: 'success' },
-    })
-    useIndexingStore.getState().closeSnackbar()
-    expect(useIndexingStore.getState().snackbar.open).toBe(false)
   })
 
   it('triggers indexing for the given library and starts polling', async () => {
@@ -92,10 +94,7 @@ describe('indexingStore', () => {
 
     const run = useIndexingStore.getState().runsByLibrary['library-a']
     expect(run?.status ?? 'IDLE').toBe('IDLE')
-    const state = useIndexingStore.getState()
-    expect(state.snackbar.open).toBe(true)
-    expect(state.snackbar.severity).toBe('error')
-    expect(state.snackbar.message).toBe(UPLOAD_LIBRARY_INDEXING_ERROR)
+    expect(notices()).toEqual([{ message: UPLOAD_LIBRARY_INDEXING_ERROR, severity: 'error' }])
   })
 
   it("recognizes the UPLOAD library error by DocumentIndexingService#executorFor's literal wording", async () => {
@@ -164,7 +163,7 @@ describe('indexingStore', () => {
 
   it('shows the extended RSS message with entries and document total for an RSS_FEED library', async () => {
     // documentsIndexedTotal (39) exceeds documentCount (13) once RSS attachments are counted
-    // - the completion snackbar must name both, not just the one FILESYSTEM/HTTP_DIRECTORY has
+    // - the completion notice must name both, not just the one FILESYSTEM/HTTP_DIRECTORY has
     // always shown. Which wording is used is decided by the library's own sourceType, passed in at
     // triggerIndexing/loadStatus - not derived from the counts.
     vi.useFakeTimers()
@@ -182,7 +181,7 @@ describe('indexingStore', () => {
     )
     await vi.advanceTimersByTimeAsync(2000)
 
-    expect(useIndexingStore.getState().snackbar.message).toBe(
+    expect(lastNotice()).toBe(
       'Indizierung abgeschlossen: 18 Feed-Einträge, 5 übersprungen, 13 indiziert (39 Dokumente insgesamt)',
     )
   })
@@ -207,7 +206,7 @@ describe('indexingStore', () => {
     )
     await vi.advanceTimersByTimeAsync(2000)
 
-    expect(useIndexingStore.getState().snackbar.message).toBe(
+    expect(lastNotice()).toBe(
       'Indizierung abgeschlossen: 12 Feed-Einträge, 2 übersprungen, 10 indiziert (10 Dokumente insgesamt)',
     )
   })
@@ -230,9 +229,7 @@ describe('indexingStore', () => {
     )
     await vi.advanceTimersByTimeAsync(2000)
 
-    expect(useIndexingStore.getState().snackbar.message).toBe(
-      'Indizierung abgeschlossen: 10 verarbeitet, 2 übersprungen',
-    )
+    expect(lastNotice()).toBe('Indizierung abgeschlossen: 10 verarbeitet, 2 übersprungen')
   })
 
   // The poll callback is a write path after an await - clearInterval (via reset()'s stopPolling
@@ -257,7 +254,7 @@ describe('indexingStore', () => {
     await vi.advanceTimersByTimeAsync(2000)
 
     expect(useIndexingStore.getState().runsByLibrary['library-a']).toBeUndefined()
-    expect(useIndexingStore.getState().snackbar.open).toBe(false)
+    expect(notices()).toEqual([])
   })
 
   it('reset() stops every library poll interval and clears the run history too (#440, #575 review)', async () => {
@@ -306,7 +303,7 @@ describe('indexingStore', () => {
     )
     await vi.advanceTimersByTimeAsync(2000)
 
-    expect(useIndexingStore.getState().snackbar.message).toBe(
+    expect(lastNotice()).toBe(
       'Indizierung abgeschlossen: 8 verarbeitet, 1 übersprungen, davon 1 fehlgeschlagen',
     )
   })
@@ -344,7 +341,7 @@ describe('indexingStore', () => {
       expect(afterFailure?.status).toBe('RUNNING')
       expect(afterFailure?.isPolling).toBe(true)
       expect(afterFailure?.statusUnknown).toBe(false)
-      expect(useIndexingStore.getState().snackbar.open).toBe(false)
+      expect(notices()).toEqual([])
 
       mockGetIndexingStatus.mockResolvedValue(runningStatus({ documentCount: 3 }))
       await vi.advanceTimersByTimeAsync(30_000)

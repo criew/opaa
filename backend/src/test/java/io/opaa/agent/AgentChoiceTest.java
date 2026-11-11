@@ -31,6 +31,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  */
 class AgentChoiceTest {
 
+  private static final UUID TEMPLATE = UUID.randomUUID();
+
   private final UUID organization = UUID.randomUUID();
   private final UUID user = UUID.randomUUID();
   private final UUID space = UUID.randomUUID();
@@ -72,6 +74,7 @@ class AgentChoiceTest {
     assertThat(spec.get().limits().maxToolCalls()).isNull();
     assertThat(spec.get().confirmPlan()).isTrue();
     assertThat(spec.get().builtin()).isFalse();
+    assertThat(spec.get().templateIds()).containsExactly(TEMPLATE);
   }
 
   @Test
@@ -136,7 +139,8 @@ class AgentChoiceTest {
                 Set.of(),
                 Set.of(AgentTools.SEARCH_KNOWLEDGE),
                 AgentPlanStep.CONFIRM,
-                new AgentLimits(null, null, 90, null)));
+                new AgentLimits(null, null, 90, null),
+                Set.of(TEMPLATE)));
     return agent;
   }
 }

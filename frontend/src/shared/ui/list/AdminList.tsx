@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TableCell from '@mui/material/TableCell'
 import TableSortLabel from '@mui/material/TableSortLabel'
@@ -11,11 +10,12 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import { fontSize, iconSize, radius } from '../../theme/tokens'
+import { fontSize, iconSize } from '../../theme/tokens'
 
 /**
  * The shared building blocks of the administration lists (accounts, groups): table with
- * fixed column widths, sortable heads, pager, empty and loading state, state cell.
+ * fixed column widths, sortable heads, pager, state cell; empty, loading and error states come from
+ * `shared/ui/states`.
  * Both lists are composed of them, so that they look alike and are operated alike;
  * the chat table of the „Chats" page uses the same building blocks.
  */
@@ -147,39 +147,6 @@ export function ListPager({
           </IconButton>
         </span>
       </Tooltip>
-    </Stack>
-  )
-}
-
-/** The dashed box a list shows when no row matches the chosen filters. */
-export function ListEmptyState({ title, hint }: { title: string; hint: string }) {
-  return (
-    <Box
-      sx={{
-        border: 1,
-        borderStyle: 'dashed',
-        borderColor: 'divider',
-        borderRadius: `${radius.md}px`,
-        p: 3,
-        textAlign: 'center',
-      }}
-    >
-      <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>{title}</Typography>
-      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
-        {hint}
-      </Typography>
-    </Box>
-  )
-}
-
-/** Three placeholder rows while the first page loads. */
-export function ListLoading({ label }: { label: string }) {
-  return (
-    <Stack spacing={1} aria-busy="true">
-      <span style={visuallyHidden}>{label}</span>
-      <Skeleton variant="rounded" height={48} />
-      <Skeleton variant="rounded" height={48} />
-      <Skeleton variant="rounded" height={48} />
     </Stack>
   )
 }

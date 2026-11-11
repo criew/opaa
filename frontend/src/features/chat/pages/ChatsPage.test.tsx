@@ -255,10 +255,11 @@ describe('ChatsPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('2 Chats archiviert')
     expect(await screen.findByRole('tab', { name: 'Aktiv (0)' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Archiv (2)' })).toBeInTheDocument()
-    expect(screen.getByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
     // The hint names the plus of the sidebar by its name (guidelines 5.13), not a "Neu" text.
     expect(
-      screen.getByText('Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste.'),
+      screen.getByText(
+        'Noch keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste.',
+      ),
     ).toBeInTheDocument()
     expect(Object.keys(mockChatArchive).sort()).toEqual(['chat-personal-1', 'chat-personal-2'])
     // Nothing left to select on this tab: focus lands on the tab rather than on the page body.
@@ -393,10 +394,10 @@ describe('ChatsPage', () => {
       await screen.findByRole('tab', { name: 'Aktiv (2)' })
 
       fireEvent.change(searchField(), { target: { value: ANSWER_TERM } })
-      expect(screen.queryByRole('progressbar', { name: 'Suche läuft' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Wird geladen')).not.toBeInTheDocument()
       fireEvent.keyDown(searchField(), { key: 'Enter' })
 
-      expect(screen.getByRole('progressbar', { name: 'Suche läuft' })).toBeInTheDocument()
+      expect(screen.getByText('Wird geladen')).toBeInTheDocument()
       expect(await screen.findByRole('link', { name: 'Deployment-Fragen' })).toBeInTheDocument()
     })
 
@@ -448,7 +449,7 @@ describe('ChatsPage', () => {
 
       await user.type(searchField(), 'Haushaltsplan')
 
-      expect(await screen.findByText('Kein Chat enthält „Haushaltsplan“.')).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Filter zurücksetzen' })).toBeInTheDocument()
       expect(
         screen.getByText(/Durchsucht werden nur Ihre eigenen Chats in diesem Space/),
       ).toBeInTheDocument()

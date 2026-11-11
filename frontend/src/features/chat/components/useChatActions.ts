@@ -222,6 +222,8 @@ export function useChatActions({ sources, spaceId, userName, insertText }: UseCh
     /** While the chosen action is fetched, sending waits - the input is about to change. */
     isInserting,
     error,
+    /** Asks every source again after the list failed to load. */
+    reload: load,
     track,
     close,
     dismiss,

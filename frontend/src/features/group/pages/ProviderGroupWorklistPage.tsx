@@ -17,6 +17,9 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import { PermissionTransferDialog } from '@/features/succession'
 import { groupUsageDetails } from '../components/groupUsageLabels'
 import { contentWidth, fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * The worklist per provider (ADR-0036 Entscheidung 2): the `409` when deleting a
@@ -85,20 +88,22 @@ export default function ProviderGroupWorklistPage() {
 
         <TextLink to="/admin/identity-providers">Zurück zur Anbieterverwaltung</TextLink>
 
-        {error && (
-          <Alert severity="error" sx={{ my: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {isLoading ? (
-          <Typography sx={{ color: 'text.secondary', mt: 2 }}>
-            Arbeitsliste wird geladen …
-          </Typography>
+        {error ? (
+          <Box sx={{ mt: 2 }}>
+            <LoadError
+              message="Die Arbeitsliste konnte nicht geladen werden."
+              detail={error}
+              onRetry={() => void reload()}
+            />
+          </Box>
+        ) : isLoading ? (
+          <Box sx={{ mt: 2 }}>
+            <LoadingState />
+          </Box>
         ) : effects.length === 0 ? (
-          <Typography sx={{ color: 'text.secondary', mt: 2 }}>
-            Dieser Anbieter hat keine Gruppen.
-          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <EmptyState message="Dieser Anbieter hat keine Gruppen." />
+          </Box>
         ) : (
           <Stack spacing={1} sx={{ mt: 2 }}>
             {reaching.map((entry) => (

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
@@ -16,6 +15,8 @@ import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 import { fontSize } from '@/shared/theme/tokens'
 import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const AUDIT_NOTICE =
   'Ruft die Systemverwaltung die Mitgliederliste ab, wird das im Nachweisprotokoll festgehalten.'
@@ -101,27 +102,16 @@ function GroupMembersDialogContent({
         </Alert>
       )}
       {!members && loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => {
-                setLoadError(null)
-                setAttempt((current) => current + 1)
-              }}
-            >
-              Erneut versuchen
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Mitglieder konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => {
+            setLoadError(null)
+            setAttempt((current) => current + 1)
+          }}
+        />
       ) : !members ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={22} aria-label="Mitglieder werden geladen" />
-        </Box>
+        <LoadingState shape="rows" count={3} />
       ) : (
         <Stack spacing={1}>
           <GroupMembersTable

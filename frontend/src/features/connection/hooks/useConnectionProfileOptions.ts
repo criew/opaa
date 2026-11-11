@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { listConnectionProfileOptions } from '../api/connectionProfileApi'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import type { ConnectionProfileOption, SourceTypeKey } from '@/shared/api/types'
@@ -10,6 +10,8 @@ export interface ConnectionProfileOptionsState {
   forbidden: boolean
   /** `true` once the answer for the asked type is in, successful or not. */
   loaded: boolean
+  /** Asks again after a failed answer. */
+  retry?: () => void
 }
 
 interface Answer extends ConnectionProfileOptionsState {
@@ -34,7 +36,8 @@ export function useConnectionProfileOptions(
   libraryId?: string,
 ): ConnectionProfileOptionsState {
   const [answer, setAnswer] = useState<Answer | null>(null)
-  const asked = `${sourceType}/${libraryId ?? ''}`
+  const [attempt, setAttempt] = useState(0)
+  const asked = `${sourceType}/${libraryId ?? ''}#${attempt}`
 
   useEffect(() => {
     if (sourceType === null) return
@@ -64,10 +67,14 @@ export function useConnectionProfileOptions(
     }
   }, [sourceType, libraryId, asked])
 
-  if (sourceType === null || answer === null || answer.asked !== asked) return NOT_ASKED
-  return answer
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
+  // Stable identity per answer, so callers may depend on the state in their own effects.
+  const answered = useMemo(() => (answer ? { ...answer, retry } : null), [answer, retry])
+
+  if (sourceType === null || answered === null || answered.asked !== asked) return NOT_ASKED
+  return answered
 }
 
 /** What a person without any connector right is told about profiles, naming who grants it. */
-export const PROFILES_FORBIDDEN_NOTICE =
+export const PROFILES_FORBIDDEN_NOTICE: `${string}.` =
   'Zugänge kann nur abrufen, wer Konnektorbibliotheken anlegen darf. Dieses Anlegerecht erteilt die Systemverwaltung.'

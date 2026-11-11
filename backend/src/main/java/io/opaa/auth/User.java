@@ -11,7 +11,13 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
+/**
+ * Written column by column ({@code @DynamicUpdate}): a write of a loaded account keeps a role, a
+ * directory lock or an erasure another transaction committed after the read.
+ */
+@DynamicUpdate
 @Entity
 @Table(
     name = "users",

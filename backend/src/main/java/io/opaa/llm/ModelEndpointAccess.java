@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.compliance.DataFlowCarrier;
@@ -138,9 +139,14 @@ public final class ModelEndpointAccess {
 
   public static HttpRequest.Builder authorized(HttpRequest.Builder builder, String apiKey) {
     if (StringUtils.hasText(apiKey)) {
-      builder.header("Authorization", "Bearer " + apiKey);
+      builder.header("Authorization", "Bearer " + headerSafe(apiKey));
     }
     return builder;
+  }
+
+  /** {@code apiKey} unchanged, if an HTTP header can carry it ({@link HeaderValues}). */
+  public static String headerSafe(String apiKey) {
+    return HeaderValues.requireSafe(apiKey, "model key");
   }
 
   /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */

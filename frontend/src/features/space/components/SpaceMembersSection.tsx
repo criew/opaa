@@ -26,6 +26,7 @@ import SectionHead from '@/shared/ui/SectionHead'
 import SpaceMemberList from './SpaceMemberList'
 import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'
 import { fontSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -132,7 +133,7 @@ export default function SpaceMembersSection({
         </Alert>
       )}
       {isLoadingMembers ? (
-        <Typography sx={{ color: 'text.secondary' }}>Mitgliederliste wird geladen …</Typography>
+        <LoadingState />
       ) : members.length === 0 && !canManage && !isOwner ? (
         // A MEMBER or CURATOR gets no names (the service answers the list with an empty one),
         // only how large the space is per role.

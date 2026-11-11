@@ -1,6 +1,5 @@
 import { useId, useMemo } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -19,6 +18,7 @@ import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed } from '@/shared/stores/uiStore'
 import { darkRoles, fontSize, iconSize, lightRoles } from '@/shared/theme/tokens'
 import { SPACE_SEARCH_HANDOVER, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How many spaces the column shows as rows; the rest are behind the search button. */
 export const SPACE_ROW_COUNT = 5
@@ -210,9 +210,7 @@ export default function SidebarSpaceList({
       />
       <Box id={regionId} hidden={collapsed}>
         {isLoading && spaces.length === 0 ? (
-          <Box sx={{ py: 1, display: 'flex', justifyContent: 'center' }}>
-            <CircularProgress size={18} aria-label="Spaces werden geladen" />
-          </Box>
+          <LoadingState shape="lines" count={3} />
         ) : (
           !collapsed &&
           rows.length > 0 && (

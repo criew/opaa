@@ -15,9 +15,12 @@ public final class AgentTools {
   public static final String RUN_CODE = "run_code";
   public static final String ASK_USER = "ask_user";
 
+  /** Offered to a run only while the agent has a template the asker may fill. */
+  public static final String FILL_TEMPLATE = "fill_template";
+
   /** Every assignable tool, in the order the interface lists them. */
   public static final List<String> ASSIGNABLE =
-      List.of(SEARCH_KNOWLEDGE, READ_DOCUMENT, LIST_SOURCES, RUN_CODE, ASK_USER);
+      List.of(SEARCH_KNOWLEDGE, READ_DOCUMENT, LIST_SOURCES, RUN_CODE, ASK_USER, FILL_TEMPLATE);
 
   /** What a new agent starts with: searching and reading. */
   public static final Set<String> DEFAULT = Set.of(SEARCH_KNOWLEDGE, READ_DOCUMENT);

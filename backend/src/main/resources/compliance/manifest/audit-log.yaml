@@ -440,7 +440,7 @@ auditEvents:
     trigger: Ein Agent wird angelegt, auch der mitgelieferte Agent „Recherche“ beim Einschalten der Agenten
     payloadKeys: [name]
   - id: AGENT_CHANGED
-    trigger: Name, Zweck, Anweisung, Bibliotheken, Werkzeuge, Planschritt oder Grenzen eines Agenten ändern sich
+    trigger: Name, Zweck, Anweisung, Bibliotheken, Werkzeuge, Vorlagen, Planschritt oder Grenzen eines Agenten ändern sich
     details: Nur die Namen der geänderten Felder, nie die Anweisung oder andere Werte
     payloadKeys: [changedFields]
   - id: AGENT_DELETED

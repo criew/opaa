@@ -102,6 +102,8 @@ interface ChatInputProps {
    * page's arrival focus target meanwhile - a new chat opens ready for its first question.
    */
   focusRequest?: string | null
+  /** The AI notice line under the input; off where the surface shows the notice already. */
+  showAiNotice?: boolean
 }
 
 export default function ChatInput({
@@ -113,6 +115,7 @@ export default function ChatInput({
   onReturnedQuestionHandled,
   actionSources = CHAT_ACTION_SOURCES,
   focusRequest = null,
+  showAiNotice = true,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const mountedRef = useRef(true)
@@ -746,6 +749,7 @@ export default function ChatInput({
         highlightedIndex={actions.highlightedIndex}
         isLoading={actions.isLoading}
         error={actions.error}
+        onRetry={actions.reload}
         onHighlight={actions.setHighlightedIndex}
         onSelect={(entry) => chooseAction(actions.matches.indexOf(entry))}
         onClose={actions.close}
@@ -765,7 +769,7 @@ export default function ChatInput({
             {scopeNotice}
           </Typography>
         )}
-        <AiNotice variant="line" />
+        {showAiNotice && <AiNotice variant="line" />}
         {dictationError && (
           <Typography
             component="div"

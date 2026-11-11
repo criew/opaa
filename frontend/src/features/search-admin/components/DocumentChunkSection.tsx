@@ -128,10 +128,11 @@ export default function DocumentChunkSection({
           variant="outlined"
           size="small"
           onClick={() => showDocument(documentIdInput.trim())}
-          disabled={loading || documentIdInput.trim() === ''}
+          disabled={documentIdInput.trim() === ''}
+          loading={loading}
           sx={{ flex: 'none', mt: 0.25 }}
         >
-          {loading ? 'Lädt …' : 'Chunks laden'}
+          Chunks laden
         </Button>
       </Stack>
       {documentChunksError && (
