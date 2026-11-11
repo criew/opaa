@@ -132,6 +132,7 @@ export default function AuditorRoleRequestsPage() {
             rows={requests}
             rowKey={(request) => request.id}
             rowLabel={personOf}
+            minWidth={860}
             columns={[
               {
                 id: 'person',
@@ -161,7 +162,7 @@ export default function AuditorRoleRequestsPage() {
               {
                 id: 'requestedBy',
                 head: 'Beantragt von',
-                width: '15%',
+                width: 136,
                 cell: (request) => request.requestedByDisplayName ?? 'Gelöschtes Konto',
               },
               {

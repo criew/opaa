@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -51,6 +51,7 @@ function refusalOf(err: unknown, fallback: string): Refusal {
  * and its differences shown; only "Übernehmen" changes anything, every value or none.
  */
 export default function SettingsImportSection() {
+  const fileInput = useRef<HTMLInputElement | null>(null)
   const [checked, setChecked] = useState<Checked | null>(null)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [checking, setChecking] = useState(false)
@@ -142,21 +143,22 @@ export default function SettingsImportSection() {
           dieser Installation bleiben erhalten.
         </Typography>
         <Button
-          component="label"
           variant="outlined"
           startIcon={<FileUploadOutlinedIcon />}
           disabled={checking || applying}
+          onClick={() => fileInput.current?.click()}
         >
           {checking ? 'Datei wird geprüft …' : 'Datei auswählen'}
-          <Box
-            component="input"
-            type="file"
-            accept="application/json,.json"
-            hidden
-            aria-label="Einstellungsdatei auswählen"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => void handleFile(event)}
-          />
         </Button>
+        <Box
+          component="input"
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          aria-label="Einstellungsdatei auswählen"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => void handleFile(event)}
+        />
         {refusal && (
           <Alert severity="error" role="alert" sx={{ maxWidth: readingWidth }}>
             {refusal.message}

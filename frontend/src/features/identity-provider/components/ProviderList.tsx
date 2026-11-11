@@ -83,7 +83,17 @@ function StateCell({ provider }: { provider: OidcProviderResponse }) {
         <ProviderStateDot state={state} />
         <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
         {isPerInstance(state) && (
-          <Box component="span" sx={{ color: 'text.secondary', fontSize: fontSize.meta }}>
+          <Box
+            component="span"
+            title={PER_INSTANCE_NOTE}
+            sx={{
+              color: 'text.secondary',
+              fontSize: fontSize.meta,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             · {PER_INSTANCE_NOTE}
           </Box>
         )}
@@ -169,7 +179,7 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
           id: 'position',
           head: 'Nr.',
           headNote: 'auf der Anmeldeseite',
-          width: 52,
+          width: 56,
           card: 'hidden',
           cell: (_provider, index) => (
             <Box component="span" sx={{ color: 'text.secondary', fontFamily: fontFamily.mono }}>

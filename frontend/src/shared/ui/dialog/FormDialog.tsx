@@ -69,12 +69,44 @@ export interface FormDialogProps {
   children: ReactNode
 }
 
+/** What counts as a field for the initial focus; MUI's hidden native inputs carry tabindex -1. */
+const FIELD =
+  'input:not([type="hidden"]):not([hidden]):not(:disabled):not([tabindex="-1"]),' +
+  'textarea:not(:disabled):not([tabindex="-1"]), select:not(:disabled),' +
+  '[role="combobox"]:not([aria-disabled="true"])'
+
+/**
+ * Moves the focus from the dialog into its first field when it opens, unless the content already
+ * focused one itself. Rendered inside the dialog, so its effect runs once the fields are mounted
+ * and before the focus trap, which then leaves the focus where it is.
+ */
+function InitialFieldFocus({ contentRef }: { contentRef: RefObject<HTMLDivElement | null> }) {
+  useEffect(() => {
+    const form = contentRef.current?.closest('form')
+    if (!form || form.contains(document.activeElement)) return
+    const field = [...form.querySelectorAll<HTMLElement>(FIELD)].find(
+      (element) => element.closest('.MuiDialogActions-root') === null,
+    )
+    // a radio group starts on its chosen radio
+    const chosen =
+      field instanceof HTMLInputElement && field.type === 'radio' && field.name
+        ? form.querySelector<HTMLElement>(
+            `input[type="radio"][name="${CSS.escape(field.name)}"]:checked`,
+          )
+        : null
+    ;(chosen ?? field)?.focus()
+  }, [contentRef])
+  return null
+}
+
 /**
  * A dialog that creates or changes something (guidelines 5.6): the title, the content and a
  * footer with fixed places - at most one secondary action on the left, „Abbrechen“ (quiet) and
  * the action (primary) on the right. It closes through „Abbrechen“ and has no ✕. The action is
  * a form submit and is unavailable only while it runs; it cannot be disabled for missing input.
- * Below 600 px viewport width the dialog fills the screen.
+ * Below 600 px viewport width the dialog fills the screen. It opens with the focus in its first
+ * field; a confirmation (`tone`) and a dialog without a field keep it on the dialog or on
+ * „Abbrechen“.
  */
 export default function FormDialog({
   open = true,
@@ -164,6 +196,7 @@ export default function FormDialog({
       {toolbar}
       <DialogContent ref={contentRef} sx={contentSx}>
         {children}
+        {!tone && <InitialFieldFocus contentRef={contentRef} />}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         {secondaryAction && <Box sx={{ mr: 'auto' }}>{secondaryAction}</Box>}

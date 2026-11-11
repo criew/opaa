@@ -120,7 +120,8 @@ zwei Einträgen.
     `admin`, `user` und `auditor`, `contentTop`, `overflowX`, `tables`, `wrappedLabels`,
     `cutOff`, `createButton`, `dialog`), dazu `overflowX` bei 320 px in `capture.mjs`
 26. **Tastatur:** die ganze Strecke ohne Maus ([accessibility.md](./accessibility.md), 2.1). Nach
-    „Weiter“ liegt der Fokus auf der Schrittüberschrift, und `document.title` nennt den Schritt. –
+    „Weiter“ liegt der Fokus auf der Schrittüberschrift, ohne sichtbaren Ring
+    ([guidelines.md](./guidelines.md), 4.4), und `document.title` nennt den Schritt. –
     gemessen (`tabStops`, `title`) und Tastatur
 27. Fokus nicht verdeckt durch Sticky-Leiste oder Popup-Benachrichtigung (WCAG 2.4.11). –
     gemessen (`focusObscured`, `focusHidden`)
@@ -183,7 +184,9 @@ zwei Einträgen.
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
 52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
     öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
-    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Breite 600 oder 900 px,
+    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Startfokus im ersten Feld,
+    bei einer Bestätigung im Ton `danger` auf „Abbrechen“, im Ton `caution` auf dem Dialog;
+    Breite 600 oder 900 px,
     444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
     Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
     wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
@@ -228,7 +231,8 @@ zwei Einträgen.
     nebeneinander, Schaltfläche immer aktiv, vor der ersten Abfrage ein Satz statt leerem Rahmen,
     „Anlass“ einheitlich); Anzahl neben dem Seitentitel, gefiltert „12 von 40“; Blättern
     unten rechts als „Seite 2 von 5“; höchstens sieben Spalten bei 1280 px; Zellen einzeilig,
-    Namen gekürzt mit Tooltip. – gemessen (`tableColumns`, `rowPrimaryButtons`) und Sicht; ESLint
+    Namen und Zustandswörter gekürzt mit „…“ und Tooltip, nie stumm abgeschnitten; Ergebnisspalten
+    (`wrap`) brechen um. – gemessen (`tableColumns`, `rowPrimaryButtons`) und Sicht; ESLint
     verbietet `Table` außerhalb von `shared/ui`, im Code geprüft durch `AdminList.test.tsx` und
     `QueryForm.test.tsx`; Revisionsseiten im Seitendurchlauf mit `--profile auditor`
 

@@ -181,7 +181,7 @@ export default function OwnExternalAccessTokensSection() {
             rows={tokens}
             rowKey={(token) => token.id}
             rowLabel={(token) => token.name}
-            minWidth={820}
+            minWidth={900}
             columns={[
               {
                 id: 'name',
@@ -224,7 +224,7 @@ export default function OwnExternalAccessTokensSection() {
               {
                 id: 'lastUsed',
                 head: 'Zuletzt benutzt',
-                width: 136,
+                width: 148,
                 cell: (token) => formatDate(token.lastUsedOn),
               },
               {

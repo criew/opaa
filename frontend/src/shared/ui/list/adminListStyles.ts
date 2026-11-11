@@ -3,11 +3,19 @@ import { fontFamily, fontSize } from '../../theme/tokens'
 /**
  * Fixed widths, because the content is not: addresses and names are arbitrarily long. A cell
  * stays on one line and cuts off instead of wrapping or running into its neighbour; a tooltip
- * names the value (guidelines 5.3).
+ * names the value (guidelines 5.3). A head too wide for its column ends in „…“ as well; the
+ * column widths are chosen so that this does not happen at 1280 px.
  */
 export const adminTableSx = {
   tableLayout: 'fixed',
-  '& th': { fontFamily: fontFamily.mono, fontSize: fontSize.label, letterSpacing: '0.08em' },
+  '& th': {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.label,
+    letterSpacing: '0.08em',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
   '& td': {
     fontSize: fontSize.text,
     py: 1.25,
@@ -16,6 +24,9 @@ export const adminTableSx = {
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
+  // Selected through the table like the rule above, so they outweigh it.
+  '& td[data-wrap]': { whiteSpace: 'normal', overflowWrap: 'anywhere' },
+  '& td[data-row-detail-cell]': { whiteSpace: 'normal', overflowWrap: 'anywhere', paddingTop: 0 },
 } as const
 
 /** One row of the narrow layout: a list entry, not a card - the same language as the table. */

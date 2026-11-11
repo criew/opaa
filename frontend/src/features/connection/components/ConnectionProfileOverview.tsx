@@ -72,8 +72,10 @@ function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
 
 /**
  * The profiles of the installation on one screen: source type and state, host, who may use it,
- * its connections and what needs doing - one row each. The row itself leads into the side panel
- * with details and every change; a row with something to do carries a bar in the tone of it.
+ * its connections and what needs doing - one row each. The host gives way first: it is cut off
+ * with its tooltip, while the state of the row wraps below its dot rather than lose words. The
+ * row itself leads into the side panel with details and every change; a row with something to do
+ * carries a bar in the tone of it.
  */
 export default function ConnectionProfileOverview({ entries, onOpen }: OverviewProps) {
   return (
@@ -89,14 +91,13 @@ export default function ConnectionProfileOverview({ entries, onOpen }: OverviewP
         {
           id: 'profile',
           head: 'Zugang',
-          width: '26%',
+          width: 204,
           cell: (entry) => <ListText strong>{entry.profile.name}</ListText>,
           below: (entry) => <ProfileBadges entry={entry} />,
         },
         {
           id: 'server',
           head: 'Server',
-          width: '18%',
           cell: (entry) => (
             <Box component="span" title={entry.profile.serverUrl ?? undefined}>
               {hostOf(entry.profile.serverUrl)}
@@ -106,19 +107,21 @@ export default function ConnectionProfileOverview({ entries, onOpen }: OverviewP
         {
           id: 'access',
           head: 'Nutzbar für',
-          width: 200,
+          width: 204,
           cell: (entry) => <AccessCell access={entry.access} />,
         },
         {
           id: 'connections',
           head: 'Verbindungen',
-          width: 128,
+          width: 124,
           align: 'right',
           cell: (entry) => entry.profile.connectionCount,
         },
         {
           id: 'attention',
           head: 'Handlungsbedarf',
+          width: 270,
+          wrap: true,
           cell: (entry) => <AttentionCell attention={entry.attention} />,
         },
       ]}

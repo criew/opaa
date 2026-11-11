@@ -86,7 +86,7 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       direction="row"
       spacing={0.5}
       component="span"
-      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0 }}
+      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0, maxWidth: '100%' }}
     >
       {hint && (
         <WarningAmberIcon
@@ -96,7 +96,14 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       )}
       <Typography
         component="span"
-        sx={{ fontSize: fontSize.text, color: 'text.secondary', fontWeight: hint ? 500 : 400 }}
+        sx={{
+          fontSize: fontSize.text,
+          color: 'text.secondary',
+          fontWeight: hint ? 500 : 400,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
       >
         {providerStateText(account)}
       </Typography>
@@ -316,14 +323,14 @@ export default function AccountList({
       id: 'expiresAt',
       head: 'Ablauf',
       sortFields: ['expiresAt'],
-      width: '11%',
+      width: '12%',
       cell: (account) => expiryText(account),
     },
     {
       id: 'createdAt',
       head: 'Angelegt',
       sortFields: ['createdAt'],
-      width: '11%',
+      width: '13%',
       card: 'hidden',
       cell: (account) => formatExpiry(account.createdAt),
     },
@@ -333,6 +340,7 @@ export default function AccountList({
     <AdminList
       label="Konten"
       rows={accounts}
+      minWidth={880}
       rowKey={(account) => account.id}
       rowLabel={(account) => account.displayName ?? account.email ?? account.id}
       columns={columns}

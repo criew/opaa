@@ -723,10 +723,12 @@ export default function AdminList<Row, F extends string = never>({
                       <TableCell
                         key={column.id}
                         align={column.align}
-                        sx={{
-                          ...(column.align === 'right' && { fontVariantNumeric: 'tabular-nums' }),
-                          ...(column.wrap && { whiteSpace: 'normal', overflowWrap: 'anywhere' }),
-                        }}
+                        data-wrap={column.wrap ? '' : undefined}
+                        sx={
+                          column.align === 'right'
+                            ? { fontVariantNumeric: 'tabular-nums' }
+                            : undefined
+                        }
                       >
                         {target && column === titleColumn ? (
                           <RowLink target={target} label={rowLabel(row)}>
@@ -754,7 +756,7 @@ export default function AdminList<Row, F extends string = never>({
               </TableRow>
               {hasDetail && (
                 <TableRow>
-                  <TableCell colSpan={columnCount} sx={{ whiteSpace: 'normal', pt: 0 }}>
+                  <TableCell colSpan={columnCount} data-row-detail-cell="">
                     {detail}
                   </TableCell>
                 </TableRow>

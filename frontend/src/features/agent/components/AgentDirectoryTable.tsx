@@ -33,6 +33,7 @@ export default function AgentDirectoryTable({
       rowKey={(row) => row.id}
       rowLabel={(row) => row.name}
       rowTarget={(row) => ({ to: routeOf(row.id) })}
+      minWidth={640}
       columns={[
         {
           id: 'name',
@@ -55,14 +56,14 @@ export default function AgentDirectoryTable({
         {
           id: 'revision',
           head: 'Fassung',
-          width: 72,
+          width: 88,
           align: 'right',
           cell: (row) => formatNumber(row.revision),
         },
         {
           id: 'lockedSince',
           head: 'Gesperrt seit',
-          width: 120,
+          width: 132,
           cell: (row) => (row.locked ? formatDate(row.lockedSince) : MISSING_VALUE),
         },
       ]}

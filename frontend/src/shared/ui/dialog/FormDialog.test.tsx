@@ -249,4 +249,54 @@ describe('FormDialog', () => {
 
     expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveFocus()
   })
+
+  it('puts the initial focus into the first field, not on the form around it', () => {
+    renderWithProviders(<NameForm onSave={vi.fn()} />)
+
+    expect(screen.getByRole('textbox', { name: 'Beschreibung' })).toHaveFocus()
+  })
+
+  it('starts on the chosen radio of a group', () => {
+    renderWithProviders(
+      <FormDialog title="Art wählen" submitLabel="Weiter" onSubmit={vi.fn()} onClose={vi.fn()}>
+        <input type="radio" name="kind" aria-label="Datei" />
+        <input type="radio" name="kind" aria-label="Ordner" defaultChecked />
+      </FormDialog>,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Ordner' })).toHaveFocus()
+  })
+
+  it('leaves a field the content focuses itself', () => {
+    renderWithProviders(
+      <FormDialog title="Umbenennen" submitLabel="Umbenennen" onSubmit={vi.fn()} onClose={vi.fn()}>
+        <TextField label="Hinweis" />
+        {/* eslint-disable-next-line jsx-a11y-x/no-autofocus */}
+        <TextField label="Name" autoFocus />
+      </FormDialog>,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+  })
+
+  it.each([
+    ['without a field', undefined],
+    ['of a confirmation', 'caution' as const],
+  ])('keeps the focus on the dialog %s', (_case, tone) => {
+    renderWithProviders(
+      <FormDialog
+        title="„Bauamt“ übernehmen?"
+        submitLabel="Übernehmen"
+        tone={tone}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      >
+        {tone ? <TextField label="Anlass" /> : 'Folge'}
+      </FormDialog>,
+    )
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement?.tagName).not.toBe('INPUT')
+  })
 })

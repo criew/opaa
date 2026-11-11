@@ -56,18 +56,22 @@ export default function ServiceAccountKeyField({
   return (
     <Box>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+        <Button
+          variant="outlined"
+          startIcon={<UploadFileIcon />}
+          onClick={() => input.current?.click()}
+        >
           Schlüsseldatei wählen
-          <input
-            id={`${idPrefix}-key`}
-            ref={input}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            aria-label="Schlüsseldatei des Dienstkontos"
-            onChange={(e) => void onFile(e.target.files?.[0])}
-          />
         </Button>
+        <input
+          id={`${idPrefix}-key`}
+          ref={input}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          aria-label="Schlüsseldatei des Dienstkontos"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+        />
         <Typography variant="body2" data-testid="profile-key-status">
           {status}
         </Typography>

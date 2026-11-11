@@ -78,6 +78,45 @@ describe('AdminList', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(ROWS.length + 1)
   })
 
+  it('keeps cells and heads on one line, but lets a `wrap` column break', () => {
+    stubViewport(true)
+    renderList({
+      columns: [
+        ...COLUMNS,
+        { id: 'result', head: 'Letzter Lauf', wrap: true, cell: () => 'Wartet auf Bestätigung' },
+      ],
+    })
+
+    const table = screen.getByRole('table', { name: 'Einträge' })
+    const name = within(table).getByText('Alpha').closest('td') as HTMLElement
+    const result = within(table).getAllByText('Wartet auf Bestätigung')[0].closest('td')!
+    expect(getComputedStyle(within(table).getByText('Letzter Lauf')).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(name).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(result).whiteSpace).toBe('normal')
+  })
+
+  it('lets the open details of a row wrap below it', () => {
+    stubViewport(true)
+    renderList({
+      rowDetail: (row) =>
+        row.id === 'a' ? <p>Abschnitte: 3 im Index, 3 laut Dokumenten</p> : null,
+    })
+
+    const cell = screen.getByText(/Abschnitte: 3 im Index/).closest('td') as HTMLElement
+    // jsdom resolves white-space through the table rule, but not the padding shorthand of MUI
+    expect(getComputedStyle(cell).whiteSpace).toBe('normal')
+    expect(getComputedStyle(cell).overflowWrap).toBe('anywhere')
+  })
+
+  it('cuts a head too wide for its column with „…“ instead of running into the next', () => {
+    stubViewport(true)
+    renderList()
+
+    const head = getComputedStyle(screen.getByRole('columnheader', { name: 'Anzahl' }))
+    expect(head.overflow).toBe('hidden')
+    expect(head.textOverflow).toBe('ellipsis')
+  })
+
   it('renders the same rows as a card list on a narrow viewport', () => {
     stubViewport(false)
     renderList()

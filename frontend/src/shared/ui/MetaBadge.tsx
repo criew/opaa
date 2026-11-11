@@ -12,18 +12,23 @@ interface MetaBadgeProps {
 /**
  * The quiet text label of guidelines 5.5 (role, origin, kind, notes in lists): outline in
  * `border-strong`, text in `fg-2`, never an accent or signal colour - the word carries the
- * meaning. It reads the same as the theme's outlined `Chip`.
+ * meaning. It reads the same as the theme's outlined `Chip`. Wider than its column, it ends in
+ * „…“ with the full word in the tooltip instead of losing its edge (guidelines 5.3).
  */
 export default function MetaBadge({ children, wrap = false, ariaLabel }: MetaBadgeProps) {
   return (
     <Typography
       component="span"
       {...(ariaLabel && { role: 'img', 'aria-label': ariaLabel })}
+      title={wrap ? undefined : children}
       sx={{
         ...outlinedBadgeSx,
         px: 1,
         py: 0.25,
-        ...(wrap && { display: 'inline-block', maxWidth: '100%', whiteSpace: 'normal' }),
+        display: 'inline-block',
+        maxWidth: '100%',
+        verticalAlign: 'middle',
+        ...(wrap ? { whiteSpace: 'normal' } : { overflow: 'hidden', textOverflow: 'ellipsis' }),
       }}
     >
       {children}
