@@ -213,7 +213,7 @@ describe('Agenten', () => {
     const user = userEvent.setup()
     renderAt('/admin/agents')
 
-    const toggle = await screen.findByRole('switch', {
+    const toggle = await screen.findByRole('checkbox', {
       name: 'Agenten in dieser Installation anbieten',
     })
     expect(toggle).toBeChecked()

@@ -446,13 +446,13 @@ test.describe('Einrichtungs-Assistent', () => {
 
       // The rerank model of the assistant stands switched on in the model administration.
       await page.goto('/admin/models/rerank')
-      await expect(page.getByRole('switch', { name: 'Reranking einschalten' })).toBeChecked()
+      await expect(page.getByRole('checkbox', { name: 'Reranking einschalten' })).toBeChecked()
       await expect(page.getByLabel('Basis-Adresse')).toHaveValue(RERANK_URL)
       await expect(page.getByLabel('Modell-Kennung')).toHaveValue(RERANK_MODEL)
 
       // The completion switched speech input on with the model of the assistant.
       await page.goto('/admin/models/transcription')
-      await expect(page.getByRole('switch', { name: 'Spracheingabe einschalten' })).toBeChecked()
+      await expect(page.getByRole('checkbox', { name: 'Spracheingabe einschalten' })).toBeChecked()
       await expect(page.getByLabel('Basis-Adresse')).toHaveValue(TRANSCRIPTION_URL)
       await expect(page.getByLabel('Modell-Kennung')).toHaveValue(TRANSCRIPTION_MODEL)
     },

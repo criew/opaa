@@ -1,15 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import type {
   ConnectionLifecycleSettingKey,
   ConnectionLifecycleSettingResponse,
@@ -20,7 +12,9 @@ import {
 } from '../api/connectionLifecycleApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import FormField from '@/shared/ui/form/FormField'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
+import { formWidth } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 import LoadError from '@/shared/ui/states/LoadError'
@@ -82,18 +76,20 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
   const changed = value !== null && value !== entry.value
   const rangeError = `Bitte eine ganze Zahl von ${entry.minValue} bis ${entry.maxValue} eingeben.`
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
       const saved = await updateConnectionLifecycleSetting(entry.setting, next)
       onSaved(saved)
       notify(`${text.name}: jetzt ${saved.value}${text.unit}.`, 'success')
+      return true
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Der Wert konnte nicht gespeichert werden.'
       setSaveError(message)
       notify(`${text.name} nicht gespeichert: ${message}`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
@@ -111,17 +107,18 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
       : ''
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed || value === null) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || value === null) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `${text.name} auf ${value} ändern?`,
       consequence: `${endsPause}${earlierErasure(value)}${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
       confirmLabel: 'Ändern',
       tone: paused || earlierErasure(value) ? 'danger' : 'caution',
     })
-    if (!confirmed) return
-    await save(value)
+    if (!confirmed) return false
+    return save(value)
   }
 
   async function handleConfirmShown() {
@@ -152,81 +149,65 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     entry.setting === 'EXPIRED_CONNECTION_WARNING_THRESHOLD' && entry.value < minimumGroupSize
 
   return (
-    <TableRow>
-      <TableCell component="th" scope="row">
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {text.name}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-          {`${entry.minValue} bis ${entry.maxValue}${text.unit}`}
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Box
-          component="form"
-          onSubmit={(event) => void handleSubmit(event)}
-          noValidate
-          sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
-        >
-          <TextField
-            size="small"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setSaveError(null)
-            }}
-            error={value === null || saveError !== null}
-            helperText={value === null ? rangeError : (saveError ?? undefined)}
-            slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': text.fieldLabel } }}
-            sx={{ width: 120 }}
-          />
-          <BusyButton
-            type="submit"
-            variant="outlined"
-            size="small"
-            busy={busy}
-            busyAnnouncement="Wert wird gespeichert"
-            disabled={!changed && !busy}
-            aria-label={`${text.name} speichern`}
-            sx={{ mt: 0.25 }}
-          >
-            Speichern
-          </BusyButton>
-        </Box>
-        <Box sx={{ mt: 1, maxWidth: 520 }}>
-          <RetentionPauseNotice
-            pauses={entry.pausedBy}
-            confirmLabel="Angezeigten Wert festlegen"
-            onConfirm={() => void handleConfirmShown()}
-          />
-        </Box>
+    <SettingValueRow
+      title={text.name}
+      titleWidth="wide"
+      headingLevel="h3"
+      value={
+        entry.overridden
+          ? `${entry.value}${text.unit} · eigener Wert (Werkseinstellung: ${entry.defaultValue})`
+          : `${entry.value}${text.unit} · Werkseinstellung`
+      }
+      onOpen={() => {
+        setDraft(String(entry.value))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
+          label={text.fieldLabel}
+          size="small"
+          numeric
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={value === null || saveError !== null}
+          helperText={
+            value === null
+              ? rangeError
+              : (saveError ?? `${entry.minValue} bis ${entry.maxValue}${text.unit}`)
+          }
+          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+          sx={{ width: formWidth.number }}
+        />
+      }
+    >
+      <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <RetentionPauseNotice
+          pauses={entry.pausedBy}
+          confirmLabel="Angezeigten Wert festlegen"
+          onConfirm={() => void handleConfirmShown()}
+        />
         {belowGroupSize && (
-          <Alert severity="warning" sx={{ mt: 1, maxWidth: 420 }}>
+          <Alert severity="warning">
             {`Der Wert liegt unter der Mindestgruppengröße von ${minimumGroupSize}: Jeder Zugang für Personen zeigt dann schon bei „weniger als ${minimumGroupSize}“ die Warnung, auch ein leerer.`}
           </Alert>
         )}
-      </TableCell>
-      <TableCell>
-        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-          <Typography variant="body2">
-            {entry.overridden
-              ? `Eigener Wert (Werkseinstellung: ${entry.defaultValue})`
-              : 'Werkseinstellung'}
-          </Typography>
-          {entry.overridden && (
-            <Button
-              variant="text"
-              size="small"
-              disabled={busy}
-              onClick={() => void handleReset()}
-              aria-label={`${text.name} auf die Werkseinstellung zurücksetzen`}
-            >
-              Werkseinstellung wiederherstellen
-            </Button>
-          )}
-        </Stack>
-      </TableCell>
-    </TableRow>
+        {entry.overridden && (
+          <Button
+            variant="text"
+            size="small"
+            disabled={busy}
+            onClick={() => void handleReset()}
+            aria-label={`${text.name} auf die Werkseinstellung zurücksetzen`}
+          >
+            Werkseinstellung wiederherstellen
+          </Button>
+        )}
+      </Stack>
+    </SettingValueRow>
   )
 }
 
@@ -283,29 +264,20 @@ export default function ConnectionLifecycleSection() {
       ) : entries === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Table
-          size="small"
+        <Stack
+          role="group"
           aria-label="Schwellen und Fristen der Verbindungen"
           sx={{ maxWidth: 860 }}
         >
-          <TableHead>
-            <TableRow>
-              <TableCell>Einstellung</TableCell>
-              <TableCell>Wert</TableCell>
-              <TableCell>Gilt</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {entries.map((entry) => (
-              <SettingRow
-                key={`${entry.setting}-${entry.value}-${entry.overridden}`}
-                entry={entry}
-                minimumGroupSize={minimumGroupSize}
-                onSaved={replace}
-              />
-            ))}
-          </TableBody>
-        </Table>
+          {entries.map((entry) => (
+            <SettingRow
+              key={`${entry.setting}-${entry.value}-${entry.overridden}`}
+              entry={entry}
+              minimumGroupSize={minimumGroupSize}
+              onSaved={replace}
+            />
+          ))}
+        </Stack>
       )}
     </PageSection>
   )

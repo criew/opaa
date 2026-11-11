@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import type { AgentSettingsResponse } from '@/shared/api/types'
@@ -11,9 +10,9 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { notify } from '@/shared/stores/notificationStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageSection from '@/shared/ui/PageSection'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import { getAgentSettings, updateAgentSettings } from '../api/agentApi'
 import { AGENT_TOOLS } from '../components/agentTexts'
@@ -21,8 +20,9 @@ import { AGENT_TOOLS } from '../components/agentTexts'
 const muted = { color: 'text.secondary' } as const
 
 /**
- * The installation's agents in the administration (system admin only): the switch, which takes
- * effect without a restart on every instance, and the tools a run may be offered at all.
+ * The installation's agents in the administration (system admin only): whether there are agents,
+ * which takes effect with „Speichern“ on every instance without a restart, and the tools a run may
+ * be offered at all.
  */
 export default function AgentSettingsPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -59,8 +59,7 @@ export default function AgentSettingsPage() {
     )
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  async function handleSave() {
     setSaving(true)
     setSaveError(null)
     try {
@@ -79,6 +78,11 @@ export default function AgentSettingsPage() {
   }
 
   const available = current?.availableTools ?? []
+  const dirty =
+    current !== null &&
+    (enabled !== current.enabled ||
+      tools.length !== current.enabledTools.length ||
+      tools.some((name) => !current.enabledTools.includes(name)))
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
@@ -90,19 +94,29 @@ export default function AgentSettingsPage() {
         />
         {loadError && <Alert severity="error">{loadError}</Alert>}
         {current && (
-          <Box component="form" noValidate onSubmit={handleSubmit}>
+          <SettingsForm
+            aria-label="Einstellungen der Agenten"
+            onSave={handleSave}
+            busy={saving}
+            dirty={dirty}
+            onDiscard={() => {
+              take(current)
+              setSaveError(null)
+            }}
+            result={saveError && <Alert severity="error">{saveError}</Alert>}
+          >
             <PageSection title="Agenten">
               <FormControlLabel
                 control={
-                  <Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+                  <Checkbox checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
                 }
                 label="Agenten in dieser Installation anbieten"
               />
               <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, maxWidth: '80ch', ...muted }}>
-                Ausgeschaltet sind Agenten, ihr Anlegerecht und ihre Seiten nirgends sichtbar und
-                über die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt OPAA den
-                Agenten „Recherche“ an, sichtbar für alle Konten und danach frei änderbar. Wer
-                Agenten anlegen darf, regelt das Anlegerecht „Agenten anlegen“; ab Werk niemand.
+                Ohne Haken sind Agenten, ihr Anlegerecht und ihre Seiten nirgends sichtbar und über
+                die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt OPAA den Agenten
+                „Recherche“ an, sichtbar für alle Konten und danach frei änderbar. Wer Agenten
+                anlegen darf, regelt das Anlegerecht „Agenten anlegen“; ab Werk niemand.
               </Typography>
             </PageSection>
             <PageSection title="Werkzeuge">
@@ -140,20 +154,7 @@ export default function AgentSettingsPage() {
                 ))}
               </Box>
             </PageSection>
-            {saveError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {saveError}
-              </Alert>
-            )}
-            <BusyButton
-              type="submit"
-              variant="contained"
-              busy={saving}
-              busyAnnouncement="Wird gespeichert"
-            >
-              Speichern
-            </BusyButton>
-          </Box>
+          </SettingsForm>
         )}
       </Box>
     </Box>

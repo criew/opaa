@@ -534,7 +534,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
               busyAnnouncement="Endpunkt wird geändert"
               onClick={() => void handleEndpointChange()}
             >
-              {mode === 'change' ? 'Endpunkt ändern' : 'Ersatz-Endpunkt speichern'}
+              {mode === 'change' ? 'Endpunkt ändern' : 'Ersatz-Endpunkt festlegen'}
             </BusyButton>
           )}
           {result?.succeeded && result.kind === 'INITIAL' && (

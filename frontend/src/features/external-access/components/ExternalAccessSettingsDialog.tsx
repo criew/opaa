@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -266,7 +266,7 @@ function SettingsForm({
         <PanelSection id="external-tools-settings-switch" title="Ein/Aus">
           <FormControlLabel
             control={
-              <Switch
+              <Checkbox
                 checked={draft.enabled}
                 onChange={(event) => update({ enabled: event.target.checked })}
               />

@@ -374,7 +374,7 @@ describe('SpaceSettingsPage', () => {
     setSpaceState(teamSpace)
     renderTab('general')
 
-    await screen.findByRole('button', { name: /einstellungen speichern/i })
+    await screen.findByRole('button', { name: 'Speichern' })
     expect(mockListSpaceMembers).not.toHaveBeenCalled()
     expect(mockGetSpaceAssetAssociations).not.toHaveBeenCalled()
   })
@@ -830,7 +830,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByLabelText('Name des Space')).toHaveAttribute('readonly')
     expect(screen.getByLabelText('Beschreibung')).toHaveAttribute('readonly')
     expect(
-      screen.queryByRole('button', { name: /einstellungen speichern/i }),
+      screen.queryByRole('button', { name: 'Speichern' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
   })
@@ -854,7 +854,7 @@ describe('SpaceSettingsPage', () => {
 
     await user.clear(screen.getByLabelText(/name des space/i))
     await user.type(screen.getByLabelText(/name des space/i), 'Team Renamed')
-    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {
       expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
@@ -883,7 +883,7 @@ describe('SpaceSettingsPage', () => {
 
       await user.click(field)
       await user.paste(instruction)
-      await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
       await waitFor(() => {
         expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
@@ -902,7 +902,7 @@ describe('SpaceSettingsPage', () => {
       const user = userEvent.setup()
 
       await user.clear(screen.getByRole('textbox', { name: 'Anweisung an das Modell' }))
-      await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
       await waitFor(() => {
         expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
@@ -924,7 +924,7 @@ describe('SpaceSettingsPage', () => {
       expect(field).toHaveAttribute('readonly')
       expect(screen.getByText(/Nur Mitglieder mit der Rolle ADMIN/)).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: /einstellungen speichern/i }),
+        screen.queryByRole('button', { name: 'Speichern' }),
       ).not.toBeInTheDocument()
     })
 
@@ -953,11 +953,11 @@ describe('SpaceSettingsPage', () => {
 
     expect(screen.getByText('Angeheftete Chats sind ausgenommen.')).toBeVisible()
     await user.click(
-      screen.getByRole('switch', {
+      screen.getByRole('checkbox', {
         name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
       }),
     )
-    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {
       expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
@@ -975,7 +975,7 @@ describe('SpaceSettingsPage', () => {
     renderTab('general')
 
     expect(
-      screen.getByRole('switch', {
+      screen.getByRole('checkbox', {
         name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
       }),
     ).toBeDisabled()
@@ -989,7 +989,7 @@ describe('SpaceSettingsPage', () => {
     })
     renderTab('general')
 
-    const cleanup = screen.getByRole('switch', {
+    const cleanup = screen.getByRole('checkbox', {
       name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
     })
     expect(cleanup).toBeChecked()

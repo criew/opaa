@@ -184,7 +184,7 @@ export default function ChangePasswordPage() {
             disabled={busy}
             sx={{ alignSelf: 'flex-start', borderRadius: `${radius.md}px`, minWidth: 140 }}
           >
-            {busy ? 'Wird gespeichert …' : 'Passwort speichern'}
+            {busy ? 'Wird gespeichert …' : 'Speichern'}
           </Button>
         </Stack>
       </Box>

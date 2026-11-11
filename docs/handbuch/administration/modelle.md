@@ -126,7 +126,7 @@ Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:
 
 ## Reranking und Spracheingabe
 
-Je ein Reiter mit Schalter, Basis-Adresse, Modell-Kennung und Schlüssel, bei der Spracheingabe auch
+Je ein Reiter mit Auswahlkästchen zum Einschalten, Basis-Adresse, Modell-Kennung und Schlüssel, bei der Spracheingabe auch
 die Sprache und die „Begriffsliste“: Fachbegriffe und Abkürzungen des Hauses, etwa
 „Einspruchsfrist, Grunderwerbsteuer, AO, BZSt“, die das Modell damit zuverlässiger erkennt. Jede
 Person ergänzt in ihren Einstellungen eine eigene Liste; sie geht nach der des Hauses an das Modell.
@@ -157,7 +157,7 @@ selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Tr
    bekommt den Text wie ohne Live nach dem Ende der Aufnahme.
 5. „Live-Dienst testen“ öffnet eine Sitzung ohne Audio; dann „Speichern“.
 
-Den Schalter ausschalten und „Speichern“ entfernt den Live-Dienst samt Schlüssel. Fällt der Live-Dienst aus,
+Den Haken entfernen und „Speichern“ entfernt den Live-Dienst samt Schlüssel. Fällt der Live-Dienst aus,
 diktieren alle weiter, nur ohne Live-Text. Ein externer Dienst erhält die Aufnahme laufend während
 des Sprechens; das gehört wie die Spracheingabe selbst vorher mit Datenschutz und
 Personalvertretung geklärt. Was ein eigener Server leisten muss, steht unter

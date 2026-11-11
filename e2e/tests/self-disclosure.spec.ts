@@ -388,7 +388,7 @@ ${BODY}
     try {
       await admin.goto('/admin/privacy')
       const section = admin.getByRole('region', { name: 'Selbstauskunft' })
-      const toggle = section.getByRole('switch', { name: 'Selbstauskunft anbieten' })
+      const toggle = section.getByRole('checkbox', { name: 'Selbstauskunft anbieten' })
       await expect(toggle).toBeChecked({ timeout: 20_000 })
       await toggle.click()
       await section.getByRole('button', { name: 'Speichern' }).click()

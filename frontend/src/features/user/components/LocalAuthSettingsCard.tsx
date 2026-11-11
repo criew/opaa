@@ -22,6 +22,7 @@ import { mailStatusOf } from '@/features/mail'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
   'Reguläre lokale Konten können sich ab sofort nicht mehr anmelden, und ihre laufenden Sitzungen ' +
@@ -517,124 +518,131 @@ export default function LocalAuthSettingsCard() {
       <SmtpStatusLine />
 
       <Box sx={{ mt: 2.5, pt: 2.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1.5 }}>
+        <Typography
+          id="local-auth-rules-head"
+          component="h3"
+          sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1.5 }}
+        >
           Regeln und Fristen
         </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            rowGap: 2,
-            maxWidth: formWidth.column,
-          }}
+        <SettingsForm
+          aria-labelledby="local-auth-rules-head"
+          onSave={saveRules}
+          busy={isSaving}
+          dirty={edited !== null}
+          onDiscard={() => setEdited(null)}
         >
-          <Box>
-            <FormField
-              label="Adress-Domänen der Selbstregistrierung"
-              id="local-auth-domains"
-              fullWidth
-              size="small"
-              value={draft.domains}
-              placeholder="stadt.example, amt.example"
-              onChange={(e) => setEdited({ ...draft, domains: e.target.value })}
-              helperText="Komma- oder leerzeichengetrennt. Pflicht für die Selbstregistrierung; leer bedeutet, dass sich niemand registrieren kann."
-            />
-          </Box>
-          {(
-            [
-              ['passwordMinLength', 'Mindestlänge des Passworts', '8 bis 64 Zeichen'],
-              ['defaultExpiryDays', 'Vorbelegtes Ablaufdatum (Tage)', 'Vorschlag beim Anlegen'],
-              ['inactiveDays', 'Sperre nach Inaktivität (Tage)', 'mindestens 30'],
-              ['invitationTokenTtlHours', 'Einladungslink gültig (Stunden)', '1 bis 720'],
-              ['resetTokenTtlMinutes', 'Rücksetzlink gültig (Minuten)', '1 bis 1440'],
-            ] as Array<[keyof RulesDraft, string, string]>
-          ).map(([field, label, help]) => (
-            <Box key={field}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              rowGap: 2,
+              maxWidth: formWidth.column,
+            }}
+          >
+            <Box>
               <FormField
-                label={label}
-                id={`local-auth-${field}`}
+                label="Adress-Domänen der Selbstregistrierung"
+                id="local-auth-domains"
                 fullWidth
                 size="small"
-                type="number"
-                value={draft[field]}
-                onChange={(e) => setEdited({ ...draft, [field]: e.target.value })}
-                helperText={help}
+                value={draft.domains}
+                placeholder="stadt.example, amt.example"
+                onChange={(e) => setEdited({ ...draft, domains: e.target.value })}
+                helperText="Komma- oder leerzeichengetrennt. Pflicht für die Selbstregistrierung; leer bedeutet, dass sich niemand registrieren kann."
               />
             </Box>
-          ))}
-        </Box>
-        <Typography
-          component="h3"
-          sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3, mb: 0.5 }}
-        >
-          Sperre nach Fehlversuchen
-        </Typography>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
-          Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
-          der Betrieb fest, abschalten lässt sich die Sperre nicht.
-          {limitsAreFactoryOnly(settings) && (
-            <>
-              {' '}
-              Ab Werk lässt der Betrieb nur strengere Werte zu als die Werkseinstellung; lockern
-              geht erst, wenn er OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS oder
-              OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION weiter setzt.
-            </>
-          )}
-        </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            rowGap: 2,
-            maxWidth: formWidth.column,
-          }}
-        >
-          <LockoutField
-            id="local-auth-lockoutMaxAttempts"
-            label="Fehlversuche bis zur Sperre"
-            value={draft.lockoutMaxAttempts}
-            stored={settings.storedLockoutMaxAttempts}
-            inForce={settings.lockoutMaxAttempts}
-            factory={settings.defaultLockoutMaxAttempts}
-            factoryInForce={Math.min(
-              settings.defaultLockoutMaxAttempts,
-              settings.lockoutMaxAttemptsLimit,
+            {(
+              [
+                ['passwordMinLength', 'Mindestlänge des Passworts', '8 bis 64 Zeichen'],
+                ['defaultExpiryDays', 'Vorbelegtes Ablaufdatum (Tage)', 'Vorschlag beim Anlegen'],
+                ['inactiveDays', 'Sperre nach Inaktivität (Tage)', 'mindestens 30'],
+                ['invitationTokenTtlHours', 'Einladungslink gültig (Stunden)', '1 bis 720'],
+                ['resetTokenTtlMinutes', 'Rücksetzlink gültig (Minuten)', '1 bis 1440'],
+              ] as Array<[keyof RulesDraft, string, string]>
+            ).map(([field, label, help]) => (
+              <Box key={field}>
+                <FormField
+                  label={label}
+                  id={`local-auth-${field}`}
+                  fullWidth
+                  size="small"
+                  type="number"
+                  value={draft[field]}
+                  onChange={(e) => setEdited({ ...draft, [field]: e.target.value })}
+                  helperText={help}
+                />
+              </Box>
+            ))}
+          </Box>
+          <Typography
+            component="h3"
+            sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3, mb: 0.5 }}
+          >
+            Sperre nach Fehlversuchen
+          </Typography>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
+            Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
+            der Betrieb fest, abschalten lässt sich die Sperre nicht.
+            {limitsAreFactoryOnly(settings) && (
+              <>
+                {' '}
+                Ab Werk lässt der Betrieb nur strengere Werte zu als die Werkseinstellung; lockern
+                geht erst, wenn er OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS oder
+                OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION weiter setzt.
+              </>
             )}
-            range={`1 bis ${settings.lockoutMaxAttemptsLimit}`}
-            resetLabel="Fehlversuche auf die Werkseinstellung setzen"
-            disabled={isSaving}
-            onChange={(value) => setEdited({ ...draft, lockoutMaxAttempts: value })}
-          />
-          <LockoutField
-            id="local-auth-lockoutDurationMinutes"
-            label="Dauer der Sperre (Minuten)"
-            value={draft.lockoutDurationMinutes}
-            stored={settings.storedLockoutDurationMinutes}
-            inForce={settings.lockoutDurationMinutes}
-            factory={settings.defaultLockoutDurationMinutes}
-            factoryInForce={Math.min(
-              Math.max(settings.defaultLockoutDurationMinutes, settings.minLockoutDurationMinutes),
-              settings.maxLockoutDurationMinutes,
-            )}
-            range={`${settings.minLockoutDurationMinutes} bis ${settings.maxLockoutDurationMinutes} Minuten`}
-            resetLabel="Dauer der Sperre auf die Werkseinstellung setzen"
-            disabled={isSaving}
-            onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
-          />
-        </Box>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
-          Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
-          lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es eine
-          andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-          <Button variant="outlined" size="small" onClick={saveRules} disabled={isSaving}>
-            Regeln speichern
-          </Button>
-          <Button size="small" onClick={() => setEdited(null)} disabled={isSaving}>
-            Verwerfen
-          </Button>
-        </Stack>
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              rowGap: 2,
+              maxWidth: formWidth.column,
+            }}
+          >
+            <LockoutField
+              id="local-auth-lockoutMaxAttempts"
+              label="Fehlversuche bis zur Sperre"
+              value={draft.lockoutMaxAttempts}
+              stored={settings.storedLockoutMaxAttempts}
+              inForce={settings.lockoutMaxAttempts}
+              factory={settings.defaultLockoutMaxAttempts}
+              factoryInForce={Math.min(
+                settings.defaultLockoutMaxAttempts,
+                settings.lockoutMaxAttemptsLimit,
+              )}
+              range={`1 bis ${settings.lockoutMaxAttemptsLimit}`}
+              resetLabel="Fehlversuche auf die Werkseinstellung setzen"
+              disabled={isSaving}
+              onChange={(value) => setEdited({ ...draft, lockoutMaxAttempts: value })}
+            />
+            <LockoutField
+              id="local-auth-lockoutDurationMinutes"
+              label="Dauer der Sperre (Minuten)"
+              value={draft.lockoutDurationMinutes}
+              stored={settings.storedLockoutDurationMinutes}
+              inForce={settings.lockoutDurationMinutes}
+              factory={settings.defaultLockoutDurationMinutes}
+              factoryInForce={Math.min(
+                Math.max(
+                  settings.defaultLockoutDurationMinutes,
+                  settings.minLockoutDurationMinutes,
+                ),
+                settings.maxLockoutDurationMinutes,
+              )}
+              range={`${settings.minLockoutDurationMinutes} bis ${settings.maxLockoutDurationMinutes} Minuten`}
+              resetLabel="Dauer der Sperre auf die Werkseinstellung setzen"
+              disabled={isSaving}
+              onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
+            />
+          </Box>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
+            Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
+            lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es
+            eine andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.
+          </Typography>
+        </SettingsForm>
       </Box>
       {gate.dialog}
     </PageSection>

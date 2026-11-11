@@ -1019,6 +1019,7 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
+Eine einzelne Einstellung mit Feld ist dieselbe Zeile aus `SettingValueRow` (5.16).
 
 ### 5.13 Seitenleiste des Space
 
@@ -1125,6 +1126,45 @@ Fußzeile selbst nach.
 
 Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
 Zählbudget `disabledSubmits`).
+
+### 5.16 Einstellungen: Speichern, Schalter, Verbindungstest
+
+Eine Einstellungsseite, ein Reiter oder ein Abschnitt mit eigenem Speichern ist entweder ein
+Formular oder eine Wertzeile. Beides kommt aus `frontend/src/shared/ui/settings/`; kein Thema baut
+die Fußzeile eines Einstellungsformulars selbst.
+
+- **Mehrere Felder sind ein Formular mit genau einem „Speichern"** (`SettingsForm`): primär, unten
+  links, immer aktiv. Die Beschriftung ist nur „Speichern", nie „Regeln speichern" oder „Zugang
+  speichern". Fehlt oder stimmt eine Eingabe nicht, steht der Fehler am Feld, und der Fokus geht
+  hinein. Ohne Änderung speichert „Speichern" nichts und sagt das im Popup.
+- **„Verwerfen" steht still daneben, nur solange etwas geändert ist**, und stellt den gespeicherten
+  Stand wieder her. Wer die Seite mit Änderungen über einen Link verlässt, wird gefragt:
+  „Änderungen verwerfen?" (Ton `neutral`, Handlung „Verwerfen"); beim Schließen oder Neuladen des
+  Tabs fragt der Browser.
+- **Ein einzelner Wert ist eine Wertzeile mit „Ändern"** (`SettingValueRow`, 5.12): Titel, Wert,
+  rechts „Ändern". „Ändern" öffnet das Feld unter dem Wert mit „Speichern" (primär, kompakt) und
+  „Abbrechen" (still). Neben einem Feld steht kein Speichern-Knopf. Der Weg zurück zur
+  Werkseinstellung steht in der geschlossenen Zeile unter dem Wert.
+- **Ein Schalter wirkt immer sofort** und meldet das per Popup (5.9). Ist die Wirkung folgenreich,
+  fragt er vorher (Ton `caution`, 5.10). Was erst mit „Speichern" oder „Anlegen" gilt, ist ein
+  Auswahlkästchen; in einem `SettingsForm` steht deshalb nie ein Schalter. Ausgenommen ist der
+  Schalter als Filter über einer Liste (5.3).
+- **Rückmeldung nach dem Speichern ist das Popup**, kein Erfolgshinweis in der Seite. Fehler stehen
+  am Feld; ein Fehler ohne Feld (Server nicht erreichbar) steht als Hinweis unter der Fußzeile, bis
+  der nächste Versuch gelingt.
+- **„Verbindung testen"** (`ConnectionTestButton`) ist sekundär und immer aktiv: auf Seiten neben
+  „Speichern", in Dialogen links in der Fußzeile. Der Test nimmt die Eingaben, wie sie stehen,
+  gespeichert oder nicht; fehlt ihm eine Angabe, steht das am Feld. Das Ergebnis steht inline
+  unter der Fußzeile, in Dialogen im Inhalt, nie im Popup. Im Assistenten gilt P33 der
+  [Prüfliste](./ui-pruefliste.md).
+- **Reihenfolge der Fußzeile:** „Speichern", dann höchstens eine Nebenhandlung, dann „Verwerfen".
+  „Verwerfen" steht zuletzt, damit sein Erscheinen nichts verschiebt.
+
+Geprüft in `frontend/src/shared/ui/settings/*.test.ts(x)`: `settingsSource.test.ts` lässt keine
+Beschriftung „… speichern" außer „Speichern", keinen an Eingaben gebundenen gesperrten
+Speichern-Knopf, keinen `Switch` in einem `SettingsForm` und „Verbindung testen" nur aus dem
+Baustein zu. Das Zählbudget `disabledSubmits` = 0 der Prüfliste gilt damit auch für
+Einstellungsseiten.
 
 ---
 

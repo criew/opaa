@@ -1,28 +1,31 @@
+import Checkbox from '@mui/material/Checkbox'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
-import Switch from '@mui/material/Switch'
 
 interface ChatAutoCleanupFieldProps {
   id: string
   checked: boolean
   onChange: (checked: boolean) => void
   disabled?: boolean
-  /** In another person's personal space only that person sets the switch. */
+  /** In another person's personal space only that person sets the checkbox. */
   personalSpaceOfOther?: boolean
-  /** The installation's periods; while they are unknown the switch names no numbers. */
+  /** The installation's periods; while they are unknown the label names no numbers. */
   archiveAfterDays?: number
   deleteAfterDays?: number
 }
 
-/** The switch label, with the installation's periods once they are known. */
+/** The checkbox label, with the installation's periods once they are known. */
 function chatAutoCleanupLabel(archiveAfterDays?: number, deleteAfterDays?: number) {
   return archiveAfterDays != null && deleteAfterDays != null
     ? `Inaktive Chats nach ${archiveAfterDays} Tagen archivieren und nach weiteren ${deleteAfterDays} Tagen löschen`
     : 'Inaktive Chats automatisch archivieren und löschen'
 }
 
-/** The automatic chat cleanup switch of a space; the operator sets the periods. */
+/**
+ * The automatic chat cleanup of a space, a checkbox because it takes effect with „Speichern“ or
+ * „Anlegen“; the operator sets the periods.
+ */
 export default function ChatAutoCleanupField({
   id,
   checked,
@@ -36,7 +39,7 @@ export default function ChatAutoCleanupField({
     <FormControl disabled={disabled}>
       <FormControlLabel
         control={
-          <Switch
+          <Checkbox
             id={id}
             checked={checked}
             onChange={(event) => onChange(event.target.checked)}

@@ -30,7 +30,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Label | 1–3 | Sicht (P12) |
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
-| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled` (P28) |
+| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled`, in Assistenten, Dialogen und auf Einstellungsseiten (P28, P54) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
@@ -121,7 +121,8 @@ zwei Einträgen.
     ([guidelines.md](./guidelines.md), 5.15). –
     gemessen (`title`, `invalidFields`) und Tastatur
 30. **Zurück verliert nichts**, weder im Assistenten noch über den Browser. – Video
-31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde. – Video
+31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde; auf
+    Einstellungsseiten „Änderungen verwerfen?" ([guidelines.md](./guidelines.md), 5.16). – Video
 32. Prüfschritt vor dem Anlegen: [guidelines.md](./guidelines.md), 5.15. – Sicht
 33. **Verbindungstest einheitlich:** automatisch bei „Weiter“ und über einen eigenen Knopf;
     Ergebnis inline, mit der Stufe (Adresse · Anmeldung · Rechte); es verfällt, sobald ein
@@ -181,6 +182,15 @@ zwei Einträgen.
     640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
     ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
     `FormField.test.tsx` und `fieldHeight.test.tsx`
+
+54. **Speichern, Schalter, Verbindungstest einheitlich** ([guidelines.md](./guidelines.md), 5.16):
+    ein Formular mit mehreren Feldern hat genau ein „Speichern", primär, unten links, immer aktiv,
+    daneben „Verwerfen" nur bei Änderungen; ein einzelner Wert ist eine Wertzeile mit „Ändern",
+    kein Speichern-Knopf neben einem Feld; ein Schalter wirkt sofort, was erst mit „Speichern"
+    gilt, ist ein Auswahlkästchen; nach dem Speichern meldet das Popup, kein Hinweis in der Seite;
+    „Verbindung testen" sekundär neben „Speichern", im Dialog links in der Fußzeile, Ergebnis
+    inline. – Sicht (Querbögen) und gemessen (`disabledSubmits`); im Code geprüft durch
+    `settingsSource.test.ts` und `SettingsForm.test.tsx`
 
 ## Pflege
 
