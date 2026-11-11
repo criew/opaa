@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import Alert from '@mui/material/Alert'
+import { useCallback, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -27,7 +26,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 import PageSection from '@/shared/ui/PageSection'
 import { contentWidth, fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
@@ -95,7 +94,7 @@ function QuotaForm({
   const quotaBytes = parsed.bytes
   const changed = valid && quotaBytes !== current.quotaBytes
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
@@ -105,18 +104,21 @@ function QuotaForm({
         `Das Speicherkontingent privater Bibliotheken ist jetzt ${limitLabel(saved.quotaBytes)}.`,
         'success',
       )
+      return true
     } catch (err: unknown) {
       setSaveError(
         err instanceof Error ? err.message : 'Die Grenze konnte nicht gespeichert werden.',
       )
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || !valid) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `Speicherkontingent privater Bibliotheken auf ${limitLabel(quotaBytes)} ändern?`,
       consequence:
@@ -126,8 +128,8 @@ function QuotaForm({
       confirmLabel: 'Ändern',
       tone: 'caution',
     })
-    if (!confirmed) return
-    await save(quotaBytes)
+    if (!confirmed) return false
+    return save(quotaBytes)
   }
 
   async function handleReset() {
@@ -144,23 +146,34 @@ function QuotaForm({
   }
 
   return (
-    <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <FormField
-        label="Grenze je Person (GB)"
-        size="small"
-        value={draft}
-        disabled={unlimited}
-        onChange={(event) => {
-          setDraft(event.target.value)
-          setSaveError(null)
-        }}
-        error={!valid}
-        helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
-        numeric
-        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-        sx={{ maxWidth: formWidth.column }}
-        action={
-          <>
+    <SettingValueRow
+      title="Grenze je Person"
+      headingLevel="h3"
+      value={sizeOrUnlimited(current.quotaBytes)}
+      onOpen={() => {
+        setUnlimited(current.quotaBytes === 0)
+        setDraft(current.quotaBytes === 0 ? '' : limitDraft(current.quotaBytes))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
+          label="Grenze je Person (GB)"
+          size="small"
+          value={draft}
+          disabled={unlimited}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={!valid || saveError !== null}
+          helperText={
+            saveError ?? parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'
+          }
+          numeric
+          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+          sx={{ maxWidth: formWidth.column }}
+          action={
             <FormControlLabel
               control={
                 <Checkbox
@@ -173,29 +186,16 @@ function QuotaForm({
               }
               label="Unbegrenzt"
             />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Grenze wird gespeichert"
-              disabled={!changed && !busy}
-            >
-              Grenze speichern
-            </BusyButton>
-            {current.overridden && (
-              <Button variant="text" disabled={busy} onClick={() => void handleReset()}>
-                Werkseinstellung wiederherstellen
-              </Button>
-            )}
-          </>
-        }
-      />
-      {saveError && (
-        <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-          {saveError}
-        </Alert>
+          }
+        />
+      }
+    >
+      {current.overridden && (
+        <Button variant="text" size="small" disabled={busy} onClick={() => void handleReset()}>
+          Werkseinstellung wiederherstellen
+        </Button>
       )}
-    </Box>
+    </SettingValueRow>
   )
 }
 

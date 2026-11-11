@@ -152,7 +152,14 @@ export default function DirectorySyncDialog({
   const saveSchedule = (enabled: boolean, intervalMinutes: number | null, savedInterval: boolean) =>
     void run(async () => {
       await setDirectorySync(providerId, { enabled, intervalMinutes })
-      if (savedInterval) notify('Das Intervall wurde gespeichert.', 'success')
+      notify(
+        savedInterval
+          ? 'Das Intervall wurde gespeichert.'
+          : enabled
+            ? 'Der Abgleich ist eingeschaltet.'
+            : 'Der Abgleich ist ausgeschaltet.',
+        'success',
+      )
       await onChanged()
     }, 'Der Abgleich konnte nicht umgeschaltet werden.')
 

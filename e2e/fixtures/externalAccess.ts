@@ -170,7 +170,7 @@ export async function mcpSearch(
 export async function setChannelEnabled(adminPage: Page, enabled: boolean): Promise<void> {
   await adminPage.goto('/admin/connections/external-tools?panel=settings')
   const panel = adminPage.getByRole('dialog', { name: 'Einstellungen' })
-  const toggle = panel.getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' })
+  const toggle = panel.getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' })
   await expect(toggle).toBeVisible()
   if ((await toggle.isChecked()) !== enabled) {
     await toggle.click()

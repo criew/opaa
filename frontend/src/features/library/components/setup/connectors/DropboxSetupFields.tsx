@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import {
   DROPBOX_API,
@@ -35,7 +35,7 @@ export function DropboxConnectionFields({
     <Box>
       <FormControlLabel
         control={
-          <Switch
+          <Checkbox
             id={fieldId('teamSpace')}
             checked={values.teamSpace}
             onChange={(e) => onChange({ teamSpace: e.target.checked })}

@@ -242,8 +242,8 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   ([Externer Anbieter](modell-endpunkte.md#externer-anbieter)). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht ([Spracheingabe und
   Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschnitt
-  „Live-Transkript (optional)“ ist ausgeschaltet; das Diktat bleibt immer verfügbar. „Live-Transkript
-  einschalten“ zeigt den Text zusätzlich schon beim Sprechen
+  „Live-Transkript (optional)“ ist ausgeschaltet; das Diktat bleibt immer verfügbar. Angekreuzt zeigt „Live-Transkript
+  einschalten“ den Text zusätzlich schon beim Sprechen
   ([Live-Transkript](modell-endpunkte.md#live-transkript)). Dann wählt man den „Live-Dienst“ aus
   einer festen Liste, „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“; die Wahl belegt
   „Live-Adresse“ und „Live-Modell“ vor, beim eigenen Server ist der Host anzupassen. Sind

@@ -78,6 +78,7 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
         ) : (
           <FactoryDefaultNumberSetting
             key={`${settings.agingThresholdMonths}-${settings.overridden}`}
+            title="Lange offen ab"
             label="Lange offen ab (Monate)"
             field="agingThresholdMonths"
             value={settings.agingThresholdMonths}
@@ -119,6 +120,7 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
         >
           <FactoryDefaultNumberSetting
             key={`${settings.responsibleLockDays}-${settings.responsibleLockDaysOverridden}`}
+            title="Gesperrt nach"
             label="Gesperrt nach (Tage)"
             field="responsibleLockDays"
             value={settings.responsibleLockDays}

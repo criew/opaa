@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -73,6 +74,10 @@ export default function MetadataExtractionSettingsSection({
       })
       setSettings(updated)
       setError(null)
+      notify(
+        `Extraktion: modellgestützt ${updated.modelExtractionEnabled ? 'an' : 'aus'}, freie Schlagworte ${updated.keywordsEnabled ? 'an' : 'aus'}.`,
+        'success',
+      )
       loadQuality()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Einstellung konnte nicht gespeichert werden')

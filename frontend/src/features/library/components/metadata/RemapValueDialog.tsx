@@ -66,7 +66,7 @@ export default function RemapValueDialog({
         }}
         action={
           <Button variant="outlined" onClick={onSaveValueLabel} sx={{ flex: 'none' }}>
-            Bezeichnung speichern
+            Umbenennen
           </Button>
         }
         sx={{ mb: 2, mt: 1 }}

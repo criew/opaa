@@ -12,7 +12,7 @@ import { useConnectionProfileOptions } from '@/features/connection'
 import { testLibrarySource } from '../api/libraryApi'
 import { useLibraryStore } from '../stores/libraryStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
 import ConnectionProfileSelect from './ConnectionProfileSelect'
 import {
   admitsLibraries,
@@ -194,6 +194,18 @@ export default function LibraryConnectionDialog({
       onClose={close}
       busy={busy}
       busyAnnouncement={testing ? 'Verbindung wird geprüft' : 'Zugang wird zugeordnet'}
+      secondaryAction={
+        <ConnectionTestButton
+          busy={testing}
+          busyAnnouncement="Verbindung wird geprüft"
+          onTest={() => {
+            if (submitting) return
+            // a missing choice is told at its field, as the address field names its own reason
+            if (choice === null) setChoiceMissing(true)
+            else void test()
+          }}
+        />
+      }
     >
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Typography variant="body2">
@@ -256,18 +268,6 @@ export default function LibraryConnectionDialog({
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
             />
           </>
-        )}
-        {next && (
-          <BusyButton
-            variant="outlined"
-            onClick={() => void test()}
-            disabled={!addressFits || submitting}
-            busy={testing}
-            busyAnnouncement="Verbindung wird geprüft"
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            {testing ? 'Verbindung wird geprüft …' : 'Verbindung prüfen'}
-          </BusyButton>
         )}
         {visible?.result && (
           <Alert

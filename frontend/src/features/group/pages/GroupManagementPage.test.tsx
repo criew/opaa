@@ -324,7 +324,7 @@ describe('GroupManagementPage', () => {
     const name = within(dialog).getByLabelText('Name der Gruppe')
     await user.clear(name)
     await user.type(name, 'Phoenix Kernteam')
-    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Zur Verwendung freigegeben' }))
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() =>
@@ -362,7 +362,7 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByText(/stammt aus dem Identitätsanbieter/)).toBeInTheDocument()
     expect(within(dialog).getByText('Verzeichnisdienst · /Haus A/Referat 50')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Name der Gruppe')).not.toBeInTheDocument()
-    expect(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('checkbox', { name: 'Geschützte Gruppe' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
   })
 
@@ -376,7 +376,7 @@ describe('GroupManagementPage', () => {
     const menu = await openRowMenu(user, 'Referat 50')
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Geschützte Gruppe' }))
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() =>
@@ -522,16 +522,16 @@ describe('GroupManagementPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
     expect(within(dialog).getByText('Ada Admin (Sie)')).toBeInTheDocument()
     // without a name „Anlegen“ says so at the field and puts the focus there
-    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Zur Verwendung freigegeben' }))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
     expect(within(dialog).getByLabelText('Name der Gruppe')).toBeInvalid()
     expect(within(dialog).getByLabelText('Name der Gruppe')).toHaveFocus()
     expect(within(dialog).getByText('Bitte einen Namen angeben.')).toBeVisible()
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Zur Verwendung freigegeben' }))
     await user.type(within(dialog).getByLabelText('Name der Gruppe'), 'Neue Gruppe')
-    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
-    const protection = within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Zur Verwendung freigegeben' }))
+    const protection = within(dialog).getByRole('checkbox', { name: 'Geschützte Gruppe' })
     expect(protection).toHaveAccessibleDescription(/Personalvertretung/)
     await user.click(protection)
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))

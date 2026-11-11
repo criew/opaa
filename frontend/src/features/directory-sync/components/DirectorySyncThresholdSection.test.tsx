@@ -12,6 +12,12 @@ import DirectorySyncThresholdSection from './DirectorySyncThresholdSection'
 const SETTINGS = '/api/v1/admin/directory-sync/settings'
 const FIELD = 'Bestätigung ab (Prozent)'
 
+/** The threshold is a value row: „Ändern“ opens its field. */
+async function openField(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'Bestätigung ab ändern' }))
+  return screen.getByLabelText(FIELD)
+}
+
 function captureSaves() {
   const sent: unknown[] = []
   server.events.on('request:start', async ({ request }) => {
@@ -27,9 +33,11 @@ describe('DirectorySyncThresholdSection', () => {
   })
 
   it('names the factory default while no own value is set', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<DirectorySyncThresholdSection />)
 
-    expect(await screen.findByLabelText(FIELD)).toHaveValue('30')
+    expect(await openField(user)).toHaveValue('30')
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
     expect(screen.getByText('Werkseinstellung: 30 %')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
@@ -41,7 +49,7 @@ describe('DirectorySyncThresholdSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<DirectorySyncThresholdSection />)
 
-    const field = await screen.findByLabelText(FIELD)
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '60')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
@@ -109,7 +117,7 @@ describe('DirectorySyncThresholdSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<DirectorySyncThresholdSection />)
 
-    const field = await screen.findByLabelText(FIELD)
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '20')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
@@ -137,12 +145,16 @@ describe('DirectorySyncThresholdSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<DirectorySyncThresholdSection />)
 
-    const field = await screen.findByLabelText(FIELD)
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, typed)
 
     expect(screen.getByText('Bitte eine ganze Zahl von 1 bis 100 eingeben.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    const save = screen.getByRole('button', { name: 'Speichern' })
+    expect(save).toBeEnabled()
+    await user.click(save)
     expect(sent).toEqual([])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(field).toBeInvalid()
   })
 })

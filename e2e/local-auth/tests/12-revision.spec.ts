@@ -291,7 +291,7 @@ test.describe.serial("Revision und Nachweis", () => {
       .getByRole("checkbox", { name: /E2E-Ablage/ })
       .check();
     await page.getByRole("button", { name: "Ändern Zeitplan" }).click();
-    await page.getByRole("switch", { name: "Erste Indizierung sofort nach dem Anlegen" }).uncheck();
+    await page.getByRole("checkbox", { name: "Erste Indizierung sofort nach dem Anlegen" }).uncheck();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await createFromReview(page);
     const libraryId = new URL(page.url()).pathname.split("/").pop()!;

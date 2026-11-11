@@ -338,7 +338,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const label = await screen.findByLabelText('Bezeichnung')
     await user.clear(label)
     await user.type(label, 'Fassung 2026 (neu)')
-    await user.click(screen.getByRole('button', { name: 'Bezeichnung speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Umbenennen' }))
 
     expect(mockRelabel).toHaveBeenCalledWith(
       'library-team',

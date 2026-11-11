@@ -15,7 +15,7 @@ bereitstellt, so wie ein Modell oder die Texterkennung.
    Speichern.
 3. Unter „Wenn der Scanner eine Datei nicht prüfen kann“ wählen: „Ablehnen“ (ab Werk) oder
    „Ungeprüft aufnehmen“.
-4. „Jede eingehende Datei prüfen“ einschalten und „Speichern“.
+4. „Jede eingehende Datei prüfen“ ankreuzen und „Speichern“.
 
 Die Änderung wirkt ab der nächsten Datei auf allen Instanzen, ohne Neustart, und steht mit altem und
 neuem Wert im [Nachweisprotokoll](nachweisprotokoll-lesen.md). Ausgeschaltet bleiben die Werte
