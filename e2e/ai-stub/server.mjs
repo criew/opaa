@@ -421,6 +421,9 @@ function agentStep(messages) {
 //                        and gets the ordinary script
 //   E2E-AGENT-GRENZE     searches again after every result until a limit of the run ends it
 //   E2E-AGENT-DATEI      after the searches fill_template, with values made up from its schema
+// An agent with a plan step gets no tool in its first run: the stub answers with a fixed plan when
+// the system text carries the plan rules. The confirming run carries the confirmed-plan rules and
+// takes its search terms from the question the plan was made for.
 const AGENT_TOOL_NAMES = [
   'search_knowledge',
   'read_document',
@@ -432,6 +435,10 @@ const AGENT_PAUSE_TRIGGER = 'E2E-AGENT-PAUSE'
 const AGENT_ASK_TRIGGER = 'E2E-AGENT-RUECKFRAGE'
 const AGENT_LIMIT_TRIGGER = 'E2E-AGENT-GRENZE'
 const AGENT_FILE_TRIGGER = 'E2E-AGENT-DATEI'
+const AGENT_PLAN_RULES = 'PLANSCHRITT (verbindlich)'
+const AGENT_CONFIRMED_RULES = 'BESTÄTIGTER PLAN (verbindlich)'
+const AGENT_PLAN =
+  '1. Fristen für Wohngeld suchen\n2. Fristen für Widersprüche suchen\n\nBitte bestätigen oder ändern Sie den Plan.'
 const AGENT_QUESTION_BACK = 'Welchen Zeitraum meinen Sie?'
 const AGENT_HOLD_LIMIT_MS = 45_000
 const AGENT_ANSWER = 'Ergebnis des Agenten.'
@@ -514,7 +521,17 @@ function fillTemplateArguments(body, term) {
 async function plainAgentStep(body, messages, res) {
   const question = [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
   const results = toolResultsOfTurn(messages)
-  const terms = quotedTerms(question)
+  const confirmed = messages.some(
+    (message) =>
+      message.role === 'system' && String(message.content).includes(AGENT_CONFIRMED_RULES),
+  )
+  const planned = confirmed
+    ? messages
+        .filter((message) => message.role === 'user')
+        .map((message) => quotedTerms(String(message.content)))
+        .find((found) => found.length > 0)
+    : undefined
+  const terms = quotedTerms(question).length > 0 ? quotedTerms(question) : (planned ?? [])
 
   if (question.includes(AGENT_ASK_TRIGGER) && offersTool(body, 'ask_user') && results.length === 0) {
     return {
@@ -765,6 +782,29 @@ const server = createServer({ shouldUpgradeCallback: isWebSocketUpgrade }, async
             code: null,
             param: null,
           },
+        })
+        return
+      }
+      if (
+        messages.some(
+          (message) =>
+            message.role === 'system' && String(message.content).includes(AGENT_PLAN_RULES),
+        )
+      ) {
+        sendJson(res, 200, {
+          id: 'chatcmpl-stub',
+          object: 'chat.completion',
+          created: Math.floor(Date.now() / 1000),
+          model: body.model ?? 'stub-chat',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: AGENT_PLAN },
+              finish_reason: 'stop',
+              logprobs: null,
+            },
+          ],
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         })
         return
       }

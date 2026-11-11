@@ -335,6 +335,7 @@ voreinstellungen#full-sync-rhythm-settings-interval-days-nextcloud
 voreinstellungen#full-sync-rhythm-settings-interval-days-onedrive
 voreinstellungen#full-sync-rhythm-settings-interval-days-sharepoint
 voreinstellungen#io-opaa-account-localtokencleanupservice-retention
+voreinstellungen#io-opaa-agent-agentresearchprovisioner-research-limits
 voreinstellungen#io-opaa-audit-auditincidentscopegrant-usable-window
 voreinstellungen#io-opaa-externalaccess-externalaccessalertretention-retention
 voreinstellungen#ki-funktion-agent-run
@@ -400,6 +401,7 @@ voreinstellungen#opaa-upload-orphan-grace-minutes
 voreinstellungen#opaa-upload-s3-endpoint
 voreinstellungen#opaa-upload-store
 voreinstellungen#permission-history-retention-settings-retention-months
+voreinstellungen#prompt-agent-research
 voreinstellungen#prompt-agent-run
 voreinstellungen#prompt-answer-generation
 voreinstellungen#prompt-chat-note-extraction

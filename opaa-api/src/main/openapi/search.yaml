@@ -984,8 +984,11 @@ components:
         run reached its limit of tool calls, of time or of collected text and answered with what
         it had; a client shows this as a set-off state "nicht geprüft", not as an error. ASK_USER -
         the agent asked the person back; the answer is the question and the run ended there, the
-        reply starts a new run.
-      enum: [COMPLETED, LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME, ASK_USER]
+        reply starts a new run. PLAN - the agent asks for confirmation of a plan before it works;
+        the answer is the plan and the run ended there. The next question with the same agent
+        confirms or changes the plan and starts the run that works it off, with the plan in its
+        history.
+      enum: [COMPLETED, LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME, ASK_USER, PLAN]
 
     AgentRunStep:
       type: object

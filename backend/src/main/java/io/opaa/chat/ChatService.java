@@ -473,6 +473,19 @@ public class ChatService {
   }
 
   /**
+   * The agent run that gave the chat's latest message, empty when that message is a question, an
+   * answer without an agent, or the chat has none. A follow-up run reads how the previous one
+   * ended, e.g. with a plan to confirm (ADR-0070, Entscheidung 1).
+   */
+  @Transactional(readOnly = true)
+  public Optional<AgentRunRecord> latestAgentRun(UUID chatId) {
+    return chatMessageRepository.findByChatIdOrderBySequenceDesc(chatId, Limit.of(1)).stream()
+        .findFirst()
+        .filter(message -> message.getRole() == ChatRole.ASSISTANT)
+        .map(message -> parseAgentRun(message.getAgentRun()));
+  }
+
+  /**
    * The search scope for a query run in this chat: the space's associated knowledge libraries are a
    * hard boundary. With {@code useKnowledge} on (@Space-Wissen) the scope is associated ∩ readable;
    * with it off, the sticky @-references ∩ associated ∩ readable. A space without an associated

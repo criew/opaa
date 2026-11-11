@@ -40,7 +40,9 @@ prompts:
   - id: agent-run
     purpose: >-
       Regeln für einen Agentenlauf: Werkzeuge in Schritten nutzen, Belegpflicht, Antwortsprache,
-      Anweisung des Agenten und des Space, Gesprächsnotiz; dazu die Beschreibungen der Werkzeuge,
+      Anweisung des Agenten und des Space, Gesprächsnotiz; bei einem Agenten mit Planschritt die
+      Regel, zuerst nur einen Plan vorzulegen, und im nächsten Lauf die Regel, den bestätigten oder
+      geänderten Plan abzuarbeiten, auch nach der Antwort auf eine Rückfrage dabei; dazu die Beschreibungen der Werkzeuge,
       nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
       dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
@@ -58,7 +60,17 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "3e754584a04ba089d821e9e0af1c9c13c81522c2aa57ec42e6c03e7ce4064df5"
+    sha256: "636dcc301cb1c2792a67d1ce5a1228b8e6f398e5dd4899461072b13de3c4dbe7"
+  - id: agent-research
+    purpose: >-
+      Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
+      angelegt wird: Teilfragen bilden und gezielt suchen, Eingrenzungen der Person im Plan
+      beachten, gegliederter Bericht mit Fundstelle je Aussage, Widersprüche zwischen Fundstellen
+      und Lücken ausdrücklich benennen, auf Wunsch eine Vorlage ausfüllen. Eigentümerin oder
+      Eigentümer des Agenten kann sie ändern wie bei jedem Agenten; jede Änderung erhöht die
+      Fassung und steht im Revisionsprotokoll
+    classes: [io.opaa.agent.AgentResearchProvisioner]
+    sha256: "5b341bfb66faf826b305a2c418c794656bf38d31deca8b1c3826f03116df4b70"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
@@ -121,7 +133,7 @@ aiFunctions:
     labelling: >-
       Wie die Chat-Antwort; zusätzlich nennt die Frage den gewählten Agenten und die Antwort zeigt
       die Schritte des Laufs
-    prompts: [agent-run]
+    prompts: [agent-run, agent-research]
   - id: speech-transcription
     purpose: Wandelt eine Sprachaufnahme der Person in Text für die Eingabe um (Diktat)
     outputKind: TEXT

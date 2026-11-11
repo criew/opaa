@@ -307,6 +307,9 @@ ersten Werkzeugergebnis fest, bis `POST /control/agent-release` ihn freigibt (`G
 /control/agent-hold` zählt die wartenden Aufrufe); `E2E-AGENT-RUECKFRAGE` beginnt mit `ask_user`;
 `E2E-AGENT-GRENZE` sucht immer weiter, bis eine Grenze den Lauf beendet; `E2E-AGENT-DATEI` füllt
 nach der Suche `fill_template` mit Werten, die er aus dem Schema des Werkzeugs erfindet.
+Ein Agent mit Planschritt bekommt im ersten Lauf kein Werkzeug; der Stub erkennt ihn an den Planregeln
+im Systemtext und antwortet mit einem festen Plan, der bestätigende Lauf sucht nach den Begriffen der
+ersten Frage.
 Anfragen mit `run_code` spielen weiter das Skript des Ziels `sandbox`.
 
 Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
@@ -846,7 +849,8 @@ lassen.
   her.
 
 - `tests/agents-schalter-anlegerecht.spec.ts`, `tests/agents-teilen-und-wahl.spec.ts`,
-  `tests/agents-lauf.spec.ts`, `tests/agents-sperre.spec.ts` (#3680, Epic #1747) — das Agenten-Paket
+  `tests/agents-lauf.spec.ts`, `tests/agents-sperre.spec.ts`,
+  `tests/agents-plan-verzeichnis.spec.ts` (#3680, Epic #1747) — das Agenten-Paket
   mit dem KI-Stub (siehe dort). **Schalter aus:** keine `@`-Agentenwahl, kein Katalogeintrag
   „Agenten“ oder „Vorlagen“, die Schnittstelle antwortet 404, der gewöhnliche Chat antwortet wie
   bisher. **Anlegerecht:** ohne `CREATE_AGENT` fehlt die Kachel und der Assistent nennt den Grund;
@@ -861,7 +865,11 @@ lassen.
   Werkzeugfähigkeit des Modells und Vorlagen-Schalter sind installationsweit; jedes Szenario stellt
   den Stand davor wieder her. Die Datei nach Vorlage (DOCX und PDF, gesperrte Vorlage) braucht die
   Sandbox und läuft im Ziel `sandbox` (`sandbox/tests/agent-vorlage.spec.ts`, nicht in der CI).
-  Noch offen: das Agentenverzeichnis (#3679), die Planbestätigung des Agenten „Recherche“ (#3674).
+  **Plan und Verzeichnis** (`agents-plan-verzeichnis.spec.ts`): ein Agent mit Planschritt endet mit
+  dem Plan, „Bestätigen“ startet den Lauf mit Belegen, „Ändern“ wählt den Agenten und setzt den
+  Fokus in die Eingabe; wer das Recht „Agentenverzeichnis einsehen“ hat, sieht die Agenten ohne
+  Nutzungsangaben, vorher die Sperrmeldung. Der Agent des Szenarios ist ein selbst angelegter mit
+  denselben Einstellungen wie „Recherche“ (Planschritt „bestätigen“).
 
 - `tests/lifecycle.spec.ts` (#3465, Epic #3462) — die Wege, die eine Installation umziehen und
   Bestände übergeben oder entfernen. **Einstellungen übertragen:** Export über die Oberfläche, eine

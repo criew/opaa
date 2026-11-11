@@ -4,7 +4,8 @@ import java.time.Duration;
 
 /**
  * The limits of one run. In {@link AgentRunSpec} every {@code null} component falls back to the
- * system limit, and a set one may only lower it; {@link AgentSystemLimits#current()} sets all four.
+ * default of an agent without limits of its own, and no component goes above the system limit;
+ * {@link AgentSystemLimits#current()} sets all four.
  *
  * @param maxToolCalls tool calls per run, over all tools.
  * @param maxSearchCalls calls of {@code search_knowledge} per run.
@@ -15,28 +16,36 @@ import java.time.Duration;
 public record AgentLimits(
     Integer maxToolCalls, Integer maxSearchCalls, Duration maxDuration, Integer maxCollectedChars) {
 
-  /** No limit of its own: every component falls back to the system limit. */
+  /** No limit of its own: every component falls back to {@link #DEFAULT}, capped by the system. */
   public static final AgentLimits SYSTEM = new AgentLimits(null, null, null, null);
 
   /**
-   * The limits that apply: each component of {@code requested} that is set and lower than {@code
-   * system}'s, otherwise the system's. A requested limit never raises a system limit.
+   * What an agent without a limit of its own gets, as before the system limits were raised: an
+   * agent saved without limits keeps its behaviour whatever the system maximum is, and only an
+   * explicit value (a delivered agent's, an owner's) goes above it, up to the system limit.
+   */
+  static final AgentLimits DEFAULT = new AgentLimits(5, 3, Duration.ofSeconds(120), null);
+
+  /**
+   * The limits that apply: each component of {@code requested} that is set, otherwise the default
+   * ({@link #DEFAULT}, collected characters the system's); never above {@code system}'s.
    */
   static AgentLimits effective(AgentLimits system, AgentLimits requested) {
-    if (requested == null) {
-      return system;
-    }
+    AgentLimits asked = requested == null ? SYSTEM : requested;
     return new AgentLimits(
-        lower(system.maxToolCalls(), requested.maxToolCalls()),
-        lower(system.maxSearchCalls(), requested.maxSearchCalls()),
-        requested.maxDuration() != null
-                && requested.maxDuration().compareTo(system.maxDuration()) < 0
-            ? requested.maxDuration()
-            : system.maxDuration(),
-        lower(system.maxCollectedChars(), requested.maxCollectedChars()));
+        capped(system.maxToolCalls(), asked.maxToolCalls(), DEFAULT.maxToolCalls()),
+        capped(system.maxSearchCalls(), asked.maxSearchCalls(), DEFAULT.maxSearchCalls()),
+        cappedDuration(system.maxDuration(), asked.maxDuration()),
+        capped(system.maxCollectedChars(), asked.maxCollectedChars(), null));
   }
 
-  private static Integer lower(Integer system, Integer requested) {
-    return requested != null && requested < system ? requested : system;
+  private static Integer capped(Integer system, Integer requested, Integer fallback) {
+    Integer wanted = requested != null ? requested : fallback;
+    return wanted != null && wanted < system ? wanted : system;
+  }
+
+  private static Duration cappedDuration(Duration system, Duration requested) {
+    Duration wanted = requested != null ? requested : DEFAULT.maxDuration();
+    return wanted.compareTo(system) < 0 ? wanted : system;
   }
 }

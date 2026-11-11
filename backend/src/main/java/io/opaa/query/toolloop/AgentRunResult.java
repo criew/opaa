@@ -10,6 +10,7 @@ enum AgentRunResult {
   LIMIT_DURATION,
   LIMIT_VOLUME,
   ASK_USER,
+  PLAN,
   MODEL_NOT_CAPABLE,
   ABORTED,
   ERROR;
@@ -21,6 +22,7 @@ enum AgentRunResult {
       case LIMIT_DURATION -> LIMIT_DURATION;
       case LIMIT_VOLUME -> LIMIT_VOLUME;
       case ASK_USER -> ASK_USER;
+      case PLAN -> PLAN;
     };
   }
 

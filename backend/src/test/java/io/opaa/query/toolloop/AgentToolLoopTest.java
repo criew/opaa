@@ -1051,6 +1051,148 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void anAgentThatConfirmsItsPlanEndsTheFirstRunWithThePlanAndCallsNoTool() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId())).thenReturn(Optional.empty());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answer("1. Regeln suchen\n2. Fristen suchen"), answer("Nie erreicht."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.answer()).isEqualTo("1. Regeln suchen\n2. Fristen suchen");
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.PLAN);
+    assertThat(result.agentRun().steps()).isEmpty();
+    assertThat(result.evidence()).isNull();
+    ArgumentCaptor<Prompt> prompt = ArgumentCaptor.captor();
+    verify(chatModel).call(prompt.capture());
+    assertThat(toolsOf(prompt.getValue())).isNullOrEmpty();
+    assertThat(prompt.getValue().getInstructions().get(0).getText())
+        .contains(AgentPrompt.PLAN_RULES)
+        .doesNotContain(AgentPrompt.CONFIRMED_PLAN);
+    verifyNoInteractions(retrieval);
+    verify(workspace).release(result.agentRun().runId());
+    verify(chatService)
+        .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), eq(result.agentRun()));
+    assertThat(runs("builtin", "plan")).isEqualTo(1.0);
+    assertThat(runs("builtin", "completed")).isZero();
+  }
+
+  @Test
+  void theConfirmationOfAPlanStartsANewRunThatWorksWithThePlanInItsHistory() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+    when(chatMemory.get(any()))
+        .thenReturn(
+            List.of(
+                new org.springframework.ai.chat.messages.UserMessage("Wie lauten Regel und Frist?"),
+                new AssistantMessage("1. Regeln suchen")));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer(
+                "Es gilt 【source: doc-1#0 | regeln.pdf】, nicht aber"
+                    + " 【source: doc-9#4 | erfunden.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(2)).call(prompts.capture());
+    Prompt first = prompts.getAllValues().get(0);
+    assertThat(toolNamesOf(first)).contains(ToolNames.SEARCH_KNOWLEDGE);
+    assertThat(first.getInstructions().get(0).getText())
+        .contains(AgentPrompt.CONFIRMED_PLAN)
+        .doesNotContain(AgentPrompt.PLAN_RULES);
+    assertThat(first.getInstructions()).extracting(Message::getText).contains("1. Regeln suchen");
+    // the citations of the working run are checked like every other run's: the invented one is
+    // marked and counted under the delivered agent's kind
+    ArgumentCaptor<List<CitationValidator.ValidatedCitation>> citations = ArgumentCaptor.captor();
+    verify(sourceAssembler).assemble(anyList(), citations.capture(), any());
+    assertThat(citations.getValue())
+        .extracting(CitationValidator.ValidatedCitation::valid)
+        .containsExactly(true, false);
+    assertThat(
+            meters
+                .find(AgentMetrics.CITATIONS_UNVERIFIABLE)
+                .tag("kind", "builtin")
+                .counter()
+                .count())
+        .isEqualTo(1.0);
+    assertThat(runs("builtin", "completed")).isEqualTo(1.0);
+    assertThat(runs("builtin", "plan")).isZero();
+  }
+
+  @Test
+  void theReplyToAQuestionBackOfTheWorkingRunContinuesThePlanInsteadOfAskingForANewOne() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")),
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.ASK_USER, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", ToolNames.ASK_USER, "{\"frage\":\"Welchen Zeitraum meinen Sie?\"}"),
+            answer("Es gilt 【source: doc-1#0 | regeln.pdf】."));
+
+    AgentToolLoop loop = loop();
+    QueryResult asked = loop.handle(turn());
+    QueryResult continued = loop.handle(turn());
+
+    assertThat(asked.agentRun().endState()).isEqualTo(EndState.ASK_USER);
+    assertThat(continued.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(2)).call(prompts.capture());
+    Prompt last = prompts.getAllValues().get(1);
+    assertThat(toolNamesOf(last)).contains(ToolNames.SEARCH_KNOWLEDGE);
+    assertThat(last.getInstructions().get(0).getText())
+        .contains(AgentPrompt.RESUMED_PLAN)
+        .doesNotContain(AgentPrompt.PLAN_RULES);
+    assertThat(runs("builtin", "plan")).isZero();
+  }
+
+  @Test
+  void aPlanOfAnotherAgentOrAnAnswerInBetweenIsNoConfirmation() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), UUID.randomUUID(), "Andere")),
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.COMPLETED, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("1. Plan"));
+
+    AgentToolLoop loop = loop();
+
+    assertThat(loop.handle(turn()).agentRun().endState()).isEqualTo(EndState.PLAN);
+    assertThat(loop.handle(turn()).agentRun().endState()).isEqualTo(EndState.PLAN);
+  }
+
+  @Test
+  void anAgentWithoutPlanStepWorksAtOnceWithoutLookingAtThePreviousTurn() {
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    verify(chatService, never()).latestAgentRun(any());
+    ArgumentCaptor<Prompt> prompt = ArgumentCaptor.captor();
+    verify(chatModel).call(prompt.capture());
+    assertThat(prompt.getValue().getInstructions().get(0).getText())
+        .doesNotContain(AgentPrompt.PLAN_RULES)
+        .doesNotContain(AgentPrompt.CONFIRMED_PLAN);
+  }
+
+  @Test
   void passagesReadFromADocumentAreCitableLikeThoseOfASearch() {
     withTools(ToolNames.SEARCH_KNOWLEDGE, ToolNames.READ_DOCUMENT);
     Document neighbour =
@@ -1178,6 +1320,22 @@ class AgentToolLoopTest {
             false,
             false);
     switchedOn = Set.of(tools);
+  }
+
+  /** The delivered agent with its plan step, searching only. */
+  private void planning(boolean confirmPlan) {
+    spec =
+        new AgentRunSpec(
+            agentId,
+            1,
+            "Benenne Widersprüche.",
+            Set.of(),
+            Set.of(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER),
+            AgentLimits.SYSTEM,
+            confirmPlan,
+            true,
+            "Recherche");
+    switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
   }
 
   private static List<String> toolNamesOf(Prompt prompt) {

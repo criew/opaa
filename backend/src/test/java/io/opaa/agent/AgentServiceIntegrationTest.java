@@ -136,6 +136,7 @@ class AgentServiceIntegrationTest {
     assertThat(agent.getLibraryIds()).isEmpty();
     assertThat(agent.getToolNames()).isEqualTo(AgentTools.DEFAULT);
     assertThat(agent.getPlanStep()).isEqualTo(AgentPlanStep.OFF);
+    assertThat(agent.configuration().limits()).isEqualTo(AgentService.DEFAULT_LIMITS);
     assertThat(agent.isDelivered()).isFalse();
     assertThat(auditEvents(agent.getId())).contains("AGENT_CREATED");
   }
@@ -391,11 +392,11 @@ class AgentServiceIntegrationTest {
               assertThat(view.agent().getName()).isEqualTo("Recherche");
               assertThat(view.myRole()).isEqualTo(AssetRole.VIEWER);
               assertThat(view.agent().getToolNames())
-                  .containsExactlyInAnyOrder(
-                      AgentTools.SEARCH_KNOWLEDGE,
-                      AgentTools.READ_DOCUMENT,
-                      AgentTools.LIST_SOURCES,
-                      AgentTools.ASK_USER);
+                  .containsExactlyInAnyOrderElementsOf(AgentTools.ASSIGNABLE);
+              assertThat(view.agent().getPlanStep()).isEqualTo(AgentPlanStep.CONFIRM);
+              assertThat(view.agent().getLibraryIds()).isEmpty();
+              assertThat(view.agent().configuration().limits())
+                  .isEqualTo(AgentResearchProvisioner.RESEARCH_LIMITS);
             });
     assertThat(
             jdbc.queryForObject(

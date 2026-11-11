@@ -12,6 +12,7 @@ const LIMIT_NOTES: Record<AgentRun['endState'], string | null> = {
   LIMIT_DURATION: 'Der Agent hat seine Höchstdauer erreicht.',
   LIMIT_VOLUME: 'Der Agent hat die Höchstmenge an gesammeltem Text erreicht.',
   ASK_USER: null,
+  PLAN: null,
 }
 
 interface AgentRunStepsProps {
@@ -21,7 +22,8 @@ interface AgentRunStepsProps {
 /**
  * The steps an agent took for an answer, collapsed by default. A run that stopped at a limit is
  * marked "nicht geprüft": the agent answered with what it had, which is not an error. A run that
- * asked the person back is marked as a question; the reply starts a new run. The open list names
+ * asked the person back is marked as a question, one that laid out its plan as a plan; the reply
+ * or the confirmation starts a new run. The open list names
  * the run id, which the system administration needs to read the run's step log.
  */
 export default function AgentRunSteps({ run }: AgentRunStepsProps) {
@@ -63,7 +65,17 @@ export default function AgentRunSteps({ run }: AgentRunStepsProps) {
           <Box component="strong" sx={{ fontWeight: 600 }}>
             Rückfrage
           </Box>
-          {' – Der Agent braucht eine Angabe von dir. Antworte einfach in einer neuen Nachricht.'}
+          {' – Der Agent braucht eine Angabe von Ihnen. Antworten Sie in einer neuen Nachricht.'}
+        </Typography>
+      )}
+      {run.endState === 'PLAN' && (
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+          <Box component="strong" sx={{ fontWeight: 600 }}>
+            Plan
+          </Box>
+          {
+            ' – Der Agent arbeitet erst, wenn Sie den Plan bestätigen. Eine Änderung schreiben Sie als neue Nachricht.'
+          }
         </Typography>
       )}
       {open && count > 0 && (

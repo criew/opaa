@@ -74,7 +74,8 @@ import tools.jackson.databind.ObjectMapper;
  * partial result -, lets the model call the agent's switched-on tools until it answers or a limit
  * of the run is reached, and gives the place back at the end. A run ended at a limit answers with
  * what it has and a set-off end state, never with an error; a run that asks the person back ends
- * with the question as its answer.
+ * with the question as its answer. An agent with a plan step ends its first run with the plan,
+ * without a tool; the person's next question to it starts the run that works the plan off.
  *
  * <p>The application executes the model's tool calls itself through a {@link ToolCallingManager}
  * rather than leaving them to a {@code ToolCallingAdvisor}: so it counts every call against the
@@ -103,6 +104,10 @@ class AgentToolLoop implements AgentTurnHandler {
           + " warten Sie, bis einer davon fertig ist.";
 
   static final String PERSON_LIMIT_CODE = "AGENT_PERSON_LIMIT";
+
+  /** The answer of a plan run whose model wrote no plan. */
+  static final String NO_PLAN =
+      "Der Agent hat keinen Plan vorgelegt. Bitte stellen Sie die Frage erneut.";
 
   /** The answer of a run that reached a limit before the model wrote any text. */
   static final String NO_ANSWER_AT_LIMIT =
@@ -368,7 +373,10 @@ class AgentToolLoop implements AgentTurnHandler {
   private QueryResult runAndKeep(
       AgentTurn turn, AgentRunSpec spec, AgentRun run, ChatClient client) {
     String reminder = AgentPrompt.reminder(turn.spaceInstruction());
-    List<ToolCallback> callbacks = callbacks(spec, run, reminder);
+    AgentPrompt.PlanPhase phase = planPhase(spec, turn.chat());
+    // A plan run offers no tool: it answers with the plan and ends (ADR-0070, Entscheidung 1).
+    List<ToolCallback> callbacks =
+        phase == AgentPrompt.PlanPhase.PLAN ? List.of() : callbacks(spec, run, reminder);
     ToolCallingManager toolCallingManager =
         DefaultToolCallingManager.builder()
             .observationRegistry(observationRegistry)
@@ -380,7 +388,11 @@ class AgentToolLoop implements AgentTurnHandler {
             .build();
     String system =
         AgentPrompt.systemText(
-            run.blockId(), spec.instruction(), turn.spaceInstruction(), notes(turn.notePoints()));
+            run.blockId(),
+            spec.instruction(),
+            turn.spaceInstruction(),
+            notes(turn.notePoints()),
+            phase);
     Map<String, Object> toolContext = Map.of(AgentToolCallback.RUN_KEY, run);
 
     List<Message> history = new ArrayList<>(chatMemory.get(turn.conversationKey()));
@@ -421,12 +433,16 @@ class AgentToolLoop implements AgentTurnHandler {
     }
 
     EndState endState =
-        run.question() != null
-            ? EndState.ASK_USER
-            : run.limitReached() == null ? EndState.COMPLETED : run.limitReached();
+        phase == AgentPrompt.PlanPhase.PLAN
+            ? EndState.PLAN
+            : run.question() != null
+                ? EndState.ASK_USER
+                : run.limitReached() == null ? EndState.COMPLETED : run.limitReached();
     List<Document> passages = distinct(run.passages());
     String text = endState == EndState.ASK_USER ? run.question() : ChatResponses.text(response);
-    if (text.isBlank() && endState != EndState.COMPLETED) {
+    if (text.isBlank() && endState == EndState.PLAN) {
+      text = NO_PLAN;
+    } else if (text.isBlank() && endState != EndState.COMPLETED) {
       text = NO_ANSWER_AT_LIMIT;
     }
     // The answer is shown as provisional while its citations are validated and the turn is kept.
@@ -440,8 +456,8 @@ class AgentToolLoop implements AgentTurnHandler {
         spec.builtin(), (int) citations.stream().filter(c -> !c.valid()).count());
     List<ChatSource> sources =
         chatSourceAssembler.assemble(passages, citations, turn.metadataFilter());
-    // A question back is complete as asked and states nothing that needs a citation.
-    boolean asked = endState == EndState.ASK_USER;
+    // A question back or a plan is complete as given and states nothing that needs a citation.
+    boolean asked = endState == EndState.ASK_USER || endState == EndState.PLAN;
     AnswerCompleteness completeness =
         asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
     List<String> searchQueries =
@@ -516,6 +532,32 @@ class AgentToolLoop implements AgentTurnHandler {
         evidence,
         generatedFiles,
         record);
+  }
+
+  /**
+   * Where the run stands in the agent's plan step: an agent without one works at once; with one,
+   * the run works off the plan when the chat's latest answer is this agent's plan - whatever the
+   * person wrote confirms or changes it -, continues it when that answer is this agent's question
+   * back, and otherwise answers with a new plan.
+   */
+  private AgentPrompt.PlanPhase planPhase(AgentRunSpec spec, Chat chat) {
+    if (!spec.confirmPlan()) {
+      return AgentPrompt.PlanPhase.NONE;
+    }
+    EndState previous =
+        chatService
+            .latestAgentRun(chat.getId())
+            .filter(run -> spec.agentId().equals(run.agentId()))
+            .map(AgentRunRecord::endState)
+            .orElse(null);
+    if (previous == EndState.PLAN) {
+      return AgentPrompt.PlanPhase.CONFIRMED;
+    }
+    // A plan run offers no tool, so a question back can only come from a run that worked a
+    // confirmed plan off: the reply continues it instead of asking for a new plan.
+    return previous == EndState.ASK_USER
+        ? AgentPrompt.PlanPhase.RESUMED
+        : AgentPrompt.PlanPhase.PLAN;
   }
 
   /**

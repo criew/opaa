@@ -37,6 +37,7 @@ import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
 import { useChatAgentChoice } from './useChatAgentChoice'
+import type { ChosenAgent } from './agentFollowUp'
 import MentionOption from './MentionOption'
 import { mentionGroups, mentionKey } from './mentionSuggestionText'
 import { useNarrowField } from './useNarrowField'
@@ -60,12 +61,6 @@ export interface SendOutcome {
   onRestored?: () => void
   /** The question's agent comes back with the draft. */
   keepAgent?: boolean
-}
-
-/** The agent a question is sent to; it replaces the question's search scope. */
-export interface ChosenAgent {
-  id: string
-  name: string
 }
 
 interface ChatInputProps {
@@ -104,6 +99,8 @@ interface ChatInputProps {
   focusRequest?: string | null
   /** The AI notice line under the input; off where the surface shows the notice already. */
   showAiNotice?: boolean
+  /** An agent the latest answer waits on, chosen once per key (see `useChatAgentChoice`). */
+  followUpAgent?: { key: string; agent: ChosenAgent } | null
 }
 
 export default function ChatInput({
@@ -116,6 +113,7 @@ export default function ChatInput({
   actionSources = CHAT_ACTION_SOURCES,
   focusRequest = null,
   showAiNotice = true,
+  followUpAgent = null,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const mountedRef = useRef(true)
@@ -236,7 +234,7 @@ export default function ChatInput({
 
   const { chatSpaceId, spaceRole, spaceLibraries, knowledgeGap, libraryChips, scopeNotice } =
     useSpaceLibraryScope(scope, referencedLibraryIds)
-  const { agents, agent, chooseAgent, clearAgent } = useChatAgentChoice(chatSpaceId)
+  const { agents, agent, chooseAgent, clearAgent } = useChatAgentChoice(chatSpaceId, followUpAgent)
   const {
     mention,
     highlightedIndex,

@@ -12,6 +12,9 @@ import ChatInput from '../components/ChatInput'
 import SearchAvailabilityNotice from '../components/SearchAvailabilityNotice'
 import ConversationNote from '../components/ConversationNote'
 import SpaceInstruction from '../components/SpaceInstruction'
+import PlanConfirmation from '../components/PlanConfirmation'
+import { useAgentOffered } from '../components/useAgentOffered'
+import { PLAN_CONFIRMATION_TEXT, agentFollowUp } from '../components/agentFollowUp'
 import { deletionDueLabel } from '../components/deletionDueLabel'
 import { chatTitle as chatListTitle } from '../components/chatListSections'
 import { useChatStore } from '../stores/chatStore'
@@ -96,6 +99,19 @@ export default function ChatPage() {
   // remove buttons do not. Same lookup as ChatList's plus guard.
   const isArchivedSpace = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
+  )
+  // A question back or a plan of an agent: the next message goes to the same agent.
+  const followUp = useMemo(() => agentFollowUp(messages), [messages])
+  // Each "Ändern" chooses the plan's agent again and puts the focus into the input; it counts
+  // only while that plan is the latest answer.
+  const [planChange, setPlanChange] = useState<{ key: string; count: number } | null>(null)
+  const planChanges = followUp && planChange?.key === followUp.key ? planChange.count : 0
+  // Each confirmation puts the focus into the input, where the running answer's status shows.
+  const [planConfirm, setPlanConfirm] = useState(0)
+  const planOffered = useAgentOffered(
+    spaceId ?? null,
+    followUp?.plan ? followUp.agent.id : null,
+    followUp?.key ?? null,
   )
   // Every member sees that an instruction of the space takes part in the answers, before asking.
   const spaceInstruction = useSpaceStore(
@@ -399,6 +415,19 @@ export default function ChatPage() {
         targetMessageId={targetMessageId}
         streamingAnswer={streamingAnswer}
         streamingRun={streamingRun}
+        afterMessages={
+          followUp?.plan && planOffered && !isLoading && !isArchivedSpace ? (
+            <PlanConfirmation
+              key={followUp.key}
+              agentName={followUp.agent.name}
+              onConfirm={() => {
+                setPlanConfirm((count) => count + 1)
+                void sendMessage(PLAN_CONFIRMATION_TEXT, undefined, [], followUp.agent)
+              }}
+              onChange={() => setPlanChange({ key: followUp.key, count: planChanges + 1 })}
+            />
+          ) : null
+        }
       />
       <SearchAvailabilityNotice />
       <ChatInput
@@ -414,7 +443,16 @@ export default function ChatPage() {
         returnedQuestion={returnedQuestionForView}
         onReturnedQuestionHandled={clearReturnedQuestion}
         // Every arrival at a new chat - also the plus clicked again on one - lands in the input.
-        focusRequest={isNewChat ? locationKey : null}
+        focusRequest={
+          planChanges > 0 || planConfirm > 0
+            ? `plan-${planChanges}-${planConfirm}`
+            : isNewChat
+              ? locationKey
+              : null
+        }
+        followUpAgent={
+          followUp ? { key: `${followUp.key}-${planChanges}`, agent: followUp.agent } : null
+        }
         // The empty chat shows the notice in its middle; one notice per surface.
         showAiNotice={messages.length > 0 || isLoading}
       />

@@ -31,4 +31,31 @@ class AgentLimitsTest {
     assertThat(AgentLimits.effective(SYSTEM, new AgentLimits(null, 2, null, null)))
         .isEqualTo(new AgentLimits(5, 2, Duration.ofSeconds(120), 60_000));
   }
+
+  @Test
+  void anAgentWithoutLimitsKeepsTheDefaultWhenTheSystemLimitsAreRaised() {
+    AgentLimits raised = new AgentLimits(12, 8, Duration.ofSeconds(240), 60_000);
+
+    assertThat(AgentLimits.effective(raised, AgentLimits.SYSTEM))
+        .isEqualTo(new AgentLimits(5, 3, Duration.ofSeconds(120), 60_000));
+    assertThat(AgentLimits.effective(raised, null))
+        .isEqualTo(new AgentLimits(5, 3, Duration.ofSeconds(120), 60_000));
+  }
+
+  @Test
+  void anExplicitLimitMayGoAboveTheDefaultUpToTheSystemLimit() {
+    AgentLimits raised = new AgentLimits(12, 8, Duration.ofSeconds(240), 60_000);
+
+    assertThat(AgentLimits.effective(raised, new AgentLimits(12, 8, Duration.ofSeconds(240), null)))
+        .isEqualTo(raised);
+    assertThat(AgentLimits.effective(raised, new AgentLimits(99, 99, Duration.ofHours(1), null)))
+        .isEqualTo(raised);
+  }
+
+  @Test
+  void aSystemLimitBelowTheDefaultStillWins() {
+    AgentLimits low = new AgentLimits(2, 1, Duration.ofSeconds(30), 1_000);
+
+    assertThat(AgentLimits.effective(low, AgentLimits.SYSTEM)).isEqualTo(low);
+  }
 }

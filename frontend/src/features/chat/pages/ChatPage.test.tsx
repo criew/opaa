@@ -11,6 +11,7 @@ import { useSpaceStore } from '@/features/space'
 import { useChatListStore } from '../stores/chatListStore'
 import { mockChatArchive } from '../mocks/chatFixtures'
 import { server } from '@/test/server'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 
 let currentSpaceId: string | undefined = 'space-personal'
 let currentChatId: string | undefined = 'new'
@@ -786,6 +787,82 @@ describe('ChatPage', () => {
 
       expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
       expect(screen.queryByRole('article')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Plan eines Agenten', () => {
+    const PLAN_ANSWER = {
+      id: 'plan-answer',
+      role: 'assistant' as const,
+      content: '1. Fristen suchen',
+      timestamp: new Date('2026-11-11T08:00:00Z'),
+      agentRun: {
+        runId: 'run-1',
+        endState: 'PLAN' as const,
+        steps: [],
+        agentId: 'agent-recherche',
+        agentName: 'Recherche',
+      },
+    }
+
+    it('confirms the plan with the same agent, focuses the input and hides the buttons once the answer is pending', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      const sendMessage = vi.fn()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => {
+        useChatStore.setState({
+          sendMessage,
+          messages: [
+            {
+              id: 'q',
+              role: 'user',
+              content: 'Welche Fristen gelten?',
+              timestamp: new Date('2026-11-11T07:59:00Z'),
+            },
+            PLAN_ANSWER,
+          ],
+        })
+      })
+
+      const plan = await screen.findByRole('group', { name: 'Plan von Recherche' })
+      await userEvent.click(within(plan).getByRole('button', { name: 'Bestätigen' }))
+
+      expect(sendMessage).toHaveBeenCalledWith('Plan bestätigt.', undefined, [], {
+        id: 'agent-recherche',
+        name: 'Recherche',
+      })
+      expect(screen.getByRole('combobox')).toHaveFocus()
+      act(() => useChatStore.setState({ isLoading: true }))
+      expect(screen.queryByRole('group', { name: 'Plan von Recherche' })).not.toBeInTheDocument()
+    })
+
+    it('changes the plan in the input with the agent chosen', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => useChatStore.setState({ messages: [PLAN_ANSWER] }))
+
+      const chip = await screen.findByTestId('chosen-agent-chip')
+      await userEvent.click(within(chip).getByTestId('CancelIcon'))
+      expect(screen.queryByTestId('chosen-agent-chip')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Ändern' }))
+
+      expect(await screen.findByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
+      expect(screen.getByRole('combobox')).toHaveFocus()
+    })
+
+    it('shows no plan buttons when the agent is no longer offered', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      server.use(http.get('/api/v1/agents/available', () => HttpResponse.json([])))
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => useChatStore.setState({ messages: [PLAN_ANSWER] }))
+
+      await screen.findByText('Fristen suchen')
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.queryByRole('group', { name: 'Plan von Recherche' })).not.toBeInTheDocument()
     })
   })
 })
