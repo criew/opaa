@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
-import RowMenu from '@/shared/ui/RowMenu'
-import AdminList, { ListText, RowAction } from '@/shared/ui/list/AdminList'
+import AdminList, { ListText, RowDecision } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
@@ -37,6 +38,7 @@ export default function AuditorRoleRequestsPage() {
   const isAuditor = useAuthStore((s) => s.user?.systemRole === 'AUDITOR')
   const [requests, setRequests] = useState<AuditorRoleRequestResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [setupLink, setSetupLink] = useState<AuditorSetupLink | null>(null)
   const gate = useRecentLoginGate(
@@ -50,12 +52,13 @@ export default function AuditorRoleRequestsPage() {
     let cancelled = false
     listAuditorRoleRequests()
       .then((open) => {
-        if (!cancelled) setRequests(open)
+        if (!cancelled) {
+          setRequests(open)
+          setLoadError(null)
+        }
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Die Anträge konnten nicht geladen werden.')
-        }
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : '')
       })
     return () => {
       cancelled = true
@@ -117,8 +120,21 @@ export default function AuditorRoleRequestsPage() {
           </Alert>
         )}
 
+        {requests === null && loadError === null && <LoadingState shape="rows" />}
+
+        {loadError !== null && (
+          <LoadError
+            message="Die Anträge konnten nicht geladen werden."
+            detail={loadError}
+            onRetry={() => {
+              setLoadError(null)
+              setReloads((count) => count + 1)
+            }}
+          />
+        )}
+
         {requests !== null && requests.length === 0 && (
-          <Typography sx={{ color: 'text.secondary' }}>Es liegt kein Antrag vor.</Typography>
+          <EmptyState message="Es liegt kein Antrag vor." />
         )}
 
         {requests !== null && requests.length > 0 && (
@@ -131,6 +147,7 @@ export default function AuditorRoleRequestsPage() {
               {
                 id: 'person',
                 head: 'Person',
+                width: '20%',
                 cell: (request) => (
                   <>
                     <ListText strong>{personOf(request)}</ListText>
@@ -141,7 +158,6 @@ export default function AuditorRoleRequestsPage() {
               {
                 id: 'email',
                 head: 'Adresse',
-                width: '30%',
                 cell: (request) => (
                   <>
                     <ListText>{request.email ?? '—'}</ListText>
@@ -156,7 +172,7 @@ export default function AuditorRoleRequestsPage() {
               {
                 id: 'requestedBy',
                 head: 'Beantragt von',
-                width: '18%',
+                width: '15%',
                 cell: (request) => request.requestedByDisplayName ?? 'Gelöschtes Konto',
               },
               {
@@ -166,22 +182,21 @@ export default function AuditorRoleRequestsPage() {
                 cell: (request) => formatDateTime(request.requestedAt),
               },
             ]}
-            actionsWidth={176}
+            actionsWidth={232}
             rowActions={(request) => (
-              <>
-                <RowAction
-                  label={`Antrag für ${personOf(request)} bestätigen`}
-                  disabled={busyId !== null}
-                  onClick={() => void decide(request, true)}
-                >
-                  Bestätigen
-                </RowAction>
-                <RowMenu
-                  name={personOf(request)}
-                  disabled={busyId !== null}
-                  items={[{ label: 'Ablehnen', onClick: () => void decide(request, false) }]}
-                />
-              </>
+              <RowDecision
+                disabled={busyId !== null}
+                accept={{
+                  verb: 'Bestätigen',
+                  label: `Antrag für ${personOf(request)} bestätigen`,
+                  onClick: () => void decide(request, true),
+                }}
+                decline={{
+                  verb: 'Ablehnen',
+                  label: `Antrag für ${personOf(request)} ablehnen`,
+                  onClick: () => void decide(request, false),
+                }}
+              />
             )}
           />
         )}

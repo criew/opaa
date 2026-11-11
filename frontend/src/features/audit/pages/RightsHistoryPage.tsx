@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AdminList, { ListText } from '@/shared/ui/list/AdminList'
+import QueryForm, { QueryPeriod, QueryPrompt, QueryReason } from '@/shared/ui/list/QueryForm'
+import { periodProblem } from '@/shared/ui/list/queryRules'
 import { useAuthStore } from '@/shared/session/authStore'
 import { getAccessAsOf } from '../api/rightsHistoryApi'
 import type {
@@ -18,7 +18,7 @@ import type {
   AccessAsOfSource,
   AccessBasis,
 } from '@/shared/api/types'
-import { contentWidth, formWidth } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import { formatProtocolTime, MISSING_VALUE } from '@/shared/utils/formatDate'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
@@ -62,11 +62,17 @@ export default function RightsHistoryPage() {
   const [result, setResult] = useState<AccessAsOfPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [attempted, setAttempted] = useState(false)
 
-  const canSubmit =
-    objectId.trim() !== '' && from !== '' && to !== '' && reason.trim() !== '' && !isLoading
+  const objectMissing = attempted && objectId.trim() === ''
 
-  async function submit(pageIndex = 0): Promise<void> {
+  function submitForm(): void {
+    setAttempted(true)
+    if (objectId.trim() === '' || reason.trim() === '' || periodProblem(from, to)) return
+    void submit(0)
+  }
+
+  async function submit(pageIndex: number): Promise<void> {
     setIsLoading(true)
     try {
       const page = await getAccessAsOf({
@@ -104,7 +110,13 @@ export default function RightsHistoryPage() {
           description="Wer durfte ein bestimmtes Objekt in einem bestimmten Zeitraum lesen. Je Abfrage genau ein benanntes Objekt, höchstens 92 Tage Zeitraum und ein Anlass als Pflichtangabe. Jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3, maxWidth: formWidth.column }}>
+        <QueryForm
+          label="Abfrage der Stichtagsauskunft"
+          submitLabel="Auskunft erstellen"
+          busy={isLoading}
+          busyAnnouncement="Auskunft wird erstellt"
+          onSubmit={submitForm}
+        >
           <FormField
             select
             label="Objektart"
@@ -118,36 +130,27 @@ export default function RightsHistoryPage() {
             label="Kennung des Objekts"
             value={objectId}
             onChange={(event) => setObjectId(event.target.value)}
+            error={objectMissing}
+            helperText={objectMissing ? 'Bitte die Kennung des Objekts angeben.' : undefined}
           />
-          <FormField
-            label="Von"
-            type="datetime-local"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
+          <QueryPeriod
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            showProblems={attempted}
           />
-          <FormField
-            label="Bis"
-            type="datetime-local"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-          />
-          <FormField
-            label="Anlass"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            helperText="Pflichtangabe. Der Anlass steht im Protokolleintrag dieses Abrufs."
-          />
-          <Box>
-            <Button variant="contained" disabled={!canSubmit} onClick={() => void submit(0)}>
-              Auskunft erstellen
-            </Button>
-          </Box>
-        </Stack>
+          <QueryReason value={reason} onChange={setReason} showProblems={attempted} />
+        </QueryForm>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
+        )}
+
+        {!result && !error && (
+          <QueryPrompt message="Hier erscheinen nach der Abfrage die Zeiträume, in denen Personen das Objekt lesen durften, mit der Grundlage ihres Zugriffs." />
         )}
 
         {result && (
