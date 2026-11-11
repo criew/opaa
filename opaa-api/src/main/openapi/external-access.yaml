@@ -57,6 +57,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/libraries/{libraryId}/external-access:
     parameters:
