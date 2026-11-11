@@ -112,7 +112,13 @@ test.describe.serial("Agenten: Planbestätigung und Agentenverzeichnis", () => {
     );
 
     const plan = answers(page).first();
-    await expect(plan).toContainText("1. Fristen für Wohngeld suchen");
+    // The plan renders as a markdown ordered list; the numbering is a list marker, not text.
+    await expect(
+      plan.getByRole("listitem").filter({ hasText: /^Fristen für .+ suchen$/ }),
+    ).toHaveText([
+      "Fristen für Wohngeld suchen",
+      "Fristen für Widersprüche suchen",
+    ]);
     const confirmation = page.getByRole("group", {
       name: `Plan von ${agentName}`,
     });
