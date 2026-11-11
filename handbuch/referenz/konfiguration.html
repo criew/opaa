@@ -352,6 +352,8 @@
       
         
       
+        
+      
     
     
     
@@ -577,6 +579,34 @@
     
   
     Agenten verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/recherche-nutzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recherche nutzen
   
 
     
@@ -4446,9 +4476,9 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 </tr>
 <tr>
 <td><code>OPAA_METRICS_SLO_AGENT</code></td>
-<td><code>5s,10s,30s,60s,120s,180s</code></td>
+<td><code>10s,30s,60s,120s,180s,240s,300s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Agentenlaufs (<code>opaa_agent_run_duration_seconds_bucket</code>)</td>
+<td>Wie <code>OPAA_METRICS_SLO_HTTP</code>, für die Dauer eines Agentenlaufs (<code>opaa_agent_run_duration_seconds_bucket</code>). Die Stufen reichen bis zur Höchstdauer eines Laufs (<code>OPAA_AGENT_MAX_DURATION</code>) plus abschließendem Antwortaufruf; Startwerte, bis die Recherchefälle der Evaluierung gemessen sind</td>
 </tr>
 <tr>
 <td><code>OPAA_METRICS_SLO_TTFT</code></td>
@@ -4908,21 +4938,21 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 </tr>
 <tr>
 <td><code>OPAA_AGENT_MAX_TOOL_CALLS</code></td>
-<td><code>5</code></td>
+<td><code>12</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Höchstzahl der Werkzeugaufrufe eines Agentenlaufs. Ein Agent kann den Wert für sich nur senken. Ist er erreicht, antwortet der Agent mit dem bis dahin Gefundenen und sagt, dass er die Grenze erreicht hat</td>
+<td>Obergrenze der Werkzeugaufrufe eines Agentenlaufs; kein Agent kann sie überschreiten. Ein Agent ohne eigenen Wert, auch ein schon gespeicherter, bekommt <code>5</code> (höchstens die Obergrenze), der mitgelieferte Agent „Recherche“ <code>12</code>. Ist er erreicht, antwortet der Agent mit dem bis dahin Gefundenen und sagt, dass er die Grenze erreicht hat</td>
 </tr>
 <tr>
 <td><code>OPAA_AGENT_MAX_SEARCH_CALLS</code></td>
-<td><code>3</code></td>
+<td><code>8</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Wie <code>OPAA_AGENT_MAX_TOOL_CALLS</code>, nur für Suchen im Wissen (<code>search_knowledge</code>)</td>
+<td>Wie <code>OPAA_AGENT_MAX_TOOL_CALLS</code>, nur für Suchen im Wissen (<code>search_knowledge</code>); ein Agent ohne eigenen Wert bekommt <code>3</code>, „Recherche“ <code>8</code></td>
 </tr>
 <tr>
 <td><code>OPAA_AGENT_MAX_DURATION</code></td>
-<td><code>120s</code></td>
+<td><code>240s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
-<td>Höchstdauer eines Agentenlaufs; danach folgt nur noch der abschließende Antwortaufruf</td>
+<td>Obergrenze der Dauer eines Agentenlaufs; danach folgt nur noch der abschließende Antwortaufruf. Ein Agent ohne eigenen Wert bekommt 120 Sekunden, „Recherche“ 240</td>
 </tr>
 <tr>
 <td><code>OPAA_AGENT_MAX_COLLECTED_CHARS</code></td>
