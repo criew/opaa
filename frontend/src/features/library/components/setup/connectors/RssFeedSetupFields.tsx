@@ -1,9 +1,8 @@
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import type { RssAttachmentProfile, RssFeedSourceValues } from '../../../utils/rssFeedSource'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
@@ -45,13 +44,13 @@ export function RssFeedScopeFields({
         mono
       />
       <Box sx={{ maxWidth: fieldWidth.long }}>
-        <FieldLabel id={`${profileId}-label`}>Anlagenprofil</FieldLabel>
-        <Select
+        <FormField
+          select
+          label="Anlagenprofil"
           id={profileId}
           size="small"
           fullWidth
-          displayEmpty
-          labelId={`${profileId}-label`}
+          slotProps={{ select: { displayEmpty: true } }}
           value={values.attachmentProfile}
           onChange={(e) =>
             onChange({
@@ -64,7 +63,7 @@ export function RssFeedScopeFields({
               {RSS_ATTACHMENT_PROFILE_LABELS[profile]}
             </MenuItem>
           ))}
-        </Select>
+        </FormField>
         <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
           Welche Links auf einer Detailseite als Anlagen gelten.
         </Typography>

@@ -12,8 +12,10 @@ import io.opaa.api.dto.AgentCreateRequest;
 import io.opaa.api.dto.AgentLibrary;
 import io.opaa.api.dto.AgentResponse;
 import io.opaa.api.dto.AgentSettingsResponse;
+import io.opaa.api.dto.AgentTemplate;
 import io.opaa.api.dto.AgentUpdateRequest;
 import io.opaa.api.dto.AssetReachResponse;
+import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.web.SuccessionStateResponseMapper;
 import java.util.ArrayList;
@@ -27,7 +29,11 @@ final class AgentResponseMapper {
 
   static AgentCreation toCreation(AgentCreateRequest request) {
     return new AgentCreation(
-        request.getName(), request.getDescription(), request.getOwnerType(), request.getOwnerId());
+        request.getName(),
+        request.getDescription(),
+        request.getOwnerType(),
+        request.getOwnerId(),
+        AssetResponsibilityResponseMapper.toUnit(request.getResponsible()));
   }
 
   static AgentUpdate toUpdate(AgentUpdateRequest request) {
@@ -46,7 +52,9 @@ final class AgentResponseMapper {
                     limits.getMaxToolCalls(),
                     limits.getMaxSearchCalls(),
                     limits.getMaxDurationSeconds(),
-                    limits.getMaxCollectedChars())));
+                    limits.getMaxCollectedChars()),
+            request.getTemplateIds() == null ? null : Set.copyOf(request.getTemplateIds())),
+        AssetResponsibilityResponseMapper.toUnit(request.getResponsible()));
   }
 
   static AgentResponse toResponse(AgentView view) {
@@ -61,6 +69,10 @@ final class AgentResponseMapper {
                 .map(library -> new AgentLibrary(library.id(), library.name()))
                 .toList(),
             view.hiddenLibraryCount(),
+            view.templates().stream()
+                .map(template -> new AgentTemplate(template.id(), template.name()))
+                .toList(),
+            view.hiddenTemplateCount(),
             ordered(configuration.toolNames()),
             configuration.planStep(),
             new io.opaa.api.dto.AgentLimits()
@@ -74,6 +86,7 @@ final class AgentResponseMapper {
             agent.getOwnerId(),
             toReachResponse(view.reach()),
             view.myRole(),
+            AssetResponsibilityResponseMapper.toResponse(view.responsibility()),
             agent.getCreatedAt(),
             agent.getUpdatedAt())
         .description(agent.getDescription())

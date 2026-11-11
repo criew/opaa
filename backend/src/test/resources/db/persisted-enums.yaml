@@ -34,6 +34,11 @@ io.opaa.api.types.AgentPlanStep:
   assessment: STATE
   readable: [CONFIRM, "OFF"]
   pending: []
+io.opaa.api.types.AssetLockCause:
+  attributes: [AssetResponsibility.lockCause]
+  assessment: SECURITY
+  readable: [MANUAL, NO_RESPONSIBLE]
+  pending: []
 io.opaa.api.types.AssetOrigin:
   attributes: [Asset.origin]
   assessment: STATE
@@ -57,7 +62,8 @@ io.opaa.api.types.AuditEventType:
     AGENT_CREATED, AGENT_DELETED, AGENT_RUN_LOG_RETENTION_CHANGED, AGENT_SETTINGS_CHANGED,
     API_TOKEN_EXPIRED,
     API_TOKEN_ISSUED,
-    API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED,
+    API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED, ASSET_LOCKED,
+    ASSET_RESPONSIBILITY_CHANGED, ASSET_UNLOCKED, RESPONSIBILITY_LOCK_PERIOD_CHANGED,
     ASSET_EXTERNAL_ACCESS_EXPIRED, ASSET_GRANT_CHANGED, ASSET_GRANT_EXPIRED, ASSET_GRANT_GRANTED,
     ASSET_GRANT_REVOKED, ASSET_OWNERSHIP_CLAIMED, ASSET_OWNER_CHANGED, ASSET_SHARED_TO_SPACE,
     ASSET_SUCCESSION_OPENED, ASSET_VISIBILITY_CHANGED, AUDITOR_ROLE_GRANTED, AUDITOR_ROLE_REQUESTED,
@@ -371,6 +377,11 @@ io.opaa.api.types.ToolCapabilityBasis:
   attributes: [LlmModel.toolCapabilityBasis]
   assessment: STATE
   readable: [MANUAL, MEASURED]
+  pending: []
+io.opaa.api.types.ToolCheckStatus:
+  attributes: [ToolCheck.status]
+  assessment: STATE
+  readable: [ABORTED, COMPLETED, FAILED, RUNNING]
   pending: []
 io.opaa.asset.AssetVisibilityHistoryCause:
   attributes: [AssetVisibilityHistory.cause]

@@ -139,7 +139,7 @@ class AgentToolLoopTest {
             ChatClient.builder(
                     chatModel, io.micrometer.observation.ObservationRegistry.NOOP, null, null)
                 .build());
-    when(workspace.tryReserve(any())).thenReturn(true);
+    when(workspace.tryReserve(any(), any())).thenReturn(AgentWorkspace.Reservation.RESERVED);
     when(chatMemory.get(any())).thenReturn(List.of());
     when(chatService.spaceLibraryScope(any(), anySet()))
         .thenReturn(Set.of(spaceLibrary, agentLibrary));
@@ -385,7 +385,7 @@ class AgentToolLoopTest {
     loop().handle(turn(stream));
 
     var order = org.mockito.Mockito.inOrder(workspace, stream);
-    order.verify(workspace).tryReserve(any());
+    order.verify(workspace).tryReserve(any(), any());
     order.verify(stream).started();
     order.verify(stream, times(2)).idle();
     order.verify(stream).beforeKeeping();
@@ -473,7 +473,7 @@ class AgentToolLoopTest {
 
     ArgumentCaptor<String> token = ArgumentCaptor.captor();
     verify(stream).runStarted(eq(result.agentRun().runId()), token.capture());
-    verify(workspace).armCancel(eq(result.agentRun().runId()), any(), eq(token.getValue()));
+    verify(workspace).armCancel(result.agentRun().runId(), token.getValue());
     assertThat(token.getValue()).hasSizeGreaterThanOrEqualTo(32);
   }
 
@@ -865,8 +865,75 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void aToolWithNothingToOfferThisRunIsNotOfferedAndSeesTheAgentsTemplates() {
+    UUID template = UUID.randomUUID();
+    spec =
+        new AgentRunSpec(
+            agentId,
+            3,
+            null,
+            Set.of(),
+            Set.of(ToolNames.FILL_TEMPLATE),
+            AgentLimits.SYSTEM,
+            false,
+            false,
+            "Berichtshilfe",
+            Set.of(template));
+    switchedOn = Set.of(ToolNames.FILL_TEMPLATE);
+    List<Set<UUID>> seen = new ArrayList<>();
+    extraTools = List.of(new WithheldTool(seen));
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Ohne Vorlage."));
+
+    loop().handle(turn());
+
+    ArgumentCaptor<Prompt> prompt = ArgumentCaptor.captor();
+    verify(chatModel).call(prompt.capture());
+    assertThat(
+            prompt.getValue().getOptions() instanceof ToolCallingChatOptions options
+                ? options.getToolCallbacks()
+                : List.of())
+        .isNullOrEmpty();
+    assertThat(seen).containsExactly(Set.of(template));
+  }
+
+  /** A tool named fill_template that has nothing to offer, as without a fillable template. */
+  private record WithheldTool(List<Set<UUID>> seen) implements AgentTool {
+
+    @Override
+    public String name() {
+      return ToolNames.FILL_TEMPLATE;
+    }
+
+    @Override
+    public ToolRightsClass rightsClass() {
+      return ToolRightsClass.ISOLATED;
+    }
+
+    @Override
+    public String description() {
+      return "Befüllt eine Vorlage.";
+    }
+
+    @Override
+    public String inputSchema() {
+      return "{\"type\":\"object\"}";
+    }
+
+    @Override
+    public Optional<ToolOffer> offer(AgentRun run) {
+      seen.add(run.templateIds());
+      return Optional.empty();
+    }
+
+    @Override
+    public ToolCallOutcome call(tools.jackson.databind.JsonNode arguments, AgentRun run) {
+      throw new AssertionError("a tool that is not offered is never called");
+    }
+  }
+
+  @Test
   void aFullWorkspaceRefusesTheRequestBeforeAnyModelCall() {
-    when(workspace.tryReserve(any())).thenReturn(false);
+    when(workspace.tryReserve(any(), any())).thenReturn(AgentWorkspace.Reservation.WORKSPACE_FULL);
 
     assertThatThrownBy(() -> loop().handle(turn()))
         .isInstanceOfSatisfying(
@@ -874,7 +941,32 @@ class AgentToolLoopTest {
             e -> assertThat(e.getCode()).isEqualTo(AgentToolLoop.WORKSPACE_FULL_CODE));
     verifyNoInteractions(chatModel);
     verify(workspace, never()).release(any());
-    assertThat(meters.find(AgentMetrics.WORKSPACE_REJECTED).counter().count()).isEqualTo(1.0);
+    assertThat(rejected("full")).isEqualTo(1.0);
+    assertThat(rejected("person_limit")).isZero();
+  }
+
+  @Test
+  void aPersonAtTheirShareIsRefusedBeforeAnyModelCallWithItsOwnCode() {
+    when(workspace.tryReserve(any(), any()))
+        .thenReturn(AgentWorkspace.Reservation.PERSON_LIMIT_REACHED);
+    AgentTurn turn = turn();
+
+    assertThatThrownBy(() -> loop().handle(turn))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> {
+              assertThat(e.getCode()).isEqualTo(AgentToolLoop.PERSON_LIMIT_CODE);
+              assertThat(e.getMessage()).isEqualTo(AgentToolLoop.PERSON_LIMIT);
+            });
+    verify(workspace).tryReserve(any(), eq(turn.userId()));
+    verifyNoInteractions(chatModel);
+    verify(workspace, never()).release(any());
+    assertThat(rejected("person_limit")).isEqualTo(1.0);
+    assertThat(rejected("full")).isZero();
+  }
+
+  private double rejected(String reason) {
+    return meters.find(AgentMetrics.WORKSPACE_REJECTED).tag("reason", reason).counter().count();
   }
 
   @Test

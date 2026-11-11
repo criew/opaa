@@ -9,7 +9,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ValueRow from '@/shared/ui/ValueRow'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -18,11 +17,14 @@ import type {
   AgentPlanStep,
   AgentResponse,
   AgentUpdateRequest,
+  DocumentTemplateResponse,
   LibraryListResponse,
 } from '@/shared/api/types'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import ListSearch from '@/shared/ui/ListSearch'
-import { getReadableLibraries } from '../api/agentApi'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
+import { getReadableLibraries, getReadableTemplates } from '../api/agentApi'
 import EditableRow from './EditableRow'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
@@ -92,14 +94,13 @@ export function InstructionArea({
       }
       editor={(errors) => (
         <Box id={`${id}-instruction`}>
-          <FieldLabel htmlFor={`${id}-field`}>Auftrag</FieldLabel>
-          <TextField
+          <FormField
+            label="Auftrag"
             id={`${id}-field`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={INSTRUCTION_PLACEHOLDER}
             multiline
-            minRows={6}
             fullWidth
             error={Boolean(errors.instruction)}
             helperText={errors.instruction ?? INSTRUCTION_HELP}
@@ -190,7 +191,7 @@ export function KnowledgeAndToolsArea({
         value={libraryValue}
         editor={(errors) => (
           <Box id="agent-libraries-libraryIds" role="group" aria-labelledby="agent-libraries-label">
-            <FieldLabel id="agent-libraries-label">Bibliotheken</FieldLabel>
+            <FormFieldLabel id="agent-libraries-label">Bibliotheken</FormFieldLabel>
             <Typography sx={{ fontSize: fontSize.meta, mb: 1, ...muted }}>
               Ohne Auswahl liest der Agent alles, was die aufrufende Person lesen darf. Eine Auswahl
               grenzt ein, erweitert aber nie: Wer eine Bibliothek nicht lesen darf, erhält auch über
@@ -270,7 +271,7 @@ export function KnowledgeAndToolsArea({
         }
         editor={(errors) => (
           <Box id="agent-tools-toolNames" role="group" aria-labelledby="agent-tools-label">
-            <FieldLabel id="agent-tools-label">Werkzeuge</FieldLabel>
+            <FormFieldLabel id="agent-tools-label">Werkzeuge</FormFieldLabel>
             {AGENT_TOOLS.map((tool) => (
               <FormControlLabel
                 key={tool.name}
@@ -300,7 +301,125 @@ export function KnowledgeAndToolsArea({
           </Box>
         )}
       />
+      <TemplatesRow agent={agent} canEdit={canEdit} save={save} />
     </Box>
+  )
+}
+
+/**
+ * Row „Vorlagen“: the document templates the agent files its result into. Shown only while the
+ * switch „Vorlagen“ is on; templates the editor may not read are counted and kept by the backend.
+ */
+function TemplatesRow({
+  agent,
+  canEdit,
+  save,
+}: {
+  agent: AgentResponse
+  canEdit: boolean
+  save: Save
+}) {
+  const enabled = useRuntimeSwitchStore((s) => s.documentTemplates)
+  const [templates, setTemplates] = useState<DocumentTemplateResponse[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [draft, setDraft] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!canEdit || !enabled) return
+    let active = true
+    getReadableTemplates()
+      .then((loaded) => active && setTemplates(loaded))
+      .catch(() => active && setLoadError('Die Vorlagen konnten nicht geladen werden.'))
+    return () => {
+      active = false
+    }
+  }, [canEdit, enabled])
+
+  if (!enabled) return null
+
+  const sorted = [...(templates ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'de'))
+  const withoutTool = !agent.toolNames.includes('fill_template')
+  const toggle = (id: string) =>
+    setDraft((list) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id]))
+
+  const value = (
+    <Box>
+      {agent.templates.length === 0 && agent.hiddenTemplateCount === 0 ? (
+        <Typography sx={{ fontSize: fontSize.text }}>
+          Keine Vorlage. Der Agent antwortet nur im Chat.
+        </Typography>
+      ) : (
+        agent.templates.length > 0 && (
+          <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: fontSize.text }}>
+            {agent.templates.map((template) => (
+              <li key={template.id}>{template.name}</li>
+            ))}
+          </Box>
+        )
+      )}
+      {agent.hiddenTemplateCount > 0 && (
+        <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, ...muted }}>
+          {agent.hiddenTemplateCount === 1
+            ? 'Dazu 1 Vorlage, die Sie nicht lesen dürfen. Sie bleibt beim Speichern erhalten und wird für Sie nie ausgefüllt.'
+            : `Dazu ${agent.hiddenTemplateCount} Vorlagen, die Sie nicht lesen dürfen. Sie bleiben beim Speichern erhalten und werden für Sie nie ausgefüllt.`}
+        </Typography>
+      )}
+      {withoutTool && (agent.templates.length > 0 || agent.hiddenTemplateCount > 0) && (
+        <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, ...muted }}>
+          Ohne das Werkzeug „Vorlage ausfüllen“ nutzt der Agent die Vorlagen nicht.
+        </Typography>
+      )}
+    </Box>
+  )
+
+  return (
+    <EditableRow
+      idPrefix="agent-templates"
+      title="Vorlagen"
+      canEdit={canEdit}
+      fieldLabels={{ templateIds: 'Vorlagen' }}
+      onOpen={() => setDraft(agent.templates.map((template) => template.id))}
+      onSave={() => save({ templateIds: draft })}
+      value={value}
+      editor={(errors) => (
+        <Box id="agent-templates-templateIds" role="group" aria-labelledby="agent-templates-label">
+          <FormFieldLabel id="agent-templates-label" optional>
+            Vorlagen
+          </FormFieldLabel>
+          <Typography sx={{ fontSize: fontSize.meta, mb: 1, ...muted }}>
+            Nach diesen Vorlagen legt der Agent sein Ergebnis als Datei ab, wenn er das Werkzeug
+            „Vorlage ausfüllen“ hat. Ein Lauf nutzt nur Vorlagen, die die aufrufende Person lesen
+            darf.
+          </Typography>
+          {loadError && <FormHelperText error>{loadError}</FormHelperText>}
+          {templates === null && !loadError && <LoadingState shape="lines" count={2} />}
+          {templates !== null && templates.length === 0 && (
+            <Typography sx={{ fontSize: fontSize.text, ...muted }}>
+              Sie dürfen noch keine Vorlage lesen.
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflowY: 'auto' }}>
+            {sorted.map((template) => (
+              <FormControlLabel
+                key={template.id}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={draft.includes(template.id)}
+                    onChange={() => toggle(template.id)}
+                  />
+                }
+                label={template.name}
+                sx={{
+                  '& .MuiFormControlLabel-label': { overflowWrap: 'anywhere', hyphens: 'auto' },
+                }}
+              />
+            ))}
+          </Box>
+          {errors.templateIds && <FormHelperText error>{errors.templateIds}</FormHelperText>}
+        </Box>
+      )}
+    />
   )
 }
 
@@ -332,7 +451,7 @@ export function ProcedureArea({
         }
         editor={() => (
           <Box id="agent-plan-planStep">
-            <FieldLabel id="agent-plan-label">Plan</FieldLabel>
+            <FormFieldLabel id="agent-plan-label">Plan</FormFieldLabel>
             <RadioGroup
               aria-labelledby="agent-plan-label"
               value={planDraft}
@@ -410,17 +529,14 @@ export function ProcedureArea({
               >
                 {LIMIT_FIELDS.map((field) => (
                   <Box key={field.key} id={`agent-limits-limits.${field.key}`}>
-                    <FieldLabel htmlFor={`agent-limit-${field.key}`}>
-                      {`${field.label} (${field.unit})`}
-                    </FieldLabel>
-                    <TextField
+                    <FormField
+                      label={`${field.label} (${field.unit})`}
                       id={`agent-limit-${field.key}`}
                       size="small"
                       value={limitDraft[field.key]}
                       onChange={(e) =>
                         setLimitDraft((draft) => ({ ...draft, [field.key]: e.target.value }))
                       }
-                      placeholder="wie Installation"
                       fullWidth
                       error={Boolean(errors[`limits.${field.key}`])}
                       helperText={errors[`limits.${field.key}`]}

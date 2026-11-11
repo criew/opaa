@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-06
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -85,7 +85,10 @@ Stand:                   [Datum]        geprüft durch: [Name]
 - Arbeiten Agenten, hält OPAA je Lauf ein Schritt- und ein Sandboxprotokoll für die Fehlersuche
   ({{faktenblatt:datenkatalog#agent-run-logs}}): ohne Konto und ohne Inhalte, nur über die
   Laufkennung im Chat einer Person zuzuordnen und nach wenigen Tagen gelöscht. Es gehört zum Zweck
-  des Betriebs und ist kein Mittel der Leistungs- oder Verhaltenskontrolle.
+  des Betriebs und ist kein Mittel der Leistungs- oder Verhaltenskontrolle. Die Antwort eines
+  Agenten trägt einen Fassungsstempel (Agent, Bibliotheken, Vorlagen, Modell), und Dateien, die er
+  erzeugt, werden Anhänge der fragenden Person; beides gehört zum Chat und folgt dessen Frist
+  ({{faktenblatt:datenkatalog#chats}}, {{faktenblatt:datenkatalog#chat-attachments}}).
 - Nutzt die Behörde das Muster ihrer Aufsichtsbehörde, überträgt sie die Angaben dorthin.
 
 ## Zum Nachlesen

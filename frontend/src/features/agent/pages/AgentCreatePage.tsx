@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import WizardLayout from '@/shared/ui/wizard/WizardLayout'
 import WizardReview from '@/shared/ui/wizard/WizardReview'
 import { useFieldError } from '@/shared/ui/wizard/useFieldError'
@@ -11,9 +10,14 @@ import { STEP_MASTER_DATA, STEP_REVIEW } from '@/shared/ui/wizard/wizardSteps'
 import {
   AssetOwnerFields,
   AssetRightsFields,
+  RESPONSIBLE_REQUIRED,
+  ResponsibleUnitField,
   applyPendingGrantsAfterCreation,
+  responsibleDraftOfGroup,
+  responsibleRequest,
   sharingReview,
   type PendingGrant,
+  type ResponsibleDraft,
 } from '@/features/asset'
 import { useMyGroups } from '@/features/principal'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
@@ -51,6 +55,11 @@ export default function AgentCreatePage() {
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const groupCheck = useFieldError('Gruppe fehlt')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [responsible, setResponsible] = useState<ResponsibleDraft | null>(null)
+  const responsibleCheck = useFieldError(RESPONSIBLE_REQUIRED)
+  // Follows the chosen owner group, else the person's first group, until the person edits it.
+  const prefill = selectedGroup ?? myGroups.groups.find((group) => !group.deactivated)
+  const responsibleDraft = responsible ?? responsibleDraftOfGroup(prefill ?? undefined)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -74,11 +83,11 @@ export default function AgentCreatePage() {
 
   function handleNext() {
     if (activeStep === 0 && !nameCheck.check(name.trim() !== '')) return
-    if (
-      activeStep === STEP_SHARING &&
-      !groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
-    ) {
-      return
+    if (activeStep === STEP_SHARING) {
+      // both fields report at once; the focus goes to the first one missing
+      const unitThere = responsibleCheck.check(responsibleRequest(responsibleDraft) !== null)
+      const groupThere = groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
+      if (!groupThere || !unitThere) return
     }
     setActiveStep((step) => (returnToReview ? STEPS.length - 1 : step + 1))
     setReturnToReview(false)
@@ -100,6 +109,7 @@ export default function AgentCreatePage() {
         description: purpose.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
+        responsible: responsibleRequest(responsibleDraft),
       })
       await applyPendingGrantsAfterCreation('AGENT', id, pendingGrants)
       notify(`„${name.trim()}“ wurde angelegt.`, 'success')
@@ -113,6 +123,9 @@ export default function AgentCreatePage() {
       } else if (fromServer.ownerId) {
         setActiveStep(STEP_SHARING)
         groupCheck.fail(fromServer.ownerId)
+      } else if (fromServer.responsible) {
+        setActiveStep(STEP_SHARING)
+        responsibleCheck.fail(fromServer.responsible)
       } else {
         setError(err instanceof Error ? err.message : 'Der Agent konnte nicht angelegt werden.')
       }
@@ -126,7 +139,9 @@ export default function AgentCreatePage() {
       object="Neuer Agent"
       steps={STEPS}
       activeStep={activeStep}
-      failed={nameCheck.error !== null || groupCheck.error !== null}
+      failed={
+        nameCheck.error !== null || groupCheck.error !== null || responsibleCheck.error !== null
+      }
       createBlockedBy={missingCapability}
       error={error}
       footerNote={
@@ -155,8 +170,8 @@ export default function AgentCreatePage() {
             danach auf seiner Seite ein.
           </Typography>
           <Box>
-            <FieldLabel htmlFor={`${ID}-name`}>Name</FieldLabel>
-            <TextField
+            <FormField
+              label="Name"
               id={`${ID}-name`}
               value={name}
               onChange={(e) => {
@@ -173,13 +188,13 @@ export default function AgentCreatePage() {
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`${ID}-purpose`}>Zweck (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Zweck"
+              optional
               id={`${ID}-purpose`}
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               multiline
-              minRows={2}
               fullWidth
               helperText={PURPOSE_HELP}
               slotProps={{ htmlInput: { maxLength: PURPOSE_MAX } }}
@@ -206,6 +221,17 @@ export default function AgentCreatePage() {
             groupError={groupCheck.error}
             groupInputRef={groupCheck.ref}
           />
+          <ResponsibleUnitField
+            id={`${ID}-responsible`}
+            groups={myGroups.groups}
+            value={responsibleDraft}
+            onChange={(next) => {
+              responsibleCheck.clear()
+              setResponsible(next)
+            }}
+            error={responsibleCheck.error}
+            inputRef={responsibleCheck.ref}
+          />
           <AssetRightsFields
             pendingGrants={pendingGrants}
             onPendingGrantsChange={setPendingGrants}
@@ -223,6 +249,11 @@ export default function AgentCreatePage() {
               pendingGrants,
               onChangeSharing: () => changeAt(STEP_SHARING),
             }),
+            {
+              label: 'Verantwortliche Stelle',
+              value: responsibleDraft.text.trim(),
+              onChange: () => changeAt(STEP_SHARING),
+            },
           ]}
         />
       )}

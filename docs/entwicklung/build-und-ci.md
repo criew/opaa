@@ -506,7 +506,8 @@ die Tests von `LibraryDocumentService` ab.
   der beiden Bausteine aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
   (`PROMPTS_PAST_THE_BLOCKS`) nennt je Methode, wo ihr Text bereinigt wurde, eine neue Stelle muss
   diese Entscheidung ausdrücklich treffen. Grenze: Ruft eine Methode einen Baustein auf, prüft die
-  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet.
+  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet;
+- Sicherheitszustand wird nicht als veraltete ganze Zeile zurückgeschrieben (siehe unten).
 
 Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
 wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat
@@ -525,6 +526,83 @@ prüft die Angriffsfläche ohne Anmeldung.
 Feld oder einem Feld einer Enum-Konstante steht, mit faulem, verschachteltem oder mehr als einem
 unbeschränkten Quantor mit gepumpten Eingaben gegen eine Zeitgrenze; jedes solche Muster nennt dort
 seine Angriffseingaben.
+
+### Kein Ganzzeilen-Schreiben von Sicherheitszustand
+
+Hibernate schreibt eine geänderte Entity ohne `@DynamicUpdate` mit allen Spalten zurück. Liest ein
+Pfad eine Zeile, ändert ein Feld und speichert, überschreibt er alles, was eine andere Transaktion
+zwischen Lesen und Schreiben festgeschrieben hat – etwa eine entzogene Rolle, eine Sperre durch den
+Verzeichnisabgleich oder einen abgeschalteten Anbieter. `securityStateIsNeverWrittenBackAsAStaleWholeRow`
+meldet für jede Entity in `SECURITY_STATE_ENTITIES` ohne `@Version` jeden Aufruf von `save`,
+`saveAll`, `saveAndFlush` und `saveAllAndFlush` ihres Repositorys; fehlt auch `@DynamicUpdate`,
+zusätzlich jeden Aufruf einer Methode der Entity, die ein eigenes Feld setzt. Der Code der Entity
+selbst ist ausgenommen. Jede gemeldete Methode steht in `WHOLE_ROW_WRITERS` mit einem Satz
+Begründung: neue Zeile, nur geänderte Spalten in einer Transaktion (`@DynamicUpdate`), Zustand
+bewegt sich nur Richtung widerrufen, die Rolle ist der einzige änderbare Zustand, oder eine
+Zeilensperre (`FOR UPDATE`). `User`, `OidcProvider`, `Group` und `ConnectorTypePolicy` schreiben
+deshalb nur geänderte Spalten; die Übertragung von Berechtigungen liest die Berechtigung der
+Zielgruppe unter Zeilensperre; Änderung und Widerruf einer Dienstkonto-Zustimmung sperren zuerst
+die Zeile des Dienstkontos, dann die offene Zustimmung.
+Wettlauftests mit einer fremden Transaktion zwischen Lesen und Schreiben (`ForeignCommit`) stehen in
+`AccountRowWriteIntegrationTest`, `GroupRowWriteIntegrationTest`,
+`ConnectorTypePolicyRowWriteIntegrationTest`, `GroupGrantTransferRowWriteIntegrationTest` und
+`ServiceAccountConsentRowWriteIntegrationTest`.
+
+Damit die Liste nicht still veraltet, verlangt `everyPersistentTypeWithASecurityStateFieldIsClassified`
+für jede Entity und jeden Repository-Typ mit einem Feld, dessen Name nach Sicherheitszustand klingt
+(`role`, `revoked…`, `locked…`, `…LockedAt`, `enabled`, `active`, `status`, `…ExpiresAt`,
+`validUntil`, `usableUntil`, `…TokenHash`, `sessionGeneration` u. a., Muster `SECURITY_STATE_FIELD`), einen Eintrag in
+`SECURITY_STATE_ENTITIES` oder, begründet, in `NOT_SECURITY_STATE`.
+
+**Grenzen:** Die Regel sieht Aufrufe, keinen Datenfluss; eine Ausnahme gilt für die ganze Methode.
+`@DynamicUpdate` schützt nur eine verwaltete Instanz: `save` einer abgelösten Instanz schreibt jede
+abweichende Spalte. Ohne `@DynamicUpdate` schreibt auch das Dirty Checking eine geänderte verwaltete
+Entity ohne `save` als ganze Zeile; die Regel meldet dann jeden Aufruf einer ändernden Methode. Vollen Schutz gäbe nur `@Version`, das eine Migration braucht. Typen, die nur eingefügt und
+gelöscht werden (`GroupMembership`, `CapabilityGrant`), fragt die Regel nicht ab; ein Feld, dessen
+Name nicht nach Sicherheitszustand klingt, erfasst die Abdriftprüfung nicht.
+
+## Kein Geheimnis im Log
+
+Wächter-Tests schicken erkennbare Geheimnisse durch echte Anfragen und hängen dabei mit
+`io.opaa.test.LogCapture` einen Appender an den Root-Logger auf TRACE; keine Zeile darf einen der
+Werte nennen, wörtlich, Base64- oder URL-kodiert, auch nicht in Meldung, Ursache, unterdrückter
+Exception oder Stacktrace. Ein Logger mit eigener Stufe (Festlegung in `application.yml`) bleibt
+auf dieser Stufe; geprüft wird, was er im Betrieb schreiben würde:
+
+- `SecretLogSentinelIntegrationTest`: Modellschlüssel (eingegeben, mit Steuerzeichen, gespeichert
+  und wiederverwendet) beim Verbindungstest gegen einen Server, der mit 401 abweist, gegen einen
+  unauflösbaren Host und beim abgewiesenen Anlegen (400); SMTP-Passwort beim Speichern, beim
+  fehlschlagenden Test und beim abgewiesenen Speichern; Zugangsdaten einer Quelle beim
+  Verbindungstest, auch ein Confluence-Data-Center-Token mit Zeilenumbruch; Code und State einer
+  Verbindungszustimmung;
+- `McpServerIntegrationTest#noBearerValueReachesALogLine`: Personen-Token, Dienstkonto-Token, ein
+  erfundenes Token und ein erfundenes JWT im `Authorization`-Header, erfolgreich und mit 401;
+- `LocalAuthLogPrivacyIntegrationTest`: Passwörter (auch falsche), Refresh-Token, lokales
+  Zugangs-JWT und die Token der Mail-Links.
+
+Der Logger `org.apache.coyote.http11.Http11InputBuffer` ist in `application.yml` auf INFO
+festgelegt: Auf DEBUG schreibt Tomcat jeden Anfragekopf samt `Authorization`. Der HTTP-Client des
+JDK zitiert einen ungültigen Header-Wert samt Geheimnis in seiner Exception; deshalb prüft
+`io.opaa.common.HeaderValues#requireSafe` den Wert vorher, ohne ihn zu nennen: in
+`RedirectFollowingFetcher` für jeden Header (alle Konnektoren), in `ModelEndpointAccess#headerSafe`
+für Modellschlüssel, in `KeycloakAdminApi` und `OAuthClient` für Bearer-Token, in
+`OpenSandboxClient` für den Schlüssel des Sandbox-Servers. Als zweite
+Sicherung ersetzt `ErrorSanitizer` in der WARN-Zeile einer abgewiesenen Anfrage den Wert hinter
+`Bearer` und `Basic`, in Anführungszeichen bis zum schließenden Zeichen.
+
+Im Frontend prüft `src/app/secretQueryRoutes.test.ts`, dass jede Seite, die `token`, `code` oder
+`state` aus der Query liest (selbst oder über einen exportierten Hook oder eine eingebundene
+Komponente), und jede `redirect_uri`
+der Anmeldung in den Maskierungs-Maps `$opaa_logged_uri` und `$opaa_logged_referer` von
+`frontend/nginx.conf` steht; `.github/scripts/frontend_hardening_test.sh` prüft am laufenden
+Image, dass das Zugriffslog diese Query weder in der Anfragezeile noch im Referer schreibt.
+
+**Grenzen:** Geprüft sind die genannten Wege, nicht jeder Logaufruf; ein Geheimnis in einem neuen
+Weg braucht seinen Wächterwert. Die Prüfung sieht das Log im Prozess, nicht das Log von
+Datenbank, Proxy oder Modellserver. Ein Header, den ein Client außerhalb von
+`RedirectFollowingFetcher` ohne `HeaderValues` setzt, ist nicht geschützt. Die Routenprüfung im
+Frontend sieht nur die Parameter `token`, `code` und `state` in der Query, kein Geheimnis im Pfad
+(`useParams`) oder im Fragment, und nur Seiten, die `App.tsx` als `<Route path element>` einbindet.
 
 ## Angriffsfläche ohne Anmeldung
 

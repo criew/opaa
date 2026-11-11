@@ -7,6 +7,7 @@ import {
   mockLlmModels,
   mockOllamaDiscoveredModels,
   mockOpenAiDiscoveredModels,
+  mockCompletedToolCheck,
   resetMockLlmModels,
   UNVERIFIED_TOOL_CAPABILITY,
 } from './modelFixtures'
@@ -19,10 +20,16 @@ import type {
   LlmModelRequest,
   LlmModelTestRequest,
   LlmModelToolCapabilityRequest,
+  LlmModelToolCheckRequest,
+  LlmModelToolCheckResponse,
 } from '@/shared/api/types'
+
+/** Tool checks per model id; a started check completes at once. */
+const toolChecks = new Map<string, LlmModelToolCheckResponse>()
 
 export function resetLlmModelMockState() {
   resetMockLlmModels()
+  toolChecks.clear()
 }
 
 export function discoveryFailure(
@@ -121,6 +128,30 @@ export const modelHandlers = [
     model.updatedAt = new Date().toISOString()
     return HttpResponse.json(model)
   }),
+
+  http.post('/api/v1/admin/models/:modelId/tool-checks', async ({ params, request }) => {
+    const model = mockLlmModels.find((item) => item.id === String(params.modelId))
+    if (!model) {
+      return HttpResponse.json({ error: 'Modell nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as LlmModelToolCheckRequest
+    const check = mockCompletedToolCheck(model, body.repetitions)
+    toolChecks.set(model.id, check)
+    return HttpResponse.json(check, { status: 202 })
+  }),
+
+  http.get('/api/v1/admin/models/:modelId/tool-checks/latest', ({ params }) => {
+    const check = toolChecks.get(String(params.modelId))
+    return check
+      ? HttpResponse.json(check)
+      : HttpResponse.json({ error: 'Für dieses Modell gibt es keine Prüfung.' }, { status: 404 })
+  }),
+
+  http.get('/api/v1/admin/models/:modelId/tool-checks/:checkId/report', () =>
+    HttpResponse.text('# Werkzeugfähigkeit: Messlauf tc-20261110T200000Z-mock\n', {
+      headers: { 'Content-Type': 'text/markdown' },
+    }),
+  ),
 
   http.put('/api/v1/admin/models/:modelId/tool-capability', async ({ params, request }) => {
     const model = mockLlmModels.find((item) => item.id === String(params.modelId))

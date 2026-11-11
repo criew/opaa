@@ -10,12 +10,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * What the system administration decided for one connector type (ADR-0041, Entscheidung 1): its
  * lock and its profile requirement. A type without a row is neither locked nor switched to profiles
  * only.
+ *
+ * <p>Written column by column ({@code @DynamicUpdate}): changing the requirement keeps a lock
+ * another transaction committed after the read, and the other way round.
  */
+@DynamicUpdate
 @Entity
 @Table(name = "connector_type_policies")
 public class ConnectorTypePolicy {

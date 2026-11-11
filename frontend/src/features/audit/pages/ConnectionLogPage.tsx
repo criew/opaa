@@ -10,7 +10,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
@@ -30,7 +30,7 @@ import {
   ownerKindLabel,
   ownerLabel,
 } from '../components/connectionLogLabels'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import { formatProtocolTime } from '@/shared/utils/formatDate'
 
 const ALL = ''
@@ -133,24 +133,23 @@ export default function ConnectionLogPage() {
           description="Wann Konten mit einem Zugang verbunden oder getrennt wurden und Verbindungen endeten. Personen erscheinen nur als Pseudonym, Zugangsdaten nie; Zeitraum höchstens 92 Tage, jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3 }}>
-          <TextField
+        <Stack spacing={2} sx={{ mb: 3, maxWidth: formWidth.column }}>
+          <FormField
             label="Von"
             type="datetime-local"
             value={from}
-            slotProps={{ inputLabel: { shrink: true } }}
             onChange={(event) => setFrom(event.target.value)}
           />
-          <TextField
+          <FormField
             label="Bis"
             type="datetime-local"
             value={to}
-            slotProps={{ inputLabel: { shrink: true } }}
             onChange={(event) => setTo(event.target.value)}
           />
-          <TextField
+          <FormField
             select
-            label="Ereignis (optional)"
+            label="Ereignis"
+            optional
             value={eventType}
             onChange={(event) =>
               setEventType(event.target.value as ConnectionLogEventType | typeof ALL)
@@ -162,10 +161,11 @@ export default function ConnectionLogPage() {
                 {eventTypeLabel(type)}
               </MenuItem>
             ))}
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             select
-            label="Zugang (optional)"
+            label="Zugang"
+            optional
             value={profileId}
             onChange={(event) => setProfileId(event.target.value)}
             helperText="Zur Auswahl stehen alle Zugänge mit Einträgen im Protokoll, auch gelöschte."
@@ -176,8 +176,8 @@ export default function ConnectionLogPage() {
                 {profile.deleted ? `${profile.name} (gelöscht)` : profile.name}
               </MenuItem>
             ))}
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             label="Anlass"
             value={reason}
             onChange={(event) => setReason(event.target.value)}

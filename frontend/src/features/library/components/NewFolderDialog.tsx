@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface NewFolderDialogProps {
@@ -53,8 +52,8 @@ export default function NewFolderDialog({ open, onClose, onCreate }: NewFolderDi
         </Alert>
       )}
       <Box sx={{ pt: 0.5 }}>
-        <FieldLabel htmlFor="new-folder-name">Ordnername</FieldLabel>
-        <TextField
+        <FormField
+          label="Ordnername"
           id="new-folder-name"
           fullWidth
           size="small"

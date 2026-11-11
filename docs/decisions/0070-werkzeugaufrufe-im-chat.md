@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-10
+Akzeptiert · zuletzt geändert 2026-11-11
 
 ## Kontext
 
@@ -210,10 +210,12 @@ Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
 - **Platzlimit:** eine Reservierung je laufendem Lauf in der Datenbank, mit Ablauf nach Datenbankuhr
   in Höhe der Laufzeitgrenze plus der Zeit für den abschließenden Antwortaufruf. In einer
   Transaktion sperrt die Anwendung die feste Zählerzeile des Platzlimits (`SELECT … FOR UPDATE`),
-  zählt die nicht abgelaufenen Reservierungen und fügt die neue ein. Ohne diese Sperre überbuchten
-  zwei gleichzeitige Anfragen unter `READ COMMITTED`. Ist das Limit erreicht, wird die Anfrage vor
-  dem Lauf abgewiesen. Anders als die Deckel aus ADR-0053, Entscheidung 12, schließt das Platzlimit
-  bei nicht erreichbarer Datenbank: Ohne Datenbank gibt es weder Suche noch Schrittprotokoll, ein
+  zählt die nicht abgelaufenen Reservierungen, insgesamt und die der anfragenden Person, und fügt
+  die neue mit der Person ein. Ohne diese Sperre überbuchten zwei gleichzeitige Anfragen unter
+  `READ COMMITTED`. Ist das Limit oder der Anteil der Person erreicht (mindestens ein Platz,
+  höchstens das Limit), wird die Anfrage vor dem Lauf mit eigenem Fehlercode abgewiesen. Anders
+  als die Deckel aus ADR-0053, Entscheidung 12, schließt das Platzlimit bei nicht erreichbarer
+  Datenbank: Ohne Datenbank gibt es weder Suche noch Schrittprotokoll, ein
   Lauf könnte also ohnehin nicht korrekt laufen.
 - **Schalter:** stehen in der Datenbank; jede Instanz hält sie am Invalidierungsbus (ADR-0053,
   Entscheidung 5).
@@ -226,7 +228,8 @@ Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
 Begründung: Wer eine gemessene Eigenschaft wie eine erzwungene führt, schwächt die erzwungenen und
 stärkt die gemessenen nicht. Das Platzlimit schützt den Modellendpunkt der ganzen Installation; die
 absolute Zahl ist die Zusage, und ein durch N geteilter Wert wiese bei ungleicher Verteilung ab,
-während andere Instanzen frei sind. Die Reservierung mit Ablauf gibt den Platz auch nach dem Absturz
+während andere Instanzen frei sind. Liegt der Anteil je Person unter dem Limit, kann eine Person
+nicht alle Plätze belegen und die übrigen aussperren. Die Reservierung mit Ablauf gibt den Platz auch nach dem Absturz
 einer Instanz zurück, und ein Lauf ist selten genug, dass eine Zeile je Lauf nicht ins Gewicht fällt.
 
 ## Konsequenzen

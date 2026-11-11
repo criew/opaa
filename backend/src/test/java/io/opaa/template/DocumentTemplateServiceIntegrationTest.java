@@ -7,6 +7,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetTypes;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -20,6 +21,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @OpaaIntegrationTest
 class DocumentTemplateServiceIntegrationTest {
+
+  private static final ResponsibleUnit RESPONSIBLE = ResponsibleUnit.ofFunction("Referat Z3");
 
   @Autowired private DocumentTemplateService templateService;
   @Autowired private DocumentTemplateSettingsService settingsService;
@@ -111,7 +115,12 @@ class DocumentTemplateServiceIntegrationTest {
     DocumentTemplateView created =
         templateService.create(
             new DocumentTemplateCreation(
-                "Bericht", "Für Recherchen", null, null, TestDocx.upload("bericht.docx", content)),
+                "Bericht",
+                "Für Recherchen",
+                null,
+                null,
+                TestDocx.upload("bericht.docx", content),
+                RESPONSIBLE),
             caller(author));
 
     DocumentTemplate template = created.template();
@@ -153,7 +162,8 @@ class DocumentTemplateServiceIntegrationTest {
                         null,
                         null,
                         TestDocx.upload(
-                            "kaputt.docx", "kein Word".getBytes(StandardCharsets.UTF_8))),
+                            "kaputt.docx", "kein Word".getBytes(StandardCharsets.UTF_8)),
+                        RESPONSIBLE),
                     admin()))
         .isInstanceOf(ValidationException.class);
     assertThat(
@@ -208,30 +218,38 @@ class DocumentTemplateServiceIntegrationTest {
   }
 
   @Test
-  void anAgentRunMayFillOnlyTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
+  void anAgentRunMayFillOnlyAssignedTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
     settingsService.update(true, admin());
     grantCreateTemplate(author);
     DocumentTemplate template =
         templateService.create(creation("Bericht"), caller(author)).template();
+    DocumentTemplate unassigned =
+        templateService.create(creation("Vermerk"), caller(author)).template();
+    Set<UUID> assigned = Set.of(template.getId());
 
-    assertThat(runTemplates.available(organization, author))
+    assertThat(runTemplates.available(organization, author, assigned))
         .extracting(RunTemplates.RunTemplate::id, RunTemplates.RunTemplate::placeholders)
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple(
                 template.getId(),
                 List.of(new TemplatePlaceholder("titel", PlaceholderKind.FIELD, List.of()))));
-    assertThat(runTemplates.forFilling(template.getId(), organization, author))
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned))
         .get()
         .extracting(RunTemplates.TemplateToFill::fileName)
         .isEqualTo("vorlage.docx");
-    assertThat(runTemplates.available(organization, colleague)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), organization, colleague)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author)).isEmpty();
+    assertThat(runTemplates.forFilling(unassigned.getId(), organization, author, assigned))
+        .isEmpty();
+    assertThat(runTemplates.available(organization, author, Set.of())).isEmpty();
+    assertThat(runTemplates.available(organization, colleague, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, colleague, assigned))
+        .isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author, assigned))
+        .isEmpty();
 
     settingsService.update(false, admin());
 
-    assertThat(runTemplates.available(organization, author)).isEmpty();
-    assertThat(runTemplates.forFilling(template.getId(), organization, author)).isEmpty();
+    assertThat(runTemplates.available(organization, author, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned)).isEmpty();
   }
 
   private DocumentTemplateCreation creation(String name) {
@@ -240,7 +258,8 @@ class DocumentTemplateServiceIntegrationTest {
         null,
         null,
         null,
-        TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")));
+        TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")),
+        RESPONSIBLE);
   }
 
   private long auditCount(String eventType, UUID objectId) {

@@ -240,6 +240,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getRerankModelSettings",
             "getTranscriptionModelSettings",
             "getTextRecognitionModelSettings",
+            "getLatestLlmModelToolCheck",
+            "getLlmModelToolCheckReport",
             "listOidcProviders",
             "getOidcProvider",
             "getOidcProviderImpact",

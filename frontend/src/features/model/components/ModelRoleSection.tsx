@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   LlmModelTestResponse,
@@ -42,9 +42,9 @@ import {
 import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
 import RoleApiKeyField from './RoleApiKeyField'
 import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
-import { fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 export type { ModelRoleKind }
 
@@ -331,7 +331,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const prefix = `model-role-${kind}`
 
   return (
-    <Box sx={{ maxWidth: readingWidth }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {texts.intro}
       </Typography>
@@ -368,7 +368,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           }
           label={texts.switchLabel}
         />
-        <TextField
+        <FormField
           id={`${prefix}-base-url`}
           label="Basis-Adresse"
           required={enabled}
@@ -382,7 +382,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           size="small"
           fullWidth
         />
-        <TextField
+        <FormField
           id={`${prefix}-model`}
           label="Modell-Kennung"
           required={enabled}
@@ -401,7 +401,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           error={errors.apiKey}
         />
         {kind === 'transcription' && (
-          <TextField
+          <FormField
             id={`${prefix}-language`}
             label={TRANSCRIPTION_TEXTS.languageLabel}
             value={language}
@@ -409,7 +409,6 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
             error={Boolean(errors.language)}
             helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
             size="small"
-            sx={{ maxWidth: fieldWidth.short }}
           />
         )}
         {kind === 'transcription' && (
@@ -460,14 +459,15 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
               {prefill !== null && <Alert severity="info">{REALTIME_TEXTS.batchPrefilled}</Alert>}
               <RoleApiKeyField
                 id={`${prefix}-live-api-key`}
-                label={`${REALTIME_TEXTS.keyLabel} (optional)`}
+                label={REALTIME_TEXTS.keyLabel}
+                optional
                 value={liveKey}
                 onChange={setLiveKey}
                 apiKeySet={settings.realtime?.apiKeySet ?? false}
                 error={errors['realtime.apiKey']}
                 emptyHint={`Wird verschlüsselt gespeichert und nie wieder angezeigt. ${REALTIME_TEXTS.keyHint}`}
               />
-              <TextField
+              <FormField
                 id={`${prefix}-live-max-sessions`}
                 label="Gleichzeitige Live-Sitzungen"
                 type="number"
@@ -479,7 +479,6 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
                   'Für die ganze Installation, 1 bis 100. Wer darüber diktiert, bekommt den Text nach dem Ende der Aufnahme. Ein eigener Server mit 16 GB GPU-Speicher trägt etwa eine Sitzung.'
                 }
                 size="small"
-                sx={{ maxWidth: fieldWidth.medium }}
                 slotProps={{ htmlInput: { min: 1, max: 100 } }}
               />
               {liveTestResult && (

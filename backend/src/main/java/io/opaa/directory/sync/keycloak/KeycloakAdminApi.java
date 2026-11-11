@@ -1,5 +1,6 @@
 package io.opaa.directory.sync.keycloak;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.compliance.DataFlow;
 import io.opaa.directory.sync.DirectoryUnavailableException;
 import io.opaa.outbound.ProxyRefusal;
@@ -175,7 +176,7 @@ class KeycloakAdminApi {
             .uri(uri(url))
             .timeout(requestTimeout)
             .header("Accept", "application/json")
-            .header("Authorization", "Bearer " + bearer)
+            .header("Authorization", "Bearer " + HeaderValues.requireSafe(bearer, "access token"))
             .GET()
             .build();
     return send(request, url);

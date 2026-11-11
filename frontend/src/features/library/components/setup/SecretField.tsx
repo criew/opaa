@@ -3,12 +3,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 interface SecretFieldProps {
@@ -40,12 +40,11 @@ export default function SecretField({
 }: SecretFieldProps) {
   const [replacing, setReplacing] = useState(false)
   const [shown, setShown] = useState(false)
-  const helperId = `${id}-helper`
 
   if (stored && !replacing && value === '') {
     return (
       <Box>
-        <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
+        <FormFieldLabel id={`${id}-label`}>{label}</FormFieldLabel>
         <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
         >
@@ -77,11 +76,9 @@ export default function SecretField({
 
   return (
     <Box>
-      <FieldLabel htmlFor={id}>
-        {label}
-        {optional ? ' (optional)' : ''}
-      </FieldLabel>
-      <TextField
+      <FormField
+        label={label}
+        optional={optional}
         id={id}
         type={shown ? 'text' : 'password'}
         size="small"
@@ -104,7 +101,6 @@ export default function SecretField({
           )
         }
         slotProps={{
-          formHelperText: { id: helperId },
           input: {
             endAdornment: (
               <InputAdornment position="end">

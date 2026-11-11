@@ -1,6 +1,7 @@
 package io.opaa.query.sandbox;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.common.HeaderValues;
 import io.opaa.compliance.DataFlow;
 import io.opaa.observability.MeteredHttpClient;
 import io.opaa.observability.OutboundMetrics;
@@ -265,7 +266,7 @@ class OpenSandboxClient implements Sandboxes {
     HttpResponse<String> response =
         send(
             HttpRequest.newBuilder(URI.create(baseUrl + "/v1/sandboxes"))
-                .header(API_KEY_HEADER, apiKey)
+                .header(API_KEY_HEADER, HeaderValues.requireSafe(apiKey, "sandbox API key"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body))),
             HttpResponse.BodyHandlers.ofString());
@@ -559,7 +560,7 @@ class OpenSandboxClient implements Sandboxes {
       HttpResponse<String> response =
           send(
               HttpRequest.newBuilder(URI.create(baseUrl + "/v1/sandboxes/" + sandboxId))
-                  .header(API_KEY_HEADER, apiKey)
+                  .header(API_KEY_HEADER, HeaderValues.requireSafe(apiKey, "sandbox API key"))
                   .DELETE(),
               HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() / 100 != 2 && response.statusCode() != 404) {

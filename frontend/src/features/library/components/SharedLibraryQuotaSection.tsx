@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { SharedLibraryQuotaResponse } from '@/shared/api/types'
 import { getSharedLibraryQuota, updateSharedLibraryQuota } from '../api/sharedLibraryQuotaApi'
@@ -13,7 +12,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
-import { fieldWidth } from '@/shared/theme/tokens'
+import { formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -122,51 +121,44 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'flex-start' } }}
-      >
-        <TextField
-          label="Grenze je Bibliothek (GB)"
-          size="small"
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value)
-            setSaveError(null)
-          }}
-          error={!valid && draft.trim() !== ''}
-          helperText={
-            draft.trim() !== '' && parsed.error
-              ? parsed.error
-              : current.capBytes > 0
-                ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
-                : 'Der Betrieb hat keine Obergrenze gesetzt.'
-          }
-          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: fieldWidth.short }}
-        />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          busy={busy}
-          busyAnnouncement="Grenze wird gespeichert"
-          disabled={!changed && !busy}
-          sx={{ mt: { sm: 0.25 } }}
-        >
-          Grenze speichern
-        </BusyButton>
-        {own !== null && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onClick={() => void handleRemove()}
-            sx={{ mt: { sm: 0.25 } }}
-          >
-            Eigene Grenze entfernen
-          </Button>
-        )}
-      </Stack>
+      <FormField
+        label="Grenze je Bibliothek (GB)"
+        size="small"
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setSaveError(null)
+        }}
+        error={!valid && draft.trim() !== ''}
+        helperText={
+          draft.trim() !== '' && parsed.error
+            ? parsed.error
+            : current.capBytes > 0
+              ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
+              : 'Der Betrieb hat keine Obergrenze gesetzt.'
+        }
+        numeric
+        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+        sx={{ maxWidth: formWidth.column }}
+        action={
+          <>
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              busy={busy}
+              busyAnnouncement="Grenze wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Grenze speichern
+            </BusyButton>
+            {own !== null && (
+              <Button variant="text" disabled={busy} onClick={() => void handleRemove()}>
+                Eigene Grenze entfernen
+              </Button>
+            )}
+          </>
+        }
+      />
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

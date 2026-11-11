@@ -13,6 +13,7 @@ import io.opaa.compliance.InstanceDisclosure;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
@@ -85,12 +86,31 @@ class DataCollectionDisclosureResponseMapperTest {
                             CaseCount.of(0),
                             CaseCount.of(1),
                             CaseCount.of(0))),
-                    List.of("Eine Ablehnung gibt es nicht"))));
+                    List.of("Eine Ablehnung gibt es nicht"))),
+            List.of(
+                new DataSetDescription(
+                    "agent-step-log",
+                    "Schrittprotokoll",
+                    "Fehlersuche",
+                    List.of(new ProtocolField("tool", "Name", "Welches Werkzeug", "7 Tage")),
+                    List.of(new QueryPath("ein Lauf", "Laufkennung")),
+                    List.of("kein Personenfilter"))));
 
     DataCollectionDisclosure response =
         DataCollectionDisclosureResponseMapper.toResponse(disclosure);
 
     assertThat(response.getOpaaVersion()).isEqualTo("1.4.0");
+    var dataSet = response.getDataSets().get(0);
+    assertThat(dataSet.getId()).isEqualTo("agent-step-log");
+    assertThat(dataSet.getTitle()).isEqualTo("Schrittprotokoll");
+    assertThat(dataSet.getPurpose()).isEqualTo("Fehlersuche");
+    assertThat(dataSet.getFields().get(0).getName()).isEqualTo("tool");
+    assertThat(dataSet.getFields().get(0).getGranularity()).isEqualTo("Name");
+    assertThat(dataSet.getFields().get(0).getPurpose()).isEqualTo("Welches Werkzeug");
+    assertThat(dataSet.getFields().get(0).getRetention()).isEqualTo("7 Tage");
+    assertThat(dataSet.getQueryPaths().get(0).getName()).isEqualTo("ein Lauf");
+    assertThat(dataSet.getQueryPaths().get(0).getDescription()).isEqualTo("Laufkennung");
+    assertThat(dataSet.getAbsentQueryPaths()).containsExactly("kein Personenfilter");
     assertThat(response.getCommit()).isEqualTo("abc123");
     assertThat(response.getGeneratedAt()).isEqualTo(GENERATED);
     assertThat(response.getNotice()).isEqualTo(FactSheetRenderer.NOTICE);

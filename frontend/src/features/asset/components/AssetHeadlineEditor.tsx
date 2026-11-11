@@ -2,10 +2,9 @@ import { useCallback, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { fontSize } from '@/shared/theme/tokens'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
 
@@ -162,8 +161,8 @@ export function EditHeadlineDialog({
         </Alert>
       )}
       <Box sx={{ mb: 1.5 }}>
-        <FieldLabel htmlFor={`${idPrefix}-name`}>{nameLabel}</FieldLabel>
-        <TextField
+        <FormField
+          label={nameLabel}
           id={`${idPrefix}-name`}
           size="small"
           fullWidth
@@ -179,13 +178,13 @@ export function EditHeadlineDialog({
         />
       </Box>
       <Box>
-        <FieldLabel htmlFor={`${idPrefix}-description`}>Beschreibung (optional)</FieldLabel>
-        <TextField
+        <FormField
+          label="Beschreibung"
+          optional
           id={`${idPrefix}-description`}
           size="small"
           fullWidth
           multiline
-          minRows={2}
           value={draft.description}
           onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           slotProps={{ htmlInput: { maxLength: 2000 } }}

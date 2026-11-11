@@ -3,7 +3,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import { formWidth } from '@/shared/theme/tokens'
 import Typography from '@mui/material/Typography'
 
 import type {
@@ -16,7 +17,6 @@ import type {
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { getDocumentTypeVocabulary } from '@/features/library'
 import { plural, UUID_PATTERN } from '@/shared/utils/format'
-import { contentWidth } from '@/shared/theme/tokens'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 const PERSON_CONTEXT_VALUE = 'USER'
@@ -110,8 +110,8 @@ export default function DiagnosisForm({
   }
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: contentWidth.form }}>
-      <TextField
+    <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
+      <FormField
         label="Testfrage"
         required
         value={question}
@@ -119,7 +119,7 @@ export default function DiagnosisForm({
         size="small"
         fullWidth
       />
-      <TextField
+      <FormField
         select
         label="Sicht als"
         value={contextValue}
@@ -141,7 +141,7 @@ export default function DiagnosisForm({
         <MenuItem value={PERSON_CONTEXT_VALUE} disabled={!personContextAvailable}>
           Rechtekontext einer Person
         </MenuItem>
-      </TextField>
+      </FormField>
       {personContextHint !== '' && (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           {personContextHint}
@@ -149,7 +149,7 @@ export default function DiagnosisForm({
       )}
       {isPersonContext && (
         <>
-          <TextField
+          <FormField
             label="Nutzer-UUID der Person"
             required
             value={targetUserId}
@@ -163,11 +163,10 @@ export default function DiagnosisForm({
             size="small"
             fullWidth
           />
-          <TextField
+          <FormField
             label="Begründung"
             required
             multiline
-            minRows={2}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
             helperText="Pflichtangabe. Sie wird im Protokolleintrag dieses Laufs mitgeführt; ohne sie wird nicht ausgeführt."
@@ -176,8 +175,9 @@ export default function DiagnosisForm({
           />
         </>
       )}
-      <TextField
-        label="Dokument verfolgen (optional)"
+      <FormField
+        label="Dokument verfolgen"
+        optional
         value={trackedDocumentId}
         onChange={(e) => setTrackedDocumentId(e.target.value)}
         helperText="Kennung eines Dokuments aus der Dokumentliste einer Bibliothek. Die Diagnose sagt dann, ob es gar nicht gefunden oder in einer bestimmten Stufe verdrängt wurde."
@@ -186,9 +186,10 @@ export default function DiagnosisForm({
       />
       {metadataEnabled && (
         <>
-          <TextField
+          <FormField
             select
-            label="Metadatenfilter: Dokumentart (optional)"
+            label="Metadatenfilter: Dokumentart"
+            optional
             value={filterDocumentTypes}
             onChange={(e) => {
               const value = e.target.value as unknown
@@ -212,18 +213,17 @@ export default function DiagnosisForm({
                 {entry.label}
               </MenuItem>
             ))}
-          </TextField>
+          </FormField>
           <Stack direction="row" spacing={2}>
-            <TextField
+            <FormField
               label="Metadatenfilter: Datum von"
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
               size="small"
               fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
             />
-            <TextField
+            <FormField
               label="Metadatenfilter: Datum bis"
               type="date"
               value={filterDateTo}
@@ -232,7 +232,6 @@ export default function DiagnosisForm({
               helperText={filterDateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
               size="small"
               fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
             />
           </Stack>
         </>

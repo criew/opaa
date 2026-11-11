@@ -8,7 +8,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useAuthStore } from '../session/authStore'
@@ -16,7 +15,7 @@ import { FieldValidationError, retryAfterSecondsOf } from '../session/authApi'
 import { tooManyAttemptsMessage } from '../session/authMessages'
 import { apiErrorStatus } from '../api/apiErrorDetails'
 import BusyButton from './a11y/BusyButton'
-import FieldLabel from './wizard/FieldLabel'
+import FormField from './form/FormField'
 
 /** Every refusal alike, as at the sign-in: wrong password, locked account, network policy. */
 export const NOT_CONFIRMED_MESSAGE =
@@ -171,8 +170,8 @@ export default function RecentLoginDialog({
             <Typography variant="body2">{purpose}</Typography>
             {kind === 'local' && (
               <Box>
-                <FieldLabel htmlFor="recent-login-password">Ihr Passwort</FieldLabel>
-                <TextField
+                <FormField
+                  label="Ihr Passwort"
                   id="recent-login-password"
                   type="password"
                   size="small"

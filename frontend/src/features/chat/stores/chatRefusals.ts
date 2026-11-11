@@ -31,11 +31,14 @@ export function responseStatus(err: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
-/** The server refused the question because the person may not use the chosen agent. */
+/**
+ * The server refused the question because the person may not use the chosen agent, or because the
+ * system administration locked it; the server's message says which.
+ */
 export function isAgentNotAvailable(err: unknown): boolean {
   const cause = err instanceof Error ? err.cause : undefined
   const data = (cause as { response?: { data?: { code?: unknown } } } | undefined)?.response?.data
-  return data?.code === 'AGENT_NOT_AVAILABLE'
+  return data?.code === 'AGENT_NOT_AVAILABLE' || data?.code === 'AGENT_LOCKED'
 }
 
 /** The instance stopped while it answered (POST /api/v1/query/stream, code SHUTTING_DOWN). */

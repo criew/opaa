@@ -3,6 +3,7 @@ package io.opaa.succession.web;
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.dto.SuccessionSettingsResponse;
+import io.opaa.asset.ResponsibilityLockPeriod;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionAgingThreshold;
 import io.opaa.succession.SuccessionEntry;
@@ -36,7 +37,12 @@ final class SuccessionResponseMapper {
         SuccessionAgingThreshold.FACTORY_DEFAULT_MONTHS,
         SuccessionAgingThreshold.MIN_MONTHS,
         SuccessionAgingThreshold.MAX_MONTHS,
-        setting.overridden());
+        setting.overridden(),
+        setting.responsibleLockDays(),
+        ResponsibilityLockPeriod.FACTORY_DEFAULT_DAYS,
+        ResponsibilityLockPeriod.MIN_DAYS,
+        ResponsibilityLockPeriod.MAX_DAYS,
+        setting.responsibleLockDaysOverridden());
   }
 
   static SuccessionEntryResponse toResponse(SuccessionEntry entry) {

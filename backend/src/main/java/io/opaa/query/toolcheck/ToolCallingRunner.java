@@ -1,4 +1,4 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,10 +25,10 @@ import org.springframework.ai.tool.ToolCallback;
  * EXTRA_ROUNDS} model calls, so a model that keeps calling costs a bounded number of requests.
  *
  * <p>Call accounting: every tool call counts towards the case's limit, whatever its name. The
- * result of the call that reaches the limit carries the mock tool's limit notice; a call beyond the
+ * result of the call that reaches the limit carries the tool's limit notice; a call beyond the
  * limit receives the notice alone.
  */
-final class ToolCallingRunner {
+public final class ToolCallingRunner {
 
   /** Model calls allowed beyond the case's call limit before the run is cut off. */
   static final int EXTRA_ROUNDS = 3;
@@ -38,17 +38,17 @@ final class ToolCallingRunner {
 
   private static final int MAX_ERROR_LENGTH = 300;
 
-  private final ToolCallingMockTool tool;
+  private final ToolCallingTool tool;
   private final boolean streaming;
   private final Duration streamTimeout;
 
-  ToolCallingRunner(ToolCallingMockTool tool, boolean streaming, Duration streamTimeout) {
+  public ToolCallingRunner(ToolCallingTool tool, boolean streaming, Duration streamTimeout) {
     this.tool = tool;
     this.streaming = streaming;
     this.streamTimeout = streamTimeout;
   }
 
-  Transcript run(ToolCallingCase c, ChatModel model) {
+  public Transcript run(ToolCallingCase c, ChatModel model) {
     List<Message> messages = new ArrayList<>();
     messages.add(new SystemMessage(tool.systemPrompt(c.callLimit())));
     messages.add(new UserMessage(c.userMessage()));
@@ -80,7 +80,7 @@ final class ToolCallingRunner {
         List<ToolResponseMessage.ToolResponse> responses = new ArrayList<>();
         for (AssistantMessage.ToolCall toolCall : output.getToolCalls()) {
           int number = calls.size() + 1;
-          ToolCallingMockTool.ArgumentCheck check = ToolCallingMockTool.check(toolCall.arguments());
+          ToolCallingTool.ArgumentCheck check = tool.check(toolCall.arguments());
           boolean known = tool.name().equals(toolCall.name());
           String result;
           if (number > c.callLimit()) {
@@ -124,8 +124,8 @@ final class ToolCallingRunner {
   }
 
   /**
-   * The model's own default options plus the mock tool: a provider model accepts only its own
-   * options type per call, so the tool goes onto a copy of those rather than onto generic ones.
+   * The model's own default options plus the tool: a provider model accepts only its own options
+   * type per call, so the tool goes onto a copy of those rather than onto generic ones.
    */
   private ToolCallingChatOptions optionsWithTool(ChatModel model) {
     List<ToolCallback> callbacks = List.of(tool.callback());
@@ -203,15 +203,15 @@ final class ToolCallingRunner {
    * One tool call the model made.
    *
    * @param round the model call (from 0) whose response carried it
-   * @param known whether it named the mock tool
+   * @param known whether it named the tool
    * @param beyondLimit whether it came after the case's call limit was used up
    */
-  record ToolCall(
+  public record ToolCall(
       int round,
       String name,
       String arguments,
       boolean known,
-      ToolCallingMockTool.ArgumentCheck check,
+      ToolCallingTool.ArgumentCheck check,
       boolean beyondLimit) {}
 
   /**
@@ -226,7 +226,7 @@ final class ToolCallingRunner {
    * @param injectionDeliveredAt index into {@code toolCalls} of the call whose result carried the
    *     case's embedded instruction, {@code -1} when it was never delivered
    */
-  record Transcript(
+  public record Transcript(
       List<ToolCall> toolCalls,
       List<Long> modelCallMillis,
       List<String> finishReasons,
@@ -235,23 +235,23 @@ final class ToolCallingRunner {
       String error,
       int injectionDeliveredAt) {
 
-    Transcript {
+    public Transcript {
       toolCalls = List.copyOf(toolCalls);
       modelCallMillis = List.copyOf(modelCallMillis);
       finishReasons = Collections.unmodifiableList(new ArrayList<>(finishReasons));
     }
 
     /** Whether a model call stopped at the length limit rather than on its own. */
-    boolean truncated() {
+    public boolean truncated() {
       return finishReasons.stream().anyMatch(LENGTH_FINISH_REASON::equalsIgnoreCase);
     }
 
     /** Whether the model used up the case's call limit. */
-    boolean limitReached(int callLimit) {
+    public boolean limitReached(int callLimit) {
       return toolCalls.size() >= callLimit;
     }
 
-    /** The calls that named the mock tool, in order. */
+    /** The calls that named the tool, in order. */
     List<ToolCall> knownCalls() {
       return toolCalls.stream().filter(ToolCall::known).toList();
     }

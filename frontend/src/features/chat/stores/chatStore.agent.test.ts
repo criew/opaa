@@ -84,13 +84,15 @@ describe('chatStore with an agent', () => {
 
   it.each([
     ['AGENT_NOT_AVAILABLE', false],
+    ['AGENT_LOCKED', false],
     ['AGENT_WORKSPACE_FULL', true],
+    ['AGENT_PERSON_LIMIT', true],
   ])('hands a question refused with %s back, keeping the agent: %s', async (code, keep) => {
     server.use(
       http.post('/api/v1/query', () =>
         HttpResponse.json(
           { error: 'Abgelehnt.', code },
-          { status: code === 'AGENT_WORKSPACE_FULL' ? 429 : 409 },
+          { status: code === 'AGENT_NOT_AVAILABLE' ? 409 : 429 },
         ),
       ),
     )

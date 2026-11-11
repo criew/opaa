@@ -8,6 +8,7 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import { Fragment, useState } from 'react'
 import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
@@ -56,11 +57,10 @@ function OptionsField({
 }) {
   const [raw, setRaw] = useState(() => (variable.options ?? []).join('\n'))
   return (
-    <TextField
+    <FormField
       size="small"
       fullWidth
       multiline
-      minRows={2}
       label="Auswahlwerte, einer je Zeile"
       value={raw}
       onChange={(e) => {

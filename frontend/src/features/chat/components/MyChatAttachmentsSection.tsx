@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import type { ChatAttachment } from '@/shared/api/types'
@@ -122,7 +122,7 @@ function CopyToLibraryDialog({
           Sie können in keine Upload-Bibliothek Dokumente hochladen.
         </Typography>
       ) : (
-        <TextField
+        <FormField
           select
           fullWidth
           size="small"
@@ -140,7 +140,7 @@ function CopyToLibraryDialog({
               {library.name}
             </MenuItem>
           ))}
-        </TextField>
+        </FormField>
       )}
     </FormDialog>
   )

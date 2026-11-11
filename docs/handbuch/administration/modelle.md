@@ -40,8 +40,9 @@ verliert Werkzeugaufrufe bei der Ausgabe im Fluss, und eine zu kleine Kontextlä
 Werkzeugbeschreibungen stillschweigend ab. Die Angabe gilt deshalb für diesen Endpunkt und diese
 Laufzeit.
 
-Heute nutzt der Chat noch keine Werkzeuge im regulären Betrieb; die Angabe wirkt erst, sobald
-Anfragen mit Werkzeugen laufen. Sie lässt sich schon jetzt festhalten.
+Werkzeuge nutzt nur eine Frage an einen [Agenten](agenten.md); der gewöhnliche Chat braucht die
+Angabe nicht. Was vor dem Einschalten der Agenten zu prüfen ist, steht unter
+[Agenten betreiben](../betrieb/agenten-betreiben.md#nach-dem-update).
 
 1. Im Zeilenmenü „Werkzeugfähigkeit festlegen“.
 2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen.
@@ -60,11 +61,12 @@ stillschweigend ohne Werkzeuge. Der gewöhnliche Chat funktioniert mit jedem Wer
 
 Die Spalte „Werkzeuge“ zeigt neben dem Wert die **Grundlage** der Angabe und ihr Datum: „manuell
 gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennbar, ob „Fähig“ ein
-Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit der Messung unter
+Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit
+[Werkzeuge prüfen](#werkzeuge-prüfen) oder mit der Messung unter
 [Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen):
-Ergebnis und Kennung des Messlaufs aus dem Kopf des Berichts tragen Sie im Dialog mit der Grundlage
-„Gemessen“ ein. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die
-Schaltfläche heißt „Ersetzen“. Eine Person oder Gruppe steht nicht am
+Ergebnis und Kennung des Messlaufs tragen Sie im Dialog mit der Grundlage „Gemessen“ ein. Ersetzt
+eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die Schaltfläche heißt „Ersetzen“.
+Eine Person oder Gruppe steht nicht am
 Modell. Wer die Angabe geändert hat, steht im
 [Nachweisprotokoll](nachweisprotokoll-lesen.md) als Änderung des Chat-Modells, mit dem Wert vorher
 und nachher.
@@ -82,6 +84,33 @@ Instanzen die neue Version fahren, oder die Angabe danach selbst auf „Ungeprü
 
 Ist das aktive Modell beim Start „Ungeprüft“, schreibt jede Instanz eine Warnung ins Log; der Start
 läuft weiter.
+
+## Werkzeuge prüfen
+
+Ist der Schalter „Agenten“ eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
+ohne Quellstand und ohne Kommandozeile. Ist er aus, fehlt der Menüpunkt.
+
+Für Agenten braucht OPAA ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
+Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorher.
+
+1. Im Zeilenmenü „Werkzeuge prüfen“.
+2. Umfang wählen: „Schnell“ (jeder Fall einmal) für einen ersten Eindruck, „Gründlich“ (jeder Fall
+   dreimal) für eine Angabe, die Sie festhalten wollen. „Prüfung starten“.
+3. Nach einigen Minuten zeigt der Dialog je Prüffrage das Ergebnis und ob die Mindestanforderung
+   erfüllt ist. „Ergebnis übernehmen“ öffnet „Werkzeugfähigkeit festlegen“ mit „Fähig“ oder
+   „Nicht fähig“, Grundlage „Gemessen“ und der Kennung des Messlaufs; Speichern hält es fest.
+
+**Gut zu wissen:**
+
+- Die Prüfung stellt dem Modell erfundene Fragen mit dem Suchwerkzeug der Agenten; Bibliotheken und
+  Chats berührt sie nicht. Sie läuft auf dem Server weiter, wenn Sie den Dialog schließen, und es
+  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab; bis OPAA das
+  merkt, erscheint sie bis zu 15 Minuten als laufend, und so lange lässt sich keine neue starten.
+- Schaltet jemand die Agenten ab, bricht eine laufende Prüfung nach dem aktuellen Fall ab. Scheitern
+  Aufrufe am Endpunkt, etwa an einer Drosselung, endet sie als gescheitert statt mit einem Ergebnis.
+- „Bericht herunterladen“ liefert den vollständigen Bericht mit jedem Lauf im Wortlaut, wie die
+  Messung unter [Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen).
+- Ein Ergebnis für eine frühere Basis-Adresse oder Modell-Kennung lässt sich nicht übernehmen.
 
 ## Embedding-Modell wechseln
 

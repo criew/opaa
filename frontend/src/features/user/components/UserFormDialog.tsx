@@ -9,7 +9,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
   LocalUserCreateRequest,
@@ -22,7 +21,7 @@ import type {
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { useUserAdminStore } from '../stores/userAdminStore'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import LocalUserChatCleanupSection from './LocalUserChatCleanupSection'
 import {
   PRIVILEGED_CONFIRM_PURPOSE,
@@ -67,9 +66,6 @@ const MODE_LABEL: Record<LocalUserCreationMode, string> = {
   INVITE: 'Einladung per E-Mail senden',
   INITIAL_PASSWORD: 'Anfangspasswort jetzt erzeugen (Wechsel bei der ersten Anmeldung)',
 }
-
-// Required fields carry aria-required but no asterisk (guidelines 5.2).
-const REQUIRED_FIELD_SLOTS = { inputLabel: { required: false } } as const
 
 interface UserDraft {
   email: string
@@ -269,14 +265,13 @@ export default function UserFormDialog({
         )}
         <Stack spacing={2}>
           <Box>
-            <FieldLabel htmlFor="user-form-email">E-Mail-Adresse (Kennung)</FieldLabel>
-            <TextField
+            <FormField
+              label="E-Mail-Adresse (Kennung)"
               id="user-form-email"
               fullWidth
               size="small"
               type="email"
               required
-              slotProps={REQUIRED_FIELD_SLOTS}
               value={draft.email}
               onChange={(e) => update({ email: e.target.value })}
               error={Boolean(fieldErrors.email)}
@@ -284,13 +279,12 @@ export default function UserFormDialog({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="user-form-display-name">Anzeigename</FieldLabel>
-            <TextField
+            <FormField
+              label="Anzeigename"
               id="user-form-display-name"
               fullWidth
               size="small"
               required
-              slotProps={REQUIRED_FIELD_SLOTS}
               value={draft.displayName}
               onChange={(e) => update({ displayName: e.target.value })}
               error={Boolean(fieldErrors.displayName)}
@@ -298,20 +292,12 @@ export default function UserFormDialog({
             />
           </Box>
           <Box>
-            <FieldLabel id="user-form-role-label" htmlFor="user-form-role">
-              Rolle
-            </FieldLabel>
-            <TextField
+            <FormField
+              label="Rolle"
               id="user-form-role"
               select
               fullWidth
               size="small"
-              // A <label for> names only real form elements; MUI's select renders a
-              // display with role="combobox" that needs its name via aria-labelledby (axe
-              // aria-input-field-name, serious). Pattern as in AssetGrantsDialog.
-              slotProps={{
-                select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
-              }}
               value={draft.systemRole}
               disabled={roleLocked}
               onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
@@ -323,11 +309,11 @@ export default function UserFormDialog({
                   {SYSTEM_ROLE_LABEL[role]}
                 </MenuItem>
               ))}
-            </TextField>
+            </FormField>
           </Box>
           <Box>
-            <FieldLabel htmlFor="user-form-expires-at">Ablaufdatum</FieldLabel>
-            <TextField
+            <FormField
+              label="Ablaufdatum"
               id="user-form-expires-at"
               fullWidth
               size="small"
@@ -358,15 +344,14 @@ export default function UserFormDialog({
             </Typography>
           </Box>
           <Box>
-            <FieldLabel htmlFor="user-form-created-reason">Anlagegrund</FieldLabel>
-            <TextField
+            <FormField
+              label="Anlagegrund"
               id="user-form-created-reason"
               fullWidth
               size="small"
               required
               multiline
-              minRows={2}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 200 } }}
+              slotProps={{ htmlInput: { maxLength: 200 } }}
               value={draft.createdReason}
               onChange={(e) => update({ createdReason: e.target.value })}
               error={Boolean(fieldErrors.createdReason)}

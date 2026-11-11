@@ -266,12 +266,14 @@ opaa:
   # Limits of an agent run and of the runs at the same time (ADR-0070, Entscheidung 6). An agent may
   # only lower the four run limits. workspace-capacity is the installation's absolute figure, the
   # same on every instance; a request beyond it is refused before its run begins.
+  # workspace-capacity-per-person is one person's share of it (at least 1, at most the capacity).
   agent:
     max-tool-calls: ${OPAA_AGENT_MAX_TOOL_CALLS:5}
     max-search-calls: ${OPAA_AGENT_MAX_SEARCH_CALLS:3}
     max-duration: ${OPAA_AGENT_MAX_DURATION:120s}
     max-collected-chars: ${OPAA_AGENT_MAX_COLLECTED_CHARS:60000}
     workspace-capacity: ${OPAA_AGENT_WORKSPACE_CAPACITY:2}
+    workspace-capacity-per-person: ${OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON:1}
     closing-call-allowance: ${OPAA_AGENT_CLOSING_CALL_ALLOWANCE:60s}
   # The isolated execution environment behind the agent tools run_code and fill_template
   # (ADR-0073): an OpenSandbox server that starts one sandbox without network per agent run. Off by
@@ -1032,6 +1034,11 @@ logging:
     org.springframework.web.method.HandlerMethod: INFO
     org.hibernate.validator.internal.engine.resolver.JPATraversableResolver: INFO
     org.postgresql.core.v3.QueryExecutorImpl: INFO
+    # Tomcat prints every received request head and the start of its body at DEBUG - the
+    # Authorization header with a bearer token, a password in a sign-in body. Pinned so raising
+    # org.apache or the root logger for diagnosis never prints one; guarded by
+    # McpServerIntegrationTest#noBearerValueReachesALogLine.
+    org.apache.coyote.http11.Http11InputBuffer: INFO
 
 ---
 spring:

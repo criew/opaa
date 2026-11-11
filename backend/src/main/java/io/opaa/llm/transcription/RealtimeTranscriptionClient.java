@@ -3,6 +3,7 @@ package io.opaa.llm.transcription;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.compliance.DataFlow;
+import io.opaa.llm.ModelEndpointAccess;
 import io.opaa.llm.ModelRoleHttp;
 import io.opaa.observability.OutboundMetrics;
 import io.opaa.observability.OutboundOutcome;
@@ -258,7 +259,8 @@ public class RealtimeTranscriptionClient {
       }
       WebSocket.Builder builder = httpClient.newWebSocketBuilder().connectTimeout(timeout);
       if (StringUtils.hasText(endpoint.apiKey())) {
-        builder.header("Authorization", "Bearer " + endpoint.apiKey());
+        builder.header(
+            "Authorization", "Bearer " + ModelEndpointAccess.headerSafe(endpoint.apiKey()));
       }
       CompletableFuture<WebSocket> handshake;
       try {

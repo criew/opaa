@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import FormLabel from '@mui/material/FormLabel'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import { UserPicker } from '@/features/principal'
 import type { ServiceAccountResponse, UserSummary } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
@@ -141,7 +141,7 @@ function AccountForm({
     >
       <Stack spacing={2.5} sx={{ mt: 1 }}>
         {formError && <Alert severity="error">{formError}</Alert>}
-        <TextField
+        <FormField
           label="Name"
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -153,14 +153,14 @@ function AccountForm({
           fullWidth
           slotProps={{ htmlInput: { maxLength: 120 } }}
         />
-        <TextField
-          label="Beschreibung (optional)"
+        <FormField
+          label="Beschreibung"
+          optional
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           size="small"
           fullWidth
           multiline
-          minRows={2}
           slotProps={{ htmlInput: { maxLength: 1000 } }}
         />
         <Stack spacing={0.75}>
@@ -179,8 +179,9 @@ function AccountForm({
             grow
           />
         </Stack>
-        <TextField
-          label="Anfragen je Stunde (optional)"
+        <FormField
+          label="Anfragen je Stunde"
+          optional
           value={rateLimit}
           onChange={(event) => setRateLimit(event.target.value)}
           inputRef={rateRef}

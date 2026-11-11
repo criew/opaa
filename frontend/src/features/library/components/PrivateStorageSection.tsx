@@ -10,7 +10,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   MaskedNumber,
@@ -29,7 +29,7 @@ import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { contentWidth, fieldWidth, fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -145,58 +145,51 @@ function QuotaForm({
 
   return (
     <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'flex-start' } }}
-      >
-        <TextField
-          label="Grenze je Person (GB)"
-          size="small"
-          value={draft}
-          disabled={unlimited}
-          onChange={(event) => {
-            setDraft(event.target.value)
-            setSaveError(null)
-          }}
-          error={!valid}
-          helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
-          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: fieldWidth.short }}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={unlimited}
-              onChange={(event) => {
-                setUnlimited(event.target.checked)
-                setSaveError(null)
-              }}
+      <FormField
+        label="Grenze je Person (GB)"
+        size="small"
+        value={draft}
+        disabled={unlimited}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setSaveError(null)
+        }}
+        error={!valid}
+        helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
+        numeric
+        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+        sx={{ maxWidth: formWidth.column }}
+        action={
+          <>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={unlimited}
+                  onChange={(event) => {
+                    setUnlimited(event.target.checked)
+                    setSaveError(null)
+                  }}
+                />
+              }
+              label="Unbegrenzt"
             />
-          }
-          label="Unbegrenzt"
-        />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          busy={busy}
-          busyAnnouncement="Grenze wird gespeichert"
-          disabled={!changed && !busy}
-          sx={{ mt: { sm: 0.25 } }}
-        >
-          Grenze speichern
-        </BusyButton>
-        {current.overridden && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onClick={() => void handleReset()}
-            sx={{ mt: { sm: 0.25 } }}
-          >
-            Werkseinstellung wiederherstellen
-          </Button>
-        )}
-      </Stack>
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              busy={busy}
+              busyAnnouncement="Grenze wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Grenze speichern
+            </BusyButton>
+            {current.overridden && (
+              <Button variant="text" disabled={busy} onClick={() => void handleReset()}>
+                Werkseinstellung wiederherstellen
+              </Button>
+            )}
+          </>
+        }
+      />
       {saveError && (
         <Alert severity="error" role="alert" sx={{ mt: 2 }}>
           {saveError}

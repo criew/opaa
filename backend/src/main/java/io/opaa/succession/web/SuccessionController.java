@@ -57,6 +57,7 @@ public class SuccessionController {
   public SuccessionSettingsResponse updateSuccessionSettings(
       @RequestBody SuccessionSettingsRequest request, @Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(
-        settings.change(caller, request.getAgingThresholdMonths()));
+        settings.change(
+            caller, request.getAgingThresholdMonths(), request.getResponsibleLockDays()));
   }
 }

@@ -4,7 +4,9 @@ import io.opaa.api.types.AgentPlanStep;
 import io.opaa.api.types.AssetRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
+import io.opaa.asset.AssetResponsibilityService;
 import io.opaa.asset.AssetShellService;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -28,6 +30,10 @@ class AgentResearchProvisioner {
   static final String RESEARCH_NAME = "Recherche";
   static final String RESEARCH_PURPOSE =
       "Trägt Wissen in mehreren Schritten zusammen und antwortet gegliedert mit Fundstellen.";
+
+  /** The responsible unit of the delivered agent, the same the migration names for an older one. */
+  static final String RESEARCH_RESPONSIBLE = "Systemverwaltung";
+
   static final String RESEARCH_INSTRUCTION =
       "Zerlege die Frage in Teilfragen und suche zu jeder gezielt. Lies bei wichtigen Fundstellen im"
           + " Dokument weiter. Antworte gegliedert, belege jede Aussage mit ihrer Fundstelle und"
@@ -38,12 +44,15 @@ class AgentResearchProvisioner {
   private final AgentRepository agentRepository;
   private final AssetShellService shellService;
   private final AssetGrantService grantService;
+  private final AssetResponsibilityService responsibilityService;
 
   AgentResearchProvisioner(
       JdbcTemplate jdbc,
       AgentRepository agentRepository,
       AssetShellService shellService,
-      AssetGrantService grantService) {
+      AssetGrantService grantService,
+      AssetResponsibilityService responsibilityService) {
+    this.responsibilityService = responsibilityService;
     this.jdbc = jdbc;
     this.agentRepository = agentRepository;
     this.shellService = shellService;
@@ -80,6 +89,7 @@ class AgentResearchProvisioner {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", saved.getName());
     shellService.registerCreated(saved, administrator.id(), payload);
+    responsibilityService.establish(saved, ResponsibleUnit.ofFunction(RESEARCH_RESPONSIBLE));
     grantService.upsertGrant(
         Agent.ASSET_TYPE,
         saved.getId(),
