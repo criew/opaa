@@ -34,9 +34,26 @@ export const INITIAL_GROUP_FILTERS: GroupFilters = {
   page: 0,
 }
 
+/** Whether a search or filter narrows the list; sort and page do not. */
+export function narrowsGroups(filters: GroupFilters): boolean {
+  const { query, origin, providerId, kind, state } = INITIAL_GROUP_FILTERS
+  return (
+    filters.query.trim() !== query ||
+    filters.origin !== origin ||
+    filters.providerId !== providerId ||
+    filters.kind !== kind ||
+    filters.state !== state
+  )
+}
+
 interface GroupAdminListState {
   groups: GroupListResponse[]
+  /** The groups the current filters leave. */
   total: number
+  /** All groups without any filter, for „12 von 40“; null while unknown. */
+  overallTotal: number | null
+  /** The last count request failed; `overallTotal` then repeats the filtered total. */
+  countFailed: boolean
   size: number
   filters: GroupFilters
   /** „Wo wirkt diese Gruppe" for the rows of the current page only. */
@@ -46,7 +63,7 @@ interface GroupAdminListState {
 
   reset: () => void
   /** Loads the page the current {@link GroupFilters} describe, then its effects. */
-  loadGroups: () => Promise<void>
+  loadGroups: (options?: { keepCount?: boolean }) => Promise<void>
   /**
    * Merges `patch` into the filters and reloads. Every change but an explicit page jump returns
    * to the first page, so a narrowing filter never lands on a page that no longer exists.
@@ -57,6 +74,8 @@ interface GroupAdminListState {
 const emptyState = {
   groups: [] as GroupListResponse[],
   total: 0,
+  overallTotal: null as number | null,
+  countFailed: false,
   size: GROUP_PAGE_SIZE,
   filters: INITIAL_GROUP_FILTERS,
   effects: {} as Record<string, GroupEffectsResponse>,
@@ -87,7 +106,7 @@ export const useGroupAdminListStore = create<GroupAdminListState>((set, get) => 
     set({ ...emptyState })
   },
 
-  loadGroups: async () => {
+  loadGroups: async (options) => {
     const sessionEpoch = currentSessionEpoch()
     requestSequence += 1
     const requestId = requestSequence
@@ -95,10 +114,30 @@ export const useGroupAdminListStore = create<GroupAdminListState>((set, get) => 
     const { query, ...rest } = get().filters
     set({ isLoading: true, error: null })
     let groupIds: string[]
+    // The count beside the title needs the unfiltered total. A filter change reuses the known
+    // one; every other load (first, retry, after a write) counts again. A failed count falls
+    // back to the total of the filtered list instead of failing the list.
+    const known = options?.keepCount && !get().countFailed ? get().overallTotal : null
+    const overall = !narrowsGroups(get().filters)
+      ? null
+      : known !== null
+        ? Promise.resolve(known)
+        : listGroupPage({ size: 1 }).then(
+            (all) => all.total,
+            () => null,
+          )
     try {
       const result = await listGroupPage({ query: query.trim(), ...rest })
+      const counted = overall === null ? result.total : await overall
       if (isStale()) return
-      set({ groups: result.items, total: result.total, size: result.size, isLoading: false })
+      set({
+        groups: result.items,
+        total: result.total,
+        overallTotal: counted ?? result.total,
+        countFailed: counted === null,
+        size: result.size,
+        isLoading: false,
+      })
       groupIds = result.items.map((group) => group.id)
     } catch (err) {
       if (isStale()) return
@@ -118,7 +157,7 @@ export const useGroupAdminListStore = create<GroupAdminListState>((set, get) => 
 
   setFilters: async (patch) => {
     set({ filters: { ...get().filters, ...patch, page: patch.page ?? 0 } })
-    await get().loadGroups()
+    await get().loadGroups({ keepCount: true })
   },
 }))
 

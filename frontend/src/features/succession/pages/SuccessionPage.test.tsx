@@ -263,15 +263,16 @@ describe('SuccessionPage', () => {
 
     await screen.findByText('Bauakten Referat 50')
     const pagination = screen.getByRole('navigation', { name: 'Seiten der Liste' })
-    await user.click(within(pagination).getByRole('button', { name: /2/ }))
+    expect(pagination).toHaveTextContent('Seite 1 von 2')
+    await user.click(within(pagination).getByRole('button', { name: 'Nächste Seite' }))
 
     expect(await screen.findByText(/Diese Seite ist inzwischen leer/)).toBeInTheDocument()
     expect(screen.queryByText(/^Zurzeit ist hier nichts offen\./)).toBeNull()
     expect(
       within(screen.getByRole('navigation', { name: 'Seiten der Liste' })).getByRole('button', {
-        name: /1/,
+        name: 'Vorherige Seite',
       }),
-    ).toBeInTheDocument()
+    ).toBeEnabled()
   })
 
   it('asks for the shown tab only, once', async () => {

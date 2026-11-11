@@ -1,24 +1,14 @@
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
 import {
@@ -49,46 +39,70 @@ function ClaimCell({ provider }: { provider: OidcProviderResponse }) {
     systemAdminRole ? `SYSTEM_ADMIN = ${systemAdminRole}` : null,
     auditorRole ? `AUDITOR = ${auditorRole}` : null,
   ].filter((wert): wert is string => wert !== null)
+  const roles = rolesClaim
+    ? `Rollen aus dem Token: ${rollenwerte.length > 0 ? rollenwerte.join(', ') : 'keine Rollenwerte gesetzt'}`
+    : 'Rollen in OPAA verwaltet'
   return (
     <>
-      <Box component="span" sx={{ display: 'block' }}>
-        {rolesClaim ? 'Rollen aus dem Token' : 'Rollen in OPAA verwaltet'}
-      </Box>
-      {rolesClaim && (
-        <Typography
-          sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
-        >
-          {rollenwerte.length > 0 ? rollenwerte.join(', ') : 'keine Rollenwerte gesetzt'}
-        </Typography>
-      )}
-      <Typography
-        sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
-      >
+      <ListText>{roles}</ListText>
+      <ListText secondary>
         {groupsClaim ? `Gruppen aus ${groupsClaim}` : 'Keine Gruppen aus dem Token'}
-      </Typography>
+      </ListText>
     </>
+  )
+}
+
+function NameCell({ provider }: { provider: OidcProviderResponse }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, minWidth: 0 }}>
+      <ProviderMonogram
+        name={provider.displayName}
+        size={28}
+        tone={provider.enabled ? 'accent' : 'muted'}
+      />
+      <Box sx={{ minWidth: 0 }}>
+        <ListText strong>{provider.displayName}</ListText>
+        <ListText mono secondary>
+          {provider.issuerUri}
+        </ListText>
+      </Box>
+    </Box>
+  )
+}
+
+/**
+ * State in one line, „Standard" beside it. Why a provider is unreachable - its answer, verbatim -
+ * stands below: „Nicht erreichbar" alone does not say whether the address is wrong or the
+ * service is down.
+ */
+function StateCell({ provider }: { provider: OidcProviderResponse }) {
+  const state = providerState(provider)
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+        <ProviderStateDot state={state} />
+        <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
+        {isPerInstance(state) && (
+          <Box component="span" sx={{ color: 'text.secondary', fontSize: fontSize.meta }}>
+            · {PER_INSTANCE_NOTE}
+          </Box>
+        )}
+        {provider.isDefault && <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>}
+      </Box>
+      {state === 'unreachable' && <ListText secondary>{provider.registryMessage}</ListText>}
+    </Box>
   )
 }
 
 interface ProviderRowProps {
   provider: OidcProviderResponse
-  position: number
   isFirst: boolean
   isLast: boolean
-  isLastEnabled: boolean
-  canDisable: boolean
-  canDelete: boolean
   onMove: (provider: OidcProviderResponse, direction: 'up' | 'down') => void
-  onEdit: ProviderListProps['onEdit']
 }
 
 /** The order buttons; the same names in both presentations. */
-function OrderButtons({
-  provider,
-  isFirst,
-  isLast,
-  onMove,
-}: Pick<ProviderRowProps, 'provider' | 'isFirst' | 'isLast' | 'onMove'>) {
+function OrderButtons({ provider, isFirst, isLast, onMove }: ProviderRowProps) {
   return (
     <>
       <IconButton
@@ -108,99 +122,6 @@ function OrderButtons({
         <ArrowDownwardIcon fontSize="small" />
       </IconButton>
     </>
-  )
-}
-
-/** The same details stacked - a narrow window cannot carry a six-column table,
- *  and the page must not scroll horizontally for it (pattern of the account and model list). */
-function ProviderCard({
-  provider,
-  position,
-  isFirst,
-  isLast,
-  isLastEnabled,
-  canDisable,
-  canDelete,
-  onMove,
-  onEdit,
-}: ProviderRowProps) {
-  const state = providerState(provider)
-  return (
-    <Box sx={{ py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
-        <Typography
-          sx={{
-            fontSize: fontSize.meta,
-            color: 'text.secondary',
-            fontFamily: fontFamily.mono,
-            mt: 0.5,
-          }}
-        >
-          {position}
-        </Typography>
-        <ProviderMonogram
-          name={provider.displayName}
-          size={28}
-          tone={provider.enabled ? 'accent' : 'muted'}
-        />
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
-            {provider.displayName}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: fontSize.meta,
-              color: 'text.secondary',
-              fontFamily: fontFamily.mono,
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {provider.issuerUri}
-          </Typography>
-        </Box>
-        <Box sx={{ flex: 'none', whiteSpace: 'nowrap' }}>
-          <OrderButtons provider={provider} isFirst={isFirst} isLast={isLast} onMove={onMove} />
-          <ProviderRowMenu
-            provider={provider}
-            isLastEnabled={isLastEnabled}
-            canDisable={canDisable}
-            canDelete={canDelete}
-            onEdit={onEdit}
-          />
-        </Box>
-      </Box>
-      <Box
-        sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75, fontSize: fontSize.meta }}
-      >
-        <ProviderStateDot state={state} />
-        <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
-        {isPerInstance(state) && (
-          <Box component="span" sx={{ color: 'text.secondary' }}>
-            · {PER_INSTANCE_NOTE}
-          </Box>
-        )}
-        {provider.isDefault && <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>}
-      </Box>
-      {state === 'unreachable' && provider.registryMessage && (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
-          {provider.registryMessage}
-        </Typography>
-      )}
-      <Typography
-        sx={{
-          fontSize: fontSize.meta,
-          color: 'text.secondary',
-          fontFamily: fontFamily.mono,
-          mt: 0.5,
-          overflowWrap: 'anywhere',
-        }}
-      >
-        {provider.clientId}
-      </Typography>
-      <Box sx={{ fontSize: fontSize.meta, mt: 0.5 }}>
-        <ClaimCell provider={provider} />
-      </Box>
-    </Box>
   )
 }
 
@@ -224,8 +145,6 @@ function ProviderCard({
 export default function ProviderList({ providers, onEdit }: ProviderListProps) {
   const moveProvider = useOidcProviderStore((s) => s.moveProvider)
   const enabledCount = providers.filter((p) => p.enabled).length
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
 
   async function move(provider: OidcProviderResponse, direction: 'up' | 'down') {
     try {
@@ -238,161 +157,69 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
     }
   }
 
-  if (!isDesktop) {
-    return (
-      <Box>
-        {providers.map((provider, index) => (
-          <ProviderCard
-            key={provider.id}
+  return (
+    <AdminList
+      label="Identitätsanbieter"
+      rows={providers}
+      rowKey={(provider) => provider.id}
+      rowLabel={(provider) => provider.displayName}
+      minWidth={860}
+      columns={[
+        {
+          id: 'position',
+          head: 'Nr.',
+          headNote: 'auf der Anmeldeseite',
+          width: 52,
+          card: 'hidden',
+          cell: (_provider, index) => (
+            <Box component="span" sx={{ color: 'text.secondary', fontFamily: fontFamily.mono }}>
+              {index + 1}
+            </Box>
+          ),
+        },
+        {
+          id: 'provider',
+          head: 'Anbieter',
+          card: 'title',
+          cell: (provider) => <NameCell provider={provider} />,
+        },
+        {
+          id: 'state',
+          head: 'Zustand',
+          width: '21%',
+          cell: (provider) => <StateCell provider={provider} />,
+        },
+        {
+          id: 'clientId',
+          head: 'Client-ID',
+          width: '15%',
+          cell: (provider) => <ListText mono>{provider.clientId}</ListText>,
+        },
+        {
+          id: 'claims',
+          head: 'Aus dem Token',
+          width: '22%',
+          cell: (provider) => <ClaimCell provider={provider} />,
+        },
+      ]}
+      actionsWidth={128}
+      rowActions={(provider, index) => (
+        <>
+          <OrderButtons
             provider={provider}
-            position={index + 1}
             isFirst={index === 0}
             isLast={index === providers.length - 1}
+            onMove={(p, richtung) => void move(p, richtung)}
+          />
+          <ProviderRowMenu
+            provider={provider}
             isLastEnabled={provider.enabled && enabledCount === 1}
             canDisable={!provider.isDefault || enabledCount <= 1}
             canDelete={!provider.isDefault || providers.length === 1}
-            onMove={(p, richtung) => void move(p, richtung)}
             onEdit={onEdit}
           />
-        ))}
-      </Box>
-    )
-  }
-
-  return (
-    <TableContainer
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Identitätsanbieter, horizontal scrollbar"
-    >
-      <Table
-        size="small"
-        aria-label="Identitätsanbieter"
-        sx={{
-          minWidth: 860,
-          tableLayout: 'fixed',
-          '& th': {
-            fontFamily: fontFamily.mono,
-            fontSize: fontSize.label,
-            letterSpacing: '0.08em',
-          },
-          '& td': { fontSize: fontSize.text, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
-        }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ width: 52 }}>
-              Nr.
-              <span style={visuallyHidden}> auf der Anmeldeseite</span>
-            </TableCell>
-            <TableCell>Anbieter</TableCell>
-            <TableCell sx={{ width: '19%' }}>Zustand</TableCell>
-            <TableCell sx={{ width: '17%' }}>Client-ID</TableCell>
-            <TableCell sx={{ width: '20%' }}>Aus dem Token</TableCell>
-            <TableCell align="right" sx={{ width: 128 }}>
-              <span style={visuallyHidden}>Reihenfolge und Aktionen</span>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {providers.map((provider, index) => {
-            const state = providerState(provider)
-            const isLastEnabled = provider.enabled && enabledCount === 1
-            return (
-              <TableRow key={provider.id}>
-                <TableCell sx={{ color: 'text.secondary', fontFamily: fontFamily.mono }}>
-                  {index + 1}
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
-                    <ProviderMonogram
-                      name={provider.displayName}
-                      size={28}
-                      tone={provider.enabled ? 'accent' : 'muted'}
-                    />
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography
-                        component="span"
-                        sx={{ fontSize: fontSize.text, fontWeight: 600 }}
-                      >
-                        {provider.displayName}
-                      </Typography>
-                      <Tooltip title={provider.issuerUri}>
-                        <Typography
-                          sx={{
-                            fontSize: fontSize.meta,
-                            color: 'text.secondary',
-                            fontFamily: fontFamily.mono,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {provider.issuerUri}
-                        </Typography>
-                      </Tooltip>
-                    </Box>
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75 }}>
-                    <ProviderStateDot state={state} />
-                    <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
-                    {isPerInstance(state) && (
-                      <Box
-                        component="span"
-                        sx={{ color: 'text.secondary', fontSize: fontSize.meta }}
-                      >
-                        · {PER_INSTANCE_NOTE}
-                      </Box>
-                    )}
-                  </Box>
-                  {/* Why it is unreachable - the provider's answer, verbatim. „Nicht
-                       erreichbar" alone does not say whether the address is wrong or the service
-                       is down. */}
-                  {state === 'unreachable' && provider.registryMessage && (
-                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.25 }}>
-                      {provider.registryMessage}
-                    </Typography>
-                  )}
-                  {provider.isDefault && (
-                    <Box sx={{ mt: 0.5 }}>
-                      <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>
-                    </Box>
-                  )}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    fontFamily: fontFamily.mono,
-                    fontSize: fontSize.meta,
-                    overflowWrap: 'anywhere',
-                  }}
-                >
-                  {provider.clientId}
-                </TableCell>
-                <TableCell>
-                  <ClaimCell provider={provider} />
-                </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                  <OrderButtons
-                    provider={provider}
-                    isFirst={index === 0}
-                    isLast={index === providers.length - 1}
-                    onMove={(p, richtung) => void move(p, richtung)}
-                  />
-                  <ProviderRowMenu
-                    provider={provider}
-                    isLastEnabled={isLastEnabled}
-                    canDisable={!provider.isDefault || enabledCount <= 1}
-                    canDelete={!provider.isDefault || providers.length === 1}
-                    onEdit={onEdit}
-                  />
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </>
+      )}
+    />
   )
 }

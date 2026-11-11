@@ -203,6 +203,7 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
 - `metrics.jsonl`, eine Zeile je Screenshot: `appliedScheme` (tatsächlich dargestelltes Schema),
   `overflowX`, `docHeight`, `clippedText`, `disabledSubmits` (davon in Dialogen:
   `disabledDialogSubmits`), `alertCount`/`alertSeverities`,
+  `tableColumns`, `rowPrimaryButtons`,
   `invalidFields`, `focusable`, `fontSizes`, `colors`, `words`, `uiWords`, `helpTexts`,
   `helpTextsPerForm`, `helpTextMaxLines`, `budgetViolations`, `headings`, `axe` (hell: WCAG 2.0–2.2
   A/AA und best-practice mit `target-size`; dunkel: nur `color-contrast`; je Kontrastbefund Farben

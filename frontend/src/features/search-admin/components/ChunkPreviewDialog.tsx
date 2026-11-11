@@ -3,10 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import type { ChunkInspectionResponse } from '@/shared/api/types'
@@ -19,6 +15,7 @@ import { formatMetadataValue } from '../utils/searchAdminLabels'
 import ChunkContent from './ChunkContent'
 import { fontSize } from '@/shared/theme/tokens'
 import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
@@ -120,20 +117,26 @@ export default function ChunkPreviewDialog({
                 Zu diesem Chunk sind keine Metadaten gespeichert.
               </Typography>
             ) : (
-              <Table size="small" aria-label="Chunk-Metadaten">
-                <TableBody>
-                  {metadataEntries.map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell component="th" scope="row" sx={{ width: '30%' }}>
-                        <code>{key}</code>
-                      </TableCell>
-                      <TableCell sx={{ wordBreak: 'break-word' }}>
-                        {formatMetadataValue(value)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <AdminList
+                label="Chunk-Metadaten"
+                rows={metadataEntries}
+                rowKey={([key]) => key}
+                rowLabel={([key]) => key}
+                columns={[
+                  {
+                    id: 'key',
+                    head: 'Feld',
+                    width: '30%',
+                    cell: ([key]) => <ListText mono>{key}</ListText>,
+                  },
+                  {
+                    id: 'value',
+                    head: 'Wert',
+                    wrap: true,
+                    cell: ([, value]) => formatMetadataValue(value),
+                  },
+                ]}
+              />
             )}
           </Box>
         </Stack>

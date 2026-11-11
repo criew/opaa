@@ -426,7 +426,6 @@ export default function ChatsPage() {
                 size={CHAT_PAGE_SIZE}
                 page={tab === 'active' ? shownActivePage : (archive?.page ?? 0)}
                 onPage={changePage}
-                countLabel={chatCount(tab === 'active' ? orderedActive.length : archivedCount)}
               />
             </Box>
           </Box>

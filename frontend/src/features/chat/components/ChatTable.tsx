@@ -1,19 +1,10 @@
 import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { useTheme } from '@mui/material/styles'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import type { ChatSummary } from '@/shared/api/types'
-import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
+import AdminList, { ListText, type AdminListColumn } from '@/shared/ui/list/AdminList'
 import ChatRowMenu from './ChatRowMenu'
 import type { ChatRowActions } from './ChatRowMenu'
 import { chatTitle } from './chatListSections'
@@ -31,43 +22,11 @@ interface ChatTableProps extends ChatRowActions {
   busy: boolean
 }
 
-/** The selection column, aligned under "Alle auf dieser Seite auswählen". A plain cell rather
- *  than padding="checkbox": the theme narrows that one to the size of a bare box. */
-const SELECT_CELL_SX = { width: 52, pl: 1.5, pr: 0 } as const
-
-/** The title as the way into the chat, plus the pin mark as its second line. */
-function TitleCell({
-  chat,
-  spaceId,
-  onOpen,
-}: {
-  chat: ChatSummary
-  spaceId: string
-  onOpen: (chatId: string) => void
-}) {
-  const title = chatTitle(chat)
+/** The title, plus the pin mark as its second line. */
+function TitleCell({ chat }: { chat: ChatSummary }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Link
-        href={`/spaces/${spaceId}/chats/${chat.id}`}
-        onClick={(event) => {
-          event.preventDefault()
-          onOpen(chat.id)
-        }}
-        underline="hover"
-        title={title}
-        sx={{
-          display: 'block',
-          fontSize: fontSize.text,
-          fontWeight: 500,
-          color: 'text.primary',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {title}
-      </Link>
+      <ListText strong>{chatTitle(chat)}</ListText>
       {chat.pinnedAt && (
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
           <PushPinOutlinedIcon
@@ -83,26 +42,10 @@ function TitleCell({
   )
 }
 
-function SelectBox({
-  chat,
-  selection,
-  onToggle,
-}: Pick<ChatTableProps, 'selection' | 'onToggle'> & { chat: ChatSummary }) {
-  return (
-    <Checkbox
-      size="small"
-      checked={selection.has(chat.id)}
-      onChange={() => onToggle(chat.id)}
-      slotProps={{ input: { 'aria-label': `„${chatTitle(chat)}“ auswählen` } }}
-      sx={{ p: 0.5 }}
-    />
-  )
-}
-
 /**
- * The chats of one tab, built from the same parts as the administration lists (Benutzer,
- * Gruppen): a fixed-layout table at desktop width, a plain list below it (guidelines 5.3). Each
- * row carries a selection box for the bulk actions and a row menu for the single ones.
+ * The chats of one tab, built from the same building block as the administration lists: a table
+ * at desktop width, a card list below it (guidelines 5.3). The whole row leads into the chat;
+ * each row carries a selection box for the bulk actions and a row menu for the single ones.
  */
 export default function ChatTable({
   spaceId,
@@ -115,93 +58,67 @@ export default function ChatTable({
   onAction,
   onPin,
 }: ChatTableProps) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
-
-  if (!isDesktop) {
-    return (
-      <Stack spacing={0}>
-        {rows.map((chat) => (
-          <Box component="article" key={chat.id} aria-label={chatTitle(chat)} sx={listCardSx}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-              <Box sx={{ pt: 0.25 }}>
-                <SelectBox chat={chat} selection={selection} onToggle={onToggle} />
-              </Box>
-              <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                <TitleCell chat={chat} spaceId={spaceId} onOpen={onOpen} />
-                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
-                  {archived && `Archiviert ${formatDateTime(chat.archivedAt)} · `}
-                  Zuletzt {formatDateTime(chat.updatedAt)}
-                </Typography>
-                {archived && chat.deletionDueAt && (
-                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                    {deletionDueLabel(chat.deletionDueAt)}
-                  </Typography>
+  const columns: AdminListColumn<ChatSummary>[] = [
+    { id: 'title', head: 'Titel', cell: (chat) => <TitleCell chat={chat} /> },
+    ...(archived
+      ? [
+          {
+            id: 'archivedAt',
+            head: 'Archiviert am',
+            width: '20%',
+            cell: (chat: ChatSummary) => (
+              <>
+                <ListText>{formatDateTime(chat.archivedAt)}</ListText>
+                {chat.deletionDueAt && (
+                  <ListText secondary>{deletionDueLabel(chat.deletionDueAt)}</ListText>
                 )}
-              </Box>
-              <ChatRowMenu
-                chat={chat}
-                archived={archived}
-                disabled={busy}
-                onAction={onAction}
-                onPin={onPin}
-              />
-            </Stack>
-          </Box>
-        ))}
-      </Stack>
-    )
-  }
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      id: 'updatedAt',
+      head: 'Letzte Aktivität',
+      width: '20%',
+      cell: (chat) => formatDateTime(chat.updatedAt),
+    },
+  ]
 
   return (
-    <Table size="small" aria-label={archived ? 'Chat-Archiv' : 'Aktive Chats'} sx={adminTableSx}>
-      <TableHead>
-        <TableRow>
-          <TableCell sx={SELECT_CELL_SX}>
-            <span style={visuallyHidden}>Auswahl</span>
-          </TableCell>
-          <TableCell>Titel</TableCell>
-          {archived && <TableCell sx={{ width: '20%' }}>Archiviert am</TableCell>}
-          <TableCell sx={{ width: '20%' }}>Letzte Aktivität</TableCell>
-          <TableCell align="right" sx={{ width: 56 }}>
-            <span style={visuallyHidden}>Aktionen</span>
-          </TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {rows.map((chat) => (
-          <TableRow key={chat.id} selected={selection.has(chat.id)}>
-            <TableCell sx={{ ...SELECT_CELL_SX, py: 0.75 }}>
-              <SelectBox chat={chat} selection={selection} onToggle={onToggle} />
-            </TableCell>
-            <TableCell>
-              <TitleCell chat={chat} spaceId={spaceId} onOpen={onOpen} />
-            </TableCell>
-            {archived && (
-              <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatDateTime(chat.archivedAt)}
-                {chat.deletionDueAt && (
-                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                    {deletionDueLabel(chat.deletionDueAt)}
-                  </Typography>
-                )}
-              </TableCell>
-            )}
-            <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
-              {formatDateTime(chat.updatedAt)}
-            </TableCell>
-            <TableCell align="right" sx={{ py: 0.5 }}>
-              <ChatRowMenu
-                chat={chat}
-                archived={archived}
-                disabled={busy}
-                onAction={onAction}
-                onPin={onPin}
-              />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <AdminList
+      label={archived ? 'Chat-Archiv' : 'Aktive Chats'}
+      rows={rows}
+      rowKey={(chat) => chat.id}
+      rowLabel={chatTitle}
+      columns={columns}
+      rowTarget={(chat) => ({
+        href: `/spaces/${spaceId}/chats/${chat.id}`,
+        onOpen: () => onOpen(chat.id),
+      })}
+      isSelected={(chat) => selection.has(chat.id)}
+      leading={{
+        head: 'Auswahl',
+        width: 52,
+        cell: (chat) => (
+          <Checkbox
+            size="small"
+            checked={selection.has(chat.id)}
+            onChange={() => onToggle(chat.id)}
+            slotProps={{ input: { 'aria-label': `„${chatTitle(chat)}“ auswählen` } }}
+            sx={{ p: 0.5 }}
+          />
+        ),
+      }}
+      rowActions={(chat) => (
+        <ChatRowMenu
+          chat={chat}
+          archived={archived}
+          disabled={busy}
+          onAction={onAction}
+          onPin={onPin}
+        />
+      )}
+    />
   )
 }

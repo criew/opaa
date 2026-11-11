@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import AdminList from '@/shared/ui/list/AdminList'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { useAuthStore } from '@/shared/session/authStore'
 import { listConnectionLog, listConnectionLogProfiles } from '../api/connectionLogApi'
@@ -213,51 +207,55 @@ export default function ConnectionLogPage() {
                 Aufbewahrungsfrist sind, sind gelöscht.
               </Typography>
             ) : (
-              <TableContainer>
-                <Table size="small" aria-label="Einträge des Verbindungsprotokolls">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Zeit</TableCell>
-                      <TableCell>Ereignis</TableCell>
-                      <TableCell>Grund des Endes</TableCell>
-                      <TableCell>Besitzart</TableCell>
-                      <TableCell>Person bzw. Bibliothek</TableCell>
-                      <TableCell>Zugang</TableCell>
-                      <TableCell>Ausgelöst von</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {result.entries.map((entry) => (
-                      <TableRow key={entry.eventId}>
-                        <TableCell>{formatProtocolTime(entry.recordedAt)}</TableCell>
-                        <TableCell>{eventTypeLabel(entry.eventType)}</TableCell>
-                        <TableCell>{entry.cause ? endCauseLabel(entry.cause) : '—'}</TableCell>
-                        <TableCell>{ownerKindLabel(entry.ownerKind)}</TableCell>
-                        <TableCell sx={{ wordBreak: 'break-all' }}>{ownerLabel(entry)}</TableCell>
-                        <TableCell>{entry.profileName}</TableCell>
-                        <TableCell>{actorLabel(entry.actor)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            {(result.page > 0 || result.hasMore) && (
-              <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
-                <Button
-                  disabled={result.page === 0 || isLoading}
-                  onClick={() => void load(applied, result.page - 1)}
-                >
-                  Zurück
-                </Button>
-                <Typography>Seite {result.page + 1}</Typography>
-                <Button
-                  disabled={!result.hasMore || isLoading}
-                  onClick={() => void load(applied, result.page + 1)}
-                >
-                  Weiter
-                </Button>
-              </Stack>
+              <AdminList
+                label="Einträge des Verbindungsprotokolls"
+                rows={result.entries}
+                rowKey={(entry) => entry.eventId}
+                rowLabel={(entry) =>
+                  `${eventTypeLabel(entry.eventType)}, ${formatProtocolTime(entry.recordedAt)}`
+                }
+                minWidth={920}
+                columns={[
+                  {
+                    id: 'time',
+                    head: 'Zeit',
+                    width: 168,
+                    card: 'line',
+                    cell: (entry) => formatProtocolTime(entry.recordedAt),
+                  },
+                  {
+                    id: 'event',
+                    head: 'Ereignis',
+                    card: 'title',
+                    cell: (entry) => eventTypeLabel(entry.eventType),
+                  },
+                  {
+                    id: 'cause',
+                    head: 'Endgrund',
+                    cell: (entry) => (entry.cause ? endCauseLabel(entry.cause) : '—'),
+                  },
+                  {
+                    id: 'ownerKind',
+                    head: 'Besitzart',
+                    width: '11%',
+                    card: 'hidden',
+                    cell: (entry) => ownerKindLabel(entry.ownerKind),
+                  },
+                  { id: 'owner', head: 'Besitzer', cell: (entry) => ownerLabel(entry) },
+                  { id: 'profile', head: 'Zugang', cell: (entry) => entry.profileName },
+                  {
+                    id: 'actor',
+                    head: 'Ausgelöst von',
+                    cell: (entry) => actorLabel(entry.actor),
+                  },
+                ]}
+                pager={{
+                  page: result.page,
+                  hasMore: result.hasMore,
+                  disabled: isLoading,
+                  onPage: (page) => void load(applied, page),
+                }}
+              />
             )}
           </>
         )}

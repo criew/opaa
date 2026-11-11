@@ -38,7 +38,7 @@ export async function openProfile(
 ): Promise<HTMLElement> {
   await user.click(
     await screen.findByRole('button', {
-      name: new RegExp(`^(Details|Beheben): ${escaped(name)}$`),
+      name: new RegExp(`^${escaped(name)}$`),
     }),
   )
   return screen.findByRole('dialog', { name })

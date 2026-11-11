@@ -1,18 +1,13 @@
-import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
-import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import { promptVariableTypeLabel, promptVariableTypes } from './promptLabels'
 import PromptVariableInput from './PromptVariableInput'
 
@@ -87,86 +82,92 @@ export default function PromptVariablesTable({ variables, onChange }: PromptVari
     )
   }
   return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <Table size="small" aria-label="Variablen">
-        <TableHead>
-          <TableRow>
-            <TableCell>Variable</TableCell>
-            <TableCell>Beschriftung</TableCell>
-            <TableCell>Typ</TableCell>
-            <TableCell>Pflicht</TableCell>
-            <TableCell>Vorbelegung</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {variables.map((variable) => (
-            <Fragment key={variable.name}>
-              <TableRow>
-                <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta }}>
-                  {`{{${variable.name}}}`}
-                </TableCell>
-                <TableCell sx={{ minWidth: 160 }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={variable.label}
-                    onChange={(e) => onChange({ ...variable, label: e.target.value })}
-                    slotProps={{
-                      htmlInput: {
-                        'aria-label': `Beschriftung von ${variable.name}`,
-                        maxLength: 255,
-                      },
-                    }}
-                  />
-                </TableCell>
-                <TableCell sx={{ minWidth: 170 }}>
-                  <Select
-                    size="small"
-                    fullWidth
-                    value={variable.type}
-                    onChange={(e) =>
-                      onChange(withType(variable, e.target.value as PromptVariableType))
-                    }
-                    aria-label={`Typ von ${variable.name}`}
-                  >
-                    {promptVariableTypes.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {promptVariableTypeLabel(type)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </TableCell>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={variable.required}
-                    onChange={(e) => onChange({ ...variable, required: e.target.checked })}
-                    slotProps={{ input: { 'aria-label': `${variable.name} ist Pflicht` } }}
-                  />
-                </TableCell>
-                <TableCell sx={{ minWidth: 160 }}>
-                  <PromptVariableInput
-                    variable={variable}
-                    value={variable.defaultValue ?? ''}
-                    onChange={(value) => onChange({ ...variable, defaultValue: value || null })}
-                    ariaLabel={`Vorbelegung von ${variable.name}`}
-                  />
-                </TableCell>
-              </TableRow>
-              {variable.type === 'SELECT' && (
-                <TableRow>
-                  <TableCell />
-                  <TableCell colSpan={4}>
-                    <OptionsField
-                      variable={variable}
-                      onChange={(options) => onChange({ ...variable, options })}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </Fragment>
-          ))}
-        </TableBody>
-      </Table>
-    </Box>
+    <AdminList
+      label="Variablen"
+      rows={variables}
+      rowKey={(variable) => variable.name}
+      rowLabel={(variable) => variable.name}
+      minWidth={640}
+      columns={[
+        {
+          id: 'name',
+          head: 'Variable',
+          width: '20%',
+          cell: (variable) => <ListText mono>{`{{${variable.name}}}`}</ListText>,
+        },
+        {
+          id: 'label',
+          head: 'Beschriftung',
+          cell: (variable) => (
+            <TextField
+              size="small"
+              fullWidth
+              value={variable.label}
+              onChange={(e) => onChange({ ...variable, label: e.target.value })}
+              slotProps={{
+                htmlInput: {
+                  'aria-label': `Beschriftung von ${variable.name}`,
+                  maxLength: 255,
+                },
+              }}
+            />
+          ),
+        },
+        {
+          id: 'type',
+          head: 'Typ',
+          width: '22%',
+          cell: (variable) => (
+            <Select
+              size="small"
+              fullWidth
+              value={variable.type}
+              onChange={(e) => onChange(withType(variable, e.target.value as PromptVariableType))}
+              aria-label={`Typ von ${variable.name}`}
+            >
+              {promptVariableTypes.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {promptVariableTypeLabel(type)}
+                </MenuItem>
+              ))}
+            </Select>
+          ),
+        },
+        {
+          id: 'required',
+          head: 'Pflicht',
+          width: 72,
+          cell: (variable) => (
+            <Checkbox
+              checked={variable.required}
+              onChange={(e) => onChange({ ...variable, required: e.target.checked })}
+              slotProps={{ input: { 'aria-label': `${variable.name} ist Pflicht` } }}
+            />
+          ),
+        },
+        {
+          id: 'default',
+          head: 'Vorbelegung',
+          width: '24%',
+          wrap: true,
+          cell: (variable) => (
+            <PromptVariableInput
+              variable={variable}
+              value={variable.defaultValue ?? ''}
+              onChange={(value) => onChange({ ...variable, defaultValue: value || null })}
+              ariaLabel={`Vorbelegung von ${variable.name}`}
+            />
+          ),
+        },
+      ]}
+      rowDetail={(variable) =>
+        variable.type === 'SELECT' ? (
+          <OptionsField
+            variable={variable}
+            onChange={(options) => onChange({ ...variable, options })}
+          />
+        ) : null
+      }
+    />
   )
 }

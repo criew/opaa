@@ -753,7 +753,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
     // Das Seitenpanel einer Quellart: Zustand, Pflicht und die Zugänge der Quellart.
     await page.goto("/admin/connections/source-types");
-    await page.getByRole("button", { name: "Details: RSS-Feed" }).click();
+    await page.getByRole("button", { name: "RSS-Feed", exact: true }).click();
     const typePanel = page.getByRole("dialog", { name: "RSS-Feed" });
     await expect(
       typePanel.getByRole("switch", { name: "Nur über Zugänge für RSS-Feed" }),

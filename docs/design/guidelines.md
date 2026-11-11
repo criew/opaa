@@ -584,6 +584,40 @@ bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Issue #595).
 
+**Ein Baustein für jede Verwaltungsliste** (#3730). Jede Tabelle entsteht aus `AdminList`
+(`frontend/src/shared/ui/list/`): ab Tablet-Breite Tabelle, darunter Kartenliste mit denselben
+Spalten. ESLint verbietet `Table` und seine Teile außerhalb von `shared/ui`. Der Baustein setzt
+diese Regeln um:
+
+1. **Zeile als Link.** Führt eine Zeile in eine Detailansicht, ist die ganze Zeile das Ziel, mit
+   einer Tab-Position und dem Namen des Eintrags als zugänglichem Namen. Kein unterstrichener
+   Name, kein Chevron, keine Schaltfläche „Details“ oder „Beheben“. Öffnet die Zeile Einzelheiten
+   an Ort und Stelle, trägt sie `aria-expanded`.
+2. **Höchstens eine sichtbare Handlung je Zeile**: kompakt, sekundär, mit Verb (`RowAction`). Nie
+   primär, nie roter Text. Alles Weitere, auch Löschen und Widerrufen, steht hinter „⋯“
+   (`RowMenu`). Ausnahme: Ist die Reihenfolge der Zeilen selbst der Inhalt (Identitätsanbieter
+   auf der Anmeldeseite), stehen die beiden Pfeile zum Verschieben als Symbolschaltflächen neben
+   „⋯“; sie zählen zusammen als die eine Handlung.
+3. **Anzahl neben dem Seitentitel** (`AreaPageCount`), bei gefilterter Liste „12 von 40“. Die Zahl
+   steht nicht über oder unter der Tabelle.
+4. **Blättern in einer Form** (`ListPager`): unten rechts „Seite 2 von 5“ mit Pfeilen; bei einer
+   Seite entfällt die Leiste. Kennt die Schnittstelle die Gesamtzahl nicht, steht „Seite 2“.
+   „Weitere laden“ bleibt Ereignislisten und Auswahldialogen vorbehalten.
+5. **Sortierbar** sind Namens- und Datumsspalten, sobald die Liste blättert und die Schnittstelle
+   sortiert.
+6. **Höchstens sieben Spalten** bei 1280 px, Spaltenkopf einzeilig; eine Erläuterung zum Kopf
+   steht im Info-Symbol daneben. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
+   die Detailseite (Beispiel: Indexstatus zeigt fünf Spalten, die Indexstände stehen in den
+   Einzelheiten).
+7. **Zellen brechen nicht um.** Namen werden gekürzt und tragen den vollen Text als Tooltip
+   (`ListText`); Badges einzeilig, höchstens zwei je Zelle. Mehrere Zustände derselben Art werden
+   ein Badge („Zugang und Quellart gesperrt“).
+8. **Filterzeile:** Suche links, danach Auswahlfelder; ein Schalter nur für ein einzelnes Ja/Nein.
+
+Die Zählbudgets `tableColumns` und `rowPrimaryButtons` der
+[UI-Prüfliste](./ui-pruefliste.md#zählbudgets) messen Spaltenzahl und Primärschaltflächen in
+Zeilen.
+
 **Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
 Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
 Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.

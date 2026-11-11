@@ -169,7 +169,7 @@ describe('OidcProviderManagementPage', () => {
     expect(within(zeilen[1]).queryByLabelText('Standardanbieter')).not.toBeInTheDocument()
     expect(within(zeilen[0]).getByText('Erreichbar')).toBeInTheDocument()
     expect(within(zeilen[1]).getByText('Nicht erreichbar')).toBeInTheDocument()
-    expect(within(zeilen[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
+    expect(within(zeilen[1]).getByText(/^Rollen aus dem Token: /)).toBeInTheDocument()
   })
 
   /**
@@ -576,8 +576,9 @@ describe('OidcProviderManagementPage', () => {
 
     const partner = rowOf('Partnerportal')
     expect(within(partner).queryByText('Rollen in OPAA verwaltet')).not.toBeInTheDocument()
-    expect(within(partner).getByText('Rollen aus dem Token')).toBeInTheDocument()
-    expect(within(partner).getByText('SYSTEM_ADMIN = opaa-admin')).toBeInTheDocument()
+    expect(
+      within(partner).getByText('Rollen aus dem Token: SYSTEM_ADMIN = opaa-admin'),
+    ).toBeInTheDocument()
     expect(within(partner).getByText('Gruppen aus groups')).toBeInTheDocument()
   })
 

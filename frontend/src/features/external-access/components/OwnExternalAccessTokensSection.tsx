@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
@@ -25,9 +19,11 @@ import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
-import { fontFamily, fontSize, iconSize } from '@/shared/theme/tokens'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import RowMenu from '@/shared/ui/RowMenu'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import CreateExternalAccessTokenDialog from './CreateExternalAccessTokenDialog'
 import ExternalAccessTokenValueDialog from './ExternalAccessTokenValueDialog'
 import {
@@ -180,62 +176,86 @@ export default function OwnExternalAccessTokensSection() {
         ) : tokens.length === 0 ? (
           <EmptyState message="Noch keine Zugangstokens. „Token erzeugen“ legt eines an; die Auswahl der Bibliotheken treffen Sie dabei." />
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Präfix</TableCell>
-                <TableCell>Bibliotheken</TableCell>
-                <TableCell>Erstellt</TableCell>
-                <TableCell>Läuft ab</TableCell>
-                <TableCell>Zuletzt benutzt</TableCell>
-                <TableCell>Zustand</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tokens.map((token) => {
-                const warning = expiryWarning(token.status, token.expiresAt)
-                return (
-                  <TableRow key={token.id}>
-                    <TableCell sx={{ fontWeight: 500 }}>{token.name}</TableCell>
-                    <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta }}>
+          <AdminList
+            label="Zugangstokens"
+            rows={tokens}
+            rowKey={(token) => token.id}
+            rowLabel={(token) => token.name}
+            minWidth={820}
+            columns={[
+              {
+                id: 'name',
+                head: 'Name',
+                cell: (token) => (
+                  <>
+                    <ListText strong>{token.name}</ListText>
+                    <ListText mono secondary>
                       {token.prefix}
-                    </TableCell>
-                    <TableCell>
-                      <LibraryList libraries={token.libraries} />
-                    </TableCell>
-                    <TableCell>{formatDate(token.createdAt)}</TableCell>
-                    <TableCell>
+                    </ListText>
+                  </>
+                ),
+              },
+              {
+                id: 'libraries',
+                head: 'Bibliotheken',
+                width: '26%',
+                cell: (token) => <LibraryList libraries={token.libraries} />,
+              },
+              {
+                id: 'created',
+                head: 'Erstellt',
+                width: 104,
+                cell: (token) => formatDate(token.createdAt),
+              },
+              {
+                id: 'expires',
+                head: 'Läuft ab',
+                width: 136,
+                cell: (token) => {
+                  const warning = expiryWarning(token.status, token.expiresAt)
+                  return (
+                    <>
                       <Box>{formatDate(token.expiresAt)}</Box>
                       {warning && <MetaBadge>{warning}</MetaBadge>}
-                    </TableCell>
-                    <TableCell>{formatDate(token.lastUsedOn)}</TableCell>
-                    <TableCell>
-                      {TOKEN_STATUS_LABEL[token.status]}
-                      {token.status === 'ACTIVE' && channelEnabled === false && (
-                        <Box>
-                          <MetaBadge>wirkt derzeit nicht</MetaBadge>
-                        </Box>
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      {token.status === 'ACTIVE' && (
-                        <Button
-                          size="small"
-                          color="error"
-                          aria-label={`Token „${token.name}“ widerrufen`}
-                          onClick={() => void handleRevoke(token)}
-                        >
-                          Widerrufen
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </>
+                  )
+                },
+              },
+              {
+                id: 'lastUsed',
+                head: 'Zuletzt benutzt',
+                width: 136,
+                cell: (token) => formatDate(token.lastUsedOn),
+              },
+              {
+                id: 'state',
+                head: 'Zustand',
+                width: 152,
+                cell: (token) => (
+                  <>
+                    <Box>{TOKEN_STATUS_LABEL[token.status]}</Box>
+                    {token.status === 'ACTIVE' && channelEnabled === false && (
+                      <MetaBadge>wirkt derzeit nicht</MetaBadge>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+            rowActions={(token) =>
+              token.status === 'ACTIVE' ? (
+                <RowMenu
+                  name={token.name}
+                  items={[
+                    {
+                      label: 'Widerrufen',
+                      onClick: () => void handleRevoke(token),
+                      danger: true,
+                    },
+                  ]}
+                />
+              ) : null
+            }
+          />
         )}
       </PageSection>
 

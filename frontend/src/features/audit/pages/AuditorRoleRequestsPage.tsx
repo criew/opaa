@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import RowMenu from '@/shared/ui/RowMenu'
+import AdminList, { ListText, RowAction } from '@/shared/ui/list/AdminList'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import type { AuditorRoleRequestResponse } from '@/shared/api/types'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import {
   confirmAuditorRoleRequest,
   declineAuditorRoleRequest,
@@ -127,62 +122,68 @@ export default function AuditorRoleRequestsPage() {
         )}
 
         {requests !== null && requests.length > 0 && (
-          <Table size="small" aria-label="Offene Anträge auf die Rolle Revision">
-            <TableHead>
-              <TableRow>
-                <TableCell>Person</TableCell>
-                <TableCell>Adresse</TableCell>
-                <TableCell>Beantragt von</TableCell>
-                <TableCell>Beantragt am</TableCell>
-                <TableCell>Entscheidung</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    {personOf(request)}
-                    {request.localAccount && (
-                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                        Lokales Konto
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {request.email ?? '—'}
+          <AdminList
+            label="Offene Anträge auf die Rolle Revision"
+            rows={requests}
+            rowKey={(request) => request.id}
+            rowLabel={personOf}
+            columns={[
+              {
+                id: 'person',
+                head: 'Person',
+                cell: (request) => (
+                  <>
+                    <ListText strong>{personOf(request)}</ListText>
+                    {request.localAccount && <ListText secondary>Lokales Konto</ListText>}
+                  </>
+                ),
+              },
+              {
+                id: 'email',
+                head: 'Adresse',
+                width: '30%',
+                cell: (request) => (
+                  <>
+                    <ListText>{request.email ?? '—'}</ListText>
                     {request.emailChangedByAdministrationAt && (
-                      <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600 }}>
+                      <ListText secondary>
                         {`Von der Systemverwaltung geändert am ${changedOn(request.emailChangedByAdministrationAt)} – mit der Person prüfen`}
-                      </Typography>
+                      </ListText>
                     )}
-                  </TableCell>
-                  <TableCell>{request.requestedByDisplayName ?? 'Gelöschtes Konto'}</TableCell>
-                  <TableCell>{formatDateTime(request.requestedAt)}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request, true)}
-                        aria-label={`Antrag für ${personOf(request)} bestätigen`}
-                      >
-                        Bestätigen
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request, false)}
-                        aria-label={`Antrag für ${personOf(request)} ablehnen`}
-                      >
-                        Ablehnen
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </>
+                ),
+              },
+              {
+                id: 'requestedBy',
+                head: 'Beantragt von',
+                width: '18%',
+                cell: (request) => request.requestedByDisplayName ?? 'Gelöschtes Konto',
+              },
+              {
+                id: 'requestedAt',
+                head: 'Beantragt am',
+                width: 152,
+                cell: (request) => formatDateTime(request.requestedAt),
+              },
+            ]}
+            actionsWidth={176}
+            rowActions={(request) => (
+              <>
+                <RowAction
+                  label={`Antrag für ${personOf(request)} bestätigen`}
+                  disabled={busyId !== null}
+                  onClick={() => void decide(request, true)}
+                >
+                  Bestätigen
+                </RowAction>
+                <RowMenu
+                  name={personOf(request)}
+                  disabled={busyId !== null}
+                  items={[{ label: 'Ablehnen', onClick: () => void decide(request, false) }]}
+                />
+              </>
+            )}
+          />
         )}
       </Box>
       <AuditorSetupLinkDialog link={setupLink} onClose={() => setSetupLink(null)} />

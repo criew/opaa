@@ -9,11 +9,6 @@ import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DownloadIcon from '@mui/icons-material/Download'
@@ -24,6 +19,7 @@ import type {
 } from '@/shared/api/types'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import AdminList from '@/shared/ui/list/AdminList'
 import {
   getLatestLlmModelToolCheck,
   getLlmModelToolCheckReport,
@@ -252,17 +248,18 @@ function Result({ check }: { check: LlmModelToolCheckResponse }) {
           ? 'Mindestanforderung erfüllt: Das Modell darf als werkzeugfähig geführt werden.'
           : 'Mindestanforderung nicht erfüllt: Das Modell darf nicht als werkzeugfähig geführt werden.'}
       </Alert>
-      <Table size="small" aria-label="Ergebnis je Prüffrage">
-        <TableHead>
-          <TableRow>
-            <TableCell>Prüffrage</TableCell>
-            <TableCell>Ergebnis</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {check.categories.map((category) => (
-            <TableRow key={category.category}>
-              <TableCell>
+      <AdminList
+        label="Ergebnis je Prüffrage"
+        rows={check.categories}
+        rowKey={(category) => category.category}
+        rowLabel={(category) => TOOL_CHECK_CATEGORY_LABELS[category.category] ?? category.category}
+        columns={[
+          {
+            id: 'category',
+            head: 'Prüffrage',
+            wrap: true,
+            cell: (category) => (
+              <>
                 {TOOL_CHECK_CATEGORY_LABELS[category.category] ?? category.category}
                 {TOOL_CHECK_FLOOR.includes(category.category) && (
                   <Typography
@@ -273,12 +270,12 @@ function Result({ check }: { check: LlmModelToolCheckResponse }) {
                     (Pflicht)
                   </Typography>
                 )}
-              </TableCell>
-              <TableCell>{category.summary}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+              </>
+            ),
+          },
+          { id: 'summary', head: 'Ergebnis', wrap: true, cell: (category) => category.summary },
+        ]}
+      />
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
         Messlauf {check.runId}
         {seconds != null && `, Dauer ${seconds} s`}

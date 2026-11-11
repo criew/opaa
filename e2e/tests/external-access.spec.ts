@@ -374,7 +374,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     // Die Zelle, nicht die Zeile: „Erstellt" trägt heute ebenfalls das heutige Datum, und die
     // Aussage ist die des Nutzungstags. Spalten der eigenen Liste: Name, Präfix, Bibliotheken,
     // Erstellt, Läuft ab, Zuletzt benutzt, Zustand.
-    await expect(lastUsedCell(personPage, TOKEN_WIDE)).toHaveText(today())
+    await expect(await lastUsedCell(personPage, TOKEN_WIDE)).toHaveText(today())
     // Ein Datum, keine Häufigkeit: nirgends in der Zeile steht eine Zahl von Aufrufen.
     await expect(tokenRow(personPage, TOKEN_WIDE)).not.toContainText(/\d+\s*(mal|Aufrufe)/)
 
@@ -499,7 +499,10 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     formatPipelinesPage: personPage,
   }) => {
     await gotoOwnTokens(personPage)
-    await personPage.getByRole('button', { name: `Token „${TOKEN_FRESH}“ widerrufen` }).click()
+    await personPage
+      .getByRole('button', { name: `Weitere Aktionen für „${TOKEN_FRESH}“` })
+      .click()
+    await personPage.getByRole('menuitem', { name: 'Widerrufen' }).click()
     const confirmRevoke = personPage
       .getByRole('dialog')
       .filter({ has: personPage.locator('#confirm-question') })
@@ -531,18 +534,22 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
 
     // „Zuletzt benutzt" wird mit dem Widerruf gelöscht - es beantwortete „darf ich das widerrufen?".
     await gotoOwnTokens(personPage)
-    await expect(lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('–')
+    await expect(await lastUsedCell(personPage, TOKEN_FRESH)).toHaveText('–')
   })
 })
 
 /**
- * Die Zelle „Zuletzt benutzt" einer Zeile der eigenen Tokenliste. Über den Index, weil die Zelle
- * keine eigene Beschriftung trägt und die Zeile daneben zwei weitere Datumsangaben führt
- * (OwnExternalAccessTokensSection.tsx: Name, Präfix, Bibliotheken, Erstellt, Läuft ab, Zuletzt
- * benutzt, Zustand, Aktionen).
+ * Die Zelle „Zuletzt benutzt" einer Zeile der eigenen Tokenliste. Über die Position des
+ * Spaltenkopfs, weil die Zelle keine eigene Beschriftung trägt und die Zeile zwei weitere
+ * Datumsangaben führt.
  */
-function lastUsedCell(page: Page, tokenName: string) {
-  return tokenRow(page, tokenName).getByRole('cell').nth(5)
+async function lastUsedCell(page: Page, tokenName: string) {
+  const row = tokenRow(page, tokenName)
+  await expect(row).toBeVisible()
+  const heads = await row.locator('xpath=ancestor::table').getByRole('columnheader').allTextContents()
+  const index = heads.findIndex((head) => head.trim() === 'Zuletzt benutzt')
+  expect(index, 'Spalte „Zuletzt benutzt" fehlt').toBeGreaterThanOrEqual(0)
+  return row.getByRole('cell').nth(index)
 }
 
 function today(): string {
