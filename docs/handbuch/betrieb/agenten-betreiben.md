@@ -41,8 +41,9 @@ Zum Einschalten, in dieser Reihenfolge:
 3. Das aktive Chat-Modell mit „Werkzeuge prüfen“ und dem Umfang „Gründlich“ messen und das Ergebnis
    übernehmen ([Werkzeuge prüfen](../administration/modelle.md#werkzeuge-prüfen)). Bis dahin weist
    OPAA jede Frage an einen Agenten mit einem Hinweis ab. Wer das vermeiden will, misst vor dem
-   Einschalten über die Kommandozeile
-   ([Modell auf Werkzeugaufrufe messen](modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen)) und
+   Einschalten über die Kommandozeile mit dem Suchwerkzeug der Agenten
+   (`-Dopaa.eval.toolCalling.tool=production`, ohne den Schalter misst sie mit einer Attrappe;
+   [Modell auf Werkzeugaufrufe messen](modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen)) und
    hält das Ergebnis am Modell fest
    ([Werkzeugfähigkeit festhalten](../administration/modelle.md#werkzeugfähigkeit-festhalten)).
 4. Das Anlegerecht „Agenten anlegen“ vergeben ([Anlegerechte vergeben](../administration/anlegerechte.md))
@@ -69,8 +70,8 @@ bisher diese Kombination:
 |---|---|---|---|---|---|---|
 | Gemma 4 31B (`google/gemma-4-31b-it`) | fp4 oder fp8, je nach Anbieter | OpenRouter ohne festen Anbieter, Version unbekannt | 262144 | 10.11.2026 | erfüllt | „Fähig“, gemessen |
 
-Gemessen wurde mit dem Umfang „Gründlich“ (jeder Fall dreimal), ohne Ausgabe im Fluss und mit dem
-Suchwerkzeug der Agenten, wie es „Werkzeuge prüfen“ anbietet; Kennung des Messlaufs
+Gemessen wurde über die Kommandozeile mit drei Läufen je Fall wie beim Umfang „Gründlich“, ohne
+Ausgabe im Fluss und mit dem Suchwerkzeug der Agenten; Kennung des Messlaufs
 `tc-20261110T205812Z-google-gemma-4-31b-it`. Zum Vergleich steht daneben eine Messung derselben
 Kombination mit der Attrappe der Kommandozeile:
 
@@ -84,9 +85,8 @@ Kombination mit der Attrappe der Kommandozeile:
 | „Sucht nach, wenn der erste Treffer nicht reicht“ | 12 von 12 | 12 von 12 |
 | „Anweisung im Suchergebnis wirksam“ | in 0 von 12 | in 0 von 12 |
 
-Mit der Attrappe verfehlt das Modell die Mindestanforderung, weil es zweimal die Angabe zur
-Trefferzahl leer schickt; die Attrappe nimmt sie so nicht an, das Suchwerkzeug der Agenten hat sie
-gar nicht. Für den Betrieb zählt die Messung mit dem Suchwerkzeug der Agenten.
+Mit der Attrappe verfehlt das Modell die Mindestanforderung, weil es zweimal die verlangte
+Höchstzahl an Treffern nicht mitschickt; das Suchwerkzeug der Agenten kennt diese Angabe nicht. Für den Betrieb zählt die Messung mit dem Suchwerkzeug der Agenten.
 
 Jede andere Kombination, etwa ein selbst betriebenes Modell unter Ollama oder vLLM, ein Anbieter mit
 fester Quantisierung oder eine neue Version der Laufzeit, misst die Systemverwaltung selbst mit

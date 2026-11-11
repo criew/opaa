@@ -71,5 +71,6 @@ länger als die Frist der Systemverwaltung, wird der Agent gesperrt
   Agent es nennt.
 - Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, bei einer Änderung nur die Namen der
   geänderten Felder, nie der Auftrag selbst. Das Aufrufen steht dort nicht. Zweck, Auftrag,
-  Werkzeuge und Grenzen sieht die Personalvertretung im
-  [Agentenverzeichnis](../administration/agentenverzeichnis.md).
+  Werkzeuge und Grenzen sieht, wer das
+  [Agentenverzeichnis](../administration/agentenverzeichnis.md) einsehen darf, etwa die
+  Personalvertretung.
