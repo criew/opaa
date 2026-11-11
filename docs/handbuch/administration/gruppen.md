@@ -30,7 +30,7 @@ Gruppe erreichen niemanden mehr.
 Die Tabelle zeigt alle Gruppen, mit Herkunft, Zustand und **Verwendung** („2 Bibliotheken ·
 1 Space“). Das Zeilenmenü bietet:
 
-- **Bearbeiten**, auch der Schalter „Geschützte Gruppe“: für Personalvertretung,
+- **Bearbeiten**, auch das Auswahlkästchen „Geschützte Gruppe“: für Personalvertretung,
   Schwerbehindertenvertretung, Gleichstellung und Personalvorgänge. Eine geschützte Gruppe findet
   niemand über die Suche, und fremde Listen zeigen nur „Geschützte Gruppe“.
 - **Mitglieder**. Jeder Abruf der Mitgliederliste durch die Systemverwaltung steht im

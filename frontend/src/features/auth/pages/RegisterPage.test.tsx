@@ -42,7 +42,7 @@ describe('RegisterPage', () => {
 
   async function submit({ email = 'erika.muster@stadt.example' } = {}) {
     if (email) await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), email)
-    await userEvent.click(screen.getByRole('button', { name: 'Konto registrieren' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Registrieren' }))
   }
 
   // The one criterion of this page: a taken and a free address are indistinguishable.
@@ -74,7 +74,7 @@ describe('RegisterPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Registrierung erneut absenden' }))
 
-    expect(screen.getByRole('button', { name: 'Konto registrieren' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Registrieren' })).toBeInTheDocument()
     expect(screen.getByLabelText<HTMLInputElement>('E-Mail-Adresse').value).toBe(
       'erika.muster@stadt.example',
     )

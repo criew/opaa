@@ -125,7 +125,7 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
       page.getByRole('status').filter({ hasText: 'Verbindung erfolgreich; der Ordner ist erreichbar.' }),
     ).toBeVisible({ timeout: 15_000 })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     libraryId = libraryIdFromCurrentUrl(page)

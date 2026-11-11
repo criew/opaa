@@ -5,7 +5,7 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import FormField from '@/shared/ui/form/FormField'
 import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
@@ -31,7 +31,9 @@ import {
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -87,6 +89,7 @@ export default function MailServerSection() {
   const [isTesting, setIsTesting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [checked, setChecked] = useState(false)
   const gate = useRecentLoginGate(MAIL_CONFIRM_PURPOSE)
 
   useEffect(() => {
@@ -140,7 +143,30 @@ export default function MailServerSection() {
     return currentSettings.passwordSet ? PASSWORD_MASK : ''
   }
 
+  const saved = formOf(settings)
+  const dirty =
+    clearPassword ||
+    (Object.keys(saved) as (keyof FormState)[]).some((key) => form[key] !== saved[key])
+  // what switching on needs is told at its field once „Speichern“ was pressed without it
+  const missing = (empty: boolean, message: string) =>
+    checked && form.enabled && empty ? message : null
+  const hostError = missing(form.host.trim() === '', SMTP_TEXTS.hostMissing)
+  const portError = !isPortValid
+    ? SMTP_TEXTS.portInvalid
+    : missing(portNumber === null, SMTP_TEXTS.portMissing)
+  const fromAddressError = missing(form.fromAddress.trim() === '', SMTP_TEXTS.fromAddressMissing)
+
+  function discard() {
+    setForm(saved)
+    setClearPassword(false)
+    setPasswordError(null)
+    setRefusal(null)
+    setChecked(false)
+  }
+
   async function handleSave(afterConfirmation = false) {
+    setChecked(true)
+    if (!isPortValid || (currentForm.enabled && !canEnable)) return
     const request: MailSettingsUpdateRequest = {
       enabled: currentForm.enabled,
       host: currentForm.host.trim() || null,
@@ -154,10 +180,11 @@ export default function MailServerSection() {
     setPasswordError(null)
     setRefusal(null)
     try {
-      await saveSettings(request)
+      const stored = await saveSettings(request)
       gate.settled()
-      setForm((current) => (current ? { ...current, password: '' } : current))
+      setForm(formOf(stored))
       setClearPassword(false)
+      setChecked(false)
       notify('Die E-Mail-Einstellungen wurden gespeichert.', 'success')
     } catch (err) {
       const refused = gate.refusal(err, () => void handleSave(true), afterConfirmation)
@@ -201,148 +228,148 @@ export default function MailServerSection() {
       )}
 
       <PageSection title="Verbindung">
-        <Stack
-          spacing={2.5}
-          component="section"
-          aria-labelledby="mail-server-fields"
-          sx={{ maxWidth: formWidth.column }}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                checked={form.enabled}
-                onChange={(e) => update({ enabled: e.target.checked })}
-              />
-            }
-            label="Versand aktiv"
-          />
-          {form.enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
-
-          <FormFieldRow>
-            <FormField
-              label={SMTP_LABELS.host}
-              value={form.host}
-              onChange={(e) => update({ host: e.target.value })}
-              helperText={SMTP_TEXTS.hostHint}
-            />
-            <FormField
-              label={SMTP_LABELS.port}
-              value={form.port}
-              onChange={(e) => update({ port: e.target.value })}
-              error={!isPortValid}
-              helperText={isPortValid ? SMTP_TEXTS.portHint : SMTP_TEXTS.portInvalid}
-              numeric
-              fullWidth={false}
-            />
-          </FormFieldRow>
-
-          <FormField
-            select
-            label={SMTP_LABELS.encryption}
-            value={form.encryption}
-            onChange={(e) => update({ encryption: e.target.value as MailEncryption })}
-            helperText={SMTP_ENCRYPTION_OPTIONS.find((o) => o.value === form.encryption)?.hint}
-            fullWidth
-          >
-            {SMTP_ENCRYPTION_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </FormField>
-
-          <Stack spacing={2.5}>
-            <FormField
-              label={SMTP_LABELS.username}
-              optional
-              value={form.username}
-              onChange={(e) => update({ username: e.target.value })}
-              helperText={SMTP_TEXTS.usernameHint}
-            />
-            <FormField
-              label={SMTP_LABELS.password}
-              type="password"
-              value={form.password}
-              onChange={(e) => {
-                setClearPassword(false)
-                setPasswordError(null)
-                update({ password: e.target.value })
-              }}
-              disabled={clearPassword}
-              autoComplete="new-password"
-              error={passwordError !== null || passwordNeeded}
-              helperText={
-                passwordError ??
-                (clearPassword
-                  ? 'Das gespeicherte Passwort wird beim Speichern gelöscht.'
-                  : passwordNeeded
-                    ? SMTP_TEXTS.passwordFollowsTarget
-                    : settings.passwordSet
-                      ? SMTP_TEXTS.passwordStored
-                      : SMTP_TEXTS.passwordNone)
-              }
-            />
-          </Stack>
-          {settings.passwordSet && (
-            <Box>
-              <Button
-                size="small"
-                color={clearPassword ? 'primary' : 'error'}
-                onClick={() => {
-                  setClearPassword(!clearPassword)
-                  update({ password: '' })
-                }}
-              >
-                {clearPassword
-                  ? 'Löschen des Passworts abbrechen'
-                  : 'Gespeichertes Passwort löschen'}
-              </Button>
-            </Box>
-          )}
-
-          <Stack spacing={2.5}>
-            <FormField
-              label={SMTP_LABELS.fromAddress}
-              value={form.fromAddress}
-              onChange={(e) => update({ fromAddress: e.target.value })}
-              helperText={SMTP_TEXTS.fromAddressHint}
-            />
-            <FormField
-              label={SMTP_LABELS.fromName}
-              optional
-              value={form.fromName}
-              onChange={(e) => update({ fromName: e.target.value })}
-              helperText={SMTP_TEXTS.fromNameHint}
-            />
-          </Stack>
-
-          <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSaving || !isPortValid || (form.enabled && !canEnable)}
-            >
-              Speichern
-            </Button>
-            <Button
+        <SettingsForm
+          onSave={() => handleSave()}
+          busy={isSaving}
+          dirty={dirty}
+          onDiscard={discard}
+          secondaryAction={
+            <BusyButton
               variant="outlined"
+              busy={isTesting}
+              busyAnnouncement="Testmail wird gesendet"
               onClick={() => void handleTest()}
-              disabled={isTesting || isSaving}
             >
               Testmail an mich senden
-            </Button>
-          </Stack>
-          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-            Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
-            sich hier bewusst nicht eintragen.
-          </Typography>
+            </BusyButton>
+          }
+          result={
+            <Stack spacing={2}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+                Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
+                sich hier bewusst nicht eintragen.
+              </Typography>
+              {testResult && (
+                <Alert severity={mailSendResultSeverity(testResult)}>
+                  {mailSendResultMessage(testResult)}
+                </Alert>
+              )}
+            </Stack>
+          }
+        >
+          <Stack spacing={2.5}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.enabled}
+                  onChange={(e) => update({ enabled: e.target.checked })}
+                />
+              }
+              label="Versand aktiv"
+            />
+            {form.enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
 
-          {testResult && (
-            <Alert severity={mailSendResultSeverity(testResult)}>
-              {mailSendResultMessage(testResult)}
-            </Alert>
-          )}
-        </Stack>
+            <FormFieldRow>
+              <FormField
+                label={SMTP_LABELS.host}
+                value={form.host}
+                onChange={(e) => update({ host: e.target.value })}
+                error={hostError !== null}
+                helperText={hostError ?? SMTP_TEXTS.hostHint}
+              />
+              <FormField
+                label={SMTP_LABELS.port}
+                value={form.port}
+                onChange={(e) => update({ port: e.target.value })}
+                error={portError !== null}
+                helperText={portError ?? SMTP_TEXTS.portHint}
+                numeric
+                fullWidth={false}
+              />
+            </FormFieldRow>
+
+            <FormField
+              select
+              label={SMTP_LABELS.encryption}
+              value={form.encryption}
+              onChange={(e) => update({ encryption: e.target.value as MailEncryption })}
+              helperText={SMTP_ENCRYPTION_OPTIONS.find((o) => o.value === form.encryption)?.hint}
+              fullWidth
+            >
+              {SMTP_ENCRYPTION_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </FormField>
+
+            <Stack spacing={2.5}>
+              <FormField
+                label={SMTP_LABELS.username}
+                optional
+                value={form.username}
+                onChange={(e) => update({ username: e.target.value })}
+                helperText={SMTP_TEXTS.usernameHint}
+              />
+              <FormField
+                label={SMTP_LABELS.password}
+                type="password"
+                value={form.password}
+                onChange={(e) => {
+                  setClearPassword(false)
+                  setPasswordError(null)
+                  update({ password: e.target.value })
+                }}
+                disabled={clearPassword}
+                autoComplete="new-password"
+                error={passwordError !== null || passwordNeeded}
+                helperText={
+                  passwordError ??
+                  (clearPassword
+                    ? 'Das gespeicherte Passwort wird beim Speichern gelöscht.'
+                    : passwordNeeded
+                      ? SMTP_TEXTS.passwordFollowsTarget
+                      : settings.passwordSet
+                        ? SMTP_TEXTS.passwordStored
+                        : SMTP_TEXTS.passwordNone)
+                }
+              />
+            </Stack>
+            {settings.passwordSet && (
+              <Box>
+                <Button
+                  size="small"
+                  color={clearPassword ? 'primary' : 'error'}
+                  onClick={() => {
+                    setClearPassword(!clearPassword)
+                    update({ password: '' })
+                  }}
+                >
+                  {clearPassword
+                    ? 'Löschen des Passworts abbrechen'
+                    : 'Gespeichertes Passwort löschen'}
+                </Button>
+              </Box>
+            )}
+
+            <Stack spacing={2.5}>
+              <FormField
+                label={SMTP_LABELS.fromAddress}
+                value={form.fromAddress}
+                onChange={(e) => update({ fromAddress: e.target.value })}
+                error={fromAddressError !== null}
+                helperText={fromAddressError ?? SMTP_TEXTS.fromAddressHint}
+              />
+              <FormField
+                label={SMTP_LABELS.fromName}
+                optional
+                value={form.fromName}
+                onChange={(e) => update({ fromName: e.target.value })}
+                helperText={SMTP_TEXTS.fromNameHint}
+              />
+            </Stack>
+          </Stack>
+        </SettingsForm>
       </PageSection>
       {gate.dialog}
     </Box>

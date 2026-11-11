@@ -15,6 +15,7 @@ import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined'
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
@@ -23,6 +24,8 @@ import { handbookUrl } from './handbookLink'
 import BrandMark from '@/shared/ui/BrandMark'
 import { NotificationBell } from '@/features/notification'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { userInitial } from '@/shared/utils/userInitial'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { CATALOG_ROUTE } from '@/shared/routes'
@@ -57,6 +60,14 @@ export default function GlobalRail() {
   const branding = useBrandingStore((s) => s.branding)
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const agentsOn = useRuntimeSwitchStore((s) => s.agents)
+  const { capabilities } = useMyCapabilities()
+  // The administration reaches the directory from its own navigation; whoever else holds the
+  // right - typically the staff council - gets an entry of its own.
+  const holdsDirectory =
+    agentsOn &&
+    user?.systemRole !== 'SYSTEM_ADMIN' &&
+    (capabilities?.includes('VIEW_AGENT_DIRECTORY') ?? false)
 
   const appTheme = useTheme()
   const appMode = appTheme.palette.mode
@@ -90,8 +101,18 @@ export default function GlobalRail() {
           {
             label: 'Admin',
             to: '/admin/users',
-            activePrefixes: ['/admin'],
+            activePrefixes: ['/admin', '/agent-directory'],
             icon: SettingsOutlinedIcon,
+          },
+        ]
+      : []),
+    ...(holdsDirectory
+      ? [
+          {
+            label: 'Verzeichnis',
+            to: '/agent-directory',
+            activePrefixes: ['/agent-directory'],
+            icon: MenuBookOutlinedIcon,
           },
         ]
       : []),

@@ -3,15 +3,15 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-router'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
 import NewPasswordField from '../components/NewPasswordField'
-import PasswordField from '../components/PasswordField'
-import SectionEyebrow from '../components/SectionEyebrow'
+import SecretField from '@/shared/ui/form/SecretField'
+import SectionHead from '@/shared/ui/SectionHead'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { TextAction, TextLink } from '@/shared/ui/DetailSection'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -112,11 +112,9 @@ export default function ChangePasswordPage() {
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 1 }}>
           Das Passwort dieses Kontos verwaltet Ihr Identitätsanbieter. Ändern Sie es dort.
         </Typography>
-        <Typography sx={{ mt: 3, fontSize: fontSize.text }}>
-          <Link component={RouterLink} to={AFTER_SIGN_IN_ROUTE}>
-            Zurück zur Anwendung
-          </Link>
-        </Typography>
+        <TextLink to={AFTER_SIGN_IN_ROUTE} sx={{ mt: 3 }}>
+          Zurück zur Anwendung
+        </TextLink>
       </AuthLayout>
     )
   }
@@ -142,19 +140,21 @@ export default function ChangePasswordPage() {
         noValidate
         sx={{ mt: 3 }}
       >
-        <SectionEyebrow id="change-password-title">Neues Passwort wählen</SectionEyebrow>
+        <SectionHead id="change-password-title" underline={false}>
+          Neues Passwort wählen
+        </SectionHead>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           {passwordPolicyText(minLength)}
         </Typography>
         <Stack spacing={2}>
-          <PasswordField
+          <SecretField
             id="change-password-current"
             label="Aktuelles Passwort"
             value={currentPassword}
             onChange={setCurrentPassword}
             autoComplete="current-password"
             disabled={busy}
-            errorMessage={fieldErrors.currentPassword}
+            error={fieldErrors.currentPassword}
             inputRef={currentRef}
           />
           <NewPasswordField
@@ -168,14 +168,15 @@ export default function ChangePasswordPage() {
             onGenerated={setRepeatedPassword}
             inputRef={newRef}
           />
-          <PasswordField
+          <SecretField
             id="change-password-repeat"
             label="Neues Passwort wiederholen"
+            toggleName="Wiederholung"
             value={repeatedPassword}
             onChange={setRepeatedPassword}
             autoComplete="new-password"
             disabled={busy}
-            errorMessage={fieldErrors.repeatedPassword}
+            error={fieldErrors.repeatedPassword}
             inputRef={repeatedRef}
           />
           <Button
@@ -184,22 +185,15 @@ export default function ChangePasswordPage() {
             disabled={busy}
             sx={{ alignSelf: 'flex-start', borderRadius: `${radius.md}px`, minWidth: 140 }}
           >
-            {busy ? 'Wird gespeichert …' : 'Passwort speichern'}
+            {busy ? 'Wird gespeichert …' : 'Speichern'}
           </Button>
         </Stack>
       </Box>
       {/* A forced change locks every other route; without this the only way out would be closing
           the browser. */}
-      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <Link
-          component="button"
-          type="button"
-          onClick={() => void logout()}
-          sx={{ color: 'text.secondary', fontSize: fontSize.meta }}
-        >
-          Abmelden
-        </Link>
-      </Typography>
+      <TextAction onClick={() => void logout()} sx={{ mt: 3 }}>
+        Abmelden
+      </TextAction>
     </AuthLayout>
   )
 }

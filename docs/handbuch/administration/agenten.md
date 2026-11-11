@@ -7,11 +7,13 @@
 {: .kopf }
 
 Ein Agent arbeitet eine Frage in mehreren Schritten ab: Er sucht, liest nach und antwortet mit
-Fundstellen. Ab Werk sind Agenten ausgeschaltet.
+Fundstellen ([Agenten verwenden](../benutzer/agenten-verwenden.md)). Ab Werk sind Agenten
+ausgeschaltet.
 
-1. „Agenten in dieser Installation anbieten“ einschalten.
+1. „Agenten in dieser Installation anbieten“ ankreuzen.
 2. Unter „Werkzeuge“ wählen, welche ein Lauf überhaupt nutzen darf. „Rechnen“ und „Vorlage
-   ausfüllen“ sind ab Werk aus, weil sie eine abgeschottete Umgebung des Betriebs brauchen.
+   ausfüllen“ sind ab Werk aus, weil sie die [Sandbox](../betrieb/sandbox.md) des Betriebs
+   brauchen; „Vorlage ausfüllen“ zusätzlich eingeschaltete [Vorlagen](vorlagen.md).
 3. „Speichern“.
 
 Die Änderung wirkt sofort auf allen Instanzen, ohne Neustart, und steht mit altem und neuem Wert im
@@ -27,7 +29,8 @@ Wiedereinschalten unverändert da.
 
 Das Anlegerecht „Agenten anlegen“ hat ab Werk niemand außer der Systemverwaltung. Vergeben Sie es
 unter [Anlegerechte vergeben](anlegerechte.md) an die Personen oder Gruppen, die Agenten für
-andere einrichten sollen.
+andere einrichten sollen. Welche Agenten es gibt, sieht die Personalvertretung im
+[Agentenverzeichnis](agentenverzeichnis.md).
 
 ## Agent oder Vorlage sperren
 

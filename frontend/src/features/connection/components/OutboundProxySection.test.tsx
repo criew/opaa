@@ -38,7 +38,7 @@ describe('OutboundProxySection', () => {
       'Es ist kein Ausgangsproxy eingetragen; alle Verbindungen gehen direkt hinaus.',
     )
     expect(screen.getByText(/OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ausgangsproxy speichern' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled()
   })
 
   it('shows the stored proxy and one exclusion per line', async () => {
@@ -66,7 +66,7 @@ describe('OutboundProxySection', () => {
     await user.paste('proxy.example.org:3128')
     await user.click(screen.getByLabelText('Ausnahmeliste'))
     await user.paste('intranet.example\n\n10.0.0.0/8')
-    await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const question = 'Ausgangsproxy proxy.example.org:3128 speichern?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
@@ -91,7 +91,7 @@ describe('OutboundProxySection', () => {
     renderWithProviders(<OutboundProxySection />)
 
     await user.clear(await screen.findByLabelText('Proxy-Adresse'))
-    await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await answerConfirm(user, 'Ausgangsproxy entfernen?', 'Entfernen')
 
     await waitFor(() => expect(sent).toEqual([{ proxyUrl: null, noProxy: [] }]))
@@ -121,7 +121,7 @@ describe('OutboundProxySection', () => {
     renderWithProviders(<OutboundProxySection />)
 
     await user.type(await screen.findByLabelText('Ausnahmeliste'), '*')
-    await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await answerConfirm(user, 'Ausgangsproxy entfernen?', 'Entfernen')
 
     expect(

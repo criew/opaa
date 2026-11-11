@@ -196,7 +196,7 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
       page.getByRole('status').filter({ hasText: 'Anmeldung angenommen' }),
     ).toBeVisible({ timeout: 15_000 })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt; nach der
     // Quelle folgt gleich „Prüfen“, und dort steht, wer die Bibliothek sieht.

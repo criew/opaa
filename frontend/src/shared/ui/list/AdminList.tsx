@@ -1,4 +1,4 @@
-import { Fragment, type ComponentType, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -452,11 +452,6 @@ export interface AdminListProps<Row, F extends string = never> {
    * something, e.g. while the row is expanded.
    */
   rowDetail?: (row: Row) => ReactNode
-  /**
-   * Holds the state the cells of one row share, e.g. the draft of a value edited in the row. It
-   * wraps the cells of the row and must render nothing but its children.
-   */
-  rowScope?: ComponentType<{ row: Row; children: ReactNode }>
   /** Paging; shown only when there is more than one page. */
   pager?: PagerState
   /**
@@ -485,12 +480,9 @@ export default function AdminList<Row, F extends string = never>({
   rowTone,
   minWidth,
   rowDetail,
-  rowScope,
   pager,
   frame,
 }: AdminListProps<Row, F>) {
-  const Scope = rowScope ?? Fragment
-  const scopeProps = (row: Row) => (rowScope ? { row } : {}) as { row: Row }
   const theme = useTheme()
   // Without `matchMedia` (tests, server rendering) the table is the form to assume.
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'), { defaultMatches: true })
@@ -552,7 +544,7 @@ export default function AdminList<Row, F extends string = never>({
                 }}
               >
                 <Box component="article" aria-label={rowLabel(row)}>
-                  <Scope {...scopeProps(row)}>
+                  <>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                       {leading && <Box sx={{ flex: 'none' }}>{leading.cell(row)}</Box>}
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -594,7 +586,7 @@ export default function AdminList<Row, F extends string = never>({
                       </Box>
                     )}
                     {detail && <Box sx={{ mt: 1.5 }}>{detail}</Box>}
-                  </Scope>
+                  </>
                 </Box>
               </Box>
             )
@@ -675,7 +667,7 @@ export default function AdminList<Row, F extends string = never>({
                   ...(hasDetail && { '& > td': { borderBottom: 0 } }),
                 }}
               >
-                <Scope {...scopeProps(row)}>
+                <>
                   {leading && (
                     <TableCell sx={{ width: leading.width, pl: 1.5, pr: 0, py: 0.75 }}>
                       {leading.cell(row)}
@@ -714,7 +706,7 @@ export default function AdminList<Row, F extends string = never>({
                       </Stack>
                     </TableCell>
                   )}
-                </Scope>
+                </>
               </TableRow>
               {hasDetail && (
                 <TableRow>

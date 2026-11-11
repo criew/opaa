@@ -151,10 +151,12 @@ components:
     Capability:
       type: string
       description: >
-        An installation-wide right to create something ("Anlegerecht"), granted to accounts,
-        groups or to all accounts at once. A capability opens a creation path and never an
-        existing content. CREATE_CONNECTOR_LIBRARY is separate from CREATE_LIBRARY because a
-        connector library reaches server paths and stored credentials.
+        An installation-wide right, granted to accounts, groups or to all accounts at once. The
+        CREATE_ values are rights to create something ("Anlegerecht"): they open a creation path
+        and never an existing content. CREATE_CONNECTOR_LIBRARY is separate from CREATE_LIBRARY
+        because a connector library reaches server paths and stored credentials.
+        VIEW_AGENT_DIRECTORY opens the agent directory, a description of every agent and document
+        template without library contents and without usage figures; it opens no knowledge.
       enum:
         [
           CREATE_SPACE,
@@ -164,6 +166,7 @@ components:
           CREATE_PROMPT_LIBRARY,
           CREATE_AGENT,
           CREATE_TEMPLATE,
+          VIEW_AGENT_DIRECTORY,
         ]
       example: CREATE_SPACE
 

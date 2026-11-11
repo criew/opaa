@@ -140,15 +140,24 @@ export default defineConfig([
     },
   },
   // Guidelines 5.5: no chip in a signal colour - a state is a dot before its word (StateDot).
+  // Guidelines 5.1: no compact button in a dialog footer; listed in every block below, because a
+  // later block replaces the rule's list for its files.
   {
     files: ['src/**/*.tsx'],
-    rules: { 'no-restricted-syntax': ['error', NO_SIGNAL_CHIP] },
+    rules: { 'no-restricted-syntax': ['error', NO_SIGNAL_CHIP, NO_COMPACT_DIALOG_ACTION] },
   },
   // Guidelines 6: dates and moments come from shared/utils/formatDate, numbers from formatNumber.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/*.test.{ts,tsx}', 'src/shared/utils/formatDate.ts'],
-    rules: { 'no-restricted-syntax': ['error', NO_SIGNAL_CHIP, ...NO_LOCALE_FORMAT] },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        NO_SIGNAL_CHIP,
+        NO_COMPACT_DIALOG_ACTION,
+        ...NO_LOCALE_FORMAT,
+      ],
+    },
   },
   // Guidelines 3.2: features and app name a type step (fontSize.*) or icon size, never a number.
   {
@@ -158,6 +167,7 @@ export default defineConfig([
       'no-restricted-syntax': [
         'error',
         NO_SIGNAL_CHIP,
+        NO_COMPACT_DIALOG_ACTION,
         ...NO_LOCALE_FORMAT,
         ...NO_FONT_SIZE_NUMBER,
       ],

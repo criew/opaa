@@ -21,9 +21,10 @@ describe('SuccessionSettingsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SuccessionSettingsSection onSaved={onSaved} />)
 
-    const field = await screen.findByLabelText(FIELD)
+    expect(await screen.findByText('Werkseinstellung: 12 Monate')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Lange offen ab ändern' }))
+    const field = screen.getByLabelText(FIELD)
     expect(field).toHaveValue('12')
-    expect(screen.getByText('Werkseinstellung: 12 Monate')).toBeInTheDocument()
     await user.clear(field)
     await user.type(field, '6')
     const section = screen.getByRole('region', { name: 'Hervorhebung lange offener Einträge' })
@@ -89,7 +90,8 @@ describe('SuccessionSettingsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SuccessionSettingsSection onSaved={vi.fn()} />)
 
-    const field = await screen.findByLabelText('Gesperrt nach (Tage)')
+    await user.click(await screen.findByRole('button', { name: 'Gesperrt nach ändern' }))
+    const field = screen.getByLabelText('Gesperrt nach (Tage)')
     expect(field).toHaveValue('30')
     await user.clear(field)
     await user.type(field, '10')

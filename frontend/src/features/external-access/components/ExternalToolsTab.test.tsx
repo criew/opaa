@@ -163,7 +163,7 @@ describe('ExternalToolsTab', () => {
 
     const panel = await openSettings(user)
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).not.toBeChecked()
     expect(within(panel).getByText(/Gespeichert: aus — zuletzt geändert am/)).toBeVisible()
     expect(within(panel).getByText(/Beteiligung der Personalvertretung/)).toBeVisible()
@@ -186,7 +186,7 @@ describe('ExternalToolsTab', () => {
     render()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     const lifetime = within(panel).getByLabelText(/höchstens gültig/)
     await user.clear(lifetime)
     await user.type(lifetime, '30')
@@ -299,11 +299,11 @@ describe('ExternalToolsTab', () => {
     render()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
     await answerConfirm(user, 'Ungespeicherte Änderungen verwerfen?', 'Weiter bearbeiten')
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).toBeChecked()
 
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
@@ -386,7 +386,7 @@ describe('ExternalToolsTab', () => {
     renderInHistory()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     act(() => navigateRef.current?.(-1))
 
     expect(await screen.findByText('Vorherige Seite')).toBeInTheDocument()
@@ -397,14 +397,14 @@ describe('ExternalToolsTab', () => {
     renderInHistory()
 
     let panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     // A link to the tab without ?panel closes the panel without its own close button.
     act(() => navigateRef.current?.('/admin/connections/external-tools'))
     await waitForDialogClosed()
 
     panel = await openSettings(user)
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).not.toBeChecked()
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
     await waitForDialogClosed()

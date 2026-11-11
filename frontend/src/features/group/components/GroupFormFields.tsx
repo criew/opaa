@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import FormField from '@/shared/ui/form/FormField'
 import { fontSize } from '@/shared/theme/tokens'
@@ -89,7 +89,7 @@ export default function GroupFormFields({
           <Box>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   checked={values.released}
                   onChange={(e) => set({ released: e.target.checked })}
                   slotProps={{ input: { 'aria-describedby': `${idPrefix}-release-help` } }}
@@ -110,7 +110,7 @@ export default function GroupFormFields({
         <Box>
           <FormControlLabel
             control={
-              <Switch
+              <Checkbox
                 checked={values.protectedGroup}
                 onChange={(e) => set({ protectedGroup: e.target.checked })}
                 slotProps={{ input: { 'aria-describedby': `${idPrefix}-protection-help` } }}

@@ -144,10 +144,14 @@ describe('DirectorySyncPage', () => {
 
     const panel = await openPanel(user, 'Verzeichnisdienst')
     const confirm = await within(panel).findByRole('button', { name: 'Plan bestätigen' })
-    expect(confirm).toBeDisabled()
+    // the button stays active; the missing reason is told at its field, and the focus goes there
+    expect(confirm).toBeEnabled()
+    await user.click(confirm)
+    expect(within(panel).getByText('Grund fehlt')).toBeInTheDocument()
+    expect(within(panel).getByLabelText(/grund/i)).toHaveFocus()
+    expect(within(panel).queryByText(/bestätigte Plan wurde angewendet/)).not.toBeInTheDocument()
 
     await user.type(within(panel).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
-    expect(within(panel).getByRole('button', { name: 'Plan bestätigen' })).toBeEnabled()
     await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
 
     expect(await within(panel).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
@@ -367,24 +371,58 @@ describe('DirectorySyncPage', () => {
     await within(panel).findByRole('button', { name: 'Plan bestätigen' })
     await user.type(within(panel).getByLabelText(/grund/i), 'Reorganisation')
 
-    expect(within(panel).getByRole('button', { name: 'Plan bestätigen' })).toBeDisabled()
+    let confirmations = 0
+    server.events.on('request:start', ({ request }) => {
+      if (request.method !== 'GET' && new URL(request.url).pathname.includes('pending-plan')) {
+        confirmations++
+      }
+    })
+    // the button stays active; pressed, it leads to the reason it cannot act on and sends nothing
+    await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
+    expect(within(panel).getByText(/Bestätigen geht erst/)).toHaveFocus()
+    expect(confirmations).toBe(0)
     expect(within(panel).getByRole('button', { name: 'Plan verwerfen' })).toBeEnabled()
-    expect(within(panel).getByText(/Bestätigen geht erst/)).toBeInTheDocument()
   })
 
-  it('does not switch the sync on while the interval is invalid', async () => {
+  it('shows the interval as a value and offers „Ändern“ only once the sync is on', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const panel = await openPanel(user, 'Landesportal')
-    const field = within(panel).getByLabelText('Intervall in Minuten')
+    const off = await openPanel(user, 'Landesportal')
+    expect(within(off).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeEnabled()
+    expect(within(off).queryByLabelText('Intervall in Minuten')).not.toBeInTheDocument()
+    expect(within(off).queryByRole('button', { name: 'Intervall ändern' })).not.toBeInTheDocument()
+    expect(
+      within(off).getByText('Das Intervall lässt sich nach dem Einschalten ändern.'),
+    ).toBeInTheDocument()
+  })
+
+  it('refuses an interval outside its bounds at the field and sends nothing', async () => {
+    const requests: unknown[] = []
+    server.use(
+      http.put('/api/v1/admin/oidc-providers/:providerId/directory-sync', async ({ request }) => {
+        requests.push(await request.json())
+        return HttpResponse.json({})
+      }),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await user.click(within(panel).getByRole('button', { name: 'Intervall ändern' }))
+    const row = within(within(panel).getByRole('region', { name: 'Intervall' }))
+    const field = row.getByLabelText('Intervall in Minuten')
     await user.clear(field)
     await user.type(field, '3')
-    expect(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeDisabled()
+    await user.click(row.getByRole('button', { name: 'Speichern' }))
+
+    expect(field).toBeInvalid()
+    expect(requests).toEqual([])
 
     await user.clear(field)
     await user.type(field, '120')
-    expect(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeEnabled()
+    await user.click(row.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => expect(requests).toEqual([{ enabled: true, intervalMinutes: 120 }]))
   })
 
   it('switches the sync on and saves the interval from the side panel', async () => {

@@ -1,18 +1,7 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import type {
   ConnectionLifecycleSettingKey,
   ConnectionLifecycleSettingResponse,
@@ -23,13 +12,13 @@ import {
 } from '../api/connectionLifecycleApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import FormField from '@/shared/ui/form/FormField'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
-import AdminList from '@/shared/ui/list/AdminList'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
-import { contentWidth, fieldWidth, readingWidth } from '@/shared/theme/tokens'
 
 interface SettingText {
   name: string
@@ -71,24 +60,14 @@ function parseValue(draft: string, entry: ConnectionLifecycleSettingResponse): n
   return value >= entry.minValue && value <= entry.maxValue ? value : null
 }
 
-interface SettingRowData {
+interface SettingRowProps {
   entry: ConnectionLifecycleSettingResponse
   minimumGroupSize: number
   onSaved: (saved: ConnectionLifecycleSettingResponse) => void
 }
 
-type RowPart = 'name' | 'value' | 'origin'
-
-/** The three cells of one row; they share the row's draft and its running save. */
-const RowParts = createContext<Record<RowPart, ReactNode> | null>(null)
-
-function Part({ part }: { part: RowPart }) {
-  return useContext(RowParts)?.[part] ?? null
-}
-
 /** One setting; a failed save is told at its own field and kept until the next edit. */
-function SettingRow({ row, children }: { row: SettingRowData; children: ReactNode }) {
-  const { entry, minimumGroupSize, onSaved } = row
+function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
   const text = TEXTS[entry.setting]
   const [draft, setDraft] = useState(String(entry.value))
   const [busy, setBusy] = useState(false)
@@ -97,18 +76,20 @@ function SettingRow({ row, children }: { row: SettingRowData; children: ReactNod
   const changed = value !== null && value !== entry.value
   const rangeError = `Bitte eine ganze Zahl von ${entry.minValue} bis ${entry.maxValue} eingeben.`
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
       const saved = await updateConnectionLifecycleSetting(entry.setting, next)
       onSaved(saved)
       notify(`${text.name}: jetzt ${saved.value}${text.unit}.`, 'success')
+      return true
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Der Wert konnte nicht gespeichert werden.'
       setSaveError(message)
       notify(`${text.name} nicht gespeichert: ${message}`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
@@ -126,17 +107,18 @@ function SettingRow({ row, children }: { row: SettingRowData; children: ReactNod
       : ''
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed || value === null) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || value === null) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `${text.name} auf ${value} ändern?`,
       consequence: `${endsPause}${earlierErasure(value)}${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
       confirmLabel: 'Ändern',
       tone: paused || earlierErasure(value) ? 'danger' : 'caution',
     })
-    if (!confirmed) return
-    await save(value)
+    if (!confirmed) return false
+    return save(value)
   }
 
   async function handleConfirmShown() {
@@ -166,71 +148,53 @@ function SettingRow({ row, children }: { row: SettingRowData; children: ReactNod
   const belowGroupSize =
     entry.setting === 'EXPIRED_CONNECTION_WARNING_THRESHOLD' && entry.value < minimumGroupSize
 
-  const parts: Record<RowPart, ReactNode> = {
-    name: (
-      <>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {text.name}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-          {`${entry.minValue} bis ${entry.maxValue}${text.unit}`}
-        </Typography>
-      </>
-    ),
-    value: (
-      <>
-        <Box
-          component="form"
-          onSubmit={(event) => void handleSubmit(event)}
-          noValidate
-          sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
-        >
-          <TextField
-            size="small"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setSaveError(null)
-            }}
-            error={value === null || saveError !== null}
-            helperText={value === null ? rangeError : (saveError ?? undefined)}
-            slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': text.fieldLabel } }}
-            sx={{ width: 120 }}
-          />
-          <BusyButton
-            type="submit"
-            variant="outlined"
-            size="small"
-            busy={busy}
-            busyAnnouncement="Wert wird gespeichert"
-            disabled={!changed && !busy}
-            aria-label={`${text.name} speichern`}
-            sx={{ mt: 0.25 }}
-          >
-            Speichern
-          </BusyButton>
-        </Box>
-        <Box sx={{ mt: 1, maxWidth: fieldWidth.long }}>
-          <RetentionPauseNotice
-            pauses={entry.pausedBy}
-            confirmLabel="Angezeigten Wert festlegen"
-            onConfirm={() => void handleConfirmShown()}
-          />
-        </Box>
+  return (
+    <SettingValueRow
+      title={text.name}
+      titleWidth="wide"
+      headingLevel="h3"
+      value={
+        entry.overridden
+          ? `${entry.value}${text.unit} · eigener Wert (Werkseinstellung: ${entry.defaultValue})`
+          : `${entry.value}${text.unit} · Werkseinstellung`
+      }
+      onOpen={() => {
+        setDraft(String(entry.value))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
+          label={text.fieldLabel}
+          size="small"
+          numeric
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={value === null || saveError !== null}
+          helperText={
+            value === null
+              ? rangeError
+              : (saveError ?? `${entry.minValue} bis ${entry.maxValue}${text.unit}`)
+          }
+          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+          sx={{ width: formWidth.number }}
+        />
+      }
+    >
+      <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <RetentionPauseNotice
+          pauses={entry.pausedBy}
+          confirmLabel="Angezeigten Wert festlegen"
+          onConfirm={() => void handleConfirmShown()}
+        />
         {belowGroupSize && (
-          <Alert severity="warning" sx={{ mt: 1, maxWidth: readingWidth }}>
+          <Alert severity="warning">
             {`Der Wert liegt unter der Mindestgruppengröße von ${minimumGroupSize}: Jeder Zugang für Personen zeigt dann schon bei „weniger als ${minimumGroupSize}“ die Warnung, auch ein leerer.`}
           </Alert>
         )}
-      </>
-    ),
-    origin: (
-      <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-        <Typography variant="body2">
-          {entry.overridden
-            ? `Eigener Wert (Werkseinstellung: ${entry.defaultValue})`
-            : 'Werkseinstellung'}
-        </Typography>
         {entry.overridden && (
           <Button
             variant="text"
@@ -243,9 +207,8 @@ function SettingRow({ row, children }: { row: SettingRowData; children: ReactNod
           </Button>
         )}
       </Stack>
-    ),
-  }
-  return <RowParts.Provider value={parts}>{children}</RowParts.Provider>
+    </SettingValueRow>
+  )
 }
 
 /**
@@ -301,32 +264,20 @@ export default function ConnectionLifecycleSection() {
       ) : entries === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Box sx={{ maxWidth: contentWidth.detail }}>
-          <AdminList<SettingRowData>
-            label="Schwellen und Fristen der Verbindungen"
-            rows={entries.map((entry) => ({ entry, minimumGroupSize, onSaved: replace }))}
-            rowKey={({ entry }) => `${entry.setting}-${entry.value}-${entry.overridden}`}
-            rowLabel={({ entry }) => TEXTS[entry.setting].name}
-            rowScope={SettingRow}
-            columns={[
-              {
-                id: 'name',
-                head: 'Einstellung',
-                width: '30%',
-                wrap: true,
-                cell: () => <Part part="name" />,
-              },
-              { id: 'value', head: 'Wert', wrap: true, cell: () => <Part part="value" /> },
-              {
-                id: 'origin',
-                head: 'Gilt',
-                width: '30%',
-                wrap: true,
-                cell: () => <Part part="origin" />,
-              },
-            ]}
-          />
-        </Box>
+        <Stack
+          role="group"
+          aria-label="Schwellen und Fristen der Verbindungen"
+          sx={{ maxWidth: contentWidth.detail }}
+        >
+          {entries.map((entry) => (
+            <SettingRow
+              key={`${entry.setting}-${entry.value}-${entry.overridden}`}
+              entry={entry}
+              minimumGroupSize={minimumGroupSize}
+              onSaved={replace}
+            />
+          ))}
+        </Stack>
       )}
     </PageSection>
   )

@@ -3,13 +3,13 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import { Navigate, Link as RouterLink, useLocation } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import LocalSignInForm from '../components/LocalSignInForm'
 import { useAuthStore } from '@/shared/session/authStore'
 import { spendSilentSignIn } from '@/shared/session/silentSignIn'
@@ -85,11 +85,7 @@ export default function SystemLoginPage() {
         </Typography>
       </Stack>
 
-      <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
-          Zur regulären Anmeldung
-        </Link>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }

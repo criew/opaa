@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureSettings, SelfDisclosureSettingsUpdate } from '@/shared/api/types'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -64,11 +63,11 @@ export default function SelfDisclosureSettingsSection() {
   const update: SelfDisclosureSettingsUpdate = {}
   if (current && enabled !== current.enabled) update.enabled = enabled
   if (current && valid && limit !== current.dailyLimit) update.dailyLimit = limit
-  const changed = valid && Object.keys(update).length > 0
+  const dirty =
+    current !== null && (enabled !== current.enabled || draft.trim() !== String(current.dailyLimit))
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !current || !changed) return
+  async function handleSave() {
+    if (busy || !current || !valid) return
     if (update.enabled === false) {
       const confirmed = await confirmAction({
         question: 'Selbstauskunft ausschalten?',
@@ -115,10 +114,25 @@ export default function SelfDisclosureSettingsSection() {
       ) : current === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <SettingsForm
+          onSave={handleSave}
+          busy={busy}
+          dirty={dirty}
+          onDiscard={() => {
+            adopt(current)
+            setSaveError(null)
+          }}
+          result={
+            saveError && (
+              <Alert severity="error" role="alert">
+                {saveError}
+              </Alert>
+            )
+          }
+        >
           <FormControlLabel
             control={
-              <Switch
+              <Checkbox
                 checked={enabled}
                 onChange={(event) => {
                   setEnabled(event.target.checked)
@@ -130,8 +144,8 @@ export default function SelfDisclosureSettingsSection() {
           />
           <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, mt: 0.5 }}>
             {enabled
-              ? 'Eingeschaltet: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
-              : 'Abgeschaltet: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
+              ? 'Mit Haken: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
+              : 'Ohne Haken: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
           </Typography>
           <FormField
             label="Tagesgrenze (vollständige Downloads je Person und Tag)"
@@ -151,25 +165,8 @@ export default function SelfDisclosureSettingsSection() {
             slotProps={{
               htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
             }}
-            sx={{ maxWidth: formWidth.column }}
-            action={
-              <BusyButton
-                type="submit"
-                variant="outlined"
-                busy={busy}
-                busyAnnouncement="Einstellungen werden gespeichert"
-                disabled={!changed && !busy}
-              >
-                Speichern
-              </BusyButton>
-            }
           />
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
-        </Box>
+        </SettingsForm>
       )}
     </PageSection>
   )

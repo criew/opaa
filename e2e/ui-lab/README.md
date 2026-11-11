@@ -151,6 +151,9 @@ Ein neuer Bereich bekommt seine Szenarien, indem seine Mock-Handler `currentMock
 | `auditor` | Rolle Revision | `/revision/rechtehistorie`, `/revision/verbindungsprotokoll`, `/revision/rollenantraege` |
 | `signed-out` | niemand; zwei Identitätsanbieter und lokale Konten mit Selbstregistrierung und Passwort-Rücksetzung | `/login`, `/register`, `/forgot-password`, `/set-password` |
 
+`/login/system` leitet in diesem Profil auf `/login` um, weil die lokalen Konten eingeschaltet
+sind. `capture.mjs` setzt das Profil mit `--profile` für den ganzen Lauf.
+
 Der Einrichtungs-Assistent hängt nicht am Profil: `?mockInstallation=pending` öffnet ihn mit den
 Pflichtschritten, `?mockInstallation=embedding` mit allen optionalen Schritten; das Token der Mocks
 ist `opaa-installation-demo-0000000001`. Die laufende Chat-Antwort hält das Szenario `slow` fest:
@@ -166,7 +169,17 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
      [--scenarios small,scale,empty,slow,failed,partial]   # auch: default
      [--schemes light,dark] [--widths 1280,320]
      [--areas wizard,review,detail,edit] [--concurrency 2] [--no-axe] [--no-full] [--variant <id>]
+     [--profile admin|user|auditor|signed-out]
 ```
+
+- `--profile <name>` lädt jede Seite des Laufs mit diesem [Mock-Profil](#mock-profile), als stünde
+  `?mockProfile=<name>` an der URL. Die Seiten vor der Anmeldung laufen so durch dieselbe Messung
+  wie alle anderen:
+  ```bash
+  node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> --flow pages --profile signed-out \
+       --pages '/login,/register,/forgot-password,/set-password?token=demo' --scenarios default
+  ```
+  Die Eingabespalte dieser Seiten ist ihr `<main>`; darauf beziehen sich die Kennzahlen.
 
 - `--variant <id>` hängt `?variant=<id>` an jede URL, die der Ablauf öffnet (vor den Hash), und
   zeigt so eine Variante aus `UI_LAB_VARIANTS`; gleich in `record-flows.mjs`.

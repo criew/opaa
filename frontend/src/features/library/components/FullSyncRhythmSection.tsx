@@ -1,29 +1,17 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react'
-import Box from '@mui/material/Box'
+import { useCallback, useEffect, useState } from 'react'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import InputAdornment from '@mui/material/InputAdornment'
-import Typography from '@mui/material/Typography'
 import type { FullSyncRhythmResponse } from '@/shared/api/types'
 import { listFullSyncRhythms, updateFullSyncRhythm } from '../api/fullSyncRhythmApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 import PageSection from '@/shared/ui/PageSection'
-import AdminList from '@/shared/ui/list/AdminList'
-import { formWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
-import { contentWidth } from '@/shared/theme/tokens'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -52,23 +40,13 @@ function parseDays(draft: string): number | null {
   return days >= MIN_DAYS && days <= MAX_DAYS ? days : null
 }
 
-interface RhythmRowData {
+interface RhythmRowProps {
   rhythm: FullSyncRhythmResponse
   onSaved: (saved: FullSyncRhythmResponse) => void
 }
 
-type RowPart = 'name' | 'value' | 'origin'
-
-/** The three cells of one row; they share the row's draft and its running save. */
-const RowParts = createContext<Record<RowPart, ReactNode> | null>(null)
-
-function Part({ part }: { part: RowPart }) {
-  return useContext(RowParts)?.[part] ?? null
-}
-
 /** One source type; a failed save is told at its own field and kept until the next edit. */
-function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode }) {
-  const { rhythm, onSaved } = row
+function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
   const [draft, setDraft] = useState(String(rhythm.intervalDays))
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -76,7 +54,7 @@ function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode 
   const days = parseDays(draft)
   const changed = days !== null && days !== rhythm.intervalDays
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
@@ -86,27 +64,30 @@ function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode 
         `Der Vollabgleich-Rhythmus von ${name} ist jetzt ${daysLabel(saved.intervalDays)}.`,
         'success',
       )
+      return true
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Der Rhythmus konnte nicht gespeichert werden.'
       setSaveError(message)
       notify(`Rhythmus von ${name} nicht gespeichert: ${message}`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed || days === null) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || days === null) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `Vollabgleich-Rhythmus von ${name} auf ${daysLabel(days)} ändern?`,
       consequence: `Gilt ab dem nächsten Lauf für ${scopeOf(rhythm)}. Ein kürzerer Rhythmus entfernt früher, was in der Quelle gelöscht wurde, und stellt mehr Anfragen an die Quelle. Die Änderung steht im Revisionsprotokoll.`,
       confirmLabel: 'Ändern',
       tone: 'caution',
     })
-    if (!confirmed) return
-    await save(days)
+    if (!confirmed) return false
+    return save(days)
   }
 
   async function handleReset() {
@@ -121,18 +102,23 @@ function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode 
     await save(null)
   }
 
-  const parts: Record<RowPart, ReactNode> = {
-    name,
-    value: (
-      <Box
-        component="form"
-        onSubmit={(event) => void handleSubmit(event)}
-        noValidate
-        sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
-      >
+  return (
+    <SettingValueRow
+      title={name}
+      headingLevel="h3"
+      value={
+        rhythm.overridden
+          ? `${daysLabel(rhythm.intervalDays)} · eigener Wert (Werkseinstellung: ${daysLabel(rhythm.defaultIntervalDays)})`
+          : `${daysLabel(rhythm.intervalDays)} · Werkseinstellung`
+      }
+      onOpen={() => {
+        setDraft(String(rhythm.intervalDays))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
         <FormField
           label={`Vollabgleich von ${name} alle … Tage`}
-          hideLabel
           size="small"
           value={draft}
           onChange={(event) => {
@@ -147,42 +133,21 @@ function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode 
           }}
           sx={{ width: formWidth.number }}
         />
-        <BusyButton
-          type="submit"
-          variant="outlined"
+      }
+    >
+      {rhythm.overridden && (
+        <Button
+          variant="text"
           size="small"
-          busy={busy}
-          busyAnnouncement="Rhythmus wird gespeichert"
-          disabled={!changed && !busy}
-          aria-label={`Rhythmus von ${name} speichern`}
-          sx={{ mt: 0.25 }}
+          disabled={busy}
+          onClick={() => void handleReset()}
+          aria-label={`Rhythmus von ${name} auf die Werkseinstellung zurücksetzen`}
         >
-          Speichern
-        </BusyButton>
-      </Box>
-    ),
-    origin: (
-      <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-        <Typography variant="body2">
-          {rhythm.overridden
-            ? `Eigener Wert (Werkseinstellung: ${daysLabel(rhythm.defaultIntervalDays)})`
-            : 'Werkseinstellung'}
-        </Typography>
-        {rhythm.overridden && (
-          <Button
-            variant="text"
-            size="small"
-            disabled={busy}
-            onClick={() => void handleReset()}
-            aria-label={`Rhythmus von ${name} auf die Werkseinstellung zurücksetzen`}
-          >
-            Werkseinstellung wiederherstellen
-          </Button>
-        )}
-      </Stack>
-    ),
-  }
-  return <RowParts.Provider value={parts}>{children}</RowParts.Provider>
+          Werkseinstellung wiederherstellen
+        </Button>
+      )}
+    </SettingValueRow>
+  )
 }
 
 /**
@@ -235,34 +200,19 @@ export default function FullSyncRhythmSection() {
       ) : rhythms === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Box sx={{ maxWidth: contentWidth.form }}>
-          <AdminList<RhythmRowData>
-            label="Vollabgleich-Rhythmus je Quellart"
-            rows={rhythms.map((rhythm) => ({ rhythm, onSaved: replace }))}
-            rowKey={({ rhythm }) =>
-              `${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`
-            }
-            rowLabel={({ rhythm }) => rhythm.displayName}
-            rowScope={RhythmRow}
-            columns={[
-              {
-                id: 'name',
-                head: 'Quellart',
-                width: '24%',
-                wrap: true,
-                cell: () => <Part part="name" />,
-              },
-              { id: 'value', head: 'Vollabgleich', wrap: true, cell: () => <Part part="value" /> },
-              {
-                id: 'origin',
-                head: 'Gilt',
-                width: '34%',
-                wrap: true,
-                cell: () => <Part part="origin" />,
-              },
-            ]}
-          />
-        </Box>
+        <Stack
+          role="group"
+          aria-label="Vollabgleich-Rhythmus je Quellart"
+          sx={{ maxWidth: contentWidth.form }}
+        >
+          {rhythms.map((rhythm) => (
+            <RhythmRow
+              key={`${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`}
+              rhythm={rhythm}
+              onSaved={replace}
+            />
+          ))}
+        </Stack>
       )}
     </PageSection>
   )

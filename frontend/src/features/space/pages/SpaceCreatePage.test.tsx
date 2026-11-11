@@ -151,7 +151,7 @@ describe('SpaceCreatePage (#594)', () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
-    const cleanup = await screen.findByRole('switch', {
+    const cleanup = await screen.findByRole('checkbox', {
       name: 'Inaktive Chats nach 90 Tagen archivieren und nach weiteren 365 Tagen löschen',
     })
     expect(cleanup).not.toBeChecked()
@@ -223,7 +223,7 @@ describe('SpaceCreatePage (#594)', () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
-    const cleanup = await screen.findByRole('switch', {
+    const cleanup = await screen.findByRole('checkbox', {
       name: 'Inaktive Chats nach 120 Tagen archivieren und nach weiteren 400 Tagen löschen',
     })
     expect(screen.getByText('Angeheftete Chats sind ausgenommen.')).toBeInTheDocument()
@@ -248,7 +248,7 @@ describe('SpaceCreatePage (#594)', () => {
 
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(
-      screen.getByRole('switch', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
+      screen.getByRole('checkbox', { name: 'Inaktive Chats automatisch archivieren und löschen' }),
     )
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
@@ -264,7 +264,7 @@ describe('SpaceCreatePage (#594)', () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
-    await screen.findByRole('switch', { name: /nach 90 Tagen archivieren/ })
+    await screen.findByRole('checkbox', { name: /nach 90 Tagen archivieren/ })
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter' }))

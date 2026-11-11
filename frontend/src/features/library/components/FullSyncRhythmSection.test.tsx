@@ -48,21 +48,28 @@ function saveCapture() {
 }
 
 function row(name: string) {
-  return screen.getByRole('row', { name: new RegExp(`^${name}`) })
+  return screen.getByRole('region', { name })
+}
+
+/** Each source type is a value row: „Ändern“ opens its field. */
+async function openField(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: `${name} ändern` }))
+  return screen.getByLabelText(`Vollabgleich von ${name} alle … Tage`)
 }
 
 describe('FullSyncRhythmSection', () => {
   it('names the rhythm in force per source type and whether it is the factory default', async () => {
     list([confluence, sharePoint])
+    const user = userEvent.setup()
     renderWithProviders(<FullSyncRhythmSection />)
 
-    await screen.findByRole('table', { name: 'Vollabgleich-Rhythmus je Quellart' })
-    expect(within(row('Confluence')).getByText('Werkseinstellung')).toBeInTheDocument()
+    await screen.findByRole('group', { name: 'Vollabgleich-Rhythmus je Quellart' })
+    expect(within(row('Confluence')).getByText('7 Tage · Werkseinstellung')).toBeInTheDocument()
     expect(
-      within(row('SharePoint')).getByText('Eigener Wert (Werkseinstellung: 1 Tag)'),
+      within(row('SharePoint')).getByText('3 Tage · eigener Wert (Werkseinstellung: 1 Tag)'),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Vollabgleich von Confluence alle … Tage')).toHaveValue('7')
-    expect(screen.getByLabelText('Vollabgleich von SharePoint alle … Tage')).toHaveValue('3')
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    expect(await openField(user, 'SharePoint')).toHaveValue('3')
     expect(
       within(row('Confluence')).queryByRole('button', { name: /Werkseinstellung/ }),
     ).not.toBeInTheDocument()
@@ -74,10 +81,10 @@ describe('FullSyncRhythmSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<FullSyncRhythmSection />)
 
-    const field = await screen.findByLabelText('Vollabgleich von Confluence alle … Tage')
+    const field = await openField(user, 'Confluence')
     await user.clear(field)
     await user.type(field, '14')
-    await user.click(screen.getByRole('button', { name: 'Rhythmus von Confluence speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const question = 'Vollabgleich-Rhythmus von Confluence auf 14 Tage ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
@@ -87,7 +94,9 @@ describe('FullSyncRhythmSection', () => {
 
     await waitFor(() => expect(sent).toEqual([{ type: 'CONFLUENCE', body: { intervalDays: 14 } }]))
     expect(
-      await within(row('Confluence')).findByText('Eigener Wert (Werkseinstellung: 7 Tage)'),
+      await within(row('Confluence')).findByText(
+        '14 Tage · eigener Wert (Werkseinstellung: 7 Tage)',
+      ),
     ).toBeInTheDocument()
   })
 
@@ -111,7 +120,9 @@ describe('FullSyncRhythmSection', () => {
     await waitFor(() =>
       expect(sent).toEqual([{ type: 'SHAREPOINT', body: { intervalDays: null } }]),
     )
-    expect(await within(row('SharePoint')).findByText('Werkseinstellung')).toBeInTheDocument()
+    expect(
+      await within(row('SharePoint')).findByText('1 Tag · Werkseinstellung'),
+    ).toBeInTheDocument()
   })
 
   it.each(['0', '366', '2,5', 'x'])('refuses %s before sending anything', async (typed) => {
@@ -120,13 +131,17 @@ describe('FullSyncRhythmSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<FullSyncRhythmSection />)
 
-    const field = await screen.findByLabelText('Vollabgleich von Confluence alle … Tage')
+    const field = await openField(user, 'Confluence')
     await user.clear(field)
     await user.type(field, typed)
 
     expect(screen.getByText('Bitte eine ganze Zahl von 1 bis 365 eingeben.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Rhythmus von Confluence speichern' })).toBeDisabled()
+    const save = screen.getByRole('button', { name: 'Speichern' })
+    expect(save).toBeEnabled()
+    await user.click(save)
     expect(sent).toEqual([])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(field).toBeInvalid()
   })
 
   it('tells a refused save at the field of its own row and keeps it there', async () => {
@@ -142,10 +157,10 @@ describe('FullSyncRhythmSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<FullSyncRhythmSection />)
 
-    const field = await screen.findByLabelText('Vollabgleich von Confluence alle … Tage')
+    const field = await openField(user, 'Confluence')
     await user.clear(field)
     await user.type(field, '14')
-    await user.click(screen.getByRole('button', { name: 'Rhythmus von Confluence speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await answerConfirm(user, 'Vollabgleich-Rhythmus von Confluence auf 14 Tage ändern?', 'Ändern')
 
     expect(
@@ -153,7 +168,7 @@ describe('FullSyncRhythmSection', () => {
         'Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen',
       ),
     ).toBeInTheDocument()
-    const other = screen.getByLabelText('Vollabgleich von SharePoint alle … Tage')
+    const other = await openField(user, 'SharePoint')
     await user.clear(other)
     await user.type(other, '4')
     expect(
@@ -185,6 +200,6 @@ describe('FullSyncRhythmSection', () => {
     renderWithProviders(<FullSyncRhythmSection />)
 
     await user.click(await screen.findByRole('button', { name: 'Erneut laden' }))
-    expect(await screen.findByLabelText('Vollabgleich von Confluence alle … Tage')).toHaveValue('7')
+    expect(await openField(user, 'Confluence')).toHaveValue('7')
   })
 })

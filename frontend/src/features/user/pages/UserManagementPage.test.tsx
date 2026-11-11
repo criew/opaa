@@ -1422,7 +1422,7 @@ describe('UserManagementPage', () => {
     const attempts = await screen.findByLabelText('Fehlversuche bis zur Sperre')
     await user.clear(attempts)
     await user.type(attempts, '3')
-    await user.click(screen.getByRole('button', { name: 'Regeln speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0].lockoutMaxAttempts).toBe(3)
@@ -1437,7 +1437,7 @@ describe('UserManagementPage', () => {
     expect(screen.getByLabelText('Fehlversuche bis zur Sperre')).toHaveValue(5)
     // the button disappears with the own value: the focus goes to the field it reset
     expect(screen.getByLabelText('Fehlversuche bis zur Sperre')).toHaveFocus()
-    await user.click(screen.getByRole('button', { name: 'Regeln speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(bodies).toHaveLength(2))
     expect(bodies[1].lockoutMaxAttempts).toBeNull()

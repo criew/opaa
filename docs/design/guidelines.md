@@ -256,8 +256,10 @@ steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber kei
   UI-Texte) · 1.5 (Fließtext) · 1.7 (lange Lesetexte, z. B. Chat-Antworten).
 - **Laufweiten:** −0.02em (Überschriften ab xl) · −0.005em (Fließtext) · +0.08em
   (Versal-Etiketten).
-- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten): 11–12 px, Versalien,
-  +0.08em, Gewicht 500, Farbe `accent` über Überschriften bzw. `fg-3` in Tabellen.
+- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten, Abschnittskopf): 11–12 px,
+  Versalien, +0.08em, Gewicht 500, Farbe `fg-2` bzw. `fg-3` in Tabellen. Nie `accent`: Blau bleibt
+  Handlung und Zustand vorbehalten (2.3), auch auf den Seiten vor der Anmeldung und im
+  Installationsassistenten.
 
 ---
 
@@ -473,7 +475,8 @@ beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"
 ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
 Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
 zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
-Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs ohne Formular
+(„Zur Anmeldung" nach Installation, Kontoübergabe und gescheiterter Rückkehr vom Anbieter)
 sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
 Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
@@ -481,6 +484,23 @@ Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
 Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
+
+**Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
+Passwort festlegen, E-Mail-Adresse bestätigen, Kontoübergabe) folgen denselben Regeln und
+Bausteinen wie die Anwendung (`FormField`, `SecretField`, `TextLink`, `SectionHead`):
+
+- Die Primärschaltfläche trägt das Verb der Seite, nicht ihren Titel: „Anmelden", „Registrieren",
+  „Link anfordern", „Passwort festlegen".
+- Der Rückweg heißt überall „Zur Anmeldung" und steht als Textlink unter dem Formular, nach einem
+  Ergebnishinweis unter diesem. Andere Wortlaute („Zurück zur Anmeldung", „Sie haben schon ein
+  Konto?") gibt es nicht.
+- Frei stehende Verweise („Passwort vergessen?", „Anmeldung für die Systemverwaltung", „Neuen Link
+  anfordern") sind Textlinks in 14 px, unterstrichen beim Zeigen; nur der Link im Satz („Noch kein
+  Konto? Konto registrieren") bleibt dauerhaft unterstrichen.
+- Identitätsanbieter stehen zuerst, der vorgeschlagene gefüllt; die lokale Anmeldung darunter ist
+  dann sekundär (eine primäre Schaltfläche je Fläche).
+
+`preSignInRules.test.ts` prüft Wortlaut, Bausteine und Verben im Quelltext.
 
 ### 5.2 Formularfelder
 
@@ -1100,6 +1120,12 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
+Eine einzelne Einstellung mit Feld ist dieselbe Zeile aus `SettingValueRow` (5.16).
+
+**Abschnittsköpfe sind überall grau.** Der Versal-Abschnittskopf (`SectionHead`, Eyebrow-Muster
+aus 3.3) steht in `fg-2`, auch auf den Seiten vor der Anmeldung („Identitätsanbieter", „Konto
+dieser Installation") und über dem Schritttitel des Installationsassistenten. Akzentfarbe an einem
+Abschnittskopf gibt es nicht (2.3; Prüfliste P54, geprüft durch `preSignInRules.test.ts`).
 
 ### 5.13 Seitenleiste des Space
 
@@ -1206,6 +1232,45 @@ Fußzeile selbst nach.
 
 Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
 Zählbudget `disabledSubmits`).
+
+### 5.16 Einstellungen: Speichern, Schalter, Verbindungstest
+
+Eine Einstellungsseite, ein Reiter oder ein Abschnitt mit eigenem Speichern ist entweder ein
+Formular oder eine Wertzeile. Beides kommt aus `frontend/src/shared/ui/settings/`; kein Thema baut
+die Fußzeile eines Einstellungsformulars selbst.
+
+- **Mehrere Felder sind ein Formular mit genau einem „Speichern"** (`SettingsForm`): primär, unten
+  links, immer aktiv. Die Beschriftung ist nur „Speichern", nie „Regeln speichern" oder „Zugang
+  speichern". Fehlt oder stimmt eine Eingabe nicht, steht der Fehler am Feld, und der Fokus geht
+  hinein. Ohne Änderung speichert „Speichern" nichts und sagt das im Popup.
+- **„Verwerfen" steht still daneben, nur solange etwas geändert ist**, und stellt den gespeicherten
+  Stand wieder her. Wer die Seite mit Änderungen über einen Link verlässt, wird gefragt:
+  „Änderungen verwerfen?" (Ton `neutral`, Handlung „Verwerfen"); beim Schließen oder Neuladen des
+  Tabs fragt der Browser.
+- **Ein einzelner Wert ist eine Wertzeile mit „Ändern"** (`SettingValueRow`, 5.12): Titel, Wert,
+  rechts „Ändern". „Ändern" öffnet das Feld unter dem Wert mit „Speichern" (primär, kompakt) und
+  „Abbrechen" (still). Neben einem Feld steht kein Speichern-Knopf. Der Weg zurück zur
+  Werkseinstellung steht in der geschlossenen Zeile unter dem Wert.
+- **Ein Schalter wirkt immer sofort** und meldet das per Popup (5.9). Ist die Wirkung folgenreich,
+  fragt er vorher (Ton `caution`, 5.10). Was erst mit „Speichern" oder „Anlegen" gilt, ist ein
+  Auswahlkästchen; in einem `SettingsForm` steht deshalb nie ein Schalter. Ausgenommen ist der
+  Schalter als Filter über einer Liste (5.3).
+- **Rückmeldung nach dem Speichern ist das Popup**, kein Erfolgshinweis in der Seite. Fehler stehen
+  am Feld; ein Fehler ohne Feld (Server nicht erreichbar) steht als Hinweis unter der Fußzeile, bis
+  der nächste Versuch gelingt.
+- **„Verbindung testen"** (`ConnectionTestButton`) ist sekundär und immer aktiv: auf Seiten neben
+  „Speichern", in Dialogen links in der Fußzeile. Der Test nimmt die Eingaben, wie sie stehen,
+  gespeichert oder nicht; fehlt ihm eine Angabe, steht das am Feld. Das Ergebnis steht inline
+  unter der Fußzeile, in Dialogen im Inhalt, nie im Popup. Im Assistenten gilt P33 der
+  [Prüfliste](./ui-pruefliste.md).
+- **Reihenfolge der Fußzeile:** „Speichern", dann höchstens eine Nebenhandlung, dann „Verwerfen".
+  „Verwerfen" steht zuletzt, damit sein Erscheinen nichts verschiebt.
+
+Geprüft in `frontend/src/shared/ui/settings/*.test.ts(x)`: `settingsSource.test.ts` lässt keine
+Beschriftung „… speichern" außer „Speichern", keinen an Eingaben gebundenen gesperrten
+Speichern-Knopf, keinen `Switch` in einem `SettingsForm` und „Verbindung testen" nur aus dem
+Baustein zu. Das Zählbudget `disabledSubmits` = 0 der Prüfliste gilt damit auch für
+Einstellungsseiten.
 
 ---
 
