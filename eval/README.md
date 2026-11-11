@@ -35,6 +35,8 @@ eval/
 │   │   └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
 │   └── tool-calling/                Fallbasis Werkzeugfähigkeit (Issue #1753); Dateien im Backend, siehe SOURCE.md
 │       └── SOURCE.md                Fallklassen, Untergrenze, Grenzen der Messung
+├── agents/
+│   └── recherche/                   Recherchefälle des Agenten „Recherche“ mit Messskript (Issue #3674)
 ├── ocr-poc/                         Messstand des OCR-PoC mit Ergebnis (Issue #1062)
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
