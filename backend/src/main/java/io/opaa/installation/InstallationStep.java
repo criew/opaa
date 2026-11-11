@@ -3,7 +3,9 @@ package io.opaa.installation;
 /**
  * The steps of the installation this version knows (ADR-0060, Entscheidung 6). The installation
  * completes only when every mandatory step is saved and successfully checked, and every optional
- * step either skipped (not saved) or successfully checked as well.
+ * step either skipped (not saved) or successfully checked as well. Every step is walked through in
+ * e2e/tests/installation-assistant.spec.ts; .github/scripts/check_installation_e2e_coverage.sh
+ * fails CI for a step without that scenario.
  */
 public enum InstallationStep {
   /** The first system administration account, the local emergency account of ADR-0033. */

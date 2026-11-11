@@ -338,6 +338,7 @@ const composeEnv = {
         OPAA_OCR_STUB_API_KEY: ocrApiKey,
       }),
   ...(isOcr ? { OPAA_OCR_API_KEY: ocrApiKey } : {}),
+  ...(isInstallation ? { OPAA_OCR_STUB_API_KEY: ocrApiKey } : {}),
   ...(usesMailpit
     ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
@@ -554,8 +555,18 @@ async function runStack(variantArgs = [], variantEnv = {}) {
         // scenario connects, for an entry in the connection log.
         ['ai-stub', 'mailpit', 'dropbox-stub', 'postgres', 'backend', 'frontend']
       : isInstallation
-        ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server.
-          ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
+        ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server,
+          // oidc-stub, ocr-stub and clamd-stub the provider, OCR service and scanner of its steps.
+          [
+            'ai-stub',
+            'mailpit',
+            'oidc-stub',
+            'ocr-stub',
+            'clamd-stub',
+            'postgres',
+            'backend',
+            'frontend',
+          ]
         : [
             'ai-stub',
             'rss-feed',
@@ -679,6 +690,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
         ? {
             E2E_INSTALLATION_TOKEN: envFileValue('OPAA_INSTALLATION_TOKEN') ?? '',
             E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,
+            E2E_OCR_API_KEY: ocrApiKey,
           }
         : {}),
     },

@@ -46,7 +46,8 @@ e2e/
   installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
     playwright.config.ts         Einrichtungs-Assistenten aus tests/ gegen einen Stack im Installationsmodus
   installation.env           Environment des Installationsmodus (oidc, ohne Antwortdatei, Token gesetzt)
-  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt des Assistenten
+  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt, oidc-stub, ocr-stub
+                                 und clamd-stub für die Schritte des Assistenten
   multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
     playwright.config.ts         Konfiguration, ohne Browser
     tests/*.spec.ts
@@ -65,6 +66,7 @@ e2e/
   docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
   ocr-stub/server.mjs            Ersatz für docling-serve (opaa-ocr), spielt die aufgezeichnete Antwort ab
+  oidc-stub/server.mjs           Ersatz für einen OIDC-Anbieter: Discovery, JWK-Set, stille Anmeldung abgelehnt
   ocr/                           Ziel "ocr": Abnahme der Texterkennung mit echtem opaa-ocr, als Video
     playwright.config.ts
     tests/abnahme.spec.ts
@@ -1068,22 +1070,29 @@ Betriebsmodus `oidc` auf einer leeren Datenbank, **ohne** Antwortdatei und mit v
 läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, über die Konfiguration
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
 Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
-einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt die optionalen Schritte
-Chat-Modell, Einbettung, Reranking, Spracheingabe, Virenprüfung, E-Mail und Branding und endet mit der
-Anmeldung des ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled`
-wählt das Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`;
-`POST …/rerank` bewertet jede Probe) und das Transkriptionsmodell aus der Liste unter
-`http://ai-stub:8089/transcription` (nur diese beiden Präfixe des Stubs haben eine Modellliste, Chat-
-und Embedding-Schritt finden keine), findet beide danach eingeschaltet unter „Modelle → Reranking“
-und „Modelle → Spracheingabe“, überspringt die Virenprüfung (der Stapel hat kein clamd), richtet die E-Mail gegen den Mailpit des
-Stapels ein (Profil `mail`, `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die
-Testnachricht über `E2E_MAILPIT_BASE_URL` zurück, füllt das Branding aus und findet Produktname und
-Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
+einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` bleibt bei lokalen Konten,
+überspringt die optionalen Schritte Chat-Modell, Einbettung, Reranking, Spracheingabe,
+Texterkennung, Virenprüfung, E-Mail und Branding und endet mit der Anmeldung des ersten Kontos auf
+der regulären Anmeldeseite unter dem OPAA-Standard. `@mail-filled` trägt `oidc-stub` als
+Identitätsanbieter ein (Issuer `http://localhost:18095` für den Browser, JWK-Set unter
+`http://oidc-stub:8095/jwks` für das Backend), wählt das Rerank-Modell aus der Liste des
+Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`; `POST …/rerank` bewertet jede Probe) und
+das Transkriptionsmodell aus der Liste unter `http://ai-stub:8089/transcription` (nur diese beiden
+Präfixe des Stubs haben eine Modellliste, Chat- und Embedding-Schritt finden keine), prüft die
+Texterkennung gegen `ocr-stub` (erst mit falschem Schlüssel, Stufe „Anmeldung“), die Virenprüfung
+gegen `clamd-stub`, richtet die E-Mail gegen den Mailpit des Stapels ein (Profil `mail`,
+`mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die Testnachricht über
+`E2E_MAILPIT_BASE_URL` zurück und füllt das Branding aus. Nach dem Abschluss zeigt die Anmeldeseite den
+Anbieter (die stille Anmeldung beantwortet der Stub mit `login_required`), und die Verwaltung zeigt
+Reranking, Spracheingabe, Texterkennung und Virenprüfung eingeschaltet; Produktname und Akzentfarbe
+erscheinen auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
 `playwright-report-installation-<variante>`, `test-results/installation-<variante>-results.json`);
 der Barrierefreiheitsbericht führt die JSON-Berichte zusammen. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
 (`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.
+Jeder Schritt des Assistenten muss in dem Szenario vorkommen: `.github/scripts/check_installation_e2e_coverage.sh`
+lässt die CI scheitern, sobald ein Wert von `InstallationStep` dort fehlt.
 
 ## Zwei Instanzen (#2952)
 
