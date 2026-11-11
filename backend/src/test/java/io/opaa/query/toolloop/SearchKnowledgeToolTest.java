@@ -77,6 +77,45 @@ class SearchKnowledgeToolTest {
   }
 
   @Test
+  void aPassageAnEarlierStepAlreadyHandedOverIsNotSentOrCountedAgain() {
+    AgentRun run = AgentRuns.run(Set.of(ownLibrary));
+    ToolCallOutcome first = tool.call(args("{\"frage\":\"Frist\"}"), run);
+    run.recordCall(ToolNames.SEARCH_KNOWLEDGE, first);
+
+    ToolCallOutcome second = tool.call(args("{\"frage\":\"Frist nochmal\"}"), run);
+
+    assertThat(second.hits()).isEqualTo(1);
+    assertThat(second.modelText())
+        .doesNotContain("merkblatt.pdf")
+        .contains("schon geliefert")
+        .contains("Zitiermarke gilt weiter");
+    assertThat(second.modelText().length()).isLessThan(first.modelText().length());
+    long before = run.remainingChars();
+    run.recordCall(ToolNames.SEARCH_KNOWLEDGE, second);
+    assertThat(before - run.remainingChars()).isEqualTo(second.modelText().length());
+  }
+
+  @Test
+  void onlyTheNewPassagesOfASearchAreRenderedNextToTheNote() {
+    AgentRun run = AgentRuns.run(Set.of(ownLibrary));
+    run.recordCall(ToolNames.SEARCH_KNOWLEDGE, tool.call(args("{\"frage\":\"Frist\"}"), run));
+    Document other =
+        Document.builder()
+            .text("Eine Verlängerung ist möglich.")
+            .metadata(Map.of("file_name", "faq.pdf", "document_id", "doc-2", "chunk_index", 3))
+            .build();
+    when(expansion.expand(any(), anySet())).thenReturn(List.of(passage, other));
+
+    ToolCallOutcome outcome = tool.call(args("{\"frage\":\"Verlängerung\"}"), run);
+
+    assertThat(outcome.hits()).isEqualTo(2);
+    assertThat(outcome.modelText())
+        .contains("faq.pdf")
+        .doesNotContain("merkblatt.pdf")
+        .contains("1 Textstelle(n)");
+  }
+
+  @Test
   void aLibraryOfTheScopeNarrowsTheSearch() {
     AgentRun run = AgentRuns.run(Set.of(ownLibrary, otherOwnLibrary));
 

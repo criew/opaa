@@ -33,7 +33,6 @@ import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.runlog.AgentRunLogWriter;
-import io.opaa.retrieval.ChunkGroupingKey;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Clock;
@@ -415,7 +414,8 @@ class AgentToolLoop implements AgentTurnHandler {
       // The closing call offers no tools: the model answers with what the steps collected.
       List<ToolCallback> offered = closing ? List.of() : callbacks;
       List<Message> asked = history;
-      response = run.modelCall(() -> call(client, system, asked, offered, toolContext));
+      String callSystem = closing ? system + "\n\n" + AgentPrompt.CLOSING_RULES : system;
+      response = run.modelCall(() -> call(client, callSystem, asked, offered, toolContext));
       tokens += ChatResponses.totalTokens(response);
       if (closing || callbacks.isEmpty() || !response.hasToolCalls()) {
         break;
@@ -640,11 +640,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private static List<Document> distinct(List<Document> passages) {
     Map<String, Document> byKey = new LinkedHashMap<>();
     for (Document passage : passages) {
-      String key =
-          ChunkGroupingKey.of(passage)
-              + "#"
-              + passage.getMetadata().getOrDefault("chunk_index", "0");
-      byKey.putIfAbsent(key, passage);
+      byKey.putIfAbsent(AgentRun.passageKey(passage), passage);
     }
     return new ArrayList<>(byKey.values());
   }

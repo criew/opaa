@@ -98,7 +98,13 @@ class SearchKnowledgeTool implements AgentTool {
           knowledgeRetrieval.retrieveAsGiven(question, narrowing.scope(), narrowing.filter());
       passages = neighborChunkExpansion.expand(result.chunks(), narrowing.scope());
     }
-    String body = passages.isEmpty() ? NO_HITS : DocumentBlock.render(run.blockId(), passages);
+    List<Document> fresh = run.unseen(passages);
+    int repeated = passages.size() - fresh.size();
+    String body =
+        passages.isEmpty()
+            ? NO_HITS
+            : (fresh.isEmpty() ? "" : DocumentBlock.render(run.blockId(), fresh))
+                + (repeated == 0 ? "" : repeatedNote(repeated, fresh.isEmpty()));
     ToolCallResult outcome =
         narrowing.ignored()
             ? ToolCallResult.ARGUMENT_IGNORED
@@ -109,6 +115,14 @@ class SearchKnowledgeTool implements AgentTool {
         question,
         passages.size(),
         passages);
+  }
+
+  private static String repeatedNote(int repeated, boolean allRepeated) {
+    return (allRepeated ? "" : "\n\n")
+        + "Hinweis: "
+        + repeated
+        + " Textstelle(n) dieser Suche hat ein früherer Schritt dieses Laufs schon geliefert und"
+        + " wird nicht wiederholt; ihre Zitiermarke gilt weiter.";
   }
 
   /**

@@ -360,6 +360,14 @@ class AgentToolLoopTest {
     verify(chatModel, times(5)).call(prompts.capture());
     assertThat(toolsOf(prompts.getAllValues().get(3))).isNotEmpty();
     assertThat(toolsOf(prompts.getAllValues().get(4))).isNullOrEmpty();
+    // regression guard: the closing call after a limit keeps the citation rules, the others do not
+    // carry the closing text
+    assertThat(prompts.getAllValues().get(4).getSystemMessage().getText())
+        .contains(AgentPrompt.CLOSING_RULES)
+        .contains("Zitiermarke")
+        .contains("ZITIERREGELN");
+    assertThat(prompts.getAllValues().get(3).getSystemMessage().getText())
+        .doesNotContain(AgentPrompt.CLOSING_RULES);
     assertThat(runs("custom", "limit_calls")).isEqualTo(1.0);
   }
 

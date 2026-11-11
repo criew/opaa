@@ -6,10 +6,12 @@ import io.opaa.chat.AgentRunStamp;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.runlog.AgentStepLogEntry;
+import io.opaa.retrieval.ChunkGroupingKey;
 import io.opaa.retrieval.context.ChunkPosition;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -247,6 +249,23 @@ public final class AgentRun {
   /** The question back to the person, or {@code null} while the run has none. */
   synchronized String question() {
     return question;
+  }
+
+  /** The identity of a passage within a run: its document section. */
+  static String passageKey(Document passage) {
+    return ChunkGroupingKey.of(passage)
+        + "#"
+        + passage.getMetadata().getOrDefault("chunk_index", "0");
+  }
+
+  /**
+   * The passages of {@code candidates} no earlier step handed the model. A passage already in the
+   * context counts neither against the volume limit nor is it sent twice; its marker stays valid.
+   */
+  synchronized List<Document> unseen(List<Document> candidates) {
+    Set<String> seen = new HashSet<>();
+    passages.forEach(passage -> seen.add(passageKey(passage)));
+    return candidates.stream().filter(passage -> seen.add(passageKey(passage))).toList();
   }
 
   /** The characters the run may still collect before it reaches its volume limit. */

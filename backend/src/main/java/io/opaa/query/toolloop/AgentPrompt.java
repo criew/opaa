@@ -88,6 +88,20 @@ final class AgentPrompt {
       gestellt. Die neue Nachricht der Person beantwortet sie.
       - Arbeite den Plan mit dieser Angabe fort und lege keinen neuen Plan vor.""";
 
+  /**
+   * Added to the system text of the closing call, which offers no tool: the answer from what was
+   * collected keeps the citation rules, also when the run ended at a limit.
+   */
+  static final String CLOSING_RULES =
+      """
+      ABSCHLUSS (verbindlich):
+      - Du darfst keine Werkzeuge mehr aufrufen. Antworte jetzt abschließend mit dem, was die \
+      bisherigen Werkzeugaufrufe geliefert haben, und nenne, was dabei offen bleibt.
+      - Die ZITIERREGELN gelten unverändert: Belege jede Sachaussage mit der Zitiermarke ihrer \
+      Textstelle, Zeichen für Zeichen aus der Zeile „Zitiermarke:“ übernommen, mit den Klammern \
+      【 und 】. Liegen Fundstellen vor, ist eine Antwort ohne Zitiermarken unzulässig; erfinde nie \
+      eine Zitiermarke.""";
+
   /** What a run does with a plan step. */
   enum PlanPhase {
     /** The agent has no plan step, or ended its last run differently. */
