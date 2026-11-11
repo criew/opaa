@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FormEvent } from 'react'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
 import type { LocalUserResponse } from '@/shared/api/types'
@@ -161,6 +161,34 @@ describe('LocalUserChatCleanupSection', () => {
 
     expect(await screen.findByTestId('chat-cleanup-pending')).toBeVisible()
     expect(outerSubmit).not.toHaveBeenCalled()
+  })
+
+  it('moves the focus to the filed request once the form closes', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LocalUserChatCleanupSection user={fixture('local-user-vogt')} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Anhaltung beantragen' }))
+    await user.click(screen.getByRole('combobox', { name: 'Zweck' }))
+    await user.click(
+      screen.getByRole('option', { name: 'Behördliche oder gerichtliche Anordnung' }),
+    )
+    await user.type(screen.getByRole('textbox', { name: /Begründung/ }), REASON)
+    await user.click(screen.getByRole('button', { name: 'Antrag stellen' }))
+
+    const pending = await screen.findByTestId('chat-cleanup-pending')
+    await waitFor(() => expect(pending).toHaveFocus())
+  })
+
+  it('returns the focus to „Anhaltung beantragen" when the form is cancelled', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LocalUserChatCleanupSection user={fixture('local-user-vogt')} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Anhaltung beantragen' }))
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Anhaltung beantragen' })).toHaveFocus(),
+    )
   })
 
   it('tells an account that is not locked by the administration what a lock would start', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -55,6 +55,11 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
   const [formOpen, setFormOpen] = useState(false)
   const [purpose, setPurpose] = useState<ChatCleanupHoldPurpose | ''>('')
   const [reason, setReason] = useState('')
+  // Where the focus goes once the request form has closed: the request it filed, or the button
+  // that opened it - never the page's body, where the closed form would leave it.
+  const [focusAfterForm, setFocusAfterForm] = useState<'pending' | 'opener' | null>(null)
+  const pendingRef = useRef<HTMLDivElement>(null)
+  const openerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let active = true
@@ -103,8 +108,22 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       setFormOpen(false)
       setPurpose('')
       setReason('')
+      setFocusAfterForm('pending')
     }
   }
+
+  function cancelRequest() {
+    setFormOpen(false)
+    setFocusAfterForm('opener')
+  }
+
+  useEffect(() => {
+    if (focusAfterForm === null) return
+    const target = focusAfterForm === 'pending' ? pendingRef.current : openerRef.current
+    if (!target) return
+    target.focus()
+    setFocusAfterForm(null)
+  }, [focusAfterForm, state])
 
   const hold = state?.hold
   const pending = state?.pendingRequest
@@ -140,7 +159,12 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           )}
 
           {pending && (
-            <Alert severity="info" data-testid="chat-cleanup-pending">
+            <Alert
+              ref={pendingRef}
+              severity="info"
+              tabIndex={-1}
+              data-testid="chat-cleanup-pending"
+            >
               <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                 {pending.extension
                   ? 'Verlängerung beantragt, wartet auf Freigabe'
@@ -255,7 +279,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                 >
                   Antrag stellen
                 </Button>
-                <Button size="small" onClick={() => setFormOpen(false)} disabled={busy}>
+                <Button size="small" onClick={cancelRequest} disabled={busy}>
                   Abbrechen
                 </Button>
               </Stack>
@@ -265,7 +289,12 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           {!formOpen && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               {!pending && (state.status !== 'SWITCHED_OFF' || hold) && (
-                <Button size="small" variant="outlined" onClick={() => setFormOpen(true)}>
+                <Button
+                  ref={openerRef}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setFormOpen(true)}
+                >
                   {hold ? 'Verlängerung beantragen' : 'Anhaltung beantragen'}
                 </Button>
               )}
