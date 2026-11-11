@@ -605,8 +605,8 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
       ) : (chats === undefined || chats.length === 0) && loadError ? (
         // Failed and empty never stand together: without a list there is only the notice.
         <LoadError
+          dense
           message="Chats konnten nicht geladen werden."
-          detail={loadError}
           onRetry={() => void loadChats(spaceId)}
         />
       ) : (

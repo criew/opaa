@@ -188,4 +188,25 @@ describe('LoadError', () => {
     )
     expect(ohneGrund.textContent).toBe('Konten konnten nicht geladen werden.Erneut laden')
   })
+
+  it('keeps to the sentence and „Erneut laden" below it in a narrow column', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    renderWithProviders(
+      <LoadError
+        dense
+        message="Chats konnten nicht geladen werden."
+        detail="Der Server antwortet nicht."
+        onRetry={onRetry}
+      />,
+    )
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toBe('Chats konnten nicht geladen werden.Erneut laden')
+    // no icon column and no action column beside the sentence
+    expect(alert.querySelector('.MuiAlert-icon')).toBeNull()
+    expect(alert.querySelector('.MuiAlert-action')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
 })
