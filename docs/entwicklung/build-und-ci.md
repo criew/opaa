@@ -562,6 +562,18 @@ Schreibwege der Verwaltung antworten dann mit `409` und der Bitte, neu zu laden
   zwischenzeitlich geänderte Gruppe oder ein Konto trifft (`DirectorySyncService#STALE_ROW_ATTEMPTS`),
   und liest dabei jedes Mal neu.
 
+Dass die Anmeldung so bleibt, prüft `signInSavesNoExistingVersionedRow`: Von den Einstiegen in
+`SIGN_IN_ENTRIES` (`UserProvisioningFilter#doFilterInternal` und die Empfänger von
+`UserProvisionedEvent`) aus folgt sie den Aufrufen und Methodenreferenzen in OPAAs eigenem Code,
+Lambdas eingeschlossen, bei einer Schnittstelle in jede Implementierung, und meldet jedes `save`,
+`saveAll`, `saveAndFlush` und `saveAllAndFlush` auf dem Repository einer Entity aus
+`SECURITY_STATE_ENTITIES` mit `@Version`. Ein solches `save` scheitert an einer gleichzeitigen
+Bearbeitung der Verwaltung, und zwar vor jedem Controller, also ohne `409`: Die Anmeldung schlüge
+fehl. Ausgenommen sind in `SIGN_IN_SAVES` nur die Neuanlagen `UserService#insertUser` und
+`TokenGroupSynchronizer#findOrCreate`. Ein Ereignis, das ein erreichter Code veröffentlicht, verfolgt
+die Regel nicht; ein neuer Empfänger, der in der Anmeldung läuft, gehört deshalb in
+`SIGN_IN_ENTRIES`.
+
 `@DynamicUpdate` bleibt an den vier Entities: Es hält, was ein Schreiber ohne Versionserhöhung
 festgeschrieben hat – die gezielten Updates der Anmeldung und die Vorgängerversion während eines
 Rolling Updates, die die Spalte nicht kennt.
@@ -583,10 +595,10 @@ abweichende Spalte. Ohne `@DynamicUpdate` schreibt auch das Dirty Checking eine 
 Entity ohne `save` als ganze Zeile; die Regel meldet dann jeden Aufruf einer ändernden Methode.
 Vollen Schutz gibt nur `@Version`. Auch dort prüft die Version nur, wer sie mitschreibt: Ein gezieltes
 `UPDATE` ohne Versionserhöhung und die Vorgängerversion während eines Rolling Updates lassen ein
-späteres Schreiben aus altem Stand durch; dann hält nur `@DynamicUpdate` die übrigen Spalten. Typen,
-die nur eingefügt und
-gelöscht werden (`GroupMembership`, `CapabilityGrant`), fragt die Regel nicht ab; ein Feld, dessen
-Name nicht nach Sicherheitszustand klingt, erfasst die Abdriftprüfung nicht.
+späteres Schreiben aus altem Stand durch; dann hält nur `@DynamicUpdate` die übrigen Spalten.
+Typen, die nur eingefügt und gelöscht werden (`GroupMembership`, `CapabilityGrant`), fragt die Regel
+nicht ab; ein Feld, dessen Name nicht nach Sicherheitszustand klingt, erfasst die Abdriftprüfung
+nicht.
 
 ## Kein Geheimnis im Log
 

@@ -503,6 +503,25 @@ class SecurityInvariantsTest {
               "every caller read the installation state FOR UPDATE (lockState)"));
 
   /**
+   * Where a sign-in starts: the filter that provisions the account and the listeners of the event
+   * it publishes, which run in its thread.
+   */
+  static final List<String> SIGN_IN_ENTRIES =
+      List.of(
+          "io.opaa.auth.UserProvisioningFilter#doFilterInternal",
+          "io.opaa.group.TokenGroupProvisioner#onUserProvisioned",
+          "io.opaa.space.PersonalSpaceProvisioner#onUserProvisioned");
+
+  /**
+   * Code units on the sign-in path that save a versioned row of {@link #SECURITY_STATE_ENTITIES},
+   * each with why the save cannot meet a concurrent change of that row.
+   */
+  static final Map<String, String> SIGN_IN_SAVES =
+      Map.ofEntries(
+          Map.entry("io.opaa.auth.UserService#insertUser", NEW_ROW),
+          Map.entry("io.opaa.group.TokenGroupSynchronizer#findOrCreate", NEW_ROW));
+
+  /**
    * Code units that build a prompt in a class without {@link
    * SecurityInvariants#PROMPT_TEXT_BLOCKS}, each with where the text it hands the model was cleaned
    * or why it holds none from outside.
@@ -624,6 +643,21 @@ class SecurityInvariantsTest {
   }
 
   @Test
+  void signInSavesNoExistingVersionedRow() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.versionedSavesReachableFrom(
+                    MainClasses.get(), SIGN_IN_ENTRIES, SECURITY_STATE_ENTITIES.keySet()),
+                SIGN_IN_SAVES))
+        .as(
+            "the sign-in saves a versioned row it loaded (account, provider, group): a concurrent"
+                + " admin change makes that save fail outside any controller, so the sign-in fails;"
+                + " write the column with a targeted @Modifying update instead, or name the code"
+                + " unit with its reason in SIGN_IN_SAVES")
+        .isEmpty();
+  }
+
+  @Test
   void foreignTextEntersAPromptOnlyThroughPromptText() {
     assertThat(
             SecurityInvariants.unlisted(
@@ -664,6 +698,15 @@ class SecurityInvariantsTest {
                 SecurityInvariants.wholeRowWriters(classes, SECURITY_STATE_ENTITIES.keySet())
                     .keySet()))
         .as("WHOLE_ROW_WRITERS entries that no longer write a whole row")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                SIGN_IN_SAVES.keySet(),
+                SecurityInvariants.versionedSavesReachableFrom(
+                        classes, SIGN_IN_ENTRIES, SECURITY_STATE_ENTITIES.keySet())
+                    .keySet()))
+        .as(
+            "SIGN_IN_SAVES entries that the sign-in no longer reaches or that save no versioned row")
         .isEmpty();
     assertThat(
             SecurityInvariants.stale(
