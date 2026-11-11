@@ -122,17 +122,6 @@ export default function AuditorRoleRequestsPage() {
 
         {requests === null && loadError === null && <LoadingState shape="rows" />}
 
-        {loadError !== null && (
-          <LoadError
-            message="Die Anträge konnten nicht geladen werden."
-            detail={loadError}
-            onRetry={() => {
-              setLoadError(null)
-              setReloads((count) => count + 1)
-            }}
-          />
-        )}
-
         {requests !== null && requests.length === 0 && (
           <EmptyState message="Es liegt kein Antrag vor." />
         )}
@@ -198,6 +187,17 @@ export default function AuditorRoleRequestsPage() {
                 }}
               />
             )}
+          />
+        )}
+
+        {loadError !== null && (
+          <LoadError
+            message="Die Anträge konnten nicht geladen werden."
+            detail={loadError}
+            onRetry={() => {
+              setLoadError(null)
+              setReloads((count) => count + 1)
+            }}
           />
         )}
       </Box>

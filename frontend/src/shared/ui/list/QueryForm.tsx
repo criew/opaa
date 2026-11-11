@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -31,14 +31,26 @@ export default function QueryForm({
   onSubmit: () => void
   children: ReactNode
 }) {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [submits, setSubmits] = useState(0)
+
+  // After a submit the focus goes into the first field that reported a missing value.
+  useEffect(() => {
+    if (submits === 0) return
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [submits])
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!busy) onSubmit()
+    if (busy) return
+    onSubmit()
+    setSubmits((count) => count + 1)
   }
 
   return (
     <Box
       component="form"
+      ref={formRef}
       noValidate
       aria-label={label}
       onSubmit={handleSubmit}

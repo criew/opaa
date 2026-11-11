@@ -8,7 +8,7 @@ function error(status: number, message: string) {
   )
 }
 
-/** One answer for any named object, so the page tour reaches a filled point-in-time report. */
+/** One answer for any named object, so the mock mode shows a filled point-in-time report. */
 export const rightsHistoryHandlers = [
   http.get('/api/v1/audit/access-as-of', ({ request }) => {
     const url = new URL(request.url)

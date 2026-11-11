@@ -11,7 +11,7 @@ import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import QueryForm, { QueryPeriod, QueryPrompt, QueryReason } from '@/shared/ui/list/QueryForm'
 import { periodProblem } from '@/shared/ui/list/queryRules'
 import { useAuthStore } from '@/shared/session/authStore'
-import { getAccessAsOf } from '../api/rightsHistoryApi'
+import { getAccessAsOf, type AccessAsOfQuery } from '../api/rightsHistoryApi'
 import type {
   AccessAsOfObjectType,
   AccessAsOfPage,
@@ -63,27 +63,32 @@ export default function RightsHistoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [applied, setApplied] = useState<AccessAsOfQuery | null>(null)
 
   const objectMissing = attempted && objectId.trim() === ''
 
   function submitForm(): void {
     setAttempted(true)
     if (objectId.trim() === '' || reason.trim() === '' || periodProblem(from, to)) return
-    void submit(0)
-  }
-
-  async function submit(pageIndex: number): Promise<void> {
-    setIsLoading(true)
-    try {
-      const page = await getAccessAsOf({
+    void submit(
+      {
         objectType,
         objectId: objectId.trim(),
         from: toInstant(from),
         to: toInstant(to),
         reason: reason.trim(),
-        page: pageIndex,
-      })
+      },
+      0,
+    )
+  }
+
+  // Paging reuses the submitted query, never what the fields hold now.
+  async function submit(query: AccessAsOfQuery, pageIndex: number): Promise<void> {
+    setIsLoading(true)
+    try {
+      const page = await getAccessAsOf({ ...query, page: pageIndex })
       setResult(page)
+      setApplied(query)
       setError(null)
     } catch (err: unknown) {
       setResult(null)
@@ -230,7 +235,9 @@ export default function RightsHistoryPage() {
                   pageCount: result.totalPages,
                   page: result.page,
                   disabled: isLoading,
-                  onPage: (page) => void submit(page),
+                  onPage: (page) => {
+                    if (applied) void submit(applied, page)
+                  },
                 }}
               />
             )}

@@ -55,6 +55,7 @@ describe('QueryForm', () => {
     await user.click(button)
 
     expect(onQuery).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Von')).toHaveFocus()
     expect(screen.getByText('Bitte einen Beginn angeben.')).toBeInTheDocument()
     expect(screen.getByText('Bitte ein Ende angeben.')).toBeInTheDocument()
     expect(screen.getByLabelText('Anlass')).toHaveAccessibleDescription(
