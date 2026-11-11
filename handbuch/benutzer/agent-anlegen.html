@@ -352,6 +352,8 @@
       
         
       
+        
+      
     
     
     
@@ -465,6 +467,34 @@
     
   
     Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agentenergebnis-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentenergebnis prüfen
   
 
     
@@ -1023,6 +1053,17 @@
     <span class="md-ellipsis">
       
         Was ein Agent liest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ergebnis-als-datei-nach-vorlage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ergebnis als Datei nach Vorlage
       
     </span>
   </a>
@@ -2780,6 +2821,8 @@
       
         
       
+        
+      
     
     
     
@@ -3045,6 +3088,34 @@
     
   
     Sandbox für Agenten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../betrieb/agenten-betreiben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agenten betreiben
   
 
     
@@ -4096,6 +4167,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#ergebnis-als-datei-nach-vorlage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ergebnis als Datei nach Vorlage
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4120,13 +4202,15 @@
 niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“.</p>
 <ol>
 <li>Im <a href="katalog.html">Katalog</a> „Neuer Katalogeintrag“, dann „Agenten“ und „Weiter“.</li>
-<li>Name, Zweck und Eigentümer angeben, „Agent anlegen“. Der Zweck steht später in der Auswahl im
-   Chat unter dem Namen.</li>
+<li><strong>Stammdaten:</strong> Name und Zweck. Der Zweck steht später in der Auswahl im Chat unter dem Namen.
+   <strong>Freigaben:</strong> als Eigentümer „Mein Konto“ oder „Eine Gruppe“, auf Wunsch Rollen vormerken.
+   <strong>Prüfen:</strong> die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.</li>
 <li>Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen darf,
    und mit den Werkzeugen „Im Wissen suchen“ und „Dokument lesen“.</li>
 <li>Auf seiner Seite jede Zeile mit „Ändern“ einrichten:<ul>
 <li><strong>Auftrag:</strong> was der Agent tun soll. Er ergänzt die festen Regeln von OPAA, ersetzt sie nicht.</li>
-<li><strong>Wissen und Werkzeuge:</strong> Bibliotheken zur Eingrenzung und die Werkzeuge, die er nutzen darf.</li>
+<li><strong>Wissen und Werkzeuge:</strong> Bibliotheken zur Eingrenzung, die Werkzeuge, die er nutzen darf,
+  und die Vorlagen, nach denen er sein Ergebnis als Datei ablegt (siehe unten).</li>
 <li><strong>Ablauf:</strong> gleich loslegen oder erst den Plan bestätigen lassen; unter „Erweitert“ eigene
   Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge.</li>
 </ul>
@@ -4138,6 +4222,17 @@ niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“
 erweitern nichts: Wer eine Bibliothek nicht lesen darf, erhält auch über den Agenten nichts daraus.
 Eine Bibliothek, die ein anderer Verwalter zugeordnet hat und die Sie nicht lesen dürfen, zählt die
 Seite nur, statt sie zu nennen; beim Speichern bleibt sie erhalten.</p>
+<h2 id="ergebnis-als-datei-nach-vorlage">Ergebnis als Datei nach Vorlage<a class="headerlink" href="#ergebnis-als-datei-nach-vorlage" title="Permanent link">&para;</a></h2>
+<p>Unter „Vorlagen“ wählen Sie eine oder mehrere <a href="vorlage-anlegen.html">Vorlagen</a>, die Sie lesen
+dürfen; dieselbe Vorlage kann mehreren Agenten dienen. Die Zeile erscheint nur, wenn die
+Systemverwaltung Vorlagen eingeschaltet hat. Der Agent füllt eine Vorlage aus, wenn er zusätzlich
+das Werkzeug „Vorlage ausfüllen“ hat, und hängt das Ergebnis als Word-Datei und PDF an die
+Antwort. Ohne zugeordnete Vorlage bietet ein Lauf das Werkzeug nicht an; ist keine zugeordnete
+Vorlage nutzbar, etwa weil Vorlagen ausgeschaltet sind, antwortet der Agent im Chat und sagt das
+dazu.</p>
+<p>Ein Lauf nutzt nur die zugeordneten Vorlagen, die die aufrufende Person lesen darf. Wie bei den
+Bibliotheken zählt die Seite eine Vorlage, die Sie nicht lesen dürfen, nur; beim Speichern bleibt
+sie erhalten. Eine gelöschte Vorlage fällt aus der Zuordnung.</p>
 <p><strong>Rollen am Agenten:</strong></p>
 <table>
 <thead>
@@ -4153,7 +4248,7 @@ Seite nur, statt sie zu nennen; beim Speichern bleibt sie erhalten.</p>
 </tr>
 <tr>
 <td>Verwalter</td>
-<td>zusätzlich Name, Zweck, Auftrag, Wissen, Werkzeuge, Ablauf und Rechte ändern</td>
+<td>zusätzlich Name, Zweck, Auftrag, Wissen, Werkzeuge, Vorlagen, Ablauf und Rechte ändern</td>
 </tr>
 <tr>
 <td>Eigentümer</td>

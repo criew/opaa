@@ -350,6 +350,8 @@
       
         
       
+        
+      
     
     
     
@@ -463,6 +465,34 @@
     
   
     Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benutzer/agentenergebnis-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentenergebnis prüfen
   
 
     
@@ -2720,6 +2750,8 @@
       
         
       
+        
+      
     
     
     
@@ -3352,6 +3384,34 @@
     
   
     Sandbox für Agenten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agenten-betreiben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agenten betreiben
   
 
     
@@ -5076,7 +5136,7 @@ will, legt eine gewöhnliche Anbieterzeile an und schaltet ihn dort ein.</p>
 </tbody>
 </table>
 <p>Zeilen mit Handlungsbedarf sind farbig markiert; ab sechs Anbietern lässt sich die Übersicht
-eingrenzen und durchsuchen. <strong>Details</strong> bzw. <strong>Entscheiden</strong> öffnet ein Seitenpanel mit dem
+eingrenzen und durchsuchen. <strong>Details</strong> bzw. <strong>Entscheiden</strong> öffnet einen Dialog mit dem
 ausstehenden Plan (falls einer wartet), dem letzten Lauf samt „Trockenlauf" und „Jetzt abgleichen",
 dem Zeitplan (Schalter und Intervall, voreingestellt <strong>aus</strong>; Vorgabe und Grenzen des Intervalls
 in der <a href="../referenz/konfiguration.html#grenzwerte-im-überblick">Konfiguration</a>), dem
@@ -5090,7 +5150,7 @@ Hand.</p>
 <p><strong>Gescheiterter Lauf.</strong> Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem Fehler
 ab, der nicht „Verzeichnis nicht erreichbar" ist, etwa weil die Datenbank einen gelieferten Wert
 ablehnt, schreibt er nichts; der letzte bekannte Stand
-bleibt in Kraft. Das Seitenpanel zeigt <strong>Abgleich fehlgeschlagen</strong> mit Zeitpunkt und Meldung, die
+bleibt in Kraft. Der Dialog zeigt <strong>Abgleich fehlgeschlagen</strong> mit Zeitpunkt und Meldung, die
 Übersicht <strong>Letzter Lauf gescheitert</strong>. Die Ursache steht nur im Log des Backends;
 das Nachweisprotokoll erhält wie bei einem unerreichbaren Verzeichnis einen Kopfeintrag mit dem
 Ergebnis „fehlgeschlagen", ohne Ursache.</p>
@@ -5211,7 +5271,7 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.</p>
    die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
    seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.</li>
 </ol>
-<p>In OPAA wird der Zugang im Seitenpanel des Anbieters unter <strong>Verzeichniszugang</strong> hinterlegt, getestet
+<p>In OPAA wird der Zugang im Dialog des Anbieters unter <strong>Verzeichniszugang</strong> hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel <code>http://keycloak:8180</code> statt
