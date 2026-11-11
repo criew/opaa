@@ -40,11 +40,18 @@ class AgentWorkspace implements AgentRunCancellation {
     this.properties = properties;
   }
 
+  /** The answer to a request for a place. */
+  enum Reservation {
+    RESERVED,
+    WORKSPACE_FULL,
+    PERSON_LIMIT_REACHED
+  }
+
   /**
-   * Takes a place for {@code runId}, or returns {@code false} when every place is taken. Expired
+   * Takes a place for {@code runId} of {@code userId}, or tells why there is none. Expired
    * reservations are removed on the way.
    */
-  boolean tryReserve(UUID runId) {
+  Reservation tryReserve(UUID runId, UUID userId) {
     Boolean reserved =
         transaction.execute(
             status -> {
@@ -61,14 +68,15 @@ class AgentWorkspace implements AgentRunCancellation {
                 return false;
               }
               jdbc.sql(
-                      "INSERT INTO agent_run_reservations (run_id, expires_at)"
-                          + " VALUES (:runId, clock_timestamp() + make_interval(secs => :seconds))")
+                      "INSERT INTO agent_run_reservations (run_id, user_id, expires_at) VALUES"
+                          + " (:runId, :userId, clock_timestamp() + make_interval(secs => :seconds))")
                   .param("runId", runId)
+                  .param("userId", userId)
                   .param("seconds", properties.reservationLifetime().toMillis() / 1000.0)
                   .update();
               return true;
             });
-    return Boolean.TRUE.equals(reserved);
+    return Boolean.TRUE.equals(reserved) ? Reservation.RESERVED : Reservation.WORKSPACE_FULL;
   }
 
   /** Gives the place of {@code runId} back; a reservation already expired is no error. */
@@ -79,15 +87,12 @@ class AgentWorkspace implements AgentRunCancellation {
   }
 
   /**
-   * Lets {@code cancelToken} stop the run of {@code runId}, in the hand of {@code userId} who
-   * started it; only the token's hash is stored.
+   * Lets {@code cancelToken} stop the run of {@code runId}, in the hand of the person who reserved
+   * its place; only the token's hash is stored.
    */
-  void armCancel(UUID runId, UUID userId, String cancelToken) {
-    jdbc.sql(
-            "UPDATE agent_run_reservations SET cancel_token_hash = :hash, user_id = :userId"
-                + " WHERE run_id = :runId")
+  void armCancel(UUID runId, String cancelToken) {
+    jdbc.sql("UPDATE agent_run_reservations SET cancel_token_hash = :hash WHERE run_id = :runId")
         .param("hash", hash(cancelToken))
-        .param("userId", userId)
         .param("runId", runId)
         .update();
   }

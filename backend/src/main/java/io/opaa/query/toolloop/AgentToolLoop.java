@@ -94,9 +94,15 @@ class AgentToolLoop implements AgentTurnHandler {
   static final String NOT_AVAILABLE_CODE = "AGENT_NOT_AVAILABLE";
 
   static final String WORKSPACE_FULL =
-      "Gerade arbeiten zu viele Agenten gleichzeitig. Bitte versuche es in Kürze erneut.";
+      "Gerade arbeiten zu viele Agenten gleichzeitig. Bitte versuchen Sie es in Kürze erneut.";
 
   static final String WORKSPACE_FULL_CODE = "AGENT_WORKSPACE_FULL";
+
+  static final String PERSON_LIMIT =
+      "Sie haben bereits so viele Agentenläufe gestartet, wie gleichzeitig möglich sind. Bitte"
+          + " warten Sie, bis einer davon fertig ist.";
+
+  static final String PERSON_LIMIT_CODE = "AGENT_PERSON_LIMIT";
 
   /** The answer of a run that reached a limit before the model wrote any text. */
   static final String NO_ANSWER_AT_LIMIT =
@@ -202,9 +208,16 @@ class AgentToolLoop implements AgentTurnHandler {
             turn.metadataFilter(),
             AgentLimits.effective(properties.current(), spec.limits()),
             started);
-    if (!workspace.tryReserve(run.runId())) {
-      metrics.recordRejected();
-      throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
+    switch (workspace.tryReserve(run.runId(), turn.userId())) {
+      case RESERVED -> {}
+      case WORKSPACE_FULL -> {
+        metrics.recordRejected(AgentWorkspace.Reservation.WORKSPACE_FULL);
+        throw new TooManyRequestsException(WORKSPACE_FULL, 0, WORKSPACE_FULL_CODE);
+      }
+      case PERSON_LIMIT_REACHED -> {
+        metrics.recordRejected(AgentWorkspace.Reservation.PERSON_LIMIT_REACHED);
+        throw new TooManyRequestsException(PERSON_LIMIT, 0, PERSON_LIMIT_CODE);
+      }
     }
     AgentRunStream stream = null;
     try {
@@ -216,7 +229,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 turn.stream(), run.runId(), workspace, activeAnswerStreams, pinger, heartbeat);
         run.listen(stream);
         String cancelToken = UUID.randomUUID().toString();
-        workspace.armCancel(run.runId(), turn.userId(), cancelToken);
+        workspace.armCancel(run.runId(), cancelToken);
         signal(turn, reader -> reader.runStarted(run.runId(), cancelToken));
       }
       QueryResult result = runAndKeep(turn, spec, run, client);

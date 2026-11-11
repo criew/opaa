@@ -156,7 +156,7 @@ class AgentToolCallbackTest {
 
   static AgentToolLoopProperties properties() {
     return new AgentToolLoopProperties(
-        5, 3, Duration.ofSeconds(120), 60_000, 2, Duration.ofSeconds(60));
+        5, 3, Duration.ofSeconds(120), 60_000, 2, 1, Duration.ofSeconds(60));
   }
 
   private static class EchoTool implements AgentTool {
