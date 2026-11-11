@@ -214,14 +214,14 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit', () => {
     await page.getByRole('button', { name: 'Antwort abbrechen' }).click()
     expect((await cancelled).ok()).toBe(true)
     await expect(page.getByText('Antwort abgebrochen.')).toBeVisible()
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(question)
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toHaveValue(question)
     // Let go of the call the stopped run waited in, so it cannot count as a place later on.
     await releaseAgentCalls()
     await expect.poll(heldAgentCalls, { timeout: 15_000 }).toBe(0)
     await expectPlaceFree(agentIds[0])
 
     await page.reload()
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
     await expect(page.getByText(question)).toHaveCount(0)
   })
 
@@ -294,7 +294,7 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit', () => {
       ).toBeVisible()
       await expect(answers(page)).toHaveCount(0)
       await expect(page.getByTestId('provisional-answer')).toHaveCount(0)
-      await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(question)
+      await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toHaveValue(question)
     } finally {
       await releaseAgentCalls()
       await Promise.allSettled(blockers)
@@ -347,7 +347,7 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit', () => {
       await expect(answers(page)).toHaveCount(0)
       // Without the agent the same question is answered as before.
       await expect(page.getByTestId('chosen-agent-chip')).toHaveCount(0)
-      await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(question)
+      await page.getByRole('textbox', { name: 'Nachricht eingeben' }).fill(question)
       await page.getByRole('button', { name: 'Senden' }).click()
       await expect(answers(page)).toHaveCount(1)
       await expect(page.getByTestId('agent-stamp')).toHaveCount(0)

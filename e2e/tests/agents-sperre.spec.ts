@@ -32,11 +32,11 @@ const LOCK_REASON = 'Anweisung wird überarbeitet'
 
 async function openSpaceChat(page: Page, spaceId: string): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 async function expectInMentionMenu(page: Page, present: boolean): Promise<void> {
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await expect(page.getByRole('option').first()).toBeVisible()
   const agent = page.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })
@@ -123,7 +123,7 @@ test.describe.serial('Agenten: Sperre durch die Systemverwaltung', () => {
 
     // The next send of the open chat is refused with the notice; nothing is answered.
     const question = `Wie lange dauert ein Antrag? (${SUFFIX})`
-    await member.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(question)
+    await member.getByRole('textbox', { name: 'Nachricht eingeben' }).fill(question)
     await member.getByRole('button', { name: 'Senden' }).click()
     await expect(
       member.getByText(

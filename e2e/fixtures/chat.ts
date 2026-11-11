@@ -27,7 +27,7 @@ import { headerCreateButton } from './pageHeader'
 export async function startFreshChat(page: Page): Promise<void> {
   await page.goto('/chat')
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 /**
@@ -38,7 +38,7 @@ export async function startFreshChat(page: Page): Promise<void> {
 export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Neuer Chat', exact: true }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 /**
@@ -84,7 +84,7 @@ export async function expectAnswerSettled(page: Page): Promise<void> {
 
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
 export async function askQuestion(page: Page, question: string): Promise<void> {
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await expect(input).toBeVisible()
   await input.fill(question)
   await page.getByRole('button', { name: 'Senden' }).click()

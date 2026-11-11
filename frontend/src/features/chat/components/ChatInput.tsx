@@ -442,7 +442,7 @@ export default function ChatInput({
 
   // Drives the Popper itself - it opens for both the suggestion list and the "no match" message.
   const mentionOpen = mention !== null
-  // aria-expanded/aria-controls must only claim an open *listbox* while that listbox is actually
+  // aria-controls must only claim an open *listbox* while that listbox is actually
   // rendered - suggestions.length === 0 renders a plain "no match" message instead, with no
   // element carrying mentionListboxId.
   const mentionListOpen = mentionOpen && suggestions.length > 0
@@ -451,8 +451,7 @@ export default function ChatInput({
   // The '/' listbox is rendered only while it has options and no load error - the same honesty
   // rule as the '@' listbox above.
   const actionListOpen = actions.isOpen && actions.error === null && actions.matches.length > 0
-  const comboboxExpanded = mentionListOpen || actionListOpen
-  const comboboxControls = actionListOpen
+  const listboxControls = actionListOpen
     ? actionListboxId
     : mentionListOpen
       ? mentionListboxId
@@ -549,10 +548,10 @@ export default function ChatInput({
             variant="standard"
             slotProps={{
               htmlInput: {
-                role: 'combobox',
-                'aria-expanded': comboboxExpanded,
-                'aria-haspopup': 'listbox',
-                'aria-controls': comboboxControls,
+                // The textarea keeps its implicit textbox role: ARIA allows role=combobox only on
+                // input-type elements (axe: aria-allowed-role), and aria-expanded is not valid on a
+                // textbox. aria-controls + aria-activedescendant expose the open listbox.
+                'aria-controls': listboxControls,
                 'aria-autocomplete': 'list',
                 'aria-activedescendant': activeDescendant,
                 'aria-invalid': questionTooLong,

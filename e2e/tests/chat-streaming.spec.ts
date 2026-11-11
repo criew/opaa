@@ -137,12 +137,12 @@ test.describe('Antwort im Fluss', () => {
 
     await expect(page.getByText('Antwort abgebrochen.')).toBeVisible()
     await expect(page.getByTestId('provisional-answer')).toHaveCount(0)
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(question)
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toHaveValue(question)
     await expect.poll(abandonedStreams, { timeout: 15_000 }).toBeGreaterThan(abandonedBefore)
 
     // The turn was never kept: a reload of the draft shows no question.
     await page.reload()
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
     await expect(page.getByText(question)).toHaveCount(0)
   })
 })

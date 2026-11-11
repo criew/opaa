@@ -55,7 +55,7 @@ function generatedFiles(answer: Locator): Locator {
 
 /** Types @ in the chat input, chooses the agent `name` and sends `question` to it. */
 async function askAgent(page: Page, name: string, question: string): Promise<void> {
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await page
     .getByRole('group', { name: 'Agenten' })

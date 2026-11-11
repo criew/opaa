@@ -96,10 +96,10 @@ describe('ChatInput dictation', () => {
     expect(screen.getByTestId('dictation-field')).toContainElement(
       screen.getByTestId('dictation-interim'),
     )
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
-    await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('Welche Frist gilt live?'))
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('Welche Frist gilt live?'))
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
     expect(screen.queryByTestId('dictation-interim')).not.toBeInTheDocument()
   })
@@ -120,14 +120,14 @@ describe('ChatInput dictation', () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    await user.type(screen.getByRole('combobox'), 'Zum Bauantrag:')
+    await user.type(screen.getByRole('textbox'), 'Zum Bauantrag:')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     expect(screen.getByTestId('dictation-field')).toHaveTextContent('Zum Bauantrag:')
     await user.click(await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('combobox')).toHaveValue('Zum Bauantrag: Welche Frist gilt?'),
+      expect(screen.getByRole('textbox')).toHaveValue('Zum Bauantrag: Welche Frist gilt?'),
     )
     expect(mocks.transcribeRecording).toHaveBeenCalledTimes(1)
     expect(onSend).not.toHaveBeenCalled()
@@ -143,7 +143,7 @@ describe('ChatInput dictation', () => {
 
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
     expect(mocks.tracksStopped).toBe(1)
-    expect(screen.getByRole('combobox')).toHaveValue('')
+    expect(screen.getByRole('textbox')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Spracheingabe starten' })).toBeInTheDocument()
   })
 
@@ -151,14 +151,14 @@ describe('ChatInput dictation', () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    await user.type(screen.getByRole('combobox'), 'Zum Bauantrag:')
+    await user.type(screen.getByRole('textbox'), 'Zum Bauantrag:')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     await user.click(await screen.findByRole('button', { name: 'Senden' }))
 
     await waitFor(() => expect(onSend).toHaveBeenCalledWith('Zum Bauantrag: Welche Frist gilt?'))
     expect(mocks.tracksStopped).toBe(1)
-    expect(screen.getByRole('combobox')).toHaveValue('')
+    expect(screen.getByRole('textbox')).toHaveValue('')
   })
 
   it('sends the final live text, never the interim text', async () => {
@@ -188,7 +188,7 @@ describe('ChatInput dictation', () => {
     await waitFor(() => expect(takeOver).toHaveFocus())
     await user.click(screen.getByRole('button', { name: 'Aufnahme verwerfen' }))
 
-    await waitFor(() => expect(screen.getByRole('combobox')).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
   })
 
   it('leaves the focus in the field after sending during a recording', async () => {
@@ -200,21 +200,21 @@ describe('ChatInput dictation', () => {
     await user.click(await screen.findByRole('button', { name: 'Senden' }))
 
     await waitFor(() => expect(onSend).toHaveBeenCalledWith('Welche Frist gilt?'))
-    expect(screen.getByRole('combobox')).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveFocus()
   })
 
   it('keeps a question that is too long in the field instead of sending it', async () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('textbox'))
     await user.paste('x'.repeat(1995))
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     await user.click(await screen.findByRole('button', { name: 'Senden' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('combobox')).toHaveValue(`${'x'.repeat(1995)} Welche Frist gilt?`),
+      expect(screen.getByRole('textbox')).toHaveValue(`${'x'.repeat(1995)} Welche Frist gilt?`),
     )
     expect(onSend).not.toHaveBeenCalled()
   })
@@ -226,7 +226,7 @@ describe('ChatInput dictation', () => {
       () => new Promise<{ restoreDraft: string }>((resolve) => (refuse = resolve)),
     )
     render(<ChatInput onSend={onSend} />)
-    await user.type(screen.getByRole('combobox'), 'Erste Frage{Enter}')
+    await user.type(screen.getByRole('textbox'), 'Erste Frage{Enter}')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
@@ -235,7 +235,7 @@ describe('ChatInput dictation', () => {
     await user.click(screen.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('combobox')).toHaveValue('Erste Frage Welche Frist gilt?'),
+      expect(screen.getByRole('textbox')).toHaveValue('Erste Frage Welche Frist gilt?'),
     )
   })
 
@@ -243,13 +243,13 @@ describe('ChatInput dictation', () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    await user.type(screen.getByRole('combobox'), 'Entwurf')
+    await user.type(screen.getByRole('textbox'), 'Entwurf')
 
     await user.click(await screen.findByRole('button', { name: 'Spracheingabe starten' }))
     await screen.findByRole('button', { name: 'Fertig, Text ins Eingabefeld' })
     await user.keyboard('{Escape}')
 
-    expect(await screen.findByRole('combobox')).toHaveValue('Entwurf')
+    expect(await screen.findByRole('textbox')).toHaveValue('Entwurf')
     expect(mocks.transcribeRecording).not.toHaveBeenCalled()
     expect(mocks.tracksStopped).toBe(1)
     expect(onSend).not.toHaveBeenCalled()

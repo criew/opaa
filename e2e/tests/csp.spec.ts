@@ -21,7 +21,7 @@ test.describe('Content Security Policy (#707)', () => {
 
     await page.goto('/?devUser=dev-admin')
     await expect(
-      page.getByRole('combobox', { name: 'Nachricht eingeben' }),
+      page.getByRole('textbox', { name: 'Nachricht eingeben' }),
     ).toBeVisible()
 
     expect(violations, 'CSP-Verstöße in der Browser-Konsole').toEqual([])
