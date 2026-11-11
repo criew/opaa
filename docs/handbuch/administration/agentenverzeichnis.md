@@ -29,7 +29,7 @@ Ab Werk sieht das Verzeichnis nur die Systemverwaltung.
 
 ## Verzeichnis ansehen und exportieren
 
-1. Das Verzeichnis öffnen. Oben stehen die Anzahl der Agenten und Vorlagen.
+1. Das Verzeichnis öffnen. Oben steht die Anzahl der Agenten.
 2. Eine Zeile anklicken: Die Seite zeigt den Eintrag vollständig, nur zum Lesen.
 3. „Als CSV exportieren“ speichert das Verzeichnis als Tabelle mit einer Zeile je Agent und je
    Vorlage, lesbar in jeder Tabellenkalkulation.
