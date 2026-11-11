@@ -48,6 +48,8 @@ export default function SpaceGeneralSection({
     modelInstruction: string
   }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false, modelInstruction: '' })
   const [localError, setLocalError] = useState<string | null>(null)
+  // A failed save is told under the form's footer (guidelines 5.16), archive and delete above.
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   // deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
@@ -72,7 +74,7 @@ export default function SpaceGeneralSection({
   function discard() {
     setDraft({ ...current, spaceId: null })
     setNameError(null)
-    setLocalError(null)
+    setSaveError(null)
   }
 
   async function save() {
@@ -81,7 +83,7 @@ export default function SpaceGeneralSection({
       setNameError('Name fehlt')
       return
     }
-    setLocalError(null)
+    setSaveError(null)
     setSaving(true)
     try {
       // The checkbox and the instruction are sent only if they were changed: a mere rename thus
@@ -98,7 +100,7 @@ export default function SpaceGeneralSection({
       setDraft({ ...current, spaceId: null })
       notify('Die Stammdaten des Space wurden gespeichert.', 'success')
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen')
+      setSaveError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen')
     } finally {
       setSaving(false)
     }
@@ -124,6 +126,7 @@ export default function SpaceGeneralSection({
         busy={saving}
         dirty={dirty}
         onDiscard={discard}
+        result={saveError && <Alert severity="error">{saveError}</Alert>}
       >
         <Stack spacing={2.5}>{children}</Stack>
       </SettingsForm>

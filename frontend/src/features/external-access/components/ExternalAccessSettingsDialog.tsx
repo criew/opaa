@@ -132,7 +132,7 @@ export default function ExternalAccessSettingsDialog({
   // dialog closes or a save returns.
   if (!settings) return null
   return (
-    <SettingsForm
+    <ExternalAccessSettingsEditor
       key={settings.updatedAt}
       settings={settings}
       onClose={onClose}
@@ -141,7 +141,7 @@ export default function ExternalAccessSettingsDialog({
   )
 }
 
-function SettingsForm({
+function ExternalAccessSettingsEditor({
   settings,
   onClose,
   onSaved,
@@ -257,11 +257,6 @@ function SettingsForm({
           Einstellungen für externe KI-Werkzeuge. Sie gelten für die ganze Installation; jede
           Änderung außer dem Einleitungstext wird protokolliert.
         </Typography>
-        {error && (
-          <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
 
         <PanelSection id="external-tools-settings-switch" title="Ein/Aus">
           <FormControlLabel
@@ -395,6 +390,12 @@ function SettingsForm({
             Vorgabetext
           </Button>
         </PanelSection>
+        {/* last in the content, right above the footer (guidelines 5.16) */}
+        {error && (
+          <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
       </Stack>
     </FormDialog>
   )
