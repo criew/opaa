@@ -26,7 +26,7 @@ export const SMTP_ENCRYPTION_OPTIONS: ReadonlyArray<{
   { value: 'SSL', label: 'SSL/TLS', hint: 'Verschlüsselt ab dem ersten Byte (meist Port 465).' },
 ]
 
-/** Field labels without „(optional)"; each form marks optional fields in its own way. */
+/** Field labels without „(optional)"; the field block marks the optional ones. */
 export const SMTP_LABELS = {
   host: 'Server',
   port: 'Port',
@@ -38,15 +38,12 @@ export const SMTP_LABELS = {
 } as const
 
 export const SMTP_TEXTS = {
-  hostHint: 'Rechnername oder Adresse des Mailservers, zum Beispiel smtp.intern.example.',
   portHint: 'Üblich: 587 (STARTTLS), 465 (SSL/TLS), 25.',
   portInvalid: 'Bitte eine Portnummer zwischen 1 und 65535 angeben.',
   usernameHint: 'Leer lassen, wenn der Server ohne Anmeldung annimmt.',
-  fromAddressHint: 'Die Adresse, unter der OPAA versendet.',
-  fromNameHint: 'Erscheint im Postfach vor der Adresse.',
-  passwordStored:
-    'Ein Passwort ist hinterlegt. Leer lassen lässt es unverändert, solange Server, Port, Benutzername und Verschlüsselung gleich bleiben.',
-  passwordNone: 'Es ist kein Passwort hinterlegt.',
+  passwordRemove: 'Gespeichertes Passwort löschen',
+  passwordKeep: 'Passwort behalten',
+  passwordRemoved: 'Das gespeicherte Passwort wird beim Speichern gelöscht.',
   passwordFollowsTarget:
     'Server, Port, Benutzername oder Verschlüsselung ändern sich: Bitte das Passwort neu eingeben oder löschen.',
   enableNeeds: 'Zum Einschalten werden Server, Port und Absenderadresse gebraucht.',

@@ -28,7 +28,7 @@ const templatePurposes: Record<string, string> = {
   ADMIN_REVIEW_REMINDER: 'Quartalsweise Wiedervorlage zur Prüfung der Zugänge.',
   EXTERNAL_ACCESS_TOKEN_ISSUED: 'Meldet der Person ein neu erzeugtes Zugangstoken.',
   SELF_DISCLOSURE_STARTED: 'Meldet der Person den Start einer Selbstauskunft ihrer Daten.',
-  TEST_MAIL: 'Die Nachricht, die „Testmail an mich senden“ verschickt.',
+  TEST_MAIL: 'Die Nachricht, die „Testnachricht an mich senden“ verschickt.',
 }
 
 /**

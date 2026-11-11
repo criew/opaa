@@ -3,9 +3,14 @@ import {
   type DiscoveryPurpose,
   type EndpointPreset,
   type EndpointPresetKey,
-} from '@/shared/ui/modelDiscovery/modelDiscovery'
-import type { InstallationModelDiscoveryRequest } from '../api/types'
-import { urlError } from './validation'
+} from './modelDiscovery'
+import { urlError } from '../setup/setupNames'
+
+/** What a model discovery sends: the endpoint and, if typed or to be left out, the key. */
+export interface EndpointDiscoveryRequest {
+  baseUrl: string
+  apiKey?: string
+}
 
 /** A preset's provider, or an address of one's own. */
 export type ProviderKey = EndpointPresetKey | 'custom'
@@ -80,18 +85,20 @@ export interface EndpointEntries {
 
 export interface DiscoveryPlan {
   /** What to send; `null` while nothing can be fetched. */
-  request: InstallationModelDiscoveryRequest | null
+  request: EndpointDiscoveryRequest | null
   /** Whether to fetch without being asked: the address and, where needed, the key are in. */
   automatic: boolean
   /** What the person does next while nothing has been fetched. */
   hint: string
+  /** The field that keeps the fetch from going out, where „Modelle abrufen“ then leads. */
+  blockedBy: 'address' | 'key' | null
 }
 
 const ENTER_ADDRESS =
-  'Anbieter wählen oder Basis-Adresse eintragen; dann ruft der Assistent die angebotenen Modelle ab.'
+  'Anbieter wählen oder Basis-Adresse eintragen; dann ruft OPAA die angebotenen Modelle ab.'
 const ENTER_ADDRESS_ONLY =
-  'Basis-Adresse eintragen; dann ruft der Assistent die Modelle ab, sofern der Endpunkt eine Liste anbietet.'
-const ENTER_KEY = 'Zugangsschlüssel eintragen; dann ruft der Assistent die angebotenen Modelle ab.'
+  'Basis-Adresse eintragen; dann ruft OPAA die Modelle ab, sofern der Endpunkt eine Liste anbietet.'
+const ENTER_KEY = 'API-Schlüssel eintragen; dann ruft OPAA die angebotenen Modelle ab.'
 const KEY_LEFT_BEHIND =
   'Die Basis-Adresse weicht von der gespeicherten ab, der gespeicherte Schlüssel gilt nur für sie. Den Schlüssel neu eintragen oder entfernen, dann „Modelle abrufen“.'
 const READY = '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
@@ -106,7 +113,7 @@ export function discoveryPlan(entries: EndpointEntries): DiscoveryPlan {
   const baseUrl = entries.baseUrl.trim()
   if (urlError(baseUrl, 'die Basis-Adresse') !== undefined) {
     const hint = entries.offersProviders === false ? ENTER_ADDRESS_ONLY : ENTER_ADDRESS
-    return { request: null, automatic: false, hint }
+    return { request: null, automatic: false, hint, blockedBy: 'address' }
   }
   const typedKey = entries.apiKey.trim()
   const storedKey = Boolean(entries.stored?.apiKeySet) && !entries.removeKey
@@ -117,20 +124,21 @@ export function discoveryPlan(entries: EndpointEntries): DiscoveryPlan {
       request: { baseUrl, apiKey: typedKey },
       automatic: ownOrigin,
       hint: ownOrigin ? READY : KEY_FOR_OTHER_ADDRESS,
+      blockedBy: null,
     }
   }
   if (entries.removeKey) {
-    return { request: { baseUrl, apiKey: '' }, automatic: true, hint: READY }
+    return { request: { baseUrl, apiKey: '' }, automatic: true, hint: READY, blockedBy: null }
   }
   if (storedKey) {
     return entries.stored && sameEndpoint(entries.stored.baseUrl, baseUrl)
-      ? { request: { baseUrl }, automatic: true, hint: READY }
-      : { request: null, automatic: false, hint: KEY_LEFT_BEHIND }
+      ? { request: { baseUrl }, automatic: true, hint: READY, blockedBy: null }
+      : { request: null, automatic: false, hint: KEY_LEFT_BEHIND, blockedBy: 'key' }
   }
   const needsKey = ENDPOINT_PRESETS.some(
     (preset) => preset.key === entries.provider && preset.needsKey,
   )
   return needsKey
-    ? { request: { baseUrl }, automatic: false, hint: ENTER_KEY }
-    : { request: { baseUrl }, automatic: true, hint: READY }
+    ? { request: { baseUrl }, automatic: false, hint: ENTER_KEY, blockedBy: null }
+    : { request: { baseUrl }, automatic: true, hint: READY, blockedBy: null }
 }

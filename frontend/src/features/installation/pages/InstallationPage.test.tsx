@@ -65,6 +65,14 @@ async function openFromStepList(user: UserEvent, label: string) {
   await stepHeading(label)
 }
 
+/** The row of a step in the summary, with its name and state. */
+function summaryRow(label: string): HTMLElement {
+  const list = screen.getByRole('list', { name: 'Stand der Schritte' })
+  const row = within(list).getByRole('button', { name: label }).closest('li')
+  if (!row) throw new Error(`no summary row for ${label}`)
+  return row
+}
+
 async function submitStep(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: 'Prüfen und weiter' }))
 }
@@ -123,16 +131,16 @@ describe('InstallationPage', () => {
     const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
     expect(within(mandatory).getByText('Erstes Konto')).toBeInTheDocument()
     expect(within(optional).getByText('Chat-Modell')).toBeInTheDocument()
-    expect(within(mandatory).queryByText('Anmeldeverfahren')).not.toBeInTheDocument()
-    expect(within(optional).getByText('Anmeldeverfahren')).toBeInTheDocument()
+    expect(within(mandatory).queryByText('Identitätsanbieter')).not.toBeInTheDocument()
+    expect(within(optional).getByText('Identitätsanbieter')).toBeInTheDocument()
     expect(screen.getByText('Schritt 2 von 6')).toBeInTheDocument()
     expect(within(mandatory).getByRole('button', { name: /Erstes Konto/ })).toHaveAttribute(
       'aria-current',
       'step',
     )
 
-    await user.click(within(optional).getByRole('button', { name: /Anmeldeverfahren/ }))
-    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+    await user.click(within(optional).getByRole('button', { name: /Identitätsanbieter/ }))
+    expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Identitätsanbieter')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
@@ -147,8 +155,8 @@ describe('InstallationPage', () => {
       await enterToken(user)
       await stepHeading('Erstes Konto')
       const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
-      await user.click(within(optional).getByRole('button', { name: /Anmeldeverfahren/ }))
-      await stepHeading('Anmeldeverfahren')
+      await user.click(within(optional).getByRole('button', { name: /Identitätsanbieter/ }))
+      await stepHeading('Identitätsanbieter')
     }
 
     it('names a refused skip at the step and keeps it open', async () => {
@@ -168,7 +176,7 @@ describe('InstallationPage', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Zu viele Anfragen oder Fehlversuche von dieser Adresse',
       )
-      expect(screen.getByRole('heading', { level: 2, name: 'Anmeldeverfahren' })).toBeVisible()
+      expect(screen.getByRole('heading', { level: 2, name: 'Identitätsanbieter' })).toBeVisible()
     })
 
     it('sends one skip although the button is pressed twice', async () => {
@@ -266,7 +274,9 @@ describe('InstallationPage', () => {
 
     const password = field('Passwort')
     await waitFor(() =>
-      expect(password).toHaveAccessibleDescription('Das Passwort braucht mindestens 12 Zeichen.'),
+      expect(password).toHaveAccessibleDescription(
+        /^Das Passwort braucht mindestens 12 Zeichen\./,
+      ),
     )
     expect(screen.getByRole('alert')).toHaveTextContent('Die Angaben sind unvollständig.')
   })
@@ -281,7 +291,7 @@ describe('InstallationPage', () => {
     await fillFirstAdmin(user)
     await submitStep(user)
 
-    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+    expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
     await submitStep(user)
 
     expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
@@ -301,11 +311,11 @@ describe('InstallationPage', () => {
     await submitStep(user)
 
     // The optional mail step is skipped through the API, which records it.
-    expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+    expect(await stepHeading('E-Mail')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     expect(mockSkippedSteps()).toEqual(['MAIL'])
-    expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
+    expect(summaryRow('E-Mail')).toHaveTextContent('Nicht eingerichtet')
     expect(mockInstallationState().completable).toBe(true)
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
@@ -323,18 +333,18 @@ describe('InstallationPage', () => {
     await stepHeading('Erstes Konto')
     await fillFirstAdmin(user)
     await submitStep(user)
-    await stepHeading('Anmeldeverfahren')
+    await stepHeading('Identitätsanbieter')
     await submitStep(user)
 
     expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
-    expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
+    expect(await stepHeading('Einbettung')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
-    expect(await stepHeading('Rerank-Modell')).toBeInTheDocument()
+    expect(await stepHeading('Reranking')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
-    expect(await stepHeading('Transkriptionsmodell')).toBeInTheDocument()
+    expect(await stepHeading('Spracheingabe')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Texterkennung')).toBeInTheDocument()
@@ -343,7 +353,7 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Virenprüfung')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Virenprüfung')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
-    expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+    expect(await stepHeading('E-Mail')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Branding')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
@@ -352,13 +362,18 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
     expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(8)
-    expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
-    expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
-    expect(screen.getByText(/Die Spracheingabe bleibt aus/)).toBeInTheDocument()
-    expect(screen.getByText(/Die Texterkennung bleibt aus/)).toBeInTheDocument()
-    expect(screen.getByText(/Die Virenprüfung bleibt aus/)).toBeInTheDocument()
-    expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
-    expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
+    for (const label of [
+      'Chat-Modell',
+      'Einbettung',
+      'Reranking',
+      'Spracheingabe',
+      'Texterkennung',
+      'Virenprüfung',
+      'E-Mail',
+      'Branding',
+    ]) {
+      expect(summaryRow(label)).toHaveTextContent('Nicht eingerichtet')
+    }
     expect(mockSkippedSteps()).toEqual([
       'CHAT_MODEL',
       'EMBEDDING_MODEL',
@@ -417,11 +432,20 @@ describe('InstallationPage', () => {
     const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
     await user.click(within(nav).getByRole('button', { name: /Abschluss/ }))
 
+    // Always active: the click names what holds the completion up and leads there.
     const action = await screen.findByRole('button', { name: 'Installation abschließen' })
-    expect(action).toHaveAttribute('aria-disabled', 'true')
-    expect(action).toHaveAccessibleDescription(/Offen: Erstes Konto, Anmeldeverfahren\./)
+    expect(action).toBeEnabled()
+    expect(action).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(action)
+    const notice = await screen.findByRole('alert')
+    expect(notice).toHaveTextContent(
+      'Noch nicht geprüft: Erstes Konto, Identitätsanbieter. Der Name führt zum Schritt.',
+    )
+    await waitFor(() => expect(notice).toHaveFocus())
     expect(screen.queryByText('Installation abgeschlossen')).not.toBeInTheDocument()
+
+    await user.click(within(notice).getByRole('button', { name: 'Identitätsanbieter' }))
+    expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
   })
 
   it('resumes at the first open mandatory step with the stored values and check result', async () => {
@@ -445,9 +469,9 @@ describe('InstallationPage', () => {
 
     await enterToken(user)
 
-    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+    expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
     expect(field('Issuer-URI')).toHaveValue('https://login.stadt.example/realms/opaa')
-    expect(screen.getByRole('radio', { name: /Lokale Konten und ein OIDC-Anbieter/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Lokale Konten und ein Identitätsanbieter/ })).toBeChecked()
     expect(screen.getByRole('alert')).toHaveTextContent('Discovery-Adresse')
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
@@ -459,7 +483,7 @@ describe('InstallationPage', () => {
 
     // Unchanged, the stored account is only checked again: the API needs the password to save.
     await submitStep(user)
-    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+    expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await stepHeading('Erstes Konto')
@@ -497,7 +521,7 @@ describe('InstallationPage', () => {
     ).toBeInTheDocument()
     await submitStep(user)
 
-    await stepHeading('E-Mail-Versand')
+    await stepHeading('E-Mail')
     const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
     expect(chatModel?.chatModel?.apiKeySet).toBe(false)
   })
@@ -542,7 +566,7 @@ describe('InstallationPage', () => {
     await stepHeading('Installations-Token')
     updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
     await enterToken(user)
-    await stepHeading('Anmeldeverfahren')
+    await stepHeading('Identitätsanbieter')
     server.use(
       http.put('/api/v1/installation/steps/:step', () =>
         HttpResponse.json(
@@ -629,7 +653,7 @@ describe('InstallationPage', () => {
       expect(modelField()).toHaveValue('qwen3:8b')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
       expect(chatModel?.chatModel).toMatchObject({
         baseUrl: 'http://ollama:11434/v1',
@@ -648,7 +672,7 @@ describe('InstallationPage', () => {
       await user.type(modelField(), 'mein-modell')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
       expect(chatModel?.chatModel?.model).toBe('mein-modell')
     })
@@ -867,8 +891,8 @@ describe('InstallationPage', () => {
 
       await stepHeading('Abschluss')
       const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
-      expect(within(optional).getByText('Embedding-Modell')).toBeInTheDocument()
-      await openFromStepList(user, 'Embedding-Modell')
+      expect(within(optional).getByText('Einbettung')).toBeInTheDocument()
+      await openFromStepList(user, 'Einbettung')
 
       await user.type(field('Basis-Adresse'), 'http://kaputt:11434/v1')
       await user.type(field('Modell-Kennung'), 'bge-m3')
@@ -881,12 +905,12 @@ describe('InstallationPage', () => {
       await user.type(field('Eingabegrenze (Token) (optional)'), '8192')
       await submitStep(user)
 
-      expect(await stepHeading('Rerank-Modell')).toBeInTheDocument()
+      expect(await stepHeading('Reranking')).toBeInTheDocument()
       const embedding = mockInstallationState().steps.find((s) => s.step === 'EMBEDDING_MODEL')
       expect(embedding?.embeddingModel).toMatchObject({ maxInputTokens: 8192, dimensions: 1024 })
 
       await user.click(screen.getByRole('button', { name: 'Zurück' }))
-      expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
+      expect(await stepHeading('Einbettung')).toBeInTheDocument()
       expect(screen.getByText('Geprüft: 1024 Dimensionen')).toBeInTheDocument()
     })
 
@@ -896,7 +920,7 @@ describe('InstallationPage', () => {
       await stepHeading('Installations-Token')
       await enterToken(user)
       await stepHeading('Abschluss')
-      await openFromStepList(user, 'Embedding-Modell')
+      await openFromStepList(user, 'Einbettung')
 
       const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
       expect(within(providers).queryByRole('radio', { name: /Anthropic/ })).not.toBeInTheDocument()
@@ -926,7 +950,7 @@ describe('InstallationPage', () => {
       await stepHeading('Installations-Token')
       await enterToken(user)
       await stepHeading('Abschluss')
-      await openFromStepList(user, 'Transkriptionsmodell')
+      await openFromStepList(user, 'Spracheingabe')
     }
 
     it('is missing while the API does not list it, as with speech input switched off', async () => {
@@ -938,7 +962,7 @@ describe('InstallationPage', () => {
 
       await stepHeading('Abschluss')
       const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
-      expect(within(optional).queryByText('Transkriptionsmodell')).not.toBeInTheDocument()
+      expect(within(optional).queryByText('Spracheingabe')).not.toBeInTheDocument()
       expect(screen.queryByText(/Spracheingabe/)).not.toBeInTheDocument()
     })
 
@@ -1004,7 +1028,7 @@ describe('InstallationPage', () => {
       await user.type(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }), 'sk-stt')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       const transcription = mockInstallationState().steps.find(
         (s) => s.step === 'TRANSCRIPTION_MODEL',
       )
@@ -1018,11 +1042,7 @@ describe('InstallationPage', () => {
         },
       })
       await openFromStepList(user, 'Abschluss')
-      expect(
-        screen.getByText(
-          /Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet/,
-        ),
-      ).toBeInTheDocument()
+      expect(summaryRow('Spracheingabe')).toHaveTextContent('Geprüft')
     })
 
     it('chooses live transcription from a fixed list with the address and model of each service', async () => {
@@ -1030,9 +1050,8 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      const liveSwitch = screen.getByRole('switch', { name: 'Live-Transkript einschalten' })
+      const liveSwitch = screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' })
       expect(liveSwitch).not.toBeChecked()
-      expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
       expect(screen.queryByRole('radiogroup', { name: 'Live-Dienst' })).not.toBeInTheDocument()
 
       await user.click(liveSwitch)
@@ -1057,7 +1076,7 @@ describe('InstallationPage', () => {
       await user.type(liveUrl, 'ws://gpu-01:8000/v1/realtime')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(
         mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL'),
       ).toMatchObject({
@@ -1075,7 +1094,7 @@ describe('InstallationPage', () => {
       const user = userEvent.setup()
       await openTranscriptionStep(user)
 
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
       expect(field('Basis-Adresse')).toHaveValue('https://api.openai.com/v1')
       expect(field('Modell-Kennung')).toHaveValue('gpt-4o-mini-transcribe')
       expect(screen.getByText(/passend zum Live-Dienst vorbelegt/)).toBeInTheDocument()
@@ -1097,12 +1116,12 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
 
       await submitStep(user)
 
       expect(field('Live-Schlüssel (optional)')).toHaveAccessibleDescription(
-        /OpenAI und Mistral verlangen einen Zugangsschlüssel/,
+        /OpenAI und Mistral verlangen einen API-Schlüssel/,
       )
       expect(
         mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')?.saved,
@@ -1112,7 +1131,7 @@ describe('InstallationPage', () => {
       await user.type(field('Live-Schlüssel (optional)'), 'sk-live')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       const saved = mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')
       expect(saved).toMatchObject({
         transcriptionModel: { realtime: { protocol: 'OPENAI', apiKeySet: true } },
@@ -1125,7 +1144,7 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
       const liveUrl = field('Live-Adresse')
       await user.clear(liveUrl)
       await user.type(liveUrl, 'https://api.openai.com/v1/realtime')
@@ -1210,7 +1229,7 @@ describe('InstallationPage', () => {
       expect(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' })).toHaveValue('')
       expect(
         screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }),
-      ).toHaveAccessibleDescription(/OPAA liest ihn nicht von dort/)
+      ).toHaveAccessibleDescription(/OPAA_OCR_API_KEY \(Compose\) oder ocr-api-key/)
     })
 
     it('checks the bundled service and switches text recognition on at the completion', async () => {
@@ -1230,7 +1249,7 @@ describe('InstallationPage', () => {
       await user.type(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }), 'ocr-key')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       const textRecognition = mockInstallationState().steps.find(
         (s) => s.step === 'TEXT_RECOGNITION_MODEL',
       )
@@ -1244,9 +1263,7 @@ describe('InstallationPage', () => {
         },
       })
       await openFromStepList(user, 'Abschluss')
-      expect(
-        screen.getByText(/Die Texterkennung gescannter PDFs wird mit dem geprüften Dienst/),
-      ).toBeInTheDocument()
+      expect(summaryRow('Texterkennung')).toHaveTextContent('Geprüft')
     })
 
     it('offers an own docling-serve or vision model and asks a vision model for its identifier', async () => {
@@ -1282,7 +1299,7 @@ describe('InstallationPage', () => {
       await user.type(field('Modell-Kennung'), 'paddle-vl')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(
         mockInstallationState().steps.find((s) => s.step === 'TEXT_RECOGNITION_MODEL'),
       ).toMatchObject({
@@ -1317,7 +1334,7 @@ describe('InstallationPage', () => {
       const user = userEvent.setup()
       await openMalwareScanStep(user)
 
-      expect(screen.getByText(/OPAA liefert keinen Virenscanner mit/)).toBeInTheDocument()
+      expect(screen.getByText(/^Der clamd-Dienst \(ClamAV\) des Betriebs/)).toBeInTheDocument()
       await submitStep(user)
       expect(field('Host des Virenscanners')).toHaveAccessibleDescription(
         'Bitte den Host des Virenscanners angeben.',
@@ -1345,7 +1362,7 @@ describe('InstallationPage', () => {
       await user.click(screen.getByRole('radio', { name: /Ungeprüft aufnehmen/ }))
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(mockInstallationState().steps.find((s) => s.step === 'MALWARE_SCAN')).toMatchObject({
         checked: true,
         malwareScan: {
@@ -1356,9 +1373,7 @@ describe('InstallationPage', () => {
         },
       })
       await openFromStepList(user, 'Abschluss')
-      expect(
-        screen.getByText(/Die Virenprüfung wird mit dem geprüften Virenscanner eingeschaltet/),
-      ).toBeInTheDocument()
+      expect(summaryRow('Virenprüfung')).toHaveTextContent('Geprüft')
     })
   })
 
@@ -1375,8 +1390,8 @@ describe('InstallationPage', () => {
       await enterToken(user)
       await stepHeading('Abschluss')
       const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
-      await user.click(within(nav).getByRole('button', { name: /E-Mail-Versand/ }))
-      return stepHeading('E-Mail-Versand')
+      await user.click(within(nav).getByRole('button', { name: /E-Mail/ }))
+      return stepHeading('E-Mail')
     }
 
     it('says it is optional and names the missing fields with the sentences of the administration', async () => {
@@ -1425,9 +1440,7 @@ describe('InstallationPage', () => {
         encryption: 'STARTTLS',
         passwordSet: true,
       })
-      expect(
-        screen.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
-      ).toBeInTheDocument()
+      expect(summaryRow('E-Mail')).toHaveTextContent('Geprüft')
       expect(
         within(screen.getByRole('list', { name: 'Stand der Schritte' })).getByText(
           'Verbindung und Anmeldung beim Mailserver sind gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
@@ -1435,39 +1448,12 @@ describe('InstallationPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('says at the check that it sends nothing without an address, and where it sends with one', async () => {
-      const user = userEvent.setup()
-      await openMailStep(user)
-      const check = screen.getByRole('button', { name: 'Prüfen und weiter' })
-      await user.type(field('Benutzername (optional)'), 'opaa')
-
-      expect(check).toHaveAccessibleDescription(
-        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur Verbindung und Anmeldung und sendet keine Nachricht.',
-      )
-      await user.type(field('Testnachricht an (optional)'), 'it-betrieb@stadt.example')
-
-      expect(check).toHaveAccessibleDescription(
-        'Die Prüfung sendet eine Testnachricht an it-betrieb@stadt.example.',
-      )
-    })
-
-    it('names only the connection at the check while no user name is set', async () => {
+    it('says at the test recipient that nothing is sent without an address', async () => {
       const user = userEvent.setup()
       await openMailStep(user)
 
-      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
-        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
-      )
-    })
-
-    it('announces no recipient at the check while the address is not valid', async () => {
-      const user = userEvent.setup()
-      await openMailStep(user)
-
-      await user.type(field('Testnachricht an (optional)'), 'it-betrieb')
-
-      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
-        'Die Testnachricht braucht eine gültige Adresse.',
+      expect(field('Testnachricht an (optional)')).toHaveAccessibleDescription(
+        'Ohne Adresse prüft der Schritt nur die Verbindung und sendet nichts; die Adresse wird nicht gespeichert.',
       )
     })
 
@@ -1636,7 +1622,7 @@ describe('InstallationPage', () => {
       await stepHeading('Installations-Token')
       await enterToken(user)
       await stepHeading('Abschluss')
-      await openFromStepList(user, 'Rerank-Modell')
+      await openFromStepList(user, 'Reranking')
     }
 
     function rerankOf() {
@@ -1651,7 +1637,7 @@ describe('InstallationPage', () => {
       // No preset serves a rerank endpoint: the step asks for the address alone.
       expect(screen.queryByRole('radiogroup', { name: 'Anbieter' })).not.toBeInTheDocument()
       expect(field('Basis-Adresse')).toHaveAccessibleDescription(
-        'So, wie das Backend den Dienst erreicht. Ohne den Pfad /rerank, etwa http://reranker:80.',
+        'Ohne den Pfad /rerank, etwa http://reranker:80.',
       )
       await user.type(field('Basis-Adresse'), 'http://reranker:80')
       await user.tab()
@@ -1667,7 +1653,7 @@ describe('InstallationPage', () => {
       await user.click(within(suitable).getByRole('option', { name: /bge-reranker-v2-m3/ }))
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(rerankOf()).toMatchObject({
         checked: true,
         rerankModel: {
@@ -1677,9 +1663,7 @@ describe('InstallationPage', () => {
         },
       })
       await openFromStepList(user, 'Abschluss')
-      expect(
-        screen.getByText(/Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet/),
-      ).toBeInTheDocument()
+      expect(summaryRow('Reranking')).toHaveTextContent('Geprüft')
     })
 
     it('takes the identifier by hand where the endpoint offers no list', async () => {
@@ -1692,7 +1676,7 @@ describe('InstallationPage', () => {
       await user.type(screen.getByRole('combobox', { name: 'Modell-Kennung' }), 'jina-reranker')
       await submitStep(user)
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(rerankOf()?.rerankModel?.model).toBe('jina-reranker')
     })
 
@@ -1708,11 +1692,11 @@ describe('InstallationPage', () => {
       expect(mockInstallationState().completable).toBe(false)
       await user.click(screen.getByRole('button', { name: 'Überspringen' }))
 
-      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
       expect(mockSkippedSteps()).toEqual(['RERANK_MODEL'])
       expect(rerankOf()).toMatchObject({ saved: false, checked: false })
       await openFromStepList(user, 'Abschluss')
-      expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
+      expect(summaryRow('Reranking')).toHaveTextContent('Nicht eingerichtet')
     })
 
     it('names the shared budget of model checks with its wait', async () => {
@@ -1747,7 +1731,7 @@ describe('InstallationPage', () => {
       await openRerankStep(user)
 
       expect(
-        screen.getByText(/^Basis-Adresse eintragen; dann ruft der Assistent die Modelle ab/),
+        screen.getByText(/^Basis-Adresse eintragen; dann ruft OPAA die Modelle ab/),
       ).toBeInTheDocument()
       await submitStep(user)
 
@@ -1783,7 +1767,7 @@ describe('InstallationPage', () => {
       await openBrandingStep(user)
 
       expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
-      expect(screen.getByText(/der Assistent nimmt keine Bilder an/)).toBeInTheDocument()
+      expect(screen.getByText(/Logo und Hintergrundbild lädt die Systemverwaltung später/)).toBeInTheDocument()
       expect(field('Produktname (optional)')).toHaveAccessibleDescription(
         BRANDING_TEXTS.productNameHint,
       )
@@ -1803,7 +1787,7 @@ describe('InstallationPage', () => {
           primaryColor: null,
         },
       })
-      expect(screen.getByText(/Das Branding wird übernommen/)).toBeInTheDocument()
+      expect(summaryRow('Branding')).toHaveTextContent('Geprüft')
     })
 
     it('refuses a colour that is no hex value before sending it', async () => {

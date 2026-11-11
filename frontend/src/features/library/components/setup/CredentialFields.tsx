@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
-import SecretField from './SecretField'
+import SecretField from '@/shared/ui/form/SecretField'
 import SetupTextField from './SetupTextField'
 import { controlHeight, fontSize } from '@/shared/theme/tokens'
 

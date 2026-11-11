@@ -1,18 +1,13 @@
 import { useState } from 'react'
+import { secretPart } from '@/shared/ui/setup/setupDrafts'
 import { Link as RouterLink } from 'react-router'
 import { AxiosError } from 'axios'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormLabel from '@mui/material/FormLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   EmbeddingInfoResponse,
@@ -21,6 +16,8 @@ import type {
   EmbeddingReindexStatusResponse,
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import { EmbeddingModelFields } from '@/shared/ui/setup/ModelParameterFields'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import {
@@ -38,8 +35,6 @@ import {
 } from './embeddingChange'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
-
-type KeyChoice = 'keep' | 'new' | 'none'
 
 /** The field errors of a 400, by the field name after the prefix (`embeddingModel.baseUrl`). */
 function fieldErrorsOf(err: unknown): Record<string, string> {
@@ -257,8 +252,8 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   const [maxInputTokens, setMaxInputTokens] = useState(
     info.maxInputTokens ? String(info.maxInputTokens) : '',
   )
-  const [keyChoice, setKeyChoice] = useState<KeyChoice>(info.apiKeySet ? 'keep' : 'none')
-  const [keyInput, setKeyInput] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [removeKey, setRemoveKey] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [probing, setProbing] = useState(false)
@@ -268,8 +263,8 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   const [probesExhausted, setProbesExhausted] = useState(false)
   const offerEndpointChange =
     probesExhausted || (result?.succeeded === true && result.kind === 'ENDPOINT_CHANGE')
+  // The stored key goes only to the endpoint it was stored for; elsewhere none is sent.
   const keepAllowed = Boolean(info.apiKeySet) && sameEndpoint(storedBaseUrl, baseUrl)
-  const effectiveChoice: KeyChoice = keyChoice === 'keep' && !keepAllowed ? 'new' : keyChoice
   const prefix = `embedding-${mode}`
 
   function changed() {
@@ -283,8 +278,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
       baseUrl: baseUrl.trim(),
       model: model.trim(),
       maxInputTokens: Number.isFinite(limit) ? limit : undefined,
-      apiKey:
-        effectiveChoice === 'keep' ? undefined : effectiveChoice === 'new' ? keyInput.trim() : '',
+      apiKey: secretPart(apiKey.trim(), removeKey) ?? (keepAllowed ? undefined : ''),
     }
   }
 
@@ -394,100 +388,51 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
             ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Vor dem ersten Modell nimmt OPAA keine Inhalte an, deshalb wird nichts neu eingebettet.'
             : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
-      <Stack spacing={2}>
-        <FormField
-          id={`${prefix}-base-url`}
-          label="Basis-Adresse"
-          required
-          value={baseUrl}
-          onChange={(e) => {
-            setBaseUrl(e.target.value)
-            changed()
-          }}
-          error={Boolean(errors.baseUrl)}
-          helperText={errors.baseUrl ?? 'Etwa http://ollama:11434/v1.'}
-          size="small"
-          fullWidth
-        />
-        <FormField
-          id={`${prefix}-model`}
-          label="Modell-Kennung"
-          required
-          value={model}
-          disabled={mode === 'replacement'}
-          onChange={(e) => {
-            setModel(e.target.value)
-            changed()
-          }}
-          error={Boolean(errors.model)}
-          helperText={errors.model}
-          size="small"
-          fullWidth
-        />
-        <FormControl>
-          <FormLabel id={`${prefix}-key-label`} sx={{ fontSize: fontSize.text }}>
-            Zugangsschlüssel
-          </FormLabel>
-          <RadioGroup
-            row
-            aria-labelledby={`${prefix}-key-label`}
-            value={effectiveChoice}
-            onChange={(e) => {
-              setKeyChoice(e.target.value as KeyChoice)
-              changed()
-            }}
-          >
-            {info.apiKeySet && (
-              <FormControlLabel
-                value="keep"
-                control={<Radio size="small" />}
-                label="beibehalten"
-                disabled={!keepAllowed}
-              />
-            )}
-            <FormControlLabel value="new" control={<Radio size="small" />} label="neu" />
-            <FormControlLabel value="none" control={<Radio size="small" />} label="ohne" />
-          </RadioGroup>
-          {info.apiKeySet && !keepAllowed && (
-            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-              Die Adresse nennt einen anderen Endpunkt; der gespeicherte Schlüssel geht nicht mit.
-            </Typography>
-          )}
-        </FormControl>
-        {effectiveChoice === 'new' && (
-          <FormField
-            id={`${prefix}-api-key`}
-            label="Neuer Zugangsschlüssel"
-            type="password"
-            value={keyInput}
-            onChange={(e) => {
-              setKeyInput(e.target.value)
-              changed()
-            }}
-            error={Boolean(errors.apiKey)}
-            helperText={errors.apiKey ?? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'}
-            size="small"
-            fullWidth
-            autoComplete="new-password"
-          />
-        )}
-        <FormField
-          id={`${prefix}-max-input-tokens`}
-          label="Eingabegrenze in Tokens"
-          value={maxInputTokens}
-          onChange={(e) => {
-            setMaxInputTokens(e.target.value.replace(/\D/g, ''))
-            changed()
-          }}
-          error={Boolean(errors.maxInputTokens)}
-          helperText={
-            errors.maxInputTokens ??
-            'Leer für 2048, die Grenze eines unverändert gezogenen Ollama-Modells.'
+      <Stack spacing={3}>
+        <ModelEndpointFields
+          purpose="embedding"
+          stored={
+            storedBaseUrl ? { baseUrl: storedBaseUrl, apiKeySet: Boolean(info.apiKeySet) } : null
           }
-          size="small"
-          numeric
-          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-        />
+          baseUrl={baseUrl}
+          onBaseUrlChange={(next) => {
+            setBaseUrl(next)
+            changed()
+          }}
+          apiKey={apiKey}
+          onApiKeyChange={(next) => {
+            setApiKey(next)
+            changed()
+          }}
+          removeKey={removeKey}
+          onRemoveKeyChange={(next) => {
+            setRemoveKey(next)
+            changed()
+          }}
+          model={model}
+          onModelChange={(next) => {
+            setModel(next)
+            changed()
+          }}
+          modelFixed={mode === 'replacement'}
+          errors={errors}
+        >
+          <EmbeddingModelFields
+            idPrefix={prefix}
+            maxInputTokens={maxInputTokens}
+            onMaxInputTokensChange={(next) => {
+              setMaxInputTokens(next.replace(/\D/g, ''))
+              changed()
+            }}
+            contextLength={null}
+            errors={errors}
+          />
+        </ModelEndpointFields>
+        {info.apiKeySet && !keepAllowed && apiKey === '' && !removeKey && (
+          <Alert severity="info">
+            Die Adresse nennt einen anderen Endpunkt; der gespeicherte Schlüssel geht nicht mit.
+          </Alert>
+        )}
         {error && <Alert severity="error">{error}</Alert>}
         {probesExhausted && (
           <Alert severity="info">

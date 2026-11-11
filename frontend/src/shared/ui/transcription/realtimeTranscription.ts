@@ -29,7 +29,7 @@ export const REALTIME_PROTOCOL_PRESETS: readonly RealtimeProtocolPreset[] = [
   {
     protocol: 'OPENAI',
     label: 'OpenAI',
-    description: 'Realtime-API von OpenAI; braucht einen Zugangsschlüssel.',
+    description: 'Realtime-API von OpenAI; braucht einen API-Schlüssel.',
     url: 'wss://api.openai.com/v1/realtime?intent=transcription',
     model: 'gpt-live-transcribe',
     external: true,
@@ -46,7 +46,7 @@ export const REALTIME_PROTOCOL_PRESETS: readonly RealtimeProtocolPreset[] = [
   {
     protocol: 'MISTRAL',
     label: 'Mistral',
-    description: 'Realtime-Transkription von Mistral (Voxtral); braucht einen Zugangsschlüssel.',
+    description: 'Realtime-Transkription von Mistral (Voxtral); braucht einen API-Schlüssel.',
     url: 'wss://api.mistral.ai/v1/audio/transcriptions/realtime',
     model: 'voxtral-mini-transcribe-realtime-3',
     external: true,
@@ -171,8 +171,6 @@ export const REALTIME_TEXTS = {
   sectionLabel: 'Live-Transkript (optional)',
   switchLabel: 'Live-Transkript einschalten',
   switchHint: 'Der Text erscheint schon beim Sprechen; das Mikrofon im Chat nutzt Live von selbst.',
-  alwaysDictation:
-    'Das Diktat bleibt immer verfügbar. Fällt der Live-Dienst aus, wird die ganze Aufnahme wie beim Diktat verarbeitet.',
   protocolLabel: 'Live-Dienst',
   urlLabel: 'Live-Adresse',
   urlHint: 'WebSocket-Adresse des Dienstes, beginnt mit ws:// oder wss://.',
@@ -182,8 +180,7 @@ export const REALTIME_TEXTS = {
   batchPrefilled:
     'Basis-Adresse und Modell-Kennung des Diktats sind passend zum Live-Dienst vorbelegt; das Diktat braucht immer einen eigenen Endpunkt.',
   keyLabel: 'Live-Schlüssel',
-  keyHint:
-    'Leer lassen, wenn der Dienst keinen Schlüssel verlangt oder die gleiche Adresse bis zum Port (Schema, Host, Port) wie das Transkriptionsmodell hat; dann gilt dessen Schlüssel.',
+  keyHint: 'Leer lassen, wenn der Dienst keinen verlangt oder unter der Adresse des Diktats läuft.',
   keyMissing:
-    'OpenAI und Mistral verlangen einen Zugangsschlüssel: Bitte einen Live-Schlüssel eintragen; der Schlüssel des Transkriptionsmodells gilt nur bei gleicher Adresse bis zum Port (Schema, Host, Port).',
+    'OpenAI und Mistral verlangen einen API-Schlüssel: Bitte einen Live-Schlüssel eintragen; der Schlüssel des Transkriptionsmodells gilt nur bei gleicher Adresse bis zum Port (Schema, Host, Port).',
 } as const

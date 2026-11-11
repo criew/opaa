@@ -1,33 +1,24 @@
 import { useId, useState } from 'react'
-import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import Typography from '@mui/material/Typography'
-import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
-import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
-import type { LlmModelDiscoveryResponse, RealtimeTranscriptionProtocol } from '@/shared/api/types'
-import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
-import SectionHead from '@/shared/ui/SectionHead'
+import { secretPart } from '@/shared/ui/setup/setupDrafts'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
+import { originOf, providerOf } from '@/shared/ui/modelDiscovery/modelEndpoint'
+import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import RealtimeTranscriptionFields, {
+  TranscriptionLanguageField,
+} from '@/shared/ui/setup/TranscriptionFields'
 import {
-  afterProtocolSwitch,
   batchPrefillFor,
   batchUntouched,
   liveKeyMissing,
-  REALTIME_PROTOCOL_PRESETS,
+  NO_REALTIME,
   REALTIME_TEXTS,
-  realtimePresetOf,
   realtimeUrlError,
   sharesOrigin,
   type BatchPrefill,
+  type RealtimeDraft,
 } from '@/shared/ui/transcription/realtimeTranscription'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
-import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
-import {
-  TRANSCRIPTION_TEXTS,
-  transcriptionLanguageError,
-} from '@/shared/ui/transcription/transcriptionSettings'
+import { transcriptionLanguageError } from '@/shared/ui/transcription/transcriptionSettings'
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStepState,
@@ -35,16 +26,9 @@ import type {
 } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
-import { apiKeyPart } from '../../utils/apiKey'
 import { STEP_INFO } from '../../utils/steps'
-import { originOf, providerOf } from '../../utils/modelEndpoint'
 import { compact, isBlank, urlError } from '../../utils/validation'
-import ApiKeyField from '../ApiKeyField'
-import FormField from '../FormField'
-import ModelEndpointFields from '../ModelEndpointFields'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
-import { STEP_RHYTHM } from '../stepLayout'
-import { fontSize } from '@/shared/theme/tokens'
 
 interface TranscriptionModelStepProps extends StepNavigationProps {
   step: InstallationStepState
@@ -65,7 +49,7 @@ const TRANSCRIPTION_MODEL_FIELDS = [
 const DEFAULT_LANGUAGE = 'de'
 
 /**
- * The model that turns dictated questions into text, with the texts and the language rule of
+ * The model that turns dictated questions into text, with the fields and the language rule of
  * „Modelle → Spracheingabe“. Its check is the probe of the model administration, which sends no
  * recording; the completion switches speech input on with it. The API lists the step only while
  * the operation allows speech input.
@@ -85,12 +69,11 @@ export default function TranscriptionModelStep({
   const [removeKey, setRemoveKey] = useState(false)
   const [language, setLanguage] = useState(stored ? stored.language : DEFAULT_LANGUAGE)
   const storedLive = stored?.realtime ?? null
-  const [live, setLive] = useState(storedLive !== null)
-  const [protocol, setProtocol] = useState<RealtimeTranscriptionProtocol | null>(
-    storedLive?.protocol ?? null,
+  const [realtime, setRealtime] = useState<RealtimeDraft>(
+    storedLive
+      ? { live: true, protocol: storedLive.protocol, url: storedLive.url, model: storedLive.model }
+      : NO_REALTIME,
   )
-  const [liveUrl, setLiveUrl] = useState(storedLive?.url ?? '')
-  const [liveModel, setLiveModel] = useState(storedLive?.model ?? '')
   const [liveKey, setLiveKey] = useState('')
   const [removeLiveKey, setRemoveLiveKey] = useState(false)
   // The dictation endpoint last filled in for the live service, and a key that remounts the
@@ -98,7 +81,6 @@ export default function TranscriptionModelStep({
   const [prefill, setPrefill] = useState<BatchPrefill | null>(null)
   const [endpointKey, setEndpointKey] = useState(0)
   const form = useStepForm(step.checked ? null : step.checkMessage)
-  const preset = realtimePresetOf(protocol)
   // The endpoint fields already warn about an external dictation service; the live notice only
   // repeats it for a live service on another host.
   const batchExternal = providerOf(baseUrl, 'transcription') === 'openai'
@@ -108,9 +90,9 @@ export default function TranscriptionModelStep({
    * so an installation with only a live service needs no second address; the dictation endpoint
    * stays mandatory. A typed key does not follow a fill to another origin.
    */
-  function fillBatch(next: RealtimeTranscriptionProtocol | null, url: string, liveName: string) {
+  function fillBatch(next: RealtimeDraft) {
     if (!batchUntouched(baseUrl, model, prefill)) return
-    const fill = batchPrefillFor(next, url, liveName)
+    const fill = batchPrefillFor(next.protocol, next.url, next.model)
     if (fill === null) {
       if (prefill === null) return
       setBaseUrl('')
@@ -127,45 +109,22 @@ export default function TranscriptionModelStep({
     setEndpointKey((current) => current + 1)
   }
 
-  function switchLive(on: boolean) {
-    setLive(on)
-    if (!on) return
-    if (protocol === null) chooseProtocol(REALTIME_PROTOCOL_PRESETS[0].protocol)
-    else fillBatch(protocol, liveUrl, liveModel)
-  }
-
-  function chooseProtocol(next: RealtimeTranscriptionProtocol) {
-    const filled = afterProtocolSwitch(protocol, next, liveUrl, liveModel)
-    setProtocol(next)
-    setLiveUrl(filled.url)
-    setLiveModel(filled.model)
-    fillBatch(next, filled.url, filled.model)
-  }
-
-  function typeLiveUrl(next: string) {
-    setLiveUrl(next)
-    fillBatch(protocol, next, liveModel)
-  }
-
-  function typeLiveModel(next: string) {
-    setLiveModel(next)
-    fillBatch(protocol, liveUrl, next)
-  }
-
   function handleSubmit() {
+    const { live, protocol } = realtime
     const localErrors = compact({
       baseUrl: urlError(baseUrl, 'die Basis-Adresse'),
       model: isBlank(model) ? 'Bitte die Modell-Kennung angeben.' : undefined,
       language: transcriptionLanguageError(language),
       'realtime.protocol':
         live && protocol === null ? 'Bitte einen Live-Dienst wählen.' : undefined,
-      'realtime.url': live ? realtimeUrlError(liveUrl) : undefined,
-      'realtime.model': live && isBlank(liveModel) ? 'Bitte das Live-Modell angeben.' : undefined,
+      'realtime.url': live ? realtimeUrlError(realtime.url) : undefined,
+      'realtime.model':
+        live && isBlank(realtime.model) ? 'Bitte das Live-Modell angeben.' : undefined,
       'realtime.apiKey':
         live &&
         liveKeyMissing({
           protocol,
-          liveUrl,
+          liveUrl: realtime.url,
           ownKey: liveKey !== '' || (Boolean(storedLive?.apiKeySet) && !removeLiveKey),
           batchUrl: baseUrl,
           batchKey: apiKey !== '' || (Boolean(stored?.apiKeySet) && !removeKey),
@@ -173,19 +132,21 @@ export default function TranscriptionModelStep({
           ? REALTIME_TEXTS.keyMissing
           : undefined,
     })
+    const key = secretPart(apiKey, removeKey)
+    const ownLiveKey = secretPart(liveKey, removeLiveKey)
     void form.submit(localErrors, TRANSCRIPTION_MODEL_FIELDS, () =>
       submit({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
-        ...apiKeyPart(apiKey, removeKey),
+        ...(key === undefined ? {} : { apiKey: key }),
         language: language.trim(),
         realtime:
           live && protocol !== null
             ? {
                 protocol,
-                url: liveUrl.trim(),
-                model: liveModel.trim(),
-                ...apiKeyPart(liveKey, removeLiveKey),
+                url: realtime.url.trim(),
+                model: realtime.model.trim(),
+                ...(ownLiveKey === undefined ? {} : { apiKey: ownLiveKey }),
               }
             : null,
       }),
@@ -197,7 +158,7 @@ export default function TranscriptionModelStep({
       title={STEP_INFO.TRANSCRIPTION_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.TRANSCRIPTION_MODEL.laterUnder}
-      description={`${MODEL_ROLE_TEXTS.transcription.purpose} Die Prüfung fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme; ein Live-Dienst wird mit einer Sitzung ohne Audio geprüft. Ohne Transkriptionsmodell bleibt die Spracheingabe aus, bis die Systemverwaltung eines unter Modelle → Spracheingabe einträgt.`}
+      description={`${MODEL_ROLE_TEXTS.transcription.purpose} Übersprungen bleibt die Spracheingabe aus, bis die Systemverwaltung sie unter „Modelle → Spracheingabe“ einrichtet.`}
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Endpunkt wird geprüft"
@@ -220,122 +181,34 @@ export default function TranscriptionModelStep({
         errors={form.errors}
         discover={discover}
       >
-        <FormField
+        <TranscriptionLanguageField
           id={`${id}-language`}
-          label={TRANSCRIPTION_TEXTS.languageLabel}
-          optional
           value={language}
           onChange={setLanguage}
           error={form.errors.language}
-          hint={TRANSCRIPTION_TEXTS.languageHint}
-          maxLength={8}
         />
       </ModelEndpointFields>
-      <Box
-        component="section"
-        aria-labelledby={`${id}-live`}
-        sx={{ mt: STEP_RHYTHM.betweenGroups }}
-      >
-        <SectionHead component="h3" id={`${id}-live`}>
-          {REALTIME_TEXTS.sectionLabel}
-        </SectionHead>
-        <Stack spacing={STEP_RHYTHM.betweenGroups}>
-          <Box>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              {REALTIME_TEXTS.alwaysDictation}
-            </Typography>
-            <FormControlLabel
-              sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}
-              control={
-                <Switch
-                  checked={live}
-                  onChange={(e) => switchLive(e.target.checked)}
-                  slotProps={{ input: { 'aria-describedby': `${id}-live-hint` } }}
-                />
-              }
-              label={REALTIME_TEXTS.switchLabel}
-            />
-            <Typography
-              id={`${id}-live-hint`}
-              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
-            >
-              {REALTIME_TEXTS.switchHint}
-            </Typography>
-          </Box>
-          {live && (
-            <>
-              <Box>
-                <FormFieldLabel id={`${id}-live-protocol`}>
-                  {REALTIME_TEXTS.protocolLabel}
-                </FormFieldLabel>
-                <ChoiceTileGroup<RealtimeTranscriptionProtocol>
-                  aria-labelledby={`${id}-live-protocol`}
-                  tiles={REALTIME_PROTOCOL_PRESETS.map((option) => ({
-                    value: option.protocol,
-                    label: option.label,
-                    description: option.description,
-                    icon: option.external ? (
-                      <CloudOutlinedIcon fontSize="small" />
-                    ) : (
-                      <DnsOutlinedIcon fontSize="small" />
-                    ),
-                  }))}
-                  value={protocol}
-                  onChange={chooseProtocol}
-                  columns={3}
-                />
-                {form.errors['realtime.protocol'] && (
-                  <Alert severity="error" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
-                    {form.errors['realtime.protocol']}
-                  </Alert>
-                )}
-                {live && prefill !== null && (
-                  <Alert severity="info" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
-                    {REALTIME_TEXTS.batchPrefilled}
-                  </Alert>
-                )}
-                {preset?.external && !(batchExternal && sharesOrigin(liveUrl, baseUrl)) && (
-                  <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
-                    {REALTIME_TEXTS.externalService}
-                  </Alert>
-                )}
-              </Box>
-              <FormField
-                id={`${id}-live-url`}
-                label={REALTIME_TEXTS.urlLabel}
-                inputMode="url"
-                value={liveUrl}
-                onChange={typeLiveUrl}
-                error={form.errors['realtime.url']}
-                hint={REALTIME_TEXTS.urlHint}
-              />
-              <FormField
-                id={`${id}-live-model`}
-                label={REALTIME_TEXTS.modelLabel}
-                value={liveModel}
-                onChange={typeLiveModel}
-                error={form.errors['realtime.model']}
-              />
-              <ApiKeyField
-                id={`${id}-live-key`}
-                keyStored={Boolean(storedLive?.apiKeySet)}
-                value={liveKey}
-                onChange={setLiveKey}
-                remove={removeLiveKey}
-                onRemoveChange={setRemoveLiveKey}
-                error={form.errors['realtime.apiKey']}
-                hint={REALTIME_TEXTS.keyHint}
-                wording={{
-                  label: REALTIME_TEXTS.keyLabel,
-                  removed: 'Der gespeicherte Live-Schlüssel wird beim Speichern entfernt.',
-                  keep: 'Live-Schlüssel behalten',
-                  remove: 'Gespeicherten Live-Schlüssel entfernen',
-                }}
-              />
-            </>
-          )}
-        </Stack>
-      </Box>
+      <RealtimeTranscriptionFields
+        idPrefix={`${id}-live`}
+        value={realtime}
+        onChange={(next) => {
+          setRealtime(next)
+          if (next.live) fillBatch(next)
+        }}
+        liveKey={liveKey}
+        onLiveKeyChange={setLiveKey}
+        removeLiveKey={removeLiveKey}
+        onRemoveLiveKeyChange={setRemoveLiveKey}
+        liveKeyStored={Boolean(storedLive?.apiKeySet)}
+        errors={{
+          protocol: form.errors['realtime.protocol'],
+          url: form.errors['realtime.url'],
+          model: form.errors['realtime.model'],
+          apiKey: form.errors['realtime.apiKey'],
+        }}
+        batchPrefilled={prefill !== null}
+        externalNoticeGiven={batchExternal && sharesOrigin(realtime.url, baseUrl)}
+      />
     </StepFrame>
   )
 }

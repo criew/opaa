@@ -1,39 +1,29 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import {
+  secretPart,
+  maxTokensError,
+  parseTemperature,
+  temperatureError,
+} from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
 import { discoverLlmModels, testLlmModel } from '../api/modelApi'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import SectionHead from '@/shared/ui/SectionHead'
-import BaseUrlField from './BaseUrlField'
-import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
-import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
 import {
   displayNameFor,
-  formatTokens,
   DEFAULT_MAX_TOKENS,
-  presetOf,
   suggestedMaxTokens,
-  type EndpointPreset,
 } from '@/shared/ui/modelDiscovery/modelDiscovery'
-import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
-import { controlHeight, fontSize } from '@/shared/theme/tokens'
+import type { EndpointDiscoveryRequest } from '@/shared/ui/modelDiscovery/modelEndpoint'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import { ChatModelFields } from '@/shared/ui/setup/ModelParameterFields'
+import SetupField from '@/shared/ui/setup/SetupField'
+import { isBlank, urlError, type SetupErrors } from '@/shared/ui/setup/setupNames'
+import { fontSize } from '@/shared/theme/tokens'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
-
-export const REQUIRED_FIELDS_HINT =
-  'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
-
-export const TEMPERATURE_HELP_TEXT =
-  'Leer lassen, um die Voreinstellung des Modells zu verwenden. Manche Modelle lehnen jede ' +
-  'Temperatur ab.'
-
-export const TEMPERATURE_UNREADABLE_HINT =
-  'Die Temperatur ist keine gültige Zahl. Für keine Temperatur das Feld leeren.'
 
 interface LlmModelFormDialogProps {
   open: boolean
@@ -62,17 +52,16 @@ function draftFrom(model: LlmModelResponse | null) {
   }
 }
 
+const DISPLAY_NAME_ID = 'llm-model-form-display-name'
+
 /**
- * The form of a chat model — the same for creating and editing, like
- * `UserFormDialog` under „Benutzer".
+ * The form of a chat model — the same for creating and editing, with the endpoint and model
+ * fields of the assistant's step „Chat-Modell“ (`ModelEndpointFields`, `ChatModelFields`) and,
+ * here only, the display name of the list.
  *
- * Guided in three sections: endpoint (template or own address, key,
- * „Modelle abrufen"), model (choice from the endpoint's list or free input) and display.
- * A choice prefills display name and response length as long as they were not set by hand,
- * and tests the connection at once.
- *
- * No provider select field: the interface speaks only the OpenAI-compatible
- * protocol; the templates are just addresses.
+ * A choice from the endpoint's list prefills display name and answer length as long as they were
+ * not set by hand, and tests the connection at once. „Speichern“ is always active: a missing or
+ * unreadable entry stands at its field, and the focus goes there.
  *
  * The caller gives the dialog a `key`, so that a change of model resets the draft —
  * MUI only unmounts the children on close, not the component.
@@ -87,13 +76,11 @@ export default function LlmModelFormDialog({
   const updateExistingModel = useLlmModelStore((s) => s.updateExistingModel)
 
   const [draft, setDraft] = useState(() => draftFrom(model))
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [apiKeyTouched, setApiKeyTouched] = useState(false)
-  // An explicit request instead of „empty field means delete" - the field
-  // starts empty for every model because the key is never read back; untouched-empty and
-  // „please remove" could not be told apart otherwise.
-  const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
-  const [temperatureUnreadable, setTemperatureUnreadable] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+  // An explicit request instead of „empty field means delete": the key is never read back, so
+  // untouched and „please remove" could not be told apart otherwise.
+  const [removeKey, setRemoveKey] = useState(false)
+  const [errors, setErrors] = useState<SetupErrors>({})
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -105,95 +92,58 @@ export default function LlmModelFormDialog({
   const [contextLength, setContextLength] = useState<number | null>(null)
   // Only the result of the latest connection test counts, as in useModelDiscovery.
   const latestTest = useRef(0)
-  const discovery = useModelDiscovery(discoverLlmModels)
-  const addressRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const isEdit = model !== null
   const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Neues Modell'
-  const requiredHintId = 'llm-model-form-required-hint'
-  const preset = presetOf(draft.baseUrl)
-  const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
-  const temperatureFieldId = 'llm-model-form-temperature'
-
-  function isValid() {
-    return (
-      draft.displayName.trim() !== '' &&
-      draft.baseUrl.trim() !== '' &&
-      draft.modelIdentifier.trim() !== '' &&
-      draft.maxTokens.trim() !== ''
-    )
-  }
 
   /**
-   * Resolves what to send for `apiKey` — the three-way convention of `LlmModelRequest`:
-   * omitted means unchanged, empty text means remove, anything else means set. An emptied field
-   * counts as untouched; only „Gespeicherten Schlüssel entfernen" sends the empty text.
-   *
-   * Connection test and model discovery get the same value, although the empty text means
-   * something else there: they never save anything, and an omitted key lets them keep using
-   * this model's **stored** key — only for its own address.
+   * What to send for `apiKey` — the three-way convention of `LlmModelRequest`: omitted means
+   * unchanged, empty text means remove, anything else means set. Connection test and model
+   * discovery get the same value: they never save anything, and an omitted key lets them use this
+   * model's **stored** key — only for its own address.
    */
-  function resolveApiKey(): string | undefined {
-    if (apiKeyClearRequested) return ''
-    if (apiKeyTouched && apiKeyInput.trim() !== '') return apiKeyInput.trim()
-    return undefined
-  }
+  const keyForRequest = secretPart(apiKey.trim(), removeKey)
+  /** The stored key of the edited model serves only while its removal is not requested. */
+  const storedKeyModelId = model && !removeKey ? model.id : undefined
+  const storedModelId = model?.id
 
-  /** An empty field means „keine Angabe“: the parameter is then not sent to the model at all. */
-  function resolveTemperature(): number | null {
-    return draft.temperature.trim() === '' ? null : Number(draft.temperature)
-  }
+  const discover = useCallback(
+    (request: EndpointDiscoveryRequest) =>
+      discoverLlmModels({ ...request, modelId: storedKeyModelId, storedModelId }),
+    [storedKeyModelId, storedModelId],
+  )
 
   function close() {
     if (submitting) return
     onClose()
   }
 
-  /**
-   * A new address invalidates the list and the last test result, a running test included; both
-   * belonged to the old one.
-   */
-  function changeBaseUrl(baseUrl: string) {
-    setDraft((current) => ({ ...current, baseUrl }))
-    discovery.reset()
+  /** A new address or key invalidates the last test result, a running test included. */
+  function connectionChanged() {
     latestTest.current++
     setTesting(false)
     setTestResult(null)
   }
 
-  /** The stored key of the edited model serves only while its removal is not requested. */
-  function storedKeyModelId(): string | undefined {
-    return model && !apiKeyClearRequested ? model.id : undefined
-  }
-
-  function runDiscovery(baseUrl = draft.baseUrl) {
-    if (baseUrl.trim() === '') return
-    void discovery.discover({
-      baseUrl: baseUrl.trim(),
-      apiKey: resolveApiKey(),
-      modelId: storedKeyModelId(),
-      storedModelId: model?.id,
-    })
-  }
-
-  /**
-   * Fills in the preset's address; a host still to be confirmed (Ollama) is selected for
-   * overwriting. Nothing is fetched: a typed key may belong to another endpoint and is sent only
-   * on „Modelle abrufen“ or Enter.
-   */
-  function choosePreset(chosen: EndpointPreset) {
-    changeBaseUrl(chosen.baseUrl)
-    const host = chosen.placeholderHost
-    if (host !== null) {
-      // After the combobox has written the chosen address into the input.
-      setTimeout(() => {
-        const input = addressRef.current
-        if (!input) return
-        const start = chosen.baseUrl.indexOf(host)
-        input.focus()
-        input.setSelectionRange(start, start + host.length)
-      }, 0)
+  function fieldErrors(): SetupErrors {
+    return {
+      baseUrl: urlError(draft.baseUrl, 'die Basis-Adresse'),
+      model: isBlank(draft.modelIdentifier) ? 'Modell-Kennung fehlt' : undefined,
+      displayName: isBlank(draft.displayName) ? 'Anzeigename fehlt' : undefined,
+      temperature: temperatureError(draft.temperature),
+      maxTokens: maxTokensError(draft.maxTokens),
     }
+  }
+
+  /** Puts the errors at their fields and the focus into the first one; `true` when there are none. */
+  function accept(found: SetupErrors): boolean {
+    setErrors(found)
+    if (!Object.values(found).some(Boolean)) return true
+    requestAnimationFrame(() =>
+      formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(),
+    )
+    return false
   }
 
   function selectModel(selected: DiscoveredLlmModel) {
@@ -214,17 +164,13 @@ export default function LlmModelFormDialog({
   }
 
   async function handleTest(modelIdentifier = draft.modelIdentifier) {
-    if (draft.baseUrl.trim() === '' || modelIdentifier.trim() === '') {
-      setTestResult({
-        success: false,
-        message: 'Bitte zuerst Basis-Adresse und Modell-Kennung angeben.',
-      })
-      return
+    const found = fieldErrors()
+    const relevant = {
+      baseUrl: found.baseUrl,
+      model: isBlank(modelIdentifier) ? found.model : undefined,
+      temperature: found.temperature,
     }
-    if (temperatureUnreadable) {
-      setTestResult({ success: false, message: TEMPERATURE_UNREADABLE_HINT })
-      return
-    }
+    if (!accept(relevant)) return
     const ticket = ++latestTest.current
     setTestResult(null)
     setTesting(true)
@@ -233,10 +179,10 @@ export default function LlmModelFormDialog({
       result = await testLlmModel({
         baseUrl: draft.baseUrl.trim(),
         modelIdentifier: modelIdentifier.trim(),
-        apiKey: resolveApiKey(),
-        modelId: storedKeyModelId(),
-        storedModelId: model?.id,
-        temperature: resolveTemperature(),
+        apiKey: keyForRequest,
+        modelId: storedKeyModelId,
+        storedModelId,
+        temperature: parseTemperature(draft.temperature),
       })
     } catch (err) {
       result = {
@@ -250,23 +196,16 @@ export default function LlmModelFormDialog({
   }
 
   async function handleSubmit() {
-    if (!isValid()) {
-      setError(REQUIRED_FIELDS_HINT)
-      return
-    }
-    if (temperatureUnreadable) {
-      setError(TEMPERATURE_UNREADABLE_HINT)
-      return
-    }
+    if (!accept(fieldErrors())) return
     setError(null)
     setSubmitting(true)
     const request = {
       displayName: draft.displayName.trim(),
       baseUrl: draft.baseUrl.trim(),
       modelIdentifier: draft.modelIdentifier.trim(),
-      temperature: resolveTemperature(),
+      temperature: parseTemperature(draft.temperature),
       maxTokens: Number(draft.maxTokens),
-      apiKey: resolveApiKey(),
+      apiKey: keyForRequest,
     }
     try {
       if (model) {
@@ -297,15 +236,6 @@ export default function LlmModelFormDialog({
     (draft.baseUrl.trim() !== model.baseUrl ||
       draft.modelIdentifier.trim() !== model.modelIdentifier)
 
-  const idleHint =
-    draft.baseUrl.trim() === ''
-      ? null
-      : preset?.needsKey && !typedKey && !model?.apiKeySet
-        ? 'Zugangsschlüssel eintragen, dann „Modelle abrufen“.'
-        : preset?.placeholderHost
-          ? 'Host anpassen, dann „Modelle abrufen“ oder Enter.'
-          : '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
-
   return (
     <FormDialog
       open={open}
@@ -315,8 +245,6 @@ export default function LlmModelFormDialog({
       onClose={close}
       busy={submitting}
       busyAnnouncement="Das Modell wird gespeichert"
-      // Enter in the address field fetches the models of the endpoint
-      submitOnEnter={false}
       secondaryAction={
         <BusyButton
           variant="outlined"
@@ -339,174 +267,63 @@ export default function LlmModelFormDialog({
           wieder ungeprüft.
         </Alert>
       )}
-      <Stack spacing={3.5} sx={{ mt: 1 }}>
-        <Box component="section" aria-labelledby="llm-model-endpoint-head">
-          <SectionHead component="h3" id="llm-model-endpoint-head">
-            1 · Endpunkt
-          </SectionHead>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
-          >
-            <BaseUrlField
-              value={draft.baseUrl}
-              inputRef={addressRef}
-              onType={changeBaseUrl}
-              onChoose={choosePreset}
-              onSubmit={() => runDiscovery()}
-            />
-            <BusyButton
-              variant="outlined"
-              busy={discovery.state.status === 'loading'}
-              // DiscoveryStatus announces the loading; the button stays silent.
-              busyAnnouncement=""
-              disabled={draft.baseUrl.trim() === ''}
-              onClick={() => runDiscovery()}
-              sx={{ flexShrink: 0, height: controlHeight.regular, whiteSpace: 'nowrap' }}
-            >
-              Modelle abrufen
-            </BusyButton>
-          </Stack>
-          <FormField
-            label="API-Schlüssel"
-            optional
-            type="password"
-            value={apiKeyInput}
-            disabled={apiKeyClearRequested}
-            onChange={(e) => {
-              setApiKeyTouched(true)
-              setApiKeyClearRequested(false)
-              setApiKeyInput(e.target.value)
-            }}
-            helperText={
-              apiKeyClearRequested
-                ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
-                : isEdit
-                  ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
-                  : preset?.needsKey
-                    ? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
-                    : 'Lokal betriebene Modellserver brauchen meist keinen.'
+      <Stack spacing={3} sx={{ mt: 1 }} ref={formRef}>
+        <ModelEndpointFields
+          purpose="chat"
+          stored={model ? { baseUrl: model.baseUrl, apiKeySet: model.apiKeySet } : null}
+          baseUrl={draft.baseUrl}
+          onBaseUrlChange={(baseUrl) => {
+            setDraft((current) => ({ ...current, baseUrl }))
+            connectionChanged()
+          }}
+          apiKey={apiKey}
+          onApiKeyChange={(next) => {
+            setApiKey(next)
+            connectionChanged()
+          }}
+          removeKey={removeKey}
+          onRemoveKeyChange={(next) => {
+            setRemoveKey(next)
+            connectionChanged()
+          }}
+          model={draft.modelIdentifier}
+          onModelChange={(modelIdentifier) => {
+            setDraft((current) => ({ ...current, modelIdentifier }))
+            setContextLength(null)
+          }}
+          onModelSelect={selectModel}
+          errors={errors}
+          discover={discover}
+        >
+          <SetupField
+            id={DISPLAY_NAME_ID}
+            label="Anzeigename"
+            value={draft.displayName}
+            onChange={(displayName) => setDraft((current) => ({ ...current, displayName }))}
+            error={errors.displayName}
+          />
+          <ChatModelFields
+            idPrefix="llm-model-form"
+            temperature={draft.temperature}
+            onTemperatureChange={(temperature) =>
+              setDraft((current) => ({ ...current, temperature }))
             }
-            size="small"
-            fullWidth
-            autoComplete="new-password"
-            sx={{ mt: 2 }}
-          />
-          {model?.apiKeySet && (
-            <Box sx={{ mt: 0.5 }}>
-              {apiKeyClearRequested ? (
-                <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
-                  Entfernen rückgängig machen
-                </Button>
-              ) : (
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => {
-                    setApiKeyClearRequested(true)
-                    setApiKeyTouched(false)
-                    setApiKeyInput('')
-                  }}
-                  aria-label={`Gespeicherten Schlüssel entfernen: ${model.displayName}`}
-                >
-                  Gespeicherten Schlüssel entfernen
-                </Button>
-              )}
-            </Box>
-          )}
-          <DiscoveryStatus state={discovery.state} idleHint={idleHint} />
-        </Box>
-
-        <Box component="section" aria-labelledby="llm-model-model-head">
-          <SectionHead component="h3" id="llm-model-model-head">
-            2 · Modell
-          </SectionHead>
-          <ModelIdentifierField
-            value={draft.modelIdentifier}
-            models={discovery.models}
-            loading={discovery.state.status === 'loading'}
-            onInputChange={(modelIdentifier) => {
-              setDraft((current) => ({ ...current, modelIdentifier }))
-              setContextLength(null)
+            maxTokens={draft.maxTokens}
+            onMaxTokensChange={(maxTokens) => {
+              setMaxTokensTouched(true)
+              setDraft((current) => ({ ...current, maxTokens }))
             }}
-            onSelect={selectModel}
+            contextLength={contextLength}
+            errors={errors}
           />
-          {testing && (
-            <Typography
-              role="status"
-              sx={{ mt: 1, fontSize: fontSize.meta, color: 'text.secondary' }}
-            >
-              Verbindung wird getestet …
-            </Typography>
-          )}
-          {testResult && (
-            <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mt: 1.5 }}>
-              {testResult.message}
-            </Alert>
-          )}
-        </Box>
-
-        <Box component="section" aria-labelledby="llm-model-display-head">
-          <SectionHead component="h3" id="llm-model-display-head">
-            3 · Anzeige und Antwort
-          </SectionHead>
-          <Stack spacing={2}>
-            <FormField
-              label="Anzeigename"
-              required
-              value={draft.displayName}
-              onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
-              helperText="So erscheint das Modell in der Liste."
-              size="small"
-              fullWidth
-            />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <FormField
-                id={temperatureFieldId}
-                label="Temperatur"
-                optional
-                type="number"
-                value={draft.temperature}
-                onChange={(e) => {
-                  // An unreadable number (such as „0,7“ depending on the browser) yields an
-                  // empty value as well; it must not be silently saved as „keine Temperatur“.
-                  setTemperatureUnreadable(e.target.validity.badInput)
-                  setDraft({ ...draft, temperature: e.target.value })
-                }}
-                error={temperatureUnreadable}
-                helperText={
-                  temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
-                }
-                slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              <FormField
-                label="Maximale Antwortlänge (Token)"
-                required
-                type="number"
-                value={draft.maxTokens}
-                onChange={(e) => {
-                  setMaxTokensTouched(true)
-                  setDraft({ ...draft, maxTokens: e.target.value })
-                }}
-                helperText={
-                  contextLength
-                    ? `Kontextfenster des Modells: ${formatTokens(contextLength)} Token. Vorgeschlagen ist höchstens die Hälfte davon.`
-                    : undefined
-                }
-                slotProps={{ htmlInput: { min: 1, max: contextLength ?? undefined } }}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-          </Stack>
-        </Box>
-        {!isValid() && (
-          <Typography id={requiredHintId} variant="caption" sx={{ color: 'text.secondary' }}>
-            {REQUIRED_FIELDS_HINT}
+        </ModelEndpointFields>
+        {testing && (
+          <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+            Verbindung wird getestet …
           </Typography>
+        )}
+        {testResult && (
+          <Alert severity={testResult.success ? 'success' : 'error'}>{testResult.message}</Alert>
         )}
       </Stack>
     </FormDialog>

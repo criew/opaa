@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
+import { secretPart, maxInputTokensError } from '@/shared/ui/setup/setupDrafts'
 import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import StatusLine from '@/shared/ui/StatusLine'
-import { formatTokens } from '@/shared/ui/modelDiscovery/modelDiscovery'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import { EmbeddingModelFields } from '@/shared/ui/setup/ModelParameterFields'
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStepState,
@@ -9,11 +11,8 @@ import type {
 } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
-import { apiKeyPart } from '../../utils/apiKey'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
-import FormField from '../FormField'
-import ModelEndpointFields from '../ModelEndpointFields'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface EmbeddingModelStepProps extends StepNavigationProps {
@@ -22,22 +21,12 @@ interface EmbeddingModelStepProps extends StepNavigationProps {
   discover: (request: InstallationModelDiscoveryRequest) => Promise<LlmModelDiscoveryResponse>
 }
 
-const DEFAULT_MAX_INPUT_TOKENS = 2048
 const EMBEDDING_MODEL_FIELDS = ['baseUrl', 'model', 'apiKey', 'maxInputTokens']
 
-function maxInputTokensError(value: string): string | undefined {
-  if (isBlank(value)) return undefined
-  const number = Number(value)
-  return Number.isInteger(number) && number > 0
-    ? undefined
-    : 'Die Eingabegrenze ist eine ganze Zahl größer als 0.'
-}
-
 /**
- * The model that turns documents and questions into vectors, chosen from what its endpoint offers
- * or typed by hand. Its check is a probe embedding, which also fixes the vector size the
- * completion creates the vector table with; the model cannot be switched through the interface
- * afterwards (ADR-0060, Entscheidung 10).
+ * The model that turns documents and questions into vectors, with the fields of „Modelle →
+ * Einbettung“. Its check is a probe embedding, which also fixes the vector size the completion
+ * creates the vector table with; a later change embeds everything anew (ADR-0060, Entscheidung 10).
  */
 export default function EmbeddingModelStep({
   step,
@@ -65,24 +54,23 @@ export default function EmbeddingModelStep({
       model: isBlank(model) ? 'Bitte die Modell-Kennung angeben.' : undefined,
       maxInputTokens: maxInputTokensError(maxInputTokens),
     })
+    const key = secretPart(apiKey, removeKey)
     void form.submit(localErrors, EMBEDDING_MODEL_FIELDS, () =>
       submit({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
-        ...apiKeyPart(apiKey, removeKey),
+        ...(key === undefined ? {} : { apiKey: key }),
         maxInputTokens: isBlank(maxInputTokens) ? null : Number(maxInputTokens),
       }),
     )
   }
-
-  const inputHint = `So viele Token nimmt der Dienst je Abschnitt an. Leer lassen für ${DEFAULT_MAX_INPUT_TOKENS}.`
 
   return (
     <StepFrame
       title={STEP_INFO.EMBEDDING_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.EMBEDDING_MODEL.laterUnder}
-      description="Das Modell, das Dokumente und Fragen für die Suche in Vektoren übersetzt. Die Prüfung ist eine Probeeinbettung; sie legt die Vektorgröße fest. Ohne Embedding-Modell gibt es keinen Suchindex, bis die Systemverwaltung eines unter Modelle festlegt; ein späterer Wechsel bettet alle Abschnitte neu ein."
+      description="Das Modell, das Dokumente und Fragen für die Suche in Vektoren übersetzt; die Prüfung legt die Vektorgröße fest. Übersprungen gibt es keinen Suchindex, bis die Systemverwaltung ein Modell unter „Modelle → Einbettung“ festlegt."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Probeeinbettung läuft"
@@ -115,19 +103,12 @@ export default function EmbeddingModelStep({
         errors={form.errors}
         discover={discover}
       >
-        <FormField
-          id={`${id}-max-input-tokens`}
-          label="Eingabegrenze (Token)"
-          optional
-          inputMode="numeric"
-          value={maxInputTokens}
-          onChange={setMaxInputTokens}
-          error={form.errors.maxInputTokens}
-          hint={
-            contextLength
-              ? `Der Endpunkt meldet ein Kontextfenster von ${formatTokens(contextLength)} Token; mehr nimmt das Modell nicht an. ${inputHint}`
-              : inputHint
-          }
+        <EmbeddingModelFields
+          idPrefix={id}
+          maxInputTokens={maxInputTokens}
+          onMaxInputTokensChange={setMaxInputTokens}
+          contextLength={contextLength}
+          errors={form.errors}
         />
       </ModelEndpointFields>
     </StepFrame>

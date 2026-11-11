@@ -30,7 +30,7 @@ export const ENDPOINT_PRESETS: readonly EndpointPreset[] = [
   {
     key: 'openai',
     label: 'OpenAI',
-    description: 'Braucht einen Zugangsschlüssel.',
+    description: 'Braucht einen API-Schlüssel.',
     baseUrl: 'https://api.openai.com/v1',
     pattern: 'https://api.openai.com/v1',
     placeholderHost: null,
@@ -39,7 +39,7 @@ export const ENDPOINT_PRESETS: readonly EndpointPreset[] = [
   {
     key: 'anthropic',
     label: 'Anthropic (Claude)',
-    description: 'Braucht einen Zugangsschlüssel. Temperatur leer lassen.',
+    description: 'Braucht einen API-Schlüssel. Temperatur leer lassen.',
     baseUrl: 'https://api.anthropic.com/v1',
     pattern: 'https://api.anthropic.com/v1',
     placeholderHost: null,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { secretPart } from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -12,11 +13,12 @@ import type {
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import {
-  isVocabularyTooLong,
-  TRANSCRIPTION_TEXTS,
-} from '@/shared/ui/transcription/transcriptionSettings'
+import { isVocabularyTooLong } from '@/shared/ui/transcription/transcriptionSettings'
 import VocabularyField from '@/shared/ui/transcription/VocabularyField'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import RealtimeTranscriptionFields, {
+  TranscriptionLanguageField,
+} from '@/shared/ui/setup/TranscriptionFields'
 import { notify } from '@/shared/stores/notificationStore'
 import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
@@ -38,9 +40,7 @@ import {
   updateRerankModelSettings,
   updateTranscriptionModelSettings,
 } from '../api/modelApi'
-import RealtimeTranscriptionFields from './RealtimeTranscriptionFields'
-import RoleApiKeyField from './RoleApiKeyField'
-import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
+import { fieldErrorsOf } from './roleForm'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -64,19 +64,16 @@ type RoleSettings = Omit<
 interface RoleTexts {
   switchLabel: string
   intro: string
-  addressHint: string
 }
 
 const TEXTS: Record<ModelRoleKind, RoleTexts> = {
   rerank: {
     switchLabel: 'Reranking einschalten',
     intro: `${MODEL_ROLE_TEXTS.rerank.purpose} Ab Werk ist es aus; ohne Rerank-Modell sucht OPAA ohne diese Stufe weiter.`,
-    addressHint: MODEL_ROLE_TEXTS.rerank.addressHint,
   },
   transcription: {
     switchLabel: 'Spracheingabe einschalten',
     intro: `${MODEL_ROLE_TEXTS.transcription.purpose} Ab Werk ist es aus; das Mikrofon erscheint erst, wenn das Modell antwortet.`,
-    addressHint: MODEL_ROLE_TEXTS.transcription.addressHint,
   },
 }
 
@@ -110,10 +107,10 @@ function load(kind: ModelRoleKind): Promise<RoleSettings> {
 }
 
 /**
- * The rerank or the transcription model role in one form: switch, endpoint, key and — for
- * dictation — language and the installation's vocabulary list, with a connection test and the
- * role's last known state. The key is write-only, as for the chat models: an untouched field
- * keeps it, „entfernen" removes it.
+ * The rerank or the transcription model role in one form: switch, the endpoint and model fields
+ * of the assistant's step (`ModelEndpointFields`) and — for dictation — language, the
+ * installation's vocabulary list and the live service, with a connection test and the role's last
+ * known state. The key is write-only: it reads „Gesetzt“ until it is replaced or removed.
  */
 export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const texts = TEXTS[kind]
@@ -125,7 +122,10 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const [model, setModel] = useState('')
   const [language, setLanguage] = useState('')
   const [vocabulary, setVocabulary] = useState('')
-  const [apiKey, setApiKey] = useState<ApiKeyDraft>(UNTOUCHED_API_KEY)
+  const [apiKey, setApiKey] = useState('')
+  const [removeKey, setRemoveKey] = useState(false)
+  // Remounts the endpoint fields after a save, so a stored key reads „Gesetzt“ again.
+  const [savedCount, setSavedCount] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -134,7 +134,8 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   // A saved, switched-on role is probed right after the save; its state is read once more then.
   const [checking, setChecking] = useState(false)
   const [realtime, setRealtime] = useState<RealtimeDraft>(NO_REALTIME)
-  const [liveKey, setLiveKey] = useState<ApiKeyDraft>(UNTOUCHED_API_KEY)
+  const [liveKey, setLiveKey] = useState('')
+  const [removeLiveKey, setRemoveLiveKey] = useState(false)
   const [maxSessions, setMaxSessions] = useState('1')
   const [liveTesting, setLiveTesting] = useState(false)
   const [liveTestResult, setLiveTestResult] = useState<LlmModelTestResponse | null>(null)
@@ -147,9 +148,12 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     setModel(stored.model ?? '')
     setLanguage(stored.language ?? '')
     setVocabulary(stored.vocabulary ?? '')
-    setApiKey(UNTOUCHED_API_KEY)
+    setApiKey('')
+    setRemoveKey(false)
     setRealtime(realtimeDraftOf(stored.realtime))
-    setLiveKey(UNTOUCHED_API_KEY)
+    setLiveKey('')
+    setRemoveLiveKey(false)
+    setSavedCount((count) => count + 1)
     setPrefill(null)
     setMaxSessions(String(stored.realtime?.maxSessions ?? 1))
   }
@@ -181,7 +185,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       protocol: realtime.protocol,
       url: realtime.url.trim(),
       model: realtime.model.trim(),
-      apiKey: resolveApiKey(liveKey),
+      apiKey: secretPart(liveKey.trim(), removeLiveKey),
       maxSessions: Number.isNaN(sessions) ? undefined : sessions,
     }
   }
@@ -223,11 +227,9 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       liveKeyMissing({
         protocol: realtime.protocol,
         liveUrl: realtime.url,
-        ownKey:
-          liveKey.input !== '' ||
-          (Boolean(settings?.realtime?.apiKeySet) && !liveKey.clearRequested),
+        ownKey: liveKey !== '' || (Boolean(settings?.realtime?.apiKeySet) && !removeLiveKey),
         batchUrl: baseUrl,
-        batchKey: apiKey.input !== '' || (Boolean(settings?.apiKeySet) && !apiKey.clearRequested),
+        batchKey: apiKey !== '' || (Boolean(settings?.apiKeySet) && !removeKey),
       })
     ) {
       setErrors({ 'realtime.apiKey': REALTIME_TEXTS.keyMissing })
@@ -238,7 +240,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
       enabled,
       baseUrl: baseUrl.trim(),
       model: model.trim(),
-      apiKey: resolveApiKey(apiKey),
+      apiKey: secretPart(apiKey.trim(), removeKey),
     }
     try {
       const saved =
@@ -264,7 +266,11 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   async function handleTest() {
     setTesting(true)
     setTestResult(null)
-    const request = { baseUrl: baseUrl.trim(), model: model.trim(), apiKey: resolveApiKey(apiKey) }
+    const request = {
+      baseUrl: baseUrl.trim(),
+      model: model.trim(),
+      apiKey: secretPart(apiKey.trim(), removeKey),
+    }
     try {
       setTestResult(
         kind === 'rerank' ? await testRerankModel(request) : await testTranscriptionModel(request),
@@ -299,7 +305,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           protocol: realtime.protocol,
           url: realtime.url.trim(),
           model: realtime.model.trim(),
-          apiKey: resolveApiKey(liveKey),
+          apiKey: secretPart(liveKey.trim(), removeLiveKey),
         }),
       )
     } catch (err) {
@@ -356,7 +362,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           {error}
         </Alert>
       )}
-      <Stack spacing={2}>
+      <Stack spacing={3}>
         <FormControlLabel
           control={
             <Switch
@@ -367,58 +373,41 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           }
           label={texts.switchLabel}
         />
-        <FormField
-          id={`${prefix}-base-url`}
-          label="Basis-Adresse"
-          required={enabled}
-          value={baseUrl}
-          onChange={(e) => {
-            setBaseUrl(e.target.value)
+        <ModelEndpointFields
+          key={savedCount}
+          purpose={kind}
+          stored={{ baseUrl: settings.baseUrl ?? '', apiKeySet: settings.apiKeySet }}
+          baseUrl={baseUrl}
+          onBaseUrlChange={(next) => {
+            setBaseUrl(next)
             setTestResult(null)
           }}
-          error={Boolean(errors.baseUrl)}
-          helperText={errors.baseUrl ?? texts.addressHint}
-          size="small"
-          fullWidth
-        />
-        <FormField
-          id={`${prefix}-model`}
-          label="Modell-Kennung"
-          required={enabled}
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          error={Boolean(errors.model)}
-          helperText={errors.model}
-          size="small"
-          fullWidth
-        />
-        <RoleApiKeyField
-          id={`${prefix}-api-key`}
-          value={apiKey}
-          onChange={setApiKey}
-          apiKeySet={settings.apiKeySet}
-          error={errors.apiKey}
-        />
-        {kind === 'transcription' && (
-          <FormField
-            id={`${prefix}-language`}
-            label={TRANSCRIPTION_TEXTS.languageLabel}
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            error={Boolean(errors.language)}
-            helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
-            size="small"
-          />
-        )}
-        {kind === 'transcription' && (
-          <VocabularyField
-            id={`${prefix}-vocabulary`}
-            value={vocabulary}
-            onChange={setVocabulary}
-            error={errors.vocabulary}
-            hint="Gilt für alle. Persönliche Begriffe pflegt jede Person in ihren Einstellungen; sie gehen nach dieser Liste an das Modell."
-          />
-        )}
+          apiKey={apiKey}
+          onApiKeyChange={setApiKey}
+          removeKey={removeKey}
+          onRemoveKeyChange={setRemoveKey}
+          model={model}
+          onModelChange={setModel}
+          errors={errors}
+        >
+          {kind === 'transcription' && (
+            <TranscriptionLanguageField
+              id={`${prefix}-language`}
+              value={language}
+              onChange={setLanguage}
+              error={errors.language}
+            />
+          )}
+          {kind === 'transcription' && (
+            <VocabularyField
+              id={`${prefix}-vocabulary`}
+              value={vocabulary}
+              onChange={setVocabulary}
+              error={errors.vocabulary}
+              hint="Gilt für alle; persönliche Begriffe pflegt jede Person in ihren Einstellungen."
+            />
+          )}
+        </ModelEndpointFields>
         {testResult && (
           <Alert severity={testResult.success ? 'success' : 'error'}>{testResult.message}</Alert>
         )}
@@ -434,74 +423,61 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           </BusyButton>
         </Box>
         {kind === 'transcription' && (
-          <Box component="section" aria-labelledby={`${prefix}-live-heading`}>
-            <Typography
-              id={`${prefix}-live-heading`}
-              component="h3"
-              sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
-            >
-              {REALTIME_TEXTS.sectionLabel}
-            </Typography>
-            <Typography role="status" sx={{ fontSize: fontSize.text, mb: 1.5 }}>
-              Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
-            </Typography>
-            <RealtimeTranscriptionFields
-              idPrefix={`${prefix}-live`}
-              value={realtime}
-              onChange={(next) => {
-                setRealtime(next)
-                setLiveTestResult(null)
-                if (next.live) fillBatch(next)
-              }}
-              errors={{
-                protocol: errors['realtime.protocol'],
-                url: errors['realtime.url'],
-                model: errors['realtime.model'],
-              }}
-            >
-              {prefill !== null && <Alert severity="info">{REALTIME_TEXTS.batchPrefilled}</Alert>}
-              <RoleApiKeyField
-                id={`${prefix}-live-api-key`}
-                label={REALTIME_TEXTS.keyLabel}
-                optional
-                value={liveKey}
-                onChange={setLiveKey}
-                apiKeySet={settings.realtime?.apiKeySet ?? false}
-                error={errors['realtime.apiKey']}
-                emptyHint={`Wird verschlüsselt gespeichert und nie wieder angezeigt. ${REALTIME_TEXTS.keyHint}`}
-              />
-              <FormField
-                id={`${prefix}-live-max-sessions`}
-                label="Gleichzeitige Live-Sitzungen"
-                type="number"
-                value={maxSessions}
-                onChange={(e) => setMaxSessions(e.target.value)}
-                error={Boolean(errors['realtime.maxSessions'])}
-                helperText={
-                  errors['realtime.maxSessions'] ??
-                  'Für die ganze Installation, 1 bis 100. Wer darüber diktiert, bekommt den Text nach dem Ende der Aufnahme. Ein eigener Server mit 16 GB GPU-Speicher trägt etwa eine Sitzung.'
-                }
-                size="small"
-                slotProps={{ htmlInput: { min: 1, max: 100 } }}
-              />
-              {liveTestResult && (
-                <Alert severity={liveTestResult.success ? 'success' : 'error'}>
-                  {liveTestResult.message}
-                </Alert>
-              )}
-              <Box>
-                <BusyButton
-                  variant="outlined"
-                  busy={liveTesting}
-                  busyAnnouncement="Live-Dienst wird getestet"
-                  disabled={realtime.url.trim() === '' || realtime.model.trim() === ''}
-                  onClick={() => void handleLiveTest()}
-                >
-                  Live-Dienst testen
-                </BusyButton>
-              </Box>
-            </RealtimeTranscriptionFields>
-          </Box>
+          <RealtimeTranscriptionFields
+            idPrefix={`${prefix}-live`}
+            value={realtime}
+            onChange={(next) => {
+              setRealtime(next)
+              setLiveTestResult(null)
+              if (next.live) fillBatch(next)
+            }}
+            liveKey={liveKey}
+            onLiveKeyChange={setLiveKey}
+            removeLiveKey={removeLiveKey}
+            onRemoveLiveKeyChange={setRemoveLiveKey}
+            liveKeyStored={settings.realtime?.apiKeySet ?? false}
+            errors={{
+              protocol: errors['realtime.protocol'],
+              url: errors['realtime.url'],
+              model: errors['realtime.model'],
+              apiKey: errors['realtime.apiKey'],
+            }}
+            batchPrefilled={prefill !== null}
+            status={
+              <Typography role="status" sx={{ fontSize: fontSize.text, mb: 1 }}>
+                Zustand: {LIVE_STATE_TEXT[settings.realtime?.state ?? 'DISABLED']}
+              </Typography>
+            }
+          >
+            <FormField
+              id={`${prefix}-live-max-sessions`}
+              label="Gleichzeitige Live-Sitzungen"
+              type="number"
+              value={maxSessions}
+              onChange={(e) => setMaxSessions(e.target.value)}
+              error={Boolean(errors['realtime.maxSessions'])}
+              helperText={
+                errors['realtime.maxSessions'] ??
+                'Für die ganze Installation, 1 bis 100; wer darüber diktiert, bekommt den Text nach der Aufnahme.'
+              }
+              slotProps={{ htmlInput: { min: 1, max: 100 } }}
+            />
+            {liveTestResult && (
+              <Alert severity={liveTestResult.success ? 'success' : 'error'}>
+                {liveTestResult.message}
+              </Alert>
+            )}
+            <Box>
+              <BusyButton
+                variant="outlined"
+                busy={liveTesting}
+                busyAnnouncement="Live-Dienst wird getestet"
+                onClick={() => void handleLiveTest()}
+              >
+                Live-Dienst testen
+              </BusyButton>
+            </Box>
+          </RealtimeTranscriptionFields>
         )}
         <Box>
           <BusyButton

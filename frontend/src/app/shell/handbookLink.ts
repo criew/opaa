@@ -1,5 +1,6 @@
-/** Where the handbook is published: main under the root, every release under v<version>/. */
-export const HANDBOOK_BASE_URL = 'https://opaa.io/handbuch/'
+import { HANDBOOK_BASE_URL, handbookPageUrl, handbookVersionPath } from '@/shared/utils/handbook'
+
+export { HANDBOOK_BASE_URL, handbookVersionPath }
 
 /**
  * The handbook page for a view, first match wins. Paths are those of the built site
@@ -50,20 +51,10 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/revision\/rollenantraege$/, 'administration/systemrollen.html'],
 ]
 
-/**
- * The handbook version that belongs to a build: a release (X.Y.Z[-<pre>]) has its own, every
- * other build - 0.0.0-* for development, smoke tests and main images - the current state of main.
- */
-export function handbookVersionPath(version: string): string {
-  return /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version) && !version.startsWith('0.0.0-')
-    ? `v${version}/`
-    : ''
-}
-
 /** The handbook page that explains the view at `pathname`, in the handbook of `version`. */
 export function handbookUrl(pathname: string, version: string): string {
   const page = HANDBOOK_PAGES.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'index.html'
-  return `${HANDBOOK_BASE_URL}${handbookVersionPath(version)}${page}`
+  return handbookPageUrl(page, version)
 }
 
 /** Every page the mapping names, for the test that keeps it in step with docs/handbuch/. */

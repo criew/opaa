@@ -95,7 +95,7 @@ describe('discoveryPlan', () => {
     )
     expect(plan.automatic).toBe(false)
     expect(plan.request).toEqual({ baseUrl: 'https://api.openai.com/v1' })
-    expect(plan.hint).toMatch(/Zugangsschlüssel eintragen/)
+    expect(plan.hint).toMatch(/API-Schlüssel eintragen/)
   })
 
   it('leaves the stored key to its own address and sends none once removal is asked', () => {
