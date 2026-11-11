@@ -102,8 +102,9 @@ mit `no-new-privileges`. Schreiben darf er nur unter `/tmp` und in sein Volume
 `opensandbox-state` mit seinem eigenen Zustand. Die Images des Dienstes und seines
 Ausführungsagenten, das Basis-Image von `opaa/sandbox-python` und dessen Python-Pakete sind auf
 Version und Prüfsumme festgelegt; ein `docker compose pull` holt deshalb nie still einen anderen
-Stand. Die Pakete von LibreOffice kommen aus dem Debian-Release des Basis-Images mit seinen
-Sicherheitsupdates zum Zeitpunkt des Baus. Neue Fassungen kommen mit einem OPAA-Update. Danach den
+Stand. pip ist im fertigen Image nicht enthalten. Die Debian-Pakete des Images kommen aus dem
+Debian-Release des Basis-Images mit seinen Sicherheitsupdates zum Zeitpunkt des Baus. Neue
+Fassungen kommen mit einem OPAA-Update. Danach den
 Stapel mit `up -d --build` neu starten, damit auch das Sandbox-Image neu gebaut wird, und `run_code`
 und `fill_template` einmal von einem Agenten ausführen lassen.
 
