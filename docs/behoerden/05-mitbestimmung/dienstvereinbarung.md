@@ -319,9 +319,13 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 
 1. Agenten und Vorlagen legt nur an, wem die Dienststelle das Anlegerecht gibt; die Empfänger stehen
    in Anlage 4.
-2. Die Dienststelle führt ein Verzeichnis der angebotenen Agenten mit Zweck und zuständiger Stelle
-   und legt es dem Personalrat [vierteljährlich / bei jeder Änderung] vor. Es enthält keine Angaben
-   zur Nutzung.
+2. Der Personalrat erhält das Recht „Agentenverzeichnis einsehen“ für [die Mitglieder des
+   Personalrats / die Gruppe des Personalrats]. Das Verzeichnis in OPAA nennt jeden Agenten und
+   jede Vorlage der Dienststelle mit Zweck, Anweisung, Bibliotheksnamen, Werkzeugen, Grenzen,
+   verantwortlicher Stelle, Fassung und Sperrzustand, ohne Inhalte der Bibliotheken und ohne
+   Angaben zur Nutzung. Jedes Ansehen und jeder Export steht im Protokoll. Den Export des
+   Verzeichnisses fügt die Dienststelle dieser Vereinbarung [vierteljährlich / bei jeder Änderung]
+   als Stand bei.
 3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
    vorher; eine Entscheidung stützt sich nie allein auf sie.
 4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die

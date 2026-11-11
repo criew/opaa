@@ -60,6 +60,7 @@ protokollereignisse#account-reauthentication-forced
 protokollereignisse#agent-changed
 protokollereignisse#agent-created
 protokollereignisse#agent-deleted
+protokollereignisse#agent-directory-accessed
 protokollereignisse#agent-run-log-retention-changed
 protokollereignisse#agent-settings-changed
 protokollereignisse#api-token-expired
@@ -265,6 +266,7 @@ rollensicht#matrix
 rollensicht#system-admin
 rollensicht#systemrollen
 rollensicht#user
+rollensicht#view-agent-directory
 datenfluesse
 datenfluesse#bereich-outbound
 datenfluesse#chat-model

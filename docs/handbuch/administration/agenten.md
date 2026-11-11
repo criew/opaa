@@ -27,7 +27,8 @@ Wiedereinschalten unverändert da.
 
 Das Anlegerecht „Agenten anlegen“ hat ab Werk niemand außer der Systemverwaltung. Vergeben Sie es
 unter [Anlegerechte vergeben](anlegerechte.md) an die Personen oder Gruppen, die Agenten für
-andere einrichten sollen.
+andere einrichten sollen. Welche Agenten es gibt, sieht die Personalvertretung im
+[Agentenverzeichnis](agentenverzeichnis.md).
 
 ## Agent oder Vorlage sperren
 

@@ -144,6 +144,7 @@ public final class AuditEventCatalog {
     put(keys, Set.of("responsibleGroupId", "responsibleFunction"), ASSET_RESPONSIBILITY_CHANGED);
     put(keys, Set.of("cause"), ASSET_LOCKED, ASSET_UNLOCKED);
     put(keys, Set.of("enabled", "enabledTools"), AGENT_SETTINGS_CHANGED);
+    put(keys, Set.of("form"), AGENT_DIRECTORY_ACCESSED);
     put(keys, Set.of("name", "promptLibraryId"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields", "promptLibraryId"), PROMPT_CHANGED);
     put(keys, Set.of("name"), DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED);

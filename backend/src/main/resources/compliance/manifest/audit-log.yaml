@@ -1279,6 +1279,11 @@ auditEvents:
     trigger: Die Systemverwaltung schaltet Agenten oder einzelne Werkzeuge ein oder aus
     details: Vorher/Nachher der geänderten Schlüssel
     payloadKeys: [enabled, enabledTools]
+  - id: AGENT_DIRECTORY_ACCESSED
+    trigger: >-
+      Das Agentenverzeichnis wird angesehen oder als CSV-Datei exportiert, auch abgewiesen
+    details: Die Form (VIEW oder CSV); nie der Inhalt des Verzeichnisses
+    payloadKeys: [form]
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: >-
