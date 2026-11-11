@@ -302,6 +302,32 @@ export function RowAction({
 }
 
 /**
+ * A row that asks for an answer out of two (guidelines 5.3, „Entscheidungszeile"): both answers
+ * stand visible as compact secondary buttons, the accepting one first. The only exception to
+ * „at most one visible action per row"; nothing else goes into such a row.
+ */
+export function RowDecision({
+  accept,
+  decline,
+  disabled = false,
+}: {
+  accept: { verb: string; label: string; onClick: () => void }
+  decline: { verb: string; label: string; onClick: () => void }
+  disabled?: boolean
+}) {
+  return (
+    <Box sx={{ display: 'inline-flex', gap: 1 }}>
+      <RowAction label={accept.label} disabled={disabled} onClick={accept.onClick}>
+        {accept.verb}
+      </RowAction>
+      <RowAction label={decline.label} disabled={disabled} onClick={decline.onClick}>
+        {decline.verb}
+      </RowAction>
+    </Box>
+  )
+}
+
+/**
  * Where a row leads: a route, or a panel or dialog the page opens. With `href` the page still
  * opens the target itself, and the row is a real link that a new tab can follow. With `expanded`
  * the row opens its own detail below itself (`rowDetail`) and says so to assistive technology.
@@ -448,7 +474,7 @@ export interface AdminListProps<Row, F extends string = never> {
   sort?: SortBinding<F>
   /** Where the row leads: the whole row is then the link, with one tab stop on its title. */
   rowTarget?: (row: Row) => RowTarget | null
-  /** The trailing cell: at most one `RowAction`, and the „⋯" menu. */
+  /** The trailing cell: at most one `RowAction`, and the „⋯" menu; or one `RowDecision`. */
   rowActions?: (row: Row, index: number) => ReactNode
   /** Width of the trailing cell; 56 px carries a „⋯" alone. */
   actionsWidth?: number

@@ -27,7 +27,8 @@ gibt es nicht.
 
 Damit die Systemverwaltung nicht ihr eigenes Handeln prüft, wird aus ihrer Wahl nur ein **Antrag**:
 Die Liste zeigt „Revision beantragt“, alle Personen der Revision werden benachrichtigt. Eine von
-ihnen bestätigt oder lehnt unter „Revision → Rollenanträge“ ab.
+ihnen entscheidet unter „Revision → Rollenanträge“ mit „Bestätigen“ oder „Ablehnen“ in der Zeile
+des Antrags.
 
 - **Die erste Person der Revision** ist ein lokales Konto unter der Adresse, die der Betrieb als
   `OPAA_AUTH_FIRST_AUDITOR_EMAIL` setzt. Die Systemverwaltung legt es an und wählt die Rolle; den
