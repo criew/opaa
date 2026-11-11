@@ -1,19 +1,12 @@
-import Box from '@mui/material/Box'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import type { EmbeddingInfoResponse } from '@/shared/api/types'
-import { MACHINE_VALUE_SX, MODEL_TABLE_SX } from './modelTableStyles'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 
 interface EmbeddingInfoTableProps {
   info: EmbeddingInfoResponse
 }
 
 /**
- * The installed embedding model in the same table form as the chat models, without a row menu:
+ * The installed embedding model in the same list form as the chat models, without a row menu:
  * a change goes through the guided change below the table, never through an edit in place.
  *
  * A table for a single row is typographically the weaker choice; here recognition weighs more.
@@ -21,47 +14,38 @@ interface EmbeddingInfoTableProps {
  */
 export default function EmbeddingInfoTable({ info }: EmbeddingInfoTableProps) {
   return (
-    <TableContainer
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Einbettungsmodell, horizontal scrollbar"
-    >
-      <Table size="small" aria-label="Einbettungsmodell" sx={{ minWidth: 640, ...MODEL_TABLE_SX }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Modell</TableCell>
-            <TableCell>Endpunkt</TableCell>
-            <TableCell sx={{ width: '14%' }}>Dimensionen</TableCell>
-            <TableCell sx={{ width: '16%' }}>Eingabegrenze</TableCell>
-            <TableCell sx={{ width: '14%' }}>Schlüssel</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            <TableCell>
-              <Box component="span" sx={MACHINE_VALUE_SX}>
-                {info.model}
-              </Box>
-            </TableCell>
-            <TableCell>
-              <Box component="span" sx={MACHINE_VALUE_SX}>
-                {info.baseUrl ?? '—'}
-              </Box>
-            </TableCell>
-            <TableCell>
-              <Box component="span" sx={MACHINE_VALUE_SX}>
-                {info.dimensions}
-              </Box>
-            </TableCell>
-            <TableCell>
-              <Box component="span" sx={MACHINE_VALUE_SX}>
-                {info.maxInputTokens ?? '—'}
-              </Box>
-            </TableCell>
-            <TableCell>{info.apiKeySet ? 'gesetzt' : 'keiner'}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <AdminList
+      label="Einbettungsmodell"
+      rows={[info]}
+      rowKey={(row) => row.model ?? 'embedding'}
+      rowLabel={(row) => row.model ?? 'Einbettungsmodell'}
+      minWidth={640}
+      columns={[
+        { id: 'model', head: 'Modell', cell: (row) => <ListText mono>{row.model}</ListText> },
+        {
+          id: 'endpoint',
+          head: 'Endpunkt',
+          cell: (row) => <ListText mono>{row.baseUrl ?? '—'}</ListText>,
+        },
+        {
+          id: 'dimensions',
+          head: 'Dimensionen',
+          width: '14%',
+          cell: (row) => <ListText mono>{row.dimensions}</ListText>,
+        },
+        {
+          id: 'maxInput',
+          head: 'Eingabegrenze',
+          width: '16%',
+          cell: (row) => <ListText mono>{row.maxInputTokens ?? '—'}</ListText>,
+        },
+        {
+          id: 'key',
+          head: 'Schlüssel',
+          width: '14%',
+          cell: (row) => (row.apiKeySet ? 'gesetzt' : 'keiner'),
+        },
+      ]}
+    />
   )
 }

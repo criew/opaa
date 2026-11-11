@@ -15,7 +15,7 @@ Solange niemand ein Konto verbunden hat, bleibt es leer.
    „(gelöscht)“.
 3. Abrufen und seitenweise blättern.
 
-Die Tabelle zeigt Zeit, Ereignis, Grund des Endes, Besitzart, „Person“ bzw. Bibliothek mit
+Die Tabelle zeigt Zeit, Ereignis, „Endgrund“, „Besitzer“ („Person“ bzw. Bibliothek) mit
 Kontoadresse, Zugang und wer ausgelöst hat: „Person“ oder „System“, **nie welche Person**.
 
 **Gut zu wissen:**

@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
 import InputAdornment from '@mui/material/InputAdornment'
 import Typography from '@mui/material/Typography'
@@ -16,6 +19,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import AdminList from '@/shared/ui/list/AdminList'
 import { formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -48,13 +52,23 @@ function parseDays(draft: string): number | null {
   return days >= MIN_DAYS && days <= MAX_DAYS ? days : null
 }
 
-interface RhythmRowProps {
+interface RhythmRowData {
   rhythm: FullSyncRhythmResponse
   onSaved: (saved: FullSyncRhythmResponse) => void
 }
 
+type RowPart = 'name' | 'value' | 'origin'
+
+/** The three cells of one row; they share the row's draft and its running save. */
+const RowParts = createContext<Record<RowPart, ReactNode> | null>(null)
+
+function Part({ part }: { part: RowPart }) {
+  return useContext(RowParts)?.[part] ?? null
+}
+
 /** One source type; a failed save is told at its own field and kept until the next edit. */
-function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
+function RhythmRow({ row, children }: { row: RhythmRowData; children: ReactNode }) {
+  const { rhythm, onSaved } = row
   const [draft, setDraft] = useState(String(rhythm.intervalDays))
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -107,71 +121,68 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
     await save(null)
   }
 
-  return (
-    <TableRow>
-      <TableCell component="th" scope="row">
-        {name}
-      </TableCell>
-      <TableCell>
-        <Box
-          component="form"
-          onSubmit={(event) => void handleSubmit(event)}
-          noValidate
-          sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
+  const parts: Record<RowPart, ReactNode> = {
+    name,
+    value: (
+      <Box
+        component="form"
+        onSubmit={(event) => void handleSubmit(event)}
+        noValidate
+        sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
+      >
+        <FormField
+          label={`Vollabgleich von ${name} alle … Tage`}
+          hideLabel
+          size="small"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={days === null || saveError !== null}
+          helperText={days === null ? RANGE_ERROR : (saveError ?? undefined)}
+          slotProps={{
+            htmlInput: { inputMode: 'numeric' },
+            input: { endAdornment: <InputAdornment position="end">Tage</InputAdornment> },
+          }}
+          sx={{ width: formWidth.number }}
+        />
+        <BusyButton
+          type="submit"
+          variant="outlined"
+          size="small"
+          busy={busy}
+          busyAnnouncement="Rhythmus wird gespeichert"
+          disabled={!changed && !busy}
+          aria-label={`Rhythmus von ${name} speichern`}
+          sx={{ mt: 0.25 }}
         >
-          <FormField
-            label={`Vollabgleich von ${name} alle … Tage`}
-            hideLabel
+          Speichern
+        </BusyButton>
+      </Box>
+    ),
+    origin: (
+      <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+        <Typography variant="body2">
+          {rhythm.overridden
+            ? `Eigener Wert (Werkseinstellung: ${daysLabel(rhythm.defaultIntervalDays)})`
+            : 'Werkseinstellung'}
+        </Typography>
+        {rhythm.overridden && (
+          <Button
+            variant="text"
             size="small"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setSaveError(null)
-            }}
-            error={days === null || saveError !== null}
-            helperText={days === null ? RANGE_ERROR : (saveError ?? undefined)}
-            slotProps={{
-              htmlInput: { inputMode: 'numeric' },
-              input: { endAdornment: <InputAdornment position="end">Tage</InputAdornment> },
-            }}
-            sx={{ width: formWidth.number }}
-          />
-          <BusyButton
-            type="submit"
-            variant="outlined"
-            size="small"
-            busy={busy}
-            busyAnnouncement="Rhythmus wird gespeichert"
-            disabled={!changed && !busy}
-            aria-label={`Rhythmus von ${name} speichern`}
-            sx={{ mt: 0.25 }}
+            disabled={busy}
+            onClick={() => void handleReset()}
+            aria-label={`Rhythmus von ${name} auf die Werkseinstellung zurücksetzen`}
           >
-            Speichern
-          </BusyButton>
-        </Box>
-      </TableCell>
-      <TableCell>
-        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-          <Typography variant="body2">
-            {rhythm.overridden
-              ? `Eigener Wert (Werkseinstellung: ${daysLabel(rhythm.defaultIntervalDays)})`
-              : 'Werkseinstellung'}
-          </Typography>
-          {rhythm.overridden && (
-            <Button
-              variant="text"
-              size="small"
-              disabled={busy}
-              onClick={() => void handleReset()}
-              aria-label={`Rhythmus von ${name} auf die Werkseinstellung zurücksetzen`}
-            >
-              Werkseinstellung wiederherstellen
-            </Button>
-          )}
-        </Stack>
-      </TableCell>
-    </TableRow>
-  )
+            Werkseinstellung wiederherstellen
+          </Button>
+        )}
+      </Stack>
+    ),
+  }
+  return <RowParts.Provider value={parts}>{children}</RowParts.Provider>
 }
 
 /**
@@ -224,28 +235,34 @@ export default function FullSyncRhythmSection() {
       ) : rhythms === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Table
-          size="small"
-          aria-label="Vollabgleich-Rhythmus je Quellart"
-          sx={{ maxWidth: contentWidth.form }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Quellart</TableCell>
-              <TableCell>Vollabgleich alle … Tage</TableCell>
-              <TableCell>Gilt</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rhythms.map((rhythm) => (
-              <RhythmRow
-                key={`${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`}
-                rhythm={rhythm}
-                onSaved={replace}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ maxWidth: contentWidth.form }}>
+          <AdminList<RhythmRowData>
+            label="Vollabgleich-Rhythmus je Quellart"
+            rows={rhythms.map((rhythm) => ({ rhythm, onSaved: replace }))}
+            rowKey={({ rhythm }) =>
+              `${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`
+            }
+            rowLabel={({ rhythm }) => rhythm.displayName}
+            rowScope={RhythmRow}
+            columns={[
+              {
+                id: 'name',
+                head: 'Quellart',
+                width: '24%',
+                wrap: true,
+                cell: () => <Part part="name" />,
+              },
+              { id: 'value', head: 'Vollabgleich', wrap: true, cell: () => <Part part="value" /> },
+              {
+                id: 'origin',
+                head: 'Gilt',
+                width: '34%',
+                wrap: true,
+                cell: () => <Part part="origin" />,
+              },
+            ]}
+          />
+        </Box>
       )}
     </PageSection>
   )

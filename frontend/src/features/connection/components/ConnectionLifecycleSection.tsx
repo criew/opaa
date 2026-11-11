@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -22,6 +25,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import AdminList from '@/shared/ui/list/AdminList'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -67,14 +71,24 @@ function parseValue(draft: string, entry: ConnectionLifecycleSettingResponse): n
   return value >= entry.minValue && value <= entry.maxValue ? value : null
 }
 
-interface SettingRowProps {
+interface SettingRowData {
   entry: ConnectionLifecycleSettingResponse
   minimumGroupSize: number
   onSaved: (saved: ConnectionLifecycleSettingResponse) => void
 }
 
+type RowPart = 'name' | 'value' | 'origin'
+
+/** The three cells of one row; they share the row's draft and its running save. */
+const RowParts = createContext<Record<RowPart, ReactNode> | null>(null)
+
+function Part({ part }: { part: RowPart }) {
+  return useContext(RowParts)?.[part] ?? null
+}
+
 /** One setting; a failed save is told at its own field and kept until the next edit. */
-function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
+function SettingRow({ row, children }: { row: SettingRowData; children: ReactNode }) {
+  const { entry, minimumGroupSize, onSaved } = row
   const text = TEXTS[entry.setting]
   const [draft, setDraft] = useState(String(entry.value))
   const [busy, setBusy] = useState(false)
@@ -152,17 +166,19 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
   const belowGroupSize =
     entry.setting === 'EXPIRED_CONNECTION_WARNING_THRESHOLD' && entry.value < minimumGroupSize
 
-  return (
-    <TableRow>
-      <TableCell component="th" scope="row">
+  const parts: Record<RowPart, ReactNode> = {
+    name: (
+      <>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {text.name}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
           {`${entry.minValue} bis ${entry.maxValue}${text.unit}`}
         </Typography>
-      </TableCell>
-      <TableCell>
+      </>
+    ),
+    value: (
+      <>
         <Box
           component="form"
           onSubmit={(event) => void handleSubmit(event)}
@@ -206,29 +222,30 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
             {`Der Wert liegt unter der Mindestgruppengröße von ${minimumGroupSize}: Jeder Zugang für Personen zeigt dann schon bei „weniger als ${minimumGroupSize}“ die Warnung, auch ein leerer.`}
           </Alert>
         )}
-      </TableCell>
-      <TableCell>
-        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-          <Typography variant="body2">
-            {entry.overridden
-              ? `Eigener Wert (Werkseinstellung: ${entry.defaultValue})`
-              : 'Werkseinstellung'}
-          </Typography>
-          {entry.overridden && (
-            <Button
-              variant="text"
-              size="small"
-              disabled={busy}
-              onClick={() => void handleReset()}
-              aria-label={`${text.name} auf die Werkseinstellung zurücksetzen`}
-            >
-              Werkseinstellung wiederherstellen
-            </Button>
-          )}
-        </Stack>
-      </TableCell>
-    </TableRow>
-  )
+      </>
+    ),
+    origin: (
+      <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+        <Typography variant="body2">
+          {entry.overridden
+            ? `Eigener Wert (Werkseinstellung: ${entry.defaultValue})`
+            : 'Werkseinstellung'}
+        </Typography>
+        {entry.overridden && (
+          <Button
+            variant="text"
+            size="small"
+            disabled={busy}
+            onClick={() => void handleReset()}
+            aria-label={`${text.name} auf die Werkseinstellung zurücksetzen`}
+          >
+            Werkseinstellung wiederherstellen
+          </Button>
+        )}
+      </Stack>
+    ),
+  }
+  return <RowParts.Provider value={parts}>{children}</RowParts.Provider>
 }
 
 /**
@@ -284,29 +301,32 @@ export default function ConnectionLifecycleSection() {
       ) : entries === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Table
-          size="small"
-          aria-label="Schwellen und Fristen der Verbindungen"
-          sx={{ maxWidth: contentWidth.detail }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Einstellung</TableCell>
-              <TableCell>Wert</TableCell>
-              <TableCell>Gilt</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {entries.map((entry) => (
-              <SettingRow
-                key={`${entry.setting}-${entry.value}-${entry.overridden}`}
-                entry={entry}
-                minimumGroupSize={minimumGroupSize}
-                onSaved={replace}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ maxWidth: contentWidth.detail }}>
+          <AdminList<SettingRowData>
+            label="Schwellen und Fristen der Verbindungen"
+            rows={entries.map((entry) => ({ entry, minimumGroupSize, onSaved: replace }))}
+            rowKey={({ entry }) => `${entry.setting}-${entry.value}-${entry.overridden}`}
+            rowLabel={({ entry }) => TEXTS[entry.setting].name}
+            rowScope={SettingRow}
+            columns={[
+              {
+                id: 'name',
+                head: 'Einstellung',
+                width: '30%',
+                wrap: true,
+                cell: () => <Part part="name" />,
+              },
+              { id: 'value', head: 'Wert', wrap: true, cell: () => <Part part="value" /> },
+              {
+                id: 'origin',
+                head: 'Gilt',
+                width: '30%',
+                wrap: true,
+                cell: () => <Part part="origin" />,
+              },
+            ]}
+          />
+        </Box>
       )}
     </PageSection>
   )

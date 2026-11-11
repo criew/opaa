@@ -34,9 +34,24 @@ export const INITIAL_GROUP_FILTERS: GroupFilters = {
   page: 0,
 }
 
+/** Whether a search or filter narrows the list; sort and page do not. */
+export function narrowsGroups(filters: GroupFilters): boolean {
+  const { query, origin, providerId, kind, state } = INITIAL_GROUP_FILTERS
+  return (
+    filters.query.trim() !== query ||
+    filters.origin !== origin ||
+    filters.providerId !== providerId ||
+    filters.kind !== kind ||
+    filters.state !== state
+  )
+}
+
 interface GroupAdminListState {
   groups: GroupListResponse[]
+  /** The groups the current filters leave. */
   total: number
+  /** All groups without any filter, for „12 von 40“; null while unknown. */
+  overallTotal: number | null
   size: number
   filters: GroupFilters
   /** „Wo wirkt diese Gruppe" for the rows of the current page only. */
@@ -57,6 +72,7 @@ interface GroupAdminListState {
 const emptyState = {
   groups: [] as GroupListResponse[],
   total: 0,
+  overallTotal: null as number | null,
   size: GROUP_PAGE_SIZE,
   filters: INITIAL_GROUP_FILTERS,
   effects: {} as Record<string, GroupEffectsResponse>,
@@ -95,10 +111,25 @@ export const useGroupAdminListStore = create<GroupAdminListState>((set, get) => 
     const { query, ...rest } = get().filters
     set({ isLoading: true, error: null })
     let groupIds: string[]
+    // The count beside the title needs the unfiltered total; a failed count leaves it out
+    // instead of failing the list.
+    const overall = narrowsGroups(get().filters)
+      ? listGroupPage({ size: 1 }).then(
+          (all) => all.total,
+          () => null,
+        )
+      : null
     try {
       const result = await listGroupPage({ query: query.trim(), ...rest })
+      const overallTotal = overall === null ? result.total : await overall
       if (isStale()) return
-      set({ groups: result.items, total: result.total, size: result.size, isLoading: false })
+      set({
+        groups: result.items,
+        total: result.total,
+        overallTotal,
+        size: result.size,
+        isLoading: false,
+      })
       groupIds = result.items.map((group) => group.id)
     } catch (err) {
       if (isStale()) return

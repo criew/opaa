@@ -87,6 +87,26 @@ const NO_RAW_DIALOG = {
   ],
 }
 
+// Guidelines 5.3: every table is the AdminList building block; no theme builds head, pager or
+// card list itself.
+const TABLE_MESSAGE =
+  'Tables come from @/shared/ui/list/AdminList: head, row link, row action, pager and the card list below 900 px (guidelines 5.3).'
+const TABLE_IMPORT_NAMES = [
+  'Table',
+  'TableBody',
+  'TableCell',
+  'TableContainer',
+  'TableFooter',
+  'TableHead',
+  'TablePagination',
+  'TableRow',
+  'TableSortLabel',
+]
+const NO_RAW_TABLE = {
+  paths: [{ name: '@mui/material', importNames: TABLE_IMPORT_NAMES, message: TABLE_MESSAGE }],
+  patterns: [{ group: ['@mui/material/Table*'], message: TABLE_MESSAGE }],
+}
+
 export default defineConfig([
   globalIgnores(['dist', 'dist-prototype', 'public/mockServiceWorker.js']),
   {
@@ -153,7 +173,20 @@ export default defineConfig([
       'src/app/shell/AppShell.tsx',
       'src/features/chat/components/SourceEvidenceDrawer.tsx',
     ],
-    rules: { 'no-restricted-imports': ['error', NO_RAW_DIALOG] },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_RAW_DIALOG.paths, ...NO_RAW_TABLE.paths],
+          patterns: [...NO_RAW_DIALOG.patterns, ...NO_RAW_TABLE.patterns],
+        },
+      ],
+    },
+  },
+  // Guidelines 5.3: no table of its own outside shared/ui, also in the two files above.
+  {
+    files: ['src/app/shell/AppShell.tsx', 'src/features/chat/components/SourceEvidenceDrawer.tsx'],
+    rules: { 'no-restricted-imports': ['error', NO_RAW_TABLE] },
   },
   // Theme boundaries; rules in frontend/AGENTS.md.
   themeBoundaries,

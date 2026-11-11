@@ -1,19 +1,10 @@
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { adminTableSx } from '@/shared/ui/list/adminListStyles'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import {
   agoLabel,
   clockLabel,
@@ -99,16 +90,7 @@ function ProviderCell({ entry }: { entry: OverviewEntry }) {
         tone={provider.enabled ? 'accent' : 'muted'}
       />
       <Box sx={{ minWidth: 0 }}>
-        <Typography
-          sx={{
-            fontSize: fontSize.text,
-            fontWeight: 600,
-            overflowWrap: 'break-word',
-            hyphens: 'auto',
-          }}
-        >
-          {provider.displayName}
-        </Typography>
+        <ListText strong>{provider.displayName}</ListText>
         {!provider.enabled && (
           <Box sx={{ mt: 0.5 }}>
             <MetaBadge>Anbieter deaktiviert</MetaBadge>
@@ -169,168 +151,57 @@ function AttentionCell({ entry }: { entry: OverviewEntry }) {
   return (
     <>
       <StateText tone={attention.tone} label={attention.label} strong />
-      <Typography
-        title={attention.detail}
-        sx={{
-          ...secondarySx,
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {attention.detail}
-      </Typography>
+      <ListText secondary>{attention.detail}</ListText>
     </>
-  )
-}
-
-/** The one way into a provider; a pending plan names what is waiting there. */
-function OpenButton({ entry, onOpen }: { entry: OverviewEntry; onOpen: OverviewProps['onOpen'] }) {
-  const decide = Boolean(entry.status?.pendingPlan)
-  const verb = decide ? 'Entscheiden' : 'Details'
-  return (
-    <Button
-      size="small"
-      variant={decide ? 'contained' : 'outlined'}
-      aria-label={`${verb}: ${entry.provider.displayName}`}
-      onClick={(event) => {
-        event.stopPropagation()
-        onOpen(entry.provider.id)
-      }}
-    >
-      {verb}
-    </Button>
-  )
-}
-
-/** Narrow windows: the same statements one under the other, as a list entry - not a card. */
-function OverviewList({ entries, onOpen, now }: OverviewProps) {
-  return (
-    <Box
-      component="ul"
-      sx={{ listStyle: 'none', p: 0, m: 0, borderTop: 1, borderBottom: 1, borderColor: 'divider' }}
-    >
-      {entries.map((entry) => (
-        <Box
-          component="li"
-          key={entry.provider.id}
-          sx={{ py: 1.75, '& + &': { borderTop: 1, borderColor: 'divider' } }}
-        >
-          <Box component="article" aria-label={entry.provider.displayName}>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <ProviderCell entry={entry} />
-              </Box>
-              <OpenButton entry={entry} onOpen={onOpen} />
-            </Box>
-            {entry.attention && (
-              <Box sx={{ mt: 1.25 }}>
-                <AttentionCell entry={entry} />
-              </Box>
-            )}
-            <Box
-              component="dl"
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'max-content 1fr',
-                columnGap: 1.5,
-                rowGap: 0.75,
-                m: 0,
-                mt: 1.25,
-                '& dt': { fontSize: fontSize.meta, color: 'text.secondary', pt: '1px' },
-                '& dd': { m: 0 },
-              }}
-            >
-              <dt>Abgleich</dt>
-              <dd>
-                <MechanismCell entry={entry} />
-              </dd>
-              <dt>Letzter Lauf</dt>
-              <dd>
-                <LastRunCell entry={entry} now={now} />
-              </dd>
-              <dt>Nächster Lauf</dt>
-              <dd>
-                <NextRunCell entry={entry} now={now} />
-              </dd>
-            </Box>
-          </Box>
-        </Box>
-      ))}
-    </Box>
   )
 }
 
 /**
  * The directory sync of every provider on one screen: mechanism, last and next run and
- * what needs doing, one row each - details and changes open in the side panel. A table from the
- * `md` breakpoint, a list below it, the same words in both.
+ * what needs doing, one row each. The row itself leads into the side panel with details and
+ * changes; a waiting plan shows as „Handlungsbedarf" and is decided there.
  */
 export default function DirectorySyncOverview({ entries, onOpen, now }: OverviewProps) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
-
-  if (!isDesktop) return <OverviewList entries={entries} onOpen={onOpen} now={now} />
-
   return (
-    <TableContainer
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Verzeichnisabgleich, horizontal scrollbar"
-    >
-      <Table
-        size="small"
-        aria-label="Verzeichnisabgleich je Anbieter"
-        sx={{ ...adminTableSx, minWidth: 880 }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ width: '20%' }}>Anbieter</TableCell>
-            <TableCell sx={{ width: '14%' }}>Abgleich</TableCell>
-            <TableCell sx={{ width: '17%' }}>Letzter Lauf</TableCell>
-            <TableCell sx={{ width: '11%' }}>Nächster Lauf</TableCell>
-            <TableCell>Handlungsbedarf</TableCell>
-            <TableCell align="right" sx={{ width: 136 }}>
-              <span style={visuallyHidden}>Öffnen</span>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {entries.map((entry) => (
-            <TableRow
-              key={entry.provider.id}
-              hover
-              onClick={() => onOpen(entry.provider.id)}
-              sx={{
-                cursor: 'pointer',
-                ...(entry.attention && {
-                  boxShadow: (t) => `inset 3px 0 0 ${t.palette[entry.attention!.tone].main}`,
-                }),
-              }}
-            >
-              <TableCell>
-                <ProviderCell entry={entry} />
-              </TableCell>
-              <TableCell>
-                <MechanismCell entry={entry} />
-              </TableCell>
-              <TableCell>
-                <LastRunCell entry={entry} now={now} />
-              </TableCell>
-              <TableCell>
-                <NextRunCell entry={entry} now={now} />
-              </TableCell>
-              <TableCell>
-                <AttentionCell entry={entry} />
-              </TableCell>
-              <TableCell align="right">
-                <OpenButton entry={entry} onOpen={onOpen} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <AdminList
+      label="Verzeichnisabgleich je Anbieter"
+      rows={entries}
+      rowKey={(entry) => entry.provider.id}
+      rowLabel={(entry) => entry.provider.displayName}
+      minWidth={880}
+      rowTarget={(entry) => ({ onOpen: () => onOpen(entry.provider.id) })}
+      rowTone={(entry) => entry.attention?.tone ?? null}
+      columns={[
+        {
+          id: 'provider',
+          head: 'Anbieter',
+          width: '24%',
+          cell: (entry) => <ProviderCell entry={entry} />,
+        },
+        {
+          id: 'mechanism',
+          head: 'Abgleich',
+          width: '15%',
+          cell: (entry) => <MechanismCell entry={entry} />,
+        },
+        {
+          id: 'lastRun',
+          head: 'Letzter Lauf',
+          width: '18%',
+          cell: (entry) => <LastRunCell entry={entry} now={now} />,
+        },
+        {
+          id: 'nextRun',
+          head: 'Nächster Lauf',
+          width: '13%',
+          cell: (entry) => <NextRunCell entry={entry} now={now} />,
+        },
+        {
+          id: 'attention',
+          head: 'Handlungsbedarf',
+          cell: (entry) => <AttentionCell entry={entry} />,
+        },
+      ]}
+    />
   )
 }

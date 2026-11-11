@@ -233,7 +233,9 @@ describe('GroupManagementPage', () => {
     expect(screen.queryByRole('combobox', { name: 'Art' })).not.toBeInTheDocument()
     expect(within(referat).getByText('/Haus A/Referat 50')).toBeInTheDocument()
     expect(within(referat).getByText('Aktiv')).toBeInTheDocument()
-    expect(screen.getByText('2 Gruppen · Seite 1 von 1')).toBeInTheDocument()
+    // The count stands next to the page title; a list of one page shows no pager.
+    expect(screen.getByText('2 Gruppen')).toBeInTheDocument()
+    expect(screen.queryByText(/Seite 1 von/)).not.toBeInTheDocument()
     // the member list is never part of the table
     expect(mockListGroupMembers).not.toHaveBeenCalled()
   })
@@ -299,6 +301,8 @@ describe('GroupManagementPage', () => {
       ),
     )
     await waitFor(() => expect(screen.queryByText('Referat 50')).not.toBeInTheDocument())
+    // While a filter narrows the list, the count beside the title names both figures.
+    expect(await screen.findByText('1 von 2 Gruppen')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Mitglieder/ }))
     await waitFor(() =>

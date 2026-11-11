@@ -1,21 +1,12 @@
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ConnectionProfileResponse } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import StateDot from '@/shared/ui/StateDot'
 import { AccessBadge } from '@/features/capability'
 import { accessBadgeLabel, type Access } from '@/features/capability'
-import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import { hostOf, type ProfileAttention } from './profileState'
 import { fontSize } from '@/shared/theme/tokens'
 
@@ -33,43 +24,24 @@ interface OverviewProps {
   onOpen: (profileId: string) => void
 }
 
-const secondarySx = {
-  fontSize: fontSize.meta,
-  color: 'text.secondary',
-  mt: 0.25,
-  pl: 1.75,
-} as const
-
+/** Source type and at most one lock badge: a cell carries no more than two (guidelines 5.3). */
 function ProfileCell({ entry }: { entry: ProfileEntry }) {
+  const lock =
+    entry.profile.locked && entry.typeLocked
+      ? 'Zugang und Quellart gesperrt'
+      : entry.profile.locked
+        ? 'Gesperrt'
+        : entry.typeLocked
+          ? 'Quellart gesperrt'
+          : null
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
-        {entry.profile.name}
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
+      <ListText strong>{entry.profile.name}</ListText>
+      <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, overflow: 'hidden' }}>
         <MetaBadge>{entry.sourceTypeName}</MetaBadge>
-        {entry.profile.locked && <MetaBadge>Gesperrt</MetaBadge>}
-        {entry.typeLocked && <MetaBadge>Quellart gesperrt</MetaBadge>}
+        {lock && <MetaBadge>{lock}</MetaBadge>}
       </Box>
     </Box>
-  )
-}
-
-function ServerCell({ profile }: { profile: ConnectionProfileResponse }) {
-  return (
-    <Typography
-      component="span"
-      title={profile.serverUrl ?? undefined}
-      sx={{
-        fontSize: fontSize.text,
-        display: 'block',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {hostOf(profile.serverUrl)}
-    </Typography>
   )
 }
 
@@ -94,147 +66,64 @@ function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
     )
   }
   return (
-    <>
+    <Box sx={{ minWidth: 0 }}>
       <StateDot tone={attention.tone} label={attention.label} strong />
-      <Typography
-        title={attention.detail}
-        sx={{
-          ...secondarySx,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
-        {attention.detail}
-      </Typography>
-    </>
-  )
-}
-
-/** The one way into a profile; a profile with something to fix says so on its button. */
-function OpenButton({ entry, onOpen }: { entry: ProfileEntry; onOpen: OverviewProps['onOpen'] }) {
-  // Only a task the panel offers a handling for gets „Beheben"; many expired accounts are for the
-  // persons to reconnect, the panel just explains them.
-  const fixable = entry.attention !== null && entry.attention.kind !== 'MANY_EXPIRED'
-  const verb = fixable ? 'Beheben' : 'Details'
-  return (
-    <Button
-      size="small"
-      variant={fixable ? 'contained' : 'outlined'}
-      aria-label={`${verb}: ${entry.profile.name}`}
-      onClick={(event) => {
-        event.stopPropagation()
-        onOpen(entry.profile.id)
-      }}
-    >
-      {verb}
-    </Button>
-  )
-}
-
-/** Narrow windows: the same statements one under the other, as a list entry - not a card. */
-function OverviewList({ entries, onOpen }: OverviewProps) {
-  return (
-    <Box
-      component="ul"
-      aria-label="Zugänge"
-      sx={{ listStyle: 'none', p: 0, m: 0, borderTop: 1, borderBottom: 1, borderColor: 'divider' }}
-    >
-      {entries.map((entry) => (
-        <Box component="li" key={entry.profile.id} sx={listCardSx}>
-          <Box component="article" aria-label={entry.profile.name}>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <ProfileCell entry={entry} />
-              </Box>
-              <OpenButton entry={entry} onOpen={onOpen} />
-            </Box>
-            {entry.attention && (
-              <Box sx={{ mt: 1.25 }}>
-                <AttentionCell attention={entry.attention} />
-              </Box>
-            )}
-            <Box component="dl" sx={definitionListSx}>
-              <dt>Server</dt>
-              <dd>
-                <ServerCell profile={entry.profile} />
-              </dd>
-              <dt>Nutzbar für</dt>
-              <dd>
-                <AccessCell access={entry.access} />
-              </dd>
-              <dt>Verbindungen</dt>
-              <dd>{entry.profile.connectionCount}</dd>
-            </Box>
-          </Box>
-        </Box>
-      ))}
+      <ListText secondary>{attention.detail}</ListText>
     </Box>
   )
 }
 
 /**
  * The profiles of the installation on one screen: source type and state, host, who may use it,
- * its connections and what needs doing - one row each. Details and every change open in the side
- * panel. A table from the `md` breakpoint, a list below it, the same words in both.
+ * its connections and what needs doing - one row each. The row itself leads into the side panel
+ * with details and every change; a row with something to do carries a bar in the tone of it.
  */
 export default function ConnectionProfileOverview({ entries, onOpen }: OverviewProps) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
-
-  if (!isDesktop) return <OverviewList entries={entries} onOpen={onOpen} />
-
   return (
-    <TableContainer>
-      <Table size="small" aria-label="Zugänge" sx={{ ...adminTableSx, minWidth: 920 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ width: '23%' }}>Zugang</TableCell>
-            <TableCell sx={{ width: '16%' }}>Server</TableCell>
-            <TableCell sx={{ width: 200 }}>Nutzbar für</TableCell>
-            <TableCell align="right" sx={{ width: 112 }}>
-              Verbindungen
-            </TableCell>
-            <TableCell>Handlungsbedarf</TableCell>
-            <TableCell align="right" sx={{ width: 112 }}>
-              <span style={visuallyHidden}>Öffnen</span>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {entries.map((entry) => (
-            <TableRow
-              key={entry.profile.id}
-              hover
-              onClick={() => onOpen(entry.profile.id)}
-              sx={{
-                cursor: 'pointer',
-                ...(entry.attention && {
-                  boxShadow: (t) => `inset 3px 0 0 ${t.palette[entry.attention!.tone].main}`,
-                }),
-              }}
-            >
-              <TableCell>
-                <ProfileCell entry={entry} />
-              </TableCell>
-              <TableCell>
-                <ServerCell profile={entry.profile} />
-              </TableCell>
-              <TableCell>
-                <AccessCell access={entry.access} />
-              </TableCell>
-              <TableCell align="right">{entry.profile.connectionCount}</TableCell>
-              <TableCell>
-                <AttentionCell attention={entry.attention} />
-              </TableCell>
-              <TableCell align="right">
-                <OpenButton entry={entry} onOpen={onOpen} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <AdminList
+      label="Zugänge"
+      rows={entries}
+      rowKey={(entry) => entry.profile.id}
+      rowLabel={(entry) => entry.profile.name}
+      minWidth={880}
+      rowTarget={(entry) => ({ onOpen: () => onOpen(entry.profile.id) })}
+      rowTone={(entry) => entry.attention?.tone ?? null}
+      columns={[
+        {
+          id: 'profile',
+          head: 'Zugang',
+          width: '26%',
+          cell: (entry) => <ProfileCell entry={entry} />,
+        },
+        {
+          id: 'server',
+          head: 'Server',
+          width: '18%',
+          cell: (entry) => (
+            <Box component="span" title={entry.profile.serverUrl ?? undefined}>
+              {hostOf(entry.profile.serverUrl)}
+            </Box>
+          ),
+        },
+        {
+          id: 'access',
+          head: 'Nutzbar für',
+          width: 200,
+          cell: (entry) => <AccessCell access={entry.access} />,
+        },
+        {
+          id: 'connections',
+          head: 'Verbindungen',
+          width: 128,
+          align: 'right',
+          cell: (entry) => entry.profile.connectionCount,
+        },
+        {
+          id: 'attention',
+          head: 'Handlungsbedarf',
+          cell: (entry) => <AttentionCell attention={entry.attention} />,
+        },
+      ]}
+    />
   )
 }

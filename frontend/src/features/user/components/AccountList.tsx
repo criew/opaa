@@ -1,31 +1,22 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '@/shared/api/types'
 import {
   INITIAL_ACCOUNT_FILTERS,
+  narrowsAccounts,
   useUserAdminStore,
-  type AccountFilters,
 } from '../stores/userAdminStore'
 import type { AccountSortField } from '../api/accountApi'
-import {
-  ListPager,
-  SortableHeadCell,
+import AdminList, {
+  ListText,
   StateLabel,
+  type AdminListColumn,
   type SortBinding,
 } from '@/shared/ui/list/AdminList'
-import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
@@ -71,7 +62,7 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
             }
           >
             <Box component="span">
-              <MetaBadge wrap>Passwortwechsel ausstehend</MetaBadge>
+              <MetaBadge>Passwortwechsel ausstehend</MetaBadge>
             </Box>
           </Tooltip>
         </Box>
@@ -192,138 +183,40 @@ function RowMenu({ account, isSelf, onChangeRole, ...local }: RowProps) {
 function AccountCell({ account }: { account: AccountResponse }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
-        {account.displayName}
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
+        <ListText strong>{account.displayName}</ListText>
         {account.local?.bootstrap && (
-          <Box component="span" sx={{ ml: 0.75 }}>
+          <Box component="span" sx={{ flex: 'none' }}>
             <MetaBadge>Notanker</MetaBadge>
           </Box>
         )}
-      </Typography>
-      <Typography
-        sx={{ fontSize: fontSize.meta, color: 'text.secondary', overflowWrap: 'anywhere' }}
-      >
-        {account.email}
-      </Typography>
+      </Stack>
+      <ListText secondary>{account.email}</ListText>
     </Box>
   )
 }
 
+/** The role on one line, cut off with its tooltip; what is pending or provider-led below it. */
 function RoleCell({ account }: { account: AccountResponse }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      {SYSTEM_ROLE_LABEL[account.systemRole]}
-      {account.roleManagedByProvider && (
-        <Box sx={{ mt: 0.5 }}>
-          <MetaBadge wrap>Vom Anbieter geführt</MetaBadge>
-        </Box>
-      )}
-      {account.pendingSystemRole && (
-        <Box sx={{ mt: 0.5 }}>
-          <MetaBadge wrap>{`${SYSTEM_ROLE_LABEL[account.pendingSystemRole]} beantragt`}</MetaBadge>
-        </Box>
+      <ListText>{SYSTEM_ROLE_LABEL[account.systemRole]}</ListText>
+      {(account.roleManagedByProvider || account.pendingSystemRole) && (
+        <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, minWidth: 0, overflow: 'hidden' }}>
+          {account.roleManagedByProvider && <MetaBadge>Vom Anbieter geführt</MetaBadge>}
+          {account.pendingSystemRole && (
+            <MetaBadge>{`${SYSTEM_ROLE_LABEL[account.pendingSystemRole]} beantragt`}</MetaBadge>
+          )}
+        </Stack>
       )}
     </Box>
-  )
-}
-
-/** One account as a card - the layout below tablet width (guidelines 5.3). */
-function AccountCard(props: RowProps) {
-  const { account } = props
-  return (
-    <Box
-      component="article"
-      aria-label={account.displayName ?? account.email ?? account.id}
-      // A list item even when narrow, no card - the same language as the table
-      // next to it, only in one column.
-      sx={listCardSx}
-    >
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-          <AccountCell account={account} />
-          <Box sx={{ mt: 0.5 }}>
-            <AccountOriginTag account={account} />
-          </Box>
-        </Box>
-        <RowMenu {...props} />
-      </Stack>
-      <Box sx={{ mt: 1 }}>
-        <StateCell account={account} />
-      </Box>
-      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.75 }}>
-        {SYSTEM_ROLE_LABEL[account.systemRole]}
-        {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''}
-        {account.pendingSystemRole
-          ? ` (${SYSTEM_ROLE_LABEL[account.pendingSystemRole]} beantragt)`
-          : ''}{' '}
-        · Ablauf {expiryText(account)}
-      </Typography>
-    </Box>
-  )
-}
-
-function AccountTableRow(props: RowProps) {
-  const { account } = props
-  return (
-    <TableRow>
-      <TableCell>
-        <AccountCell account={account} />
-      </TableCell>
-      <TableCell>
-        <AccountOriginTag account={account} />
-      </TableCell>
-      <TableCell>
-        <RoleCell account={account} />
-      </TableCell>
-      <TableCell>
-        <StateCell account={account} />
-      </TableCell>
-      <TableCell>
-        <Typography sx={{ fontSize: fontSize.text }}>{expiryText(account)}</Typography>
-      </TableCell>
-      <TableCell>
-        <Typography sx={{ fontSize: fontSize.text }}>{formatExpiry(account.createdAt)}</Typography>
-      </TableCell>
-      <TableCell align="right">
-        <RowMenu {...props} />
-      </TableCell>
-    </TableRow>
-  )
-}
-
-/** Page switch; the page size stays at the list's own default (≤ 50). */
-function Pager() {
-  const total = useUserAdminStore((s) => s.total)
-  const size = useUserAdminStore((s) => s.size)
-  const page = useUserAdminStore((s) => s.filters.page)
-  const setFilters = useUserAdminStore((s) => s.setFilters)
-  return (
-    <ListPager
-      total={total}
-      size={size}
-      page={page}
-      onPage={(next) => void setFilters({ page: next })}
-      countLabel={total === 1 ? '1 Konto' : `${total} Konten`}
-    />
-  )
-}
-
-/** Whether a search or filter narrows the list; sort and page do not. */
-function narrowed(filters: AccountFilters): boolean {
-  return (
-    filters.query.trim() !== '' ||
-    filters.providerType !== INITIAL_ACCOUNT_FILTERS.providerType ||
-    filters.providerId !== INITIAL_ACCOUNT_FILTERS.providerId ||
-    filters.status !== INITIAL_ACCOUNT_FILTERS.status ||
-    filters.role !== INITIAL_ACCOUNT_FILTERS.role ||
-    filters.review !== INITIAL_ACCOUNT_FILTERS.review
   )
 }
 
 function AccountEmptyState({ createAction }: { createAction: ReactNode }) {
   const filters = useUserAdminStore((s) => s.filters)
   const setFilters = useUserAdminStore((s) => s.setFilters)
-  if (!narrowed(filters)) {
+  if (!narrowsAccounts(filters)) {
     return <EmptyState framed message="Noch keine Konten." action={createAction} />
   }
   const { query, providerType, providerId, status, role, review } = INITIAL_ACCOUNT_FILTERS
@@ -362,12 +255,14 @@ export default function AccountList({
   createAction,
   ...handlers
 }: AccountListProps) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const accounts = useUserAdminStore((s) => s.accounts)
   const isLoading = useUserAdminStore((s) => s.isLoading)
   const error = useUserAdminStore((s) => s.error)
   const loadAccounts = useUserAdminStore((s) => s.loadAccounts)
+  const total = useUserAdminStore((s) => s.total)
+  const size = useUserAdminStore((s) => s.size)
+  const filters = useUserAdminStore((s) => s.filters)
+  const setFilters = useUserAdminStore((s) => s.setFilters)
   const sort = useAccountSort()
 
   if (error) {
@@ -388,47 +283,64 @@ export default function AccountList({
     return <AccountEmptyState createAction={createAction} />
   }
 
+  const columns: AdminListColumn<AccountResponse, AccountSortField>[] = [
+    {
+      id: 'account',
+      head: 'Name',
+      sortFields: ['displayName', 'email'],
+      cell: (account) => <AccountCell account={account} />,
+    },
+    {
+      id: 'origin',
+      head: 'Herkunft',
+      sortFields: ['origin'],
+      width: '15%',
+      card: 'line',
+      cell: (account) => <AccountOriginTag account={account} />,
+    },
+    {
+      id: 'role',
+      head: 'Rolle',
+      sortFields: ['role'],
+      width: '15%',
+      cell: (account) => <RoleCell account={account} />,
+    },
+    {
+      id: 'status',
+      head: 'Zustand',
+      sortFields: ['status'],
+      width: '16%',
+      cell: (account) => <StateCell account={account} />,
+    },
+    {
+      id: 'expiresAt',
+      head: 'Ablauf',
+      sortFields: ['expiresAt'],
+      width: '11%',
+      cell: (account) => expiryText(account),
+    },
+    {
+      id: 'createdAt',
+      head: 'Angelegt',
+      sortFields: ['createdAt'],
+      width: '11%',
+      card: 'hidden',
+      cell: (account) => formatExpiry(account.createdAt),
+    },
+  ]
+
   return (
-    <>
-      {isDesktop ? (
-        <Table size="small" aria-label="Konten" sx={adminTableSx}>
-          <TableHead>
-            <TableRow>
-              <SortableHeadCell fields={['displayName', 'email']} binding={sort} />
-              <SortableHeadCell fields={['origin']} binding={sort} width="15%" />
-              <SortableHeadCell fields={['role']} binding={sort} width="13%" />
-              <SortableHeadCell fields={['status']} binding={sort} width="16%" />
-              <SortableHeadCell fields={['expiresAt']} binding={sort} width="11%" />
-              <SortableHeadCell fields={['createdAt']} binding={sort} width="11%" />
-              <TableCell align="right" sx={{ width: 56 }}>
-                <span style={visuallyHidden}>Aktionen</span>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {accounts.map((account) => (
-              <AccountTableRow
-                key={account.id}
-                account={account}
-                isSelf={account.id === currentUserId}
-                {...handlers}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <Stack spacing={0}>
-          {accounts.map((account) => (
-            <AccountCard
-              key={account.id}
-              account={account}
-              isSelf={account.id === currentUserId}
-              {...handlers}
-            />
-          ))}
-        </Stack>
+    <AdminList
+      label="Konten"
+      rows={accounts}
+      rowKey={(account) => account.id}
+      rowLabel={(account) => account.displayName ?? account.email ?? account.id}
+      columns={columns}
+      sort={sort}
+      rowActions={(account) => (
+        <RowMenu account={account} isSelf={account.id === currentUserId} {...handlers} />
       )}
-      <Pager />
-    </>
+      pager={{ total, size, page: filters.page, onPage: (page) => void setFilters({ page }) }}
+    />
   )
 }

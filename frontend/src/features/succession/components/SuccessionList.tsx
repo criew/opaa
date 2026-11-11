@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
-import Pagination from '@mui/material/Pagination'
 import Typography from '@mui/material/Typography'
 import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
 import AreaPageCount from '@/shared/ui/AreaPageCount'
+import { ListPager } from '@/shared/ui/list/AdminList'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
 import { fontSize, readingWidth } from '@/shared/theme/tokens'
@@ -97,15 +97,12 @@ export default function SuccessionList({ text }: { text: SuccessionTabText }) {
         </Box>
       )}
 
-      {(data.totalPages > 1 || data.page > 0) && (
-        <Pagination
-          sx={{ mt: 2 }}
-          count={Math.max(data.totalPages, data.page + 1)}
-          page={data.page + 1}
-          onChange={(_event, next) => setPage(next - 1)}
-          aria-label="Seiten der Liste"
-        />
-      )}
+      <ListPager
+        label="Seiten der Liste"
+        page={data.page}
+        pageCount={data.totalPages}
+        onPage={setPage}
+      />
     </Box>
   )
 }

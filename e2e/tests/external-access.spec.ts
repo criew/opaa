@@ -499,7 +499,10 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     formatPipelinesPage: personPage,
   }) => {
     await gotoOwnTokens(personPage)
-    await personPage.getByRole('button', { name: `Token „${TOKEN_FRESH}“ widerrufen` }).click()
+    await personPage
+      .getByRole('button', { name: `Weitere Aktionen für „${TOKEN_FRESH}“` })
+      .click()
+    await personPage.getByRole('menuitem', { name: 'Widerrufen' }).click()
     const confirmRevoke = personPage
       .getByRole('dialog')
       .filter({ has: personPage.locator('#confirm-question') })

@@ -3,19 +3,14 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
 import type { SearchDiagnosisResponse } from '@/shared/api/types'
 import { plural } from '@/shared/utils/format'
 import { catalogRoute } from '../../../shared/assetTypes'
 import { trackedDocumentMessage } from '../utils/searchAdminLabels'
-import StagePanel, { DocumentTitleCell, ShowChunkButton } from './DiagnosisStagePanel'
+import AdminList from '@/shared/ui/list/AdminList'
+import StagePanel, { DocumentTitle, ShowChunkButton } from './DiagnosisStagePanel'
 import type { ChunkNavigation } from './DiagnosisStagePanel'
 
 /** The result of one diagnosis run: context, tracked document, every stage and the final selection. */
@@ -66,34 +61,38 @@ export default function DiagnosisResult({
           Die Endauswahl ist leer - in diesem Rechtekontext hätte diese Frage keinen Beleg.
         </Typography>
       ) : (
-        <TableContainer>
-          <Table size="small" aria-label="Endauswahl">
-            <TableHead>
-              <TableRow>
-                <TableCell align="right">Rang</TableCell>
-                <TableCell>Dokument</TableCell>
-                <TableCell>Bibliothek</TableCell>
-                <TableCell align="center">Chunk</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {diagnosis.finalSelection.map((entry) => (
-                <TableRow key={entry.chunkId}>
-                  <TableCell align="right">{entry.rank}</TableCell>
-                  <DocumentTitleCell
-                    documentKey={entry.documentKey}
-                    documentTitle={entry.documentTitle}
-                    onShowDocument={navigation.onShowDocument}
-                  />
-                  <TableCell>{entry.libraryName ?? '—'}</TableCell>
-                  <TableCell align="center">
-                    <ShowChunkButton chunkId={entry.chunkId} onShowChunk={navigation.onShowChunk} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <AdminList
+          label="Endauswahl"
+          rows={diagnosis.finalSelection}
+          rowKey={(entry) => entry.chunkId}
+          rowLabel={(entry) => entry.documentTitle ?? entry.documentKey}
+          columns={[
+            {
+              id: 'rank',
+              head: 'Rang',
+              width: 64,
+              align: 'right',
+              card: 'fact',
+              cell: (entry) => entry.rank,
+            },
+            {
+              id: 'document',
+              head: 'Dokument',
+              card: 'title',
+              cell: (entry) => (
+                <DocumentTitle
+                  documentKey={entry.documentKey}
+                  documentTitle={entry.documentTitle}
+                  libraryName={entry.libraryName}
+                  onShowDocument={navigation.onShowDocument}
+                />
+              ),
+            },
+          ]}
+          rowActions={(entry) => (
+            <ShowChunkButton chunkId={entry.chunkId} onShowChunk={navigation.onShowChunk} />
+          )}
+        />
       )}
     </Box>
   )

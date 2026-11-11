@@ -4,15 +4,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import { useAuthStore } from '@/shared/session/authStore'
 import { getAccessAsOf } from '../api/rightsHistoryApi'
 import type {
@@ -155,9 +152,12 @@ export default function RightsHistoryPage() {
 
         {result && (
           <>
-            <Typography sx={{ mb: 1 }}>
-              {result.objectName ?? 'Gelöschtes Objekt'} — {result.totalElements}{' '}
-              {result.totalElements === 1 ? 'Zugriffszeitraum' : 'Zugriffszeiträume'}
+            <AreaPageCount
+              total={result.totalElements}
+              unit={['Zugriffszeitraum', 'Zugriffszeiträume']}
+            />
+            <Typography sx={{ mb: 1, fontWeight: 600 }}>
+              {result.objectName ?? 'Gelöschtes Objekt'}
             </Typography>
             {result.beyondRetention && (
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -183,51 +183,53 @@ export default function RightsHistoryPage() {
                 verzeichnet. Die oben genannten Quellen sind dabei nicht berücksichtigt.
               </Typography>
             ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Person</TableCell>
-                    <TableCell>Grundlage</TableCell>
-                    <TableCell>Gruppe</TableCell>
-                    <TableCell>Rolle</TableCell>
-                    <TableCell>Von</TableCell>
-                    <TableCell>Bis</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {result.entries.map((entry, index) => (
-                    <TableRow key={`${entry.userId ?? 'alle'}-${entry.validFrom}-${index}`}>
-                      <TableCell>{entry.userName ?? 'Alle Konten der Organisation'}</TableCell>
-                      <TableCell>{BASIS_LABELS[entry.basis]}</TableCell>
-                      <TableCell>
-                        {entry.groupName ?? (entry.groupId ? 'Gelöschte Gruppe' : '—')}
-                      </TableCell>
-                      <TableCell>{entry.assetRole ?? entry.spaceRole ?? '—'}</TableCell>
-                      <TableCell>{formatInstant(entry.validFrom, MISSING_VALUE)}</TableCell>
-                      <TableCell>{formatInstant(entry.validTo, 'noch wirksam')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            {result.totalPages > 1 && (
-              <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
-                <Button
-                  disabled={result.page === 0 || isLoading}
-                  onClick={() => void submit(result.page - 1)}
-                >
-                  Zurück
-                </Button>
-                <Typography>
-                  Seite {result.page + 1} von {result.totalPages}
-                </Typography>
-                <Button
-                  disabled={result.page + 1 >= result.totalPages || isLoading}
-                  onClick={() => void submit(result.page + 1)}
-                >
-                  Weiter
-                </Button>
-              </Stack>
+              <AdminList
+                label="Zugriffszeiträume"
+                rows={result.entries}
+                rowKey={(entry) =>
+                  `${entry.userId ?? 'alle'}-${entry.groupId ?? ''}-${entry.basis}-${entry.validFrom}`
+                }
+                rowLabel={(entry) => entry.userName ?? 'Alle Konten der Organisation'}
+                columns={[
+                  {
+                    id: 'person',
+                    head: 'Person',
+                    cell: (entry) => (
+                      <ListText strong>{entry.userName ?? 'Alle Konten der Organisation'}</ListText>
+                    ),
+                  },
+                  { id: 'basis', head: 'Grundlage', cell: (entry) => BASIS_LABELS[entry.basis] },
+                  {
+                    id: 'group',
+                    head: 'Gruppe',
+                    cell: (entry) => entry.groupName ?? (entry.groupId ? 'Gelöschte Gruppe' : '—'),
+                  },
+                  {
+                    id: 'role',
+                    head: 'Rolle',
+                    width: '12%',
+                    cell: (entry) => entry.assetRole ?? entry.spaceRole ?? '—',
+                  },
+                  {
+                    id: 'from',
+                    head: 'Von',
+                    width: 168,
+                    cell: (entry) => formatInstant(entry.validFrom, MISSING_VALUE),
+                  },
+                  {
+                    id: 'to',
+                    head: 'Bis',
+                    width: 168,
+                    cell: (entry) => formatInstant(entry.validTo, 'noch wirksam'),
+                  },
+                ]}
+                pager={{
+                  pageCount: result.totalPages,
+                  page: result.page,
+                  disabled: isLoading,
+                  onPage: (page) => void submit(page),
+                }}
+              />
             )}
           </>
         )}

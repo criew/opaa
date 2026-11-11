@@ -430,8 +430,9 @@ describe('ConnectionProfilesTab', () => {
     const withheld = screen.getByRole('row', { name: /Zugang Partner/ })
     expect(within(withheld).getByText('Möglicherweise viele Konten abgelaufen')).toBeVisible()
     expect(within(withheld).queryByText('Viele Konten abgelaufen')).not.toBeInTheDocument()
-    // Nothing to fix in the panel: the persons reconnect themselves.
-    expect(within(withheld).getByRole('button', { name: 'Details: Zugang Partner' })).toBeVisible()
+    // The row itself is the way in; it carries no button of its own (guidelines 5.3).
+    expect(within(withheld).getByRole('button', { name: 'Zugang Partner' })).toBeVisible()
+    expect(within(withheld).getAllByRole('button')).toHaveLength(1)
   })
 
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
@@ -956,7 +957,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
-    expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
+    expect(await within(row).findByText('Zugang und Quellart gesperrt')).toBeVisible()
     const panel = await openProfile(user, PROFILE)
     await user.click(within(panel).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
     const question = await screen.findByRole('dialog', { name: /entsperren\?/ })

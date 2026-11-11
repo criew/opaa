@@ -1,0 +1,159 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { renderWithProviders } from '../../../test/test-utils'
+import AdminList, { ListPager, RowAction, type AdminListColumn } from './AdminList'
+
+interface Row {
+  id: string
+  name: string
+  count: number
+}
+
+const ROWS: Row[] = [
+  { id: 'a', name: 'Alpha', count: 3 },
+  { id: 'b', name: 'Beta', count: 12 },
+]
+
+const COLUMNS: AdminListColumn<Row>[] = [
+  { id: 'name', head: 'Name', cell: (row) => row.name, card: 'title' },
+  { id: 'count', head: 'Anzahl', align: 'right', cell: (row) => row.count },
+]
+
+function renderList(props: Partial<React.ComponentProps<typeof AdminList<Row>>> = {}) {
+  return renderWithProviders(
+    <MemoryRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <AdminList<Row>
+              label="Einträge"
+              rows={ROWS}
+              rowKey={(row) => row.id}
+              rowLabel={(row) => row.name}
+              columns={COLUMNS}
+              {...props}
+            />
+          }
+        />
+        <Route path="/items/:id" element={<p>Detailseite</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+/** Answers every media query with the given result, as a viewport below or above `md` would. */
+function stubViewport(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  )
+}
+
+describe('AdminList', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('renders a table with one head cell per column on a wide viewport', () => {
+    renderList()
+
+    const table = screen.getByRole('table', { name: 'Einträge' })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Name', 'Anzahl'])
+    expect(within(table).getAllByRole('row')).toHaveLength(ROWS.length + 1)
+  })
+
+  it('renders the same rows as a card list on a narrow viewport', () => {
+    stubViewport(false)
+    renderList()
+
+    expect(screen.queryByRole('table')).toBeNull()
+    const list = screen.getByRole('list', { name: 'Einträge' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(ROWS.length)
+    expect(within(list).getByRole('article', { name: 'Beta' })).toHaveTextContent('12')
+  })
+
+  it('makes the whole row one link named after the entry', async () => {
+    renderList({ rowTarget: (row) => ({ to: `/items/${row.id}` }) })
+
+    const links = screen.getAllByRole('link')
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['Alpha', 'Beta'])
+
+    // a click anywhere in the row follows the row's link
+    await userEvent.click(screen.getByText('12'))
+    expect(await screen.findByText('Detailseite')).toBeInTheDocument()
+  })
+
+  it('opens a row in place with the keyboard and reports the expanded state', async () => {
+    const onOpen = vi.fn()
+    renderList({ rowTarget: (row) => ({ onOpen: () => onOpen(row.id), expanded: row.id === 'a' }) })
+
+    const opener = screen.getByRole('button', { name: 'Alpha' })
+    expect(opener).toHaveAttribute('aria-expanded', 'true')
+    opener.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onOpen).toHaveBeenCalledWith('a')
+  })
+
+  it('does not follow the row link when the row action is used', async () => {
+    const onAction = vi.fn()
+    const onOpen = vi.fn()
+    renderList({
+      rowTarget: () => ({ onOpen }),
+      rowActions: (row) => (
+        <RowAction label={`${row.name} entfernen`} onClick={() => onAction(row.id)}>
+          Entfernen
+        </RowAction>
+      ),
+    })
+
+    const action = screen.getByRole('button', { name: 'Beta entfernen' })
+    // a row action is a secondary button, never a filled one
+    expect(action).toHaveClass('MuiButton-outlined')
+    await userEvent.click(action)
+    expect(onAction).toHaveBeenCalledWith('b')
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('ListPager', () => {
+  it('is omitted while the list fits on one page', () => {
+    renderWithProviders(<ListPager page={0} onPage={vi.fn()} total={20} size={20} />)
+
+    expect(screen.queryByRole('navigation')).toBeNull()
+  })
+
+  it('shows the position and pages forward and back', async () => {
+    const onPage = vi.fn()
+    renderWithProviders(<ListPager page={1} onPage={onPage} total={90} size={20} />)
+
+    const pager = screen.getByRole('navigation', { name: 'Seiten' })
+    expect(pager).toHaveTextContent('Seite 2 von 5')
+    await userEvent.click(within(pager).getByRole('button', { name: 'Nächste Seite' }))
+    await userEvent.click(within(pager).getByRole('button', { name: 'Vorherige Seite' }))
+    expect(onPage.mock.calls).toEqual([[2], [0]])
+  })
+
+  it('shows only the page number when the total is unknown', () => {
+    renderWithProviders(<ListPager page={2} onPage={vi.fn()} hasMore={false} />)
+
+    const pager = screen.getByRole('navigation', { name: 'Seiten' })
+    expect(pager).toHaveTextContent('Seite 3')
+    expect(within(pager).getByRole('button', { name: 'Nächste Seite' })).toBeDisabled()
+  })
+})

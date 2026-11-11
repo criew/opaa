@@ -115,7 +115,7 @@ describe('RightsHistoryPage', () => {
     await fillAndSubmit()
 
     expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Nächste Seite' }))
 
     expect(mockGetAccessAsOf).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }))
   })

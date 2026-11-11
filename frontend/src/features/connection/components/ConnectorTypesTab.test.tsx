@@ -23,7 +23,7 @@ function render(route = '/admin/connections/source-types') {
 
 /** Opens the side panel of a source type from its row. */
 async function openType(user: ReturnType<typeof userEvent.setup>, name: string) {
-  await user.click(await screen.findByRole('button', { name: `Details: ${name}` }))
+  await user.click(await screen.findByRole('button', { name }))
   return screen.findByRole('dialog', { name })
 }
 

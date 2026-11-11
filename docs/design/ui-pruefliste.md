@@ -35,6 +35,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
+| Spalten je Tabelle | höchstens 7 bei 1280 px | gemessen: `tableColumns`, Spaltenköpfe der breitesten sichtbaren Tabelle; die Spalte der Handlungen zählt mit (P54) |
+| Primärschaltflächen in Tabellenzeilen | 0 | gemessen: `rowPrimaryButtons`, gefüllte Schaltflächen in Tabellenzeilen (P54) |
 
 ## Visuell
 
@@ -49,7 +51,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 4. Keine getönten Flächen oder Verläufe als Schmuck: [guidelines.md](./guidelines.md), 1 und 4.3.
 5. Akzentfarbe nur für Handlung und Zustand: [guidelines.md](./guidelines.md), 1 und 2.3.
 6. **Listenzeile:** höchstens zwei Textzeilen, Hauptangabe und eine Nebenangabe, Navigation über
-   Chevron oder die ganze Zeile ([guidelines.md](./guidelines.md), 5.3). Keine Avatare, IDs oder
+   die ganze Zeile, nie über Chevron oder „Details“ ([guidelines.md](./guidelines.md), 5.3). Keine Avatare, IDs oder
    Fortschrittsbalken ohne Zweck. – Sicht
 7. **Fehler am Feld:** Rahmen und eine kurze Zeile darunter ([guidelines.md](./guidelines.md), 5.2).
    Für Validierung kein Banner mit Icon, Titel, Fehlercode, Support-Link und Schließen-X. –
@@ -188,6 +190,12 @@ zwei Einträgen.
     640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
     ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
     `FormField.test.tsx` und `fieldHeight.test.tsx`
+54. **Listen aus einem Baustein** ([guidelines.md](./guidelines.md), 5.3): die ganze Zeile als
+    Link statt „Details“, „Beheben“ oder Chevron; höchstens eine sichtbare, sekundäre Handlung je
+    Zeile, der Rest hinter „⋯“; Anzahl neben dem Seitentitel, gefiltert „12 von 40“; Blättern
+    unten rechts als „Seite 2 von 5“; höchstens sieben Spalten bei 1280 px; Zellen einzeilig,
+    Namen gekürzt mit Tooltip. – gemessen (`tableColumns`, `rowPrimaryButtons`) und Sicht; ESLint
+    verbietet `Table` außerhalb von `shared/ui`, im Code geprüft durch `AdminList.test.tsx`
 
 ## Pflege
 

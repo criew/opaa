@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '../../../test/test-utils'
@@ -27,6 +28,12 @@ function renderStatusTable() {
   )
 }
 
+/** Opens the detail of the first library, where the figures per index stand. */
+async function openFirstDetail() {
+  const name = mockSearchStatus.libraries[0].libraryName
+  await userEvent.setup().click(screen.getByRole('button', { name }))
+}
+
 function renderDiagnosisForm() {
   renderWithProviders(
     <DiagnosisForm
@@ -50,12 +57,13 @@ describe('search administration without metadata', () => {
     useAuthStore.setState({ features: {} })
   })
 
-  it('leaves the Kernfelder, Kontextpräfix and Schemaänderungen columns out', () => {
+  it('leaves Kernfelder, Kontextpräfix and Schemaänderungen out of the row detail', async () => {
     renderStatusTable()
+    await openFirstDetail()
 
-    expect(screen.getByRole('columnheader', { name: 'Volltextindex' })).toBeInTheDocument()
+    expect(screen.getAllByText('Volltextindex').length).toBeGreaterThan(0)
     for (const name of ['Kernfelder', 'Kontextpräfix', 'Schemaänderungen']) {
-      expect(screen.queryByRole('columnheader', { name })).not.toBeInTheDocument()
+      expect(screen.queryByText(name)).not.toBeInTheDocument()
     }
   })
 
@@ -67,12 +75,13 @@ describe('search administration without metadata', () => {
     expect(mockGetDocumentTypeVocabulary).not.toHaveBeenCalled()
   })
 
-  it('shows both again once metadata is on', () => {
+  it('shows both again once metadata is on', async () => {
     useAuthStore.setState({ features: { metadata: true } })
     renderStatusTable()
+    await openFirstDetail()
     renderDiagnosisForm()
 
-    expect(screen.getByRole('columnheader', { name: 'Kernfelder' })).toBeInTheDocument()
+    expect(screen.getAllByText('Kernfelder').length).toBeGreaterThan(0)
     expect(screen.getByLabelText('Metadatenfilter: Datum von')).toBeInTheDocument()
     expect(mockGetDocumentTypeVocabulary).toHaveBeenCalled()
   })

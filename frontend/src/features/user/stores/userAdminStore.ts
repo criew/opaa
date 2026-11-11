@@ -70,9 +70,24 @@ export const INITIAL_ACCOUNT_FILTERS: AccountFilters = {
   page: 0,
 }
 
+/** Whether a search or filter narrows the list; sort and page do not. */
+export function narrowsAccounts(filters: AccountFilters): boolean {
+  return (
+    filters.query.trim() !== '' ||
+    filters.providerType !== INITIAL_ACCOUNT_FILTERS.providerType ||
+    filters.providerId !== INITIAL_ACCOUNT_FILTERS.providerId ||
+    filters.status !== INITIAL_ACCOUNT_FILTERS.status ||
+    filters.role !== INITIAL_ACCOUNT_FILTERS.role ||
+    filters.review !== INITIAL_ACCOUNT_FILTERS.review
+  )
+}
+
 interface UserAdminState {
   accounts: AccountResponse[]
+  /** The accounts the current filters leave. */
   total: number
+  /** All accounts without any filter, for „12 von 40“; null while unknown. */
+  overallTotal: number | null
   size: number
   filters: AccountFilters
   isLoading: boolean
@@ -124,6 +139,7 @@ interface UserAdminState {
 const emptyState = {
   accounts: [] as AccountResponse[],
   total: 0,
+  overallTotal: null as number | null,
   size: LOCAL_USER_PAGE_SIZE,
   filters: INITIAL_ACCOUNT_FILTERS,
   isLoading: false,
@@ -182,6 +198,14 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     const { query, providerType, providerId, status, role, review, sort, direction, page } =
       get().filters
     set({ isLoading: true, error: null })
+    // The count beside the title needs the unfiltered total; a failed count leaves it out
+    // instead of failing the list.
+    const overall = narrowsAccounts(get().filters)
+      ? listAccounts({ size: 1 }).then(
+          (all) => all.total,
+          () => null,
+        )
+      : null
     try {
       const result = await listAccounts({
         query: query.trim(),
@@ -195,8 +219,15 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
         direction,
         page,
       })
+      const overallTotal = overall === null ? result.total : await overall
       if (isStale()) return
-      set({ accounts: result.items, total: result.total, size: result.size, isLoading: false })
+      set({
+        accounts: result.items,
+        total: result.total,
+        overallTotal,
+        size: result.size,
+        isLoading: false,
+      })
     } catch (err) {
       if (isStale()) return
       set({

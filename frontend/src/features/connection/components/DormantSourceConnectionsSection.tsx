@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
-import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import type { DormantSourceConnection } from '@/shared/api/types'
 import { listDormantSourceConnections } from '../api/connectionProfileApi'
 import PageSection from '@/shared/ui/PageSection'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import {
   formatConsentTime,
   responsibleLabel,
@@ -77,38 +71,40 @@ export default function DormantSourceConnectionsSection({
       title="Bibliotheken mit ruhender Quelle"
       description="Bibliotheken, deren Quelle über eine eigene Zustimmung beim Anbieter verbunden ist und gerade nicht erreicht wird. Neu verbinden können die Verwaltenden der Bibliothek; private Bibliotheken stehen hier nie."
     >
-      <Table size="small" aria-label="Bibliotheken mit ruhender Quelle">
-        <TableHead>
-          <TableRow>
-            <TableCell>Bibliothek</TableCell>
-            <TableCell>Zugang</TableCell>
-            <TableCell>Konto</TableCell>
-            <TableCell>Zustand</TableCell>
-            <TableCell>Beendet</TableCell>
-            <TableCell>Verantwortlich</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {entries.map((entry) => (
-            <TableRow key={entry.libraryId}>
-              <TableCell>
-                <Link component={RouterLink} to={`/libraries/${entry.libraryId}?tab=quelle`}>
-                  {entry.libraryName}
-                </Link>
-              </TableCell>
-              <TableCell>{entry.profileName ?? 'entfernt'}</TableCell>
-              <TableCell>{entry.accountLabel ?? '—'}</TableCell>
-              <TableCell>{sourceBlockReasonLabel(entry.reason)}</TableCell>
-              <TableCell>
-                {entry.endedCause
-                  ? `${sourceConnectionEndLabel(entry.endedCause)}${entry.endedAt ? `, ${formatConsentTime(entry.endedAt)}` : ''}`
-                  : '—'}
-              </TableCell>
-              <TableCell>{entry.responsible ? responsibleLabel(entry.responsible) : '—'}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <AdminList
+        label="Bibliotheken mit ruhender Quelle"
+        rows={entries}
+        rowKey={(entry) => entry.libraryId}
+        rowLabel={(entry) => entry.libraryName}
+        rowTarget={(entry) => ({ to: `/libraries/${entry.libraryId}?tab=quelle` })}
+        columns={[
+          {
+            id: 'library',
+            head: 'Bibliothek',
+            cell: (entry) => <ListText strong>{entry.libraryName}</ListText>,
+          },
+          { id: 'profile', head: 'Zugang', cell: (entry) => entry.profileName ?? 'entfernt' },
+          { id: 'account', head: 'Konto', cell: (entry) => entry.accountLabel ?? '—' },
+          {
+            id: 'state',
+            head: 'Zustand',
+            cell: (entry) => sourceBlockReasonLabel(entry.reason),
+          },
+          {
+            id: 'ended',
+            head: 'Beendet',
+            cell: (entry) =>
+              entry.endedCause
+                ? `${sourceConnectionEndLabel(entry.endedCause)}${entry.endedAt ? `, ${formatConsentTime(entry.endedAt)}` : ''}`
+                : '—',
+          },
+          {
+            id: 'responsible',
+            head: 'Verantwortlich',
+            cell: (entry) => (entry.responsible ? responsibleLabel(entry.responsible) : '—'),
+          },
+        ]}
+      />
     </PageSection>
   )
 }

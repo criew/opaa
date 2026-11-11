@@ -1,16 +1,8 @@
 import { useMemo, useState } from 'react'
-import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { visuallyHidden } from '@mui/utils'
 import type { GroupMemberResponse } from '@/shared/api/types'
-import { adminTableSx } from '@/shared/ui/list/adminListStyles'
+import AdminList, { ListText, RowAction } from '@/shared/ui/list/AdminList'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 
@@ -82,95 +74,46 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           sx={{ mb: 1.5 }}
         />
       )}
-      <TableContainer
-        sx={{
+      <AdminList
+        label="Mitglieder"
+        rows={shown}
+        rowKey={(member) => member.userId}
+        rowLabel={nameOf}
+        // Below this width the frame scrolls sideways instead of squeezing the name column.
+        minWidth={onRemove ? 400 : 344}
+        frame={{
           height: frameHeight(members.length, rowHeight),
-          // Rules above and below mark the scroll region; a full frame is reserved for empty
-          // states in this design system.
-          borderTop: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-          '& thead tr': { height: HEAD_HEIGHT },
-          '& tbody tr': { height: rowHeight },
-        }}
-        role="region"
-        tabIndex={0}
-        aria-label="Mitglieder, scrollbar"
-      >
-        {/* Below this width the frame scrolls sideways instead of squeezing the name column. */}
-        <Table
-          size="small"
-          stickyHeader
-          aria-label="Mitglieder"
-          sx={{
-            ...adminTableSx,
-            minWidth: onRemove ? 400 : 344,
-            '& th': { ...adminTableSx['& th'], whiteSpace: 'nowrap' },
-          }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell sx={{ width: '32%' }}>Mitglied seit</TableCell>
-              {onRemove && (
-                <TableCell align="right" sx={{ width: 110 }}>
-                  <span style={visuallyHidden}>Aktionen</span>
-                </TableCell>
-              )}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {shown.map((member) => (
-              <TableRow key={member.userId} hover>
-                <TableCell
-                  sx={{
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    ...(member.displayName
-                      ? {}
-                      : { fontFamily: 'monospace', fontSize: fontSize.meta }),
-                  }}
-                  title={nameOf(member)}
-                >
-                  {nameOf(member)}
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary' }}>
-                  {formatSince(member.createdAt)}
-                </TableCell>
-                {onRemove && (
-                  <TableCell align="right" sx={{ py: 0.5 }}>
-                    <Button
-                      color="error"
-                      size="small"
-                      onClick={() => onRemove(member)}
-                      aria-label={`${nameOf(member)} entfernen`}
-                    >
-                      Entfernen
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {shown.length === 0 && (
-          // exactly one row high, so the empty frame does not scroll
-          <Typography
-            sx={{
-              fontSize: fontSize.text,
-              color: 'text.secondary',
-              px: 2,
-              height: rowHeight,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            {members.length === 0
+          headHeight: HEAD_HEIGHT,
+          rowHeight,
+          emptyText:
+            members.length === 0
               ? 'Diese Gruppe hat keine Mitglieder.'
-              : 'Kein Mitglied entspricht dem Filter.'}
-          </Typography>
-        )}
-      </TableContainer>
+              : 'Kein Mitglied entspricht dem Filter.',
+        }}
+        columns={[
+          {
+            id: 'name',
+            head: 'Name',
+            cell: (member) => <ListText mono={!member.displayName}>{nameOf(member)}</ListText>,
+          },
+          {
+            id: 'since',
+            head: 'Mitglied seit',
+            width: '32%',
+            cell: (member) => <ListText secondary>{formatSince(member.createdAt)}</ListText>,
+          },
+        ]}
+        actionsWidth={120}
+        rowActions={
+          onRemove
+            ? (member) => (
+                <RowAction label={`${nameOf(member)} entfernen`} onClick={() => onRemove(member)}>
+                  Entfernen
+                </RowAction>
+              )
+            : undefined
+        }
+      />
       {/* The total stands in the dialog title; only a filtered view needs its own count. The line
           keeps its place while empty, so typing the first letter does not push the dialog. */}
       {members.length > 0 && (
