@@ -391,11 +391,7 @@ function TemplatesRow({
             darf.
           </Typography>
           {loadError && <FormHelperText error>{loadError}</FormHelperText>}
-          {templates === null && !loadError && (
-            <Typography sx={{ fontSize: fontSize.text, ...muted }}>
-              Vorlagen werden geladen …
-            </Typography>
-          )}
+          {templates === null && !loadError && <LoadingState shape="lines" count={2} />}
           {templates !== null && templates.length === 0 && (
             <Typography sx={{ fontSize: fontSize.text, ...muted }}>
               Sie dürfen noch keine Vorlage lesen.

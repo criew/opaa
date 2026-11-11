@@ -345,7 +345,10 @@ class SecurityInvariantsTest {
               "enabled switches a model role"),
           Map.entry(
               "io.opaa.llm.transcription.TranscriptionModelSettings",
-              "enabled switches a model role"));
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheck",
+              "status is the progress of a tool check, grants no access"));
 
   private static final String NEW_ROW =
       "inserts an instance it constructed itself; there is no earlier read to write back";
