@@ -4,7 +4,8 @@
 # frontend/src/features/installation/utils/steps.ts (a string, or a key of SETUP_NAMES in
 # frontend/src/shared/ui/setup/setupNames.ts), and that label must be waited for as a step
 # heading (stepHeading(page, '<label>')) in e2e/tests/installation-assistant.spec.ts. A new step
-# without a scenario fails here instead of turning the nightly assistant run red.
+# without a scenario fails here instead of turning the nightly assistant run red. It checks by text
+# that the step is reached, not how either variant handles it.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -27,11 +28,11 @@ fi
 
 failed=0
 for constant in "${constants[@]}"; do
-  label="$(grep -oP "^\s*${constant}:\s*\{\s*label:\s*'\K[^']+" "$STEPS" || true)"
+  label="$(grep -oP "^\s*${constant}:\s*\{\s*label:\s*'\K[^']+" "$STEPS" | head -n1 || true)"
   if [ -z "$label" ]; then
-    key="$(grep -oP "^\s*${constant}:\s*\{\s*label:\s*SETUP_NAMES\.\K\w+" "$STEPS" || true)"
+    key="$(grep -oP "^\s*${constant}:\s*\{\s*label:\s*SETUP_NAMES\.\K\w+" "$STEPS" | head -n1 || true)"
     if [ -n "$key" ] && [ -f "$NAMES" ]; then
-      label="$(grep -oP "^\s*${key}:\s*'\K[^']+" "$NAMES" || true)"
+      label="$(grep -oP "^\s*${key}:\s*'\K[^']+" "$NAMES" | head -n1 || true)"
     fi
   fi
   if [ -z "$label" ]; then

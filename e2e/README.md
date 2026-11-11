@@ -46,7 +46,8 @@ e2e/
   installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
     playwright.config.ts         Einrichtungs-Assistenten aus tests/ gegen einen Stack im Installationsmodus
   installation.env           Environment des Installationsmodus (oidc, ohne Antwortdatei, Token gesetzt)
-  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt des Assistenten
+  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt, oidc-stub, ocr-stub
+                                 und clamd-stub für die Schritte des Assistenten
   multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
     playwright.config.ts         Konfiguration, ohne Browser
     tests/*.spec.ts
@@ -65,6 +66,7 @@ e2e/
   docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
   ocr-stub/server.mjs            Ersatz für docling-serve (opaa-ocr), spielt die aufgezeichnete Antwort ab
+  oidc-stub/server.mjs           Ersatz für einen OIDC-Anbieter: Discovery, JWK-Set, stille Anmeldung abgelehnt
   ocr/                           Ziel "ocr": Abnahme der Texterkennung mit echtem opaa-ocr, als Video
     playwright.config.ts
     tests/abnahme.spec.ts
@@ -1081,9 +1083,9 @@ Texterkennung gegen `ocr-stub` (erst mit falschem Schlüssel, Stufe „Anmeldung
 gegen `clamd-stub`, richtet die E-Mail gegen den Mailpit des Stapels ein (Profil `mail`,
 `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die Testnachricht über
 `E2E_MAILPIT_BASE_URL` zurück und füllt das Branding aus. Nach dem Abschluss zeigt die Anmeldeseite den
-Anbieter (die stille Anmeldung beantwortet der Stub mit `login_required`), die Verwaltung Reranking,
-Spracheingabe, Texterkennung und Virenprüfung eingeschaltet, Anmeldeseite und Oberfläche Produktname und
-Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
+Anbieter (die stille Anmeldung beantwortet der Stub mit `login_required`), und die Verwaltung zeigt
+Reranking, Spracheingabe, Texterkennung und Virenprüfung eingeschaltet; Produktname und Akzentfarbe
+erscheinen auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
 `playwright-report-installation-<variante>`, `test-results/installation-<variante>-results.json`);
 der Barrierefreiheitsbericht führt die JSON-Berichte zusammen. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
