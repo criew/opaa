@@ -1,6 +1,7 @@
 package io.opaa.compliance;
 
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
@@ -54,6 +55,14 @@ public interface InstanceStateSource {
 
   /** The running instances of the installation, as far as the module knows them. */
   default List<RunningInstance> runningInstances() {
+    return List.of();
+  }
+
+  /**
+   * The data sets the module owns that the staff council is shown field by field, with the
+   * retention in force; a description, never a record of the data set.
+   */
+  default List<DataSetDescription> dataSetDescriptions() {
     return List.of();
   }
 }

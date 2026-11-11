@@ -93,6 +93,7 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | eine neue Instanz einrichten, im Browser oder mit Antwortdatei | [Installation](installation.md) |
 | gescannte Dokumente durchsuchbar machen, Texterkennungsdienst bemessen | [Texterkennung](texterkennung.md) |
 | Agenten Dateien erzeugen lassen, Sandbox-Dienst einrichten | [Sandbox für Agenten](sandbox.md) |
+| Agenten einschalten, geprüfte Modelle, Störungen eingrenzen | [Agenten betreiben](agenten-betreiben.md) |
 | Images, Versionen, Container-Grenzen, Probes, Graceful Shutdown | [Images und Laufzeit](images-und-laufzeit.md) |
 | Reverse-Proxy, Härtung, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Virenprüfung, Schlüssel | [Netz und Sicherheit](netz-und-sicherheit.md) |
 | sichern, zurückspielen, Wiederherstellungsprobe | [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) |
