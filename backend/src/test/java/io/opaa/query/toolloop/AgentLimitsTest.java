@@ -58,4 +58,20 @@ class AgentLimitsTest {
 
     assertThat(AgentLimits.effective(low, AgentLimits.SYSTEM)).isEqualTo(low);
   }
+
+  @Test
+  void anAgentWithoutAVolumeOfItsOwnKeepsTheFormerVolumeWhenTheSystemRaisesIt() {
+    AgentLimits raised = new AgentLimits(12, 8, Duration.ofSeconds(240), 200_000);
+
+    assertThat(AgentLimits.effective(raised, AgentLimits.SYSTEM).maxCollectedChars())
+        .isEqualTo(60_000);
+    assertThat(
+            AgentLimits.effective(raised, new AgentLimits(null, null, null, 150_000))
+                .maxCollectedChars())
+        .isEqualTo(150_000);
+    assertThat(
+            AgentLimits.effective(raised, new AgentLimits(null, null, null, 900_000))
+                .maxCollectedChars())
+        .isEqualTo(200_000);
+  }
 }

@@ -95,6 +95,28 @@ class ChatServiceLatestAgentRunTest {
     assertThat(service.latestAgentRun(chatId)).isEmpty();
   }
 
+  @Test
+  void thePreviousAgentRunIsTheOneOfTheAssistantAnswerBeforeTheLatest() {
+    AgentRunRecord first =
+        new AgentRunRecord(
+            UUID.randomUUID(),
+            AgentRunRecord.EndState.PLAN,
+            List.of(),
+            UUID.randomUUID(),
+            "Recherche");
+    ChatMessage older = new ChatMessage(chatId, 1, ChatRole.ASSISTANT, "1. Plan", null);
+    older.setAgentRun(mapper.writeValueAsString(first));
+    ChatMessage question = new ChatMessage(chatId, 2, ChatRole.USER, "Bestätigt", null);
+    ChatMessage newest = new ChatMessage(chatId, 3, ChatRole.ASSISTANT, "1. Plan neu", null);
+    when(messages.findByChatIdOrderBySequenceDesc(eq(chatId), any(Limit.class)))
+        .thenReturn(List.of(newest, question, older));
+
+    assertThat(service.previousAgentRun(chatId)).contains(first);
+
+    latest(newest);
+    assertThat(service.previousAgentRun(chatId)).isEmpty();
+  }
+
   private void latest(ChatMessage message) {
     when(messages.findByChatIdOrderBySequenceDesc(eq(chatId), any(Limit.class)))
         .thenReturn(List.of(message));
