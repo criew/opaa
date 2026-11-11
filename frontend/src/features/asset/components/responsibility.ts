@@ -44,7 +44,7 @@ export function responsibilityNote(
       text:
         lock.cause === 'NO_RESPONSIBLE'
           ? `Gesperrt seit ${formatDate(lock.lockedAt)}, weil die verantwortliche Stelle fehlt. Nach dem Benennen einer Stelle kann die Systemverwaltung die Sperre aufheben.`
-          : `Gesperrt seit ${formatDate(lock.lockedAt)} durch die Systemverwaltung: ${lock.reason}`,
+          : `Gesperrt seit ${formatDate(lock.lockedAt)} durch die Systemverwaltung${lock.reason ? `: ${lock.reason}` : '.'}`,
     }
   }
   if (responsibility.missing) {

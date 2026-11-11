@@ -3,10 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
@@ -19,6 +15,7 @@ import {
 import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 import { fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 const AUDIT_NOTICE =
   'Ruft die Systemverwaltung die Mitgliederliste ab, wird das im Nachweisprotokoll festgehalten.'
@@ -85,111 +82,100 @@ function GroupMembersDialogContent({
   }
 
   return (
-    <Dialog
-      open
-      fullWidth
-      maxWidth="md"
+    <ViewDialog
+      width="editor"
       onClose={onClose}
-      aria-labelledby="group-members-title"
-      // a narrow screen keeps a 16 px gutter instead of the default 32 px
-      slotProps={{
-        paper: {
-          sx: { mx: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' } },
-        },
-      }}
-    >
-      <DialogTitle id="group-members-title">
-        Mitglieder von „{group.name}“{' '}
-        <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-          · {memberText(members?.length ?? group.memberCount)}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        {!members && loadError ? (
-          <Alert
-            severity="error"
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => {
-                  setLoadError(null)
-                  setAttempt((current) => current + 1)
-                }}
-              >
-                Erneut versuchen
-              </Button>
-            }
-          >
-            {loadError}
-          </Alert>
-        ) : !members ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={22} aria-label="Mitglieder werden geladen" />
+      titleId="group-members-title"
+      title={
+        <>
+          Mitglieder von „{group.name}“{' '}
+          <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+            · {memberText(members?.length ?? group.memberCount)}
           </Box>
-        ) : (
-          <Stack spacing={1}>
-            <GroupMembersTable
-              members={members}
-              onRemove={
-                isInternal
-                  ? (member) =>
-                      void run(
-                        () => removeMember(group.id, member.userId),
-                        'Entfernen des Mitglieds fehlgeschlagen',
-                      )
-                  : undefined
-              }
-            />
-            {isInternal ? (
-              <Box sx={{ pt: 1 }}>
-                <SubjectFormRow
-                  picker={
-                    <UserPicker
-                      ariaLabel="Person suchen"
-                      placeholder="Person suchen …"
-                      value={selectedUser}
-                      onChange={(next) => {
-                        choice.clear()
-                        setSelectedUser(next)
-                      }}
-                      errorText={choice.errorText}
-                      inputRef={choice.inputRef}
-                      grow
-                      excludedUserIds={members.map((member) => member.userId)}
-                    />
-                  }
-                  action={
-                    <Button
-                      variant="contained"
-                      onClick={() => {
-                        if (!choice.check(Boolean(selectedUser)) || !selectedUser) return
-                        void run(async () => {
-                          await addMember(group.id, selectedUser.id)
-                          setSelectedUser(null)
-                        }, 'Mitglied konnte nicht hinzugefügt werden')
-                      }}
-                    >
-                      Hinzufügen
-                    </Button>
-                  }
-                />
-              </Box>
-            ) : null}
-            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', pt: 1 }}>
-              {isInternal ? AUDIT_NOTICE : PROVIDER_AUDIT_NOTICE}
-            </Typography>
-          </Stack>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Schließen</Button>
-      </DialogActions>
-    </Dialog>
+        </>
+      }
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {!members && loadError ? (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setLoadError(null)
+                setAttempt((current) => current + 1)
+              }}
+            >
+              Erneut versuchen
+            </Button>
+          }
+        >
+          {loadError}
+        </Alert>
+      ) : !members ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={22} aria-label="Mitglieder werden geladen" />
+        </Box>
+      ) : (
+        <Stack spacing={1}>
+          <GroupMembersTable
+            members={members}
+            onRemove={
+              isInternal
+                ? (member) =>
+                    void run(
+                      () => removeMember(group.id, member.userId),
+                      'Entfernen des Mitglieds fehlgeschlagen',
+                    )
+                : undefined
+            }
+          />
+          {isInternal ? (
+            <Box sx={{ pt: 1 }}>
+              <SubjectFormRow
+                picker={
+                  <UserPicker
+                    ariaLabel="Person suchen"
+                    placeholder="Person suchen …"
+                    value={selectedUser}
+                    onChange={(next) => {
+                      choice.clear()
+                      setSelectedUser(next)
+                    }}
+                    errorText={choice.errorText}
+                    inputRef={choice.inputRef}
+                    grow
+                    excludedUserIds={members.map((member) => member.userId)}
+                  />
+                }
+                action={
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      if (!choice.check(Boolean(selectedUser)) || !selectedUser) return
+                      void run(async () => {
+                        await addMember(group.id, selectedUser.id)
+                        setSelectedUser(null)
+                      }, 'Mitglied konnte nicht hinzugefügt werden')
+                    }}
+                  >
+                    Hinzufügen
+                  </Button>
+                }
+              />
+            </Box>
+          ) : null}
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', pt: 1 }}>
+            {isInternal ? AUDIT_NOTICE : PROVIDER_AUDIT_NOTICE}
+          </Typography>
+        </Stack>
+      )}
+    </ViewDialog>
   )
 }

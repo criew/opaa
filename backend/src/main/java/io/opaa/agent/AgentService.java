@@ -173,7 +173,7 @@ public class AgentService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(agents, false);
     LibraryNames libraryNames = libraryNames(agents, caller);
     Map<UUID, AssetResponsibilityView> responsibilities =
-        responsibilityService.viewsOf(agents, caller);
+        responsibilityService.viewsOf(agents, caller, roles);
     List<AgentView> views = new ArrayList<>(agents.size());
     for (Agent agent : agents) {
       views.add(
@@ -324,11 +324,6 @@ public class AgentService {
     }
   }
 
-  /** {@link #requireUsableForRun(Agent)} for an agent named by id; an unknown id passes here. */
-  public void requireUsableForRun(UUID agentId) {
-    agentRepository.findById(agentId).ifPresent(this::requireUsableForRun);
-  }
-
   /** The {@code 404} of a switched-off installation: agents cannot be told from no agents. */
   private void requireEnabled() {
     if (!agentSwitch.isEnabled()) {
@@ -361,7 +356,7 @@ public class AgentService {
             .reachByAsset(Agent.ASSET_TYPE, Set.of(agent.getId()))
             .getOrDefault(agent.getId(), AssetReach.NONE),
         holdsContentRole(agent, caller, AssetRole.VIEWER),
-        responsibilityService.view(agent, caller));
+        responsibilityService.view(agent, caller, role));
   }
 
   /**

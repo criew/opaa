@@ -29,7 +29,6 @@ const draft: WizardDraft = {
   schedule: scheduleValuesFrom(null),
   startFirstRun: true,
   name: 'Bauamt',
-  nameTouched: true,
   description: '',
   ownerType: 'USER',
   selectedGroup: null,

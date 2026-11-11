@@ -21,6 +21,11 @@ export { ErasingMark, PrivateMark } from './components/assetMarks'
 export { default as AssetNameFields } from './components/AssetNameFields'
 export { default as AssetOwnerFields } from './components/AssetOwnerFields'
 export { default as AssetOwnerSection } from './components/AssetOwnerSection'
+export {
+  assetCreationReview,
+  masterDataReview,
+  sharingReview,
+} from './components/assetCreationReview'
 export { assetPickKey } from './components/assetPick'
 export type { AssetPick, AssetPickToggle, SpaceCreateLocationState } from './components/assetPick'
 export { default as AssetResponsibilitySection } from './components/AssetResponsibilitySection'

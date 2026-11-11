@@ -167,6 +167,37 @@ data:
       ist. Verantwortung und Mitgliedschaftshistorie verhindern das in der Regel; eine
       Mitgliedschaft in einer deaktivierten Gruppe hat keine Historie und endet mit dem Konto
     evaluations: Mitgliederliste je Gruppe
+  - id: asset-responsibility
+    title: Verantwortliche Stelle und Sperre von Agenten und Vorlagen
+    purpose: >-
+      Wer für einen Agenten oder eine Vorlage einsteht, und ob die Systemverwaltung ihn oder sie
+      gesperrt hat, mit Grund und Zeitpunkt
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: asset_responsibilities
+        personalColumns: [responsible_function, lock_reason, locked_at]
+        nonPersonalColumns:
+          - asset_id
+          - organization_id
+          - responsible_group_id
+          - missing_since
+          - lock_cause
+        person:
+          excluded: >-
+            Die Stelle ist eine Organisationseinheit oder Funktion, keine Person; ein Name im Freitext
+            von Stelle oder Sperrgrund ist nicht zuordenbar, wer sperrte, steht im Protokoll
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Lebt mit dem Agenten oder der Vorlage und wird mit dem Objekt gelöscht; eine Sperre endet
+        mit dem Entsperren
+      settings: []
+    visibility:
+      - Alle, die das Objekt lesen dürfen (Stelle, Sperre und ihr Zeitpunkt)
+      - Verwalter des Objekts und SYSTEM_ADMIN (zusätzlich der Grund der Sperre)
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit dem Löschen des Agenten oder der Vorlage
+    evaluations: keine
   - id: directory-sync
     title: Abgleichspläne des Verzeichnisabgleichs
     purpose: Bestätigung großer Änderungen aus dem Verzeichnis vor ihrer Anwendung
@@ -321,15 +352,6 @@ nonPersonalTables:
   permission_history_retention_settings:
     [id, retention_months, last_cutoff, updated_at, account_state_complete_since]
   succession_settings: [id, aging_threshold_months, updated_at]
-  asset_responsibilities:
-    - asset_id
-    - organization_id
-    - responsible_group_id
-    - responsible_function
-    - missing_since
-    - locked_at
-    - lock_cause
-    - lock_reason
   responsibility_lock_settings: [id, lock_after_days, updated_at]
   directory_sync_settings: [id, change_threshold_percent, updated_at]
   permission_transfer_objects: [id, transfer_id, organization_id, asset_type, asset_id, created_at]

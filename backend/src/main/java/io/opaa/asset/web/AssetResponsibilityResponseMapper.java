@@ -34,7 +34,8 @@ public final class AssetResponsibilityResponseMapper {
             .lockDueAt(view.lockDueAt());
     if (view.lock() != null) {
       response.lock(
-          new AssetLockResponse(view.lock().cause(), view.lock().reason(), view.lock().lockedAt()));
+          new AssetLockResponse(view.lock().cause(), view.lock().lockedAt())
+              .reason(view.lock().reason()));
     }
     return response;
   }

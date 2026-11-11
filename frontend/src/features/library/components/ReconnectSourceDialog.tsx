@@ -1,17 +1,12 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import { startSourceAuthorization } from '@/features/connection'
 import { leaveFor } from '@/shared/api/leaveApp'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
 import { rememberConsentIntent } from './sourceConsent'
 import { forgetConsentIntent } from '@/features/connection'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface ReconnectSourceDialogProps {
   open: boolean
@@ -76,42 +71,35 @@ export default function ReconnectSourceDialog({
 
   const titleId = 'reconnect-source-title'
   return (
-    <Dialog open={open} onClose={busy ? undefined : onClose} aria-labelledby={titleId}>
-      <DialogTitle id={titleId}>{title}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          {accountChange
-            ? 'Der Anbieter hat ein anderes Konto gemeldet als bisher. Verbinden Sie mit diesem Konto, wird der Abgleichstand der Bibliothek verworfen; der nächste Lauf liest die Quelle vollständig neu ein. Sie werden dafür noch einmal zum Anbieter weitergeleitet.'
-            : `Sie werden zum Anbieter${profileName ? ` des Zugangs „${profileName}“` : ''} weitergeleitet, melden sich dort mit dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter ein anderes Konto als bisher, fragt OPAA vor dem Wechsel nach.`}
-        </Typography>
-        <ServiceAccountConfirmation
-          idPrefix="reconnect-source"
-          checked={confirmed}
-          onChange={(checked) => {
-            setConfirmed(checked)
-            if (checked) setMissing(false)
-          }}
-          missing={missing}
-        />
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={busy}>
-          Abbrechen
-        </Button>
-        <BusyButton
-          variant="contained"
-          busy={busy}
-          busyAnnouncement="Die Weiterleitung zum Anbieter wird vorbereitet."
-          onClick={() => void handleStart()}
-        >
-          {accountChange ? 'Mit diesem Konto verbinden' : 'Weiter zum Anbieter'}
-        </BusyButton>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={open}
+      titleId={titleId}
+      title={title}
+      submitLabel={accountChange ? 'Verbinden' : 'Weiter zum Anbieter'}
+      onSubmit={() => void handleStart()}
+      onClose={onClose}
+      busy={busy}
+      busyAnnouncement="Die Weiterleitung zum Anbieter wird vorbereitet."
+    >
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        {accountChange
+          ? 'Der Anbieter hat ein anderes Konto gemeldet als bisher. Verbinden Sie mit diesem Konto, wird der Abgleichstand der Bibliothek verworfen; der nächste Lauf liest die Quelle vollständig neu ein. Sie werden dafür noch einmal zum Anbieter weitergeleitet.'
+          : `Sie werden zum Anbieter${profileName ? ` des Zugangs „${profileName}“` : ''} weitergeleitet, melden sich dort mit dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter ein anderes Konto als bisher, fragt OPAA vor dem Wechsel nach.`}
+      </Typography>
+      <ServiceAccountConfirmation
+        idPrefix="reconnect-source"
+        checked={confirmed}
+        onChange={(checked) => {
+          setConfirmed(checked)
+          if (checked) setMissing(false)
+        }}
+        missing={missing}
+      />
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
+    </FormDialog>
   )
 }

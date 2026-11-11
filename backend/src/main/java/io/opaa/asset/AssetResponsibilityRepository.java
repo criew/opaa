@@ -1,17 +1,29 @@
 package io.opaa.asset;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** The responsibility rows; the period run writes only through the conditional statements here. */
 public interface AssetResponsibilityRepository extends JpaRepository<AssetResponsibility, UUID> {
+
+  /**
+   * The row under a row lock until the transaction ends: a change, lock or unlock that reads and
+   * writes the whole row waits for the period run's conditional statements and for each other, so
+   * none of them overwrites a lock or unit the other has just written.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select r from AssetResponsibility r where r.assetId = :assetId")
+  Optional<AssetResponsibility> findByIdForUpdate(@Param("assetId") UUID assetId);
 
   /** The ids of the given assets that are locked right now. */
   @Query(

@@ -6,6 +6,7 @@ import type { PaletteMode } from '@mui/material'
 import { createAppTheme } from '@/shared/theme/theme'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { isGlobalAreaPath } from '@/shared/layouts/globalArea'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 
 const SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
@@ -120,5 +121,14 @@ describe('isGlobalAreaPath', () => {
     // The audit's point-in-time report renders in the global frame as well.
     expect(isGlobalAreaPath('/revision/rechtehistorie')).toBe(true)
     expect(isGlobalAreaPath('/revisionen')).toBe(false)
+  })
+
+  // regression guard: the template wizard rendered beside the chat column while the runtime
+  // switch "Vorlagen" was not yet read, since the shell does not re-render when it is
+  it('keeps the template pages in the catalog frame whatever the runtime switch says', () => {
+    useRuntimeSwitchStore.setState({ documentTemplates: false })
+
+    expect(isGlobalAreaPath('/templates/new')).toBe(true)
+    expect(isGlobalAreaPath('/templates/tpl-1')).toBe(true)
   })
 })

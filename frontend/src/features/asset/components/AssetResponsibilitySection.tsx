@@ -2,16 +2,13 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { formatDate } from '@/shared/utils/formatDate'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
@@ -122,10 +119,9 @@ export default function AssetResponsibilitySection({
   async function unlock() {
     const confirmed = await confirmAction({
       question: `„${name}“ entsperren?`,
-      consequence:
-        responsibility.lock?.cause === 'NO_RESPONSIBLE' && responsibility.missing
-          ? 'Die Stelle fehlt noch: Bei der nächsten stündlichen Prüfung wird wieder gesperrt.'
-          : 'Ab dem nächsten Aufruf ist die Sperre auf allen Instanzen aufgehoben.',
+      consequence: responsibility.missing
+        ? 'Die Stelle fehlt noch: Bei der nächsten stündlichen Prüfung wird wieder gesperrt.'
+        : 'Ab dem nächsten Aufruf ist die Sperre auf allen Instanzen aufgehoben.',
       confirmLabel: 'Entsperren',
       tone: 'caution',
     })
@@ -167,7 +163,6 @@ export default function AssetResponsibilitySection({
       >
         {editing && (
           <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
             <ResponsibleUnitField
               id={`${idPrefix}-responsible`}
               groups={groups}
@@ -203,7 +198,7 @@ export default function AssetResponsibilitySection({
                 Gesperrt
               </Box>
               <Box component="span" sx={{ color: 'text.secondary' }}>
-                {` · seit ${formatDate(currentLock.lockedAt)} · ${currentLock.reason}`}
+                {` · seit ${formatDate(currentLock.lockedAt)}${currentLock.reason ? ` · ${currentLock.reason}` : ''}`}
               </Box>
             </>
           ) : (
@@ -231,15 +226,17 @@ export default function AssetResponsibilitySection({
           ) : undefined
         }
       />
-      {!canEdit && error && <Alert severity="error">{error}</Alert>}
-      <Dialog
+      {error && <Alert severity="error">{error}</Alert>}
+      <FormDialog
         open={lockOpen}
+        title="Sperren"
+        submitLabel="Sperren"
+        onSubmit={() => void lock()}
         onClose={() => setLockOpen(false)}
-        fullWidth
-        slotProps={{ paper: { sx: { maxWidth: 600 } } }}
+        busy={saving}
+        busyAnnouncement="Wird gesperrt"
       >
-        <DialogTitle>Sperren</DialogTitle>
-        <DialogContent>
+        <Box>
           <Typography sx={{ color: 'text.secondary', mb: 2 }}>{lockConsequence}</Typography>
           <FieldLabel htmlFor={`${idPrefix}-lock-reason`}>Grund</FieldLabel>
           <TextField
@@ -254,19 +251,14 @@ export default function AssetResponsibilitySection({
               setReasonError(undefined)
             }}
             error={Boolean(reasonError)}
-            helperText={reasonError ?? 'Sehen alle, die das Objekt verwalten.'}
+            helperText={
+              reasonError ??
+              'Sehen die Systemverwaltung und alle, die das Objekt verwalten; wer es nur nutzt, sieht nur, seit wann es gesperrt ist.'
+            }
             slotProps={{ htmlInput: { maxLength: 500 } }}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setLockOpen(false)} disabled={saving}>
-            Abbrechen
-          </Button>
-          <Button variant="contained" onClick={() => void lock()} disabled={saving}>
-            Sperren
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </FormDialog>
     </>
   )
 }

@@ -7,6 +7,7 @@ datenkatalog#accounts
 datenkatalog#agent-run-logs
 datenkatalog#agent-run-reservations
 datenkatalog#application-log
+datenkatalog#asset-responsibility
 datenkatalog#audit-incident-scopes
 datenkatalog#audit-log
 datenkatalog#audit-pseudonyms

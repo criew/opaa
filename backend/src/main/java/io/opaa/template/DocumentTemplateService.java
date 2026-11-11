@@ -183,7 +183,7 @@ public class DocumentTemplateService {
     Map<UUID, String> names = ownerNames.of(templates);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(templates, false);
     Map<UUID, AssetResponsibilityView> responsibilities =
-        responsibilityService.viewsOf(templates, caller);
+        responsibilityService.viewsOf(templates, caller, roles);
     List<DocumentTemplateView> views = new ArrayList<>(templates.size());
     for (DocumentTemplate template : templates) {
       views.add(
@@ -399,7 +399,7 @@ public class DocumentTemplateService {
         accessService
             .reachByAsset(DocumentTemplate.ASSET_TYPE, Set.of(template.getId()))
             .get(template.getId()),
-        responsibilityService.view(template, caller));
+        responsibilityService.view(template, caller, role));
   }
 
   private static Map<String, Object> auditPayload(DocumentTemplate template) {

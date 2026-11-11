@@ -1,6 +1,7 @@
 package io.opaa.asset;
 
 import io.opaa.api.types.AssetLockCause;
+import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -209,7 +210,7 @@ public class AssetResponsibilityService {
             .reason(normalized)
             .outcome(AuditOutcome.SUCCESS)
             .build());
-    return view(asset, caller);
+    return view(asset, caller, null);
   }
 
   /** Lifts the lock, whatever its cause; an object without lock answers unchanged. */
@@ -231,7 +232,7 @@ public class AssetResponsibilityService {
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
-    return view(asset, caller);
+    return view(asset, caller, null);
   }
 
   /** Whether the object is locked right now; read from the table on every call. */
@@ -247,13 +248,20 @@ public class AssetResponsibilityService {
     return new HashSet<>(repository.findLockedIdsAmong(assetIds));
   }
 
-  public AssetResponsibilityView view(Asset asset, CurrentUser caller) {
-    return viewsOf(List.of(asset), caller).get(asset.getId());
+  /** {@link #viewsOf} for one object the caller holds {@code role} on. */
+  public AssetResponsibilityView view(Asset asset, CurrentUser caller, AssetRole role) {
+    Map<UUID, AssetRole> roles = new HashMap<>();
+    roles.put(asset.getId(), role);
+    return viewsOf(List.of(asset), caller, roles).get(asset.getId());
   }
 
-  /** The responsibility of each object, with one lookup of rows, groups and succession for all. */
+  /**
+   * The responsibility of each object, with one lookup of rows, groups and succession for all. The
+   * reason of a lock goes only to the system administration and to whoever holds at least {@code
+   * MANAGER} by {@code roles}; a reader learns only since when the object is locked.
+   */
   public Map<UUID, AssetResponsibilityView> viewsOf(
-      Collection<? extends Asset> assets, CurrentUser caller) {
+      Collection<? extends Asset> assets, CurrentUser caller, Map<UUID, AssetRole> roles) {
     if (assets.isEmpty()) {
       return Map.of();
     }
@@ -284,7 +292,9 @@ public class AssetResponsibilityService {
       AssetResponsibilityView.Lock lock =
           row.isLocked()
               ? new AssetResponsibilityView.Lock(
-                  row.getLockCause(), row.getLockReason(), row.getLockedAt())
+                  row.getLockCause(),
+                  seesReason(caller, roles.get(asset.getId())) ? row.getLockReason() : null,
+                  row.getLockedAt())
               : null;
       UUID groupId = row.getResponsibleGroupId();
       views.put(
@@ -299,6 +309,10 @@ public class AssetResponsibilityService {
               lock));
     }
     return views;
+  }
+
+  private static boolean seesReason(CurrentUser caller, AssetRole role) {
+    return caller.isSystemAdmin() || (role != null && role.atLeast(AssetRole.MANAGER));
   }
 
   /** Whether each group still acts as a responsible unit: known, and effective. */
@@ -325,7 +339,7 @@ public class AssetResponsibilityService {
 
   private AssetResponsibility rowOf(Asset asset) {
     return repository
-        .findById(asset.getId())
+        .findByIdForUpdate(asset.getId())
         .orElseGet(() -> new AssetResponsibility(asset.getId(), asset.getOrganizationId(), null));
   }
 

@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { isDemoModeEnabled } from '@/shared/utils/runtimeConfig'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 const LHM_CORPUS_URL = 'https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus'
 const LHM_CORPUS_LICENSE_URL =
@@ -50,34 +46,28 @@ export default function DemoNotice() {
         </Typography>
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Quellen und Demo-Charakter</DialogTitle>
-        <DialogContent>
-          <Typography gutterBottom>
-            Rheinfurt ist eine erfundene Stadt. Alle Texte dieser Instanz sind synthetisch
-            formuliert und dienen ausschließlich der Vorführung — sie sind keine echte Behörde und
-            keine verlässliche Quelle für tatsächliche Verwaltungsauskünfte.
-          </Typography>
-          <Typography>
-            Als Rohmaterial dient der{' '}
-            <Link href={LHM_CORPUS_URL} target="_blank" rel="noopener noreferrer">
-              LHM-Dienstleistungen-Corpus
-            </Link>{' '}
-            der Landeshauptstadt München (MIT-Lizenz), dessen Leistungsbeschreibungen automatisiert
-            auf die fiktive Stadt Rheinfurt umgeschrieben wurden.
-          </Typography>
-          <Typography>
-            Vollständiger Lizenztext:{' '}
-            <Link href={LHM_CORPUS_LICENSE_URL} target="_blank" rel="noopener noreferrer">
-              LHM-Dienstleistungen-Corpus-MIT.txt
-            </Link>
-            .
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Schließen</Button>
-        </DialogActions>
-      </Dialog>
+      <ViewDialog open={open} onClose={() => setOpen(false)} title="Quellen & Lizenz">
+        <Typography gutterBottom>
+          Rheinfurt ist eine erfundene Stadt. Alle Texte dieser Instanz sind synthetisch formuliert
+          und dienen ausschließlich der Vorführung — sie sind keine echte Behörde und keine
+          verlässliche Quelle für tatsächliche Verwaltungsauskünfte.
+        </Typography>
+        <Typography>
+          Als Rohmaterial dient der{' '}
+          <Link href={LHM_CORPUS_URL} target="_blank" rel="noopener noreferrer">
+            LHM-Dienstleistungen-Corpus
+          </Link>{' '}
+          der Landeshauptstadt München (MIT-Lizenz), dessen Leistungsbeschreibungen automatisiert
+          auf die fiktive Stadt Rheinfurt umgeschrieben wurden.
+        </Typography>
+        <Typography>
+          Vollständiger Lizenztext:{' '}
+          <Link href={LHM_CORPUS_LICENSE_URL} target="_blank" rel="noopener noreferrer">
+            LHM-Dienstleistungen-Corpus-MIT.txt
+          </Link>
+          .
+        </Typography>
+      </ViewDialog>
     </>
   )
 }

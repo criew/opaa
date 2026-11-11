@@ -29,6 +29,8 @@ Mehr als Sie selbst lesen dürfen, liest er nie.
 - Mit `/` setzen Sie zusätzlich einen Prompt ein: Der Prompt liefert den Text, der Agent bearbeitet
   ihn ([Prompts verwenden](prompts-verwenden.md)).
 - Ein Klick auf das Kreuz im Chip nimmt den Agenten wieder ab; die Frage läuft dann wie gewohnt.
+- Einen gesperrten Agenten zeigt das Menü nicht. Wurde er gerade erst gesperrt, kommt die
+  gesendete Frage mit einer Meldung zurück ins Eingabefeld und lässt sich ohne Agenten senden.
 
 ## Schritte lesen
 

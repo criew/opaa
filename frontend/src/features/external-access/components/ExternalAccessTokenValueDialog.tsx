@@ -1,10 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -13,6 +8,7 @@ import type { CreatedExternalAccessTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
 import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { SHOWN_ONCE_HINT, clientSetupSnippets } from './tokenLabels'
+import SecretDialog from '@/shared/ui/dialog/SecretDialog'
 
 function Snippet({ label, value }: { label: string; value: string }) {
   return (
@@ -73,61 +69,48 @@ export default function ExternalAccessTokenValueDialog({
   const snippets = clientSetupSnippets(window.location.origin, created.token)
 
   return (
-    <Dialog open fullWidth maxWidth="sm" aria-labelledby="token-value-title">
-      <DialogTitle id="token-value-title">Token erzeugt</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>Für „{created.name}“</Typography>
-        <Box
-          data-testid="external-access-token-value"
-          sx={{
-            fontFamily: fontFamily.mono,
-            fontSize: fontSize.title,
-            fontWeight: 500,
-            p: 1.5,
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: `${radius.sm}px`,
-            overflowWrap: 'anywhere',
-          }}
-        >
-          {created.token}
-        </Box>
-        <Box sx={{ mt: 1 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<ContentCopyOutlinedIcon />}
-            onClick={() => void copyOnce(created.token, 'Der Tokenwert')}
-          >
-            Kopieren
-          </Button>
-        </Box>
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          {SHOWN_ONCE_HINT}
-        </Alert>
+    <SecretDialog
+      titleId="token-value-title"
+      title="Token erzeugt"
+      onCopy={() => void copyOnce(created.token, 'Der Tokenwert')}
+      onClose={onClose}
+    >
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>Für „{created.name}“</Typography>
+      <Box
+        data-testid="external-access-token-value"
+        sx={{
+          fontFamily: fontFamily.mono,
+          fontSize: fontSize.title,
+          fontWeight: 500,
+          p: 1.5,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: `${radius.sm}px`,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {created.token}
+      </Box>
+      <Alert severity="warning" sx={{ mt: 2 }}>
+        {SHOWN_ONCE_HINT}
+      </Alert>
 
-        <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3 }}>
-          So richten Sie Ihr Werkzeug ein
-        </Typography>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
-          Die Adresse ist {snippets.url}; der Wert geht als Kopfzeile „Authorization: Bearer …“ mit.
-          Weicht die Adresse Ihrer Installation von dieser ab, tragen Sie dort die richtige ein. Den
-          Wert im Klartext trägt nur der Claude-Code-Befehl, der ihn in Ihre benutzereigene
-          Konfiguration schreibt; die beiden JSON-Schnipsel fragen ihn ab (VS Code) oder lesen ihn
-          aus der Umgebungsvariablen OPAA_TOKEN (Cursor), damit er nicht in einer eingecheckten
-          Datei landet. Ausführliche Anleitung im Handbuch, Kapitel Externe KI-Werkzeuge.
-        </Typography>
-        <Stack spacing={2}>
-          <Snippet label="Claude Code" value={snippets.claudeCode} />
-          <Snippet label="VS Code" value={snippets.vsCode} />
-          <Snippet label="Cursor" value={snippets.cursor} />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button variant="contained" onClick={onClose}>
-          Kopiert, schließen
-        </Button>
-      </DialogActions>
-    </Dialog>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3 }}>
+        So richten Sie Ihr Werkzeug ein
+      </Typography>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
+        Die Adresse ist {snippets.url}; der Wert geht als Kopfzeile „Authorization: Bearer …“ mit.
+        Weicht die Adresse Ihrer Installation von dieser ab, tragen Sie dort die richtige ein. Den
+        Wert im Klartext trägt nur der Claude-Code-Befehl, der ihn in Ihre benutzereigene
+        Konfiguration schreibt; die beiden JSON-Schnipsel fragen ihn ab (VS Code) oder lesen ihn aus
+        der Umgebungsvariablen OPAA_TOKEN (Cursor), damit er nicht in einer eingecheckten Datei
+        landet. Ausführliche Anleitung im Handbuch, Kapitel Externe KI-Werkzeuge.
+      </Typography>
+      <Stack spacing={2}>
+        <Snippet label="Claude Code" value={snippets.claudeCode} />
+        <Snippet label="VS Code" value={snippets.vsCode} />
+        <Snippet label="Cursor" value={snippets.cursor} />
+      </Stack>
+    </SecretDialog>
   )
 }

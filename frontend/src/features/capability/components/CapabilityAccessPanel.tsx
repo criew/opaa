@@ -3,13 +3,10 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import Drawer from '@mui/material/Drawer'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import CloseIcon from '@mui/icons-material/Close'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { connectionProfileRoute } from '@/shared/routes'
 import { notify } from '@/shared/stores/notificationStore'
@@ -28,6 +25,7 @@ import {
 } from './capabilityAccess'
 import { presentationOf } from './capabilityPresentation'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
+import SidePanel from '@/shared/ui/dialog/SidePanel'
 
 function ScopeList({
   title,
@@ -167,51 +165,31 @@ export default function CapabilityAccessPanel({
   }
 
   return (
-    <Drawer
-      anchor="right"
+    <SidePanel
       open={Boolean(entries)}
-      onClose={busy ? undefined : onClose}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'capability-panel-heading',
-          sx: { width: { xs: '100%', sm: 480 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          {scoped && entry && (
-            <Button
-              size="small"
-              startIcon={<ArrowBackIcon />}
-              onClick={() => choose(null)}
-              disabled={busy}
-              sx={{ ml: -1, mb: 0.5 }}
-            >
-              Alle Anbindungen
-            </Button>
-          )}
-          <Typography
-            id="capability-panel-heading"
-            ref={headingRef}
-            tabIndex={-1}
-            component="h2"
-            sx={{ fontSize: fontSize.title, fontWeight: 600, outline: 'none' }}
+      onClose={onClose}
+      busy={busy}
+      // the editor brings „Abbrechen“; only the list of scopes is a view with a ✕
+      form={Boolean(entry)}
+      titleId="capability-panel-heading"
+      titleRef={headingRef}
+      title={heading}
+      before={
+        scoped &&
+        entry && (
+          <Button
+            size="small"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => choose(null)}
+            disabled={busy}
+            sx={{ ml: -1, mb: 0.5 }}
           >
-            {heading}
-          </Typography>
+            Alle Anbindungen
+          </Button>
+        )
+      }
+      below={
+        <>
           {entry && scopeKind(entry) === 'PROFILE' && entry.scope && (
             <TextLink
               to={connectionProfileRoute(entry.scope.slice('PROFILE:'.length))}
@@ -226,12 +204,9 @@ export default function CapabilityAccessPanel({
               anlegen darf. Die Freigabe eines Zugangs öffnet keinen anderen.
             </Typography>
           )}
-        </Box>
-        <IconButton aria-label="Schließen" onClick={onClose} disabled={busy} sx={{ mt: -0.5 }}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
+        </>
+      }
+    >
       <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
         {error && (
           <Alert
@@ -271,6 +246,6 @@ export default function CapabilityAccessPanel({
           </Stack>
         )}
       </Box>
-    </Drawer>
+    </SidePanel>
   )
 }

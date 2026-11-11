@@ -3,8 +3,12 @@ package io.opaa.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetLockCause;
+import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.asset.AssetResponsibilityView;
 import io.opaa.asset.ResponsibilityLockPeriod;
 import io.opaa.asset.ResponsibilityLockRun;
@@ -25,11 +29,16 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The responsible unit and the lock of agents and document templates: no object without a unit, a
@@ -51,6 +60,8 @@ class AgentResponsibilityIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private AssetGrantService grantService;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organization;
   private UUID administrator;
@@ -133,7 +144,7 @@ class AgentResponsibilityIntegrationTest {
     assertThat(locked.lock().reason()).isEqualTo("Anweisung wird überarbeitet");
     assertThat(lockOf(agent)).isNotNull();
     assertThat(agentService.list(admin())).extracting(view -> view.agent().getId()).contains(agent);
-    assertThatThrownBy(() -> agentService.requireUsableForRun(agent))
+    assertThatThrownBy(() -> agentService.requireUsableForRun(stored(agent)))
         .isInstanceOfSatisfying(
             ConflictException.class,
             e -> {
@@ -144,9 +155,76 @@ class AgentResponsibilityIntegrationTest {
     agentService.unlock(agent, admin());
 
     assertThat(lockOf(agent)).isNull();
-    agentService.requireUsableForRun(agent);
+    agentService.requireUsableForRun(stored(agent));
     assertThat(auditEvents(agent))
         .containsExactly("AGENT_CREATED", "ASSET_LOCKED", "ASSET_UNLOCKED");
+  }
+
+  @Test
+  void theReasonOfALockReachesManagersAndTheAdministrationButNotReaders() {
+    UUID agent = anAgent("Vergabeprüfung", REFERAT);
+    grantService.upsertGrant(
+        Agent.ASSET_TYPE,
+        agent,
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
+        admin());
+    agentService.lock(agent, "Anweisung wird überarbeitet", admin());
+
+    AssetResponsibilityView.Lock seenByReader =
+        agentService.get(agent, callerOf(reader)).responsibility().lock();
+    assertThat(seenByReader.lockedAt()).isNotNull();
+    assertThat(seenByReader.reason()).isNull();
+    assertThat(
+            agentService.list(callerOf(reader)).stream()
+                .filter(view -> view.agent().getId().equals(agent))
+                .findFirst()
+                .orElseThrow()
+                .responsibility()
+                .lock()
+                .reason())
+        .isNull();
+    assertThat(agentService.get(agent, admin()).responsibility().lock().reason())
+        .isEqualTo("Anweisung wird überarbeitet");
+
+    grantService.upsertGrant(
+        Agent.ASSET_TYPE,
+        agent,
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.MANAGER),
+        admin());
+    assertThat(agentService.get(agent, callerOf(reader)).responsibility().lock().reason())
+        .isEqualTo("Anweisung wird überarbeitet");
+  }
+
+  @Test
+  void aLockSetWhileTheUnitChangesIsNotOverwritten() throws Exception {
+    UUID agent = anAgent("Vergabeprüfung", REFERAT);
+    Agent stored = stored(agent);
+    TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+
+    CompletableFuture<Void> concurrentLock =
+        transaction.execute(
+            status -> {
+              agentService.update(
+                  agent,
+                  new AgentUpdate(
+                      stored.getName(),
+                      null,
+                      stored.configuration(),
+                      ResponsibleUnit.ofFunction("Referat Z4")),
+                  admin());
+              CompletableFuture<Void> lock =
+                  CompletableFuture.runAsync(
+                      () -> agentService.lock(agent, "Anweisung wird überarbeitet", admin()));
+              // the lock waits for the row the change holds until it commits
+              assertThatThrownBy(() -> lock.get(500, TimeUnit.MILLISECONDS))
+                  .isInstanceOf(TimeoutException.class);
+              return lock;
+            });
+    concurrentLock.get(10, TimeUnit.SECONDS);
+
+    AssetResponsibilityView after = agentService.get(agent, admin()).responsibility();
+    assertThat(after.function()).isEqualTo("Referat Z4");
+    assertThat(after.lock().reason()).isEqualTo("Anweisung wird überarbeitet");
   }
 
   @Test
@@ -170,7 +248,7 @@ class AgentResponsibilityIntegrationTest {
             stored.configuration(),
             ResponsibleUnit.ofFunction("Referat Z4")),
         admin());
-    agentService.requireUsableForRun(agent);
+    agentService.requireUsableForRun(stored(agent));
 
     assertThat(agentService.get(agent, admin()).responsibility().function())
         .isEqualTo("Referat Z4");
@@ -238,6 +316,10 @@ class AgentResponsibilityIntegrationTest {
     assertThat(runTemplates.forFilling(template, organization, administrator)).isPresent();
     assertThat(auditEvents(template))
         .containsExactly("DOCUMENT_TEMPLATE_CREATED", "ASSET_LOCKED", "ASSET_UNLOCKED");
+  }
+
+  private Agent stored(UUID agent) {
+    return agentService.get(agent, admin()).agent();
   }
 
   private UUID anAgent(String name, ResponsibleUnit unit) {

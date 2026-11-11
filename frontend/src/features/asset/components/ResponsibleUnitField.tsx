@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
@@ -19,12 +20,15 @@ export default function ResponsibleUnitField({
   value,
   onChange,
   error,
+  inputRef,
 }: {
   id: string
   groups: GroupListResponse[]
   value: ResponsibleDraft
   onChange: (draft: ResponsibleDraft) => void
-  error?: string
+  error?: string | null
+  /** Takes the focus when a wizard reports the field missing. */
+  inputRef?: Ref<HTMLInputElement>
 }) {
   const options = groups.filter((group) => !group.deactivated)
   return (
@@ -54,6 +58,7 @@ export default function ResponsibleUnitField({
         renderInput={(params) => (
           <TextField
             {...params}
+            inputRef={inputRef}
             error={Boolean(error)}
             helperText={error ?? HELP}
             slotProps={{
