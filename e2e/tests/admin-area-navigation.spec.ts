@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/auth'
+import { headerCreateButton } from '../fixtures/pageHeader'
 
 /**
  * Navigation durch den Verwaltungsbereich (#787/#800) - hierher aus accessibility.spec.ts
@@ -90,7 +91,7 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
 
     // Unter 600 px steht der Anlege-Knopf in voller Breite unter dem Titel, unter 900 px ist jede
     // Liste eine Kartenliste.
-    const create = await page.getByRole('button', { name: 'Gruppe anlegen' }).boundingBox()
+    const create = await headerCreateButton(page, 'Gruppe anlegen').boundingBox()
     expect(create, 'Anlege-Knopf gerendert').not.toBeNull()
     expect(create!.y, 'Anlege-Knopf unter dem Titel').toBeGreaterThanOrEqual(
       heading!.y + heading!.height - 1,
