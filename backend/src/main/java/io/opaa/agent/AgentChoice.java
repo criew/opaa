@@ -121,6 +121,7 @@ public class AgentChoice implements AgentRunSpecResolver {
             limits.maxCollectedChars()),
         configuration.planStep() == AgentPlanStep.CONFIRM,
         agent.isDelivered(),
-        agent.getName());
+        agent.getName(),
+        configuration.templateIds());
   }
 }

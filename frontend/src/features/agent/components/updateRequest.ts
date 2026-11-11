@@ -15,6 +15,8 @@ export function updateRequest(
     toolNames: agent.toolNames,
     planStep: agent.planStep,
     limits: agent.limits,
+    // Hidden templates are not sent either; the backend keeps them as it keeps libraries.
+    templateIds: agent.templates.map((template) => template.id),
     ...change,
   }
 }

@@ -5,6 +5,7 @@ import type {
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
   AvailableAgent,
+  DocumentTemplateResponse,
   LibraryListResponse,
 } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
@@ -76,6 +77,16 @@ export async function deleteAgent(agentId: string): Promise<void> {
 export async function getReadableLibraries(): Promise<LibraryListResponse[]> {
   try {
     const { data } = await apiClient.get<LibraryListResponse[]>('/v1/libraries')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The document templates the caller may read: those an agent may be given. */
+export async function getReadableTemplates(): Promise<DocumentTemplateResponse[]> {
+  try {
+    const { data } = await apiClient.get<DocumentTemplateResponse[]>('/v1/document-templates')
     return data
   } catch (err) {
     normalizeError(err)

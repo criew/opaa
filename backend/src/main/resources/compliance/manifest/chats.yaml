@@ -327,6 +327,7 @@ nonPersonalTables:
     - seed_key
   agent_libraries: [agent_id, library_id]
   agent_tools: [agent_id, tool_name]
+  agent_templates: [agent_id, template_id]
   agent_settings_tools: [settings_id, tool_name]
   agent_seeds: [organization_id, seed_key, created_at]
   document_templates:

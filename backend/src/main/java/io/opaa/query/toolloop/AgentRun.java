@@ -32,6 +32,7 @@ public final class AgentRun {
   private final UUID chatId;
   private final UUID spaceId;
   private final Set<UUID> searchScope;
+  private final Set<UUID> templateIds;
   private final MetadataFilter metadataFilter;
   private final AgentLimits limits;
   private final Instant deadline;
@@ -56,6 +57,7 @@ public final class AgentRun {
       UUID chatId,
       UUID spaceId,
       Set<UUID> searchScope,
+      Set<UUID> templateIds,
       MetadataFilter metadataFilter,
       AgentLimits limits,
       Instant startedAt) {
@@ -64,6 +66,7 @@ public final class AgentRun {
     this.chatId = chatId;
     this.spaceId = spaceId;
     this.searchScope = Set.copyOf(searchScope);
+    this.templateIds = Set.copyOf(templateIds);
     this.metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
     this.limits = limits;
     this.deadline = startedAt.plus(limits.maxDuration());
@@ -95,6 +98,11 @@ public final class AgentRun {
    */
   public Set<UUID> searchScope() {
     return searchScope;
+  }
+
+  /** The document templates assigned to the agent of this run, fixed at its start. */
+  public Set<UUID> templateIds() {
+    return templateIds;
   }
 
   /** The chat's metadata filter; a tool argument may only add conditions to it. */

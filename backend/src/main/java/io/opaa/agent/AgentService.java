@@ -26,6 +26,9 @@ import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.template.DocumentTemplate;
+import io.opaa.template.DocumentTemplateRepository;
+import io.opaa.template.DocumentTemplateSettingsService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -49,7 +52,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>While agents are switched off ({@link AgentSwitch}), every path answers like an unknown
  * address. A library is assigned only if the editor may read it; an assigned library the editor may
  * not read stays assigned and is shown only as a count, never by name. Assigning grants nothing: a
- * run reads only what the calling person may read (ADR-0070, Entscheidung 3).
+ * run reads only what the calling person may read (ADR-0070, Entscheidung 3). Document templates
+ * follow the same rule; a run fills only those the asker may read as well. While the switch
+ * "Vorlagen" is off, a change keeps the stored templates and no view names or counts one.
  */
 @Service
 @Transactional(readOnly = true)
@@ -59,6 +64,7 @@ public class AgentService {
   static final int MAX_DESCRIPTION_LENGTH = 2000;
   static final int MAX_INSTRUCTION_LENGTH = 8000;
   static final int MAX_LIBRARIES = 100;
+  static final int MAX_TEMPLATES = 20;
 
   private final AgentRepository agentRepository;
   private final AgentSwitch agentSwitch;
@@ -71,6 +77,8 @@ public class AgentService {
   private final AssetSuccessionSource successionSource;
   private final LibraryAccessService libraryAccess;
   private final KnowledgeLibraryRepository libraryRepository;
+  private final DocumentTemplateRepository templateRepository;
+  private final DocumentTemplateSettingsService templateSettings;
   private final AuditEventRecorder auditEventRecorder;
 
   AgentService(
@@ -85,6 +93,8 @@ public class AgentService {
       AssetSuccessionSource successionSource,
       LibraryAccessService libraryAccess,
       KnowledgeLibraryRepository libraryRepository,
+      DocumentTemplateRepository templateRepository,
+      DocumentTemplateSettingsService templateSettings,
       AuditEventRecorder auditEventRecorder) {
     this.agentRepository = agentRepository;
     this.agentSwitch = agentSwitch;
@@ -97,6 +107,8 @@ public class AgentService {
     this.successionSource = successionSource;
     this.libraryAccess = libraryAccess;
     this.libraryRepository = libraryRepository;
+    this.templateRepository = templateRepository;
+    this.templateSettings = templateSettings;
     this.auditEventRecorder = auditEventRecorder;
   }
 
@@ -131,7 +143,12 @@ public class AgentService {
     }
     agent.configure(
         new AgentConfiguration(
-            "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, AgentLimits.INSTALLATION));
+            "",
+            Set.of(),
+            AgentTools.DEFAULT,
+            AgentPlanStep.OFF,
+            AgentLimits.INSTALLATION,
+            Set.of()));
     Agent saved = agentRepository.save(agent);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
     return view(saved, AssetRole.OWNER, caller);
@@ -154,19 +171,22 @@ public class AgentService {
     Map<UUID, AssetReach> reach = accessService.reachByAsset(Agent.ASSET_TYPE, readable);
     Map<UUID, String> names = ownerNames.of(agents);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(agents, false);
-    LibraryNames libraryNames = libraryNames(agents, caller);
+    AssignedNames libraryNames = libraryNames(agents, caller);
+    AssignedNames templateNames = templateNames(agents, caller);
     List<AgentView> views = new ArrayList<>(agents.size());
     for (Agent agent : agents) {
       views.add(
           new AgentView(
               agent,
               Objects.requireNonNullElse(roles.get(agent.getId()), AssetRole.VIEWER),
-              libraryNames.visible(agent),
-              libraryNames.hiddenCount(agent),
+              libraries(libraryNames, agent),
+              libraryNames.hiddenCount(agent.getLibraryIds()),
               names.get(agent.getOwnerId()),
               succession.get(agent.getId()),
               reach.getOrDefault(agent.getId(), AssetReach.NONE),
-              true));
+              true,
+              templates(templateNames, agent),
+              templateNames.hiddenCount(agent.getTemplateIds())));
     }
     return views;
   }
@@ -211,10 +231,20 @@ public class AgentService {
             errors);
     Set<String> toolNames = validateTools(submitted.toolNames(), errors);
     AgentLimits limits = validateLimits(submitted.limits(), errors);
+    Set<UUID> templateIds =
+        submitted.templateIds() == null || !templateSettings.isEnabled()
+            ? agent.getTemplateIds()
+            : validateTemplates(
+                submitted.templateIds(),
+                existingTemplateIds(agent.getTemplateIds(), agent.getOrganizationId()),
+                accessService.readableAssetIds(
+                    DocumentTemplate.ASSET_TYPE, caller.id(), caller.organizationId()),
+                errors);
     throwIfAny(errors);
 
     AgentConfiguration target =
-        new AgentConfiguration(instruction, libraryIds, toolNames, submitted.planStep(), limits);
+        new AgentConfiguration(
+            instruction, libraryIds, toolNames, submitted.planStep(), limits, templateIds);
     List<String> changedFields = changedFields(agent, name, description, target);
     if (!changedFields.isEmpty()) {
       if (!Objects.equals(agent.getName(), name)
@@ -282,18 +312,21 @@ public class AgentService {
   }
 
   private AgentView view(Agent agent, AssetRole role, CurrentUser caller) {
-    LibraryNames libraryNames = libraryNames(List.of(agent), caller);
+    AssignedNames libraryNames = libraryNames(List.of(agent), caller);
+    AssignedNames templateNames = templateNames(List.of(agent), caller);
     return new AgentView(
         agent,
         role,
-        libraryNames.visible(agent),
-        libraryNames.hiddenCount(agent),
+        libraries(libraryNames, agent),
+        libraryNames.hiddenCount(agent.getLibraryIds()),
         ownerNames.of(List.of(agent)).get(agent.getOwnerId()),
         successionSource.findingsAmong(List.of(agent), false).get(agent.getId()),
         accessService
             .reachByAsset(Agent.ASSET_TYPE, Set.of(agent.getId()))
             .getOrDefault(agent.getId(), AssetReach.NONE),
-        holdsContentRole(agent, caller, AssetRole.VIEWER));
+        holdsContentRole(agent, caller, AssetRole.VIEWER),
+        templates(templateNames, agent),
+        templateNames.hiddenCount(agent.getTemplateIds()));
   }
 
   /**
@@ -327,14 +360,30 @@ public class AgentService {
   }
 
   /**
+   * The ids among these that still name a template of the organization; a deleted one drops out.
+   */
+  private Set<UUID> existingTemplateIds(Set<UUID> ids, UUID organizationId) {
+    Set<UUID> existing = new HashSet<>();
+    if (ids.isEmpty()) {
+      return existing;
+    }
+    for (DocumentTemplate template : templateRepository.findAllById(ids)) {
+      if (template.getOrganizationId().equals(organizationId)) {
+        existing.add(template.getId());
+      }
+    }
+    return existing;
+  }
+
+  /**
    * The names of the assigned libraries the caller may read and the ids of all that still exist, in
    * one query for all agents.
    */
-  private LibraryNames libraryNames(List<Agent> agents, CurrentUser caller) {
+  private AssignedNames libraryNames(List<Agent> agents, CurrentUser caller) {
     Set<UUID> assigned = new HashSet<>();
     agents.forEach(agent -> assigned.addAll(agent.getLibraryIds()));
     if (assigned.isEmpty()) {
-      return new LibraryNames(Map.of(), Set.of());
+      return new AssignedNames(Map.of(), Set.of());
     }
     Set<UUID> readable = libraryAccess.readableLibraryIds(caller.id(), caller.organizationId());
     Map<UUID, String> names = new LinkedHashMap<>();
@@ -347,25 +396,58 @@ public class AgentService {
         }
       }
     }
-    return new LibraryNames(names, existing);
+    return new AssignedNames(names, existing);
   }
 
-  /** A deleted library counts as neither visible nor hidden; the next change drops it. */
-  private record LibraryNames(Map<UUID, String> readableNames, Set<UUID> existing) {
+  /** As {@link #libraryNames}, for the document templates by the formula of the asset shell. */
+  private AssignedNames templateNames(List<Agent> agents, CurrentUser caller) {
+    Set<UUID> assigned = new HashSet<>();
+    agents.forEach(agent -> assigned.addAll(agent.getTemplateIds()));
+    if (assigned.isEmpty() || !templateSettings.isEnabled()) {
+      return new AssignedNames(Map.of(), Set.of());
+    }
+    Set<UUID> readable =
+        accessService.readableAssetIds(
+            DocumentTemplate.ASSET_TYPE, caller.id(), caller.organizationId());
+    Map<UUID, String> names = new LinkedHashMap<>();
+    Set<UUID> existing = new HashSet<>();
+    for (DocumentTemplate template : templateRepository.findAllById(assigned)) {
+      if (template.getOrganizationId().equals(caller.organizationId())) {
+        existing.add(template.getId());
+        if (readable.contains(template.getId())) {
+          names.put(template.getId(), template.getName());
+        }
+      }
+    }
+    return new AssignedNames(names, existing);
+  }
 
-    List<AgentView.LibraryRef> visible(Agent agent) {
-      return agent.getLibraryIds().stream()
+  private static List<AgentView.LibraryRef> libraries(AssignedNames names, Agent agent) {
+    return names.visible(agent.getLibraryIds()).stream()
+        .map(id -> new AgentView.LibraryRef(id, names.readableNames().get(id)))
+        .toList();
+  }
+
+  private static List<AgentView.TemplateRef> templates(AssignedNames names, Agent agent) {
+    return names.visible(agent.getTemplateIds()).stream()
+        .map(id -> new AgentView.TemplateRef(id, names.readableNames().get(id)))
+        .toList();
+  }
+
+  /** A deleted object counts as neither visible nor hidden; the next change drops it. */
+  private record AssignedNames(Map<UUID, String> readableNames, Set<UUID> existing) {
+
+    /** The readable ids among {@code assigned}, by name. */
+    List<UUID> visible(Set<UUID> assigned) {
+      return assigned.stream()
           .filter(readableNames::containsKey)
-          .map(id -> new AgentView.LibraryRef(id, readableNames.get(id)))
-          .sorted(
-              Comparator.comparing(AgentView.LibraryRef::name)
-                  .thenComparing(AgentView.LibraryRef::id))
+          .sorted(Comparator.comparing((UUID id) -> readableNames.get(id)).thenComparing(id -> id))
           .toList();
     }
 
-    int hiddenCount(Agent agent) {
+    int hiddenCount(Set<UUID> assigned) {
       return (int)
-          agent.getLibraryIds().stream()
+          assigned.stream()
               .filter(id -> existing.contains(id) && !readableNames.containsKey(id))
               .count();
     }
@@ -395,6 +477,9 @@ public class AgentService {
     }
     if (!current.limits().equals(target.limits())) {
       changed.add("limits");
+    }
+    if (!current.templateIds().equals(target.templateIds())) {
+      changed.add("templates");
     }
     return changed;
   }
@@ -482,6 +567,41 @@ public class AgentService {
               "libraryIds",
               "TOO_MANY",
               "Ein Agent nutzt höchstens " + MAX_LIBRARIES + " Bibliotheken."));
+    }
+    return result;
+  }
+
+  /**
+   * The templates to store, by the rule of {@link #validateLibraries}: a submitted template the
+   * editor may not read and that was not assigned before is refused; an assigned one the editor may
+   * not read stays.
+   */
+  private static Set<UUID> validateTemplates(
+      Set<UUID> submitted, Set<UUID> assigned, Set<UUID> readable, List<FieldError> errors) {
+    Set<UUID> result = new HashSet<>();
+    for (UUID id : submitted) {
+      if (readable.contains(id) || assigned.contains(id)) {
+        result.add(id);
+      } else {
+        errors.add(
+            new FieldError(
+                "templateIds",
+                "UNKNOWN",
+                "Eine gewählte Vorlage gibt es nicht oder Sie dürfen sie nicht lesen."));
+        return result;
+      }
+    }
+    for (UUID id : assigned) {
+      if (!readable.contains(id)) {
+        result.add(id);
+      }
+    }
+    if (result.size() > MAX_TEMPLATES) {
+      errors.add(
+          new FieldError(
+              "templateIds",
+              "TOO_MANY",
+              "Ein Agent nutzt höchstens " + MAX_TEMPLATES + " Vorlagen."));
     }
     return result;
   }

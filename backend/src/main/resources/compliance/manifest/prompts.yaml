@@ -58,7 +58,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "1555ab192c5129629c0eb33b172f0c91f68d6fad362d7e822a302fd8f5cdce63"
+    sha256: "ec26d3ecf658c34c46b8cbf9c9423f13c695e0c042cf1620f521bac0823c2b01"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
