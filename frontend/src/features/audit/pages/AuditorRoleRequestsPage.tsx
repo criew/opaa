@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Typography from '@mui/material/Typography'
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import AdminList, { ListText, RowDecision } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import type { AuditorRoleRequestResponse } from '@/shared/api/types'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import {
   confirmAuditorRoleRequest,
   declineAuditorRoleRequest,
@@ -42,6 +38,7 @@ export default function AuditorRoleRequestsPage() {
   const isAuditor = useAuthStore((s) => s.user?.systemRole === 'AUDITOR')
   const [requests, setRequests] = useState<AuditorRoleRequestResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [setupLink, setSetupLink] = useState<AuditorSetupLink | null>(null)
   const gate = useRecentLoginGate(
@@ -55,12 +52,13 @@ export default function AuditorRoleRequestsPage() {
     let cancelled = false
     listAuditorRoleRequests()
       .then((open) => {
-        if (!cancelled) setRequests(open)
+        if (!cancelled) {
+          setRequests(open)
+          setLoadError(null)
+        }
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Die Anträge konnten nicht geladen werden.')
-        }
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : '')
       })
     return () => {
       cancelled = true
@@ -122,67 +120,85 @@ export default function AuditorRoleRequestsPage() {
           </Alert>
         )}
 
+        {requests === null && loadError === null && <LoadingState shape="rows" />}
+
         {requests !== null && requests.length === 0 && (
-          <Typography sx={{ color: 'text.secondary' }}>Es liegt kein Antrag vor.</Typography>
+          <EmptyState message="Es liegt kein Antrag vor." />
         )}
 
         {requests !== null && requests.length > 0 && (
-          <Table size="small" aria-label="Offene Anträge auf die Rolle Revision">
-            <TableHead>
-              <TableRow>
-                <TableCell>Person</TableCell>
-                <TableCell>Adresse</TableCell>
-                <TableCell>Beantragt von</TableCell>
-                <TableCell>Beantragt am</TableCell>
-                <TableCell>Entscheidung</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    {personOf(request)}
-                    {request.localAccount && (
-                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                        Lokales Konto
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {request.email ?? '—'}
+          <AdminList
+            label="Offene Anträge auf die Rolle Revision"
+            rows={requests}
+            rowKey={(request) => request.id}
+            rowLabel={personOf}
+            columns={[
+              {
+                id: 'person',
+                head: 'Person',
+                width: '20%',
+                cell: (request) => (
+                  <>
+                    <ListText strong>{personOf(request)}</ListText>
+                    {request.localAccount && <ListText secondary>Lokales Konto</ListText>}
+                  </>
+                ),
+              },
+              {
+                id: 'email',
+                head: 'Adresse',
+                cell: (request) => (
+                  <>
+                    <ListText>{request.email ?? '—'}</ListText>
                     {request.emailChangedByAdministrationAt && (
-                      <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600 }}>
+                      <ListText secondary>
                         {`Von der Systemverwaltung geändert am ${changedOn(request.emailChangedByAdministrationAt)} – mit der Person prüfen`}
-                      </Typography>
+                      </ListText>
                     )}
-                  </TableCell>
-                  <TableCell>{request.requestedByDisplayName ?? 'Gelöschtes Konto'}</TableCell>
-                  <TableCell>{formatDateTime(request.requestedAt)}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request, true)}
-                        aria-label={`Antrag für ${personOf(request)} bestätigen`}
-                      >
-                        Bestätigen
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request, false)}
-                        aria-label={`Antrag für ${personOf(request)} ablehnen`}
-                      >
-                        Ablehnen
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </>
+                ),
+              },
+              {
+                id: 'requestedBy',
+                head: 'Beantragt von',
+                width: '15%',
+                cell: (request) => request.requestedByDisplayName ?? 'Gelöschtes Konto',
+              },
+              {
+                id: 'requestedAt',
+                head: 'Beantragt am',
+                width: 152,
+                cell: (request) => formatDateTime(request.requestedAt),
+              },
+            ]}
+            actionsWidth={232}
+            rowActions={(request) => (
+              <RowDecision
+                disabled={busyId !== null}
+                accept={{
+                  verb: 'Bestätigen',
+                  label: `Antrag für ${personOf(request)} bestätigen`,
+                  onClick: () => void decide(request, true),
+                }}
+                decline={{
+                  verb: 'Ablehnen',
+                  label: `Antrag für ${personOf(request)} ablehnen`,
+                  onClick: () => void decide(request, false),
+                }}
+              />
+            )}
+          />
+        )}
+
+        {loadError !== null && (
+          <LoadError
+            message="Die Anträge konnten nicht geladen werden."
+            detail={loadError}
+            onRetry={() => {
+              setLoadError(null)
+              setReloads((count) => count + 1)
+            }}
+          />
         )}
       </Box>
       <AuditorSetupLinkDialog link={setupLink} onClose={() => setSetupLink(null)} />

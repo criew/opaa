@@ -1,20 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
-import TableContainer from '@mui/material/TableContainer'
-import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type {
   AdminExternalAccessTokenResponse,
   ExternalAccessTokenStatus,
@@ -31,7 +20,7 @@ import RowMenu from '@/shared/ui/RowMenu'
 import OwnTokensLink from './OwnTokensLink'
 import StateDot from '@/shared/ui/StateDot'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import {
   ADMIN_PURPOSE_HINT,
   BLOCK_ALL_CONSEQUENCE,
@@ -39,7 +28,6 @@ import {
   TOKEN_STATUS_LABEL,
   formatDate,
 } from './tokenLabels'
-import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -118,8 +106,6 @@ export default function ExternalAccessTokenAdminSection({
   /** Called after a block, so figures elsewhere on the page follow. */
   onChanged?: () => void
 } = {}) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [tokens, setTokens] = useState<AdminExternalAccessTokenResponse[] | null>(null)
   const [status, setStatus] = useState<ExternalAccessTokenStatus | 'ALL'>('ALL')
   const [expiringSoon, setExpiringSoon] = useState(false)
@@ -252,87 +238,56 @@ export default function ExternalAccessTokenAdminSection({
         ) : (
           <EmptyState message="Noch keine Zugangstokens." />
         )
-      ) : isDesktop ? (
-        <TableContainer>
-          <Table size="small" aria-label="Zugangstokens" sx={{ ...adminTableSx, minWidth: 760 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ width: '17%' }}>Besitzer</TableCell>
-                <TableCell sx={{ width: '21%' }}>Name</TableCell>
-                <TableCell>Bibliotheken</TableCell>
-                <TableCell sx={{ width: 96 }}>Erstellt</TableCell>
-                <TableCell sx={{ width: 96 }}>Läuft ab</TableCell>
-                <TableCell sx={{ width: 112 }}>Zustand</TableCell>
-                <TableCell align="right" sx={{ width: 56 }}>
-                  <span style={visuallyHidden}>Aktionen</span>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tokens.map((token) => (
-                <TableRow key={token.id}>
-                  <TableCell>{token.ownerDisplayName}</TableCell>
-                  <TableCell sx={{ fontWeight: 600, overflowWrap: 'break-word' }}>
-                    {token.name}
-                  </TableCell>
-                  <TableCell sx={{ overflowWrap: 'break-word' }}>{librariesOf(token)}</TableCell>
-                  <TableCell>{formatDate(token.createdAt)}</TableCell>
-                  <TableCell>{formatDate(token.expiresAt)}</TableCell>
-                  <TableCell>
-                    <TokenState status={token.status} />
-                  </TableCell>
-                  <TableCell align="right" sx={{ py: 0.5 }}>
-                    <TokenMenu
-                      token={token}
-                      onBlock={(row) => void handleBlock(row)}
-                      onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
       ) : (
-        <Box
-          component="ul"
-          aria-label="Zugangstokens"
-          sx={{ listStyle: 'none', p: 0, m: 0, borderTop: 1, borderColor: 'divider' }}
-        >
-          {tokens.map((token) => (
-            <Box component="li" key={token.id} sx={listCardSx}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}
-                  >
-                    {token.name}
-                  </Typography>
-                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                    {token.ownerDisplayName}
-                  </Typography>
-                </Box>
-                <TokenMenu
-                  token={token}
-                  onBlock={(row) => void handleBlock(row)}
-                  onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
-                />
-              </Box>
-              <Box component="dl" sx={definitionListSx}>
-                <dt>Bibliotheken</dt>
-                <dd>{librariesOf(token)}</dd>
-                <dt>Erstellt</dt>
-                <dd>{formatDate(token.createdAt)}</dd>
-                <dt>Läuft ab</dt>
-                <dd>{formatDate(token.expiresAt)}</dd>
-                <dt>Zustand</dt>
-                <dd>
-                  <TokenState status={token.status} />
-                </dd>
-              </Box>
-            </Box>
-          ))}
-        </Box>
+        <AdminList
+          label="Zugangstokens"
+          rows={tokens}
+          rowKey={(token) => token.id}
+          rowLabel={(token) => token.name}
+          minWidth={760}
+          columns={[
+            {
+              id: 'owner',
+              head: 'Besitzer',
+              width: '17%',
+              card: 'line',
+              cell: (token) => token.ownerDisplayName,
+            },
+            {
+              id: 'name',
+              head: 'Name',
+              width: '21%',
+              card: 'title',
+              cell: (token) => <ListText strong>{token.name}</ListText>,
+            },
+            { id: 'libraries', head: 'Bibliotheken', cell: (token) => librariesOf(token) },
+            {
+              id: 'created',
+              head: 'Erstellt',
+              width: 104,
+              cell: (token) => formatDate(token.createdAt),
+            },
+            {
+              id: 'expires',
+              head: 'Läuft ab',
+              width: 104,
+              cell: (token) => formatDate(token.expiresAt),
+            },
+            {
+              id: 'state',
+              head: 'Zustand',
+              width: 120,
+              cell: (token) => <TokenState status={token.status} />,
+            },
+          ]}
+          rowActions={(token) => (
+            <TokenMenu
+              token={token}
+              onBlock={(row) => void handleBlock(row)}
+              onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
+            />
+          )}
+        />
       )}
     </PageSection>
   )

@@ -116,7 +116,7 @@ function rowTitles(): string[] {
   const table = screen.getByRole('table')
   return within(table)
     .getAllByRole('link')
-    .map((link) => link.textContent ?? '')
+    .map((link) => link.getAttribute('aria-label') ?? '')
 }
 
 describe('ChatsPage', () => {
@@ -218,13 +218,13 @@ describe('ChatsPage', () => {
     await screen.findByRole('tab', { name: 'Aktiv (30)' })
 
     expect(rowTitles()).toHaveLength(25)
-    expect(screen.getByText('30 Chats · Seite 1 von 2')).toBeInTheDocument()
+    expect(screen.getByText('Seite 1 von 2')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vorherige Seite' })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: 'Nächste Seite' }))
 
     expect(rowTitles()).toEqual(['Chat 26', 'Chat 27', 'Chat 28', 'Chat 29', 'Chat 30'])
-    expect(screen.getByText('30 Chats · Seite 2 von 2')).toBeInTheDocument()
+    expect(screen.getByText('Seite 2 von 2')).toBeInTheDocument()
   })
 
   it('marks a pinned chat in its title cell and pins another from the row menu', async () => {

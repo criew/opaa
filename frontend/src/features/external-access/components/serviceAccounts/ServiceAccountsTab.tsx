@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CreateButton from '@/shared/ui/CreateButton'
 import type { ServiceAccountResponse } from '@/shared/api/types'
 import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
@@ -71,7 +70,6 @@ function AccountRow({ account, href }: { account: ServiceAccountResponse; href: 
         to={href}
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) auto',
           alignItems: 'center',
           columnGap: 1.5,
           py: 1.25,
@@ -91,7 +89,6 @@ function AccountRow({ account, href }: { account: ServiceAccountResponse; href: 
             <RowFacts account={account} />
           </Typography>
         </Box>
-        <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} aria-hidden="true" />
       </Box>
     </Box>
   )

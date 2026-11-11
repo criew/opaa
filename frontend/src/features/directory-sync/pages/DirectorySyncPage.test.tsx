@@ -53,7 +53,7 @@ async function rowOf(name: string) {
 
 async function openPanel(user: ReturnType<typeof userEvent.setup>, name: string) {
   const row = await rowOf(name)
-  await user.click(within(row).getByRole('button', { name: new RegExp(`: ${name}$`) }))
+  await user.click(within(row).getByRole('button', { name }))
   return screen.findByRole('dialog', { name })
 }
 
@@ -97,9 +97,9 @@ describe('DirectorySyncPage', () => {
     expect(
       within(row).getByText(/23 Mitgliedschaften entziehen und 1 Konto sperren/),
     ).toBeInTheDocument()
-    expect(
-      within(row).getByRole('button', { name: 'Entscheiden: Verzeichnisdienst' }),
-    ).toBeVisible()
+    // The row itself is the way in; it carries no button of its own (guidelines 5.3).
+    expect(within(row).getByRole('button', { name: 'Verzeichnisdienst' })).toBeVisible()
+    expect(within(row).getAllByRole('button')).toHaveLength(1)
     expect(screen.getByText(/1 Anbieter braucht Ihre Entscheidung/)).toBeInTheDocument()
   })
 
@@ -458,7 +458,7 @@ describe('DirectorySyncPage', () => {
     await openPanel(user, 'Landesportal')
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Details: Landesportal' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Landesportal' })).toHaveFocus()
   })
 
   describe('with many providers', () => {
@@ -527,9 +527,7 @@ describe('DirectorySyncPage', () => {
 
     const entry = await screen.findByRole('article', { name: 'Verzeichnisdienst' })
     expect(within(entry).getByText('Entscheidung nötig')).toBeInTheDocument()
-    expect(
-      within(entry).getByRole('button', { name: 'Entscheiden: Verzeichnisdienst' }),
-    ).toBeInTheDocument()
+    expect(within(entry).getByRole('button', { name: 'Verzeichnisdienst' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     window.matchMedia = desktopMatchMedia
   })

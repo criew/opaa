@@ -1,20 +1,14 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import AdminList from '@/shared/ui/list/AdminList'
+import QueryForm, { QueryPeriod, QueryPrompt, QueryReason } from '@/shared/ui/list/QueryForm'
+import { periodProblem } from '@/shared/ui/list/queryRules'
 import { useAuthStore } from '@/shared/session/authStore'
 import { listConnectionLog, listConnectionLogProfiles } from '../api/connectionLogApi'
 import type {
@@ -30,7 +24,7 @@ import {
   ownerKindLabel,
   ownerLabel,
 } from '../components/connectionLogLabels'
-import { contentWidth, formWidth } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import { formatProtocolTime } from '@/shared/utils/formatDate'
 
 const ALL = ''
@@ -68,7 +62,7 @@ export default function ConnectionLogPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const canSubmit = from !== '' && to !== '' && reason.trim() !== ''
+  const [attempted, setAttempted] = useState(false)
 
   useEffect(() => {
     if (!isAuditor) return
@@ -103,7 +97,8 @@ export default function ConnectionLogPage() {
   }
 
   function submit() {
-    if (!canSubmit || isLoading) return
+    setAttempted(true)
+    if (reason.trim() === '' || periodProblem(from, to)) return
     void load(
       {
         from: toInstant(from),
@@ -133,18 +128,19 @@ export default function ConnectionLogPage() {
           description="Wann Konten mit einem Zugang verbunden oder getrennt wurden und Verbindungen endeten. Personen erscheinen nur als Pseudonym, Zugangsdaten nie; Zeitraum höchstens 92 Tage, jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3, maxWidth: formWidth.column }}>
-          <FormField
-            label="Von"
-            type="datetime-local"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-          <FormField
-            label="Bis"
-            type="datetime-local"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
+        <QueryForm
+          label="Abfrage des Verbindungsprotokolls"
+          submitLabel="Protokoll anzeigen"
+          busy={isLoading}
+          busyAnnouncement="Verbindungsprotokoll wird gelesen"
+          onSubmit={submit}
+        >
+          <QueryPeriod
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            showProblems={attempted}
           />
           <FormField
             select
@@ -177,29 +173,17 @@ export default function ConnectionLogPage() {
               </MenuItem>
             ))}
           </FormField>
-          <FormField
-            label="Anlass"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            helperText="Pflichtangabe. Der Anlass steht im Protokolleintrag dieses Abrufs."
-          />
-          <Box>
-            <BusyButton
-              variant="contained"
-              busy={isLoading}
-              busyAnnouncement="Verbindungsprotokoll wird gelesen"
-              disabled={!canSubmit && !isLoading}
-              onClick={submit}
-            >
-              Protokoll anzeigen
-            </BusyButton>
-          </Box>
-        </Stack>
+          <QueryReason value={reason} onChange={setReason} showProblems={attempted} />
+        </QueryForm>
 
         {error && (
           <Alert severity="error" role="alert" sx={{ mb: 2 }}>
             {error}
           </Alert>
+        )}
+
+        {!result && !error && (
+          <QueryPrompt message="Hier erscheinen nach der Abfrage die Einträge des Zeitraums: wer ein Konto mit welchem Zugang verbunden oder getrennt hat und wann Verbindungen endeten." />
         )}
 
         {result && applied && (
@@ -213,51 +197,55 @@ export default function ConnectionLogPage() {
                 Aufbewahrungsfrist sind, sind gelöscht.
               </Typography>
             ) : (
-              <TableContainer>
-                <Table size="small" aria-label="Einträge des Verbindungsprotokolls">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Zeit</TableCell>
-                      <TableCell>Ereignis</TableCell>
-                      <TableCell>Grund des Endes</TableCell>
-                      <TableCell>Besitzart</TableCell>
-                      <TableCell>Person bzw. Bibliothek</TableCell>
-                      <TableCell>Zugang</TableCell>
-                      <TableCell>Ausgelöst von</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {result.entries.map((entry) => (
-                      <TableRow key={entry.eventId}>
-                        <TableCell>{formatProtocolTime(entry.recordedAt)}</TableCell>
-                        <TableCell>{eventTypeLabel(entry.eventType)}</TableCell>
-                        <TableCell>{entry.cause ? endCauseLabel(entry.cause) : '—'}</TableCell>
-                        <TableCell>{ownerKindLabel(entry.ownerKind)}</TableCell>
-                        <TableCell sx={{ wordBreak: 'break-all' }}>{ownerLabel(entry)}</TableCell>
-                        <TableCell>{entry.profileName}</TableCell>
-                        <TableCell>{actorLabel(entry.actor)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            {(result.page > 0 || result.hasMore) && (
-              <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
-                <Button
-                  disabled={result.page === 0 || isLoading}
-                  onClick={() => void load(applied, result.page - 1)}
-                >
-                  Zurück
-                </Button>
-                <Typography>Seite {result.page + 1}</Typography>
-                <Button
-                  disabled={!result.hasMore || isLoading}
-                  onClick={() => void load(applied, result.page + 1)}
-                >
-                  Weiter
-                </Button>
-              </Stack>
+              <AdminList
+                label="Einträge des Verbindungsprotokolls"
+                rows={result.entries}
+                rowKey={(entry) => entry.eventId}
+                rowLabel={(entry) =>
+                  `${eventTypeLabel(entry.eventType)}, ${formatProtocolTime(entry.recordedAt)}`
+                }
+                minWidth={920}
+                columns={[
+                  {
+                    id: 'time',
+                    head: 'Zeit',
+                    width: 168,
+                    card: 'line',
+                    cell: (entry) => formatProtocolTime(entry.recordedAt),
+                  },
+                  {
+                    id: 'event',
+                    head: 'Ereignis',
+                    card: 'title',
+                    cell: (entry) => eventTypeLabel(entry.eventType),
+                  },
+                  {
+                    id: 'cause',
+                    head: 'Endgrund',
+                    cell: (entry) => (entry.cause ? endCauseLabel(entry.cause) : '—'),
+                  },
+                  {
+                    id: 'ownerKind',
+                    head: 'Besitzart',
+                    width: '11%',
+                    card: 'hidden',
+                    cell: (entry) => ownerKindLabel(entry.ownerKind),
+                  },
+                  { id: 'owner', head: 'Besitzer', cell: (entry) => ownerLabel(entry) },
+                  { id: 'profile', head: 'Zugang', cell: (entry) => entry.profileName },
+                  {
+                    id: 'actor',
+                    head: 'Ausgelöst von',
+                    cell: (entry) => actorLabel(entry.actor),
+                  },
+                ]}
+                pager={{
+                  page: result.page,
+                  hasMore: result.hasMore,
+                  disabled: isLoading,
+                  onPage: (page) => void load(applied, page),
+                }}
+              />
             )}
           </>
         )}

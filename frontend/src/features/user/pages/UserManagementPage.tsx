@@ -9,6 +9,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import AccountFilterBar from '../components/AccountFilterBar'
@@ -54,6 +55,8 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
   const loadSummary = useUserAdminStore((s) => s.loadSummary)
   const loadSettings = useUserAdminStore((s) => s.loadSettings)
   const setFilters = useUserAdminStore((s) => s.setFilters)
+  const total = useUserAdminStore((s) => s.total)
+  const overallTotal = useUserAdminStore((s) => s.overallTotal)
 
   // `opening` is the dialog's key: every opening mounts a fresh dialog with a fresh draft.
   const [form, setForm] = useState<{
@@ -118,6 +121,9 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         />
       </Box>
       <AccountFilterBar />
+      {overallTotal !== null && (
+        <AreaPageCount total={overallTotal} filtered={total} unit={['Konto', 'Konten']} />
+      )}
       <AccountList
         currentUserId={currentUserId}
         createAction={

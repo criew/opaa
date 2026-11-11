@@ -4,12 +4,8 @@ import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import FormField from '@/shared/ui/form/FormField'
+import AdminList from '@/shared/ui/list/AdminList'
 import Typography from '@mui/material/Typography'
 import type {
   MaskedNumber,
@@ -215,49 +211,49 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
       </Stack>
 
       {summary.profiles.length > 0 && (
-        <Table
-          size="small"
-          aria-label="Belegter Speicher je Zugang"
-          sx={{ mb: 2, maxWidth: contentWidth.form }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Zugang</TableCell>
-              <TableCell align="right">Belegter Speicher</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summary.profiles.map((profile) => (
-              <TableRow key={profile.profileId}>
-                <TableCell>{profile.name}</TableCell>
-                <TableCell align="right">{maskedBytes(profile.usedBytes)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ mb: 2, maxWidth: contentWidth.form }}>
+          <AdminList
+            label="Belegter Speicher je Zugang"
+            rows={summary.profiles}
+            rowKey={(profile) => profile.profileId}
+            rowLabel={(profile) => profile.name}
+            columns={[
+              { id: 'profile', head: 'Zugang', cell: (profile) => profile.name },
+              {
+                id: 'used',
+                head: 'Belegter Speicher',
+                width: '40%',
+                align: 'right',
+                cell: (profile) => maskedBytes(profile.usedBytes),
+              },
+            ]}
+          />
+        </Box>
       )}
 
       {summary.runEnds.length > 0 && (
-        <Table
-          size="small"
-          aria-label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
-          sx={{ mb: 2, maxWidth: contentWidth.form }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Ursache</TableCell>
-              <TableCell align="right">Läufe</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summary.runEnds.map((entry) => (
-              <TableRow key={entry.category}>
-                <TableCell>{RUN_CATEGORY_LABELS[entry.category] ?? entry.category}</TableCell>
-                <TableCell align="right">{maskedCount(entry.runs)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ mb: 2, maxWidth: contentWidth.form }}>
+          <AdminList
+            label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
+            rows={summary.runEnds}
+            rowKey={(entry) => entry.category}
+            rowLabel={(entry) => RUN_CATEGORY_LABELS[entry.category] ?? entry.category}
+            columns={[
+              {
+                id: 'cause',
+                head: 'Ursache',
+                cell: (entry) => RUN_CATEGORY_LABELS[entry.category] ?? entry.category,
+              },
+              {
+                id: 'runs',
+                head: 'Läufe',
+                width: '40%',
+                align: 'right',
+                cell: (entry) => maskedCount(entry.runs),
+              },
+            ]}
+          />
+        </Box>
       )}
 
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>

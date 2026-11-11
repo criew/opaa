@@ -15,8 +15,8 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
 3. Erzeugen und **den Wert sofort kopieren**. Er wird nur einmal angezeigt, zusammen mit fertigen
    Ausschnitten für einige Werkzeuge.
 
-Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
-anzeigen: neues Token erzeugen, altes widerrufen. Eine Bibliothek, die Sie nicht mehr lesen dürfen,
+Widerrufen geht in derselben Liste über „Widerrufen“ im Menü „⋯“ der Zeile und wirkt sofort. Ein
+verlorener Wert lässt sich nicht wieder anzeigen: neues Token erzeugen, altes widerrufen. Eine Bibliothek, die Sie nicht mehr lesen dürfen,
 steht in der Liste als „(kein Leserecht)“ statt mit ihrem Namen.
 
 Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein

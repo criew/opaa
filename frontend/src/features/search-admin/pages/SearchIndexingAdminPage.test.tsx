@@ -69,6 +69,19 @@ async function runDiagnosis(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Diagnose ausführen' }))
 }
 
+/**
+ * The row carries one state; the figures per index and the batch runs stand in the detail the
+ * row opens (guidelines 5.3).
+ */
+async function openIndexDetail(name = 'Satzungen & Gebuehrenordnungen'): Promise<HTMLElement> {
+  const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+  const toggle = within(table).getByRole('button', { name })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await userEvent.setup().click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  return screen.getByLabelText(`Indexdetails: ${name}`)
+}
+
 describe('SearchIndexingAdminPage', () => {
   beforeEach(() => {
     useSearchAdminStore.getState().reset()
@@ -198,30 +211,34 @@ describe('SearchIndexingAdminPage', () => {
 
     renderIndex()
 
-    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
-    expect(row).not.toBeNull()
+    const row = await openIndexDetail()
     // 2 documents geführt as indexed with (almost) no chunks, and 56 chunks whose full-text row
     // still waits for the re-index - the two numbers the page exists to keep permanently visible.
-    expect(within(row as HTMLElement).getByText('2')).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText(
+        '2 Dokumente ohne oder mit auffällig wenigen Abschnitten',
+      ),
+    ).toBeInTheDocument()
     expect(
       within(row as HTMLElement).getByText('56 Abschnitte in älterer Fassung'),
     ).toBeInTheDocument()
     // Both chunk counts, because a gap between them is itself the finding.
-    expect(within(row as HTMLElement).getByText(/236 \/ 240/)).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText(/236 im Index, 240 laut Dokumenten/),
+    ).toBeInTheDocument()
     expect(
       within(row as HTMLElement).getByText('Vektorindex und Dokumentzählung weichen ab'),
     ).toBeInTheDocument()
 
     // A single outdated chunk reads as a sentence, not as "1 Abschnitte in älterer Fassung".
-    const singularRow = within(table).getByText('Protokolle').closest('tr')
+    const singularRow = await openIndexDetail('Protokolle')
     expect(
       within(singularRow as HTMLElement).getByText('1 Abschnitt in älterer Fassung'),
     ).toBeInTheDocument()
 
     // A library whose full-text index is at the current version shows no backlog hint at all.
-    const readyRow = within(table).getByText('Formulare').closest('tr')
-    expect(within(readyRow as HTMLElement).queryByText(/Abschnitt/)).toBeNull()
+    const readyRow = await openIndexDetail('Formulare')
+    expect(within(readyRow as HTMLElement).queryByText(/in älterer Fassung/)).toBeNull()
   })
 
   // Only the active tab is mounted: the index status table is not in the DOM at all during the
@@ -247,8 +264,7 @@ describe('SearchIndexingAdminPage', () => {
 
     renderIndex()
 
-    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
+    const row = await openIndexDetail()
     expect(within(row as HTMLElement).getByText('9 / 11 aktuell')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('2 Dokumente ausstehend')).toBeInTheDocument()
     // Pending can stay above 0 after a completed run: the part waiting for its connector run is
@@ -294,7 +310,7 @@ describe('SearchIndexingAdminPage', () => {
 
     // A library without pending documents offers nothing to start - a second run would change
     // nothing.
-    const completeRow = within(table).getByText('Protokolle').closest('tr')
+    const completeRow = await openIndexDetail('Protokolle')
     expect(within(completeRow as HTMLElement).getByText('3 / 3 aktuell')).toBeInTheDocument()
     expect(within(completeRow as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
   })
@@ -342,6 +358,7 @@ describe('SearchIndexingAdminPage', () => {
 
     renderIndex()
     const user = userEvent.setup()
+    await openIndexDetail()
     await user.click(
       await screen.findByRole('button', {
         name: 'Kernfelder nachrüsten: Satzungen & Gebuehrenordnungen',
@@ -397,8 +414,7 @@ describe('SearchIndexingAdminPage', () => {
     )
 
     renderIndex()
-    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
+    const row = await openIndexDetail()
     // The Mischzustand is visible in the same table as the rest of the index state.
     expect(within(row as HTMLElement).getByText('8 / 11 mit aktuellem Präfix')).toBeInTheDocument()
     expect(
@@ -445,8 +461,7 @@ describe('SearchIndexingAdminPage', () => {
     )
 
     renderIndex()
-    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
+    const row = await openIndexDetail()
 
     expect(within(row as HTMLElement).getByText('1 Änderung läuft')).toBeInTheDocument()
     expect(
@@ -472,6 +487,7 @@ describe('SearchIndexingAdminPage', () => {
 
     renderIndex()
     const user = userEvent.setup()
+    await openIndexDetail()
     await user.click(
       await screen.findByRole('button', {
         name: 'Kernfelder nachrüsten: Satzungen & Gebuehrenordnungen',

@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import CreateButton from '@/shared/ui/CreateButton'
 import CreateGroupDialog from '../components/CreateGroupDialog'
@@ -23,6 +24,8 @@ import { contentWidth } from '@/shared/theme/tokens'
  */
 export default function GroupManagementPage() {
   const loadGroups = useGroupAdminListStore((s) => s.loadGroups)
+  const total = useGroupAdminListStore((s) => s.total)
+  const overallTotal = useGroupAdminListStore((s) => s.overallTotal)
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<GroupListResponse | null>(null)
   const [members, setMembers] = useState<GroupListResponse | null>(null)
@@ -54,6 +57,9 @@ export default function GroupManagementPage() {
           <PendingPlanHint />
         </Box>
         <GroupFilterBar />
+        {overallTotal !== null && (
+          <AreaPageCount total={overallTotal} filtered={total} unit={['Gruppe', 'Gruppen']} />
+        )}
         <GroupList
           onEdit={setEditing}
           onMembers={setMembers}

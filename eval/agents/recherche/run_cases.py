@@ -51,7 +51,10 @@ def summary(answer, seconds):
         "stepCount": len(steps),
         "toolCalls": tools,
         "limitSteps": sum(1 for step in steps if step["status"] == "LIMIT"),
-        "cited": sorted({source.get("fileName") for source in answer.get("sources", [])}),
+        "retrieved": sorted({source.get("fileName") for source in answer.get("sources", [])}),
+        # "cited" is set by the server only for markers whose document id matches a collected source.
+        "cited": sorted({s.get("fileName") for s in answer.get("sources", []) if s.get("cited")}),
+        "invalidCitations": sum(1 for s in answer.get("sources", []) if s.get("citationValid") is False),
         "answer": answer["answer"],
     }
 
@@ -91,12 +94,14 @@ def main():
         )
         result = summary(worked, work_seconds)
         cited = set(result["cited"])
+        forbidden = set(case.get("forbidden_documents", []))
         result.update(
             {
                 "id": case["id"],
                 "planRun": summary(plan, plan_seconds),
                 "missingExpected": sorted(set(case["expected_documents"]) - cited),
-                "citedForbidden": sorted(set(case.get("forbidden_documents", [])) & cited),
+                "citedForbidden": sorted(forbidden & cited),
+                "retrievedForbidden": sorted(forbidden & set(result["retrieved"])),
             }
         )
         report.append(result)

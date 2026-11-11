@@ -3,12 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import type { SettingsChange, SettingsDocument } from '@/shared/api/types'
@@ -19,6 +13,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { importSettings, previewSettingsImport } from '../api/settingsApi'
 import { SETTINGS_IMPORT_CONFIRM_PURPOSE } from './settingsRecentLogin'
@@ -195,37 +190,53 @@ export default function SettingsImportSection() {
                 vor dem Übernehmen prüfen.
               </Alert>
             )}
-            <TableContainer>
-              <Table size="small" aria-label="Änderungen durch den Import">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Bereich</TableCell>
-                    <TableCell>Angabe</TableCell>
-                    <TableCell>Bisher</TableCell>
-                    <TableCell>Neu</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {checked.changes.map((change) => (
-                    <TableRow key={`${change.section}.${change.key}`}>
-                      <TableCell>{change.sectionLabel}</TableCell>
-                      <TableCell>
-                        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                          <span>{change.keyLabel}</span>
-                          {change.securityRelevant && <MetaBadge>Sicherheitsrelevant</MetaBadge>}
-                        </Stack>
-                      </TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
-                        {formatSettingValue(change.before, change.section)}
-                      </TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
-                        {formatSettingValue(change.after, change.section)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <AdminList
+              label="Änderungen durch den Import"
+              rows={checked.changes}
+              rowKey={(change) => `${change.section}.${change.key}`}
+              rowLabel={(change) => `${change.sectionLabel}: ${change.keyLabel}`}
+              columns={[
+                {
+                  id: 'section',
+                  head: 'Bereich',
+                  width: '18%',
+                  card: 'line',
+                  cell: (change) => change.sectionLabel,
+                },
+                {
+                  id: 'key',
+                  head: 'Angabe',
+                  width: '26%',
+                  card: 'title',
+                  cell: (change) => (
+                    <>
+                      <ListText strong>{change.keyLabel}</ListText>
+                      {change.securityRelevant && <MetaBadge>Sicherheitsrelevant</MetaBadge>}
+                    </>
+                  ),
+                },
+                {
+                  id: 'before',
+                  head: 'Bisher',
+                  wrap: true,
+                  cell: (change) => (
+                    <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                      {formatSettingValue(change.before, change.section)}
+                    </Box>
+                  ),
+                },
+                {
+                  id: 'after',
+                  head: 'Neu',
+                  wrap: true,
+                  cell: (change) => (
+                    <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                      {formatSettingValue(change.after, change.section)}
+                    </Box>
+                  ),
+                },
+              ]}
+            />
             <Stack direction="row" spacing={1}>
               <BusyButton
                 variant="contained"

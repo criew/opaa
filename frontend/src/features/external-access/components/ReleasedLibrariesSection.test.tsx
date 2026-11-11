@@ -71,7 +71,8 @@ describe('ReleasedLibrariesSection', () => {
   })
 
   it('zeigt im schmalen Fenster dieselben Angaben als Liste', () => {
-    window.matchMedia = originalMatchMedia
+    window.matchMedia = (query: string) =>
+      ({ ...desktopMatchMedia(query), matches: false }) as MediaQueryList
     render([released])
 
     const list = screen.getByRole('list', { name: 'Freigegebene Bibliotheken' })

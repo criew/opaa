@@ -73,7 +73,7 @@ describe('ConnectionLogPage', () => {
 
     const table = await screen.findByRole('table', { name: 'Einträge des Verbindungsprotokolls' })
     const [header, first, second] = within(table).getAllByRole('row')
-    expect(header).toHaveTextContent('Grund des Endes')
+    expect(header).toHaveTextContent('Endgrund')
     expect(header).not.toHaveTextContent('Anlass')
     expect(first).toHaveTextContent('Abgelaufen')
     expect(first).toHaveTextContent('Vom Anbieter abgelehnt')
@@ -162,7 +162,7 @@ describe('ConnectionLogPage', () => {
     renderWithProviders(<ConnectionLogPage />)
     await fillAndSubmit(user)
 
-    await user.click(await screen.findByRole('button', { name: 'Weiter' }))
+    await user.click(await screen.findByRole('button', { name: 'Nächste Seite' }))
     expect(await screen.findByText('Seite 2')).toBeInTheDocument()
     expect(pages).toEqual(['0', '1'])
   })

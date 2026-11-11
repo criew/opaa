@@ -11,7 +11,7 @@ Die Seite zeigt und diagnostiziert, stellt aber nichts ein.
 | Reiter | Zeigt |
 |---|---|
 | „Überblick“ | Modellrollen (Chat, Einbettung, Reranking, Transkription, Texterkennung) mit Endpunkt und Erreichbarkeit, Suchpfade Vektor und Volltext |
-| „Indexstatus“ | je Bibliothek Dokumente, Chunks, letzter Lauf, Rückstand, „Nachzug ausstehend“, Stand der Kernfelder; private Bibliotheken nur als eine Zeile ohne Namen |
+| „Indexstatus“ | je Bibliothek Dokumente, Rückstand, letzter Lauf und Zustand; ein Klick auf die Zeile öffnet Chunks, Indexstände, „Nachzug ausstehend“ und den Stand der Kernfelder; private Bibliotheken nur als eine Zeile ohne Namen |
 | „Diagnose“ | eine Testfrage durch die echte Suche, Stufe für Stufe |
 
 ## Fehlendes Dokument finden
@@ -38,7 +38,8 @@ Verwaltenden sie lösen. Die betroffene Person sieht die Einträge zu sich.
 
 ## Bestand nachziehen
 
-Im Indexstatus startet „Kernfelder nachrüsten“ den **Bestandslauf** je Bibliothek: Er ermittelt
+Im Indexstatus öffnet ein Klick auf die Zeile die Einzelheiten der Bibliothek; dort startet
+„Kernfelder nachrüsten“ den **Bestandslauf**: Er ermittelt
 Titel, Dokumentart und Datum für ältere oder nach einem Update veraltete Dokumente neu, ohne neu
 einzubetten. Danach bettet der Kontextpräfix-Nachlauf Dokumente mit geändertem Präfix neu ein.
 Beide lassen sich anhalten und fortsetzen.

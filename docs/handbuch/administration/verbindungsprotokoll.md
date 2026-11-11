@@ -10,12 +10,13 @@ Das Protokoll hält fest, wann Personen ein Konto bei einer Quelle verbunden, ne
 getrennt haben, wann eine Verbindung ablief und wann eine Handlung am Zugang sie beendet hat.
 Solange niemand ein Konto verbunden hat, bleibt es leer.
 
-1. „Von“, „Bis“ und „Anlass“ eintragen; alle drei sind Pflicht.
+1. „Von“, „Bis“ und „Anlass“ eintragen; alle drei sind Pflicht. Fehlt etwas, nennt es das Feld
+   nach dem Klick.
 2. Bei Bedarf eingrenzen: „Ereignis (optional)“, „Zugang (optional)“. Ein gelöschter Zugang trägt
    „(gelöscht)“.
-3. Abrufen und seitenweise blättern.
+3. „Protokoll anzeigen“ und seitenweise blättern.
 
-Die Tabelle zeigt Zeit, Ereignis, Grund des Endes, Besitzart, „Person“ bzw. Bibliothek mit
+Die Tabelle zeigt Zeit, Ereignis, „Endgrund“, „Besitzer“ („Person“ bzw. Bibliothek) mit
 Kontoadresse, Zugang und wer ausgelöst hat: „Person“ oder „System“, **nie welche Person**.
 
 **Gut zu wissen:**

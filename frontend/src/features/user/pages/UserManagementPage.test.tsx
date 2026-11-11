@@ -190,10 +190,17 @@ describe('UserManagementPage', () => {
     const user = userEvent.setup()
     renderAccounts()
     await screen.findByRole('table', { name: 'Konten' })
+    const all = useUserAdminStore.getState().total
+    expect(screen.getByText(`${all} Konten`)).toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox', { name: 'Herkunft' }))
     await user.click(await screen.findByRole('option', { name: 'Lokal' }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.providerType).toBe('LOCAL'))
+    // While a filter narrows the list, the count beside the title names both figures.
+    await waitFor(() => expect(useUserAdminStore.getState().total).toBeLessThan(all))
+    expect(
+      await screen.findByText(`${useUserAdminStore.getState().total} von ${all} Konten`),
+    ).toBeInTheDocument()
     await waitFor(() =>
       expect(
         useUserAdminStore.getState().accounts.every((account) => account.providerType === 'LOCAL'),

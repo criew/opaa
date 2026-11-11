@@ -584,6 +584,59 @@ bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Issue #595).
 
+**Ein Baustein für jede Verwaltungsliste** (#3730). Jede Tabelle entsteht aus `AdminList`
+(`frontend/src/shared/ui/list/`): ab Tablet-Breite Tabelle, darunter Kartenliste mit denselben
+Spalten. ESLint verbietet `Table` und seine Teile außerhalb von `shared/ui`. Der Baustein setzt
+diese Regeln um:
+
+1. **Zeile als Link.** Führt eine Zeile in eine Detailansicht, ist die ganze Zeile das Ziel, mit
+   einer Tab-Position und dem Namen des Eintrags als zugänglichem Namen. Kein unterstrichener
+   Name, kein Chevron, keine Schaltfläche „Details“ oder „Beheben“. Öffnet die Zeile Einzelheiten
+   an Ort und Stelle, trägt sie `aria-expanded`.
+2. **Höchstens eine sichtbare Handlung je Zeile**: kompakt, sekundär, mit Verb (`RowAction`). Nie
+   primär, nie roter Text. Alles Weitere, auch Löschen und Widerrufen, steht hinter „⋯“
+   (`RowMenu`). Ausnahme: Ist die Reihenfolge der Zeilen selbst der Inhalt (Identitätsanbieter
+   auf der Anmeldeseite), stehen die beiden Pfeile zum Verschieben als Symbolschaltflächen neben
+   „⋯“; sie zählen zusammen als die eine Handlung. Zweite Ausnahme ist die Entscheidungszeile
+   (unten).
+3. **Anzahl neben dem Seitentitel** (`AreaPageCount`), bei gefilterter Liste „12 von 40“. Die Zahl
+   steht nicht über oder unter der Tabelle.
+4. **Blättern in einer Form** (`ListPager`): unten rechts „Seite 2 von 5“ mit Pfeilen; bei einer
+   Seite entfällt die Leiste. Kennt die Schnittstelle die Gesamtzahl nicht, steht „Seite 2“.
+   „Weitere laden“ bleibt Ereignislisten und Auswahldialogen vorbehalten.
+5. **Sortierbar** sind Namens- und Datumsspalten, sobald die Liste blättert und die Schnittstelle
+   sortiert.
+6. **Höchstens sieben Spalten** bei 1280 px, Spaltenkopf einzeilig; eine Erläuterung zum Kopf
+   steht im Info-Symbol daneben. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
+   die Detailseite (Beispiel: Indexstatus zeigt fünf Spalten, die Indexstände stehen in den
+   Einzelheiten).
+7. **Zellen brechen nicht um.** Namen werden gekürzt und tragen den vollen Text als Tooltip
+   (`ListText`); Badges einzeilig, höchstens zwei je Zelle. Mehrere Zustände derselben Art werden
+   ein Badge („Zugang und Quellart gesperrt“).
+8. **Filterzeile:** Suche links, danach Auswahlfelder; ein Schalter nur für ein einzelnes Ja/Nein.
+
+Die Zählbudgets `tableColumns` und `rowPrimaryButtons` der
+[UI-Prüfliste](./ui-pruefliste.md#zählbudgets) messen Spaltenzahl und Primärschaltflächen in
+Zeilen.
+
+**Abfrage vor der Liste** (#3742). Zeigt eine Seite erst nach einer Abfrage etwas
+(Stichtagsauskunft, Verbindungsprotokoll), steht über der Liste ein Abfrageformular aus
+`QueryForm` (`frontend/src/shared/ui/list/QueryForm.tsx`):
+
+1. Das Formular ist 720 px breit (`contentWidth.form`), die Felder kommen aus `FormField`, der
+   Zeitraum steht als Wertepaar „Von“ und „Bis“ nebeneinander (`QueryPeriod`). Es gibt genau eine
+   primäre Schaltfläche mit Verb („Auskunft erstellen“), immer aktiv; was fehlt, nennt das Feld
+   nach dem Klick.
+2. Das Ergebnis erscheint darunter als `AdminList`. Vor der ersten Abfrage steht an seiner Stelle
+   ein Satz, was erscheinen wird (`QueryPrompt`), kein leerer Rahmen.
+3. Die Pflichtangabe „Anlass“ heißt auf allen Revisionsseiten gleich und trägt denselben Hilfetext
+   (`QueryReason`).
+
+**Entscheidungszeile.** Verlangt eine Zeile eine Antwort aus zwei Möglichkeiten (Rollenanträge),
+trägt sie beide sichtbar, beide als kompakte Sekundär-Schaltfläche mit Verb, die annehmende zuerst:
+„Bestätigen“, „Ablehnen“ (`RowDecision`). Das ist neben den Verschiebepfeilen die einzige
+Ausnahme von Regel 2; ein „⋯“ steht dann nicht in der Zeile.
+
 **Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
 Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
 Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.

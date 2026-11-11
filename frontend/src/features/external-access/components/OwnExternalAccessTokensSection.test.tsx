@@ -78,7 +78,7 @@ describe('OwnExternalAccessTokensSection', () => {
     // would lead to a refusal. Revoking stays possible.
     expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“' }),
     ).toBeEnabled()
   })
 
@@ -494,9 +494,11 @@ describe('OwnExternalAccessTokensSection', () => {
     const user = userEvent.setup()
     render()
 
+    // Revoking is irreversible and therefore behind „⋯", never a button in the row.
     await user.click(
-      await screen.findByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“' }),
     )
+    await user.click(await screen.findByRole('menuitem', { name: 'Widerrufen' }))
     const confirmation = await screen.findByRole('dialog', {
       name: '„Claude Code (Dienst-PC)“ widerrufen?',
     })
