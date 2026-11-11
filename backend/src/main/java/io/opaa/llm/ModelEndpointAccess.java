@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.compliance.DataFlowCarrier;
@@ -143,20 +144,9 @@ public final class ModelEndpointAccess {
     return builder;
   }
 
-  /**
-   * {@code apiKey} unchanged, if an HTTP header can carry it. Otherwise refused with a message that
-   * does not name the key: the HTTP client's own refusal quotes the whole header value, and that
-   * message reaches the log with every stack trace that carries it.
-   */
+  /** {@code apiKey} unchanged, if an HTTP header can carry it ({@link HeaderValues}). */
   public static String headerSafe(String apiKey) {
-    for (int i = 0; i < apiKey.length(); i++) {
-      char c = apiKey.charAt(i);
-      if (c > 0xFF || c == 0x7F || (c < 0x20 && c != '\t')) {
-        throw new IllegalArgumentException(
-            "the model key contains a character an HTTP header cannot carry");
-      }
-    }
-    return apiKey;
+    return HeaderValues.requireSafe(apiKey, "model key");
   }
 
   /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */

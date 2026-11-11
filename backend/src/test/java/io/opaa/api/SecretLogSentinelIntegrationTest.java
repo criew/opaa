@@ -38,6 +38,7 @@ class SecretLogSentinelIntegrationTest {
   private static final String STORED_MODEL_KEY = "sk-SENTINELgespeichert3Kp";
   private static final String SMTP_PASSWORD = "SENTINELsmtpPasswort9Lm";
   private static final String SOURCE_PASSWORD = "SENTINELquellenPasswort4Tz";
+  private static final String CONFLUENCE_TOKEN = "SENTINELconfluencePat5Rv";
   private static final String CONSENT_CODE = "SENTINELautorisierungscode2Wd";
   private static final String CONSENT_STATE = "SENTINELzustand8Hb";
 
@@ -187,9 +188,20 @@ class SecretLogSentinelIntegrationTest {
                    "sourceCredentials": "nutzer:%s"}
                   """
                       .formatted(SOURCE_PASSWORD)));
+      mockMvc.perform(
+          admin(post("/api/v1/libraries/source-test"))
+              .content(
+                  """
+                  {"sourceType": "CONFLUENCE", "sourceUrl": "%s/confluence",
+                   "sourceCredentials": "%s\\nX-Zusatz"}
+                  """
+                      .formatted(refusingBase, CONFLUENCE_TOKEN)));
 
       assertThat(logs.events()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-      assertThat(logs.linesNaming(List.of(SOURCE_PASSWORD))).isEmpty();
+      assertThat(
+              logs.linesNaming(
+                  List.of(SOURCE_PASSWORD, "nutzer:" + SOURCE_PASSWORD, CONFLUENCE_TOKEN)))
+          .isEmpty();
     }
   }
 
