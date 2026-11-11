@@ -322,6 +322,29 @@ describe('MessageList', () => {
       expect(within(provisional).queryByRole('button', { name: /Kopieren/ })).toBeNull()
     })
 
+    it('shows the agent step in the chat status line, the same as an ordinary answer', () => {
+      render(<MessageList messages={[question]} isLoading streamingRun={running} />)
+
+      expect(screen.getByTestId('chat-status-line')).toHaveTextContent(
+        'Sucht nach „Dienstvereinbarung“ …',
+      )
+    })
+
+    it('names the provisional evidence once, in the status line only (#3743)', () => {
+      render(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={{ ...running, ended: true }}
+          streamingAnswer="Die Dienstvereinbarung regelt die Rufbereitschaft."
+        />,
+      )
+
+      const hints = screen.getAllByText(/Vorläufig|Belege noch nicht geprüft/)
+      expect(hints).toHaveLength(1)
+      expect(within(screen.getByTestId('chat-status-line')).getByText(/Vorläufig/)).toBe(hints[0])
+    })
+
     it('shows no steps once the answer is complete', () => {
       render(<MessageList messages={[question]} isLoading={false} streamingRun={running} />)
 

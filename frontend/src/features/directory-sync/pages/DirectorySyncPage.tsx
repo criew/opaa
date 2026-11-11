@@ -192,6 +192,7 @@ export default function DirectorySyncPage() {
                     label="Anbieter suchen"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    slotProps={{ htmlInput: { 'data-list-search': '' } }}
                     sx={{ width: { sm: 260 } }}
                   />
                 </Stack>

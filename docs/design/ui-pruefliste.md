@@ -159,8 +159,9 @@ zwei Einträgen.
     Assistent, Prüfen und Detail. – Sicht (Querbögen)
 49. Gleichartige Wahl ohne unterscheidendes Icon: [guidelines.md](./guidelines.md), 5.11. – Sicht
 50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
-    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
-    (Konsistenz-Review, Kategorie A)
+    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt; im Chat weder
+    der KI-Hinweis noch der Hinweis auf vorläufige Belege ([guidelines.md](./guidelines.md), 5.8). –
+    Sicht (Konsistenz-Review, Kategorie A)
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
 52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
@@ -169,6 +170,10 @@ zwei Einträgen.
     444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
     Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
     wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
+53. **Nichts rutscht, wenn ein Vorgang endet:** Kopf und Rahmen einer Fläche stehen vom ersten
+    Bild an, ein Titel, der später feststeht, hat bis dahin einen Platzhalter („Neuer Chat“). Was
+    schon steht, behält seine Position, wenn eine Antwort, ein Titel oder ein Ergebnis eintrifft
+    ([guidelines.md](./guidelines.md), 5.8). – Video im Szenario `slow`
 
 ## Pflege
 
