@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -53,6 +54,7 @@ class AgentWorkspace implements AgentRunCancellation {
    * run under the same row lock; expired reservations are removed on the way.
    */
   Reservation tryReserve(UUID runId, UUID userId) {
+    Objects.requireNonNull(userId, "userId");
     Reservation reservation =
         transaction.execute(
             status -> {

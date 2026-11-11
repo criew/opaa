@@ -20,7 +20,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param workspaceCapacity agent runs at the same time, installation-wide; a request beyond it is
  *     refused before its run begins.
  * @param workspaceCapacityPerPerson agent runs one person may have at the same time, over all
- *     instances; at most {@code workspaceCapacity}, so no single person can take every place.
+ *     instances; at most {@code workspaceCapacity}. Only below it can no single person take every
+ *     place.
  * @param closingCallAllowance the longest a single model call may take; a run's reservation
  *     outlives {@code maxDuration} by twice this - the call running at the limit and the closing
  *     answer call - and the reservation of a crashed instance frees itself after that.
