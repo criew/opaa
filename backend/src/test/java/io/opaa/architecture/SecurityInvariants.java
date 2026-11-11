@@ -171,13 +171,15 @@ final class SecurityInvariants {
 
   /**
    * Field names that carry security state: who may act (role), whether an account, token or grant
-   * still counts (locked, deactivated, revoked, consumed, ended, erased, dissolved, enabled), and
-   * until when (session generation, expiry, validity).
+   * still counts (locked, deactivated, revoked, consumed, ended, erased, dissolved, enabled,
+   * status), until when (session generation, expiry, validity) and the hash of a token that unlocks
+   * it.
    */
   static final Pattern SECURITY_STATE_FIELD =
       Pattern.compile(
-          "(?i).*role|revoked.*|locked.*|lockout.*|deactivated.*|disabled|enabled|active"
-              + "|dissolved|erasedAt|consumedAt|endedAt|sessionGeneration|validUntil|.*expiresAt");
+          "(?i).*role|revoked.*|locked.*|.*LockedAt|lockout.*|deactivated.*|disabled|enabled|active"
+              + "|status|dissolved|erasedAt|consumedAt|endedAt|sessionGeneration|validUntil"
+              + "|usableUntil|.*expiresAt|.*TokenHash");
 
   private static final String SPRING_DATA_REPOSITORY =
       "org.springframework.data.repository.Repository";

@@ -1,11 +1,13 @@
 package io.opaa.externalaccess.token;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +15,11 @@ import org.springframework.data.repository.query.Param;
 public interface ServiceAccountLibraryConsentRepository
     extends JpaRepository<ServiceAccountLibraryConsent, UUID> {
 
-  /** The open row of one pair, in force or run out; there is at most one. */
+  /**
+   * The open row of one pair, in force or run out; there is at most one. Locked until the caller's
+   * transaction ends, so a change and a withdrawal of the same consent never interleave.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<ServiceAccountLibraryConsent> findByServiceAccountIdAndLibraryIdAndEndedAtIsNull(
       UUID serviceAccountId, UUID libraryId);
 

@@ -17,12 +17,9 @@ import org.yaml.snakeyaml.Yaml;
  * of justified exceptions; an entry the code outgrew fails as well, so every list only shrinks.
  * {@link SecurityInvariantsFixtureTest} proves that each rule fires.
  *
- * <p>The whole-row rule sees calls, not data flow: an entry covers every write of its code unit,
- * and whether an instance is new, loaded or detached is the reason's claim, not the rule's. A type
- * enters {@link #SECURITY_STATE_ENTITIES} by hand; the field names of {@code
- * SecurityInvariants#SECURITY_STATE_FIELD} only keep a new one from going unclassified, so a type
- * whose state hides behind another name, or that is only inserted and deleted ({@code
- * GroupMembership}, {@code CapabilityGrant}), is not asked about.
+ * <p>The whole-row rule sees calls, not data flow: whether an instance is new, loaded or locked is
+ * the reason's claim. {@link #SECURITY_STATE_ENTITIES} is kept by hand, guarded only by field
+ * names; a type only inserted and deleted ({@code GroupMembership}) is not asked about.
  */
 class SecurityInvariantsTest {
 
@@ -257,6 +254,12 @@ class SecurityInvariantsTest {
       Map.ofEntries(
           Map.entry("io.opaa.auth.User", "system role, directory lock, erasure"),
           Map.entry(
+              "io.opaa.installation.InstallationState",
+              "whether the installation is open, and the hash of the token that completes it"),
+          Map.entry(
+              "io.opaa.audit.AuditIncidentScopeGrant",
+              "status and validity of an auditor's widened scope"),
+          Map.entry(
               "io.opaa.auth.LocalCredentials",
               "lock, failed-login lockout, expiry, session generation"),
           Map.entry(
@@ -299,6 +302,15 @@ class SecurityInvariantsTest {
   static final Map<String, String> NOT_SECURITY_STATE =
       Map.ofEntries(
           Map.entry("io.opaa.agent.AgentSettings", "enabled switches a feature, grants no access"),
+          Map.entry("io.opaa.chat.Chat", "status is the progress of an answer, grants no access"),
+          Map.entry(
+              "io.opaa.chat.ChatAttachment",
+              "status is the progress of reading an attachment, grants no access"),
+          Map.entry(
+              "io.opaa.indexing.job.IndexingJob", "status is the progress of an indexing run"),
+          Map.entry(
+              "io.opaa.knowledge.Document",
+              "status is the progress of indexing; access follows the library's grants"),
           Map.entry(
               "io.opaa.asset.AssetVisibilityHistory",
               "history of the external access for the audit; no decision reads it"),
@@ -476,10 +488,12 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.externalaccess.token.ExternalAccessTokenService#revokeOwn", TOWARD_REVOKED),
           Map.entry(
-              "io.opaa.externalaccess.token.ServiceAccountConsentService#revoke", TOWARD_REVOKED),
+              "io.opaa.externalaccess.token.ServiceAccountConsentService#revoke",
+              "reads the open consent FOR UPDATE and only ends it"),
           Map.entry(
               "io.opaa.externalaccess.token.ServiceAccountConsentService#set",
-              TOWARD_REVOKED + "; the replacing consent is a new row"),
+              "reads the open consent FOR UPDATE before it ends it; the replacing consent is a new"
+                  + " row"),
           Map.entry(
               "io.opaa.externalaccess.token.ServiceAccountService#deactivate", TOWARD_REVOKED),
           Map.entry("io.opaa.externalaccess.token.ServiceAccountService#issueToken", NEW_ROW),
@@ -524,7 +538,10 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.metadata.LibraryMetadataFieldService#updateCoreContextPrefix",
               CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.permission.PermissionTransferService#transferGrants", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.permission.PermissionTransferService#transferGrants",
+              "reads the target group's grant FOR UPDATE (findGroupGrantForUpdate) before it"
+                  + " raises role and expiry from it; the moved grant is a new row"),
           Map.entry(
               "io.opaa.space.GroupSpaceMembershipDirectoryAdapter#transferSpaceMemberships",
               ROLE_ONLY),
@@ -534,7 +551,17 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.space.Space#removeMembership",
               "detaches a membership that orphan removal deletes; no row is written back"),
-          Map.entry("io.opaa.space.SpaceService#updateMemberRole", ROLE_ONLY));
+          Map.entry("io.opaa.space.SpaceService#updateMemberRole", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.audit.AuditIncidentScopeService#approve",
+              "reads the grant FOR UPDATE (findForApproval) before it approves it"),
+          Map.entry("io.opaa.audit.AuditIncidentScopeService#request", NEW_ROW),
+          Map.entry(
+              "io.opaa.installation.InstallationService#ensureToken",
+              "reads the installation state FOR UPDATE (lockState) before it stores the token"),
+          Map.entry(
+              "io.opaa.installation.InstallationService#markCompleted",
+              "every caller read the installation state FOR UPDATE (lockState)"));
 
   /**
    * Code units that build a prompt in a class without {@link
