@@ -202,7 +202,8 @@ export default function ChatPage() {
       headerRef.current?.focus()
     } else {
       notify(
-        useChatListStore.getState().error ?? 'Chat konnte nicht aus dem Archiv zurückgeholt werden',
+        useChatListStore.getState().takeError() ??
+          'Chat konnte nicht aus dem Archiv zurückgeholt werden',
         'error',
       )
     }
@@ -238,7 +239,10 @@ export default function ChatPage() {
     const renamed = await renameChat(storeSpaceId, chatId, title)
     if (!renamed) {
       applyChatTitle(chatId, previous)
-      notify(useChatListStore.getState().error ?? 'Chat konnte nicht umbenannt werden', 'error')
+      notify(
+        useChatListStore.getState().takeError() ?? 'Chat konnte nicht umbenannt werden',
+        'error',
+      )
     }
   }
 

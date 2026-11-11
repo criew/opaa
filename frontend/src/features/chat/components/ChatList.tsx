@@ -294,7 +294,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
   /** A failed action on the list is a notice of its own; the list and its load state stay. */
   function reportActionFailure(fallback: string) {
-    notify(useChatListStore.getState().error ?? fallback, 'error')
+    notify(useChatListStore.getState().takeError() ?? fallback, 'error')
   }
 
   async function handleArchive(chat: ChatSummary) {
