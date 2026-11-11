@@ -114,14 +114,59 @@ describe('quick tour', () => {
       signIn({ quickTourHintDone: false })
       renderWithProviders(<Page />)
 
-      const hint = screen.getByRole('region', { name: 'Neu hier?' })
+      const hint = screen.getByRole('dialog', { name: 'Neu hier?' })
       expect(hint).toHaveTextContent(
         'Ein Rundgang in 5 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
       )
       expect(within(hint).getByRole('button', { name: 'Rundgang starten' })).toBeInTheDocument()
       expect(within(hint).getByRole('button', { name: 'Nicht jetzt' })).toBeInTheDocument()
-      // Nothing opens on its own.
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      // Only the invitation opens on its own, never the tour.
+      expect(screen.queryByRole('dialog', { name: 'Fragen stellen' })).not.toBeInTheDocument()
+    })
+
+    it('lies modally over the page with the focus on "Rundgang starten"', async () => {
+      signIn({ quickTourHintDone: false })
+      renderWithProviders(<Page />)
+
+      const hint = screen.getByRole('dialog', { name: 'Neu hier?' })
+      expect(hint).toHaveAttribute('aria-modal', 'true')
+      expect(hint).toHaveAccessibleDescription(
+        'Ein Rundgang in 5 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
+      )
+      await waitFor(() =>
+        expect(within(hint).getByRole('button', { name: 'Rundgang starten' })).toHaveFocus(),
+      )
+    })
+
+    it('stays open on a click beside it and sets nothing', async () => {
+      const user = userEvent.setup()
+      const requests = recordRequests()
+      signIn({ quickTourHintDone: false })
+      renderWithProviders(<Page />)
+
+      const backdrop = document.querySelector<HTMLElement>('.MuiBackdrop-root')
+      expect(backdrop).not.toBeNull()
+      await user.click(backdrop as HTMLElement)
+
+      expect(screen.getByRole('dialog', { name: 'Neu hier?' })).toBeInTheDocument()
+      expect(requests).toEqual([])
+    })
+
+    it('answers like "Nicht jetzt" on Escape', async () => {
+      const user = userEvent.setup()
+      const requests = recordRequests()
+      signIn({ quickTourHintDone: false })
+      renderWithProviders(<Page />)
+      await screen.findByRole('dialog', { name: 'Neu hier?' })
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument(),
+      )
+      await waitFor(() => expect(input()).toHaveFocus())
+      await waitFor(() => expect(requests).toEqual(['PUT /api/v1/me/quick-tour-hint']))
+      expect(screen.queryByRole('dialog', { name: 'Fragen stellen' })).not.toBeInTheDocument()
     })
 
     it.each([
@@ -132,7 +177,7 @@ describe('quick tour', () => {
       signIn(user, quickTour)
       renderWithProviders(<Page />)
 
-      expect(screen.queryByRole('region', { name: 'Neu hier?' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument()
     })
 
     it('counts the stations for the width and the role', () => {
@@ -154,7 +199,7 @@ describe('quick tour', () => {
 
       await user.click(screen.getByRole('button', { name: 'Nicht jetzt' }))
 
-      expect(screen.queryByRole('region', { name: 'Neu hier?' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument()
       await waitFor(() => expect(input()).toHaveFocus())
       await waitFor(() => expect(requests).toEqual(['PUT /api/v1/me/quick-tour-hint']))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -175,7 +220,7 @@ describe('quick tour', () => {
       await waitFor(() =>
         expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
       )
-      expect(screen.queryByRole('region', { name: 'Neu hier?' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument()
       await waitFor(() => expect(requests).toEqual(['PUT /api/v1/me/quick-tour-hint']))
     })
 
@@ -191,7 +236,7 @@ describe('quick tour', () => {
 
       await user.click(screen.getByRole('button', { name: 'Nicht jetzt' }))
 
-      expect(screen.queryByRole('region', { name: 'Neu hier?' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument()
       await waitFor(() => expect(input()).toHaveFocus())
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       expect(screen.queryByText(/kaputt|Fehler/)).not.toBeInTheDocument()
