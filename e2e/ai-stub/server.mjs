@@ -467,13 +467,16 @@ function quotedTerms(question) {
   return [...question.matchAll(/„([^“\n]{2,80})“/g)].slice(0, 2).map((match) => match[1])
 }
 
-/** The citation markers of the passages of a tool result whose text contains `term`. */
-function citationsFound(result, term) {
+/**
+ * The citation markers of the passages whose text contains `term`, looked up in `result` and the
+ * results of earlier steps (`earlier`); without a match, all markers of `result` itself.
+ */
+function citationsFound(result, term, earlier = '') {
   const markers = (text) => [...text.matchAll(CITATION_PATTERN)].map((match) => match[0])
   if (!term) {
     return markers(result)
   }
-  const matching = [...result.matchAll(PASSAGE_PATTERN)]
+  const matching = [...`${earlier}\n${result}`.matchAll(PASSAGE_PATTERN)]
     .map((passage) => passage[1])
     .filter((passage) => passage.toLowerCase().includes(term.toLowerCase()))
     .flatMap(markers)
@@ -566,11 +569,16 @@ async function plainAgentStep(body, messages, res) {
       finish: 'tool_calls',
     }
   }
+  // A search names only passages no earlier step handed over; like a model, the stub then cites
+  // the marker the earlier step delivered.
+  const searchTexts = results
+    .filter((result) => result.name === 'search_knowledge')
+    .map((result) => result.content)
   const citations = [
     ...new Set(
-      results
-        .filter((result) => result.name === 'search_knowledge')
-        .flatMap((result, index) => citationsFound(result.content, terms[index])),
+      searchTexts.flatMap((text, index) =>
+        citationsFound(text, terms[index], searchTexts.slice(0, index).join('\n')),
+      ),
     ),
   ]
   const filled = results.find((result) => result.name === 'fill_template')
