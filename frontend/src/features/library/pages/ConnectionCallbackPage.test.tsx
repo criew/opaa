@@ -328,7 +328,7 @@ describe('ConnectionCallbackPage', () => {
         name: 'Quelle mit dem anderen Konto verbinden?',
       })
       expect(dialog).toHaveTextContent('der Abgleichstand der Bibliothek verworfen')
-      const confirm = within(dialog).getByRole('button', { name: 'Mit diesem Konto verbinden' })
+      const confirm = within(dialog).getByRole('button', { name: 'Verbinden' })
       await user.click(confirm)
       expect(
         await within(dialog).findByText(
