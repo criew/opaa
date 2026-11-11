@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-06
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -33,6 +33,7 @@ Datenschutzverletzung.
 | **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Ausleitung an ein Sicherheitsmonitoring ohne Pseudonyme ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)) |
 | **Verfügbarkeit** | Readiness- und Liveness-Probe ([Readiness und Liveness](../../handbuch/betrieb/images-und-laufzeit.md#readiness-und-liveness)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
 | **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}); Texterkennung mit eigenem Betriebsschalter, ab Werk aus ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}) | Netzregeln, Zielliste am Proxy; den Texterkennungsdienst, auch den mitgelieferten OCR-Container, ohne Ablage und Logs der Seiten betreiben |
+| **Agenten** | ab Werk aus; ein Agent liest nie mehr als die aufrufende Person, Werkzeuge nur lesend oder isoliert; Code und Vorlagen laufen in einer Sandbox ohne Netz ({{faktenblatt:datenfluesse#code-sandbox}}, [Sandbox für Agenten](../../handbuch/betrieb/sandbox.md)); Schritt- und Sandboxprotokoll ohne Konto und Inhalte mit kurzer, nicht abschaltbarer Löschung ({{faktenblatt:datenkatalog#agent-run-logs}}) | Sandbox auf eigener VM oder in eigenem Namespace mit starker Isolation betreiben, Frist des Schrittprotokolls festlegen, Anlegerecht eng vergeben ([Agenten betreiben](../../handbuch/betrieb/agenten-betreiben.md)) |
 | **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
 | **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste)), [Schwachstellenerkennung](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 
