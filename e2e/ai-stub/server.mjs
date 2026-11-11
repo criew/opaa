@@ -490,10 +490,19 @@ function valueOf(schema, name, term) {
   return term ? `${term} (${name})` : `Wert ${name}`
 }
 
-function fillTemplateArguments(body, term) {
+function fillTemplateSchema(body) {
   const tool = body.tools.find((candidate) => candidate?.function?.name === 'fill_template')
   const parameters = tool.function.parameters
-  const schema = typeof parameters === 'string' ? JSON.parse(parameters) : parameters
+  return typeof parameters === 'string' ? JSON.parse(parameters) : parameters
+}
+
+/** A template is on offer when the tool's schema lists at least one template identifier. */
+function templateOffered(body) {
+  return (fillTemplateSchema(body).properties?.vorlage?.enum?.length ?? 0) > 0
+}
+
+function fillTemplateArguments(body, term) {
+  const schema = fillTemplateSchema(body)
   return {
     vorlage: schema.properties?.vorlage?.enum?.[0],
     daten: valueOf(schema.properties?.daten ?? { type: 'object' }, 'wert', term),
@@ -532,6 +541,7 @@ async function plainAgentStep(body, messages, res) {
   if (
     question.includes(AGENT_FILE_TRIGGER) &&
     offersTool(body, 'fill_template') &&
+    templateOffered(body) &&
     !results.some((result) => result.name === 'fill_template')
   ) {
     return {
@@ -547,7 +557,13 @@ async function plainAgentStep(body, messages, res) {
     ),
   ]
   const filled = results.find((result) => result.name === 'fill_template')
-  const note = filled ? ` Die Vorlage wurde befüllt: ${filled.content.slice(0, 300)}` : ''
+  const noTemplate =
+    question.includes(AGENT_FILE_TRIGGER) && offersTool(body, 'fill_template') && !templateOffered(body)
+  const note = filled
+    ? ` Die Vorlage wurde befüllt: ${filled.content.slice(0, 300)}`
+    : noTemplate
+      ? ' Es steht keine Vorlage zur Verfügung, ich antworte deshalb nur im Chat.'
+      : ''
   return {
     message: { role: 'assistant', content: `${AGENT_ANSWER}${note} ${citations.join(' ')}`.trim() },
     finish: 'stop',

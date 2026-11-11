@@ -15,7 +15,7 @@ import {
 import type { Page } from '@playwright/test'
 
 /**
- * Epic #1747, die Szenarien 1 und 2 (test(e2e) #3680): Ist der Schalter „Agenten“ aus, gibt es
+ * Die Szenarien 1 und 2: Ist der Schalter „Agenten“ aus, gibt es
  * weder Agentenwahl noch Katalogeintrag noch Vorlagen, und der gewöhnliche Chat antwortet wie
  * bisher. Ist er an, legt nur an, wer das Anlegerecht „Agenten anlegen“ hat; ohne es nennt die
  * Anlage den Grund vorab, nach der Freigabe der Systemverwaltung entsteht der Agent über den
@@ -32,7 +32,7 @@ async function openNewCatalogEntry(page: Page): Promise<void> {
   await expect(page.getByRole('radio', { name: /^Prompts/ })).toBeVisible()
 }
 
-test.describe.serial('Agenten: Schalter und Anlegerecht (#3680)', () => {
+test.describe.serial('Agenten: Schalter und Anlegerecht', () => {
   let agentsBefore: AgentSettings | null = null
   let templatesBefore: boolean | null = null
   let capabilityGrantId: string | null = null
@@ -70,7 +70,9 @@ test.describe.serial('Agenten: Schalter und Anlegerecht (#3680)', () => {
     // The menu is open (it offers the knowledge chips) but names no agents.
     await expect(page.getByRole('option').first()).toBeVisible()
     await expect(page.getByRole('group', { name: 'Agenten' })).toHaveCount(0)
-    await expect(page.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })).toHaveCount(0)
+    await expect(
+      page.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ }),
+    ).toHaveCount(0)
     await input.clear()
 
     await openNewCatalogEntry(page)

@@ -20,7 +20,7 @@ import {
 import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
 /**
- * Epic #1747, Szenario 9 (test(e2e) #3680): ein Agent mit Vorlage liefert Word-Datei und PDF mit
+ * Szenario 9: ein Agent mit Vorlage liefert Word-Datei und PDF mit
  * befüllten Platzhaltern, Fassungsstempel und Entwurfsvermerk; ist die Vorlage gesperrt, bleibt die
  * Chatantwort ohne Datei. Gehört zum Ziel `sandbox`, weil `fill_template` die Sandbox braucht
  * (OpenSandbox, siehe e2e/README.md); ai-stub spielt das Modell und erfindet die Werte aus dem
@@ -48,7 +48,7 @@ function chatIdOf(page: Page): string {
   return id!
 }
 
-test.describe.serial('Agent mit Vorlage: Datei nach Vorlage (#3680)', () => {
+test.describe.serial('Agent mit Vorlage: Datei nach Vorlage', () => {
   test.describe.configure({ timeout: 240_000 })
 
   let agentsBefore: AgentSettings | null = null
@@ -197,6 +197,7 @@ test.describe.serial('Agent mit Vorlage: Datei nach Vorlage (#3680)', () => {
       )
       const answer = answers(page).first()
       await expect(answer).toContainText('Ergebnis des Agenten.', { timeout: 120_000 })
+      await expect(answer).toContainText('Es steht keine Vorlage zur Verfügung')
       await expect(answer.getByRole('list', { name: 'Erzeugte Dateien' })).toHaveCount(0)
     } finally {
       await api.delete(`/api/v1/document-templates/${templateId}/lock`)

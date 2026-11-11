@@ -20,8 +20,9 @@ interface MentionOptionProps {
 }
 
 /**
- * One entry of the '@' menu. An agent is set apart from knowledge by its icon, its badge and its
- * accessible name ("Agent …"), not by colour alone.
+ * One entry of the '@' menu. An agent is set apart from knowledge by its icon and its badge
+ * ("Agent · ersetzt den Suchbereich"), not by colour alone. The accessible name is the visible
+ * content: the name followed by that badge, so no aria-label differs from what is shown.
  */
 export default function MentionOption({
   suggestion,

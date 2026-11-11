@@ -18,7 +18,7 @@ import {
 import type { Page } from '@playwright/test'
 
 /**
- * Epic #1747, Szenario 10 (test(e2e) #3680, #3677): Die Systemverwaltung sperrt einen Agenten. Er
+ * Szenario 10: Die Systemverwaltung sperrt einen Agenten. Er
  * verschwindet aus der Auswahl, ein offener Chat mit ihm meldet die Sperre beim nächsten Senden,
  * und nach dem Entsperren steht er wieder zur Wahl. dev-user chattet, dev-admin sperrt.
  */
@@ -50,7 +50,7 @@ async function expectInMentionMenu(page: Page, present: boolean): Promise<void> 
   await input.clear()
 }
 
-test.describe.serial('Agenten: Sperre durch die Systemverwaltung (#3680)', () => {
+test.describe.serial('Agenten: Sperre durch die Systemverwaltung', () => {
   let agentsBefore: AgentSettings | null = null
   let capabilityBefore: Awaited<ReturnType<typeof setToolCapability>> | null = null
   let spaceId = ''
@@ -62,7 +62,10 @@ test.describe.serial('Agenten: Sperre durch die Systemverwaltung (#3680)', () =>
     capabilityBefore = await setToolCapability('CAPABLE')
     const memberId = await accountId(MEMBER)
     libraryId = await createIndexedLibrary(ADMIN, LIBRARY_NAME, [
-      { name: `sperre-${SUFFIX}.txt`, text: 'Dienstanweisung: Anträge werden binnen zehn Tagen bearbeitet.' },
+      {
+        name: `sperre-${SUFFIX}.txt`,
+        text: 'Dienstanweisung: Anträge werden binnen zehn Tagen bearbeitet.',
+      },
     ])
     await grantViewer(ADMIN, 'KNOWLEDGE_LIBRARY', libraryId, {
       subjectType: 'USER',
@@ -123,7 +126,9 @@ test.describe.serial('Agenten: Sperre durch die Systemverwaltung (#3680)', () =>
     await member.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(question)
     await member.getByRole('button', { name: 'Senden' }).click()
     await expect(
-      member.getByText(`Der Agent „${AGENT_NAME}“ ist gesperrt und kann gerade nicht genutzt werden.`),
+      member.getByText(
+        `Der Agent „${AGENT_NAME}“ ist gesperrt und kann gerade nicht genutzt werden.`,
+      ),
     ).toBeVisible()
     await expect(answers(member)).toHaveCount(0)
 

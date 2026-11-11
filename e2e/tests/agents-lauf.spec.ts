@@ -7,12 +7,18 @@ import {
   startFreshChat,
 } from '../fixtures/chat'
 import { assignToDefaultSpace, defaultSpaceIdOf } from '../fixtures/spaces'
+import { createSpaceWithMember, deleteSpaceViaApi } from '../fixtures/privateLibraries'
+import type { APIRequestContext } from '@playwright/test'
 import {
+  accountId,
+  addSpaceMember,
   answers,
   askAgent,
   createAgentViaApi,
   createIndexedLibrary,
+  assignToSpace,
   deleteAgentViaApi,
+  grantViewer,
   heldAgentCalls,
   releaseAgentCalls,
   restoreAgentSettings,
@@ -22,7 +28,7 @@ import {
 } from '../fixtures/agents'
 
 /**
- * Epic #1747, die Szenarien 5 bis 8 (test(e2e) #3680): der Lauf eines Agenten mit seinen Schritten,
+ * Die Szenarien 5 bis 8: der Lauf eines Agenten mit seinen Schritten,
  * Stopp, Rückfrage, Grenze, Platzlimit und ein Modell ohne Werkzeugfähigkeit. Die Oberfläche
  * erreicht das Backend wie überall in der Suite durch den nginx des Frontend-Containers; dass die
  * Schritte während des Laufs ankommen, belegt Szenario 5 damit auch für den Antwortstrom durch den
@@ -30,12 +36,59 @@ import {
  */
 
 const ADMIN = 'dev-admin'
+const MEMBER = 'dev-user'
+const OUTSIDER = 'dev-outsider'
 const SUFFIX = Date.now().toString(36)
 const PAUSE = 'E2E-AGENT-PAUSE'
 const FIRST_FILE = `fristen-${SUFFIX}.txt`
 const SECOND_FILE = `widersprueche-${SUFFIX}.txt`
 
-test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () => {
+/** Starts a run through the API that waits at ai-stub until the calls are released. */
+function startBlockedRun(
+  api: APIRequestContext,
+  spaceId: string,
+  agentId: string,
+  question: string,
+): Promise<unknown> {
+  return (async () => {
+    const chat = await api.post(`/api/v1/spaces/${spaceId}/chats`, { data: {} })
+    expect(chat.status(), await chat.text()).toBe(201)
+    const { id: chatId } = (await chat.json()) as { id: string }
+    return api.post('/api/v1/query', {
+      timeout: 60_000,
+      data: { question, chatId, agentId },
+    })
+  })()
+}
+
+/** Waits until a run of the admin is accepted again, i.e. the places of earlier runs are free. */
+async function expectPlaceFree(agentId: string): Promise<void> {
+  const api = await apiAs(ADMIN)
+  try {
+    const spaceId = await defaultSpaceIdOf(ADMIN)
+    await expect
+      .poll(
+        async () => {
+          const chat = await api.post(`/api/v1/spaces/${spaceId}/chats`, { data: {} })
+          const { id: chatId } = (await chat.json()) as { id: string }
+          const run = await api.post('/api/v1/query', {
+            data: {
+              question: `Was gilt für „Wohngeld“? (${SUFFIX}-frei)`,
+              chatId,
+              agentId,
+            },
+          })
+          return run.status()
+        },
+        { timeout: 30_000, intervals: [500, 1000] },
+      )
+      .toBe(200)
+  } finally {
+    await api.dispose()
+  }
+}
+
+test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit', () => {
   test.describe.configure({ timeout: 90_000 })
 
   let agentsBefore: AgentSettings | null = null
@@ -155,12 +208,17 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
     await askAgent(page, agentName, question)
     await expect.poll(heldAgentCalls, { timeout: 30_000 }).toBe(1)
 
+    const cancelled = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/query/stream/cancel'),
+    )
     await page.getByRole('button', { name: 'Antwort abbrechen' }).click()
+    expect((await cancelled).ok()).toBe(true)
     await expect(page.getByText('Antwort abgebrochen.')).toBeVisible()
     await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(question)
     // Let go of the call the stopped run waited in, so it cannot count as a place later on.
     await releaseAgentCalls()
     await expect.poll(heldAgentCalls, { timeout: 15_000 }).toBe(0)
+    await expectPlaceFree(agentIds[0])
 
     await page.reload()
     await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
@@ -200,24 +258,28 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
   test('7b. Platzlimit: bei vollem Arbeitsplatz wird die Anfrage ohne Teilergebnis abgewiesen', async ({
     authenticatedPage: page,
   }) => {
-    // Two runs fill the workspace (two places) and wait at ai-stub.
-    const spaceId = await defaultSpaceIdOf(ADMIN)
-    const api = await apiAs(ADMIN)
+    // Two other people fill the workspace (two places, one per person) and wait at ai-stub.
+    const spaceId = await createSpaceWithMember(`E2E-Lauf-Raum-${SUFFIX}`, ADMIN, MEMBER)
     const blockers: Array<Promise<unknown>> = []
+    const apis = []
     try {
-      for (const index of [1, 2]) {
-        const chat = await api.post(`/api/v1/spaces/${spaceId}/chats`, { data: {} })
-        expect(chat.status(), await chat.text()).toBe(201)
-        const { id: chatId } = (await chat.json()) as { id: string }
+      await addSpaceMember(ADMIN, spaceId, OUTSIDER)
+      for (const person of [MEMBER, OUTSIDER]) {
+        const personId = await accountId(person)
+        for (const [type, id] of [
+          ['KNOWLEDGE_LIBRARY', libraryId],
+          ['AGENT', agentIds[0]],
+        ] as const) {
+          await grantViewer(ADMIN, type, id, { subjectType: 'USER', subjectId: personId })
+        }
+      }
+      await assignToSpace(ADMIN, spaceId, 'KNOWLEDGE_LIBRARY', libraryId)
+      await assignToSpace(ADMIN, spaceId, 'AGENT', agentIds[0])
+      for (const person of [MEMBER, OUTSIDER]) {
+        const api = await apiAs(person)
+        apis.push(api)
         blockers.push(
-          api.post('/api/v1/query', {
-            timeout: 60_000,
-            data: {
-              question: `${PAUSE} Blocker ${index} (${SUFFIX})`,
-              chatId,
-              agentId: agentIds[0],
-            },
-          }),
+          startBlockedRun(api, spaceId, agentIds[0], `${PAUSE} Blocker ${person} (${SUFFIX})`),
         )
       }
       await expect.poll(heldAgentCalls, { timeout: 30_000 }).toBe(2)
@@ -227,7 +289,7 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
       await askAgent(page, agentName, question)
       await expect(
         page.getByText(
-          'Gerade arbeiten zu viele Agenten gleichzeitig. Bitte versuche es in Kürze erneut.',
+          'Gerade arbeiten zu viele Agenten gleichzeitig. Bitte versuchen Sie es in Kürze erneut.',
         ),
       ).toBeVisible()
       await expect(answers(page)).toHaveCount(0)
@@ -236,8 +298,41 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
     } finally {
       await releaseAgentCalls()
       await Promise.allSettled(blockers)
+      for (const api of apis) await api.dispose()
+      await deleteSpaceViaApi(ADMIN, spaceId)
+    }
+    await expectPlaceFree(agentIds[0])
+  })
+
+  test('7c. Personenlimit: wer schon einen Lauf hat, startet keinen zweiten', async ({
+    authenticatedPage: page,
+  }) => {
+    const api = await apiAs(ADMIN)
+    let blocker: Promise<unknown> | null = null
+    try {
+      blocker = startBlockedRun(
+        api,
+        await defaultSpaceIdOf(ADMIN),
+        agentIds[0],
+        `${PAUSE} Blocker eigener Lauf (${SUFFIX})`,
+      )
+      await expect.poll(heldAgentCalls, { timeout: 30_000 }).toBe(1)
+
+      const question = `Was gilt für „Wohngeld“? (${SUFFIX}-person)`
+      await startFreshChat(page)
+      await askAgent(page, agentName, question)
+      await expect(
+        page.getByText(
+          /Sie haben bereits so viele Agentenläufe gestartet, wie gleichzeitig möglich sind/,
+        ),
+      ).toBeVisible()
+      await expect(answers(page)).toHaveCount(0)
+    } finally {
+      await releaseAgentCalls()
+      if (blocker) await Promise.allSettled([blocker])
       await api.dispose()
     }
+    await expectPlaceFree(agentIds[0])
   })
 
   test('8. Modell nicht werkzeugfähig: die Agenten-Anfrage wird abgewiesen, der gewöhnliche Chat läuft', async ({
@@ -251,10 +346,7 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
       await expect(page.getByText(/Diese Anfrage braucht Werkzeugaufrufe/)).toBeVisible()
       await expect(answers(page)).toHaveCount(0)
       // Without the agent the same question is answered as before.
-      const chip = page.getByTestId('chosen-agent-chip')
-      if ((await chip.count()) > 0) {
-        await page.getByRole('button', { name: `Agent ${agentName} entfernen` }).click()
-      }
+      await expect(page.getByTestId('chosen-agent-chip')).toHaveCount(0)
       await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(question)
       await page.getByRole('button', { name: 'Senden' }).click()
       await expect(answers(page)).toHaveCount(1)

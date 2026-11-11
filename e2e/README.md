@@ -856,7 +856,7 @@ lassen.
   sind unterscheidbar, `@Agent` mit `/Prompt` läuft über den Agenten. **Lauf:** Schritte erscheinen
   im Strom durch den nginx des Frontend-Containers, während der Lauf am Stub festgehalten wird;
   Belege aus beiden Schritten, Fassungsstempel, „Entwurf“; Stopp, Rückfrage, Grenze, volles
-  Platzlimit (zwei gleichzeitige Läufe, Vorgabe) und ein Modell ohne Werkzeugfähigkeit. **Sperre:**
+  Platzlimit (zwei gleichzeitige Läufe von zwei Personen, Vorgabe) und Personenlimit (ein Lauf je Person, Vorgabe) und ein Modell ohne Werkzeugfähigkeit. **Sperre:**
   gesperrter Agent fehlt in der Auswahl, ein offener Chat meldet die Sperre beim Senden. Schalter,
   Werkzeugfähigkeit des Modells und Vorlagen-Schalter sind installationsweit; jedes Szenario stellt
   den Stand davor wieder her. Die Datei nach Vorlage (DOCX und PDF, gesperrte Vorlage) braucht die

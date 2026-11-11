@@ -22,7 +22,7 @@ import {
 import type { Page } from '@playwright/test'
 
 /**
- * Epic #1747, die Szenarien 3 und 4 (test(e2e) #3680). Teilen: Der Agent wird an eine Gruppe
+ * Die Szenarien 3 und 4. Teilen: Der Agent wird an eine Gruppe
  * freigegeben; ein Gruppenmitglied wählt ihn per `@`, eine fremde Person im selben Space findet ihn
  * nicht. Wahl: Agent und Suchbereich sind im Menü und im Eingabefeld unterscheidbar, und `@Agent`
  * mit `/Prompt` setzt den Prompttext ein und läuft über den Agenten.
@@ -55,7 +55,7 @@ async function openMentionMenu(page: Page): Promise<void> {
   await expect(page.getByRole('option').first()).toBeVisible()
 }
 
-test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich (#3680)', () => {
+test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich', () => {
   let agentsBefore: AgentSettings | null = null
   let capabilityBefore: Awaited<ReturnType<typeof setToolCapability>> | null = null
   let spaceId = ''
@@ -166,11 +166,9 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich (#3680)', () => {
     await openSpaceChat(member, spaceId)
     await openMentionMenu(member)
     await expect(
-      member
-        .getByRole('group', { name: 'Agenten' })
-        .getByRole('option', {
-          name: new RegExp(`^${AGENT_NAME}\\s*Agent · ersetzt den Suchbereich$`),
-        }),
+      member.getByRole('group', { name: 'Agenten' }).getByRole('option', {
+        name: new RegExp(`^${AGENT_NAME}\\s*Agent · ersetzt den Suchbereich$`),
+      }),
     ).toBeVisible()
 
     await openSpaceChat(outsider, spaceId)
@@ -178,7 +176,9 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich (#3680)', () => {
     // The knowledge of the space is there for the outsider, the agent is not.
     await expect(outsider.getByRole('option', { name: new RegExp(LIBRARY_NAME) })).toBeVisible()
     await expect(outsider.getByRole('group', { name: 'Agenten' })).toHaveCount(0)
-    await expect(outsider.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })).toHaveCount(0)
+    await expect(
+      outsider.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ }),
+    ).toHaveCount(0)
   })
 
   test('4. @-Wahl: Agent und Suchbereich sind unterscheidbar, @Agent mit /Prompt läuft über den Agenten', async ({

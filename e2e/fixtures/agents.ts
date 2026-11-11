@@ -2,7 +2,7 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 import { apiAs } from './externalAccess'
 
 /**
- * Bausteine der Szenarien zum Agenten-Paket (test(e2e) #3680, Epic #1747). Was ein Szenario prüft,
+ * Bausteine der Szenarien zum Agenten-Paket. Was ein Szenario prüft,
  * läuft über die Oberfläche; Schalter, Modellfähigkeit, Bibliotheken und Zuordnungen sind
  * Vorbedingung und laufen über die API im Namen eines Dev-Nutzers. Schalter und Modell sind
  * Zustand der ganzen Installation und werden vom Szenario zurückgesetzt, das sie ändert.
@@ -19,7 +19,12 @@ export interface AgentSettings {
 }
 
 /** Werkzeuge ohne Sandbox: alle, die ein Agent in der Suite nutzen kann. */
-export const TOOLS_WITHOUT_SANDBOX = ['search_knowledge', 'read_document', 'list_sources', 'ask_user']
+export const TOOLS_WITHOUT_SANDBOX = [
+  'search_knowledge',
+  'read_document',
+  'list_sources',
+  'ask_user',
+]
 
 async function ok(response: Awaited<ReturnType<APIRequestContext['get']>>): Promise<void> {
   expect(response.ok(), `${response.url()}: ${response.status()} ${await response.text()}`).toBe(
@@ -102,7 +107,7 @@ export async function setToolCapability(value: ToolCapability): Promise<ToolCapa
   }
 }
 
-/** Die verantwortliche Stelle, die jeder angelegte Agent braucht (#3677). */
+/** Die verantwortliche Stelle, die jeder angelegte Agent braucht. */
 export const RESPONSIBLE_UNIT = 'Referat E2E - Organisation'
 
 export interface AgentConfig {
@@ -221,7 +226,11 @@ export async function assignToSpace(
 }
 
 /** Nimmt `member` als einfaches Mitglied in den Space von `owner` auf. */
-export async function addSpaceMember(owner: string, spaceId: string, member: string): Promise<void> {
+export async function addSpaceMember(
+  owner: string,
+  spaceId: string,
+  member: string,
+): Promise<void> {
   const memberId = await accountId(member)
   const api = await apiAs(owner)
   try {
