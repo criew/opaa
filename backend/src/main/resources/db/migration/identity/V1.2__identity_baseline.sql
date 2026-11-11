@@ -399,6 +399,7 @@ CREATE TABLE oidc_providers (
     is_external boolean DEFAULT true NOT NULL,
     directory_sync_enabled boolean DEFAULT false NOT NULL,
     directory_sync_interval_minutes integer,
+    version bigint DEFAULT 0 NOT NULL,
     CONSTRAINT chk_oidc_providers_client_id_by_type CHECK ((((provider_type)::text = 'OIDC'::text) = (client_id IS NOT NULL))),
     CONSTRAINT chk_oidc_providers_directory_sync CHECK ((((directory_sync_enabled = false) AND (directory_sync_interval_minutes IS NULL)) OR ((directory_sync_enabled = true) AND ((provider_type)::text = 'OIDC'::text) AND (groups_claim IS NULL) AND (directory_sync_interval_minutes >= 5) AND (directory_sync_interval_minutes <= 10080)))),
     CONSTRAINT chk_oidc_providers_local_not_external CHECK ((((provider_type)::text <> 'LOCAL'::text) OR (is_external = false))),
@@ -452,7 +453,8 @@ CREATE TABLE users (
     organization_id uuid NOT NULL,
     directory_locked_at timestamp with time zone,
     erased_at timestamp with time zone,
-    quick_tour_hint_done boolean DEFAULT false NOT NULL
+    quick_tour_hint_done boolean DEFAULT false NOT NULL,
+    version bigint DEFAULT 0 NOT NULL
 );
 
 ALTER TABLE ONLY admin_review_reminders
