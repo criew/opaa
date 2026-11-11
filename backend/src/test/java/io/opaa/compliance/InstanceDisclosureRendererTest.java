@@ -7,6 +7,7 @@ import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
@@ -112,7 +113,32 @@ class InstanceDisclosureRendererTest {
                           CaseCount.of(1),
                           CaseCount.of(0),
                           CaseCount.of(3))),
-                  List.of("Eine Ablehnung gibt es nicht"))));
+                  List.of("Eine Ablehnung gibt es nicht"))),
+          List.of(
+              new DataSetDescription(
+                  "agent-step-log",
+                  "Schrittprotokoll der Agentenläufe",
+                  "Fehlersuche in einem Agentenlauf",
+                  List.of(
+                      new ProtocolField(
+                          "tool", "Name des Werkzeugs", "Welches Werkzeug", "7 Tage")),
+                  List.of(new QueryPath("ein Lauf", "mit Laufkennung und Anlass")),
+                  List.of("Kein Filter nach Person"))));
+
+  @Test
+  void describesFurtherDataSetsFieldByFieldAfterTheProtocol() {
+    String markdown = InstanceDisclosureRenderer.render(DISCLOSURE);
+
+    int protocol = markdown.indexOf("## Protokoll");
+    int dataSets = markdown.indexOf("## Weitere Bestände");
+    assertThat(dataSets).isGreaterThan(protocol);
+    assertThat(markdown.substring(dataSets))
+        .contains("### Schrittprotokoll der Agentenläufe")
+        .contains("Fehlersuche in einem Agentenlauf")
+        .contains("| `tool` | Name des Werkzeugs | Welches Werkzeug | 7 Tage |")
+        .contains("- ein Lauf: mit Laufkennung und Anlass")
+        .contains("- Kein Filter nach Person");
+  }
 
   @Test
   void headsTheDocumentWithVersionCommitAndTime() {
@@ -215,7 +241,8 @@ class InstanceDisclosureRendererTest {
             List.of(
                 new ModelProvider("CHAT", "![x](https://tracker.example/p.png)", null, "m", true)),
             List.of(),
-            DISCLOSURE.protocol());
+            DISCLOSURE.protocol(),
+            List.of());
 
     String markdown = InstanceDisclosureRenderer.render(withImage);
 
