@@ -5552,7 +5552,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td><code>OPAA_SANDBOX_ENABLED</code></td>
 <td><code>false</code></td>
 <td>nicht gesetzt; das Overlay <code>docker-compose.sandbox.yml</code> setzt <code>true</code></td>
-<td>Bietet Agenten die Werkzeuge <code>run_code</code> und <code>fill_template</code> an; eingeschaltet ohne <code>OPAA_SANDBOX_BASE_URL</code> oder <code>OPAA_SANDBOX_API_KEY</code> startet das Backend nicht (siehe <a href="../betrieb/sandbox.html">Sandbox für Agenten</a>). Bei mehreren Instanzen auf allen gleich</td>
+<td>Bietet Agenten die Werkzeuge <code>run_code</code> und <code>fill_template</code> an; genutzt wird die Sandbox nur, solange Agenten unter „Administration → Agenten“ eingeschaltet sind. Eingeschaltet ohne <code>OPAA_SANDBOX_BASE_URL</code> oder <code>OPAA_SANDBOX_API_KEY</code> startet das Backend nicht (siehe <a href="../betrieb/sandbox.html">Sandbox für Agenten</a>). Bei mehreren Instanzen auf allen gleich</td>
 </tr>
 <tr>
 <td><code>OPAA_SANDBOX_BASE_URL</code></td>
@@ -7167,6 +7167,11 @@ um.</p>
 <td><code>OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR</code>, <code>OPAA_INDEXING_RSS_ATTACHMENT_PROFILE</code></td>
 <td>„Inhaltsselektor" und „Anlagenprofil" je Feed-Bibliothek, Reiter „Quelle", Zeile „Umfang"</td>
 <td>nicht übernommen; ohne eigenen Wert gilt die Werkseinstellung. Wer ein Anlagenprofil oder einen Selektor für die ganze Installation gesetzt hatte, trägt ihn bei jeder betroffenen Bibliothek ein. Der Start warnt, solange eine davon gesetzt ist (<a href="../benutzer/konnektoren/rss-feed.html#3-quellkonfiguration">Konnektor Feed</a>)</td>
+</tr>
+<tr>
+<td><code>OPAA_SPIKE_TOOL_LOOP_ENABLED</code></td>
+<td>ein Agent, im Chat mit <code>@</code> gewählt, bei eingeschalteten Agenten (<a href="../administration/agenten.html">Agenten einschalten</a>)</td>
+<td>Der Präfix <code>@test</code> wählt nichts mehr, eine solche Frage ist eine gewöhnliche Frage. Der Start warnt, solange die Variable gesetzt ist (<a href="../benutzer/agenten-verwenden.html">Agenten verwenden</a>)</td>
 </tr>
 </tbody>
 </table>
