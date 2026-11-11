@@ -1,8 +1,7 @@
 import type { Ref } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import type { GroupListResponse } from '@/shared/api/types'
 import type { ResponsibleDraft } from './responsibility'
 
@@ -33,7 +32,6 @@ export default function ResponsibleUnitField({
   const options = groups.filter((group) => !group.deactivated)
   return (
     <Box>
-      <FieldLabel htmlFor={id}>Verantwortliche Stelle</FieldLabel>
       <Autocomplete
         id={id}
         freeSolo
@@ -56,8 +54,9 @@ export default function ResponsibleUnitField({
         }}
         noOptionsText="Keine Gruppe – Eingabe gilt als Organisationseinheit oder Funktion"
         renderInput={(params) => (
-          <TextField
+          <FormField
             {...params}
+            label="Verantwortliche Stelle"
             inputRef={inputRef}
             error={Boolean(error)}
             helperText={error ?? HELP}

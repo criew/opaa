@@ -33,8 +33,7 @@ eval/
 │   ├── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
 │   │   ├── MANIFEST.sha256
 │   │   └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
-│   └── tool-calling/                Fallbasis Werkzeugfähigkeit: Fälle, Attrappen-Werkzeug, Systemvorspann (Issue #1753)
-│       ├── MANIFEST.sha256
+│   └── tool-calling/                Fallbasis Werkzeugfähigkeit (Issue #1753); Dateien im Backend, siehe SOURCE.md
 │       └── SOURCE.md                Fallklassen, Untergrenze, Grenzen der Messung
 ├── ocr-poc/                         Messstand des OCR-PoC mit Ergebnis (Issue #1062)
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
@@ -106,6 +105,9 @@ Format.
 Die Fallbasis **Werkzeugfähigkeit** misst, ob eine Kombination aus Modell, Quantisierung und
 Laufzeit ein Werkzeug verlässlich aufruft: 28 Fälle in sieben Fallklassen gegen ein
 Attrappen-Werkzeug mit zwei Parametern und festen Antworten, unabhängig von der Werkzeugschleife.
+Derselbe Messkern (`io.opaa.query.toolcheck`) läuft auch in der Modellverwaltung („Werkzeuge
+prüfen“, nur mit eingeschaltetem Schalter „Agenten“), dort immer mit der Definition des echten
+`search_knowledge`; der Weg hier misst ohne laufende Installation.
 Fallklassen, Untergrenze und Grenzen der Messung:
 [`corpus/tool-calling/SOURCE.md`](corpus/tool-calling/SOURCE.md); Ergebnisformat, aufgenommene
 Läufe und Betriebsfehler: [`reports/tool-calling/README.md`](reports/tool-calling/README.md).
@@ -137,6 +139,7 @@ zu Beginn gelöscht. Schlüssel, Adressprüfung und Temperatur (`-Dopaa.eval.cha
 | `opaa.eval.toolCalling.streaming` | Antworten im Fluss statt am Stück | `false` |
 | `opaa.eval.toolCalling.maxTokens` | Längenbegrenzung je Antwort; wie die Vorgabe eines neuen Modelleintrags | 8000 |
 | `opaa.eval.toolCalling.timeoutSeconds` | Zeitgrenze je Modellaufruf | 300 |
+| `opaa.eval.toolCalling.tool` | angebotene Definition: `mock` (Attrappe) oder `production` (`search_knowledge` der Agenten) | `mock` |
 | `opaa.eval.toolCalling.quantization`, `.runtime`, `.runtimeVersion`, `.hardware`, `.contextLength` | nur Beschreibung der Kombination im Bericht | „nicht angegeben“ |
 
 Bericht: `build/eval-reports/tool-calling.json` und `.md`, mit Messlauf-Kennung, Datum,

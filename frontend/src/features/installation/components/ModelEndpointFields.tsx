@@ -15,7 +15,7 @@ import type { DiscoveryPurpose } from '@/shared/ui/modelDiscovery/modelDiscovery
 import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
 import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import type { InstallationModelDiscoveryRequest } from '../api/types'
 import {
   discoveryPlan,
@@ -239,7 +239,7 @@ export default function ModelEndpointFields({
         <Stack spacing={STEP_RHYTHM.betweenGroups}>
           {presets.length > 0 && (
             <Box>
-              <FieldLabel id={providerLabelId}>Anbieter</FieldLabel>
+              <FormFieldLabel id={providerLabelId}>Anbieter</FormFieldLabel>
               <ChoiceTileGroup<ProviderKey>
                 aria-labelledby={providerLabelId}
                 tiles={tiles}
@@ -304,7 +304,6 @@ export default function ModelEndpointFields({
         <Stack spacing={STEP_RHYTHM.betweenGroups}>
           <ModelIdentifierField
             id={`${id}-model-identifier`}
-            labelAbove
             purpose={purpose}
             value={model}
             models={discovery.models}

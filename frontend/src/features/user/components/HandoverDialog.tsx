@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -138,7 +138,7 @@ export default function HandoverDialog({
           </Alert>
         ) : (
           <Stack spacing={2}>
-            <TextField
+            <FormField
               select
               required
               fullWidth
@@ -152,12 +152,11 @@ export default function HandoverDialog({
                   {provider.displayName}
                 </MenuItem>
               ))}
-            </TextField>
-            <TextField
+            </FormField>
+            <FormField
               required
               fullWidth
               multiline
-              minRows={2}
               label="Anlass"
               value={reason}
               onChange={(e) => {

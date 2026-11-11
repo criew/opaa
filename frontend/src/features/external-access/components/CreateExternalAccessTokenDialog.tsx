@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormHelperText from '@mui/material/FormHelperText'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type {
@@ -279,7 +279,7 @@ export default function CreateExternalAccessTokenDialog({
           </Alert>
         )}
         <Stack spacing={3} sx={{ mt: 1 }}>
-          <TextField
+          <FormField
             label="Name / Zweck"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -370,7 +370,7 @@ export default function CreateExternalAccessTokenDialog({
             )}
           </Box>
 
-          <TextField
+          <FormField
             label="Läuft ab"
             type="date"
             value={expiresOn}
@@ -381,7 +381,6 @@ export default function CreateExternalAccessTokenDialog({
               `Höchstens ${tokenMaxLifetimeDays} Tage, also spätestens am ${formatDate(latest)}.`
             }
             slotProps={{
-              inputLabel: { shrink: true },
               htmlInput: { min: earliestValue, max: latestValue },
             }}
             fullWidth

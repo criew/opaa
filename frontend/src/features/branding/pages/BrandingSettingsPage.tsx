@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -21,7 +21,7 @@ import {
   isInvalidPrimaryColor,
   singleLineNotice,
 } from '@/shared/ui/branding/brandingSettings'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
@@ -226,8 +226,8 @@ export default function BrandingSettingsPage() {
           </Alert>
         )}
 
-        <Stack spacing={3}>
-          <TextField
+        <Stack spacing={3} sx={{ maxWidth: formWidth.column }}>
+          <FormField
             label={BRANDING_LABELS.productName}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
@@ -236,7 +236,7 @@ export default function BrandingSettingsPage() {
             fullWidth
           />
 
-          <TextField
+          <FormField
             label={BRANDING_LABELS.claim}
             value={claim}
             onChange={(e) => setClaim(e.target.value)}
@@ -246,7 +246,7 @@ export default function BrandingSettingsPage() {
           />
 
           <Box>
-            <TextField
+            <FormField
               label={BRANDING_LABELS.aiNotice}
               value={aiNotice}
               onChange={(e) => setAiNotice(singleLineNotice(e.target.value))}
@@ -259,7 +259,6 @@ export default function BrandingSettingsPage() {
               slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.aiNotice } }}
               helperText={BRANDING_TEXTS.aiNoticeHint}
               multiline
-              minRows={2}
               fullWidth
             />
             <Button
@@ -279,7 +278,7 @@ export default function BrandingSettingsPage() {
 
           <Box>
             <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-              <TextField
+              <FormField
                 label={BRANDING_LABELS.primaryColor}
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
@@ -291,12 +290,13 @@ export default function BrandingSettingsPage() {
                 }
                 sx={{ flexGrow: 1 }}
               />
-              <TextField
+              <FormField
                 type="color"
                 label={BRANDING_LABELS.colorPicker}
                 value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
-                sx={{ width: 96 }}
+                fullWidth={false}
+                sx={{ width: 96, flexShrink: 0 }}
               />
             </Stack>
           </Box>

@@ -8,7 +8,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
 import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
@@ -50,7 +50,7 @@ export default function SecretInput({
   if (stored && !replacing) {
     return (
       <Box>
-        <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
+        <FormFieldLabel id={`${id}-label`}>{label}</FormFieldLabel>
         <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
         >
@@ -87,10 +87,9 @@ export default function SecretInput({
 
   return (
     <Box>
-      <FieldLabel htmlFor={id}>
+      <FormFieldLabel htmlFor={id} optional={optional}>
         {label}
-        {optional ? ' (optional)' : ''}
-      </FieldLabel>
+      </FormFieldLabel>
       <TextField
         id={id}
         inputRef={inputRef}

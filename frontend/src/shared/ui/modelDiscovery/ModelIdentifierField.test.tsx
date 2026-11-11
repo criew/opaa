@@ -77,7 +77,6 @@ describe('ModelIdentifierField', () => {
     renderWithProviders(
       <ModelIdentifierField
         id="wizard-model"
-        labelAbove
         error="Bitte die Modell-Kennung angeben."
         value=""
         models={[]}

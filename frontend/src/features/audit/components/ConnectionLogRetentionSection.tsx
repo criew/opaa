@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { ConnectionLogRetentionResponse } from '@/shared/api/types'
 import { getConnectionLogRetention, updateConnectionLogRetention } from '../api/connectionLogApi'
@@ -11,7 +10,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -112,42 +111,37 @@ export default function ConnectionLogRetentionSection() {
         <LoadingState shape="lines" count={2} />
       ) : (
         <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ alignItems: { sm: 'flex-start' } }}
-          >
-            <TextField
-              label="Aufbewahrungsfrist (Monate)"
-              type="number"
-              size="small"
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value)
-                setSaveError(null)
-              }}
-              error={!valid}
-              helperText={
-                valid
-                  ? `Erlaubt sind ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} Monate. Abschalten lässt sich die Löschung nicht.`
-                  : `Bitte eine ganze Zahl von ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} eingeben.`
-              }
-              slotProps={{
-                htmlInput: { min: MIN_RETENTION_MONTHS, max: MAX_RETENTION_MONTHS, step: 1 },
-              }}
-              sx={{ maxWidth: 280 }}
-            />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Frist wird gespeichert"
-              disabled={!changed && !busy}
-              sx={{ mt: { sm: 0.25 } }}
-            >
-              Speichern
-            </BusyButton>
-          </Stack>
+          <FormField
+            label="Aufbewahrungsfrist (Monate)"
+            type="number"
+            size="small"
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value)
+              setSaveError(null)
+            }}
+            error={!valid}
+            helperText={
+              valid
+                ? `Erlaubt sind ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} Monate. Abschalten lässt sich die Löschung nicht.`
+                : `Bitte eine ganze Zahl von ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} eingeben.`
+            }
+            slotProps={{
+              htmlInput: { min: MIN_RETENTION_MONTHS, max: MAX_RETENTION_MONTHS, step: 1 },
+            }}
+            sx={{ maxWidth: formWidth.column }}
+            action={
+              <BusyButton
+                type="submit"
+                variant="outlined"
+                busy={busy}
+                busyAnnouncement="Frist wird gespeichert"
+                disabled={!changed && !busy}
+              >
+                Speichern
+              </BusyButton>
+            }
+          />
           {saveError && (
             <Alert severity="error" role="alert" sx={{ mt: 2 }}>
               {saveError}

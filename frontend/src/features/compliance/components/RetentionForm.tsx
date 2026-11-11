@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
@@ -13,7 +13,7 @@ import {
   type RetentionToggle,
   type RetentionValues,
 } from '../utils/retentionPeriod'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 interface RetentionFormProps {
   fields: RetentionField[]
@@ -101,9 +101,9 @@ export default function RetentionForm({
             label={toggle.label}
           />
         )}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Stack spacing={2} sx={{ width: '100%', maxWidth: formWidth.column }}>
           {fields.map((field) => (
-            <TextField
+            <FormField
               key={field.key}
               label={field.label}
               size="small"
@@ -111,8 +111,8 @@ export default function RetentionForm({
               onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
               error={parsed[field.key] === null}
               helperText={`Erlaubt sind ${periodLabel(field.min, field.unit)} bis ${periodLabel(field.max, field.unit)}.`}
+              numeric
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-              sx={{ maxWidth: 280 }}
             />
           ))}
         </Stack>

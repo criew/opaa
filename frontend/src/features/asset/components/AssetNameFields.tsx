@@ -1,7 +1,6 @@
 import type { Ref } from 'react'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 
 interface AssetNameFieldsProps {
   /** Prefix of the field ids; unique per page. */
@@ -31,8 +30,8 @@ export default function AssetNameFields({
   return (
     <>
       <Box>
-        <FieldLabel htmlFor={`${idPrefix}-name`}>Name</FieldLabel>
-        <TextField
+        <FormField
+          label="Name"
           id={`${idPrefix}-name`}
           size="small"
           value={name}
@@ -46,14 +45,14 @@ export default function AssetNameFields({
         />
       </Box>
       <Box>
-        <FieldLabel htmlFor={`${idPrefix}-description`}>Beschreibung (optional)</FieldLabel>
-        <TextField
+        <FormField
+          label="Beschreibung"
+          optional
           id={`${idPrefix}-description`}
           size="small"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           multiline
-          minRows={2}
           fullWidth
           slotProps={{ htmlInput: { maxLength: 2000 } }}
         />

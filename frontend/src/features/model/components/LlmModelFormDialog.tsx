@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
 import { discoverLlmModels, testLlmModel } from '../api/modelApi'
@@ -368,8 +368,9 @@ export default function LlmModelFormDialog({
               Modelle abrufen
             </BusyButton>
           </Stack>
-          <TextField
-            label="API-Schlüssel (optional)"
+          <FormField
+            label="API-Schlüssel"
+            optional
             type="password"
             value={apiKeyInput}
             disabled={apiKeyClearRequested}
@@ -451,7 +452,7 @@ export default function LlmModelFormDialog({
             3 · Anzeige und Antwort
           </SectionHead>
           <Stack spacing={2}>
-            <TextField
+            <FormField
               label="Anzeigename"
               required
               value={draft.displayName}
@@ -461,9 +462,10 @@ export default function LlmModelFormDialog({
               fullWidth
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
+              <FormField
                 id={temperatureFieldId}
-                label="Temperatur (optional)"
+                label="Temperatur"
+                optional
                 type="number"
                 value={draft.temperature}
                 onChange={(e) => {
@@ -480,7 +482,7 @@ export default function LlmModelFormDialog({
                 size="small"
                 sx={{ flex: 1 }}
               />
-              <TextField
+              <FormField
                 label="Maximale Antwortlänge (Token)"
                 required
                 type="number"

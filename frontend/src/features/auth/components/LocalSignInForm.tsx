@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Link as RouterLink } from 'react-router'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import SectionEyebrow from './SectionEyebrow'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '@/shared/routes'
@@ -75,7 +75,7 @@ export default function LocalSignInForm({
       </Typography>
       <Stack spacing={2}>
         <Box>
-          <FieldLabel htmlFor={emailId}>E-Mail-Adresse</FieldLabel>
+          <FormFieldLabel htmlFor={emailId}>E-Mail-Adresse</FormFieldLabel>
           <TextField
             id={emailId}
             inputRef={emailRef}
@@ -89,7 +89,7 @@ export default function LocalSignInForm({
           />
         </Box>
         <Box>
-          <FieldLabel htmlFor={passwordId}>Passwort</FieldLabel>
+          <FormFieldLabel htmlFor={passwordId}>Passwort</FormFieldLabel>
           <TextField
             id={passwordId}
             type={passwordVisible ? 'text' : 'password'}

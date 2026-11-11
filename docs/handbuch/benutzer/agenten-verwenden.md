@@ -66,6 +66,8 @@ Suche über Ihre Chats gehen sie nicht ein.
   Gefundenen, und die Antwort trägt den Vermerk „nicht geprüft“.
 - **Rückfrage:** Braucht der Agent eine Angabe von Ihnen, endet der Lauf mit seiner Frage.
   Antworten Sie in einer neuen Nachricht; der Agent beginnt dann einen neuen Lauf.
+- **Mehrere Läufe:** Gleichzeitig können Sie nur begrenzt viele Agentenläufe laufen haben, etwa in
+  mehreren Chats. Ist die Grenze erreicht, warten Sie, bis einer davon fertig ist.
 
 **Gut zu wissen:**
 

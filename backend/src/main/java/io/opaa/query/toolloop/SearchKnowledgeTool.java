@@ -36,38 +36,6 @@ class SearchKnowledgeTool implements AgentTool {
   static final String IGNORED_NOTE =
       "Hinweis: Eine Angabe zur Eingrenzung lag außerhalb des Suchbereichs und wurde ignoriert.\n\n";
 
-  private static final String SCHEMA =
-      """
-      {
-        "type": "object",
-        "properties": {
-          "frage": {
-            "type": "string",
-            "description": "Wonach gesucht wird: eine Frage oder Suchbegriffe, auf Deutsch."
-          },
-          "bibliotheken": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Optional: nur in diesen Bibliotheken suchen (Kennungen)."
-          },
-          "dokumentarten": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Optional: nur Dokumente dieser Dokumentarten (Codes)."
-          },
-          "datum_von": {
-            "type": "string",
-            "description": "Optional: frühestes Dokumentdatum, JJJJ-MM-TT."
-          },
-          "datum_bis": {
-            "type": "string",
-            "description": "Optional: spätestes Dokumentdatum, JJJJ-MM-TT."
-          }
-        },
-        "required": ["frage"]
-      }
-      """;
-
   private final KnowledgeRetrieval knowledgeRetrieval;
   private final NeighborChunkExpansion neighborChunkExpansion;
   private final MetadataFilterValidator metadataFilterValidator;
@@ -93,15 +61,12 @@ class SearchKnowledgeTool implements AgentTool {
 
   @Override
   public String description() {
-    return "Durchsucht die Wissensbasis dieses Agenten nach Textstellen zu einer Frage oder zu"
-        + " Suchbegriffen. Vor jeder inhaltlichen Aussage aufrufen; für Teilaspekte mehrfach mit"
-        + " eigener Frage aufrufen. Optional lässt sich die Suche auf Bibliotheken, Dokumentarten"
-        + " oder ein Datumsfenster eingrenzen.";
+    return SearchKnowledgeDefinition.DESCRIPTION;
   }
 
   @Override
   public String inputSchema() {
-    return SCHEMA;
+    return SearchKnowledgeDefinition.SCHEMA;
   }
 
   /** The sub-question, as the step keeps it; none for a call that will be refused. */
@@ -113,7 +78,7 @@ class SearchKnowledgeTool implements AgentTool {
 
   @Override
   public ToolCallOutcome call(JsonNode arguments, AgentRun run) {
-    String question = text(arguments.get("frage"));
+    String question = text(arguments.get(SearchKnowledgeDefinition.QUESTION));
     if (question == null) {
       return ToolCallOutcome.refused(ToolCallResult.INVALID_ARGUMENTS, "Die Frage fehlt.");
     }

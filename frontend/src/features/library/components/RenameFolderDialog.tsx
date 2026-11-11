@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
 import type { LibraryFolderListItem } from '@/shared/api/types'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface RenameFolderDialogProps {
@@ -58,8 +57,8 @@ export default function RenameFolderDialog({
         </Alert>
       )}
       <Box sx={{ pt: 0.5 }}>
-        <FieldLabel htmlFor="rename-folder-name">Ordnername</FieldLabel>
-        <TextField
+        <FormField
+          label="Ordnername"
           id="rename-folder-name"
           fullWidth
           size="small"

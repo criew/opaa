@@ -345,7 +345,10 @@ class SecurityInvariantsTest {
               "enabled switches a model role"),
           Map.entry(
               "io.opaa.llm.transcription.TranscriptionModelSettings",
-              "enabled switches a model role"));
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheck",
+              "status is the progress of a tool check, grants no access"));
 
   private static final String NEW_ROW =
       "inserts an instance it constructed itself; there is no earlier read to write back";
@@ -612,6 +615,13 @@ class SecurityInvariantsTest {
               "io.opaa.retrieval.search.DecompositionContext#promptMessages",
               "question and window texts go through DecompositionContext#material, which cleans"
                   + " them with PromptText"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCallingRunner#run",
+              "system prompt, user message and tool results come from the checked-in fictional"
+                  + " case base on the classpath; no text from outside enters the measurement"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheckWorker#measure",
+              "the readiness probe is a constant text; the cases run through ToolCallingRunner"),
           Map.entry(
               "io.opaa.metadata.ModelMetadataExtractor#askModel",
               "the prompt is ModelExtractionPrompt's, which fences title and text with"

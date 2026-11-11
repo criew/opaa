@@ -261,6 +261,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "document_template_files",
             "document_template_settings",
             "document_templates",
+            "llm_tool_checks",
             "locked_account_chat_cleanup_settings",
             "prompt_libraries",
             "prompts",

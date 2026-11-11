@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import TextField, { type TextFieldProps } from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 
 interface FormFieldProps {
   id: string
@@ -51,10 +51,9 @@ export default function FormField({
 }: FormFieldProps) {
   return (
     <Box>
-      <FieldLabel htmlFor={id}>
+      <FormFieldLabel htmlFor={id} optional={optional}>
         {label}
-        {optional ? ' (optional)' : ''}
-      </FieldLabel>
+      </FormFieldLabel>
       <TextField
         id={id}
         inputRef={inputRef}

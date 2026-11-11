@@ -6,7 +6,8 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type {
   MailEncryption,
@@ -30,7 +31,7 @@ import {
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -200,7 +201,12 @@ export default function MailServerSection() {
       )}
 
       <PageSection title="Verbindung">
-        <Stack spacing={2.5} component="section" aria-labelledby="mail-server-fields">
+        <Stack
+          spacing={2.5}
+          component="section"
+          aria-labelledby="mail-server-fields"
+          sx={{ maxWidth: formWidth.column }}
+        >
           <FormControlLabel
             control={
               <Switch
@@ -212,25 +218,25 @@ export default function MailServerSection() {
           />
           {form.enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
+          <FormFieldRow>
+            <FormField
               label={SMTP_LABELS.host}
               value={form.host}
               onChange={(e) => update({ host: e.target.value })}
               helperText={SMTP_TEXTS.hostHint}
-              sx={{ flexGrow: 1 }}
             />
-            <TextField
+            <FormField
               label={SMTP_LABELS.port}
               value={form.port}
               onChange={(e) => update({ port: e.target.value })}
               error={!isPortValid}
               helperText={isPortValid ? SMTP_TEXTS.portHint : SMTP_TEXTS.portInvalid}
-              sx={{ width: { xs: '100%', sm: 160 } }}
+              numeric
+              fullWidth={false}
             />
-          </Stack>
+          </FormFieldRow>
 
-          <TextField
+          <FormField
             select
             label={SMTP_LABELS.encryption}
             value={form.encryption}
@@ -243,17 +249,17 @@ export default function MailServerSection() {
                 {option.label}
               </MenuItem>
             ))}
-          </TextField>
+          </FormField>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label={`${SMTP_LABELS.username} (optional)`}
+          <Stack spacing={2.5}>
+            <FormField
+              label={SMTP_LABELS.username}
+              optional
               value={form.username}
               onChange={(e) => update({ username: e.target.value })}
               helperText={SMTP_TEXTS.usernameHint}
-              sx={{ flexGrow: 1 }}
             />
-            <TextField
+            <FormField
               label={SMTP_LABELS.password}
               type="password"
               value={form.password}
@@ -275,7 +281,6 @@ export default function MailServerSection() {
                       ? SMTP_TEXTS.passwordStored
                       : SMTP_TEXTS.passwordNone)
               }
-              sx={{ flexGrow: 1 }}
             />
           </Stack>
           {settings.passwordSet && (
@@ -295,20 +300,19 @@ export default function MailServerSection() {
             </Box>
           )}
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
+          <Stack spacing={2.5}>
+            <FormField
               label={SMTP_LABELS.fromAddress}
               value={form.fromAddress}
               onChange={(e) => update({ fromAddress: e.target.value })}
               helperText={SMTP_TEXTS.fromAddressHint}
-              sx={{ flexGrow: 1 }}
             />
-            <TextField
-              label={`${SMTP_LABELS.fromName} (optional)`}
+            <FormField
+              label={SMTP_LABELS.fromName}
+              optional
               value={form.fromName}
               onChange={(e) => update({ fromName: e.target.value })}
               helperText={SMTP_TEXTS.fromNameHint}
-              sx={{ flexGrow: 1 }}
             />
           </Stack>
 

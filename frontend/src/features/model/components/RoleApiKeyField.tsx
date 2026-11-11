@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import type { ApiKeyDraft } from './roleForm'
@@ -19,7 +19,8 @@ export default function RoleApiKeyField({
   onChange,
   apiKeySet,
   error,
-  label = 'Zugangsschlüssel (optional)',
+  label = 'Zugangsschlüssel',
+  optional = true,
   emptyHint = 'Wird verschlüsselt gespeichert und nie wieder angezeigt.',
 }: {
   id: string
@@ -28,16 +29,17 @@ export default function RoleApiKeyField({
   apiKeySet: boolean
   error?: string
   label?: string
+  optional?: boolean
   /** The hint while no key is stored. */
   emptyHint?: string
 }) {
   const [shown, setShown] = useState(false)
-  const name = label.replace(/\s*\(optional\)$/, '')
   return (
     <Box>
-      <TextField
+      <FormField
         id={id}
         label={label}
+        optional={optional}
         type={shown ? 'text' : 'password'}
         value={value.input}
         disabled={value.clearRequested}
@@ -61,7 +63,7 @@ export default function RoleApiKeyField({
                 <IconButton
                   size="small"
                   edge="end"
-                  aria-label={shown ? `${name} verbergen` : `${name} anzeigen`}
+                  aria-label={shown ? `${label} verbergen` : `${label} anzeigen`}
                   aria-pressed={shown}
                   disabled={value.clearRequested}
                   onClick={() => setShown((current) => !current)}
