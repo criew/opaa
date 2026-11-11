@@ -28,7 +28,7 @@ interface BrandingFieldsProps {
 
 /**
  * Name, claim, AI notice and accent colour as the assistant's step „Branding“ and
- * „Administration → Branding“ ask for them, with the contrast warning. The colour is warned
+ * „Administration → Allgemein & Branding“ ask for them, with the contrast warning. The colour is warned
  * about, never refused: a house colour is the operator's decision.
  */
 export default function BrandingFields({
@@ -102,6 +102,7 @@ export default function BrandingFields({
         value={value.primaryColor}
         onChange={(primaryColor) => onChange({ primaryColor })}
         error={colorError}
+        hint={BRANDING_TEXTS.primaryColorHint}
         endAdornment={
           <InputAdornment position="end">
             <Box

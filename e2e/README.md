@@ -1015,7 +1015,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 
 | Datei | Prüft |
 | --- | --- |
-| `01-erststart.spec.ts` | Anmeldung auf `/login` nach der Installation, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testmail, eingeschaltete lokale Verwaltung und die Weiterleitung von `/login/system` |
+| `01-erststart.spec.ts` | Anmeldung auf `/login` nach der Installation, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testnachricht, eingeschaltete lokale Verwaltung und die Weiterleitung von `/login/system` |
 | `02-einladung.spec.ts` | Einladung, Link aus der Mail, Passwort setzen, Einmaligkeit des Links, erste Anmeldung, persönlicher Space, Anlagegrund in den eigenen Einstellungen — dazu der erzwungene Wechsel nach einem erzeugten Anfangspasswort |
 | `03-passwort-vergessen.spec.ts` | Gleiche Antwort für unbekannte Adressen und keine Mail, Rücksetzen über den Link, Ende der laufenden Sitzung mit Grund |
 | `04-sperre.spec.ts` | Sperre nach fünf Fehlversuchen, unveränderte Antwort auch bei richtigem Passwort, Entsperren durch die Verwaltung, offener Rücksetzweg trotz Sperre |
@@ -1061,13 +1061,13 @@ läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, übe
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
 Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
 einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt die optionalen Schritte
-Chat-, Embedding-, Rerank- und Transkriptionsmodell, E-Mail-Versand und Branding und endet mit der
+Chat-Modell, Einbettung, Reranking, Spracheingabe, Virenprüfung, E-Mail und Branding und endet mit der
 Anmeldung des ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled`
 wählt das Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`;
 `POST …/rerank` bewertet jede Probe) und das Transkriptionsmodell aus der Liste unter
 `http://ai-stub:8089/transcription` (nur diese beiden Präfixe des Stubs haben eine Modellliste, Chat-
 und Embedding-Schritt finden keine), findet beide danach eingeschaltet unter „Modelle → Reranking“
-und „Modelle → Spracheingabe“, richtet den E-Mail-Versand gegen den Mailpit des
+und „Modelle → Spracheingabe“, überspringt die Virenprüfung (der Stapel hat kein clamd), richtet die E-Mail gegen den Mailpit des
 Stapels ein (Profil `mail`, `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die
 Testnachricht über `E2E_MAILPIT_BASE_URL` zurück, füllt das Branding aus und findet Produktname und
 Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,

@@ -218,7 +218,12 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
       'https://api.anthropic.com/v1',
     )
     expect(keyField(dialog)).toHaveValue('')
-    expect(discoveries.every((request) => request.apiKey !== 'sk-fuer-openai' || request.baseUrl === 'https://api.openai.com/v1')).toBe(true)
+    expect(
+      discoveries.every(
+        (request) =>
+          request.apiKey !== 'sk-fuer-openai' || request.baseUrl === 'https://api.openai.com/v1',
+      ),
+    ).toBe(true)
     expect(discoveries.some((request) => request.baseUrl === 'https://api.anthropic.com/v1')).toBe(
       false,
     )

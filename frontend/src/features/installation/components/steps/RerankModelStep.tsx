@@ -64,7 +64,7 @@ export default function RerankModelStep({
       description={`${MODEL_ROLE_TEXTS.rerank.purpose} Übersprungen sucht OPAA ohne diese Stufe, bis die Systemverwaltung sie unter „Modelle → Reranking“ einschaltet.`}
       failure={form.failure}
       busy={form.busy}
-      busyAnnouncement="Probe an das Rerank-Modell läuft"
+      busyAnnouncement="Probe an das Reranking-Modell läuft"
       onSubmit={handleSubmit}
       onBack={onBack}
       onSkip={onSkip}

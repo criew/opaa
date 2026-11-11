@@ -52,14 +52,14 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     await expect(page).toHaveURL(/\/chat/);
   });
 
-  test("SMTP wird eingerichtet und mit einer Testmail belegt", async ({ page }) => {
+  test("SMTP wird eingerichtet und mit einer Testnachricht belegt", async ({ page }) => {
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
     await clearMailbox();
     await configureSmtp(page);
 
     // The test mail always goes to the signed-in account's own address - a different one cannot be
     // entered here on purpose.
-    await page.getByRole("button", { name: "Testmail an mich senden" }).click();
+    await page.getByRole("button", { name: "Testnachricht an mich senden" }).click();
     // The result of the attempt is shown as an alert - asserting it here means a skipped send (SMTP
     // not actually on) fails with its own message instead of as a mail that never arrives.
     await expect(page.getByText(/^Die Testnachricht wurde/)).toBeVisible();

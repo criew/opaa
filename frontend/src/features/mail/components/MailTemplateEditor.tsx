@@ -263,8 +263,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
 
           {isDirty && (
             <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-              Zum Testen zuerst speichern: Die Testnachricht verschickt die gespeicherte Fassung, nicht
-              den Entwurf im Editor.
+              Zum Testen zuerst speichern: Die Testnachricht verschickt die gespeicherte Fassung,
+              nicht den Entwurf im Editor.
             </Typography>
           )}
 

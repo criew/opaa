@@ -156,14 +156,16 @@ export async function configureSmtp(page: Page): Promise<void> {
   await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible({
     timeout: 20_000,
   });
-  await page.getByLabel("Server").fill(smtp.host);
-  await page.getByLabel("Port").fill(smtp.port);
+  await page.getByLabel("Server", { exact: true }).fill(smtp.host);
+  await page.getByLabel("Port", { exact: true }).fill(smtp.port);
   // The form defaults to STARTTLS, which the mail catcher does not offer - and the backend requires
   // STARTTLS rather than merely offering it, so leaving the default fails every send with
   // "STARTTLS is required but host does not support STARTTLS".
-  await page.getByLabel("Verschlüsselung").click();
-  await page.getByRole("option", { name: "Keine" }).click();
-  await page.getByLabel("Absenderadresse").fill(smtp.fromAddress);
+  await page
+    .getByRole("radiogroup", { name: "Verschlüsselung" })
+    .getByRole("radio", { name: /Keine/ })
+    .check();
+  await page.getByLabel("Absenderadresse", { exact: true }).fill(smtp.fromAddress);
   const active = page.getByRole("switch", { name: "Versand aktiv" });
   if (!(await active.isChecked())) {
     await active.click();
@@ -175,7 +177,7 @@ export async function configureSmtp(page: Page): Promise<void> {
   // being on, and a mail that is merely skipped looks exactly like one that was never triggered.
   await page.reload();
   await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeChecked();
-  await expect(page.getByLabel("Server")).toHaveValue(smtp.host);
+  await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
 }
 
 /**

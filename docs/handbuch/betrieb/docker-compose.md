@@ -197,7 +197,7 @@ des Stapels braucht `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, 
 `.env.docker.example` setzt ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)),
 nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
-Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
+Datei, auf die `passwordFile` zeigt; API-Schlüssel der Modelle ebenso über `apiKeyFile`. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
 nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und

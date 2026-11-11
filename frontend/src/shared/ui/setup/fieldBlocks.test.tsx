@@ -118,17 +118,28 @@ describe('SmtpFields', () => {
 })
 
 describe('MalwareScanFields', () => {
-  function Scan() {
+  function Scan({ portLater = false }: { portLater?: boolean }) {
     const [value, setValue] = useState(() => malwareScanDraftOf(null))
     return (
       <MalwareScanFields
         idPrefix="scan"
         value={value}
         onChange={(patch) => setValue((current) => ({ ...current, ...patch }))}
-        errors={{ host: 'Bitte den Host des Virenscanners angeben.' }}
+        errors={portLater ? {} : { host: 'Bitte den Host des Virenscanners angeben.' }}
+        portLater={portLater}
       />
     )
   }
+
+  it('leaves the port out for the assistant and says where it is entered later', () => {
+    renderInTheme(<Scan portLater />)
+
+    expect(screen.queryByLabelText('Port')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Host des Virenscanners')).toHaveAccessibleDescription(
+      /Port 3310; einen anderen tragen Sie später unter „Administration → Virenprüfung“ ein\./,
+    )
+    expect(screen.getByLabelText('Zeitlimit je Datei (Sekunden)')).toHaveValue('30')
+  })
 
   it('asks for host and port, the time limit and the policy, with the defaults filled in', () => {
     renderInTheme(<Scan />)

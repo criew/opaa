@@ -12,7 +12,7 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 
 | Reiter | Rolle | Wechsel |
 |---|---|---|
-| „Chat-Modelle“ | Antwort, Teilfragen, Chat-Titel, Metadaten | jederzeit, ohne Neustart |
+| „Chat-Modell“ | Antwort, Teilfragen, Chat-Titel, Metadaten | jederzeit, ohne Neustart |
 | „Einbettung“ | Vektoren für die Suche | ein anderes Modell bettet den Bestand neu ein |
 | „Reranking“ | ordnet Treffer neu, optional | jederzeit |
 | „Spracheingabe“ | wandelt Diktat in Text, optional | jederzeit |
@@ -172,7 +172,7 @@ Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie finde
    docling-serve, „Vision-Modell (OpenAI-kompatibel)“, wenn im Haus schon ein Modellserver mit
    Bildeingang läuft.
 2. „Basis-Adresse“ eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
-   „Zugangsschlüssel“, falls der Dienst einen verlangt.
+   „API-Schlüssel“, falls der Dienst einen verlangt.
 3. „Verbindung testen“ liest eine mitgelieferte Testseite in drei Stufen: „Adresse“ (der Dienst
    ist erreichbar), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (die Testseite
    wird gelesen; scheitert auch, wenn der Dienst dabei nicht rechtzeitig antwortet). Die Meldung

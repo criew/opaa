@@ -32,7 +32,7 @@ interface BrandingStepProps extends StepNavigationProps {
 }
 
 /**
- * The optional branding, with the text and colour fields of „Administration → Branding“ and its
+ * The optional branding, with the text and colour fields of „Administration → Allgemein & Branding“ and its
  * preview. Every field left as it is keeps the OPAA standard, so a step saved without changes
  * writes nothing; the images stay with the administration, as the step's sentence says.
  */
@@ -70,7 +70,7 @@ export default function BrandingStep({ step, submit, onBack, onSkip }: BrandingS
       title={STEP_INFO.BRANDING.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.BRANDING.laterUnder}
-      description="Name, Claim, Hinweis zur KI-Nutzung und Akzentfarbe Ihres Hauses. Übersprungen gilt der OPAA-Standard; Logo und Hintergrundbild lädt die Systemverwaltung später unter „Administration → Branding“ hoch."
+      description="Name, Claim, Hinweis zur KI-Nutzung und Akzentfarbe Ihres Hauses. Übersprungen gilt der OPAA-Standard; Logo und Hintergrundbild lädt die Systemverwaltung später unter „Administration → Allgemein & Branding“ hoch."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Branding wird gespeichert und geprüft"

@@ -194,6 +194,15 @@ zwei Einträgen.
     der Seite ([guidelines.md](./guidelines.md), 5.1 und 5.12). – gemessen wie jede Seite
     (`capture.mjs --flow pages --profile signed-out`) und Sicht; im Code geprüft durch
     `preSignInRules.test.ts`
+55. **Einrichten und Verwalten aus einem Feldblock:** Was der Installationsassistent und die
+    Verwaltung beide abfragen, zeigt dieselben Felder in derselben Reihenfolge mit denselben
+    Beschriftungen, Hilfetexten und Bedienelementen; der Schritt heißt wie der Reiter; Geheimnisse
+    stehen im `SecretField` mit „Gesetzt“ und „Ersetzen“, Löschen ist eine stille Textaktion am
+    Feld; im Assistenten ist keine Schaltfläche gesperrt, die Fußzeile steht rechts, die
+    Schrittliste zeigt unter 900 px nur „Schritt 2 von 12 · Erstes Konto“, die Einleitung hat
+    höchstens zwei Sätze ([guidelines.md](./guidelines.md), 5.16). – Sicht (Schritt und
+    Einstellungsseite nebeneinander, `?mockInstallation=pending`); im Code geprüft durch
+    `setupRules.test.ts` und `fieldBlocks.test.tsx`
 
 ## Pflege
 

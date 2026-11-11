@@ -134,7 +134,9 @@ describe('SecretField', () => {
   })
 
   it('carries id and error in every state, so a form finds the control to focus', async () => {
-    render(<Harness stored error="Bitte das Passwort neu eingeben." hint="Mindestens 12 Zeichen." />)
+    render(
+      <Harness stored error="Bitte das Passwort neu eingeben." hint="Mindestens 12 Zeichen." />,
+    )
 
     const replace = screen.getByRole('button', { name: 'Passwort ersetzen' })
     expect(replace).toHaveAttribute('id', 'secret')

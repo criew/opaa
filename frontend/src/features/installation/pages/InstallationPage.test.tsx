@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { OPAA_BRANDING } from '@/shared/branding/brandingStore'
 import { BRANDING_TEXTS } from '@/shared/ui/branding/brandingSettings'
 import { renderWithProviders } from '@/test/test-utils'
@@ -147,6 +147,93 @@ describe('InstallationPage', () => {
     expect(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN')?.saved).toBe(false)
   })
 
+  describe('below 900 px', () => {
+    /** jsdom has no matchMedia; this one answers as a viewport narrower than the `md` breakpoint. */
+    function narrowViewport() {
+      const original = window.matchMedia
+      window.matchMedia = (query: string): MediaQueryList => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })
+      onTestFinished(() => {
+        window.matchMedia = original
+      })
+    }
+
+    it('shows only the position and name of the step and opens the list on a tap', async () => {
+      narrowViewport()
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Erstes Konto')
+
+      const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+      const total = mockInstallationState().steps.length + 2
+      const toggle = within(nav).getByRole('button', {
+        name: `Schritt 2 von ${total} · Erstes Konto`,
+      })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(within(nav).queryByRole('button', { name: /Identitätsanbieter/ })).toBeNull()
+
+      await user.click(toggle)
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await user.click(within(nav).getByRole('button', { name: /Identitätsanbieter/ }))
+
+      // Choosing a step closes the list again, so the step starts near the top.
+      expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
+      expect(
+        within(nav).getByRole('button', { name: `Schritt 3 von ${total} · Identitätsanbieter` }),
+      ).toHaveAttribute('aria-expanded', 'false')
+    })
+  })
+
+  describe('the footer of a step', () => {
+    it('puts „Zurück“, the quiet „Überspringen“ and the primary action in that order', async () => {
+      updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
+      updateMockStep('SIGN_IN', { saved: true, checked: true })
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Chat-Modell')
+
+      const back = screen.getByRole('button', { name: 'Zurück' })
+      const skip = screen.getByRole('button', { name: 'Überspringen' })
+      const submit = screen.getByRole('button', { name: 'Prüfen und weiter' })
+      expect(back.compareDocumentPosition(skip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(skip.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(skip).toHaveClass('MuiButton-text')
+      expect(submit).toHaveClass('MuiButton-contained')
+      expect(back.parentElement).toHaveStyle({ justifyContent: 'flex-end' })
+      // „?“ leads to the handbook; the step's introduction stays at two sentences.
+      expect(
+        screen.getByRole('link', { name: 'Handbuch zu diesem Schritt (öffnet in neuem Fenster)' }),
+      ).toHaveAttribute('href', expect.stringContaining('betrieb/installation.html'))
+    })
+
+    it('opens a step from its row in the summary', async () => {
+      updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
+      updateMockStep('SIGN_IN', { saved: true, checked: true })
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+
+      await user.click(within(summaryRow('E-Mail')).getByRole('button', { name: 'E-Mail' }))
+
+      expect(await stepHeading('E-Mail')).toBeInTheDocument()
+    })
+  })
+
   describe('skipping an optional step', () => {
     async function openOptionalSignIn(user: UserEvent) {
       updateMockStep('SIGN_IN', { mandatory: false })
@@ -274,9 +361,7 @@ describe('InstallationPage', () => {
 
     const password = field('Passwort')
     await waitFor(() =>
-      expect(password).toHaveAccessibleDescription(
-        /^Das Passwort braucht mindestens 12 Zeichen\./,
-      ),
+      expect(password).toHaveAccessibleDescription(/^Das Passwort braucht mindestens 12 Zeichen\./),
     )
     expect(screen.getByRole('alert')).toHaveTextContent('Die Angaben sind unvollständig.')
   })
@@ -356,7 +441,7 @@ describe('InstallationPage', () => {
     expect(await stepHeading('E-Mail')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Branding')).toBeInTheDocument()
-    expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Allgemein & Branding')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
@@ -471,7 +556,9 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Identitätsanbieter')).toBeInTheDocument()
     expect(field('Issuer-URI')).toHaveValue('https://login.stadt.example/realms/opaa')
-    expect(screen.getByRole('radio', { name: /Lokale Konten und ein Identitätsanbieter/ })).toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: /Lokale Konten und ein Identitätsanbieter/ }),
+    ).toBeChecked()
     expect(screen.getByRole('alert')).toHaveTextContent('Discovery-Adresse')
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
@@ -1766,8 +1853,10 @@ describe('InstallationPage', () => {
       const user = userEvent.setup()
       await openBrandingStep(user)
 
-      expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
-      expect(screen.getByText(/Logo und Hintergrundbild lädt die Systemverwaltung später/)).toBeInTheDocument()
+      expect(screen.getByText('Optional · später unter Allgemein & Branding')).toBeInTheDocument()
+      expect(
+        screen.getByText(/Logo und Hintergrundbild lädt die Systemverwaltung später/),
+      ).toBeInTheDocument()
       expect(field('Produktname (optional)')).toHaveAccessibleDescription(
         BRANDING_TEXTS.productNameHint,
       )

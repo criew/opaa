@@ -24,7 +24,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   TEXT_RECOGNITION_MODEL: { label: SETUP_NAMES.textRecognitionModel, laterUnder: 'Modelle' },
   MALWARE_SCAN: { label: SETUP_NAMES.malwareScan, laterUnder: 'Virenprüfung' },
   MAIL: { label: SETUP_NAMES.mail, laterUnder: 'E-Mail' },
-  BRANDING: { label: SETUP_NAMES.branding, laterUnder: 'Branding' },
+  BRANDING: { label: SETUP_NAMES.branding, laterUnder: 'Allgemein & Branding' },
 }
 
 export const TOKEN_LABEL = 'Installations-Token'

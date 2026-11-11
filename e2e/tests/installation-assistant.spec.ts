@@ -10,8 +10,8 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
  * Every scenario of this file needs a fresh database, as completing ends the installation mode for
  * good: the runner starts one stack per tag (@mail-skipped, @mail-filled). The @mail-skipped scenario
- * also skips the optional model steps, the rerank and the transcription model included, and the
- * branding, signs in with the first account under the OPAA standard, meets the notices of the chat
+ * also skips the optional model steps, the rerank and the transcription model included, the malware
+ * scan (the stack runs no clamd) and the branding, signs in with the first account under the OPAA standard, meets the notices of the chat
  * and sets the first chat and embedding model in the model administration (ADR-0061, Entscheidung
  * 8); the @mail-filled one checks chat and embedding model in the assistant, chooses the rerank
  * model from the list of ai-stub's rerank endpoint (RERANK_URL) and the transcription model from
@@ -70,6 +70,28 @@ function stepStates(page: Page) {
   return page.getByRole('list', { name: 'Stand der Schritte' })
 }
 
+/** The row of one step on the summary: its name as a link to the step, and its state. */
+function stepState(page: Page, name: string) {
+  return stepStates(page)
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name, exact: true }) })
+}
+
+/** The footer of a step: „Zurück“, the quiet „Überspringen“ and the primary action, on the right. */
+async function expectFooterOrder(page: Page) {
+  const boxes = []
+  for (const name of ['Zurück', 'Überspringen', 'Prüfen und weiter']) {
+    const box = await page
+      .locator('main form')
+      .getByRole('button', { name, exact: true })
+      .boundingBox()
+    expect(box, name).not.toBeNull()
+    boxes.push(box!)
+  }
+  expect(boxes[0].x).toBeLessThan(boxes[1].x)
+  expect(boxes[1].x).toBeLessThan(boxes[2].x)
+}
+
 /** The danger role per scheme (frontend/src/shared/theme/tokens.ts) as computed by the browser. */
 const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
 
@@ -119,23 +141,23 @@ async function completeStepsUpToRerank(page: Page) {
   await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByLabel('Passwort wiederholen', { exact: true }).fill(ADMIN_PASSWORD)
   await submitStep(page)
-  await expect(stepHeading(page, 'Anmeldeverfahren')).toBeVisible()
+  await expect(stepHeading(page, 'Identitätsanbieter')).toBeVisible()
   await submitStep(page)
   await expect(stepHeading(page, 'Chat-Modell')).toBeVisible()
   await page.getByRole('radio', { name: /Eigene Adresse/ }).click()
   await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
   await page.getByLabel('Modell-Kennung').fill('ai-stub')
   await submitStep(page)
-  await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
+  await expect(stepHeading(page, 'Einbettung')).toBeVisible()
   await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
   await page.getByLabel('Modell-Kennung').fill('ai-stub-embedding')
   await submitStep(page)
-  await expect(stepHeading(page, 'Rerank-Modell')).toBeVisible()
+  await expect(stepHeading(page, 'Reranking')).toBeVisible()
 }
 
 test.describe('Einrichtungs-Assistent', () => {
   test(
-    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort, überspringt Modelle, E-Mail-Versand und Branding und legt die Modelle danach fest',
+    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort, überspringt Modelle, Virenprüfung, E-Mail und Branding und legt die Modelle danach fest',
     {
       tag: '@mail-skipped',
     },
@@ -161,11 +183,11 @@ test.describe('Einrichtungs-Assistent', () => {
       await page.getByLabel('Passwort wiederholen', { exact: true }).fill(ADMIN_PASSWORD)
       await submitStep(page)
 
-      await expect(stepHeading(page, 'Anmeldeverfahren')).toBeVisible()
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: Anmeldeverfahren')
+      await expect(stepHeading(page, 'Identitätsanbieter')).toBeVisible()
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Identitätsanbieter')
       await expectStepEdgesFlush(page)
       // The provider's fields share the edge too; the scenario then continues with local accounts.
-      await page.getByRole('radio', { name: /OIDC-Anbieter/ }).check()
+      await page.getByRole('radio', { name: /Lokale Konten und ein Identitätsanbieter/ }).check()
       await expect(page.getByLabel('Issuer-URI')).toBeVisible()
       await expectStepEdgesFlush(page)
       await page.getByRole('radio', { name: /Nur lokale Konten/ }).check()
@@ -173,11 +195,16 @@ test.describe('Einrichtungs-Assistent', () => {
       // Reload: the token is asked again, the stored state brings the assistant back here.
       await page.reload()
       await enterToken(page, INSTALLATION_TOKEN)
-      await expect(stepHeading(page, 'Anmeldeverfahren')).toBeVisible()
+      await expect(stepHeading(page, 'Identitätsanbieter')).toBeVisible()
       await submitStep(page)
 
       await expect(stepHeading(page, 'Chat-Modell')).toBeVisible()
       await expectStepEdgesFlush(page)
+      await expectFooterOrder(page)
+      // „Modelle abrufen“ is never locked: without an address it leads to the field.
+      await page.getByRole('button', { name: 'Modelle abrufen' }).click()
+      await expect(page.getByLabel('Basis-Adresse')).toHaveAttribute('aria-invalid', 'true')
+      await expect(page.getByLabel('Basis-Adresse')).toBeFocused()
       await page.getByRole('radio', { name: /Eigene Adresse/ }).click()
       await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
       await page.getByLabel('Basis-Adresse').press('Tab')
@@ -189,53 +216,96 @@ test.describe('Einrichtungs-Assistent', () => {
       // skips them, and the entered address is discarded unsaved.
       await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
       await skipStep(page)
-      await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
+      await expect(stepHeading(page, 'Einbettung')).toBeVisible()
       await expectStepEdgesFlush(page)
       await skipStep(page)
 
       // The rerank step offers no provider and starts at the address; skipped, reranking stays off.
-      await expect(stepHeading(page, 'Rerank-Modell')).toBeVisible()
+      await expect(stepHeading(page, 'Reranking')).toBeVisible()
       await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
       await expect(page.getByRole('radiogroup', { name: 'Anbieter' })).toHaveCount(0)
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: Rerank-Modell')
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Reranking')
       await expectStepEdgesFlushAlsoNarrow(page)
       await skipStep(page)
 
       // Speech input is on in this stack, so the transcription model step is offered and skipped;
       // speech input stays off.
-      await expect(stepHeading(page, 'Transkriptionsmodell')).toBeVisible()
+      await expect(stepHeading(page, 'Spracheingabe')).toBeVisible()
       await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: Transkriptionsmodell')
+      // Live transcription takes effect with the step's action: a checkbox, no switch.
+      await expect(
+        page.getByRole('checkbox', { name: 'Live-Transkript einschalten' }),
+      ).not.toBeChecked()
+      await expect(page.locator('main form').getByRole('switch')).toHaveCount(0)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Spracheingabe')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await skipStep(page)
+
+      // The stack runs no clamd: the malware scan is skipped and stays off. The assistant takes
+      // clamd's default port only and says where another one is entered.
+      await expect(stepHeading(page, 'Virenprüfung')).toBeVisible()
+      await expect(page.getByText('Optional · später unter Virenprüfung')).toBeVisible()
+      await expect(page.getByLabel('Host des Virenscanners')).toHaveAccessibleDescription(
+        /Port 3310; einen anderen tragen Sie später unter „Administration → Virenprüfung“ ein/,
+      )
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Virenprüfung')
       await expectStepEdgesFlushAlsoNarrow(page)
       await skipStep(page)
 
       // The optional mail step says so and is skipped; sending stays off.
-      await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
+      await expect(stepHeading(page, 'E-Mail')).toBeVisible()
       await expect(page.getByText('Optional · später unter E-Mail')).toBeVisible()
       await expect(page.getByRole('list', { name: 'Optionale Schritte' })).toContainText(
         'Nicht eingerichtet',
       )
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail-Versand')
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail')
       await expectStepEdgesFlushAlsoNarrow(page)
+      // Below 900 px the step list shows only position and name and opens on a tap.
+      const wide = page.viewportSize()
+      await page.setViewportSize({ width: 360, height: 800 })
+      const stepList = page.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+      const position = stepList.getByRole('button', { name: /^Schritt \d+ von \d+ · E-Mail$/ })
+      await expect(position).toHaveAttribute('aria-expanded', 'false')
+      await expect(stepList.getByRole('list', { name: 'Optionale Schritte' })).toBeHidden()
+      await position.click()
+      await expect(stepList.getByRole('list', { name: 'Optionale Schritte' })).toBeVisible()
+      await position.click()
+      if (wide) await page.setViewportSize(wide)
       await skipStep(page)
 
       // The optional branding step is skipped as well: the OPAA standard stays.
       await expect(stepHeading(page, 'Branding')).toBeVisible()
-      await expect(page.getByText('Optional · später unter Branding')).toBeVisible()
-      await expect(page.getByText(/der Assistent nimmt keine Bilder an/)).toBeVisible()
+      await expect(page.getByText('Optional · später unter Allgemein & Branding')).toBeVisible()
+      await expect(
+        page.getByText(/Logo und Hintergrundbild lädt die Systemverwaltung später/),
+      ).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Branding')
       await expectStepEdgesFlushAlsoNarrow(page)
       await page.getByRole('button', { name: 'Überspringen' }).click()
 
       // The skip goes through the API; the summary follows once it is recorded.
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
-      await expect(page.getByText(/Der E-Mail-Versand bleibt aus/)).toBeVisible()
-      await expect(page.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeVisible()
-      await expect(page.getByText(/Das Reranking bleibt aus/)).toBeVisible()
-      await expect(page.getByText(/Die Spracheingabe bleibt aus/)).toBeVisible()
-      const summary = page.getByRole('list', { name: 'Stand der Schritte' })
-      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(6)
-      await expect(page.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeVisible()
+      // Chat-Modell, Einbettung, Reranking, Spracheingabe, Virenprüfung, E-Mail and Branding.
+      for (const skipped of [
+        'Chat-Modell',
+        'Einbettung',
+        'Reranking',
+        'Spracheingabe',
+        'Virenprüfung',
+        'E-Mail',
+        'Branding',
+      ]) {
+        await expect(stepState(page, skipped)).toContainText('Nicht eingerichtet')
+      }
+      await expect(stepStates(page).getByText('Nicht eingerichtet')).toHaveCount(7)
+      // Each row leads to its step, and the step list back to the summary.
+      await stepState(page, 'E-Mail').getByRole('button', { name: 'E-Mail', exact: true }).click()
+      await expect(stepHeading(page, 'E-Mail')).toBeVisible()
+      await page
+        .getByRole('navigation', { name: 'Schritte der Einrichtung' })
+        .getByRole('button', { name: /Abschluss/ })
+        .click()
+      await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
       // At 320 px the forward action wraps below the back button and keeps the right edge.
       await expectStepEdgesFlushAlsoNarrow(page)
@@ -304,7 +374,7 @@ test.describe('Einrichtungs-Assistent', () => {
   )
 
   test(
-    'richtet Rerank- und Transkriptionsmodell, E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
+    'richtet Reranking und Spracheingabe, E-Mail mit Prüfung und Testnachricht und das Branding ein',
     {
       tag: '@mail-filled',
     },
@@ -326,13 +396,13 @@ test.describe('Einrichtungs-Assistent', () => {
         .getByRole('option', { name: new RegExp(RERANK_MODEL) })
         .click()
       await expect(page.getByRole('combobox', { name: 'Modell-Kennung' })).toHaveValue(RERANK_MODEL)
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: Rerank-Modell ausgefüllt')
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Reranking ausgefüllt')
       await expectStepEdgesFlushAlsoNarrow(page)
       await submitStep(page)
 
       // The transcription model, chosen from the list the endpoint offers and checked with the
       // probe of the model administration.
-      await expect(stepHeading(page, 'Transkriptionsmodell')).toBeVisible()
+      await expect(stepHeading(page, 'Spracheingabe')).toBeVisible()
       await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
       await page.getByRole('radio', { name: /Eigene Adresse/ }).click()
       await page.getByLabel('Basis-Adresse').fill(TRANSCRIPTION_URL)
@@ -341,11 +411,15 @@ test.describe('Einrichtungs-Assistent', () => {
       await page.getByRole('combobox', { name: 'Modell-Kennung' }).click()
       await page.getByRole('option', { name: new RegExp(TRANSCRIPTION_MODEL) }).click()
       await expect(page.getByLabel('Sprache (optional)')).toHaveValue('de')
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: Transkriptionsmodell ausgefüllt')
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Spracheingabe ausgefüllt')
       await expectStepEdgesFlushAlsoNarrow(page)
       await submitStep(page)
 
-      await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
+      // The stack runs no clamd, so the malware scan is skipped here as well.
+      await expect(stepHeading(page, 'Virenprüfung')).toBeVisible()
+      await skipStep(page)
+
+      await expect(stepHeading(page, 'E-Mail')).toBeVisible()
       await expectStepEdgesFlushAlsoNarrow(page)
       // Without server, port and sender the step names each field, as the administration does.
       await submitStep(page)
@@ -360,13 +434,13 @@ test.describe('Einrichtungs-Assistent', () => {
       await page.getByRole('radio', { name: /Keine/ }).check()
       await page.getByLabel('Absenderadresse', { exact: true }).fill('opaa@stadt.example')
       await page.getByLabel('Absendername (optional)').fill('OPAA')
-      await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail-Versand ausgefüllt')
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail ausgefüllt')
       await expectStepEdgesFlushAlsoNarrow(page)
 
-      // The check alone sends nothing, says so before it runs and in its outcome.
-      const check = page.getByRole('button', { name: 'Prüfen und weiter' })
-      await expect(check).toHaveAccessibleDescription(
-        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
+      // The check alone sends nothing; the field of the recipient says so before it runs, the
+      // summary in its outcome.
+      await expect(page.getByLabel('Testnachricht an (optional)')).toHaveAccessibleDescription(
+        /Ohne Adresse prüft der Schritt nur die Verbindung und sendet nichts/,
       )
       await submitStep(page)
       await expect(stepHeading(page, 'Branding')).toBeVisible()
@@ -380,12 +454,9 @@ test.describe('Einrichtungs-Assistent', () => {
       )
 
       // Checked again with an address, the test message goes there and nowhere else.
-      await steps.getByRole('button', { name: /E-Mail-Versand/ }).click()
-      await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
+      await stepState(page, 'E-Mail').getByRole('button', { name: 'E-Mail', exact: true }).click()
+      await expect(stepHeading(page, 'E-Mail')).toBeVisible()
       await page.getByLabel('Testnachricht an (optional)').fill(TEST_RECIPIENT)
-      await expect(check).toHaveAccessibleDescription(
-        `Die Prüfung sendet eine Testnachricht an ${TEST_RECIPIENT}.`,
-      )
       await expectStepEdgesFlushAlsoNarrow(page)
       await submitStep(page)
       const mail = await waitForMail(TEST_RECIPIENT)
@@ -410,18 +481,10 @@ test.describe('Einrichtungs-Assistent', () => {
         'Die Verbindung zum Mailserver ist gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
       )
       await expect(stepStates(page)).not.toContainText(TEST_RECIPIENT)
-      await expect(
-        page.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
-      ).toBeVisible()
-      await expect(page.getByText(/Das Branding wird übernommen/)).toBeVisible()
-      await expect(
-        page.getByText(/Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet/),
-      ).toBeVisible()
-      await expect(
-        page.getByText(
-          /Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet/,
-        ),
-      ).toBeVisible()
+      for (const checked of ['Reranking', 'Spracheingabe', 'E-Mail', 'Branding']) {
+        await expect(stepState(page, checked)).toContainText('Geprüft')
+      }
+      await expect(stepState(page, 'Virenprüfung')).toContainText('Nicht eingerichtet')
       await page.getByRole('button', { name: 'Installation abschließen' }).click()
       await expect(stepHeading(page, 'Installation abgeschlossen')).toBeVisible()
 
