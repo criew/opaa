@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AdminList from '@/shared/ui/list/AdminList'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import QueryForm, { QueryPeriod, QueryPrompt, QueryReason } from '@/shared/ui/list/QueryForm'
+import { periodProblem } from '@/shared/ui/list/queryRules'
 import { useAuthStore } from '@/shared/session/authStore'
 import { listConnectionLog, listConnectionLogProfiles } from '../api/connectionLogApi'
 import type {
@@ -24,7 +24,7 @@ import {
   ownerKindLabel,
   ownerLabel,
 } from '../components/connectionLogLabels'
-import { contentWidth, formWidth } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import { formatProtocolTime } from '@/shared/utils/formatDate'
 
 const ALL = ''
@@ -62,7 +62,7 @@ export default function ConnectionLogPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const canSubmit = from !== '' && to !== '' && reason.trim() !== ''
+  const [attempted, setAttempted] = useState(false)
 
   useEffect(() => {
     if (!isAuditor) return
@@ -97,7 +97,8 @@ export default function ConnectionLogPage() {
   }
 
   function submit() {
-    if (!canSubmit || isLoading) return
+    setAttempted(true)
+    if (reason.trim() === '' || periodProblem(from, to)) return
     void load(
       {
         from: toInstant(from),
@@ -127,18 +128,19 @@ export default function ConnectionLogPage() {
           description="Wann Konten mit einem Zugang verbunden oder getrennt wurden und Verbindungen endeten. Personen erscheinen nur als Pseudonym, Zugangsdaten nie; Zeitraum höchstens 92 Tage, jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3, maxWidth: formWidth.column }}>
-          <FormField
-            label="Von"
-            type="datetime-local"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-          <FormField
-            label="Bis"
-            type="datetime-local"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
+        <QueryForm
+          label="Abfrage des Verbindungsprotokolls"
+          submitLabel="Protokoll anzeigen"
+          busy={isLoading}
+          busyAnnouncement="Verbindungsprotokoll wird gelesen"
+          onSubmit={submit}
+        >
+          <QueryPeriod
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            showProblems={attempted}
           />
           <FormField
             select
@@ -171,29 +173,17 @@ export default function ConnectionLogPage() {
               </MenuItem>
             ))}
           </FormField>
-          <FormField
-            label="Anlass"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            helperText="Pflichtangabe. Der Anlass steht im Protokolleintrag dieses Abrufs."
-          />
-          <Box>
-            <BusyButton
-              variant="contained"
-              busy={isLoading}
-              busyAnnouncement="Verbindungsprotokoll wird gelesen"
-              disabled={!canSubmit && !isLoading}
-              onClick={submit}
-            >
-              Protokoll anzeigen
-            </BusyButton>
-          </Box>
-        </Stack>
+          <QueryReason value={reason} onChange={setReason} showProblems={attempted} />
+        </QueryForm>
 
         {error && (
           <Alert severity="error" role="alert" sx={{ mb: 2 }}>
             {error}
           </Alert>
+        )}
+
+        {!result && !error && (
+          <QueryPrompt message="Hier erscheinen nach der Abfrage die Einträge des Zeitraums: wer ein Konto mit welchem Zugang verbunden oder getrennt hat und wann Verbindungen endeten." />
         )}
 
         {result && applied && (

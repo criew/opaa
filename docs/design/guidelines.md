@@ -597,7 +597,8 @@ diese Regeln um:
    primär, nie roter Text. Alles Weitere, auch Löschen und Widerrufen, steht hinter „⋯“
    (`RowMenu`). Ausnahme: Ist die Reihenfolge der Zeilen selbst der Inhalt (Identitätsanbieter
    auf der Anmeldeseite), stehen die beiden Pfeile zum Verschieben als Symbolschaltflächen neben
-   „⋯“; sie zählen zusammen als die eine Handlung.
+   „⋯“; sie zählen zusammen als die eine Handlung. Zweite Ausnahme ist die Entscheidungszeile
+   (unten).
 3. **Anzahl neben dem Seitentitel** (`AreaPageCount`), bei gefilterter Liste „12 von 40“. Die Zahl
    steht nicht über oder unter der Tabelle.
 4. **Blättern in einer Form** (`ListPager`): unten rechts „Seite 2 von 5“ mit Pfeilen; bei einer
@@ -617,6 +618,24 @@ diese Regeln um:
 Die Zählbudgets `tableColumns` und `rowPrimaryButtons` der
 [UI-Prüfliste](./ui-pruefliste.md#zählbudgets) messen Spaltenzahl und Primärschaltflächen in
 Zeilen.
+
+**Abfrage vor der Liste** (#3742). Zeigt eine Seite erst nach einer Abfrage etwas
+(Stichtagsauskunft, Verbindungsprotokoll), steht über der Liste ein Abfrageformular aus
+`QueryForm` (`frontend/src/shared/ui/list/QueryForm.tsx`):
+
+1. Das Formular ist 720 px breit (`contentWidth.form`), die Felder kommen aus `FormField`, der
+   Zeitraum steht als Wertepaar „Von“ und „Bis“ nebeneinander (`QueryPeriod`). Es gibt genau eine
+   primäre Schaltfläche mit Verb („Auskunft erstellen“), immer aktiv; was fehlt, nennt das Feld
+   nach dem Klick.
+2. Das Ergebnis erscheint darunter als `AdminList`. Vor der ersten Abfrage steht an seiner Stelle
+   ein Satz, was erscheinen wird (`QueryPrompt`), kein leerer Rahmen.
+3. Die Pflichtangabe „Anlass“ heißt auf allen Revisionsseiten gleich und trägt denselben Hilfetext
+   (`QueryReason`).
+
+**Entscheidungszeile.** Verlangt eine Zeile eine Antwort aus zwei Möglichkeiten (Rollenanträge),
+trägt sie beide sichtbar, beide als kompakte Sekundär-Schaltfläche mit Verb, die annehmende zuerst:
+„Bestätigen“, „Ablehnen“ (`RowDecision`). Das ist neben den Verschiebepfeilen die einzige
+Ausnahme von Regel 2; ein „⋯“ steht dann nicht in der Zeile.
 
 **Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
 Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit

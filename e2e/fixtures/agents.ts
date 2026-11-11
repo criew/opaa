@@ -280,8 +280,14 @@ export function answers(page: Page): Locator {
     .filter({ has: page.getByTestId('ai-answer-mark') })
 }
 
-/** Tippt `@` ins Eingabefeld und wählt den Agenten `name` aus der Gruppe „Agenten“. */
+/**
+ * Tippt `@` ins Eingabefeld und wählt den Agenten `name` aus der Gruppe „Agenten“.
+ * Ist der Agent schon gewählt (Rückfrage und Plan wählen ihn für die nächste Frage vor),
+ * bietet das Menü ihn nicht mehr an; dann bleibt die Wahl, wie sie ist.
+ */
 export async function chooseAgent(page: Page, name: string): Promise<void> {
+  const chip = page.getByTestId('chosen-agent-chip')
+  if ((await chip.count()) > 0 && (await chip.textContent()) === `Agent: ${name}`) return
   const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await page

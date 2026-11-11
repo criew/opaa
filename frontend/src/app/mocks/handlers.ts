@@ -56,6 +56,7 @@ import { connectionProfileHandlers } from '@/features/connection/mocks/connectio
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
 import { auditorRoleRequestHandlers } from '@/features/audit/mocks/auditorRoleRequestHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
+import { rightsHistoryHandlers } from '@/features/audit/mocks/rightsHistoryHandlers'
 import { outboundProxyHandlers } from '@/features/connection/mocks/outboundProxyHandlers'
 import { connectionLifecycleHandlers } from '@/features/connection/mocks/connectionLifecycleHandlers'
 // external-access
@@ -146,6 +147,7 @@ const topicHandlers = [
   ...connectionProfileHandlers,
   ...connectedAccountHandlers,
   ...connectionLogHandlers,
+  ...rightsHistoryHandlers,
   ...auditorRoleRequestHandlers,
   ...outboundProxyHandlers,
   ...connectionLifecycleHandlers,
