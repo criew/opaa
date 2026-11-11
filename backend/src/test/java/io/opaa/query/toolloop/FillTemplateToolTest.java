@@ -402,6 +402,18 @@ class FillTemplateToolTest {
         .isEqualTo("_.._etc_Ärger_ Bericht_");
   }
 
+  @Test
+  void aBaseNameStartsWithALetterOrDigitAndIsComposed() {
+    RunTemplate dashed = new RunTemplate(UUID.randomUUID(), "-Bescheid", null, List.of(), 1);
+    RunTemplate decomposed =
+        new RunTemplate(UUID.randomUUID(), "Gebu\u0308hrenbescheid", null, List.of(), 1);
+
+    assertThat(FillTemplateTool.baseName(new TemplateToFill(dashed, "x.docx", DOCX)))
+        .isEqualTo("Bescheid");
+    assertThat(FillTemplateTool.baseName(new TemplateToFill(decomposed, "x.docx", DOCX)))
+        .isEqualTo("Gebührenbescheid");
+  }
+
   private FillTemplateTool tool() {
     return new FillTemplateTool(
         sandboxes,

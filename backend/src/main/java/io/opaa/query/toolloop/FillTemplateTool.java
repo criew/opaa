@@ -18,6 +18,7 @@ import io.opaa.template.RunTemplates.RunTemplate;
 import io.opaa.template.RunTemplates.TemplateToFill;
 import io.opaa.template.TemplatePlaceholder;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -534,7 +535,11 @@ class FillTemplateTool implements AgentTool {
   static String baseName(TemplateToFill template) {
     String name = template.template().name();
     String cleaned =
-        name == null ? "" : name.replaceAll("[^\\p{L}\\p{N} ._-]", "_").replaceAll("^[ .]+", "");
+        name == null
+            ? ""
+            : Normalizer.normalize(name, Normalizer.Form.NFC)
+                .replaceAll("[^\\p{L}\\p{N} ._-]", "_")
+                .replaceAll("^[ .-]+", "");
     cleaned = bounded(cleaned, MAX_NAME_CHARS).strip();
     return cleaned.isEmpty() ? "Dokument" : cleaned;
   }

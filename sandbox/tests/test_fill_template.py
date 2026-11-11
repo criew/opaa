@@ -279,6 +279,22 @@ class FillTemplateTest(unittest.TestCase):
         self.assertEqual("ENTWURF – Fassung 3",
                          docx.Document(self.result_docx()).core_properties.comments)
 
+    def test_a_stamp_longer_than_the_properties_allow_still_fills(self):
+        import docx
+
+        make_template(self.template, ["{{ x }}"], footer="Seite")
+        stamp = "Agent „Recherche“, Fassung 3 · " + ", ".join(
+            f"Bibliothek {n} mit einem langen Namen" for n in range(10))
+        self.assertGreater(len(stamp), 255)
+
+        code, result = fill_template.fill(self.job({"x": "1"}, stamp=stamp))
+
+        self.assertEqual(0, code, result)
+        self.assertIn(stamp, footer_text(self.result_docx()))
+        properties = docx.Document(self.result_docx()).core_properties
+        self.assertEqual(stamp[:255], properties.comments)
+        self.assertEqual(stamp[:255], properties.subject)
+
     def test_the_stamp_is_not_rendered_as_a_template(self):
         make_template(self.template, ["{{ x }}"])
 
@@ -296,6 +312,10 @@ class FillTemplateTest(unittest.TestCase):
         self.assertEqual(["Der Fassungsstempel ließ sich nicht in die Datei schreiben."],
                          result["errors"])
         self.assertFalse(os.path.exists(self.out))
+
+    def test_the_output_name_starts_with_a_letter_and_is_composed(self):
+        self.assertEqual("Bescheid", fill_template.safe_name("-Bescheid"))
+        self.assertEqual("Gebührenbescheid", fill_template.safe_name("Gebu\u0308hrenbescheid"))
 
     def test_the_output_name_is_plain_and_the_output_directory_must_be_new(self):
         make_template(self.template, ["{{ x }}"])

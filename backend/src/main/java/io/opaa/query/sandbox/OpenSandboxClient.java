@@ -78,8 +78,11 @@ class OpenSandboxClient implements Sandboxes {
   private static final Pattern READ_DIRECTORY =
       Pattern.compile(Pattern.quote(WORKSPACE_DIR) + "(?:/[A-Za-z0-9_][A-Za-z0-9._-]*)+");
 
-  /** A plain file name, never a path. */
-  private static final Pattern PLAIN_NAME = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9._ -]*");
+  /**
+   * A plain file name, never a path: letters and digits of any script (a template may be named
+   * "Gebührenbescheid"), space, dot, dash and underscore, not starting with a dot.
+   */
+  private static final Pattern PLAIN_NAME = Pattern.compile("[\\p{L}\\p{N}_][\\p{L}\\p{N}._ -]*");
 
   /** A script of the image: directly in {@link #INSTALLED_DIR}, with a plain name. */
   private static final Pattern INSTALLED_SCRIPT =
@@ -215,7 +218,7 @@ class OpenSandboxClient implements Sandboxes {
     @Override
     public synchronized byte[] readFile(String directory, String name) {
       requireOpen();
-      if (!PLAIN_NAME.matcher(name).matches()) {
+      if (!isPlainName(name)) {
         throw new IllegalArgumentException("Not a plain file name: " + name);
       }
       return download(execd, token, readDirectory(directory) + "/" + name);
@@ -606,6 +609,10 @@ class OpenSandboxClient implements Sandboxes {
     } catch (NumberFormatException e) {
       return 1;
     }
+  }
+
+  static boolean isPlainName(String name) {
+    return name != null && PLAIN_NAME.matcher(name).matches();
   }
 
   private static String encode(String value) {

@@ -25,6 +25,8 @@ RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /tmp/requ
 # The fixed script of fill_template, owned by root and read-only for the sandbox user. Its tests run
 # here against this image's docxtpl and LibreOffice; a failing test fails the build.
 COPY --chmod=0644 fill_template.py /opt/opaa/fill_template.py
+# COPY --chmod also applies to the directory it creates; the sandbox user must be able to enter it.
+RUN chmod 0755 /opt/opaa
 RUN --mount=type=bind,source=tests,target=/tmp/opaa-tests \
     PYTHONDONTWRITEBYTECODE=1 OPAA_REQUIRE_SOFFICE=1 \
     OPAA_FILL_TEMPLATE_SCRIPT=/opt/opaa/fill_template.py \
@@ -36,7 +38,8 @@ RUN --mount=type=bind,source=tests,target=/tmp/opaa-tests \
 RUN groupadd --gid 1000 sandbox \
     && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash sandbox \
     && mkdir -p /workspace/out \
-    && chown -R 1000:1000 /workspace
+    && chown -R 1000:1000 /workspace \
+    && runuser -u sandbox -- test -r /opt/opaa/fill_template.py
 ENV MPLCONFIGDIR=/tmp/matplotlib \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

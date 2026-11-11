@@ -34,6 +34,7 @@ filled, 1 on any other failure.
 import json
 import os
 import re
+import unicodedata
 import shutil
 import signal
 import subprocess
@@ -43,6 +44,7 @@ import time
 
 SOFFICE = "/usr/bin/soffice"
 MAX_NAME_CHARS = 80
+MAX_PROPERTY_CHARS = 255
 DEFAULT_PDF_DEADLINE_SECONDS = 30
 FORMATS = ("docx", "pdf")
 
@@ -168,7 +170,8 @@ def template_environment():
 
 def safe_name(name):
     """A plain file base name: letters, digits, space, dot, dash and underscore only."""
-    cleaned = re.sub(r"[^\w .-]", "_", str(name or ""), flags=re.UNICODE).strip(" .")
+    normalized = unicodedata.normalize("NFC", str(name or ""))
+    cleaned = re.sub(r"[^\w .-]", "_", normalized, flags=re.UNICODE).lstrip(" .-").rstrip(" .")
     cleaned = cleaned[:MAX_NAME_CHARS].strip(" .")
     return cleaned or "Dokument"
 
@@ -201,8 +204,9 @@ def add_stamp(path, stamp):
             # A linked footer writes into the previous section's definition; once is enough.
             if index == 0 or not footer.is_linked_to_previous:
                 footer.add_paragraph(stamp)
-    document.core_properties.comments = stamp
-    document.core_properties.subject = stamp
+    # python-docx refuses core properties longer than 255 characters; the footer keeps the full stamp.
+    document.core_properties.comments = stamp[:MAX_PROPERTY_CHARS]
+    document.core_properties.subject = stamp[:MAX_PROPERTY_CHARS]
     document.save(path)
 
 
