@@ -8,15 +8,12 @@ documents were cited, for the person who reads the numbers.
 """
 import argparse
 import json
-import re
 import sys
 import time
 import urllib.request
 from pathlib import Path
 
 CONFIRMATION = "Plan bestätigt."
-# A citation in the answer text: 【source: <documentId>#<chunk> | <fileName>】
-MARKER = re.compile(r"【source:\s*[a-zA-Z0-9\-]+#\d+\s*\|([^】【\r\n]+)】")
 
 
 def call(base, headers, method, path, body=None, timeout=600):
@@ -55,7 +52,9 @@ def summary(answer, seconds):
         "toolCalls": tools,
         "limitSteps": sum(1 for step in steps if step["status"] == "LIMIT"),
         "retrieved": sorted({source.get("fileName") for source in answer.get("sources", [])}),
-        "cited": sorted({name.strip() for name in MARKER.findall(answer["answer"])}),
+        # "cited" is set by the server only for markers whose document id matches a collected source.
+        "cited": sorted({s.get("fileName") for s in answer.get("sources", []) if s.get("cited")}),
+        "invalidCitations": sum(1 for s in answer.get("sources", []) if s.get("citationValid") is False),
         "answer": answer["answer"],
     }
 

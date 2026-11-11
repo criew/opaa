@@ -42,8 +42,8 @@ Korpus ist `eval/corpus/verwaltung`; die erwarteten Dokumente stehen je Fall in 
    Es schreibt `run-report.json` neben das Skript (nicht einchecken, außer als bewusste
    Ausgangsmessung unter `eval/reports/`): Dauer je Lauf, Endzustand, Zahl der Schritte und
    Werkzeugaufrufe je Werkzeug, Schritte an der Grenze, gesammelte Dateien (`retrieved`, alle
-   Fundstellen des Laufs) und im Text zitierte Dateien (`cited`, aus den Belegmarkern), fehlende
-   erwartete und zitierte unerwünschte Dokumente (beide nach `cited`) sowie gesammelte
+   Fundstellen des Laufs), im Text gültig zitierte Dateien (`cited`, laut Feld `cited` der Quellen
+   der Antwort), die Zahl ungültiger Belegmarker (`invalidCitations`), fehlende erwartete und zitierte unerwünschte Dokumente (beide nach `cited`) sowie gesammelte
    unerwünschte Dokumente (`retrievedForbidden`).
 4. Dieselben Läufe in der Metrik gegenprüfen: `opaa_agent_runs_total{kind="builtin",result=…}` und
    `opaa_agent_run_duration_seconds` (der Planlauf zählt als `result="plan"`).
