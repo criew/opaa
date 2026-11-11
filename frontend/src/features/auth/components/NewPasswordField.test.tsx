@@ -5,22 +5,14 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
 import AuthLayout from './AuthLayout'
 import NewPasswordField from './NewPasswordField'
-import PasswordField from './PasswordField'
+import SecretField from '@/shared/ui/form/SecretField'
 
 function Harness() {
   const [value, setValue] = useState('')
-  return (
-    <PasswordField
-      id="p"
-      label="Passwort"
-      value={value}
-      onChange={setValue}
-      autoComplete="new-password"
-    />
-  )
+  return <SecretField id="p" label="Passwort" value={value} onChange={setValue} />
 }
 
-describe('PasswordField', () => {
+describe('SecretField on the pages before the sign-in', () => {
   it('masks the entry and reveals it on request', async () => {
     renderWithProviders(<Harness />)
     const field = screen.getByLabelText('Passwort')

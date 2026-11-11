@@ -65,6 +65,31 @@ export async function pinVariant(page, variant) {
   }
 }
 
+/** sessionStorage key of `currentMockProfile()` in frontend/src/shared/mocks/mockProfile.ts. */
+const MOCK_PROFILE_KEY = 'opaa.mockProfile'
+
+/** Mock profiles of the frontend; `signed-out` opens the pages before the sign-in. */
+export const MOCK_PROFILES = ['admin', 'user', 'auditor', 'signed-out']
+
+/**
+ * The tab's sessionStorage holds the mock profile before any script runs, so every page of the
+ * tab is loaded as that profile, also after a redirect drops the query; without `profile` the tab
+ * stays untouched.
+ */
+export async function pinProfile(page, profile) {
+  if (!profile) return
+  await page.addInitScript(
+    ([key, name]) => {
+      try {
+        sessionStorage.setItem(key, name)
+      } catch {
+        /* storage blocked: the tab stays on the default profile */
+      }
+    },
+    [MOCK_PROFILE_KEY, profile],
+  )
+}
+
 /**
  * The scheme the page actually shows, from the luminance of the body background the theme sets;
  * falls back to the media query while the body is transparent.

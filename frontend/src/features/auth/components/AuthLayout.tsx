@@ -111,6 +111,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     >
       {wide && (
         <Box
+          component="header"
           data-testid="auth-brand-panel"
           sx={{
             display: 'flex',
@@ -131,7 +132,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </Box>
       )}
 
+      {/* The input column is the page's main landmark, as the content area is inside the
+          application. */}
       <Box
+        component="main"
         sx={{
           display: 'flex',
           alignItems: 'center',

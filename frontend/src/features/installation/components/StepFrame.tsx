@@ -102,8 +102,8 @@ export default function StepFrame({
           fontWeight: 500,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
-          // Eyebrow above a heading in accent (guidelines 3.3); the step's state stays in words.
-          color: 'primary.main',
+          // Eyebrow above a heading in grey (guidelines 3.3); the step's state stays in words.
+          color: 'text.secondary',
           mb: STEP_RHYTHM.withinHeading,
         }}
       >

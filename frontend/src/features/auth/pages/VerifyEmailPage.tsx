@@ -2,18 +2,16 @@ import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
 import NewPasswordField from '../components/NewPasswordField'
-import PasswordField from '../components/PasswordField'
-import SectionEyebrow from '../components/SectionEyebrow'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import SecretField from '@/shared/ui/form/SecretField'
+import SectionHead from '@/shared/ui/SectionHead'
+import FormField from '@/shared/ui/form/FormField'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
@@ -25,7 +23,6 @@ import {
   RateLimitedError,
 } from '../api/selfServiceApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   EMAIL_VERIFIED_MESSAGE,
   fieldErrorMessages,
@@ -46,14 +43,6 @@ const FIELDS = ['displayName', 'newPassword', 'repeatedPassword'] as const
  */
 const NOT_YET_AVAILABLE_MESSAGE =
   'Die Bestätigung ist gerade nicht möglich. Ihr Link ist dadurch nicht verbraucht — versuchen Sie es in einigen Minuten erneut.'
-
-function SignInLink({ children = 'Zur Anmeldung' }: { children?: string }) {
-  return (
-    <Link component={RouterLink} to={LOGIN_ROUTE}>
-      {children}
-    </Link>
-  )
-}
 
 /**
  * The page behind the verification link of a self-registration (ADR-0033, Entscheidung 11). The
@@ -185,26 +174,25 @@ export default function VerifyEmailPage() {
         noValidate
         sx={{ mt: 3 }}
       >
-        <SectionEyebrow id="verify-email-title">Zugang einrichten</SectionEyebrow>
+        <SectionHead id="verify-email-title" underline={false}>
+          Zugang einrichten
+        </SectionHead>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Mit Name und Passwort bestätigen Sie zugleich Ihre E-Mail-Adresse.
         </Typography>
         <Stack spacing={2}>
-          <Box>
-            <FormFieldLabel htmlFor="verify-email-display-name">Name</FormFieldLabel>
-            <TextField
-              id="verify-email-display-name"
-              inputRef={displayNameRef}
-              size="small"
-              fullWidth
-              autoComplete="name"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.displayName)}
-              helperText={fieldErrors.displayName}
-            />
-          </Box>
+          <FormField
+            id="verify-email-display-name"
+            label="Name"
+            inputRef={displayNameRef}
+            size="small"
+            autoComplete="name"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            disabled={busy}
+            error={Boolean(fieldErrors.displayName)}
+            helperText={fieldErrors.displayName}
+          />
           <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             {passwordPolicyText(minLength)}
           </Typography>
@@ -219,14 +207,14 @@ export default function VerifyEmailPage() {
             onGenerated={setRepeated}
             inputRef={newPasswordRef}
           />
-          <PasswordField
+          <SecretField
             id="verify-email-repeat"
             label="Passwort wiederholen"
             value={repeated}
             onChange={setRepeated}
             autoComplete="new-password"
             disabled={busy}
-            errorMessage={fieldErrors.repeatedPassword}
+            error={fieldErrors.repeatedPassword}
             inputRef={repeatedRef}
           />
           <Button
@@ -239,9 +227,7 @@ export default function VerifyEmailPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <SignInLink>Zurück zur Anmeldung</SignInLink>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }
