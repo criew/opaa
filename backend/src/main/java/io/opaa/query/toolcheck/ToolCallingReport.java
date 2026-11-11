@@ -1,6 +1,6 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
-import io.opaa.eval.ToolCallingJudge.Outcome;
+import io.opaa.query.toolcheck.ToolCallingJudge.Outcome;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
  * every run of {@link ToolCallingCase#FLOOR_CATEGORIES} passed; it states whether a combination may
  * be listed as capable, not that it is.
  */
-record ToolCallingReport(
+public record ToolCallingReport(
     int reportFormatVersion,
     String runId,
     String measuredAt,
@@ -38,9 +38,9 @@ record ToolCallingReport(
     List<CaseRun> runs) {
 
   /** Raised when a field of this report changes meaning or a field is removed. */
-  static final int REPORT_FORMAT_VERSION = 1;
+  public static final int REPORT_FORMAT_VERSION = 1;
 
-  static final String NOT_STATED = "nicht angegeben";
+  public static final String NOT_STATED = "nicht angegeben";
 
   private static final DateTimeFormatter RUN_ID_TIME =
       DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
@@ -51,7 +51,7 @@ record ToolCallingReport(
    * The combination measured: what was ordered ({@code model}), what answered ({@code
    * answeredModel}) and what the operator stated about quantization, runtime and hardware.
    */
-  record Combination(
+  public record Combination(
       String model,
       String answeredModel,
       String quantization,
@@ -64,10 +64,19 @@ record ToolCallingReport(
       int maxTokens,
       boolean streaming) {}
 
-  record CaseBase(
-      String path, int caseBaseVersion, String manifestSha256, int caseCount, int repetitions) {}
+  /**
+   * @param toolDefinition {@code MOCK} for the mock search of the case base, {@code PRODUCTION} for
+   *     the definition of the agent loop's {@code search_knowledge}
+   */
+  public record CaseBase(
+      String path,
+      int caseBaseVersion,
+      String manifestSha256,
+      int caseCount,
+      int repetitions,
+      String toolDefinition) {}
 
-  record Durations(
+  public record Durations(
       double totalSeconds,
       int modelCalls,
       long medianModelCallMillis,
@@ -80,7 +89,7 @@ record ToolCallingReport(
    * {@code limitReached} counts the runs that used up their case's call limit, whatever their
    * outcome.
    */
-  record CategoryResult(
+  public record CategoryResult(
       int runs,
       int passed,
       int failed,
@@ -92,9 +101,9 @@ record ToolCallingReport(
       int limitReached,
       String summary) {}
 
-  record CapabilityFloor(List<String> categories, boolean met, String statement) {}
+  public record CapabilityFloor(List<String> categories, boolean met, String statement) {}
 
-  record CaseRun(
+  public record CaseRun(
       String caseId,
       String category,
       int repetition,
@@ -107,7 +116,7 @@ record ToolCallingReport(
       List<String> finishReasons,
       List<Long> modelCallMillis) {}
 
-  static ToolCallingReport of(
+  public static ToolCallingReport of(
       Instant measuredAt,
       Combination combination,
       CaseBase caseBase,
@@ -133,7 +142,7 @@ record ToolCallingReport(
   }
 
   /** {@code tc-<UTC time>-<model slug>}, readable and unique per model and second. */
-  static String runId(Instant measuredAt, String model) {
+  public static String runId(Instant measuredAt, String model) {
     String slug =
         model.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
     return "tc-" + RUN_ID_TIME.format(measuredAt) + "-" + (slug.isEmpty() ? "model" : slug);
@@ -177,7 +186,7 @@ record ToolCallingReport(
     return (int) runs.stream().filter(r -> r.outcome() == outcome).count();
   }
 
-  static CapabilityFloor floor(Map<String, CategoryResult> byCategory) {
+  public static CapabilityFloor floor(Map<String, CategoryResult> byCategory) {
     List<String> missed = new ArrayList<>();
     for (String category : ToolCallingCase.FLOOR_CATEGORIES) {
       CategoryResult result = byCategory.get(category);
@@ -209,14 +218,19 @@ record ToolCallingReport(
   }
 
   /** The median of sorted {@code values}; for an even count the mean of the two middle values. */
-  static long median(List<Long> values) {
+  public static long median(List<Long> values) {
     int middle = values.size() / 2;
     return values.size() % 2 == 1
         ? values.get(middle)
         : Math.round((values.get(middle - 1) + values.get(middle)) / 2.0);
   }
 
-  void writeJson(Path target) throws IOException {
+  /** This report in the JSON form of {@link #writeJson}. */
+  public String toJson() {
+    return JsonMapper.builder().build().writerWithDefaultPrettyPrinter().writeValueAsString(this);
+  }
+
+  public void writeJson(Path target) throws IOException {
     Files.createDirectories(target.toAbsolutePath().getParent());
     Files.writeString(
         target,
@@ -224,12 +238,12 @@ record ToolCallingReport(
         StandardCharsets.UTF_8);
   }
 
-  void writeMarkdown(Path target) throws IOException {
+  public void writeMarkdown(Path target) throws IOException {
     Files.createDirectories(target.toAbsolutePath().getParent());
     Files.writeString(target, renderMarkdown(), StandardCharsets.UTF_8);
   }
 
-  String renderMarkdown() {
+  public String renderMarkdown() {
     Combination c = combination;
     StringBuilder sb = new StringBuilder();
     sb.append("# Werkzeugfähigkeit: Messlauf ").append(runId).append("\n\n");
@@ -256,6 +270,12 @@ record ToolCallingReport(
                 + ", "
                 + caseBase.caseCount()
                 + " Fälle"));
+    sb.append(
+        row(
+            "Werkzeug",
+            "PRODUCTION".equals(caseBase.toolDefinition())
+                ? "search_knowledge der Agentenschleife"
+                : "Attrappe der Fallbasis"));
     sb.append(row("Läufe je Fall", Integer.toString(caseBase.repetitions())));
     sb.append(row("Manifest (SHA-256)", caseBase.manifestSha256()));
     sb.append("\n## Ergebnis je Fallklasse\n\n");

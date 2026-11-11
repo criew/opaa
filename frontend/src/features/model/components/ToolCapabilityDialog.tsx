@@ -28,6 +28,8 @@ interface ToolCapabilityDialogProps {
   open: boolean
   onClose: () => void
   onSaved: (message: string) => void
+  /** A measured result to record, e.g. from „Werkzeuge prüfen“; the dialog opens with it chosen. */
+  preset?: { value: ToolCapability; measurementRun: string }
 }
 
 const ORDER: ToolCapability[] = ['UNVERIFIED', 'CAPABLE', 'NOT_CAPABLE']
@@ -46,12 +48,17 @@ export default function ToolCapabilityDialog({
   open,
   onClose,
   onSaved,
+  preset,
 }: ToolCapabilityDialogProps) {
   const setToolCapability = useLlmModelStore((s) => s.setToolCapability)
   const stored = model.toolCapability
-  const [value, setValue] = useState<ToolCapability>(stored.value)
-  const [basis, setBasis] = useState<ToolCapabilityBasis>(stored.basis ?? 'MANUAL')
-  const [measurementRun, setMeasurementRun] = useState(stored.measurementRun ?? '')
+  const [value, setValue] = useState<ToolCapability>(preset?.value ?? stored.value)
+  const [basis, setBasis] = useState<ToolCapabilityBasis>(
+    preset ? 'MEASURED' : (stored.basis ?? 'MANUAL'),
+  )
+  const [measurementRun, setMeasurementRun] = useState(
+    preset?.measurementRun ?? stored.measurementRun ?? '',
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [runError, setRunError] = useState(false)
@@ -204,7 +211,7 @@ export default function ToolCapabilityDialog({
               helperText={
                 runError && runMissing
                   ? 'Bitte den Messlauf angeben, auf dem die gemessene Angabe beruht.'
-                  : 'Kennung des Messlaufs aus dem Kopf des Berichts tool-calling.md.'
+                  : 'Kennung des Messlaufs aus „Werkzeuge prüfen“ oder aus dem Kopf des Berichts tool-calling.md.'
               }
               sx={{ mt: 1 }}
             />

@@ -271,6 +271,7 @@ fun registerEvalHarnessTask(
             "opaa.eval.toolCalling.runtimeVersion",
             "opaa.eval.toolCalling.hardware",
             "opaa.eval.toolCalling.contextLength",
+            "opaa.eval.toolCalling.tool",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         forcedProperties.forEach { (key, value) -> systemProperty(key, value) }
         testLogging {
@@ -427,8 +428,9 @@ tasks.named<Test>("evaluatePromptInjection") {
     doFirst { staleReports.forEach { it.get().asFile.delete() } }
 }
 
-// Tool-calling case base (eval/corpus/tool-calling): measures one model endpoint against a mock
-// tool and reports per case category. Measures only, no baseline and no gate. Needs the model
+// Tool-calling case base (eval/corpus/tool-calling/SOURCE.md, files in main resources because the
+// model administration runs it too): measures one model endpoint against the mock tool or the agent
+// loop's search_knowledge and reports per case category. Measures only, no baseline and no gate. Needs the model
 // address (-Dopaa.eval.chatBaseUrl/-Dopaa.eval.chatModel) but no Docker; not part of build/check.
 registerEvalHarnessTask(
     "evaluateToolCalling",

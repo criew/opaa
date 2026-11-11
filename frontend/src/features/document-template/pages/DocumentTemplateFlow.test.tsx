@@ -107,6 +107,36 @@ describe('Dokumentvorlagen', () => {
     ).toBe(true)
   })
 
+  it('leads a responsible unit the server refuses back to its field under „Freigaben“', async () => {
+    holdCapabilities(['CREATE_TEMPLATE'])
+    server.use(
+      http.post('/api/v1/document-templates', () =>
+        HttpResponse.json(
+          {
+            error: 'Bitte prüfen Sie die markierten Angaben.',
+            fieldErrors: [
+              { field: 'responsible', code: 'UNKNOWN', message: 'Diese Gruppe gibt es nicht.' },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderTemplates('/templates/new')
+
+    await user.type(screen.getByRole('textbox', { name: /Name/ }), 'Vermerk')
+    await user.upload(screen.getByLabelText('Word-Datei auswählen'), docx())
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
+    const field = screen.getByRole('combobox', { name: 'Verantwortliche Stelle' })
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(field).toHaveAccessibleDescription('Diese Gruppe gibt es nicht.')
+  })
+
   it('lists the placeholders of a template with their kind and the parts of a list', async () => {
     renderTemplates('/templates/document-template-vermerk')
 

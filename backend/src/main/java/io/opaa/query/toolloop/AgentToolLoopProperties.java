@@ -19,6 +19,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     call, so the result that crosses it is still delivered whole.
  * @param workspaceCapacity agent runs at the same time, installation-wide; a request beyond it is
  *     refused before its run begins.
+ * @param workspaceCapacityPerPerson agent runs one person may have at the same time, over all
+ *     instances; at most {@code workspaceCapacity}. Only below it can no single person take every
+ *     place.
  * @param closingCallAllowance the longest a single model call may take; a run's reservation
  *     outlives {@code maxDuration} by twice this - the call running at the limit and the closing
  *     answer call - and the reservation of a crashed instance frees itself after that.
@@ -32,6 +35,7 @@ public record AgentToolLoopProperties(
     @DefaultValue("120s") @NoDataImpact("wall-clock limit of a run") Duration maxDuration,
     @DefaultValue("60000") int maxCollectedChars,
     @DefaultValue("2") int workspaceCapacity,
+    @DefaultValue("1") int workspaceCapacityPerPerson,
     @DefaultValue("60s") @NoDataImpact("lifetime of a workspace reservation after the run limit")
         Duration closingCallAllowance)
     implements AgentSystemLimits {
@@ -41,6 +45,14 @@ public record AgentToolLoopProperties(
     requirePositive("maxSearchCalls", maxSearchCalls);
     requirePositive("maxCollectedChars", maxCollectedChars);
     requirePositive("workspaceCapacity", workspaceCapacity);
+    requirePositive("workspaceCapacityPerPerson", workspaceCapacityPerPerson);
+    if (workspaceCapacityPerPerson > workspaceCapacity) {
+      throw new IllegalArgumentException(
+          "workspaceCapacityPerPerson must not exceed workspaceCapacity, got "
+              + workspaceCapacityPerPerson
+              + " > "
+              + workspaceCapacity);
+    }
     if (maxDuration == null || maxDuration.isNegative() || maxDuration.isZero()) {
       throw new IllegalArgumentException("maxDuration must be positive");
     }

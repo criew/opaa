@@ -16,10 +16,13 @@ import {
   AssetDetailHeader,
   AssetGrantsSection,
   AssetOwnerSection,
+  AssetResponsibilitySection,
   AssetSpacesSection,
+  responsibilityNote,
   responsibleParty,
   useAssetCatalogEntry,
 } from '@/features/asset'
+import { useMyGroups } from '@/features/principal'
 import { useAgentStore } from '../stores/agentStore'
 import {
   InstructionArea,
@@ -58,6 +61,9 @@ export default function AgentDetailPage() {
   const loadAgents = useAgentStore((s) => s.loadAgents)
   const update = useAgentStore((s) => s.updateAgent)
   const remove = useAgentStore((s) => s.deleteAgent)
+  const lockAgent = useAgentStore((s) => s.lockAgent)
+  const unlockAgent = useAgentStore((s) => s.unlockAgent)
+  const myGroups = useMyGroups()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   // The list holds only what the caller may read, without the administrative bypass.
   const listed = useAgentStore((s) => s.agents.some((a) => a.id === agentId))
@@ -134,6 +140,8 @@ export default function AgentDetailPage() {
     }
   }
 
+  const note = responsibilityNote(agent.responsibility)
+
   function associationsChanged() {
     catalog.reload()
     setAssociationsVersion((version) => version + 1)
@@ -153,6 +161,7 @@ export default function AgentDetailPage() {
               <MetaBadge>{assetRoleLabel(agent.myRole)}</MetaBadge>
               {agent.delivered && <MetaBadge>Mitgeliefert</MetaBadge>}
               <MetaBadge>{`Fassung ${agent.revision}`}</MetaBadge>
+              {agent.responsibility.lock && <MetaBadge>Gesperrt</MetaBadge>}
             </>
           }
           administrative={administrative}
@@ -174,7 +183,16 @@ export default function AgentDetailPage() {
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
           onDelete={canDelete ? () => void handleDelete() : undefined}
-          note={<SuccessionStateNote succession={agent.succession} />}
+          note={
+            <>
+              <SuccessionStateNote succession={agent.succession} />
+              {note && (
+                <Alert severity={note.severity} sx={{ mt: 1 }}>
+                  {note.text}
+                </Alert>
+              )}
+            </>
+          }
         />
 
         {deleteError && (
@@ -203,6 +221,18 @@ export default function AgentDetailPage() {
             if (value === 'freigaben') {
               return (
                 <Stack>
+                  <AssetResponsibilitySection
+                    idPrefix="agent"
+                    name={agent.name}
+                    responsibility={agent.responsibility}
+                    canEdit={canManage}
+                    canLock={isSystemAdmin}
+                    groups={myGroups.groups}
+                    lockConsequence="Der Agent erscheint nicht mehr in der Auswahl, und jeder Aufruf wird abgewiesen, auf allen Instanzen ab dem nächsten Aufruf. Er bleibt erhalten und lässt sich wieder entsperren."
+                    onSave={(responsible) => save({ responsible })}
+                    onLock={(reason) => lockAgent(id, reason)}
+                    onUnlock={() => unlockAgent(id)}
+                  />
                   <AssetOwnerSection
                     assetType="AGENT"
                     assetId={id}

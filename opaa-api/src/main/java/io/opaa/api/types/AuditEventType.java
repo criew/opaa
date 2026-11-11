@@ -64,6 +64,18 @@ public enum AuditEventType {
   AGENT_CHANGED,
   AGENT_DELETED,
   /**
+   * The responsible unit of an agent or a document template changed: before and after name the
+   * group by id or the function as entered. The object is the agent or the template.
+   */
+  ASSET_RESPONSIBILITY_CHANGED,
+  /**
+   * An agent or a document template was locked - by the system administration with its reason, or
+   * by the installation after the period without a responsible unit. Nothing is deleted.
+   */
+  ASSET_LOCKED,
+  /** A lock of an agent or a document template was lifted by the system administration. */
+  ASSET_UNLOCKED,
+  /**
    * A prompt was added to, changed in or removed from its library. The object is the prompt, the
    * payload names its library; the prompt text never appears.
    */
@@ -304,6 +316,8 @@ public enum AuditEventType {
    * after} carry the months only.
    */
   SUCCESSION_AGING_THRESHOLD_CHANGED,
+  /** The days after which an agent or a template without a responsible unit is locked changed. */
+  RESPONSIBILITY_LOCK_PERIOD_CHANGED,
   /**
    * The system administration set the plausibility threshold of the directory sync, or returned it
    * to the factory default; {@code before} and {@code after} carry the percentage only.

@@ -11,11 +11,15 @@ import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
+import io.opaa.asset.AssetResponsibilityService;
+import io.opaa.asset.AssetResponsibilityView;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.NotFoundException;
@@ -55,6 +59,10 @@ import org.springframework.transaction.annotation.Transactional;
  * run reads only what the calling person may read (ADR-0070, Entscheidung 3). Document templates
  * follow the same rule; a run fills only those the asker may read as well. While the switch
  * "Vorlagen" is off, a change keeps the stored templates and no view names or counts one.
+ *
+ * <p>Every agent names a responsible unit ({@link AssetResponsibilityService}); the system
+ * administration may lock a single agent. A locked agent stays manageable, is left out of the list
+ * to choose from and refused for every run ({@link #requireUsableForRun}).
  */
 @Service
 @Transactional(readOnly = true)
@@ -65,6 +73,9 @@ public class AgentService {
   static final int MAX_INSTRUCTION_LENGTH = 8000;
   static final int MAX_LIBRARIES = 100;
   static final int MAX_TEMPLATES = 20;
+
+  /** The code a run of a locked agent is refused with. */
+  public static final String LOCKED_CODE = "AGENT_LOCKED";
 
   private final AgentRepository agentRepository;
   private final AgentSwitch agentSwitch;
@@ -80,6 +91,7 @@ public class AgentService {
   private final DocumentTemplateRepository templateRepository;
   private final DocumentTemplateSettingsService templateSettings;
   private final AuditEventRecorder auditEventRecorder;
+  private final AssetResponsibilityService responsibilityService;
 
   AgentService(
       AgentRepository agentRepository,
@@ -95,7 +107,9 @@ public class AgentService {
       KnowledgeLibraryRepository libraryRepository,
       DocumentTemplateRepository templateRepository,
       DocumentTemplateSettingsService templateSettings,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      AssetResponsibilityService responsibilityService) {
+    this.responsibilityService = responsibilityService;
     this.agentRepository = agentRepository;
     this.agentSwitch = agentSwitch;
     this.capabilityService = capabilityService;
@@ -125,6 +139,8 @@ public class AgentService {
     List<FieldError> errors = new ArrayList<>();
     String name = validateName(request.name(), errors);
     String description = validateDescription(request.description(), errors);
+    ResponsibleUnit responsible =
+        responsibilityService.validate(request.responsible(), caller, errors);
     throwIfAny(errors);
 
     Agent agent;
@@ -151,6 +167,7 @@ public class AgentService {
             Set.of()));
     Agent saved = agentRepository.save(agent);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
+    responsibilityService.establish(saved, responsible);
     return view(saved, AssetRole.OWNER, caller);
   }
 
@@ -173,6 +190,8 @@ public class AgentService {
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(agents, false);
     AssignedNames libraryNames = libraryNames(agents, caller);
     AssignedNames templateNames = templateNames(agents, caller);
+    Map<UUID, AssetResponsibilityView> responsibilities =
+        responsibilityService.viewsOf(agents, caller, roles);
     List<AgentView> views = new ArrayList<>(agents.size());
     for (Agent agent : agents) {
       views.add(
@@ -186,7 +205,8 @@ public class AgentService {
               reach.getOrDefault(agent.getId(), AssetReach.NONE),
               true,
               templates(templateNames, agent),
-              templateNames.hiddenCount(agent.getTemplateIds())));
+              templateNames.hiddenCount(agent.getTemplateIds()),
+              responsibilities.get(agent.getId())));
     }
     return views;
   }
@@ -231,6 +251,10 @@ public class AgentService {
             errors);
     Set<String> toolNames = validateTools(submitted.toolNames(), errors);
     AgentLimits limits = validateLimits(submitted.limits(), errors);
+    ResponsibleUnit responsible =
+        request.responsible() == null
+            ? null
+            : responsibilityService.validate(request.responsible(), caller, errors);
     Set<UUID> templateIds =
         submitted.templateIds() == null || !templateSettings.isEnabled()
             ? agent.getTemplateIds()
@@ -241,6 +265,9 @@ public class AgentService {
                     DocumentTemplate.ASSET_TYPE, caller.id(), caller.organizationId()),
                 errors);
     throwIfAny(errors);
+    if (responsible != null) {
+      responsibilityService.change(agent, responsible, caller);
+    }
 
     AgentConfiguration target =
         new AgentConfiguration(
@@ -292,6 +319,44 @@ public class AgentService {
     agentRepository.delete(agent);
   }
 
+  /**
+   * Locks the agent (system administration only) with a required reason; it stays manageable and is
+   * never deleted. Holds for the next run on every instance.
+   */
+  @Transactional
+  public AssetResponsibilityView lock(UUID agentId, String reason, CurrentUser caller) {
+    requireEnabled();
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Agenten sperren.");
+    agentRepository.lockById(agentId);
+    return responsibilityService.lock(load(agentId, caller), reason, caller);
+  }
+
+  /** Lifts the lock of the agent (system administration only), whatever its cause. */
+  @Transactional
+  public AssetResponsibilityView unlock(UUID agentId, CurrentUser caller) {
+    requireEnabled();
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Agenten entsperren.");
+    agentRepository.lockById(agentId);
+    return responsibilityService.unlock(load(agentId, caller), caller);
+  }
+
+  /**
+   * The gate every run of an agent passes, after the caller's right to see it was checked: a locked
+   * agent is refused with {@code 409} and {@link #LOCKED_CODE}, read from the table on every call
+   * so a lock holds on every instance from the next run on (ADR-0053). Using an agent writes no
+   * audit entry.
+   */
+  public void requireUsableForRun(Agent agent) {
+    if (responsibilityService.isLocked(agent.getId())) {
+      throw new ConflictException(
+          "Der Agent „"
+              + agent.getName()
+              + "“ ist gesperrt und kann gerade nicht genutzt werden. Wenden Sie sich an die"
+              + " Systemverwaltung.",
+          LOCKED_CODE);
+    }
+  }
+
   /** The {@code 404} of a switched-off installation: agents cannot be told from no agents. */
   private void requireEnabled() {
     if (!agentSwitch.isEnabled()) {
@@ -326,7 +391,8 @@ public class AgentService {
             .getOrDefault(agent.getId(), AssetReach.NONE),
         holdsContentRole(agent, caller, AssetRole.VIEWER),
         templates(templateNames, agent),
-        templateNames.hiddenCount(agent.getTemplateIds()));
+        templateNames.hiddenCount(agent.getTemplateIds()),
+        responsibilityService.view(agent, caller, role));
   }
 
   /**

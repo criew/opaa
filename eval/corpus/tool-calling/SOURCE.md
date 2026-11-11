@@ -5,17 +5,19 @@
 | **Quelle** | vollständig synthetisch, von Hand geschrieben, kein Rohdaten-Snapshot einer Fremdquelle |
 | **Lizenz** | CC0-1.0 |
 | **Generator** | keiner; die Fälle sind von Hand gepflegt, das Manifest wird mit `sha256sum -b` neu gezogen (unten) |
-| **Dateien** | `cases.json` (28 Fälle), `mock-tool.json` (Attrappen-Werkzeug), `system-prompt.txt` (Systemvorspann der Messung) |
-| **Harness** | `backend/src/evalTest/java/io/opaa/eval/ToolCallingEvaluationHarnessTest.java`, Task `evaluateToolCalling` |
+| **Dateien** | unter `backend/src/main/resources/io/opaa/query/toolcheck/casebase/`: `cases.json` (28 Fälle), `mock-tool.json` (Attrappen-Werkzeug), `system-prompt.txt` (Systemvorspann der Messung), `MANIFEST.sha256`. Sie liegen im Backend, weil auch die Modellverwaltung („Werkzeuge prüfen“) die Fallbasis fährt; dieses Verzeichnis beschreibt sie nur |
+| **Harness** | Messkern `backend/src/main/java/io/opaa/query/toolcheck/`; Entwicklerweg `backend/src/evalTest/java/io/opaa/eval/ToolCallingEvaluationHarnessTest.java`, Task `evaluateToolCalling` |
 | **Ergebnisse** | [`../../reports/tool-calling/`](../../reports/tool-calling/README.md) |
 
 ## Zweck
 
 Die Fallbasis misst, ob eine **Kombination** aus Modell, Quantisierung und Laufzeit ein Werkzeug
 verlässlich aufruft (Issue #1753, Epic #1747). Gemessen wird gegen ein **Attrappen-Werkzeug**, nicht
-gegen die echte Suche: Die Risikofrage „kann dieses Modell Werkzeuge?“ ist damit beantwortbar, bevor
-die Werkzeugschleife (#1750) gebaut ist. Nach #1750 wird die Messung einmal gegen das echte
-`search_knowledge` wiederholt und mit dieser verglichen.
+gegen die echte Suche: Die Risikofrage „kann dieses Modell Werkzeuge?“ ist damit unabhängig von der
+Werkzeugschleife (#1750) beantwortbar. Wahlweise bietet die Messung dem Modell statt der Attrappe die
+Definition des echten `search_knowledge` an (`-Dopaa.eval.toolCalling.tool=production`, in der
+Modellverwaltung immer); die Antworten kommen weiter aus dem Fall. `valid_arguments` prüft dann gegen
+dessen Schema und überspringt das erwartete `max_results`, das `search_knowledge` nicht kennt.
 
 Die Messung bewertet **nicht** die Qualität der Antwort; das leisten der Retrieval-Harness und später
 der Prüfstand.
@@ -156,7 +158,7 @@ Jede Änderung an einem Fall, am Werkzeug oder am Vorspann erhöht `case_base_ve
 `cases.json` und zieht das Manifest neu:
 
 ```bash
-cd eval/corpus/tool-calling
+cd backend/src/main/resources/io/opaa/query/toolcheck/casebase
 sha256sum -b cases.json mock-tool.json system-prompt.txt > MANIFEST.sha256
 ```
 

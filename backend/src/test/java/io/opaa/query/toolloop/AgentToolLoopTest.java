@@ -139,7 +139,7 @@ class AgentToolLoopTest {
             ChatClient.builder(
                     chatModel, io.micrometer.observation.ObservationRegistry.NOOP, null, null)
                 .build());
-    when(workspace.tryReserve(any())).thenReturn(true);
+    when(workspace.tryReserve(any(), any())).thenReturn(AgentWorkspace.Reservation.RESERVED);
     when(chatMemory.get(any())).thenReturn(List.of());
     when(chatService.spaceLibraryScope(any(), anySet()))
         .thenReturn(Set.of(spaceLibrary, agentLibrary));
@@ -385,7 +385,7 @@ class AgentToolLoopTest {
     loop().handle(turn(stream));
 
     var order = org.mockito.Mockito.inOrder(workspace, stream);
-    order.verify(workspace).tryReserve(any());
+    order.verify(workspace).tryReserve(any(), any());
     order.verify(stream).started();
     order.verify(stream, times(2)).idle();
     order.verify(stream).beforeKeeping();
@@ -473,7 +473,7 @@ class AgentToolLoopTest {
 
     ArgumentCaptor<String> token = ArgumentCaptor.captor();
     verify(stream).runStarted(eq(result.agentRun().runId()), token.capture());
-    verify(workspace).armCancel(eq(result.agentRun().runId()), any(), eq(token.getValue()));
+    verify(workspace).armCancel(result.agentRun().runId(), token.getValue());
     assertThat(token.getValue()).hasSizeGreaterThanOrEqualTo(32);
   }
 
@@ -933,7 +933,7 @@ class AgentToolLoopTest {
 
   @Test
   void aFullWorkspaceRefusesTheRequestBeforeAnyModelCall() {
-    when(workspace.tryReserve(any())).thenReturn(false);
+    when(workspace.tryReserve(any(), any())).thenReturn(AgentWorkspace.Reservation.WORKSPACE_FULL);
 
     assertThatThrownBy(() -> loop().handle(turn()))
         .isInstanceOfSatisfying(
@@ -941,7 +941,32 @@ class AgentToolLoopTest {
             e -> assertThat(e.getCode()).isEqualTo(AgentToolLoop.WORKSPACE_FULL_CODE));
     verifyNoInteractions(chatModel);
     verify(workspace, never()).release(any());
-    assertThat(meters.find(AgentMetrics.WORKSPACE_REJECTED).counter().count()).isEqualTo(1.0);
+    assertThat(rejected("full")).isEqualTo(1.0);
+    assertThat(rejected("person_limit")).isZero();
+  }
+
+  @Test
+  void aPersonAtTheirShareIsRefusedBeforeAnyModelCallWithItsOwnCode() {
+    when(workspace.tryReserve(any(), any()))
+        .thenReturn(AgentWorkspace.Reservation.PERSON_LIMIT_REACHED);
+    AgentTurn turn = turn();
+
+    assertThatThrownBy(() -> loop().handle(turn))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> {
+              assertThat(e.getCode()).isEqualTo(AgentToolLoop.PERSON_LIMIT_CODE);
+              assertThat(e.getMessage()).isEqualTo(AgentToolLoop.PERSON_LIMIT);
+            });
+    verify(workspace).tryReserve(any(), eq(turn.userId()));
+    verifyNoInteractions(chatModel);
+    verify(workspace, never()).release(any());
+    assertThat(rejected("person_limit")).isEqualTo(1.0);
+    assertThat(rejected("full")).isZero();
+  }
+
+  private double rejected(String reason) {
+    return meters.find(AgentMetrics.WORKSPACE_REJECTED).tag("reason", reason).counter().count();
   }
 
   @Test

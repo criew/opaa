@@ -45,32 +45,27 @@ nur „nicht fähig“ tragen.
 
 | Messlauf | Kombination | `calls_when_needed` | `abstains_when_not_needed` | `valid_arguments` | `no_invented_tool` | `respects_limit` | `multi_step` | `ignores_injected_instruction` | Untergrenze | Laufdauer | akzeptierter Zustand, Datum, Begründung |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| – | noch keine | | | | | | | | | | |
+| [`tc-20261110T205441Z-google-gemma-4-31b-it`](tc-20261110T205441Z-google-gemma-4-31b-it.md) | Gemma 4 31B (`google/gemma-4-31b-it`), OpenRouter ohne gepinnten Anbieter (fp4/fp8), Kontext bis 262144, am Stück; Attrappe | 12/12 | 12/12 | 10/12 | 12/12 | 12/12 (Grenze in 6/12) | 12/12 | wirksam in 0/12 | nicht erfüllt | 169 s, Median 725 ms | – (siehe Produktivdefinition) |
+| [`tc-20261110T205812Z-google-gemma-4-31b-it`](tc-20261110T205812Z-google-gemma-4-31b-it.md) | Gemma 4 31B (`google/gemma-4-31b-it`), OpenRouter ohne gepinnten Anbieter (fp4/fp8), Kontext bis 262144, am Stück; `search_knowledge` der Agenten | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 (Grenze in 7/12) | 12/12 | wirksam in 0/12 | erfüllt | 141 s, Median 629 ms | „fähig“, 10.11.2026: Untergrenze mit der Definition erfüllt, die die Agenten anbieten; Mindestklasse für Agenten |
 
 ## Bekannte Lücken
 
 Diese Lücken sind bewusst offen und gehören zu Issue #1753:
 
-- **Keine Kombination gemessen.** Die Fallbasis, der Harness und das Ergebnisformat stehen; Messläufe
-  gegen selbst betriebene Modelle brauchen Hardware mit und ohne Grafikbeschleunigung, die in der
-  Umgebung des Pull Requests nicht vorhanden war. Gefordert sind mindestens vier Kombinationen:
-  je eine ohne und eine mit Grafikbeschleunigung (eine einzelne mittlere Karte) und beide gängigen
-  Laufzeiten, Ollama und vLLM. Vorschlag: ein Modell der 7B-Klasse auf Ollama auf CPU, dasselbe auf
-  Ollama auf einer GPU, dasselbe und ein zweites Modell auf vLLM auf derselben GPU. Zwei Modelle auf
-  zwei Laufzeiten sagen mehr als drei Modelle auf einer.
-- **Keine Empfehlung für das Fähigkeitsfeld.** Sie folgt aus den Messläufen.
-- **Wiederholung gegen das echte `search_knowledge`.** Erst nach der Werkzeugschleife (#1750); der
-  Vergleich zur Attrappen-Messung steht dann hier.
-- **Keine Selbstbedienung für eine Installation.** #1753 verlangt, dass eine Installation die
-  Fallbasis selbst für ihr Modell fahren kann, und lässt eine Modelladresse, die nur über eine
-  Systemeigenschaft überschreibbar ist, als Entwicklerweg nicht gelten. Genau das ist der heutige
-  Weg: Quellstand der Version, JDK 21, Gradle und `-Dopaa.eval.chatBaseUrl`. Die Selbstbedienung
-  ist damit **heute verneint**. Begründung: Eine Messung aus der Modellverwaltung heraus braucht
-  einen Einstieg im Produkt (Schnittstelle, Recht, Ablage des Berichts) und gehört zum
-  Fähigkeitsfeld am Modelleintrag (#1749) oder zu einem eigenen Schritt danach; die Fallbasis und
-  der Lauf ohne Docker und Datenbank sind dafür vorbereitet. Bis dahin bleibt eine Fähigkeitsangabe
-  außerhalb der hier geführten Kombinationen ungeprüft, sofern das Haus nicht selbst den
-  Entwicklerweg geht, den das Handbuch beschreibt.
+- **Mindestklasse statt Messreihe.** Für Agenten setzt OPAA ein Modell der Klasse Gemma 4 31B
+  voraus (Entscheidung des Maintainers, 10.11.2026). Kleinere selbst betriebene Modelle der 7B-Klasse
+  werden nicht reihenweise gemessen; eine Installation, die eines betreiben will, misst es selbst mit
+  „Werkzeuge prüfen“. Gemma 4 31B über OpenRouter ist oben gemessen: Mit der Definition der Agenten
+  besteht es alle Klassen. Mit der Attrappe scheitert es zweimal an `va-03`, weil es `max_results`
+  als `null` statt `3` schickt; das Attrappen-Schema lässt das nicht zu, `search_knowledge` hat das
+  Feld nicht. Maßgeblich für den Betrieb ist die Definition der Agenten.
+- **Vergleich mit dem echten `search_knowledge`.** Die Messung kann es anbieten
+  (`-Dopaa.eval.toolCalling.tool=production`); der Vergleich zur Attrappen-Messung folgt aus den
+  Messläufen.
+- **Selbstbedienung** ist gebaut: Mit eingeschaltetem Schalter „Agenten“ startet die
+  Systemverwaltung die Messung am Modelleintrag („Werkzeuge prüfen“), ohne Quellstand. Der Server
+  fährt denselben Messkern mit der Definition von `search_knowledge`, hält den Bericht zum
+  Herunterladen bereit und schlägt die Fähigkeitsangabe mit der Grundlage *gemessen* vor.
 
 ## Betriebsfehler, die wie ein unfähiges Modell aussehen
 

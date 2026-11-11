@@ -49,12 +49,14 @@ export async function getSuccessionSettings(): Promise<SuccessionSettingsRespons
   }
 }
 
-/** Sets the aging threshold in months; `null` returns to the factory default. */
+/**
+ * Sets the aging threshold in months and the days until an agent or a template without a
+ * responsible unit is locked; `null` returns a value to its factory default.
+ */
 export async function updateSuccessionSettings(
-  agingThresholdMonths: number | null,
+  body: SuccessionSettingsRequest,
 ): Promise<SuccessionSettingsResponse> {
   try {
-    const body: SuccessionSettingsRequest = { agingThresholdMonths }
     const { data } = await apiClient.put<SuccessionSettingsResponse>(
       '/v1/admin/succession/settings',
       body,

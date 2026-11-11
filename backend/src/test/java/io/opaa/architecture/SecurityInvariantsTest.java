@@ -293,7 +293,10 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.connection.profile.ConnectorTypePolicy", "lock of a connector type"),
           Map.entry("io.opaa.connection.profile.ConnectionProfile", "lock of a profile"),
           Map.entry("io.opaa.connection.profile.LibraryConnection", "end of a connection"),
-          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"));
+          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"),
+          Map.entry(
+              "io.opaa.asset.AssetResponsibility",
+              "lock of an agent or a template, which refuses every run"));
 
   /**
    * Persistent types with a field named like security state that carry none, each with what the
@@ -342,7 +345,10 @@ class SecurityInvariantsTest {
               "enabled switches a model role"),
           Map.entry(
               "io.opaa.llm.transcription.TranscriptionModelSettings",
-              "enabled switches a model role"));
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheck",
+              "status is the progress of a tool check, grants no access"));
 
   private static final String NEW_ROW =
       "inserts an instance it constructed itself; there is no earlier read to write back";
@@ -354,6 +360,10 @@ class SecurityInvariantsTest {
   private static final String TOWARD_REVOKED =
       "only moves the row toward revoked or ended; what it may write back stale (use day, lapse or"
           + " reminder marker) grants no access";
+
+  private static final String RESPONSIBILITY_ROW_LOCK =
+      "reads the row FOR UPDATE (findByIdForUpdate) and writes it in the same transaction; the"
+          + " period run changes it only by conditional updates, which wait for that lock";
 
   private static final String ROLE_ONLY =
       "the role is the only state that changes after creation, so the whole row is that write; a"
@@ -376,6 +386,10 @@ class SecurityInvariantsTest {
               NEW_ROW + "; revocation and rotation are targeted updates"),
           Map.entry("io.opaa.account.LocalTokenRevocationService#revokeAccessToken", NEW_ROW),
           Map.entry("io.opaa.asset.AssetGrantService#grantAtCreation", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#establish", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#change", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#lock", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#unlock", RESPONSIBILITY_ROW_LOCK),
           Map.entry("io.opaa.asset.AssetGrantService#upsertGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#giveOwnerGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#moveOwnerGrant", ROLE_ONLY),
@@ -526,6 +540,13 @@ class SecurityInvariantsTest {
               "io.opaa.retrieval.search.DecompositionContext#promptMessages",
               "question and window texts go through DecompositionContext#material, which cleans"
                   + " them with PromptText"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCallingRunner#run",
+              "system prompt, user message and tool results come from the checked-in fictional"
+                  + " case base on the classpath; no text from outside enters the measurement"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheckWorker#measure",
+              "the readiness probe is a constant text; the cases run through ToolCallingRunner"),
           Map.entry(
               "io.opaa.metadata.ModelMetadataExtractor#askModel",
               "the prompt is ModelExtractionPrompt's, which fences title and text with"

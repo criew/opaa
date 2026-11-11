@@ -1,10 +1,9 @@
-package io.opaa.eval;
+package io.opaa.query.toolcheck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.eval.ToolCallingJudge.Outcome;
-import io.opaa.eval.ToolCallingRunner.Transcript;
-import java.io.IOException;
+import io.opaa.query.toolcheck.ToolCallingJudge.Outcome;
+import io.opaa.query.toolcheck.ToolCallingRunner.Transcript;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,12 +26,12 @@ import reactor.core.publisher.Flux;
  */
 class ToolCallingRunnerTest {
 
-  private static ToolCallingMockTool tool;
+  private static ToolCallingTool tool;
   private static List<ToolCallingCase> cases;
 
   @BeforeAll
-  static void loadCaseBase() throws IOException {
-    tool = ToolCallingMockTool.load(ToolCallingMockTool.corpusDir());
+  static void loadCaseBase() {
+    tool = ToolCallingTool.mock(ToolCallingCaseBase.load());
     cases = ToolCallingDatasetTest.cases();
   }
 
@@ -253,7 +252,7 @@ class ToolCallingRunnerTest {
     Transcript t = run("cwn-01", model);
 
     assertThat(t.error()).contains("connection refused");
-    assertThat(ToolCallingJudge.judge(find("cwn-01"), t).outcome()).isEqualTo(Outcome.ERROR);
+    assertThat(ToolCallingJudge.judge(find("cwn-01"), t, tool).outcome()).isEqualTo(Outcome.ERROR);
   }
 
   @Test
@@ -364,7 +363,7 @@ class ToolCallingRunnerTest {
 
     Transcript t = runner.run(find("va-01"), model);
 
-    assertThat(ToolCallingJudge.judge(find("va-01"), t).outcome()).isEqualTo(Outcome.PASSED);
+    assertThat(ToolCallingJudge.judge(find("va-01"), t, tool).outcome()).isEqualTo(Outcome.PASSED);
     assertThat(model.streamed).isTrue();
   }
 
@@ -373,7 +372,7 @@ class ToolCallingRunnerTest {
   }
 
   private static Outcome verdict(String caseId, Transcript t) {
-    return ToolCallingJudge.judge(find(caseId), t).outcome();
+    return ToolCallingJudge.judge(find(caseId), t, tool).outcome();
   }
 
   private static ToolCallingCase find(String id) {
