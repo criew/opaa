@@ -4,6 +4,7 @@ import {
   askQuestion,
   chatSidebarEntries,
   clearSearchScope,
+  expectAnswerSettled,
   nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
@@ -135,6 +136,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await clearSearchScope(page);
     await askQuestion(page, `Frage für das Chat-Menü (${Date.now()})`);
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
+    // While the answer is pending the scope chips are disabled; the scan is of the settled page.
+    await expectAnswerSettled(page);
 
     const menuTrigger = chatSidebarEntries(page).first();
     const deleteEntry = page.getByRole("menuitem", {
