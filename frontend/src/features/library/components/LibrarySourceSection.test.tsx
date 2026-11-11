@@ -325,7 +325,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     expect(probes).toHaveLength(1)
   })
 
-  it('shows the result of „Verbindung prüfen“ without saving, and an error of the test itself', async () => {
+  it('shows the result of „Verbindung testen“ without saving, and an error of the test itself', async () => {
     server.use(
       http.post('/api/v1/libraries/source-test', () =>
         HttpResponse.json(
@@ -347,7 +347,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
-    await user.click(within(dialog).getByRole('button', { name: 'Verbindung prüfen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Verbindung testen' }))
 
     expect(await within(dialog).findByTestId('library-connection-test')).toHaveTextContent(
       'Der Zugang „Nextcloud neu“ ist gesperrt.',

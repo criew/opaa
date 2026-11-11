@@ -23,7 +23,7 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
     await expect(page.getByText("Sichtbarkeit")).toHaveCount(0);
     await page.getByLabel("Name", { exact: true }).fill(SPACE_NAME);
     await page
-      .getByRole("switch", {
+      .getByRole("checkbox", {
         name: /^Inaktive Chats nach \d+ Tagen archivieren/,
       })
       .check();
@@ -210,7 +210,7 @@ test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", asyn
       "",
     );
     await expect(
-      page.getByRole("button", { name: "Einstellungen speichern" }),
+      page.getByRole("button", { name: "Speichern", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByText("Gefahrenbereich")).toHaveCount(0);
 

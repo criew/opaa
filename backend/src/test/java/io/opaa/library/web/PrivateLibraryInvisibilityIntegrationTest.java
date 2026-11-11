@@ -323,6 +323,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAvailableAgents",
             "getAgentAvailability",
             "getAgentSettings",
+            "getAgentDirectory",
+            "exportAgentDirectory",
             "getDocumentTemplateAvailability",
             "getDocumentTemplateSettings",
             "listDocumentTemplates",

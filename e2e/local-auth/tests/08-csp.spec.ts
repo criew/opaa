@@ -54,7 +54,7 @@ test.describe("Content Security Policy der lokalen Anmeldung", () => {
     await openAccountList(page);
     await openLocalAuthSettings(page);
     await page.goto("/admin/mail/server");
-    await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeVisible();
 
     expect(violations, "CSP-Verstöße in der Browser-Konsole").toEqual([]);
     await context.close();

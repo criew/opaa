@@ -9,6 +9,7 @@ import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
 import { discoverLlmModels, testLlmModel } from '../api/modelApi'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import BaseUrlField from './BaseUrlField'
 import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
@@ -317,16 +318,7 @@ export default function LlmModelFormDialog({
       busyAnnouncement="Das Modell wird gespeichert"
       // Enter in the address field fetches the models of the endpoint
       submitOnEnter={false}
-      secondaryAction={
-        <BusyButton
-          variant="outlined"
-          onClick={() => void handleTest()}
-          busy={testing}
-          busyAnnouncement="Verbindung wird getestet"
-        >
-          Verbindung testen
-        </BusyButton>
-      }
+      secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
     >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
+import { useCallback, useEffect, useState } from 'react'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { ConnectionLogRetentionResponse } from '@/shared/api/types'
@@ -8,12 +6,12 @@ import { getConnectionLogRetention, updateConnectionLogRetention } from '../api/
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 
 const MIN_RETENTION_MONTHS = 6
 const MAX_RETENTION_MONTHS = 24
@@ -31,7 +29,6 @@ export default function ConnectionLogRetentionSection() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
 
   const load = useCallback(
     () =>
@@ -63,9 +60,10 @@ export default function ConnectionLogRetentionSection() {
     value <= MAX_RETENTION_MONTHS
   const changed = current !== null && valid && value !== current.retentionMonths
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !current || !changed) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (!current || !valid) return false
+    if (!changed) return true
     const shorter = value < current.retentionMonths
     const confirmed = await confirmAction({
       question: `Aufbewahrungsfrist des Verbindungsprotokolls auf ${months(value)} ändern?`,
@@ -75,14 +73,14 @@ export default function ConnectionLogRetentionSection() {
       confirmLabel: 'Ändern',
       tone: shorter ? 'danger' : 'caution',
     })
-    if (!confirmed) return
-    setBusy(true)
+    if (!confirmed) return false
     setSaveError(null)
     try {
       const saved = await updateConnectionLogRetention(value)
       setCurrent(saved)
       setDraft(String(saved.retentionMonths))
       notify(`Die Aufbewahrungsfrist beträgt jetzt ${months(saved.retentionMonths)}.`, 'success')
+      return true
     } catch (err: unknown) {
       setSaveError(
         apiErrorStatus(err) === 400
@@ -91,8 +89,7 @@ export default function ConnectionLogRetentionSection() {
             ? err.message
             : 'Die Aufbewahrungsfrist konnte nicht gespeichert werden.',
       )
-    } finally {
-      setBusy(false)
+      return false
     }
   }
 
@@ -110,49 +107,45 @@ export default function ConnectionLogRetentionSection() {
       ) : current === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-          <FormField
-            label="Aufbewahrungsfrist (Monate)"
-            type="number"
-            size="small"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setSaveError(null)
-            }}
-            error={!valid}
-            helperText={
-              valid
-                ? `Erlaubt sind ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} Monate. Abschalten lässt sich die Löschung nicht.`
-                : `Bitte eine ganze Zahl von ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} eingeben.`
-            }
-            slotProps={{
-              htmlInput: { min: MIN_RETENTION_MONTHS, max: MAX_RETENTION_MONTHS, step: 1 },
-            }}
-            sx={{ maxWidth: formWidth.column }}
-            action={
-              <BusyButton
-                type="submit"
-                variant="outlined"
-                busy={busy}
-                busyAnnouncement="Frist wird gespeichert"
-                disabled={!changed && !busy}
-              >
-                Speichern
-              </BusyButton>
-            }
-          />
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
+        <SettingValueRow
+          title="Aufbewahrungsfrist"
+          headingLevel="h3"
+          value={months(current.retentionMonths)}
+          onOpen={() => {
+            setDraft(String(current.retentionMonths))
+            setSaveError(null)
+          }}
+          onSave={handleSave}
+          editor={
+            <FormField
+              label="Aufbewahrungsfrist (Monate)"
+              type="number"
+              size="small"
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value)
+                setSaveError(null)
+              }}
+              error={!valid || saveError !== null}
+              helperText={
+                saveError ??
+                (valid
+                  ? `Erlaubt sind ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} Monate. Abschalten lässt sich die Löschung nicht.`
+                  : `Bitte eine ganze Zahl von ${MIN_RETENTION_MONTHS} bis ${MAX_RETENTION_MONTHS} eingeben.`)
+              }
+              slotProps={{
+                htmlInput: { min: MIN_RETENTION_MONTHS, max: MAX_RETENTION_MONTHS, step: 1 },
+              }}
+              sx={{ maxWidth: formWidth.column }}
+            />
+          }
+        >
           {current.lastCutoff && (
-            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Gelöscht ist bisher alles vor dem {formatDate(current.lastCutoff)}.
             </Typography>
           )}
-        </Box>
+        </SettingValueRow>
       )}
     </PageSection>
   )

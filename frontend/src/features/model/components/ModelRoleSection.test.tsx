@@ -31,7 +31,7 @@ describe('ModelRoleSection', () => {
     renderWithProviders(<ModelRoleSection kind="rerank" />)
 
     expect(await screen.findByText('Zustand: Ausgeschaltet.')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Reranking einschalten' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Reranking einschalten' })).not.toBeChecked()
     expect(screen.queryByLabelText('Sprache')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Begriffsliste')).not.toBeInTheDocument()
   })
@@ -62,7 +62,7 @@ describe('ModelRoleSection', () => {
     const sent = captureRerankSave()
     renderWithProviders(<ModelRoleSection kind="rerank" />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Reranking einschalten' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Reranking einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://reranker:80')
     await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
     await user.type(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/), 'sk-1')
@@ -77,6 +77,8 @@ describe('ModelRoleSection', () => {
     })
     expect(await screen.findByText('Zustand: Wird geprüft …')).toBeInTheDocument()
 
+    // a later change that leaves the key field alone
+    await user.type(screen.getByLabelText(/Modell-Kennung/), '-v2')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => expect(sent).toHaveLength(2))
     expect(sent[1]).not.toHaveProperty('apiKey')
@@ -86,7 +88,7 @@ describe('ModelRoleSection', () => {
     const user = userEvent.setup()
     captureRerankSave()
     renderWithProviders(<ModelRoleSection kind="rerank" />)
-    await user.click(await screen.findByRole('switch', { name: 'Reranking einschalten' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Reranking einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://reranker:80')
     await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
     server.use(
@@ -136,7 +138,7 @@ describe('ModelRoleSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<ModelRoleSection kind="rerank" />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Reranking einschalten' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Reranking einschalten' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(await screen.findAllByText('Die Basis-Adresse fehlt.')).not.toHaveLength(0)
@@ -171,7 +173,7 @@ describe('ModelRoleSection', () => {
     expect(
       await screen.findByText(/Der Betrieb hat die Spracheingabe abgeschaltet/),
     ).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Spracheingabe einschalten' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Spracheingabe einschalten' })).toBeDisabled()
   })
 
   it('tests the draft endpoint and shows the outcome', async () => {
@@ -200,11 +202,11 @@ describe('ModelRoleSection', () => {
     renderWithProviders(<ModelRoleSection kind="transcription" />)
 
     expect(
-      await screen.findByRole('switch', { name: 'Live-Transkript einschalten' }),
+      await screen.findByRole('checkbox', { name: 'Live-Transkript einschalten' }),
     ).not.toBeChecked()
     expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Live-Adresse/)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
 
     expect(screen.getByLabelText(/Live-Adresse/)).toHaveValue(
       'wss://api.openai.com/v1/realtime?intent=transcription',
@@ -257,7 +259,7 @@ describe('ModelRoleSection', () => {
     )
     renderWithProviders(<ModelRoleSection kind="transcription" />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Live-Transkript einschalten' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Live-Transkript einschalten' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
@@ -307,7 +309,7 @@ describe('ModelRoleSection', () => {
       await screen.findByText('Die Verbindung wurde vom Server abgelehnt.'),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(sent[0].realtime).toEqual({ enabled: false })

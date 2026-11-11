@@ -16,7 +16,9 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 /**
  * The access with which this provider's directory run reads. The realm is never
@@ -35,18 +37,90 @@ export default function DirectoryConnectorSection({
   const [clientId, setClientId] = useState(connector?.clientId ?? '')
   const [clientSecret, setClientSecret] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'save' | 'test' | 'remove' | null>(null)
+  const [missing, setMissing] = useState<{ clientId?: boolean; clientSecret?: boolean }>({})
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
-  async function run(action: () => Promise<void>, fallback: string) {
-    setBusy(true)
+  // what the fields held when last saved: an empty address stays empty, though the server derives one
+  const [saved, setSaved] = useState({ clientId, baseUrl })
+
+  const dirty =
+    clientId.trim() !== saved.clientId.trim() ||
+    baseUrl.trim() !== saved.baseUrl.trim() ||
+    clientSecret !== ''
+
+  function discard() {
+    setClientId(saved.clientId)
+    setBaseUrl(saved.baseUrl)
+    setClientSecret('')
+    setMissing({})
+    setError(null)
+    setTestResult(null)
+  }
+
+  async function run(
+    kind: 'save' | 'test' | 'remove',
+    action: () => Promise<void>,
+    fallback: string,
+  ) {
+    setBusy(kind)
     setError(null)
     try {
       await action()
     } catch (err) {
       setError(apiErrorMessage(err, DIRECTORY_SYNC_CONFLICT_MESSAGES, fallback))
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
+  }
+
+  /** What an action needs is told at its field; the secret is needed only to save. */
+  function complete(secretRequired: boolean): boolean {
+    const next = {
+      clientId: clientId.trim() === '',
+      clientSecret: secretRequired && clientSecret.trim() === '',
+    }
+    setMissing(next)
+    return !next.clientId && !next.clientSecret
+  }
+
+  async function handleSave() {
+    if (busy || !complete(true)) return
+    await run(
+      'save',
+      async () => {
+        await saveDirectoryConnector(provider.id, {
+          type: 'KEYCLOAK',
+          baseUrl: baseUrl.trim() === '' ? null : baseUrl.trim(),
+          clientId: clientId.trim(),
+          clientSecret,
+        })
+        setClientSecret('')
+        setSaved({ clientId, baseUrl })
+        notify('Der Verzeichniszugang wurde gespeichert.', 'success')
+        await onChanged()
+      },
+      'Der Zugang konnte nicht gespeichert werden.',
+    )
+  }
+
+  async function handleTest() {
+    if (busy || !complete(false)) return
+    setTestResult(null)
+    await run(
+      'test',
+      async () => {
+        setTestResult(
+          await testDirectoryConnector(provider.id, {
+            type: 'KEYCLOAK',
+            baseUrl: baseUrl.trim() === '' ? null : baseUrl.trim(),
+            clientId: clientId.trim(),
+            clientSecret: clientSecret.trim() === '' ? null : clientSecret,
+          }),
+        )
+      },
+      'Der Verbindungstest ist fehlgeschlagen.',
+    )
   }
 
   return (
@@ -71,87 +145,86 @@ export default function DirectoryConnectorSection({
         </Typography>
       )}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      <SettingsForm
+        aria-label="Verzeichniszugang"
+        onSave={handleSave}
+        busy={busy === 'save'}
+        busyAnnouncement="Zugang wird gespeichert"
+        dirty={dirty}
+        onDiscard={discard}
+        secondaryAction={
+          <ConnectionTestButton busy={busy === 'test'} onTest={() => void handleTest()} />
+        }
+        result={
+          (testResult || error) && (
+            <Stack spacing={2}>
+              {testResult && (
+                <Alert
+                  severity={testResult.success ? 'success' : 'error'}
+                  role={testResult.success ? 'status' : 'alert'}
+                >
+                  {testResult.message}
+                </Alert>
+              )}
+              {error && (
+                <Alert severity="error" role="alert" onClose={() => setError(null)}>
+                  {error}
+                </Alert>
+              )}
+            </Stack>
+          )
+        }
+      >
+        <Stack spacing={2}>
+          <FormField
+            size="small"
+            fullWidth
+            label="Dienstkonto (Client-ID)"
+            value={clientId}
+            error={Boolean(missing.clientId)}
+            helperText={missing.clientId ? 'Dienstkonto fehlt' : undefined}
+            onChange={(e) => {
+              setClientId(e.target.value)
+              setMissing((current) => ({ ...current, clientId: false }))
+            }}
+          />
+          <FormField
+            size="small"
+            fullWidth
+            type="password"
+            label="Geheimnis des Dienstkontos"
+            error={Boolean(missing.clientSecret)}
+            helperText={
+              missing.clientSecret
+                ? 'Geheimnis fehlt'
+                : connector
+                  ? 'Leer lassen, um mit dem hinterlegten Geheimnis zu testen. Zum Speichern neu eingeben.'
+                  : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
+            }
+            value={clientSecret}
+            onChange={(e) => {
+              setClientSecret(e.target.value)
+              setMissing((current) => ({ ...current, clientSecret: false }))
+            }}
+          />
+          <FormField
+            size="small"
+            fullWidth
+            label="Adresse der Admin-API"
+            optional
+            helperText="Leer lassen, wenn OPAA sie unter der Adresse des Anbieters erreicht."
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+          />
+        </Stack>
+      </SettingsForm>
 
-      <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
-        <FormField
-          size="small"
-          fullWidth
-          label="Dienstkonto (Client-ID)"
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-        />
-        <FormField
-          size="small"
-          fullWidth
-          type="password"
-          label="Geheimnis des Dienstkontos"
-          helperText={
-            connector
-              ? 'Leer lassen, um mit dem hinterlegten Geheimnis zu testen. Zum Speichern neu eingeben.'
-              : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
-          }
-          value={clientSecret}
-          onChange={(e) => setClientSecret(e.target.value)}
-        />
-        <FormField
-          size="small"
-          fullWidth
-          label="Adresse der Admin-API"
-          optional
-          helperText="Leer lassen, wenn OPAA sie unter der Adresse des Anbieters erreicht."
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-        />
-      </Stack>
-
-      <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
-        <Button
-          variant="outlined"
-          size="small"
-          disabled={busy || clientId.trim() === '' || clientSecret.trim() === ''}
-          onClick={() =>
-            void run(async () => {
-              await saveDirectoryConnector(provider.id, {
-                type: 'KEYCLOAK',
-                baseUrl: baseUrl.trim() === '' ? null : baseUrl.trim(),
-                clientId: clientId.trim(),
-                clientSecret,
-              })
-              setClientSecret('')
-              notify('Der Verzeichniszugang wurde gespeichert.', 'success')
-              await onChanged()
-            }, 'Der Zugang konnte nicht gespeichert werden.')
-          }
-        >
-          Zugang speichern
-        </Button>
-        <Button
-          size="small"
-          disabled={busy || clientId.trim() === ''}
-          onClick={() =>
-            void run(async () => {
-              const result = await testDirectoryConnector(provider.id, {
-                type: 'KEYCLOAK',
-                baseUrl: baseUrl.trim() === '' ? null : baseUrl.trim(),
-                clientId: clientId.trim(),
-                clientSecret: clientSecret.trim() === '' ? null : clientSecret,
-              })
-              notify(result.message, result.success ? 'success' : 'error')
-            }, 'Der Verbindungstest ist fehlgeschlagen.')
-          }
-        >
-          Verbindung testen
-        </Button>
+      <Box sx={{ mt: 2 }}>
         {connector && (
           <Button
             size="small"
             color="error"
-            disabled={busy}
+            disabled={busy !== null}
             onClick={async () => {
               const confirmed = await confirmAction({
                 question: 'Verzeichniszugang entfernen?',
@@ -161,16 +234,20 @@ export default function DirectoryConnectorSection({
                 tone: 'danger',
               })
               if (!confirmed) return
-              await run(async () => {
-                await deleteDirectoryConnector(provider.id)
-                await onChanged()
-              }, 'Der Zugang konnte nicht entfernt werden.')
+              await run(
+                'remove',
+                async () => {
+                  await deleteDirectoryConnector(provider.id)
+                  await onChanged()
+                },
+                'Der Zugang konnte nicht entfernt werden.',
+              )
             }}
           >
             Zugang entfernen
           </Button>
         )}
-      </Stack>
+      </Box>
     </Box>
   )
 }

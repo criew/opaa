@@ -27,6 +27,7 @@ import type {
   LibraryMetadataSchemaChangeResponse,
 } from '@/shared/api/types'
 import { describeChange, effectChips } from './metadataFieldText'
+import { notify } from '@/shared/stores/notificationStore'
 import CoreContextPrefixSwitch from './CoreContextPrefixSwitch'
 import AddValueButton from './AddValueButton'
 import CreateFieldDialog from './CreateFieldDialog'
@@ -128,6 +129,7 @@ export default function LibraryMetadataFieldsSection({
       setCoreContextPrefix(await updateCoreContextPrefix(libraryId, { documentType, documentDate }))
       await reload()
       onFieldsChanged?.()
+      notify('Das Kontextpräfix wurde geändert.', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Die Wirkstelle konnte nicht geändert werden')
     }
