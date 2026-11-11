@@ -1,15 +1,10 @@
-import type { FormEvent } from 'react'
 import { useId, useState } from 'react'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogContentText from '@mui/material/DialogContentText'
-import DialogTitle from '@mui/material/DialogTitle'
+import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import type { PromptResponse } from '@/shared/api/types'
 import { initialValues, isComplete, resolvePromptText } from '@/features/prompt'
 import { PromptVariableInput } from '@/features/prompt'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface PromptVariablesDialogProps {
   prompt: PromptResponse
@@ -35,45 +30,46 @@ export default function PromptVariablesDialog({
   const [values, setValues] = useState<Record<string, string>>(() =>
     initialValues(prompt.variables),
   )
-  const complete = isComplete(prompt.variables, values)
+  // Set by a submit with a required value missing; the fields then say so.
+  const [attempted, setAttempted] = useState(false)
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!complete) return
+  const handleSubmit = () => {
+    if (!isComplete(prompt.variables, values)) {
+      setAttempted(true)
+      return
+    }
     onInsert(resolvePromptText(prompt.text, prompt.variables, values, { userName }))
   }
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onCancel} aria-labelledby={titleId}>
-      <form onSubmit={handleSubmit} noValidate>
-        <DialogTitle id={titleId}>Prompt einsetzen: {prompt.title}</DialogTitle>
-        <DialogContent>
-          {prompt.description && (
-            <DialogContentText sx={{ mb: 2 }}>{prompt.description}</DialogContentText>
-          )}
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            {prompt.variables.map((variable) => (
-              <PromptVariableInput
-                key={variable.name}
-                variable={variable}
-                value={values[variable.name] ?? ''}
-                onChange={(value) =>
-                  setValues((current) => ({ ...current, [variable.name]: value }))
-                }
-                label={variable.label || variable.name}
-                required={variable.required}
-                allowEmpty={!variable.required}
-              />
-            ))}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onCancel}>Abbrechen</Button>
-          <Button type="submit" variant="contained" disabled={!complete}>
-            Einsetzen
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+    <FormDialog
+      titleId={titleId}
+      title={`Prompt einsetzen: ${prompt.title}`}
+      submitLabel="Einsetzen"
+      onSubmit={handleSubmit}
+      onClose={onCancel}
+    >
+      {prompt.description && (
+        <Typography sx={{ color: 'text.secondary', mb: 2 }}>{prompt.description}</Typography>
+      )}
+      <Stack spacing={2} sx={{ pt: 1 }}>
+        {prompt.variables.map((variable) => (
+          <PromptVariableInput
+            key={variable.name}
+            variable={variable}
+            value={values[variable.name] ?? ''}
+            onChange={(value) => setValues((current) => ({ ...current, [variable.name]: value }))}
+            label={variable.label || variable.name}
+            required={variable.required}
+            allowEmpty={!variable.required}
+            error={
+              attempted && variable.required && !(values[variable.name] ?? '').trim()
+                ? 'Bitte ausfüllen.'
+                : undefined
+            }
+          />
+        ))}
+      </Stack>
+    </FormDialog>
   )
 }

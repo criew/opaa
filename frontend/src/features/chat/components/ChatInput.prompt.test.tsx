@@ -80,7 +80,7 @@ describe('ChatInput: inserting a prompt', () => {
     })
   })
 
-  it('a required field left empty blocks "Einsetzen"', async () => {
+  it('a required field left empty is named at the field instead of inserting', async () => {
     const user = userEvent.setup()
     const { input } = renderInput()
 
@@ -90,11 +90,11 @@ describe('ChatInput: inserting a prompt', () => {
 
     const dialog = await screen.findByRole('dialog', { name: /Anhörungsschreiben/ })
     const insert = within(dialog).getByRole('button', { name: 'Einsetzen' })
-    expect(insert).toBeDisabled()
+    await user.click(insert)
+    expect(within(dialog).getByText('Bitte ausfüllen.')).toBeVisible()
 
     await user.type(within(dialog).getByLabelText(/Aktenzeichen/), '32-1/2026')
 
-    expect(insert).toBeEnabled()
     await user.click(insert)
     const today = germanDate(todayIso())
     await waitFor(() =>

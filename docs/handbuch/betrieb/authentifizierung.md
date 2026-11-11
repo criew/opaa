@@ -261,7 +261,7 @@ will, legt eine gewöhnliche Anbieterzeile an und schaltet ihn dort ein.
 | Handlungsbedarf | **Entscheidung nötig** (ein Plan wartet), **Letzter Lauf gescheitert** oder **Verzeichniszugang fehlt** |
 
 Zeilen mit Handlungsbedarf sind farbig markiert; ab sechs Anbietern lässt sich die Übersicht
-eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet ein Seitenpanel mit dem
+eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet einen Dialog mit dem
 ausstehenden Plan (falls einer wartet), dem letzten Lauf samt „Trockenlauf" und „Jetzt abgleichen",
 dem Zeitplan (Schalter und Intervall, voreingestellt **aus**; Vorgabe und Grenzen des Intervalls
 in der [Konfiguration](../referenz/konfiguration.md#grenzwerte-im-überblick)), dem
@@ -277,7 +277,7 @@ Hand.
 **Gescheiterter Lauf.** Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem Fehler
 ab, der nicht „Verzeichnis nicht erreichbar" ist, etwa weil die Datenbank einen gelieferten Wert
 ablehnt, schreibt er nichts; der letzte bekannte Stand
-bleibt in Kraft. Das Seitenpanel zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
+bleibt in Kraft. Der Dialog zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
 Übersicht **Letzter Lauf gescheitert**. Die Ursache steht nur im Log des Backends;
 das Nachweisprotokoll erhält wie bei einem unerreichbaren Verzeichnis einen Kopfeintrag mit dem
 Ergebnis „fehlgeschlagen", ohne Ursache.
@@ -382,7 +382,7 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.
    die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
    seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.
 
-In OPAA wird der Zugang im Seitenpanel des Anbieters unter **Verzeichniszugang** hinterlegt, getestet
+In OPAA wird der Zugang im Dialog des Anbieters unter **Verzeichniszugang** hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` statt

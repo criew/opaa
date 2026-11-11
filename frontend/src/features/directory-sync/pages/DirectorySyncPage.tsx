@@ -19,7 +19,7 @@ import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import DirectorySyncOverview from '../components/DirectorySyncOverview'
-import DirectorySyncPanel from '../components/DirectorySyncPanel'
+import DirectorySyncDialog from '../components/DirectorySyncDialog'
 import DirectorySyncThresholdSection from '../components/DirectorySyncThresholdSection'
 import { usePendingPlans } from '../components/usePendingPlans'
 import {
@@ -62,7 +62,7 @@ function attentionSummary(entries: OverviewEntry[]) {
 /**
  * The directory sync per provider (ADR-0036, Entscheidung 3): one row per provider with its
  * mechanism, last and next run and what needs doing; report, plan, schedule and access open in
- * the side panel.
+ * the dialog.
  */
 export default function DirectorySyncPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -223,7 +223,7 @@ export default function DirectorySyncPage() {
         <DirectorySyncThresholdSection />
       </Box>
 
-      <DirectorySyncPanel
+      <DirectorySyncDialog
         key={selectedId ?? 'closed'}
         provider={selected?.provider ?? null}
         status={selected?.status}

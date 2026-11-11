@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import type { OidcProviderImpactResponse, OidcProviderResponse } from '@/shared/api/types'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { apiErrorCode, apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { getOidcProviderImpact } from '../api/identityProviderApi'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 export type ProviderShutdownAction = 'disable' | 'delete'
 
@@ -122,62 +117,39 @@ export default function ProviderShutdownDialog({
   }
 
   return (
-    <Dialog
-      open
-      onClose={busy ? undefined : onClose}
-      maxWidth="xs"
-      fullWidth
-      aria-labelledby="provider-shutdown-question"
-      slotProps={{
-        paper: {
-          sx: { borderLeft: 3, borderLeftColor: deleting ? 'error.main' : 'warning.main' },
-        },
-      }}
+    <FormDialog
+      width="confirm"
+      tone={deleting ? 'danger' : 'caution'}
+      titleId="provider-shutdown-question"
+      title={`„${provider.displayName}“ ${deleting ? 'löschen' : 'deaktivieren'}?`}
+      submitLabel={deleting ? 'Löschen' : 'Deaktivieren'}
+      onSubmit={() => void submit()}
+      onClose={onClose}
+      busy={busy}
+      busyAnnouncement={deleting ? 'Anbieter wird gelöscht …' : 'Anbieter wird deaktiviert …'}
     >
-      <DialogTitle id="provider-shutdown-question" sx={{ fontSize: fontSize.title, pb: 1 }}>
-        {`„${provider.displayName}“ ${deleting ? 'löschen' : 'deaktivieren'}?`}
-      </DialogTitle>
-      <DialogContent sx={{ pt: 0 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
+        {deleting ? DELETE_CONSEQUENCE : DISABLE_CONSEQUENCE}
+      </Typography>
+      {isLastEnabled && (
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
-          {deleting ? DELETE_CONSEQUENCE : DISABLE_CONSEQUENCE}
+          {LAST_PROVIDER_CONSEQUENCE}
         </Typography>
-        {isLastEnabled && (
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
-            {LAST_PROVIDER_CONSEQUENCE}
+      )}
+      {connectionsConcerned && (
+        <Box component="section" aria-labelledby="provider-shutdown-connections">
+          <Typography
+            id="provider-shutdown-connections"
+            component="h3"
+            sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
+          >
+            Verbundene Konten
           </Typography>
-        )}
-        {connectionsConcerned && (
-          <Box component="section" aria-labelledby="provider-shutdown-connections">
-            <Typography
-              id="provider-shutdown-connections"
-              component="h3"
-              sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}
-            >
-              Verbundene Konten
-            </Typography>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              {EFFECT_TEXT[effect]}
-            </Typography>
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, pt: 2 }}>
-        {/* For an irreversible action the initial focus is on the cancel button. */}
-        {/* eslint-disable-next-line jsx-a11y-x/no-autofocus */}
-        <Button onClick={onClose} disabled={busy} autoFocus={deleting}>
-          Abbrechen
-        </Button>
-        <BusyButton
-          variant="contained"
-          color={deleting ? 'error' : 'primary'}
-          busy={busy}
-          busyAnnouncement={deleting ? 'Anbieter wird gelöscht …' : 'Anbieter wird deaktiviert …'}
-          disabled={!ready}
-          onClick={() => void submit()}
-        >
-          {deleting ? 'Löschen' : 'Deaktivieren'}
-        </BusyButton>
-      </DialogActions>
-    </Dialog>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+            {EFFECT_TEXT[effect]}
+          </Typography>
+        </Box>
+      )}
+    </FormDialog>
   )
 }

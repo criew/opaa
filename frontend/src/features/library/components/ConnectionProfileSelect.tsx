@@ -3,6 +3,7 @@ import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import Box from '@mui/material/Box'
+import FormHelperText from '@mui/material/FormHelperText'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
@@ -48,6 +49,8 @@ interface ConnectionProfileSelectProps {
   offerPrivate?: boolean
   /** Lists a single way as well, where nothing else names it (the dialog „Zugang wechseln“). */
   showSingle?: boolean
+  /** Shown at the choice, e.g. when the form was sent without one. */
+  error?: string
   idPrefix: string
 }
 
@@ -66,11 +69,13 @@ export default function ConnectionProfileSelect({
   onlyOwnAccounts = false,
   offerPrivate = false,
   showSingle = false,
+  error,
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
   const ownOffered = offerOwnAddress && ownAddressAllowed(descriptor)
   const headingId = `${idPrefix}-connection-heading`
+  const errorId = `${idPrefix}-connection-choice-error`
   const sharedOptions = onlyOwnAccounts ? options : options.filter(admitsLibraries)
   const privateOptions = offerPrivate && !onlyOwnAccounts ? options.filter(onOwnAccount) : []
   const selectable = [
@@ -143,6 +148,8 @@ export default function ConnectionProfileSelect({
       {showList && (
         <RadioGroup
           aria-labelledby={headingId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -156,6 +163,11 @@ export default function ConnectionProfileSelect({
             />
           ))}
         </RadioGroup>
+      )}
+      {error && (
+        <FormHelperText error id={errorId}>
+          {error}
+        </FormHelperText>
       )}
       {state.error ? null : onlyOwnAccounts ? (
         state.loaded &&

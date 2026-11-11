@@ -5,6 +5,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import type { PromptVariable } from '@/shared/api/types'
+import FormHelperText from '@mui/material/FormHelperText'
 
 interface PromptVariableInputProps {
   variable: PromptVariable
@@ -21,6 +22,8 @@ interface PromptVariableInputProps {
   required?: boolean
   /** Offers "no value" in a selection - for a default, not for a required answer. */
   allowEmpty?: boolean
+  /** What is missing or wrong, shown under the field after a submit. */
+  error?: string
 }
 
 /**
@@ -35,6 +38,7 @@ export default function PromptVariableInput({
   label,
   required = false,
   allowEmpty = true,
+  error,
 }: PromptVariableInputProps) {
   const labelId = useId()
   if (variable.type === 'SELECT') {
@@ -46,6 +50,7 @@ export default function PromptVariableInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
+        error={error !== undefined}
         {...(label === undefined
           ? { 'aria-label': ariaLabel }
           : { labelId, label, SelectDisplayProps: { 'aria-labelledby': labelId } })}
@@ -64,9 +69,10 @@ export default function PromptVariableInput({
     )
     if (label === undefined) return select
     return (
-      <FormControl size="small" fullWidth required={required}>
+      <FormControl size="small" fullWidth required={required} error={error !== undefined}>
         <InputLabel id={labelId}>{label}</InputLabel>
         {select}
+        {error !== undefined && <FormHelperText>{error}</FormHelperText>}
       </FormControl>
     )
   }
@@ -81,6 +87,8 @@ export default function PromptVariableInput({
       onChange={(e) => onChange(e.target.value)}
       label={label}
       required={required}
+      error={error !== undefined}
+      helperText={error}
       slotProps={{
         htmlInput: { ...(label === undefined ? { 'aria-label': ariaLabel } : {}), maxLength: 2000 },
         ...(label !== undefined && variable.type === 'DATE'

@@ -163,6 +163,12 @@ zwei Einträgen.
     (Konsistenz-Review, Kategorie A)
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
+52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
+    öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
+    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Breite 600 oder 900 px,
+    444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
+    Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
+    wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
 
 ## Pflege
 

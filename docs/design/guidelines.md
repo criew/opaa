@@ -623,12 +623,56 @@ Auslöser oder Menü nach. Der Baustein legt fest:
 
 Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
-**Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
-Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
-`aria-label` „Schließen" und Tooltip (5.1). Formulardialoge mit „Abbrechen" bekommen kein
-zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escape und ein Klick daneben
-schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
-`frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
+**Dialoge.** Jeder Dialog ist einer der Bausteine unter `frontend/src/shared/ui/dialog/`; kein
+Thema baut `Dialog` oder `Drawer` selbst zusammen (ESLint, `no-restricted-imports`).
+
+| Baustein | Wofür | Schließen | Fußzeile |
+| --- | --- | --- | --- |
+| `FormDialog` | anlegen, bearbeiten, eine Wahl treffen | „Abbrechen", kein ✕ | links höchstens eine Nebenhandlung, rechts „Abbrechen" und die Handlung |
+| `ViewDialog` | Ansicht, Vorschau, Ereignisliste | ✕ im Titel, kein „Schließen" | keine |
+| `SecretDialog` | ein Geheimnis, das nur einmal erscheint | nur „Schließen" | „Kopieren" und „Schließen" |
+| `SidePanel` | Seitenpanel (siehe unten) | wie der Dialog gleicher Art | – |
+
+Die Bestätigung bleibt das Overlay aus 5.10.
+
+1. **Titel.** Der Titel ist wörtlich die Beschriftung des Knopfs, der den Dialog öffnet („Gruppe
+   anlegen" öffnet „Gruppe anlegen", „Neuer Anbieter" öffnet „Neuer Anbieter"). Beim Bearbeiten
+   heißt er „„<Name>" bearbeiten", bei einem Menüeintrag ohne Objekt („Umbenennen") entsprechend
+   „„<Name>" umbenennen". Der Dialog zu einer Wertzeile (5.12) trägt den Titel der Zeile. Größe
+   und Gewicht kommen aus dem Baustein: Stufe Titel (16 px), 600.
+2. **Handlung.** Die Handlung in der Fußzeile ist das Verb allein: „Anlegen" oder „Speichern",
+   bei anderen Handlungen deren Verb („Zuordnen", „Übertragen", „Umbenennen"). Kein Objekt („Prompt
+   speichern"), kein Fortschrittstext als Beschriftung („Wird gespeichert …").
+3. **Fußzeile.** Links steht höchstens eine Nebenhandlung als Sekundär-Schaltfläche („Verbindung
+   testen", „Vorschau erstellen", eine zerstörende mit Gefahr-Text), rechts „Abbrechen" (still) und
+   die Handlung (primär). Die Handlung ist nur gesperrt, solange sie läuft – nie wegen fehlender
+   oder unveränderter Eingaben (Prüfliste P28). Fehlt etwas, steht es nach dem Absenden am Feld,
+   und der Fokus geht in das erste solche Feld; in Formularen mit vielen bedingten Feldern nennt
+   ein Hinweis über dem Formular die fehlenden Felder. Ist nichts geändert, schließt „Speichern"
+   den Dialog. Die Handlung ist das Absenden des Formulars: Enter in einem Zeilenfeld löst sie
+   aus, außer das Feld filtert oder ergänzt eine Liste (Auswahldialog).
+4. **Schließen.** Formulardialoge schließen über „Abbrechen" und tragen kein ✕; Ansichten tragen
+   rechts im Titel ein ✕ mit `aria-label` „Schließen" und Tooltip (5.1) und keinen Knopf
+   „Schließen". Einzige Ausnahme ist der Dialog, der ein Geheimnis nur einmal zeigt (Token,
+   erzeugtes Passwort, Einrichtungslink): Er trägt „Kopieren" (sekundär) und „Schließen" (primär)
+   und schließt weder über Escape noch über einen Klick daneben. Alle anderen Dialoge schließen
+   Escape und ein Klick daneben weiterhin (bei Änderungen nach Rückfrage, 5.10), außer während die
+   Handlung läuft.
+5. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
+   Vorschau, eine Dokumentvorschau oder eine Liste (`width="editor"`). 444 px bleibt der
+   Bestätigung vorbehalten – dem Overlay aus 5.10 und der Bestätigung, die erst ihre Folgen lädt
+   (`width="confirm"` mit `tone`). Unter 600 px Bildschirmbreite füllt jeder Dialog den Bildschirm.
+6. **Keine Trennlinien** an Titel und Fußzeile, auch nicht über `dividers`.
+7. **Dialog oder Seitenpanel.** Anlegen und Bearbeiten geschehen im Dialog. Ein Seitenpanel
+   (`SidePanel`) steht nur, wenn die Liste dahinter beim Arbeiten gebraucht wird – zum Vergleichen
+   oder um mehrere Einträge nacheinander zu ändern: Anlegerechte, Zugang und Quellart in
+   „Verbindungen". Es folgt denselben Regeln: Der Titel nennt das Objekt, eine Ansicht schließt
+   über das ✕ ohne „Schließen", ein Formular über „Abbrechen" ohne ✕, keine Trennlinie am Titel,
+   unter 600 px bildschirmfüllend. Das Muster für eine Ansicht im Seitenpanel ist das Belegfenster
+   des Chats (5.8): ✕ im Titel, Suche ohne Beschriftung, Stand unten.
+
+Geprüft in `frontend/src/shared/ui/dialog/*.test.tsx`; das Zählbudget `disabledSubmits` = 0 der
+[Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden im UI-Lab.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 

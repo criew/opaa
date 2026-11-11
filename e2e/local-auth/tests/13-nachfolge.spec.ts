@@ -92,7 +92,7 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     }
     await dialog.getByRole("button", { name: "Vorschau erstellen" }).click();
     await expect(dialog.getByText("Vorschau", { exact: true })).toBeVisible();
-    await dialog.getByRole("button", { name: "Übertragung bestätigen" }).click();
+    await dialog.getByRole("button", { name: "Übertragen" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(entry).toHaveCount(0);
     await adminContext.close();
