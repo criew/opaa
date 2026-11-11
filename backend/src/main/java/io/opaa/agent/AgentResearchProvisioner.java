@@ -31,7 +31,7 @@ class AgentResearchProvisioner {
   static final String RESEARCH_PURPOSE =
       "Trägt Wissen in mehreren Schritten zusammen und antwortet gegliedert mit Fundstellen.";
 
-  /** The responsible unit of the delivered agent, the same the migration names for an older one. */
+  /** The responsible unit of the delivered agent. */
   static final String RESEARCH_RESPONSIBLE = "Systemverwaltung";
 
   static final String RESEARCH_INSTRUCTION =

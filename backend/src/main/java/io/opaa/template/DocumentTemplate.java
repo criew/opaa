@@ -43,10 +43,7 @@ public class DocumentTemplate extends Asset {
   @Column(name = "placeholders", nullable = false, columnDefinition = "jsonb")
   private String placeholders;
 
-  /**
-   * Counts every replacement of the file (the "Fassung"). {@code null} on a row written by a
-   * version that did not know the column yet and read as {@code 1}.
-   */
+  /** Counts every replacement of the file (the "Fassung"); {@code null} is read as {@code 1}. */
   @Column(name = "revision")
   private Integer revision = 1;
 
