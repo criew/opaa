@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { smtpDraftOf, type SmtpDraft, type StoredSmtp } from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import type {
   MailSendResultResponse,
@@ -23,7 +22,9 @@ import { SMTP_TEXTS, parseSmtpPort, smtpPortError } from '@/shared/ui/smtp/smtpS
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -68,6 +69,7 @@ export default function MailServerSection() {
   const [isTesting, setIsTesting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [checked, setChecked] = useState(false)
   const gate = useRecentLoginGate(MAIL_CONFIRM_PURPOSE)
 
   useEffect(() => {
@@ -101,7 +103,6 @@ export default function MailServerSection() {
   const currentSettings: MailSettingsResponse = settings
 
   const portNumber = parseSmtpPort(draft.port)
-  const portError = smtpPortError(draft.port)
   const canEnable =
     draft.host.trim() !== '' && portNumber !== null && draft.fromAddress.trim() !== ''
 
@@ -111,7 +112,34 @@ export default function MailServerSection() {
     return currentSettings.passwordSet ? PASSWORD_MASK : ''
   }
 
+  const saved = smtpDraftOf(storedOf(settings))
+  const dirty =
+    enabled !== settings.enabled ||
+    (Object.keys(saved) as (keyof SmtpDraft)[]).some((key) => draft[key] !== saved[key])
+  // what switching on needs is told at its field once „Speichern“ was pressed without it
+  const missing = (empty: boolean, message: string) =>
+    checked && enabled && empty ? message : undefined
+  const portError =
+    smtpPortError(draft.port) ?? missing(portNumber === null, SMTP_TEXTS.portMissing)
+  const errors = {
+    host: missing(draft.host.trim() === '', SMTP_TEXTS.hostMissing),
+    port: portError,
+    password: passwordError ?? undefined,
+    fromAddress: missing(draft.fromAddress.trim() === '', SMTP_TEXTS.fromAddressMissing),
+  }
+
+  function discard() {
+    setEnabled(currentSettings.enabled)
+    setDraft(saved)
+    setSavedCount((count) => count + 1)
+    setPasswordError(null)
+    setRefusal(null)
+    setChecked(false)
+  }
+
   async function handleSave(afterConfirmation = false) {
+    setChecked(true)
+    if (portError !== undefined || (enabled && !canEnable)) return
     const request: MailSettingsUpdateRequest = {
       enabled,
       host: currentDraft.host.trim() || null,
@@ -125,12 +153,12 @@ export default function MailServerSection() {
     setPasswordError(null)
     setRefusal(null)
     try {
-      await saveSettings(request)
+      const stored = await saveSettings(request)
       gate.settled()
-      setDraft((current) =>
-        current ? { ...current, password: '', removePassword: false } : current,
-      )
+      setEnabled(stored.enabled)
+      setDraft(smtpDraftOf(storedOf(stored)))
       setSavedCount((count) => count + 1)
+      setChecked(false)
       notify('Die E-Mail-Einstellungen wurden gespeichert.', 'success')
     } catch (err) {
       const refused = gate.refusal(err, () => void handleSave(true), afterConfirmation)
@@ -174,57 +202,57 @@ export default function MailServerSection() {
       )}
 
       <PageSection title="Verbindung">
-        <Stack
-          spacing={2.5}
-          component="section"
-          aria-labelledby="mail-server-fields"
-          sx={{ maxWidth: formWidth.column }}
-        >
-          <FormControlLabel
-            control={<Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />}
-            label="Versand aktiv"
-          />
-          {enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
-
-          <SmtpFields
-            key={savedCount}
-            idPrefix="mail-server"
-            value={draft}
-            onChange={(patch) => {
-              if ('password' in patch || 'removePassword' in patch) setPasswordError(null)
-              setDraft({ ...currentDraft, ...patch })
-            }}
-            errors={{ port: portError, password: passwordError ?? undefined }}
-            stored={storedOf(settings)}
-          />
-
-          <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSaving || portError !== undefined || (enabled && !canEnable)}
-            >
-              Speichern
-            </Button>
-            <Button
+        <SettingsForm
+          onSave={() => handleSave()}
+          busy={isSaving}
+          dirty={dirty}
+          onDiscard={discard}
+          secondaryAction={
+            <BusyButton
               variant="outlined"
+              busy={isTesting}
+              busyAnnouncement="Testnachricht wird gesendet"
               onClick={() => void handleTest()}
-              disabled={isTesting || isSaving}
             >
               Testnachricht an mich senden
-            </Button>
-          </Stack>
-          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-            Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
-            sich hier bewusst nicht eintragen.
-          </Typography>
+            </BusyButton>
+          }
+          result={
+            <Stack spacing={2}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+                Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
+                sich hier bewusst nicht eintragen.
+              </Typography>
+              {testResult && (
+                <Alert severity={mailSendResultSeverity(testResult)}>
+                  {mailSendResultMessage(testResult)}
+                </Alert>
+              )}
+            </Stack>
+          }
+        >
+          <Stack spacing={2.5}>
+            <FormControlLabel
+              control={
+                <Checkbox checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+              }
+              label="Versand aktiv"
+            />
+            {enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
 
-          {testResult && (
-            <Alert severity={mailSendResultSeverity(testResult)}>
-              {mailSendResultMessage(testResult)}
-            </Alert>
-          )}
-        </Stack>
+            <SmtpFields
+              key={savedCount}
+              idPrefix="mail-server"
+              value={draft}
+              onChange={(patch) => {
+                if ('password' in patch || 'removePassword' in patch) setPasswordError(null)
+                setDraft({ ...currentDraft, ...patch })
+              }}
+              errors={errors}
+              stored={storedOf(settings)}
+            />
+          </Stack>
+        </SettingsForm>
       </PageSection>
       {gate.dialog}
     </Box>

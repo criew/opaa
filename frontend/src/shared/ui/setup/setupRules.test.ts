@@ -66,7 +66,7 @@ function importsBlock(source: string, block: string): boolean {
   return source.includes(`from '@/shared/ui/setup/${block}'`)
 }
 
-describe('fields of assistant and administration (guidelines 5.16)', () => {
+describe('fields of assistant and administration (guidelines 5.17)', () => {
   it('finds the assistant and the forms of the administration', () => {
     expect(ASSISTANT_FILES.length).toBeGreaterThan(12)
     for (const path of Object.keys(ADMIN_FORMS)) expect(SOURCES[path], path).toBeDefined()
@@ -150,7 +150,7 @@ function adminSections(): string[] {
   return Array.from(source.matchAll(/\{ label: '([^']+)', to: /g), (m) => m[1])
 }
 
-describe('names of steps and tabs (guidelines 5.16 and 6)', () => {
+describe('names of steps and tabs (guidelines 5.17 and 6)', () => {
   const steps = stepInfo()
   const byStep = Object.fromEntries(steps.map((entry) => [entry.step, entry]))
 

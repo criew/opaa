@@ -512,7 +512,7 @@ Bewusste Ausnahmen: Felder ohne sichtbare Beschriftung, die ihren Namen über `a
 und in einer Tabellenzeile, einer Titelzeile oder einem Such-Baustein stehen (`ListSearch`,
 `SubjectPicker`, `UserPicker`, `GroupPicker`, die Gruppenwahl in `AssetOwnerFields` unter der
 Beschriftung „Eigentümer"), bleiben MUI-Felder. Der Installationsassistent und die
-Einstellungsseiten, die dasselbe abfragen, nehmen ihre Felder aus den Feldblöcken (5.16).
+Einstellungsseiten, die dasselbe abfragen, nehmen ihre Felder aus den Feldblöcken (5.17).
 
 **Beschriftung.** Oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
 schwebendes Label im Feld), mit dem Feld verbunden (`htmlFor`, bei einer Auswahl
@@ -1095,6 +1095,7 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
+Eine einzelne Einstellung mit Feld ist dieselbe Zeile aus `SettingValueRow` (5.16).
 
 **Abschnittsköpfe sind überall grau.** Der Versal-Abschnittskopf (`SectionHead`, Eyebrow-Muster
 aus 3.3) steht in `fg-2`, auch auf den Seiten vor der Anmeldung („Identitätsanbieter", „Konto
@@ -1207,7 +1208,46 @@ Fußzeile selbst nach.
 Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
 Zählbudget `disabledSubmits`).
 
-### 5.16 Einrichten und Verwalten
+### 5.16 Einstellungen: Speichern, Schalter, Verbindungstest
+
+Eine Einstellungsseite, ein Reiter oder ein Abschnitt mit eigenem Speichern ist entweder ein
+Formular oder eine Wertzeile. Beides kommt aus `frontend/src/shared/ui/settings/`; kein Thema baut
+die Fußzeile eines Einstellungsformulars selbst.
+
+- **Mehrere Felder sind ein Formular mit genau einem „Speichern"** (`SettingsForm`): primär, unten
+  links, immer aktiv. Die Beschriftung ist nur „Speichern", nie „Regeln speichern" oder „Zugang
+  speichern". Fehlt oder stimmt eine Eingabe nicht, steht der Fehler am Feld, und der Fokus geht
+  hinein. Ohne Änderung speichert „Speichern" nichts und sagt das im Popup.
+- **„Verwerfen" steht still daneben, nur solange etwas geändert ist**, und stellt den gespeicherten
+  Stand wieder her. Wer die Seite mit Änderungen über einen Link verlässt, wird gefragt:
+  „Änderungen verwerfen?" (Ton `neutral`, Handlung „Verwerfen"); beim Schließen oder Neuladen des
+  Tabs fragt der Browser.
+- **Ein einzelner Wert ist eine Wertzeile mit „Ändern"** (`SettingValueRow`, 5.12): Titel, Wert,
+  rechts „Ändern". „Ändern" öffnet das Feld unter dem Wert mit „Speichern" (primär, kompakt) und
+  „Abbrechen" (still). Neben einem Feld steht kein Speichern-Knopf. Der Weg zurück zur
+  Werkseinstellung steht in der geschlossenen Zeile unter dem Wert.
+- **Ein Schalter wirkt immer sofort** und meldet das per Popup (5.9). Ist die Wirkung folgenreich,
+  fragt er vorher (Ton `caution`, 5.10). Was erst mit „Speichern" oder „Anlegen" gilt, ist ein
+  Auswahlkästchen; in einem `SettingsForm` steht deshalb nie ein Schalter. Ausgenommen ist der
+  Schalter als Filter über einer Liste (5.3).
+- **Rückmeldung nach dem Speichern ist das Popup**, kein Erfolgshinweis in der Seite. Fehler stehen
+  am Feld; ein Fehler ohne Feld (Server nicht erreichbar) steht als Hinweis unter der Fußzeile, bis
+  der nächste Versuch gelingt.
+- **„Verbindung testen"** (`ConnectionTestButton`) ist sekundär und immer aktiv: auf Seiten neben
+  „Speichern", in Dialogen links in der Fußzeile. Der Test nimmt die Eingaben, wie sie stehen,
+  gespeichert oder nicht; fehlt ihm eine Angabe, steht das am Feld. Das Ergebnis steht inline
+  unter der Fußzeile, in Dialogen im Inhalt, nie im Popup. Im Assistenten gilt P33 der
+  [Prüfliste](./ui-pruefliste.md).
+- **Reihenfolge der Fußzeile:** „Speichern", dann höchstens eine Nebenhandlung, dann „Verwerfen".
+  „Verwerfen" steht zuletzt, damit sein Erscheinen nichts verschiebt.
+
+Geprüft in `frontend/src/shared/ui/settings/*.test.ts(x)`: `settingsSource.test.ts` lässt keine
+Beschriftung „… speichern" außer „Speichern", keinen an Eingaben gebundenen gesperrten
+Speichern-Knopf, keinen `Switch` in einem `SettingsForm` und „Verbindung testen" nur aus dem
+Baustein zu. Das Zählbudget `disabledSubmits` = 0 der Prüfliste gilt damit auch für
+Einstellungsseiten.
+
+### 5.17 Einrichten und Verwalten
 
 Der Installationsassistent fragt ab, was die Verwaltung danach pflegt: Chat-Modell, Einbettung,
 Reranking, Spracheingabe, Texterkennung, Virenprüfung, E-Mail und Branding. Beide zeigen dafür
@@ -1226,7 +1266,7 @@ dasselbe Formular.
    „Administration → Allgemein & Branding" hoch"). Verschiedene Bedienelemente für denselben Wert
    gibt es nicht. Was nur eine Seite kennt, steht außerhalb des Blocks: im Assistenten
    „Testnachricht an" (vor dem Abschluss gibt es kein Konto, an das die Verwaltung testen
-   könnte), in der Verwaltung der Schalter einer Funktion mit ihrem Zustand.
+   könnte), in der Verwaltung das Auswahlkästchen, das eine Funktion einschaltet, und ihr Zustand.
 3. **Ein Name je Einstellung.** Der Schritt heißt wie der Reiter oder der Eintrag der Verwaltung:
    Identitätsanbieter, Chat-Modell, Einbettung, Reranking, Spracheingabe, Texterkennung,
    Virenprüfung, E-Mail, Branding (`SETUP_NAMES` in `setupNames.ts`, Begriffe in Abschnitt 6).
@@ -1237,7 +1277,7 @@ dasselbe Formular.
    Schritte als Links. Jede Zeile der Abschlussübersicht ist ein Link zu ihrem Schritt.
 6. **Fußzeile eines Schritts.** Rechts „Zurück" (sekundär), bei optionalen Schritten
    „Überspringen" (still) und die Primärschaltfläche „Prüfen und weiter". Einen Schalter gibt es
-   in einem Schritt nicht: Was mit der Schaltfläche wirksam wird, ist ein Kontrollkästchen.
+   in einem Schritt nicht: Was mit der Schaltfläche wirksam wird, ist ein Auswahlkästchen.
 7. **Schrittliste.** Eine Schrittliste mit mehr als fünf Schritten steht ab 900 px Breite links
    als Liste. Darunter zeigt sie nur Position und Namen („Schritt 2 von 12 · Erstes Konto") und
    klappt auf Antippen auf; die Wahl eines Schritts klappt sie wieder zu.

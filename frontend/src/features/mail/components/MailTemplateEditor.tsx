@@ -69,7 +69,6 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   // stored version instead of showing the emptiness.
   const isSubjectEmpty = subject.trim() === ''
   const isBodyEmpty = bodyPlain.trim() === ''
-  const canSave = isDirty && !isSubjectEmpty && !isBodyEmpty
 
   /**
    * Inserts the placeholder at the caret of the field that had it last and hands the focus back
@@ -98,6 +97,12 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   }
 
   async function handleSave(afterConfirmation = false) {
+    // an empty subject or text is told at its field; without a change there is nothing to save
+    if (isSubjectEmpty || isBodyEmpty) return
+    if (!isDirty) {
+      notify('Es gibt keine Änderungen zu speichern.', 'info')
+      return
+    }
     setRefusal(null)
     try {
       // bodyHtml unchanged: the PUT is a full replacement, so leaving the field out would quietly
@@ -224,22 +229,20 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSaving || !canSave}
-            >
+            <Button variant="contained" onClick={() => void handleSave()} disabled={isSaving}>
               Speichern
             </Button>
-            <Button
-              onClick={() => {
-                setSubject(template.subject)
-                setBodyPlain(template.bodyPlain)
-              }}
-              disabled={isSaving || !isDirty}
-            >
-              Änderungen verwerfen
-            </Button>
+            {isDirty && (
+              <Button
+                onClick={() => {
+                  setSubject(template.subject)
+                  setBodyPlain(template.bodyPlain)
+                }}
+                disabled={isSaving}
+              >
+                Verwerfen
+              </Button>
+            )}
             <Button variant="outlined" onClick={() => setShowComparison(!showComparison)}>
               {showComparison ? 'Vergleich ausblenden' : 'Mit Standard vergleichen'}
             </Button>

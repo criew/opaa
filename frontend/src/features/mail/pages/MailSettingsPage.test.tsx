@@ -327,7 +327,9 @@ describe('MailSettingsPage', () => {
     await user.clear(subject)
 
     expect(screen.getByText('Betreff darf nicht leer sein.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(subject).toBeInvalid()
+    expect(screen.getByText('Betreff darf nicht leer sein.')).toBeInTheDocument()
   })
 
   it('zeigt den Feldfehler des Backends für eine nicht unterstützte Vorlagen-Syntax', async () => {

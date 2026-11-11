@@ -153,7 +153,7 @@ export async function openLocalAuthSettings(page: Page): Promise<void> {
 export async function configureSmtp(page: Page): Promise<void> {
   await confirmRecentLoginAsBootstrapAdmin(page);
   await page.goto("/admin/mail/server");
-  await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible({
+  await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByLabel("Server", { exact: true }).fill(smtp.host);
@@ -166,7 +166,7 @@ export async function configureSmtp(page: Page): Promise<void> {
     .getByRole("radio", { name: /Keine/ })
     .check();
   await page.getByLabel("Absenderadresse", { exact: true }).fill(smtp.fromAddress);
-  const active = page.getByRole("switch", { name: "Versand aktiv" });
+  const active = page.getByRole("checkbox", { name: "Versand aktiv" });
   if (!(await active.isChecked())) {
     await active.click();
   }
@@ -176,7 +176,7 @@ export async function configureSmtp(page: Page): Promise<void> {
   // Asserted after a reload, not just from the snackbar: everything downstream depends on delivery
   // being on, and a mail that is merely skipped looks exactly like one that was never triggered.
   await page.reload();
-  await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeChecked();
   await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
 }
 
@@ -240,7 +240,7 @@ export async function createActiveAccount(
   await page.locator("#change-password-current").fill(initial);
   await page.locator("#change-password-new").fill(password);
   await page.locator("#change-password-repeat").fill(password);
-  await page.getByRole("button", { name: "Passwort speichern" }).click();
+  await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).not.toHaveURL(/\/account\/password/, { timeout: 20_000 });
   await context.close();
 }

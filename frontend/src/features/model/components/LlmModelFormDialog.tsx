@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
 import { discoverLlmModels, testLlmModel } from '../api/modelApi'
 import { useLlmModelStore } from '../stores/llmModelStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
 import {
   displayNameFor,
   DEFAULT_MAX_TOKENS,
@@ -245,16 +245,7 @@ export default function LlmModelFormDialog({
       onClose={close}
       busy={submitting}
       busyAnnouncement="Das Modell wird gespeichert"
-      secondaryAction={
-        <BusyButton
-          variant="outlined"
-          onClick={() => void handleTest()}
-          busy={testing}
-          busyAnnouncement="Verbindung wird getestet"
-        >
-          Verbindung testen
-        </BusyButton>
-      }
+      secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
     >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

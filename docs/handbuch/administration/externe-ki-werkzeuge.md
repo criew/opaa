@@ -25,7 +25,7 @@ Der Kanal kann geeignet sein, Verhalten und Leistung zu überwachen. Vorher klä
 1. „Einstellungen“ öffnen.
 2. Höchstlaufzeit der Tokens, Anfragen je Token und Stunde, Abflussalarm und **Netzbereiche**
    prüfen. Ab Werk antwortet der Kanal nur aus dem Hausnetz.
-3. „Externe KI-Werkzeuge zulassen“ einschalten und speichern.
+3. „Externe KI-Werkzeuge zulassen“ ankreuzen und „Speichern“.
 
 Oben steht der Zustand mit Datum und handelnder Person. **„Ausschalten“** ist der Notaus: Er wirkt
 beim nächsten Aufruf für alle Tokens, und die Tokens bleiben erhalten.

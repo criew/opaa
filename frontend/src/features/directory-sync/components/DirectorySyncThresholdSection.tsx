@@ -58,6 +58,7 @@ export default function DirectorySyncThresholdSection() {
       ) : (
         <FactoryDefaultNumberSetting
           key={`${settings.changeThresholdPercent}-${settings.overridden}`}
+          title="Bestätigung ab"
           label="Bestätigung ab (Prozent)"
           field="changeThresholdPercent"
           value={settings.changeThresholdPercent}

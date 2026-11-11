@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -9,9 +8,9 @@ import { getOutboundProxy, updateOutboundProxy } from '../api/outboundProxyApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -71,8 +70,13 @@ export default function OutboundProxySection() {
     current !== null &&
     (proxyUrl !== (current.proxyUrl ?? null) || !sameEntries(noProxy, current.noProxy))
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  function discard() {
+    if (current) adopt(current)
+    setFieldErrors({})
+    setSaveError(null)
+  }
+
+  async function handleSave() {
     if (busy || !changed) return
     const confirmed = await confirmAction({
       question:
@@ -122,13 +126,26 @@ export default function OutboundProxySection() {
       ) : current === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <SettingsForm
+          onSave={handleSave}
+          busy={busy}
+          busyAnnouncement="Ausgangsproxy wird gespeichert"
+          dirty={changed}
+          onDiscard={discard}
+          result={
+            saveError && (
+              <Alert severity="error" role="alert">
+                {saveError}
+              </Alert>
+            )
+          }
+        >
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="outbound-proxy-current">
             {current.proxyUrl
               ? `Ausgehende Verbindungen gehen über ${current.proxyUrl}.`
               : 'Es ist kein Ausgangsproxy eingetragen; alle Verbindungen gehen direkt hinaus.'}
           </Typography>
-          <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
+          <Stack spacing={2}>
             <FormField
               label="Proxy-Adresse"
               size="small"
@@ -165,24 +182,8 @@ export default function OutboundProxySection() {
               überhaupt erreichen darf, legt der Betrieb über
               OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST fest.
             </Typography>
-            <Box>
-              <BusyButton
-                type="submit"
-                variant="outlined"
-                busy={busy}
-                busyAnnouncement="Ausgangsproxy wird gespeichert"
-                disabled={!changed && !busy}
-              >
-                Ausgangsproxy speichern
-              </BusyButton>
-            </Box>
           </Stack>
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
-        </Box>
+        </SettingsForm>
       )}
     </PageSection>
   )

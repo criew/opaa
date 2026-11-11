@@ -149,7 +149,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 3, name: 'Zeitplan' })).toBeVisible()
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')

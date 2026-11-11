@@ -66,7 +66,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'vertippt')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(changePassword).not.toHaveBeenCalled()
     expect(screen.getByText('Die beiden Eingaben stimmen nicht überein.')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'ein-neues-passwort')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(changePassword).toHaveBeenCalledWith('alt', 'ein-neues-passwort')
     expect(await screen.findByText('Chat')).toBeInTheDocument()
@@ -122,7 +122,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(await screen.findByText('Ihre Einstellungen')).toBeInTheDocument()
     expect(screen.queryByText('Anmeldung')).not.toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'falsch')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(await screen.findByText('Das aktuelle Passwort ist nicht korrekt.')).toBeInTheDocument()
     expect(screen.getByLabelText<HTMLInputElement>('Aktuelles Passwort').value).toBe('')
@@ -165,7 +165,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'passwort1234')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'passwort1234')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
       await screen.findByText('Dieses Passwort kommt zu häufig vor. Bitte wählen Sie ein anderes.'),
@@ -182,7 +182,7 @@ describe('ChangePasswordPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'ein-neues-passwort')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(await screen.findByText('Das Passwort wurde nicht angenommen.')).toBeInTheDocument()
   })

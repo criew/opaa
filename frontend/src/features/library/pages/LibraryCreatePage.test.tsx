@@ -692,7 +692,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(await screen.findByRole('checkbox', { name: 'verwaltung-dokumente' }))
       await changeRow(user, 'Zeitplan')
       await user.click(
-        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
+        screen.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
       await create(user)
@@ -985,7 +985,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await changeRow(user, 'Zeitplan')
       await user.click(
-        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
+        screen.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
       await create(user)

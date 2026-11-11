@@ -1,6 +1,6 @@
 /**
  * The name of every setting the installation assistant and the administration both ask for
- * (guidelines 5.16): the assistant's step and the administration's tab or navigation entry read
+ * (guidelines 5.17): the assistant's step and the administration's tab or navigation entry read
  * this one name, so the two can never drift apart.
  */
 export const SETUP_NAMES = {

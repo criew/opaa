@@ -161,7 +161,7 @@ describe('LlmModelManagementPage', () => {
       'true',
     )
     expect(
-      await screen.findByRole('switch', { name: 'Texterkennung einschalten' }),
+      await screen.findByRole('checkbox', { name: 'Texterkennung einschalten' }),
     ).toBeInTheDocument()
   })
 

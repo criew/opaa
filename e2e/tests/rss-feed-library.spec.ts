@@ -59,7 +59,7 @@ async function createRssLibrary(page: Page, name: string, feedUrl: string): Prom
   // wizard can finish before the detail page polls, and the explicit trigger then measures a
   // second run over an unchanged feed instead.
   await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-  await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+  await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -7,11 +7,13 @@ import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import type { SpaceResponse } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import FormField from '@/shared/ui/form/FormField'
 import ChatAutoCleanupField from './ChatAutoCleanupField'
 import ModelInstructionField from './ModelInstructionField'
 import SectionHead from '@/shared/ui/SectionHead'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 interface SpaceGeneralSectionProps {
   spaceId: string
@@ -23,7 +25,7 @@ interface SpaceGeneralSectionProps {
 }
 
 /**
- * The „Stammdaten" tab of the space settings: name, description, the switch of the
+ * The „Stammdaten" tab of the space settings: name, description, the checkbox of the
  * automatic chat cleanup and the instruction to the model that every member sees, and at the
  * end the set-off danger zone with archiving and deleting.
  */
@@ -46,7 +48,8 @@ export default function SpaceGeneralSection({
     modelInstruction: string
   }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false, modelInstruction: '' })
   const [localError, setLocalError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
   // deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
   // stattdessen." - is the one failure this page offers a direct way out of, instead of just
   // showing the message.
@@ -60,17 +63,73 @@ export default function SpaceGeneralSection({
   const modelInstruction =
     draft.spaceId === spaceId ? draft.modelInstruction : savedModelInstruction
   const current = { spaceId, name, description, chatAutoCleanup, modelInstruction }
+  const dirty =
+    name !== (space.name ?? '') ||
+    description !== (space.description ?? '') ||
+    chatAutoCleanup !== space.chatAutoCleanup.enabled ||
+    modelInstruction !== savedModelInstruction
+
+  function discard() {
+    setDraft({ ...current, spaceId: null })
+    setNameError(null)
+    setLocalError(null)
+  }
+
+  async function save() {
+    if (saving) return
+    if (name.trim() === '') {
+      setNameError('Name fehlt')
+      return
+    }
+    setLocalError(null)
+    setSaving(true)
+    try {
+      // The checkbox and the instruction are sent only if they were changed: a mere rename thus
+      // resets no state someone else has changed in the meantime.
+      await updateDetails(
+        spaceId,
+        name,
+        description,
+        chatAutoCleanup !== space.chatAutoCleanup.enabled && !(space.isDefault && !isOwner)
+          ? chatAutoCleanup
+          : undefined,
+        modelInstruction !== savedModelInstruction ? modelInstruction : undefined,
+      )
+      setDraft({ ...current, spaceId: null })
+      notify('Die Stammdaten des Space wurden gespeichert.', 'success')
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function archive() {
     setLocalError(null)
     setDeleteBlockedByChats(false)
     try {
       await archiveSelectedSpace(spaceId)
-      setSuccessMessage('Space archiviert')
+      notify('Space archiviert', 'success')
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
     }
   }
+
+  /** The fields as a form with „Speichern“ for who may change them, as plain values otherwise. */
+  const fields = (children: ReactNode) =>
+    canManage ? (
+      <SettingsForm
+        aria-label="Stammdaten des Space"
+        onSave={save}
+        busy={saving}
+        dirty={dirty}
+        onDiscard={discard}
+      >
+        <Stack spacing={2.5}>{children}</Stack>
+      </SettingsForm>
+    ) : (
+      <Stack spacing={2.5}>{children}</Stack>
+    )
 
   return (
     <Stack spacing={5}>
@@ -88,7 +147,6 @@ export default function SpaceGeneralSection({
           {localError ?? storeError}
         </Alert>
       )}
-      {successMessage && <Alert severity="success">{successMessage}</Alert>}
 
       <Box>
         {space.archived && (
@@ -97,78 +155,53 @@ export default function SpaceGeneralSection({
             für ihre Autoren weiterhin lesbar.
           </Alert>
         )}
-        <Stack spacing={2.5}>
-          <Box>
-            <FormField
-              label="Name des Space"
-              id="space-manage-name"
-              size="small"
-              fullWidth
-              value={name}
-              onChange={(event) => setDraft({ ...current, name: event.target.value })}
-              slotProps={{ htmlInput: { readOnly: !canManage } }}
-            />
-          </Box>
-          <Box>
-            <FormField
-              label="Beschreibung"
-              id="space-manage-description"
-              size="small"
-              fullWidth
-              value={description}
-              onChange={(event) => setDraft({ ...current, description: event.target.value })}
-              multiline
-              slotProps={{ htmlInput: { readOnly: !canManage } }}
-            />
-          </Box>
-          <ChatAutoCleanupField
-            id="space-chat-auto-cleanup"
-            checked={chatAutoCleanup}
-            onChange={(checked) => setDraft({ ...current, chatAutoCleanup: checked })}
-            disabled={!canManage || (space.isDefault && !isOwner)}
-            personalSpaceOfOther={space.isDefault && !isOwner}
-            archiveAfterDays={space.chatAutoCleanup.archiveAfterDays}
-            deleteAfterDays={space.chatAutoCleanup.deleteAfterDays}
-          />
-          <ModelInstructionField
-            id="space-model-instruction"
-            value={modelInstruction}
-            onChange={(value) => setDraft({ ...current, modelInstruction: value })}
-            canChange={canManage}
-          />
-          {canManage && (
+        {fields(
+          <>
             <Box>
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  setLocalError(null)
-                  try {
-                    // Switch and instruction are sent only if they were changed: a mere
-                    // rename thus resets no state someone else has changed
-                    // in the meantime.
-                    await updateDetails(
-                      spaceId,
-                      name,
-                      description,
-                      chatAutoCleanup !== space.chatAutoCleanup.enabled &&
-                        !(space.isDefault && !isOwner)
-                        ? chatAutoCleanup
-                        : undefined,
-                      modelInstruction !== savedModelInstruction ? modelInstruction : undefined,
-                    )
-                    setSuccessMessage('Space aktualisiert')
-                  } catch (err) {
-                    setLocalError(
-                      err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen',
-                    )
-                  }
+              <FormField
+                label="Name des Space"
+                id="space-manage-name"
+                size="small"
+                fullWidth
+                value={name}
+                onChange={(event) => {
+                  setDraft({ ...current, name: event.target.value })
+                  setNameError(null)
                 }}
-              >
-                Einstellungen speichern
-              </Button>
+                error={nameError !== null}
+                helperText={nameError ?? undefined}
+                slotProps={{ htmlInput: { readOnly: !canManage } }}
+              />
             </Box>
-          )}
-        </Stack>
+            <Box>
+              <FormField
+                label="Beschreibung"
+                id="space-manage-description"
+                size="small"
+                fullWidth
+                value={description}
+                onChange={(event) => setDraft({ ...current, description: event.target.value })}
+                multiline
+                slotProps={{ htmlInput: { readOnly: !canManage } }}
+              />
+            </Box>
+            <ChatAutoCleanupField
+              id="space-chat-auto-cleanup"
+              checked={chatAutoCleanup}
+              onChange={(checked) => setDraft({ ...current, chatAutoCleanup: checked })}
+              disabled={!canManage || (space.isDefault && !isOwner)}
+              personalSpaceOfOther={space.isDefault && !isOwner}
+              archiveAfterDays={space.chatAutoCleanup.archiveAfterDays}
+              deleteAfterDays={space.chatAutoCleanup.deleteAfterDays}
+            />
+            <ModelInstructionField
+              id="space-model-instruction"
+              value={modelInstruction}
+              onChange={(value) => setDraft({ ...current, modelInstruction: value })}
+              canChange={canManage}
+            />
+          </>,
+        )}
       </Box>
 
       {/* Danger zone after GitLab's pattern: the two consequential actions

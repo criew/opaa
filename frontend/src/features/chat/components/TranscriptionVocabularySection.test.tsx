@@ -33,13 +33,17 @@ describe('TranscriptionVocabularySection', () => {
 
     const field = await screen.findByLabelText('Begriffsliste')
     await waitFor(() => expect(field).toHaveValue('Referat Z 4'))
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Verwerfen' })).not.toBeInTheDocument()
 
     await user.type(field, ', Az. 12-345')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(mockTranscriptionVocabulary.value).toBe('Referat Z 4, Az. 12-345'))
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // saved: nothing is left to discard
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Verwerfen' })).not.toBeInTheDocument(),
+    )
   })
 
   it('does not send a list over the cap', async () => {
@@ -53,6 +57,8 @@ describe('TranscriptionVocabularySection', () => {
     await user.paste('x'.repeat(501))
 
     expect(screen.getByText(/Höchstens 500 Zeichen/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(mockTranscriptionVocabulary.value).toBe('Referat Z 4')
+    expect(field).toBeInvalid()
   })
 })

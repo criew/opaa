@@ -176,7 +176,8 @@ describe('BrandingSettingsPage', () => {
     await user.type(colorField, 'blau')
 
     expect(screen.getByText(/sechsstelligen Hex-Wert/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(colorField).toBeInvalid()
     expect(useBrandingStore.getState().branding.primaryColor).toBe(OPAA_BRANDING.primaryColor)
   })
 

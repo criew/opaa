@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -459,7 +459,7 @@ export default function SourceSetupRows<V>({
                     <Box>
                       <FormControlLabel
                         control={
-                          <Switch
+                          <Checkbox
                             checked={firstRun.value}
                             onChange={(e) => firstRun.onChange(e.target.checked)}
                           />

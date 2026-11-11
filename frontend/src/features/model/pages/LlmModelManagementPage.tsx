@@ -31,7 +31,7 @@ function isLlmModelTab(value: string | undefined): value is LlmModelTab {
   return tabs.some((tab) => tab.value === value)
 }
 
-// The tabs carry the names of the assistant's steps (guidelines 5.16). „Chat-Modell" instead of
+// The tabs carry the names of the assistant's steps (guidelines 5.17). „Chat-Modell" instead of
 // „Chat": the application's main area has that name too, and what is meant here is not the
 // conversation but the model that answers it.
 const tabs: Array<{ value: LlmModelTab; label: string }> = [

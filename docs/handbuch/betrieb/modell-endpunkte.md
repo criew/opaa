@@ -456,7 +456,7 @@ Zur Wahl des Endpunkts:
   nicht taugt; das voreingestellte `OPAA_RERANK_TIMEOUT` lässt den Fall nur zu, damit er nicht als
   Ausfall erscheint.
 
-Zum Einschalten gehören drei Angaben zusammen: der Schalter „Reranking einschalten", die
+Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad `/rerank` und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
 fortlaufend auf der Seite „Suche & Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.
@@ -523,7 +523,7 @@ der openai-kompatiblen Schnittstelle bedienen:
 - `GET {Basis-Adresse}/models` dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
   regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.
 
-Einzutragen sind unter **Modelle → Spracheingabe** der Schalter „Spracheingabe einschalten", die
+Einzutragen sind unter **Modelle → Spracheingabe** das Auswahlkästchen „Spracheingabe einschalten", die
 Basis-Adresse ohne den Pfad `/audio/transcriptions` (etwa `https://stt.landesverwaltung.de/v1`),
 die Modell-Kennung und, falls der Dienst ihn verlangt, der API-Schlüssel. Der Schlüssel liegt
 verschlüsselt in der Datenbank und geht nur in den `Authorization`-Header der Anfrage, nie in ein
@@ -727,7 +727,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
    Er steht beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.
-2. **Schalter der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
+2. **Auswahlkästchen der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
    ([Texterkennung einrichten](../administration/modelle.md#texterkennung-einrichten)). Dazu
    gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
    verlangt, der API-Schlüssel. Jede Änderung steht
@@ -936,7 +936,7 @@ das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die ei
 Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
 eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.
 
-Mit eingeschaltetem Schalter „Agenten“ startet die Systemverwaltung dieselbe Messung auch in der
+Sind Agenten eingeschaltet, startet die Systemverwaltung dieselbe Messung auch in der
 Anwendung, siehe [Werkzeuge prüfen](../administration/modelle.md#werkzeuge-prüfen); der Weg hier
 bleibt für Messungen vor der Installation, für Kombinationen außerhalb der Modellverwaltung und für
 Messreihen mit Ausgabe im Fluss oder der Definition der Agenten-Suche

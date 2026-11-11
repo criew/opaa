@@ -217,7 +217,7 @@ describe('EmbeddingChangeSection', () => {
     await user.clear(address)
     await user.type(address, 'http://ersatz:11434/v1')
     await user.click(screen.getByRole('button', { name: 'Probeeinbettung' }))
-    await user.click(await screen.findByRole('button', { name: 'Ersatz-Endpunkt speichern' }))
+    await user.click(await screen.findByRole('button', { name: 'Ersatz-Endpunkt festlegen' }))
 
     await waitFor(() => expect(moved).toHaveLength(1))
     expect(moved[0]).toMatchObject({ model: 'bge-m3', baseUrl: 'http://ersatz:11434/v1' })

@@ -7,12 +7,13 @@ import {
 } from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import type { SearchModelRoleState, TextRecognitionModelSettingsResponse } from '@/shared/api/types'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import StateDot from '@/shared/ui/StateDot'
 import TextRecognitionFields from '@/shared/ui/setup/TextRecognitionFields'
 import { TEXT_RECOGNITION_PURPOSE } from '@/shared/ui/textRecognition/textRecognitionTexts'
@@ -57,7 +58,7 @@ const STAGE_STATE: Record<TestStageState, { tone: StatusTone; word: string }> = 
 }
 
 /**
- * The text recognition (OCR) model role: switch and the fields of the assistant's step
+ * The text recognition (OCR) model role: checkbox and the fields of the assistant's step
  * (`TextRecognitionFields`), with a connection test in the stages „Adresse · Anmeldung ·
  * Erkennung". While the operation has not released text recognition, only a notice is shown.
  * The key is write-only, as for the other roles.
@@ -148,6 +149,14 @@ export default function TextRecognitionSection() {
   }
 
   async function handleTest() {
+    const missing = {
+      ...(draft.baseUrl.trim() === '' ? { baseUrl: 'Basis-Adresse fehlt' } : {}),
+      ...(isVision && draft.model.trim() === '' ? { model: 'Modell-Kennung fehlt' } : {}),
+    }
+    if (Object.keys(missing).length > 0) {
+      setErrors((current) => ({ ...current, ...missing }))
+      return
+    }
     setTesting(true)
     setTestResult(null)
     setError(null)
@@ -196,6 +205,20 @@ export default function TextRecognitionSection() {
     )
   }
 
+  const stored = textRecognitionDraftOf(settings)
+  const dirty =
+    enabled !== settings.enabled ||
+    (Object.keys(stored) as (keyof TextRecognitionDraft)[]).some(
+      (key) => draft[key] !== stored[key],
+    )
+
+  function discard() {
+    apply(settings!)
+    setErrors({})
+    setError(null)
+    setTestResult(null)
+  }
+
   return (
     <Box sx={{ maxWidth: formWidth.column }}>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
@@ -204,55 +227,48 @@ export default function TextRecognitionSection() {
       <Typography role="status" sx={{ fontSize: fontSize.text, mb: 2 }}>
         Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Stack spacing={3}>
-        <Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
-              />
-            }
-            label="Texterkennung einschalten"
+      <SettingsForm
+        aria-label="Texterkennung"
+        onSave={handleSave}
+        busy={saving}
+        dirty={dirty}
+        onDiscard={discard}
+        secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
+        result={
+          <Stack spacing={2}>
+            <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
+            {error && <Alert severity="error">{error}</Alert>}
+          </Stack>
+        }
+      >
+        <Stack spacing={3}>
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
+                />
+              }
+              label="Texterkennung einschalten"
+            />
+            <Typography
+              id={catchUpHintId}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+            >
+              {CATCH_UP_HINT}
+            </Typography>
+          </Box>
+          <TextRecognitionFields
+            key={storedCount}
+            value={draft}
+            onChange={changeConnection}
+            apiKeyStored={settings.apiKeySet}
+            errors={errors}
           />
-          <Typography id={catchUpHintId} sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-            {CATCH_UP_HINT}
-          </Typography>
-        </Box>
-        <TextRecognitionFields
-          key={storedCount}
-          value={draft}
-          onChange={changeConnection}
-          apiKeyStored={settings.apiKeySet}
-          errors={errors}
-        />
-        <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-          <BusyButton
-            variant="outlined"
-            busy={testing}
-            busyAnnouncement="Verbindung wird getestet"
-            disabled={draft.baseUrl.trim() === '' || (isVision && draft.model.trim() === '')}
-            onClick={() => void handleTest()}
-          >
-            Verbindung testen
-          </BusyButton>
-          <BusyButton
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Wird gespeichert"
-            onClick={() => void handleSave()}
-          >
-            Speichern
-          </BusyButton>
         </Stack>
-      </Stack>
+      </SettingsForm>
     </Box>
   )
 }

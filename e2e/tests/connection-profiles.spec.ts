@@ -189,7 +189,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
       timeout: 15_000,
     })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     const libraryId = libraryIdFromCurrentUrl(page)
@@ -287,7 +287,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await dialog.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
     // Die Adresse liegt unter dem Zugang und wandert unverändert mit.
     await expect(dialog.getByTestId('library-connection-address')).toContainText(FEED_URL)
-    await dialog.getByRole('button', { name: 'Verbindung prüfen' }).click()
+    await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
     await expect(dialog.getByTestId('library-connection-test')).toContainText('erreichbar', {
       timeout: 15_000,
     })

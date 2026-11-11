@@ -19,7 +19,9 @@ import {
   isInvalidPrimaryColor,
 } from '@/shared/ui/branding/brandingSettings'
 import BrandingFields from '@/shared/ui/setup/BrandingFields'
-import { contentWidth, formWidth } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
+import { notify } from '@/shared/stores/notificationStore'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
@@ -59,7 +61,6 @@ export default function BrandingSettingsPage() {
   // "Speichern" carries every change the operator made on this page.
   const [pendingImages, setPendingImages] = useState<Partial<Record<BrandingImageKind, File>>>({})
   const [imageErrors, setImageErrors] = useState<Partial<Record<BrandingImageKind, string>>>({})
-  const [saved, setSaved] = useState(false)
   const fileInputRefs = useRef<Partial<Record<BrandingImageKind, HTMLInputElement | null>>>({})
 
   // The store may still be loading when this page mounts; adopt the values once they arrive,
@@ -140,7 +141,8 @@ export default function BrandingSettingsPage() {
   }
 
   async function handleSave() {
-    setSaved(false)
+    // the colour field tells what is wrong with it
+    if (colorInvalid) return
     try {
       await saveBranding({
         productName: productName.trim(),
@@ -159,14 +161,47 @@ export default function BrandingSettingsPage() {
         setPendingImages((files) => ({ ...files, [kind]: undefined }))
         clearInput(kind)
       }
-      setDraft((current) => ({
-        ...current,
-        aiNotice: useBrandingStore.getState().branding.aiNotice,
-      }))
-      setSaved(true)
+      // what is now in force, as a fresh visit would show it: nothing counts as changed
+      const stored = useBrandingStore.getState().branding
+      setDraft({
+        productName: stored.productName,
+        claim: stored.claim,
+        aiNotice: stored.aiNotice,
+        primaryColor: stored.primaryColor,
+      })
+      notify('Das Branding wurde gespeichert und ist sofort wirksam.', 'success')
     } catch {
       // The store already holds the message; the alert below renders it.
     }
+  }
+
+  const dirty =
+    productName !== branding.productName ||
+    claim !== branding.claim ||
+    aiNotice !== branding.aiNotice ||
+    primaryColor !== branding.primaryColor ||
+    Object.values(pendingImages).some(Boolean)
+
+  function clearPendingImages() {
+    setPendingImages({})
+    setImageErrors({})
+    for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) clearInput(kind)
+  }
+
+  function discard() {
+    setDraft({
+      productName: branding.productName,
+      claim: branding.claim,
+      aiNotice: branding.aiNotice,
+      primaryColor: branding.primaryColor,
+    })
+    clearPendingImages()
+  }
+
+  /** Empties the fields; the standard is in force only after „Speichern“. */
+  function resetToStandard() {
+    setDraft({ productName: '', claim: '', aiNotice: branding.aiNoticeDefault, primaryColor: '' })
+    clearPendingImages()
   }
 
   const imageSlots: Array<{
@@ -194,7 +229,6 @@ export default function BrandingSettingsPage() {
   ]
 
   async function handleRemoveImage(kind: BrandingImageKind) {
-    setSaved(false)
     setPendingImages((files) => ({ ...files, [kind]: undefined }))
     clearInput(kind)
     try {
@@ -224,103 +258,81 @@ export default function BrandingSettingsPage() {
             {storeError}
           </Alert>
         )}
-        {saved && !storeError && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            Das Branding wurde gespeichert und ist sofort wirksam.
-          </Alert>
-        )}
-
-        <Stack spacing={3} sx={{ maxWidth: formWidth.column }}>
-          <BrandingFields
-            idPrefix="branding"
-            value={draft}
-            onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-            aiNoticeDefault={branding.aiNoticeDefault}
-          />
-
-          {imageSlots.map((slot) => (
-            <Box key={slot.kind}>
-              <SectionHead>{BRANDING_IMAGES[slot.kind].label}</SectionHead>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                {slot.description} PNG oder JPEG, höchstens{' '}
-                {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
-                angenommen, weil eine SVG-Datei Skripte enthalten kann.
-              </Typography>
-              {imageErrors[slot.kind] && (
-                <Alert severity="error" sx={{ mb: 1.5 }}>
-                  {imageErrors[slot.kind]}
-                </Alert>
-              )}
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Button component="label" variant="outlined">
-                  {BRANDING_IMAGES[slot.kind].label} auswählen
-                  <Box
-                    component="input"
-                    type="file"
-                    ref={(element: HTMLInputElement | null) => {
-                      fileInputRefs.current[slot.kind] = element
-                    }}
-                    accept={ACCEPTED_IMAGE_TYPES.join(',')}
-                    hidden
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      selectImage(slot.kind, e.target.files?.[0] ?? null)
-                    }
-                  />
-                </Button>
-                {slot.configuredUrl && (
-                  <Button
-                    color="error"
-                    onClick={() => void handleRemoveImage(slot.kind)}
-                    disabled={isSaving}
-                  >
-                    {BRANDING_IMAGES[slot.kind].label} entfernen
-                  </Button>
-                )}
-                {pendingImages[slot.kind] && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {pendingImages[slot.kind]?.name} — wird beim Speichern übernommen
-                  </Typography>
-                )}
-              </Stack>
-            </Box>
-          ))}
-
-          <Box>
-            <SectionHead>{BRANDING_LABELS.preview}</SectionHead>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              {BRANDING_TEXTS.previewHint}
-            </Typography>
-            <BrandingPreviews {...effectivePreview} />
-          </Box>
-
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSaving || colorInvalid}
-            >
-              Speichern
-            </Button>
-            <Button
-              onClick={() => {
-                setDraft({
-                  productName: '',
-                  claim: '',
-                  aiNotice: branding.aiNoticeDefault,
-                  primaryColor: '',
-                })
-                setPendingImages({})
-                setImageErrors({})
-                for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) {
-                  clearInput(kind)
-                }
-              }}
-              disabled={isSaving}
-            >
+        <SettingsForm
+          aria-label="Branding"
+          onSave={handleSave}
+          busy={isSaving}
+          dirty={dirty}
+          onDiscard={discard}
+          secondaryAction={
+            <Button variant="outlined" onClick={resetToStandard} disabled={isSaving}>
               Auf OPAA-Standard zurücksetzen
             </Button>
+          }
+        >
+          <Stack spacing={3}>
+            <BrandingFields
+              idPrefix="branding"
+              value={draft}
+              onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+              aiNoticeDefault={branding.aiNoticeDefault}
+            />
+            {imageSlots.map((slot) => (
+              <Box key={slot.kind}>
+                <SectionHead>{BRANDING_IMAGES[slot.kind].label}</SectionHead>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                  {slot.description} PNG oder JPEG, höchstens{' '}
+                  {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
+                  angenommen, weil eine SVG-Datei Skripte enthalten kann.
+                </Typography>
+                {imageErrors[slot.kind] && (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>
+                    {imageErrors[slot.kind]}
+                  </Alert>
+                )}
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Button component="label" variant="outlined">
+                    {BRANDING_IMAGES[slot.kind].label} auswählen
+                    <Box
+                      component="input"
+                      type="file"
+                      ref={(element: HTMLInputElement | null) => {
+                        fileInputRefs.current[slot.kind] = element
+                      }}
+                      accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                      hidden
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        selectImage(slot.kind, e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </Button>
+                  {slot.configuredUrl && (
+                    <Button
+                      color="error"
+                      onClick={() => void handleRemoveImage(slot.kind)}
+                      disabled={isSaving}
+                    >
+                      {BRANDING_IMAGES[slot.kind].label} entfernen
+                    </Button>
+                  )}
+                  {pendingImages[slot.kind] && (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {pendingImages[slot.kind]?.name} — wird beim Speichern übernommen
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+            ))}
+
+            <Box>
+              <SectionHead>{BRANDING_LABELS.preview}</SectionHead>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                {BRANDING_TEXTS.previewHint}
+              </Typography>
+              <BrandingPreviews {...effectivePreview} />
+            </Box>
           </Stack>
-        </Stack>
+        </SettingsForm>
       </Box>
     </Box>
   )
