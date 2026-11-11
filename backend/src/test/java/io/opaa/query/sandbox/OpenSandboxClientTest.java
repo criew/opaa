@@ -29,6 +29,19 @@ class OpenSandboxClientTest {
     return new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
   }
 
+  // regression guard for #3797: a result named after a template with umlauts must be readable
+  @Test
+  void aPlainNameMayHoldLettersOfAnyScriptButNeverAPath() {
+    assertThat(OpenSandboxClient.isPlainName("Gebührenbescheid.docx")).isTrue();
+    assertThat(OpenSandboxClient.isPlainName("Ärger_ Bericht_.pdf")).isTrue();
+    assertThat(OpenSandboxClient.isPlainName("Kostenbescheid 2.pdf")).isTrue();
+    assertThat(OpenSandboxClient.isPlainName("../etc/passwd")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a/b.pdf")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName(".hidden")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName(null)).isFalse();
+  }
+
   @Test
   void aCompletedRunHasExitCodeZeroAndItsOutput() throws IOException {
     SandboxSession.ScriptRun run =

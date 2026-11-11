@@ -43,6 +43,7 @@ import time
 
 SOFFICE = "/usr/bin/soffice"
 MAX_NAME_CHARS = 80
+MAX_PROPERTY_CHARS = 255
 DEFAULT_PDF_DEADLINE_SECONDS = 30
 FORMATS = ("docx", "pdf")
 
@@ -201,8 +202,9 @@ def add_stamp(path, stamp):
             # A linked footer writes into the previous section's definition; once is enough.
             if index == 0 or not footer.is_linked_to_previous:
                 footer.add_paragraph(stamp)
-    document.core_properties.comments = stamp
-    document.core_properties.subject = stamp
+    # python-docx refuses core properties longer than 255 characters; the footer keeps the full stamp.
+    document.core_properties.comments = stamp[:MAX_PROPERTY_CHARS]
+    document.core_properties.subject = stamp[:MAX_PROPERTY_CHARS]
     document.save(path)
 
 
