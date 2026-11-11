@@ -3372,10 +3372,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle" class="md-nav__link">
+  <a href="#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle
+        Verschlüsselung der API-Schlüssel verwalteter Chat-Modelle
       
     </span>
   </a>
@@ -4857,10 +4857,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle" class="md-nav__link">
+  <a href="#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle
+        Verschlüsselung der API-Schlüssel verwalteter Chat-Modelle
       
     </span>
   </a>
@@ -5002,14 +5002,14 @@ Schnittstelle</strong>. (Die optionale Rerank-Rolle hat eigene Angaben, siehe
 <a href="#reranking-einschalten">Reranking einschalten</a>.) Das ist eine Protokollangabe, keine Anbieterangabe — Ollama bedient sie unter seinem
 eigenen <code>/v1</code>-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschichten.</p>
 <p><strong>Voreingestellt sind lokal betriebene Modelle.</strong> Chat- und Embedding-Modell legt die
-<a href="installation.html">Installation</a> fest, mit Adresse und Zugangsschlüssel; die Modellverwaltung ändert
+<a href="installation.html">Installation</a> fest, mit Adresse und API-Schlüssel; die Modellverwaltung ändert
 sie. Eine Umgebungsvariable für die Modelle gibt es im Betrieb nicht, und es gibt kein
 automatisches Ausweichen auf ein Modell außerhalb des Hauses: Betrieb ohne Netzanbindung ist der
 vorgesehene Fall.</p>
 <p><strong>Nur im Modus <code>dev</code></strong> richtet sich die Instanz selbst ein, mit <code>phi3:mini</code> als Chat- und <code>bge-m3</code>
 als Embedding-Modell unter <code>OPAA_OPENAI_BASE_URL</code>. Die Voreinstellung zeigt auf
 <code>http://localhost:11434/v1</code> (im Profil <code>docker</code> auf <code>http://ollama:11434/v1</code>), Ollama braucht keinen
-Zugangsschlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
+API-Schlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
 überschrieben:</p>
 <div class="highlight"><pre><span></span><code>OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
@@ -5064,7 +5064,7 @@ Betrieb zählt:</p>
   aktiv, und der Chat beantwortet keine Frage, bis die Systemverwaltung eines aktiviert. Im Modus
   <code>dev</code> ist es <code>phi3:mini</code> unter <code>OPAA_OPENAI_BASE_URL</code>, ohne Schlüssel.</li>
 <li><strong>Den Schlüssel</strong> verschlüsselt OPAA mit <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>
-  (<a href="#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle">Verschlüsselung</a>). Er geht nur an
+  (<a href="#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle">Verschlüsselung</a>). Er geht nur an
   denselben Endpunkt (Schema, Host, Port, Pfad); eine Adresse mit Anmeldedaten wird abgelehnt.</li>
 <li><strong>Eine interne Adresse</strong> braucht einen Eintrag in <code>OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST</code>
   (<a href="#adressprüfung-der-modelle">Adressprüfung</a>); der Compose-Stapel setzt <code>ollama:11434</code>.</li>
@@ -5129,7 +5129,7 @@ fehlt jedes Tag; der Denktext bleibt dann als Antwort stehen.</p>
 mit einem Denkblock beginnt. Denktext ohne öffnendes Tag erkennt er nicht, weil die Testantwort
 dafür zu kurz ist.</p>
 <h2 id="embedding">Embedding<a class="headerlink" href="#embedding" title="Permanent link">&para;</a></h2>
-<p>Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, Zugangsschlüssel und
+<p>Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, API-Schlüssel und
 Eingabegrenze (<a href="installation.html">Installation</a>); überspringt sie den Schritt, legt es später die
 Systemverwaltung fest (<a href="#erstes-modell-festlegen">Erstes Modell festlegen</a>). Die Prüfung ist eine
 Probeeinbettung: Sie zeigt, dass der Endpunkt das Modell bedient, und ergibt die Zahl der
@@ -5137,12 +5137,12 @@ Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt OPAA die Vektora
 muss sie niemand. Ohne Embedding-Modell gibt es keine Vektorablage, und Indexierung, Upload und
 Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist. Danach zeigt die
 Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
-Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.</p>
+API-Schlüssel gespeichert ist; dort läuft auch jeder Wechsel.</p>
 <p><code>OPAA_OPENAI_EMBEDDING_*</code> und <code>OPAA_PGVECTOR_DIMENSIONS</code> gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von <code>v0.1.0-rc.4</code> setzt die Datenbank ohnehin neu
-auf (<a href="../referenz/konfiguration.html#entfallene-und-veraltete-variablen">Konfiguration</a>). Den Zugangsschlüssel
+auf (<a href="../referenz/konfiguration.html#entfallene-und-veraltete-variablen">Konfiguration</a>). Den API-Schlüssel
 verschlüsselt OPAA mit <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>. <strong>Im Modus <code>dev</code></strong> richtet sich die Instanz
-mit <code>bge-m3</code> unter <code>OPAA_OPENAI_BASE_URL</code> selbst ein, ohne Zugangsschlüssel.</p>
+mit <code>bge-m3</code> unter <code>OPAA_OPENAI_BASE_URL</code> selbst ein, ohne API-Schlüssel.</p>
 <p>Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar.
 OPAA führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
 (<a href="#modell-wechseln">Modell wechseln</a>).</p>
@@ -5256,12 +5256,12 @@ nicht mit der eingestellten Grenze.</p>
 <h3 id="erstes-modell-festlegen">Erstes Modell festlegen<a class="headerlink" href="#erstes-modell-festlegen" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p><strong>Beispiel.</strong> Ein Haus installiert OPAA, bevor der Modellserver freigeschaltet ist, und
-überspringt den Schritt „Embedding-Modell“. Zwei Wochen später trägt die Systemverwaltung
+überspringt den Schritt „Einbettung“. Zwei Wochen später trägt die Systemverwaltung
 <code>bge-m3</code> im Reiter „Einbettung“ ein; ab dann lassen sich Bibliotheken indexieren.</p>
 </blockquote>
 <p>Ohne Embedding-Modell zeigt der Reiter „Einbettung" den Hinweis „Es ist noch kein Embedding-Modell
 eingerichtet“ und das Formular „Embedding-Modell festlegen“: Basis-Adresse, Modell-Kennung,
-Zugangsschlüssel und Eingabegrenze, mit derselben <a href="#adressprüfung-der-modelle">Adressprüfung</a> wie in
+API-Schlüssel und Eingabegrenze, mit derselben <a href="#adressprüfung-der-modelle">Adressprüfung</a> wie in
 der Installation. „Probeeinbettung“ prüft den Endpunkt und nennt die Zahl der Dimensionen;
 „Embedding-Modell festlegen“ fragt nach und legt dann Modell und Vektorablage an. Weil vor dem
 ersten Modell keine Inhalte angenommen werden, wird nichts neu eingebettet, und die Vektorsuche läuft
@@ -5291,7 +5291,7 @@ Endpunkt ändern". Einen Eingriff in die Datenbank braucht er nicht.</p>
   E --&gt; F[Umschalten]
   E -.-&gt; G[Verwerfen]</code></pre>
 <ol>
-<li><strong>Eintragen.</strong> Basis-Adresse, Modell-Kennung, Eingabegrenze und Zugangsschlüssel, mit derselben
+<li><strong>Eintragen.</strong> Basis-Adresse, Modell-Kennung, Eingabegrenze und API-Schlüssel, mit derselben
    <a href="#adressprüfung-der-modelle">Adressprüfung</a> wie in der Installation. „beibehalten" gibt es für
    den Schlüssel nur, solange die Adresse denselben Endpunkt nennt (Schema, Host, Port, Pfad); bei
    einem anderen ist er neu einzugeben oder „ohne" zu wählen. So geht ein Schlüssel nie an einen
@@ -5371,7 +5371,7 @@ Chunk für das neue Modell sein darf, steht unter
 ab, weil dann eher Endpunkt oder Timeout die Ursache sind. Die Vektorsuche bleibt ausgesetzt, bis
 ein weiterer Start auch die fehlenden eingebettet hat.</p>
 <h3 id="endpunkt-wechseln">Endpunkt wechseln<a class="headerlink" href="#endpunkt-wechseln" title="Permanent link">&para;</a></h3>
-<p>Ein anderer Server mit demselben Modell, ein neuer Zugangsschlüssel oder eine andere Eingabegrenze
+<p>Ein anderer Server mit demselben Modell, ein neuer API-Schlüssel oder eine andere Eingabegrenze
 brauchen keine Neueinbettung. Typischer Anlass ist der Ausfall des bisherigen Servers.</p>
 <p>Dafür im Reiter „Einbettung" die neue Adresse und den Schlüssel eintragen und „Probeeinbettung"
 wählen; meldet die Seite, dass der Endpunkt wie das aktive Modell einbettet, „Endpunkt ändern". Das
@@ -5475,7 +5475,7 @@ der openai-kompatiblen Schnittstelle bedienen:</p>
 </ul>
 <p>Einzutragen sind unter <strong>Modelle → Spracheingabe</strong> das Auswahlkästchen „Spracheingabe einschalten", die
 Basis-Adresse ohne den Pfad <code>/audio/transcriptions</code> (etwa <code>https://stt.landesverwaltung.de/v1</code>),
-die Modell-Kennung und, falls der Dienst ihn verlangt, der Zugangsschlüssel. Der Schlüssel liegt
+die Modell-Kennung und, falls der Dienst ihn verlangt, der API-Schlüssel. Der Schlüssel liegt
 verschlüsselt in der Datenbank und geht nur in den <code>Authorization</code>-Header der Anfrage, nie in ein
 Log oder eine Zustandsanzeige. Der
 Aufruf geht über denselben <a href="netz-und-sicherheit.html#ausgangsproxy">Ausgangsproxy</a> und dieselben vertrauten
@@ -5700,7 +5700,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle <strong>Texterkennung</strong>. Si
 <li><strong>Auswahlkästchen der Rolle</strong> in der Modellverwaltung, Reiter „Texterkennung“
    (<a href="../administration/modelle.html#texterkennung-einrichten">Texterkennung einrichten</a>). Dazu
    gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
-   verlangt, der Zugangsschlüssel. Jede Änderung steht
+   verlangt, der API-Schlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.</li>
 </ol>
 <table>
@@ -5781,20 +5781,20 @@ HTTP/1.1-Modus; der HTTP-Client des Backends bevorzugt sonst HTTP/2, und die Ver
 </code></pre></div>
 <p>Die Adresse des Servers, etwa <code>http://your-vllm-server:8000/v1</code>, trägt die Installation bzw. die
 Modellverwaltung ein.</p>
-<h2 id="verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle">Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle<a class="headerlink" href="#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle" title="Permanent link">&para;</a></h2>
-<p>Ein hinterlegter Zugangsschlüssel eines Chat-Modells liegt <strong>verschlüsselt</strong> in der Datenbank
+<h2 id="verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle">Verschlüsselung der API-Schlüssel verwalteter Chat-Modelle<a class="headerlink" href="#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle" title="Permanent link">&para;</a></h2>
+<p>Ein hinterlegter API-Schlüssel eines Chat-Modells liegt <strong>verschlüsselt</strong> in der Datenbank
 (AES-256-GCM, zufälliger Initialisierungsvektor je Wert) und erscheint in keiner API-Antwort und keinem
 Log. Der Schlüssel dafür ist <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>, getrennt von dem der Quellen
 (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>); er schützt auch das
 SMTP-Passwort. Erzeugt wird er mit <code>openssl rand -base64 32</code> und außerhalb des Repositorys abgelegt.</p>
 <ul>
 <li><strong>Ohne Schlüssel startet das Backend normal.</strong> Eine Installation, die nur lokale Modelle ohne
-  Zugangsschlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells <strong>mit</strong>
-  Zugangsschlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
+  API-Schlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells <strong>mit</strong>
+  API-Schlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
   Start bricht den Start nicht ab, sondern schreibt einen Fehler ins Log und wird beim nächsten Start
   nachgeholt.</li>
-<li><strong>Bei Schlüsselverlust</strong> sind die gespeicherten Zugangsschlüssel nicht wiederherstellbar; der übrige
-  Modelleintrag bleibt. Abhilfe: den Zugangsschlüssel des Modells in der Oberfläche neu eintragen.</li>
+<li><strong>Bei Schlüsselverlust</strong> sind die gespeicherten API-Schlüssel nicht wiederherstellbar; der übrige
+  Modelleintrag bleibt. Abhilfe: den API-Schlüssel des Modells in der Oberfläche neu eintragen.</li>
 <li><strong>Ein Schlüsselwechsel</strong> braucht kein neues Eintragen: Der abgelöste Schlüssel entschlüsselt
   weiter, bis OPAA alle Werte umgestellt hat
   (<a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a>).</li>
@@ -6068,7 +6068,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail <code>NOT_CONFIGURED<
 <td>Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers</td>
 </tr>
 <tr>
-<td>Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403)</td>
+<td>API-Schlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403)</td>
 <td>Schlüssel fehlt oder passt nicht</td>
 </tr>
 <tr>
@@ -6132,7 +6132,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail <code>NOT_CONFIGURED<
 </tr>
 <tr>
 <td>Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort</td>
-<td>Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren (<a href="#chat-modelle">Chat-Modelle</a>)</td>
+<td>Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modell eines anlegen und aktivieren (<a href="#chat-modelle">Chat-Modelle</a>)</td>
 </tr>
 <tr>
 <td>„Index veraltet", Chat meldet „Eingeschränkte Suche"</td>
@@ -6211,7 +6211,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail <code>NOT_CONFIGURED<
 <td>Timeouts von Frontend und Proxy kürzer als die Modellaufrufe (<a href="#reranking-einschalten">Reranking einschalten</a>)</td>
 </tr>
 <tr>
-<td>Ein Modell mit Zugangsschlüssel lässt sich nicht speichern</td>
+<td>Ein Modell mit API-Schlüssel lässt sich nicht speichern</td>
 <td><code>OPAA_SETTINGS_ENCRYPTION_KEY</code> fehlt oder ist ungültig</td>
 </tr>
 <tr>

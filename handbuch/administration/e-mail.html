@@ -4315,7 +4315,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
   und Absender stehen in der Oberfläche unter „Administration → E-Mail → SMTP-Zugang" und wirken
   ohne Neustart. Das Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und
   in keinem Protokoll. Wer den Mailserver schon bei der Einrichtung kennt, trägt ihn im optionalen
-  Schritt „E-Mail-Versand“ der <a href="../betrieb/installation.html#schritte">Installation</a> ein; der Abschluss übernimmt
+  Schritt „E-Mail“ der <a href="../betrieb/installation.html#schritte">Installation</a> ein; der Abschluss übernimmt
   ihn mit denselben Regeln und schaltet den Versand ein. Übersprungen bleibt der Versand aus.</li>
 <li><strong>Die öffentliche Adresse ist eine Bereitstellungsentscheidung.</strong> <code>OPAA_PUBLIC_BASE_URL</code> steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
@@ -4332,7 +4332,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
    Zugangsdaten, Absenderadresse und Absendername. Der Versand lässt sich erst einschalten, wenn
    Server, Port und Absenderadresse gesetzt sind. Fehlt <code>OPAA_PUBLIC_BASE_URL</code>, weist die Seite
    darauf hin, dass Links in E-Mails unbrauchbar blieben.</li>
-<li>Testnachricht auslösen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
+<li>„Testnachricht an mich senden“ wählen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
    steht sofort in der Oberfläche: zugestellt, übersprungen oder fehlgeschlagen mit Grund.</li>
 </ol>
 <table>
@@ -4349,7 +4349,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 </tr>
 <tr>
 <td>Server, Port</td>
-<td>Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail-Versand der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über <code>OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST</code> zu (<a href="../betrieb/installation.html#schritte">Adressprüfung der Mailserver</a>)</td>
+<td>Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über <code>OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST</code> zu (<a href="../betrieb/installation.html#schritte">Adressprüfung der Mailserver</a>)</td>
 </tr>
 <tr>
 <td>Verschlüsselung</td>
@@ -4357,7 +4357,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 </tr>
 <tr>
 <td>Benutzername, Passwort</td>
-<td>Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als <code>***</code> angezeigt; wer <code>***</code> zurückschickt, lässt es unverändert, ein leeres Feld löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab</td>
+<td>Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und nie wieder angezeigt: Das Feld zeigt „Gesetzt“, „Ersetzen“ öffnet ein leeres Feld für ein neues, „Gespeichertes Passwort löschen“ entfernt es beim Speichern. Die API zeigt es als <code>***</code>; wer <code>***</code> zurückschickt, lässt es unverändert, ein leerer Wert löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab</td>
 </tr>
 <tr>
 <td>Absenderadresse, Absendername</td>
@@ -4365,7 +4365,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 </tr>
 </tbody>
 </table>
-<p>Das SMTP-Passwort schützt <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>, derselbe Schlüssel wie die Zugangsschlüssel
+<p>Das SMTP-Passwort schützt <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>, derselbe Schlüssel wie die API-Schlüssel
 der Chat-Modelle (<a href="../betrieb/netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.</p>
 <p>Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt OPAA vor dem Speichern des
@@ -4485,7 +4485,7 @@ steht im Log, dort ohne die Empfängeradresse.</p>
 <tr>
 <td>„535" oder Authentifizierungsfehler</td>
 <td>Benutzername oder Passwort falsch</td>
-<td>Zugangsdaten neu eintragen; das Feld <code>***</code> lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen</td>
+<td>Zugangsdaten neu eintragen; „Gesetzt“ lässt das gespeicherte Passwort unverändert, „Ersetzen“ nimmt ein neues an</td>
 </tr>
 <tr>
 <td>Speichern abgelehnt, Hinweis am Passwortfeld</td>

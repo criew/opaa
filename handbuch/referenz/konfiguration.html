@@ -6546,7 +6546,7 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 </tr>
 <tr>
 <td><code>OPAA_SETTINGS_ENCRYPTION_KEY</code></td>
-<td>— (leer) außerhalb des Profils <code>dev</code>; im Profil <code>dev</code> fest hinterlegter, <strong>ausdrücklich nicht produktionstauglicher</strong> Schlüssel (siehe <a href="../betrieb/modell-endpunkte.html#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle">„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"</a>)</td>
+<td>— (leer) außerhalb des Profils <code>dev</code>; im Profil <code>dev</code> fest hinterlegter, <strong>ausdrücklich nicht produktionstauglicher</strong> Schlüssel (siehe <a href="../betrieb/modell-endpunkte.html#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle">„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"</a>)</td>
 <td>nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in <code>.env.docker.example</code>)</td>
 <td>Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von <code>llm_models.api_key_ciphertext</code> ruhend in der Datenbank. <strong>Ohne Voreinstellung außerhalb des Profils <code>dev</code>; erforderlich, sobald ein Chat-Modell mit Zugangsschlüssel gespeichert wird — der Start selbst bricht ohne ihn nicht ab</strong>. Verschlüsselt außerdem Empfänger und Inhalt der <a href="../administration/e-mail.html#zustellung-über-die-warteschlange">wartenden E-Mails</a>; ohne ihn geht keine Mail in die Warteschlange</td>
 </tr>

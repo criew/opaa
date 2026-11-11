@@ -4381,7 +4381,7 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 </thead>
 <tbody>
 <tr>
-<td>„Chat-Modelle“</td>
+<td>„Chat-Modell“</td>
 <td>Antwort, Teilfragen, Chat-Titel, Metadaten</td>
 <td>jederzeit, ohne Neustart</td>
 </tr>
@@ -4409,8 +4409,9 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 </table>
 <h2 id="chat-modell-anlegen-und-aktivieren">Chat-Modell anlegen und aktivieren<a class="headerlink" href="#chat-modell-anlegen-und-aktivieren" title="Permanent link">&para;</a></h2>
 <ol>
-<li>„Neues Modell“, „Basis-Adresse“ eintragen oder eine Vorlage wählen (Ollama, OpenAI, Anthropic).</li>
-<li>„Modelle abrufen“ und die Kennung wählen; eine Kennung lässt sich auch von Hand eintragen.</li>
+<li>„Neues Modell“, unter „Anbieter“ eine Kachel wählen und die vorbelegte „Basis-Adresse“ prüfen.</li>
+<li>Die Modelle werden beim Verlassen der Felder abgerufen, „Modelle abrufen“ wiederholt das. Die
+   Kennung wählen; sie lässt sich auch von Hand eintragen.</li>
 <li>Anzeigename und maximale Antwortlänge prüfen. Die Temperatur leer lassen, wenn der Anbieter
    keine andere als seine eigene annimmt.</li>
 <li>Der Verbindungstest läuft von selbst; „Verbindung testen“ wiederholt ihn.</li>
@@ -4557,11 +4558,13 @@ Personalvertretung geklärt. Was ein eigener Server leisten muss, steht unter
 <p>Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie findet. Reiter
 „Texterkennung“:</p>
 <ol>
-<li>Unter „Anbindung“ wählen: „docling-serve“ für den mitgelieferten OCR-Dienst oder ein eigenes
-   docling-serve, „Vision-Modell (OpenAI-kompatibel)“, wenn im Haus schon ein Modellserver mit
-   Bildeingang läuft.</li>
-<li>„Basis-Adresse“ eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
-   „Zugangsschlüssel“, falls der Dienst einen verlangt.</li>
+<li>Unter „Dienst“ wählen: „Mitgelieferter Dienst“ für den OCR-Dienst aus Compose-Stapel oder
+   Helm-Chart (die „Basis-Adresse“ ist mit <code>http://opaa-ocr:5001</code> vorbelegt, unter Kubernetes
+   <code>http://&lt;Release&gt;-ocr:5001</code> eintragen) oder „Eigener Endpunkt“. Beim eigenen Endpunkt unter
+   „Anbindung“ „docling-serve“ oder „Vision-Modell (OpenAI-kompatibel)“ wählen, wenn im Haus schon
+   ein Modellserver mit Bildeingang läuft.</li>
+<li>„Basis-Adresse“ prüfen oder eintragen, beim Vision-Modell auch die „Modell-Kennung“, und einen
+   „API-Schlüssel“, falls der Dienst einen verlangt.</li>
 <li>„Verbindung testen“ liest eine mitgelieferte Testseite in drei Stufen: „Adresse“ (der Dienst
    ist erreichbar), „Anmeldung“ (der Schlüssel wird angenommen) und „Erkennung“ (die Testseite
    wird gelesen; scheitert auch, wenn der Dienst dabei nicht rechtzeitig antwortet). Die Meldung
