@@ -2,14 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
 import type {
   ExternalAccessSettingsResponse,
   ExternalAccessSettingsUpdateRequest,
@@ -17,9 +14,9 @@ import type {
 import { updateExternalAccessSettings } from '../api/externalAccessApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from './tokenLabels'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 export const SWITCH_CONSEQUENCE =
@@ -110,15 +107,15 @@ function PanelSection({ id, title, children }: { id: string; title: string; chil
   )
 }
 
-interface ExternalAccessSettingsPanelProps {
-  /** The stored settings; null keeps the panel closed. */
+interface ExternalAccessSettingsDialogProps {
+  /** The stored settings; null keeps the dialog closed. */
   settings: ExternalAccessSettingsResponse | null
   onClose: () => void
   onSaved: (stored: ExternalAccessSettingsResponse) => void
 }
 
 /**
- * The settings for external AI tools in the side panel: the installation-wide switch, the
+ * The settings for external AI tools in a form dialog: the installation-wide switch, the
  * limits including network ranges and the introduction text for external tools. Everything is
  * saved together because the interface replaces the settings as a whole.
  *
@@ -126,49 +123,30 @@ interface ExternalAccessSettingsPanelProps {
  * switch, releases and tokens together - including the log that would prove the emergency
  * stop. A visible change date makes such a backdating recognizable.
  */
-export default function ExternalAccessSettingsPanel({
+export default function ExternalAccessSettingsDialog({
   settings,
   onClose,
   onSaved,
-}: ExternalAccessSettingsPanelProps) {
-  // Escape and the backdrop ask the form, which alone knows whether something is unsaved. The
-  // form's state - and with it „unsaved" - ends whenever the panel closes, however it closes.
-  const requestCloseRef = useRef<(() => void) | null>(null)
-
+}: ExternalAccessSettingsDialogProps) {
+  // Mounted per stored state: the form's draft - and with it „unsaved" - ends whenever the
+  // dialog closes or a save returns.
+  if (!settings) return null
   return (
-    <Drawer
-      anchor="right"
-      open={settings !== null}
-      onClose={() => requestCloseRef.current?.()}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'external-tools-settings-heading',
-          sx: { width: { xs: '100%', sm: 560 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
-    >
-      {settings && (
-        <SettingsForm
-          key={settings.updatedAt}
-          settings={settings}
-          requestCloseRef={requestCloseRef}
-          onClose={onClose}
-          onSaved={onSaved}
-        />
-      )}
-    </Drawer>
+    <SettingsForm
+      key={settings.updatedAt}
+      settings={settings}
+      onClose={onClose}
+      onSaved={onSaved}
+    />
   )
 }
 
 function SettingsForm({
   settings,
-  requestCloseRef,
   onClose,
   onSaved,
 }: {
   settings: ExternalAccessSettingsResponse
-  requestCloseRef: { current: (() => void) | null }
   onClose: () => void
   onSaved: (stored: ExternalAccessSettingsResponse) => void
 }) {
@@ -196,13 +174,6 @@ function SettingsForm({
     }
     onClose()
   }
-
-  useEffect(() => {
-    requestCloseRef.current = () => void requestClose()
-    return () => {
-      requestCloseRef.current = null
-    }
-  })
 
   // After a failed save the focus goes to the message (docs/design/accessibility.md, 2.7).
   useEffect(() => {
@@ -272,51 +243,20 @@ function SettingsForm({
   }
 
   return (
-    <Box
-      component="form"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault()
-        void save()
-      }}
-      sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
+    <FormDialog
+      titleId="external-tools-settings-heading"
+      title="Einstellungen"
+      submitLabel="Speichern"
+      onSubmit={() => void save()}
+      onClose={() => void requestClose()}
+      busy={busy}
+      busyAnnouncement="Einstellungen werden gespeichert"
     >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            id="external-tools-settings-heading"
-            component="h2"
-            sx={{ fontSize: fontSize.title, fontWeight: 600 }}
-          >
-            Einstellungen für externe KI-Werkzeuge
-          </Typography>
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
-            Gilt für die ganze Installation. Jede Änderung außer dem Einleitungstext wird
-            protokolliert.
-          </Typography>
-        </Box>
-        <IconButton
-          aria-label="Schließen"
-          onClick={() => void requestClose()}
-          disabled={busy}
-          sx={{ mt: -0.5 }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      <Stack spacing={3.5} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 3, py: 2.5 }}>
+      <Stack spacing={3.5}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Einstellungen für externe KI-Werkzeuge. Sie gelten für die ganze Installation; jede
+          Änderung außer dem Einleitungstext wird protokolliert.
+        </Typography>
         {error && (
           <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
             {error}
@@ -462,30 +402,6 @@ function SettingsForm({
           </Button>
         </PanelSection>
       </Stack>
-
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 1,
-          px: 3,
-          py: 2,
-          borderTop: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Button onClick={() => void requestClose()} disabled={busy}>
-          Abbrechen
-        </Button>
-        <BusyButton
-          type="submit"
-          variant="contained"
-          busy={busy}
-          busyAnnouncement="Einstellungen werden gespeichert"
-        >
-          Speichern
-        </BusyButton>
-      </Box>
-    </Box>
+    </FormDialog>
   )
 }

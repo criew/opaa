@@ -37,6 +37,9 @@ import { useAssetCatalogEntry } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import PromptEditorDialog from '../components/PromptEditorDialog'
 import PromptTextHighlight from '../components/PromptTextHighlight'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -116,15 +119,28 @@ function PromptsArea({
         </Alert>
       )}
       {promptsError ? (
-        <Alert severity="warning">{promptsError}</Alert>
+        <LoadError
+          message="Die Prompts konnten nicht geladen werden."
+          detail={promptsError}
+          onRetry={() => void loadPrompts(library.id)}
+        />
       ) : prompts === undefined ? (
-        <Typography sx={{ color: 'text.secondary' }}>Prompts werden geladen …</Typography>
+        <LoadingState />
       ) : prompts.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {canEditPrompts
-            ? 'Diese Prompt-Bibliothek enthält noch keine Prompts. Legen Sie den ersten mit „Neuer Prompt“ an.'
-            : 'Diese Prompt-Bibliothek enthält noch keine Prompts.'}
-        </Typography>
+        <EmptyState
+          message={
+            canEditPrompts
+              ? 'Noch keine Prompts.'
+              : 'Noch keine Prompts. Prompts anlegen kann, wer die Prompt-Bibliothek bearbeiten darf.'
+          }
+          action={
+            mayCreate ? (
+              <CreateButton placement="empty" onClick={() => setEditing(null)}>
+                Neuer Prompt
+              </CreateButton>
+            ) : undefined
+          }
+        />
       ) : (
         <Box>
           {prompts.map((prompt) => (
@@ -263,9 +279,13 @@ export default function PromptLibraryDetailPage() {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
-          <Alert severity="error">{storeError}</Alert>
+          <LoadError
+            message="Die Prompt-Bibliothek konnte nicht geladen werden."
+            detail={storeError}
+            onRetry={() => void loadLibrary(promptLibraryId)}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Prompt-Bibliothek wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )

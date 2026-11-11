@@ -15,7 +15,7 @@ export interface SuccessionTabText {
   /** One sentence above the list: what an entry means and what usually helps. */
   intro: string
   /** The empty state: when something will show up here, with an example. */
-  emptyExample: string
+  emptyExample: `${string}.`
 }
 
 export const SUCCESSION_TABS: Record<SuccessionTab, SuccessionTabText> = {

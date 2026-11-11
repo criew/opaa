@@ -34,20 +34,6 @@ export const smbSource: SourceRegistration = {
         sourceSettings: { folders: folders.length === 0 ? ['/'] : folders },
       }
     },
-    nameFromSource: (values: SmbSourceValues) => {
-      const folders = smbFoldersOf(values)
-      if (folders.length === 1 && folders[0] !== '/') {
-        const segments = folders[0].split('/').filter(Boolean)
-        return segments[segments.length - 1] ?? ''
-      }
-      const share = /^(?:smb:\/\/|\\\\)[^/\\]+[/\\]([^/\\]+)/i.exec(values.sourceUrl.trim())?.[1]
-      if (!share) return ''
-      try {
-        return decodeURIComponent(share)
-      } catch {
-        return share
-      }
-    },
     scopeNoteId: 'smb-sharing-consequence',
     firstRunHint:
       'Jeder Lauf liest die Ordner vollständig ein; unveränderte Dateien (gleiche Änderungszeit und Größe) werden dabei nicht neu abgerufen.',

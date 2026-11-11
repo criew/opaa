@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -12,6 +11,8 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** One entry per line; blank lines drop out. */
@@ -113,20 +114,13 @@ export default function OutboundProxySection() {
       description="Alle ausgehenden HTTP(S)-Verbindungen laufen über diesen Proxy, auch zu Sprachmodellen und Identitätsanbietern; Ziele der Ausnahmeliste erreicht OPAA direkt."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Der Ausgangsproxy konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Ausgangsproxy wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="outbound-proxy-current">

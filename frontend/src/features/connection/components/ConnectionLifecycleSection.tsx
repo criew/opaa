@@ -23,7 +23,9 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
-import { contentWidth, fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth, fieldWidth, readingWidth } from '@/shared/theme/tokens'
 
 interface SettingText {
   name: string
@@ -274,20 +276,13 @@ export default function ConnectionLifecycleSection() {
       description="Wann verbundene Konten abwesender Personen ruhen, wie lange private Bibliotheken deaktivierter Personen bleiben und ab wann die Übersicht vor abgelaufenen Konten warnt."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Schwellen und Fristen konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : entries === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Schwellen und Fristen werden geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Table
           size="small"

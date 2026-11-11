@@ -10,6 +10,15 @@ import org.springframework.data.repository.query.Param;
 /** The document templates - rights and reach are the shell's, never asked here. */
 public interface DocumentTemplateRepository extends JpaRepository<DocumentTemplate, UUID> {
 
+  /**
+   * Locks the template's row until the transaction ends, before its file is replaced: two
+   * replacements, also on two instances, each count their own revision.
+   */
+  @Query(
+      value = "SELECT id FROM document_templates WHERE id = :templateId FOR UPDATE",
+      nativeQuery = true)
+  List<UUID> lockById(@Param("templateId") UUID templateId);
+
   /** The number of placeholders of each template - its extent in the catalog. */
   @Query(
       value =

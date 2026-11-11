@@ -36,7 +36,7 @@ export default function ListSearch({
             </InputAdornment>
           ),
         },
-        htmlInput: { 'aria-label': label },
+        htmlInput: { 'aria-label': label, 'data-list-search': '' },
       }}
     />
   )

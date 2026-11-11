@@ -56,6 +56,9 @@ async function start(h, type, scenario, kind) {
   await h.caption(`${TILES[type].source.replace(/[\^|$\\]/g, ' ').trim().split(' ')[0]}: ${CAPTIONS[kind]}`)
   await h.click(h.page.getByRole('radio', { name: TILES[type] }).or(button(h, TILES[type])), 'Kachel')
   await h.click(button(h, /^Weiter$/), 'Weiter')
+  // „Stammdaten“ precedes the source step
+  await h.type(field(h, /^Name/), `${type} ${kind === 'viele' ? 'Gesamtbestand' : 'Projektablage'}`, 'Name')
+  await h.click(button(h, /^Weiter$/), 'Weiter')
   await h.caption('')
 }
 
@@ -160,8 +163,6 @@ export async function run(h, { type, kind, scenario }) {
     await h.pause(1500)
     return
   }
-  await h.click(button(h, /^Weiter$/), 'Weiter')
-  await h.type(field(h, /^Name/), `${type} ${kind === 'viele' ? 'Gesamtbestand' : 'Projektablage'}`, 'Name')
   await h.click(button(h, /^Weiter$/), 'Weiter')
   await h.pause(1500)
 }

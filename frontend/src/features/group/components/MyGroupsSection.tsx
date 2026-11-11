@@ -33,6 +33,9 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
@@ -336,18 +339,31 @@ export default function MyGroupsSection() {
         </Alert>
       )}
 
-      {error && (
+      {error && (isLoading || groups.length > 0) && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
       {isLoading ? (
-        <Typography sx={{ color: 'text.secondary' }}>Gruppen werden geladen …</Typography>
+        <LoadingState shape="rows" count={2} />
+      ) : error && groups.length === 0 ? (
+        <LoadError
+          message="Ihre Gruppen konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadGroups('STEWARDED')}
+        />
       ) : groups.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          Sie sind für keine Gruppe verantwortlich.
-        </Typography>
+        <EmptyState
+          message="Noch keine Gruppen in Ihrer Verantwortung."
+          action={
+            missingCapability ? undefined : (
+              <CreateButton placement="empty" onClick={() => setCreateDialogOpen(true)}>
+                Gruppe anlegen
+              </CreateButton>
+            )
+          }
+        />
       ) : (
         <Stack spacing={1}>
           {groups.map((group) => (

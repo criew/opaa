@@ -236,10 +236,9 @@ describe('SuccessionPage', () => {
     )
     renderPage()
 
-    expect(await screen.findByText('Zurzeit ist hier nichts offen.')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        /Wird das Konto einer Person gesperrt, der eine Bibliothek oder ein Space gehört/,
+      await screen.findByText(
+        /^Zurzeit ist hier nichts offen\. Wird das Konto einer Person gesperrt, der eine Bibliothek oder ein Space gehört/,
       ),
     ).toBeInTheDocument()
   })

@@ -41,7 +41,7 @@ function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
  *
  * **Mutations patch `models` locally from the server's own response, they never call {@link
  * loadModels} again.** `loadModels` sets `isLoading: true` while it runs, and
- * `LlmModelManagementPage` swaps the whole list for a "wird geladen" message whenever that flag is
+ * `LlmModelManagementPage` swaps the whole list for its loading state whenever that flag is
  * set - a full reload after every save, activate or delete would therefore blank the list for a
  * moment, right after the action that caused it. Each mutation below already gets back everything
  * it needs from its own response (or, for delete, needs nothing back at all) to keep `models`

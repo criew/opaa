@@ -1,10 +1,5 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import type { LibrarySchedule } from '@/shared/api/types'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -14,6 +9,7 @@ import {
   scheduleValuesFrom,
   validateScheduleValues,
 } from '../utils/librarySchedule'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface EditLibraryScheduleDialogProps {
   open: boolean
@@ -78,26 +74,23 @@ export default function EditLibraryScheduleDialog({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Zeitplan bearbeiten</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          <LibraryScheduleForm
-            idPrefix="library-schedule"
-            values={values}
-            onChange={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button onClick={() => void handleSave()} variant="contained" disabled={submitting}>
-          {submitting ? 'Wird gespeichert …' : 'Speichern'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={open}
+      title="Zeitplan bearbeiten"
+      submitLabel="Speichern"
+      onSubmit={() => void handleSave()}
+      onClose={handleClose}
+      busy={submitting}
+      busyAnnouncement="Der Zeitplan wird gespeichert"
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <LibraryScheduleForm
+          idPrefix="library-schedule"
+          values={values}
+          onChange={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
+        />
+      </Stack>
+    </FormDialog>
   )
 }

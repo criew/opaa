@@ -19,6 +19,9 @@ import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
 import TextRecognitionSection from '../components/TextRecognitionSection'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { contentWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription' | 'text-recognition'
@@ -66,7 +69,7 @@ function ChatModelsSection() {
       )}
       <CreateButton onClick={() => setForm({ open: true, model: null })}>Neues Modell</CreateButton>
 
-      {error && (
+      {error && models.length > 0 && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
@@ -80,13 +83,23 @@ function ChatModelsSection() {
       )}
 
       {isLoading ? (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Modelle werden geladen …
-        </Typography>
+        <LoadingState />
+      ) : error && models.length === 0 ? (
+        <LoadError
+          message="Die Chat-Modelle konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadModels()}
+        />
       ) : models.length === 0 ? (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Es sind noch keine Modelle hinterlegt.
-        </Typography>
+        <EmptyState
+          framed
+          message="Noch keine Chat-Modelle."
+          action={
+            <CreateButton placement="empty" onClick={() => setForm({ open: true, model: null })}>
+              Neues Modell
+            </CreateButton>
+          }
+        />
       ) : (
         <ModelList models={models} onEdit={(model) => setForm({ open: true, model })} />
       )}
@@ -115,6 +128,7 @@ export const EMBEDDING_POLL_INTERVAL_MS = 5000
 
 function EmbeddingInfoSection() {
   const embeddingInfo = useLlmModelStore((s) => s.embeddingInfo)
+  const error = useLlmModelStore((s) => s.error)
   const loadEmbeddingInfo = useLlmModelStore((s) => s.loadEmbeddingInfo)
   const watching = Boolean(embeddingInfo?.index?.stale || embeddingInfo?.index?.running)
 
@@ -160,10 +174,14 @@ function EmbeddingInfoSection() {
             />
           </Box>
         </>
+      ) : error ? (
+        <LoadError
+          message="Die Einbettungskonfiguration konnte nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadEmbeddingInfo()}
+        />
       ) : (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Einbettungskonfiguration wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={4} />
       )}
     </>
   )

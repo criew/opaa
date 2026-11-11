@@ -48,7 +48,6 @@ const FALLBACK_EXPIRY_DAYS = 365
  * export, page size at most 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
-  const error = useUserAdminStore((s) => s.error)
   const summary = useUserAdminStore((s) => s.summary)
   const settings = useUserAdminStore((s) => s.settings)
   const loadAccounts = useUserAdminStore((s) => s.loadAccounts)
@@ -86,12 +85,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       <CreateButton onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}>
         Konto anlegen
       </CreateButton>
@@ -127,6 +120,14 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
       <AccountFilterBar />
       <AccountList
         currentUserId={currentUserId}
+        createAction={
+          <CreateButton
+            placement="empty"
+            onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
+          >
+            Konto anlegen
+          </CreateButton>
+        }
         onEdit={(user) => setForm((f) => ({ open: true, user, opening: f.opening + 1 }))}
         onSetupLink={setHandover}
         onGeneratedPassword={(user, password) =>

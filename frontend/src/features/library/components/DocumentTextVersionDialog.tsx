@@ -1,15 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import TocIcon from '@mui/icons-material/Toc'
@@ -20,11 +16,14 @@ import type {
 } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
 import { fontSize, markHighlight } from '@/shared/theme/tokens'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import { getDocumentText } from '../api/libraryApi'
 import { downloadDocumentContent } from '../utils/documentContent'
 import type { TextVersionPreview } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import EmptyState from '@/shared/ui/states/EmptyState'
 
 /** Passages per request - the server's own upper bound. */
 const WINDOW = 40
@@ -72,6 +71,8 @@ export default function DocumentTextVersionDialog({
   // bottom after text was put in front of the view
   const pendingScroll = useRef<{ chunkIndex: number; focus: boolean } | null>(null)
   const keepFromBottom = useRef<number | null>(null)
+  // Raised by a retry after a failed load; the effect below asks again for the same preview.
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!preview) return
@@ -115,7 +116,7 @@ export default function DocumentTextVersionDialog({
     return () => {
       cancelled = true
     }
-  }, [preview])
+  }, [preview, attempt])
 
   const current = loaded?.of === preview ? loaded : null
   const failed = failure?.of === preview ? failure.message : null
@@ -208,212 +209,219 @@ export default function DocumentTextVersionDialog({
   const activeSection = target != null ? lastSectionAtOrBefore(sections, target) : null
   const outlineOpen = (outlineToggled ?? wide) && sections.length > 0
 
-  return (
-    <Dialog
-      open={preview != null}
-      onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      aria-labelledby={TITLE_ID}
-      slotProps={{ paper: { sx: { height: '90vh' } } }}
-    >
-      <DialogTitleWithClose
-        id={TITLE_ID}
-        onClose={onClose}
-        actions={
-          preview && (
-            <DownloadOriginalButton
-              onDownload={async () => {
-                await downloadDocumentContent(preview.documentId, preview.fileName)
-              }}
-            />
-          )
+  const toolbar = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, pb: 1, flexWrap: 'wrap' }}>
+      {sections.length > 0 && (
+        <Tooltip title={outlineOpen ? 'Gliederung ausblenden' : 'Gliederung einblenden'}>
+          <IconButton
+            size="small"
+            aria-label="Gliederung"
+            aria-expanded={outlineOpen}
+            aria-controls={outlineOpen ? OUTLINE_ID : undefined}
+            onClick={() => setOutlineToggled(!outlineOpen)}
+          >
+            <TocIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+        Textfassung – das Layout des Originals wird nicht wiedergegeben.
+      </Typography>
+      <Typography
+        role="status"
+        sx={
+          markState === 'changed' || markState === 'not-found'
+            ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
+            : visuallyHidden
         }
       >
-        <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-          {preview?.fileName}
-        </Typography>
-      </DialogTitleWithClose>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, pb: 1, flexWrap: 'wrap' }}>
-        {sections.length > 0 && (
-          <Tooltip title={outlineOpen ? 'Gliederung ausblenden' : 'Gliederung einblenden'}>
-            <IconButton
-              size="small"
-              aria-label="Gliederung"
-              aria-expanded={outlineOpen}
-              aria-controls={outlineOpen ? OUTLINE_ID : undefined}
-              onClick={() => setOutlineToggled(!outlineOpen)}
-            >
-              <TocIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-          Textfassung – das Layout des Originals wird nicht wiedergegeben.
-        </Typography>
-        <Typography
-          role="status"
-          sx={
-            markState === 'changed' || markState === 'not-found'
-              ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
-              : visuallyHidden
-          }
-        >
-          {statusText(markState)}
-        </Typography>
-      </Box>
-      <DialogContent
-        dividers
-        sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 0, p: 0 }}
-      >
-        {failed ? (
-          <Alert severity="error" sx={{ m: 2, alignSelf: 'flex-start' }}>
-            {failed}
-          </Alert>
-        ) : !current ? (
-          <CircularProgress aria-label="Textfassung wird geladen" sx={{ m: 3 }} />
-        ) : passages.length === 0 ? (
-          <Typography sx={{ m: 3 }}>
-            Für dieses Dokument liegt keine Textfassung vor. Das Original lässt sich oben
-            herunterladen.
-          </Typography>
-        ) : (
-          <>
-            {outlineOpen && (
-              <Box
-                id={OUTLINE_ID}
-                component="nav"
-                aria-label="Gliederung"
-                // beside the text where there is room, above it on a narrow screen
-                sx={{
-                  width: { md: 260 },
-                  maxHeight: { xs: '35%', md: 'none' },
-                  flex: 'none',
-                  overflow: 'auto',
-                  borderStyle: 'solid',
-                  borderColor: 'divider',
-                  borderWidth: { xs: '0 0 1px 0', md: '0 1px 0 0' },
-                  p: 1,
-                }}
-              >
-                <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-                  {sections.map((section, index) => (
-                    <Box component="li" key={index}>
-                      <ButtonBase
-                        onClick={() => goTo(section.chunkIndex)}
-                        aria-current={section === activeSection ? 'location' : undefined}
-                        sx={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          fontSize: fontSize.text,
-                          fontWeight: section === activeSection ? 600 : 400,
-                          bgcolor: section === activeSection ? 'action.selected' : undefined,
-                          py: 0.5,
-                          px: 0.5,
-                          pl: 0.5 + (section.level - 1) * 1.5,
-                          borderRadius: 1,
-                          '&:hover': { bgcolor: 'action.hover' },
-                        }}
-                      >
-                        {section.label}
-                      </ButtonBase>
-                    </Box>
-                  ))}
-                </Box>
-                {current.sectionsTruncated && (
-                  <Typography
-                    sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, px: 0.5 }}
-                  >
-                    Die Gliederung ist gekürzt.
-                  </Typography>
-                )}
-              </Box>
-            )}
+        {statusText(markState)}
+      </Typography>
+    </Box>
+  )
+
+  return (
+    <ViewDialog
+      open={preview != null}
+      onClose={onClose}
+      width="editor"
+      tall
+      titleId={TITLE_ID}
+      title={preview?.fileName}
+      titleActions={
+        preview && (
+          <DownloadOriginalButton
+            onDownload={async () => {
+              await downloadDocumentContent(preview.documentId, preview.fileName)
+            }}
+          />
+        )
+      }
+      contentSx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        minHeight: 0,
+        p: 0,
+      }}
+      toolbar={toolbar}
+    >
+      {failed ? (
+        <Box sx={{ m: 2, alignSelf: 'flex-start' }}>
+          <LoadError
+            message="Die Textfassung konnte nicht geladen werden."
+            detail={failed}
+            onRetry={() => {
+              setFailure(null)
+              setAttempt((n) => n + 1)
+            }}
+          />
+        </Box>
+      ) : !current ? (
+        <Box sx={{ m: 3, flex: 1 }}>
+          <LoadingState shape="lines" count={8} />
+        </Box>
+      ) : passages.length === 0 ? (
+        <Box sx={{ m: 3 }}>
+          <EmptyState message="Für dieses Dokument liegt keine Textfassung vor. Das Original lässt sich oben herunterladen." />
+        </Box>
+      ) : (
+        <>
+          {outlineOpen && (
             <Box
-              ref={scrollRef}
-              data-testid="text-version-content"
-              sx={{ flex: 1, minWidth: 0, overflow: 'auto', px: 3, py: 2 }}
+              id={OUTLINE_ID}
+              component="nav"
+              aria-label="Gliederung"
+              // beside the text where there is room, above it on a narrow screen
+              sx={{
+                width: { md: 260 },
+                maxHeight: { xs: '35%', md: 'none' },
+                flex: 'none',
+                overflow: 'auto',
+                borderStyle: 'solid',
+                borderColor: 'divider',
+                borderWidth: { xs: '0 0 1px 0', md: '0 1px 0 0' },
+                p: 1,
+              }}
             >
-              {hasBefore && (
-                <Button
-                  size="small"
-                  disabled={loadingMore != null}
-                  onClick={() =>
-                    void loadWindow(
-                      {
-                        from: Math.max(current.first ?? 0, firstLoaded! - WINDOW),
-                        to: firstLoaded! - 1,
-                      },
-                      'before',
-                    )
-                  }
-                  sx={{ mb: 2 }}
-                >
-                  {loadingMore === 'before' ? 'Lädt …' : 'Vorherigen Text laden'}
-                </Button>
-              )}
-              {passages.map((passage) => (
-                <Box key={passage.chunkIndex}>
-                  {sectionsAt.get(passage.chunkIndex)?.map((section, index) => (
-                    <Typography
-                      key={index}
-                      component={headingTag(section.level)}
+              <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+                {sections.map((section, index) => (
+                  <Box component="li" key={index}>
+                    <ButtonBase
+                      onClick={() => goTo(section.chunkIndex)}
+                      aria-current={section === activeSection ? 'location' : undefined}
                       sx={{
-                        fontSize: section.level === 1 ? fontSize.title : fontSize.text,
-                        fontWeight: 600,
-                        mt: 2,
-                        mb: 1,
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        fontSize: fontSize.text,
+                        fontWeight: section === activeSection ? 600 : 400,
+                        bgcolor: section === activeSection ? 'action.selected' : undefined,
+                        py: 0.5,
+                        px: 0.5,
+                        pl: 0.5 + (section.level - 1) * 1.5,
+                        borderRadius: 1,
+                        '&:hover': { bgcolor: 'action.hover' },
                       }}
                     >
                       {section.label}
-                    </Typography>
-                  ))}
-                  <Box
-                    data-chunk-index={passage.chunkIndex}
-                    tabIndex={-1}
-                    role={passage.chunkIndex === target ? 'region' : undefined}
-                    aria-label={passage.chunkIndex === target ? 'Fundstelle' : undefined}
-                    sx={{
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      fontSize: fontSize.title,
-                      lineHeight: 1.6,
-                      mb: 1.5,
-                      ...(passage.chunkIndex === target && {
-                        bgcolor: markHighlight,
-                        borderLeft: 3,
-                        borderColor: 'warning.main',
-                        pl: 1.5,
-                        py: 0.5,
-                        borderRadius: 1,
-                        '@media (forced-colors: active)': {
-                          backgroundColor: 'Mark',
-                          color: 'MarkText',
-                        },
-                      }),
-                    }}
-                  >
-                    {passage.text}
+                    </ButtonBase>
                   </Box>
-                </Box>
-              ))}
-              {hasAfter && (
-                <Button
-                  size="small"
-                  disabled={loadingMore != null}
-                  onClick={() =>
-                    void loadWindow({ from: lastLoaded! + 1, to: lastLoaded! + WINDOW }, 'after')
-                  }
+                ))}
+              </Box>
+              {current.sectionsTruncated && (
+                <Typography
+                  sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, px: 0.5 }}
                 >
-                  {loadingMore === 'after' ? 'Lädt …' : 'Weiteren Text laden'}
-                </Button>
+                  Die Gliederung ist gekürzt.
+                </Typography>
               )}
             </Box>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+          <Box
+            ref={scrollRef}
+            data-testid="text-version-content"
+            sx={{ flex: 1, minWidth: 0, overflow: 'auto', px: 3, py: 2 }}
+          >
+            {hasBefore && (
+              <Button
+                size="small"
+                disabled={loadingMore === 'after'}
+                loading={loadingMore === 'before'}
+                onClick={() =>
+                  void loadWindow(
+                    {
+                      from: Math.max(current.first ?? 0, firstLoaded! - WINDOW),
+                      to: firstLoaded! - 1,
+                    },
+                    'before',
+                  )
+                }
+                sx={{ mb: 2 }}
+              >
+                Vorherigen Text laden
+              </Button>
+            )}
+            {passages.map((passage) => (
+              <Box key={passage.chunkIndex}>
+                {sectionsAt.get(passage.chunkIndex)?.map((section, index) => (
+                  <Typography
+                    key={index}
+                    component={headingTag(section.level)}
+                    sx={{
+                      fontSize: section.level === 1 ? fontSize.title : fontSize.text,
+                      fontWeight: 600,
+                      mt: 2,
+                      mb: 1,
+                    }}
+                  >
+                    {section.label}
+                  </Typography>
+                ))}
+                <Box
+                  data-chunk-index={passage.chunkIndex}
+                  tabIndex={-1}
+                  role={passage.chunkIndex === target ? 'region' : undefined}
+                  aria-label={passage.chunkIndex === target ? 'Fundstelle' : undefined}
+                  sx={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontSize: fontSize.title,
+                    lineHeight: 1.6,
+                    mb: 1.5,
+                    ...(passage.chunkIndex === target && {
+                      bgcolor: markHighlight,
+                      borderLeft: 3,
+                      borderColor: 'warning.main',
+                      pl: 1.5,
+                      py: 0.5,
+                      borderRadius: 1,
+                      '@media (forced-colors: active)': {
+                        backgroundColor: 'Mark',
+                        color: 'MarkText',
+                      },
+                    }),
+                  }}
+                >
+                  {passage.text}
+                </Box>
+              </Box>
+            ))}
+            {hasAfter && (
+              <Button
+                size="small"
+                disabled={loadingMore === 'before'}
+                loading={loadingMore === 'after'}
+                onClick={() =>
+                  void loadWindow({ from: lastLoaded! + 1, to: lastLoaded! + WINDOW }, 'after')
+                }
+              >
+                Weiteren Text laden
+              </Button>
+            )}
+          </Box>
+        </>
+      )}
+    </ViewDialog>
   )
 }
 

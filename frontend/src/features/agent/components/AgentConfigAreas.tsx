@@ -24,6 +24,9 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ListSearch from '@/shared/ui/ListSearch'
 import { getReadableLibraries } from '../api/agentApi'
 import EditableRow from './EditableRow'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import {
   AGENT_TOOLS,
   INSTRUCTION_HELP,
@@ -126,17 +129,18 @@ export function KnowledgeAndToolsArea({
   const [libraryDraft, setLibraryDraft] = useState<string[]>([])
   const [toolDraft, setToolDraft] = useState<string[]>([])
   const [filter, setFilter] = useState('')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!canEdit) return
     let active = true
     getReadableLibraries()
       .then((loaded) => active && setLibraries(loaded))
-      .catch(() => active && setLibraryError('Die Bibliotheken konnten nicht geladen werden.'))
+      .catch((err) => active && setLibraryError(err instanceof Error ? err.message : ''))
     return () => {
       active = false
     }
-  }, [canEdit])
+  }, [canEdit, attempt])
 
   const shown = useMemo(() => {
     const needle = filter.trim().toLocaleLowerCase('de-DE')
@@ -192,11 +196,18 @@ export function KnowledgeAndToolsArea({
               grenzt ein, erweitert aber nie: Wer eine Bibliothek nicht lesen darf, erhält auch über
               den Agenten nichts daraus.
             </Typography>
-            {libraryError && <FormHelperText error>{libraryError}</FormHelperText>}
-            {libraries === null && !libraryError && (
-              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
-                Bibliotheken werden geladen …
-              </Typography>
+            {libraryError !== null && (
+              <LoadError
+                message="Die Bibliotheken konnten nicht geladen werden."
+                detail={libraryError}
+                onRetry={() => {
+                  setLibraryError(null)
+                  setAttempt((n) => n + 1)
+                }}
+              />
+            )}
+            {libraries === null && libraryError === null && (
+              <LoadingState shape="lines" count={3} />
             )}
             {libraries !== null && libraries.length >= FILTER_FROM && (
               <Box sx={{ mb: 1, maxWidth: fieldWidth.medium }}>
@@ -209,14 +220,10 @@ export function KnowledgeAndToolsArea({
               </Box>
             )}
             {libraries !== null && libraries.length === 0 && (
-              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
-                Sie dürfen noch keine Bibliothek lesen.
-              </Typography>
+              <EmptyState message="Sie dürfen noch keine Bibliothek lesen." />
             )}
             {libraries !== null && libraries.length > 0 && shown.length === 0 && (
-              <Typography sx={{ fontSize: fontSize.text, ...muted }}>
-                Keine Bibliothek passt zu „{filter.trim()}“.
-              </Typography>
+              <EmptyState kind="noMatch" onReset={() => setFilter('')} />
             )}
             <Box
               sx={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflowY: 'auto' }}

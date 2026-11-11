@@ -5,7 +5,6 @@ import ButtonBase from '@mui/material/ButtonBase'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/MessageList'
@@ -22,6 +21,7 @@ import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { fieldWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 export default function ChatPage() {
@@ -211,8 +211,8 @@ export default function ChatPage() {
 
   if (isLoadingChat) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }

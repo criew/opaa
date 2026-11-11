@@ -115,25 +115,13 @@ describe('the source registry (ADR-0038)', () => {
       })
     })
 
-    it('reads a stored library back unchanged and names it after a single folder', () => {
+    it('reads a stored library back unchanged', () => {
       const oneDrive = configurationOf('ONEDRIVE')
       const values = oneDrive.fromLibrary(library)
       expect(oneDrive.toPayload(values)).toEqual({
         sourceUrl: 'https://graph.microsoft.com',
         sourceSettings: library.sourceSettings,
       })
-      expect(oneDrive.nameFromSource(values)).toBe('')
-      expect(
-        oneDrive.nameFromSource(
-          oneDrive.fromLibrary({
-            ...library,
-            sourceSettings: {
-              drive: { driveId: 'b!a', folders: [{ id: '01Y', name: 'Vorlagen / 2026' }] },
-            },
-          }),
-        ),
-      ).toBe('2026')
-      expect(oneDrive.nameFromSource(oneDrive.empty)).toBe('')
     })
 
     it('runs in two modes and names no scope note', () => {
@@ -163,7 +151,6 @@ describe('the source registry (ADR-0038)', () => {
         sourceUrl: 'https://graph.microsoft.com',
         sourceSettings: library.sourceSettings,
       })
-      expect(sharePoint.nameFromSource(values)).toBe('')
     })
   })
 

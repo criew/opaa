@@ -114,7 +114,24 @@ export const agentHandlers = [
       toolNames: body.toolNames,
       planStep: body.planStep,
       limits: body.limits,
-      revision: agent.revision + 1,
+      // Like the backend: only a change of what a run uses is a new revision, never a new name.
+      revision:
+        JSON.stringify([
+          agent.instruction,
+          agent.libraries.map((library) => library.id),
+          agent.toolNames,
+          agent.planStep,
+          agent.limits,
+        ]) ===
+        JSON.stringify([
+          body.instruction,
+          body.libraryIds,
+          body.toolNames,
+          body.planStep,
+          body.limits,
+        ])
+          ? agent.revision
+          : agent.revision + 1,
       updatedAt: new Date().toISOString(),
     }
     mockAgents[agent.id] = updated

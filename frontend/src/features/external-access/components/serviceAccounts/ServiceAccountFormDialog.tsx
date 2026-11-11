@@ -1,20 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormLabel from '@mui/material/FormLabel'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import { UserPicker } from '@/features/principal'
 import type { ServiceAccountResponse, UserSummary } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccount, updateServiceAccount } from '../../api/serviceAccountApi'
 import { useErrorTitle } from './serviceAccountHooks'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 type Field = 'name' | 'responsibleUserId' | 'rateLimitPerHour'
@@ -48,10 +43,10 @@ function responsibleOf(account: ServiceAccountResponse | null | undefined): User
 export default function ServiceAccountFormDialog(props: ServiceAccountFormDialogProps) {
   // a fresh form per opening: its fields start from the account, nothing carries over
   if (!props.open) return null
-  return <FormDialog key={props.account?.id ?? 'new'} {...props} />
+  return <AccountForm key={props.account?.id ?? 'new'} {...props} />
 }
 
-function FormDialog({
+function AccountForm({
   open,
   account,
   onClose,
@@ -85,8 +80,7 @@ function FormDialog({
     else if (found.rateLimitPerHour) rateRef.current?.focus()
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
+  async function submit() {
     const found: Partial<Record<Field, string>> = {}
     if (!name.trim()) found.name = 'Bitte einen Namen angeben.'
     if (!responsible) found.responsibleUserId = 'Bitte eine Person auswählen.'
@@ -135,90 +129,73 @@ function FormDialog({
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
-      onClose={() => !saving && onClose()}
-      fullWidth
-      maxWidth="sm"
-      aria-labelledby="service-account-form-title"
+      titleId="service-account-form-title"
+      title={account ? `„${account.name}“ bearbeiten` : 'Dienstkonto anlegen'}
+      submitLabel={account ? 'Speichern' : createLabel}
+      onSubmit={() => void submit()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Wird gespeichert"
     >
-      <form noValidate onSubmit={(event) => void submit(event)}>
-        <DialogTitle id="service-account-form-title">
-          {account ? 'Dienstkonto ändern' : 'Dienstkonto anlegen'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ mt: 1 }}>
-            {formError && <Alert severity="error">{formError}</Alert>}
-            <TextField
-              label="Name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              inputRef={nameRef}
-              error={Boolean(errors.name)}
-              helperText={errors.name}
-              placeholder="Bauantrag-Portal"
-              size="small"
-              fullWidth
-              slotProps={{ htmlInput: { maxLength: 120 } }}
-            />
-            <TextField
-              label="Beschreibung (optional)"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              size="small"
-              fullWidth
-              multiline
-              minRows={2}
-              slotProps={{ htmlInput: { maxLength: 1000 } }}
-            />
-            <Stack spacing={0.75}>
-              <FormLabel htmlFor="service-account-responsible" sx={{ fontSize: fontSize.meta }}>
-                Verantwortliche Person
-              </FormLabel>
-              <UserPicker
-                inputId="service-account-responsible"
-                ariaLabel="Verantwortliche Person"
-                placeholder="Person suchen …"
-                value={responsible}
-                onChange={setResponsible}
-                excludedUserIds={[]}
-                errorText={errors.responsibleUserId ?? null}
-                inputRef={personRef}
-                grow
-              />
-            </Stack>
-            <TextField
-              label="Anfragen je Stunde (optional)"
-              value={rateLimit}
-              onChange={(event) => setRateLimit(event.target.value)}
-              inputRef={rateRef}
-              error={Boolean(errors.rateLimitPerHour)}
-              helperText={
-                errors.rateLimitPerHour ??
-                (channelDefault !== null
-                  ? `Leer: Vorgabe (${channelDefault}), für alle Tokens zusammen`
-                  : undefined)
-              }
-              size="small"
-              sx={{ maxWidth: fieldWidth.medium }}
-              slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="text" onClick={onClose} disabled={saving}>
-            Abbrechen
-          </Button>
-          <BusyButton
-            type="submit"
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Wird gespeichert"
-          >
-            {account ? 'Speichern' : createLabel}
-          </BusyButton>
-        </DialogActions>
-      </form>
-    </Dialog>
+      <Stack spacing={2.5} sx={{ mt: 1 }}>
+        {formError && <Alert severity="error">{formError}</Alert>}
+        <TextField
+          label="Name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          inputRef={nameRef}
+          error={Boolean(errors.name)}
+          helperText={errors.name}
+          placeholder="Bauantrag-Portal"
+          size="small"
+          fullWidth
+          slotProps={{ htmlInput: { maxLength: 120 } }}
+        />
+        <TextField
+          label="Beschreibung (optional)"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          size="small"
+          fullWidth
+          multiline
+          minRows={2}
+          slotProps={{ htmlInput: { maxLength: 1000 } }}
+        />
+        <Stack spacing={0.75}>
+          <FormLabel htmlFor="service-account-responsible" sx={{ fontSize: fontSize.meta }}>
+            Verantwortliche Person
+          </FormLabel>
+          <UserPicker
+            inputId="service-account-responsible"
+            ariaLabel="Verantwortliche Person"
+            placeholder="Person suchen …"
+            value={responsible}
+            onChange={setResponsible}
+            excludedUserIds={[]}
+            errorText={errors.responsibleUserId ?? null}
+            inputRef={personRef}
+            grow
+          />
+        </Stack>
+        <TextField
+          label="Anfragen je Stunde (optional)"
+          value={rateLimit}
+          onChange={(event) => setRateLimit(event.target.value)}
+          inputRef={rateRef}
+          error={Boolean(errors.rateLimitPerHour)}
+          helperText={
+            errors.rateLimitPerHour ??
+            (channelDefault !== null
+              ? `Leer: Vorgabe (${channelDefault}), für alle Tokens zusammen`
+              : undefined)
+          }
+          size="small"
+          sx={{ maxWidth: fieldWidth.medium }}
+          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+        />
+      </Stack>
+    </FormDialog>
   )
 }

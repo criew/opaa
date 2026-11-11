@@ -8,7 +8,7 @@ import { apiAs } from './externalAccess'
  * im Space chattet und dort als Administrator zuordnen darf.
  */
 
-type AssetType = 'KNOWLEDGE_LIBRARY' | 'PROMPT_LIBRARY'
+type AssetType = 'KNOWLEDGE_LIBRARY' | 'PROMPT_LIBRARY' | 'AGENT'
 
 /** Die Kennung des Standard-Space von `devUser` - der Space, in dem `startFreshChat` landet. */
 export async function defaultSpaceIdOf(devUser: string): Promise<string> {

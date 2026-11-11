@@ -1,6 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -24,6 +23,7 @@ import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
 import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/recognizedRegions'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 import RecognizedTextPanel from './RecognizedTextPanel'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -271,7 +271,7 @@ export default function PdfViewer({
           </Tooltip>
         )}
         <Typography component="span" sx={{ fontSize: fontSize.text, mx: 1 }}>
-          {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
+          {numPages > 0 ? `Seite ${page} von ${numPages}` : <LoadingState shape="inline" />}
         </Typography>
         {recognized && (
           <Tooltip
@@ -354,10 +354,9 @@ export default function PdfViewer({
           }}
         >
           {!pdf && (
-            <CircularProgress
-              aria-label="PDF wird geladen"
-              sx={{ position: 'absolute', top: 32, left: '50%' }}
-            />
+            <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
+              <LoadingState shape="block" />
+            </Box>
           )}
           <Box
             ref={containerRef}

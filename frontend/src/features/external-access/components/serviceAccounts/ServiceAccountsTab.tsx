@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -9,9 +8,11 @@ import Typography from '@mui/material/Typography'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CreateButton from '@/shared/ui/CreateButton'
 import type { ServiceAccountResponse } from '@/shared/api/types'
-import DetailSection, { TextAction, TextLink } from '@/shared/ui/DetailSection'
+import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
 import ListSearch from '@/shared/ui/ListSearch'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import StateDot from '@/shared/ui/StateDot'
 import IssueServiceAccountTokenDialog from './IssueServiceAccountTokenDialog'
 import ServiceAccountDetailBody from './ServiceAccountDetailBody'
@@ -156,7 +157,7 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
 /**
  * The tab „Dienstkonten“ in „Anbindungen“: a list with one chevron row per account, from eight
  * accounts on with a search, and a detail view inside the tab (`?account=<id>`). Creating an
- * account leads straight to its first token; „Ohne Token beenden“ leaves it without one.
+ * account leads straight to its first token; „Abbrechen“ leaves it without one.
  */
 export default function ServiceAccountsTab() {
   const [searchParams] = useSearchParams()
@@ -180,7 +181,6 @@ export default function ServiceAccountsTab() {
     <IssueServiceAccountTokenDialog
       account={firstTokenFor}
       title="Erstes Token ausstellen"
-      cancelLabel="Ohne Token beenden"
       onClose={() => setFirstTokenFor(null)}
       onIssued={() => {
         void reload()
@@ -202,22 +202,22 @@ export default function ServiceAccountsTab() {
       </CreateButton>
 
       {error ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void reload()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
+        <LoadError
+          message="Die Dienstkonten konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void reload()}
+        />
       ) : accounts === null ? (
-        <ListLoading label="Dienstkonten werden geladen" />
+        <LoadingState />
       ) : accounts.length === 0 ? (
-        <ListEmptyState
-          title="Noch kein Dienstkonto."
-          hint="Ein Dienstkonto gibt einem Verfahren einen eigenen, lesenden Zugang."
+        <EmptyState
+          framed
+          message="Noch keine Dienstkonten."
+          action={
+            <CreateButton placement="empty" onClick={() => setCreating(true)}>
+              Dienstkonto anlegen
+            </CreateButton>
+          }
         />
       ) : (
         <>
@@ -245,10 +245,13 @@ export default function ServiceAccountsTab() {
           )}
           {shown.length === 0 ? (
             <Box sx={{ py: 1.5 }}>
-              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 0.5 }}>
-                {needle ? `Keine Treffer für „${query.trim()}“.` : 'Kein aktives Dienstkonto.'}
-              </Typography>
-              {needle && <TextAction onClick={() => setQuery('')}>Suche zurücksetzen</TextAction>}
+              <EmptyState
+                kind="noMatch"
+                onReset={() => {
+                  setQuery('')
+                  setShowInactive(true)
+                }}
+              />
             </Box>
           ) : (
             <Box

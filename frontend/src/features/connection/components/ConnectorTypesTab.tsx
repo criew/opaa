@@ -10,9 +10,10 @@ import type {
 import { getCapabilityOverview } from '@/features/capability'
 import { listConnectionProfiles, listConnectorTypeStates } from '../api/connectionProfileApi'
 import StatusLine from '@/shared/ui/StatusLine'
-import { ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectorTypeOverview from './ConnectorTypeOverview'
 import ConnectorTypePanel from './ConnectorTypePanel'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The query parameter that opens the panel of one source type. */
 export const SOURCE_TYPE_PARAM = 'sourceType'
@@ -99,11 +100,6 @@ export default function ConnectorTypesTab() {
 
   return (
     <>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
       {profilesError && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {`Die Zugänge konnten nicht geladen werden (${profilesError}). Die Zahlen und die Rückfrage beim Entsperren nennen deshalb keine Zugänge.`}
@@ -114,8 +110,14 @@ export default function ConnectorTypesTab() {
           {`Wer Bibliotheken mit eigener Adresse anlegen darf, konnte nicht geladen werden (${overviewError}).`}
         </Alert>
       )}
-      {states === null ? (
-        !error && <ListLoading label="Quellarten werden geladen" />
+      {error ? (
+        <LoadError
+          message="Quellarten konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => setReloadKey((key) => key + 1)}
+        />
+      ) : states === null ? (
+        <LoadingState />
       ) : (
         <>
           <Box sx={{ mb: 3 }}>

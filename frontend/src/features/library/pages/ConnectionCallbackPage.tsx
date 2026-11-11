@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -241,7 +240,6 @@ export default function ConnectionCallbackPage() {
       <PageHeading title={intent ? 'Quelle verbinden' : 'Konto verbinden'} />
       {outcome.kind === 'pending' ? (
         <>
-          <CircularProgress aria-hidden size={28} />
           <Typography role="status">Die Verbindung wird abgeschlossen …</Typography>
         </>
       ) : (

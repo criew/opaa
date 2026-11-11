@@ -48,6 +48,8 @@ import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
 import { formatNumber } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
@@ -312,9 +314,13 @@ export default function LibraryDetailPage() {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
-          <Alert severity="error">{storeError}</Alert>
+          <LoadError
+            message="Die Bibliothek konnte nicht geladen werden."
+            detail={storeError}
+            onRetry={() => void reloadLibrary()}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Bibliothek wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )
@@ -512,22 +518,12 @@ export default function LibraryDetailPage() {
         {/* A failed GET /libraries/{id} while the list entry is cached leaves the typed areas
           below empty; this notice explains it and offers the reload. */}
         {!details && storeError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => void loadLibraryDetails(libraryId)}
-              >
-                Erneut versuchen
-              </Button>
-            }
-          >
-            Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
-            es in einem Moment erneut.
-          </Alert>
+          <Box sx={{ mb: 2 }}>
+            <LoadError
+              message="Die Angaben zu dieser Bibliothek konnten nicht geladen werden."
+              onRetry={() => void loadLibraryDetails(libraryId)}
+            />
+          </Box>
         )}
 
         <LibraryQuotaNotice
@@ -555,7 +551,7 @@ export default function LibraryDetailPage() {
               // cascading-render risk): a fresh component instance starts every piece of local
               // state at its initial value for free. The prefix keeps the key distinct from the
               // other keyed sections of this page - two siblings sharing the bare libraryId made
-              // React duplicate the spaces section into stuck "Wird geladen …" clones.
+              // React duplicate the spaces section into stuck loading clones.
               key={`documents-${libraryId}`}
               libraryId={libraryId}
               sourceType={details.sourceType}
@@ -598,12 +594,12 @@ export default function LibraryDetailPage() {
                 }
                 indexHint={connectorConfiguration?.runsHint ?? undefined}
               />
-            ) : (
+            ) : storeError ? (
               <Typography sx={{ color: 'text.secondary' }}>
-                {storeError
-                  ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
-                  : 'Quelle wird geladen …'}
+                Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.
               </Typography>
+            ) : (
+              <LoadingState shape="lines" count={4} />
             )}
           </Box>
         )}

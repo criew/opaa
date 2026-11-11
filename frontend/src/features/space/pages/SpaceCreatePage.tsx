@@ -1,18 +1,21 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import { useLocation, useNavigate } from 'react-router'
-import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { AssetTilePicker, assetPickKey, useAssetCatalogEntry } from '@/features/asset'
+import {
+  AssetNameFields,
+  AssetTilePicker,
+  assetPickKey,
+  useAssetCatalogEntry,
+} from '@/features/asset'
 import type { AssetPick, SpaceCreateLocationState } from '@/features/asset'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { SubjectFormRow } from '@/features/principal'
@@ -27,8 +30,11 @@ import {
   type SubjectSelection,
 } from '@/features/principal'
 import ChatAutoCleanupField from '../components/ChatAutoCleanupField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
+import WizardLayout from '@/shared/ui/wizard/WizardLayout'
+import WizardReview, { type WizardReviewEntry } from '@/shared/ui/wizard/WizardReview'
+import { useFieldError } from '@/shared/ui/wizard/useFieldError'
+import { STEP_MASTER_DATA, STEP_REVIEW } from '@/shared/ui/wizard/wizardSteps'
+import { notify } from '@/shared/stores/notificationStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -36,9 +42,10 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { getChatAutoCleanupPeriods } from '../api/spaceApi'
 import { capabilityMissingMessage, spaceRoleLabel } from '@/shared/utils/labels'
 import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '@/shared/api/types'
-import { contentWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
-const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const
+const STEPS = [STEP_MASTER_DATA, 'Mitglieder', 'Inhalte', STEP_REVIEW] as const
+const STEP_MEMBERS = 1
+const STEP_ASSETS = 2
 
 export const NO_KNOWLEDGE_SUMMARY =
   'Kein Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen.'
@@ -56,35 +63,14 @@ function pendingKey(member: { subjectType: string; subjectId: string }): string 
   return `${member.subjectType}:${member.subjectId}`
 }
 
-/** One summary row; its value may be a list. */
-function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Box sx={{ display: 'flex', gap: 2 }}>
-      <Typography
-        component="span"
-        sx={{
-          fontSize: fontSize.meta,
-          color: 'text.secondary',
-          width: 120,
-          flex: 'none',
-          pt: 0.25,
-        }}
-      >
-        {label}
-      </Typography>
-      <Box sx={{ fontSize: fontSize.text, minWidth: 0 }}>{children}</Box>
-    </Box>
-  )
-}
-
-/** One summary list item: a small symbol, while the text carries the meaning. */
+/** One list item of the review: a small symbol, while the text carries the meaning. */
 function SummaryItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <Box component="li" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
       <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'text.secondary' }}>
         {icon}
       </Box>
-      <Typography component="span" sx={{ fontSize: fontSize.text }}>
+      <Typography component="span" variant="body2">
         {children}
       </Typography>
     </Box>
@@ -94,7 +80,7 @@ function SummaryItem({ icon, children }: { icon: ReactNode; children: ReactNode 
 const summaryListSx = { listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 } as const
 
 /**
- * The space creation wizard: Grunddaten, Mitglieder, Inhalte, Zusammenfassung.
+ * The space creation wizard: Stammdaten, Mitglieder, Inhalte, Prüfen.
  * "Inhalte" associates assets of every type from the catalog's tile list and may be skipped; the
  * space and its associations are created in one call.
  */
@@ -106,7 +92,10 @@ export default function SpaceCreatePage() {
   const currentUserId = useAuthStore((s) => s.user?.id)
 
   const [activeStep, setActiveStep] = useState(0)
+  // set by „Ändern“ on the review step: „Weiter“ then leads straight back to it
+  const [returnToReview, setReturnToReview] = useState(false)
   const [name, setName] = useState('')
+  const nameCheck = useFieldError('Name fehlt')
   const [description, setDescription] = useState('')
   const [chatAutoCleanup, setChatAutoCleanup] = useState(false)
   const [cleanupPeriods, setCleanupPeriods] = useState<ChatAutoCleanupPeriods | null>(null)
@@ -115,9 +104,11 @@ export default function SpaceCreatePage() {
   const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
   const [submitting, setSubmitting] = useState(false)
+  // „Anlegen“ before the preselection's catalog entry is in: busy and announced, created once it is
+  const [createWhenReady, setCreateWhenReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // ADR-0036, Entscheidung 5: a missing Anlegerecht is explained, not hidden - the button stays
-  // visible and says why it cannot be used. The backend refuses the same call regardless.
+  // ADR-0036, Entscheidung 5: a missing Anlegerecht is explained, not hidden - „Anlegen“ stays
+  // and leads to the reason. The backend refuses the same call regardless.
   const { isMissing } = useMyCapabilities()
   const mayNotCreate = isMissing('CREATE_SPACE')
   // Only what the creator may read is offered; the backend re-checks the same rule on creation.
@@ -194,7 +185,27 @@ export default function SpaceCreatePage() {
     navigate('/spaces')
   }
 
+  const handleNext = () => {
+    if (activeStep === 0 && !nameCheck.check(name.trim() !== '')) return
+    setActiveStep((s) => (returnToReview ? STEPS.length - 1 : s + 1))
+    setReturnToReview(false)
+  }
+
+  /** „Ändern“ on the review step: to the step of the answer, and back after „Weiter“. */
+  const changeAt = (step: number) => {
+    setReturnToReview(true)
+    setError(null)
+    setActiveStep(step)
+  }
+
   const handleCreate = async () => {
+    if (submitting) return
+    // the catalog entry of the preselection decides whether it may be associated
+    if (preselectPending) {
+      setCreateWhenReady(true)
+      return
+    }
+    setCreateWhenReady(false)
     setSubmitting(true)
     setError(null)
     try {
@@ -209,6 +220,7 @@ export default function SpaceCreatePage() {
           role,
         })),
       )
+      notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(`/spaces/${spaceId}`)
     } catch (err) {
       // Space, members and assets are created together or not at all - nothing to clean up here.
@@ -220,301 +232,247 @@ export default function SpaceCreatePage() {
     }
   }
 
-  return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: contentWidth.form }}>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
-          Neuer Space
-        </Typography>
-        <PageHeading title="Neuer Space" visuallyHidden />
-        <Typography
-          component="div"
-          sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600, mb: 3 }}
-          aria-hidden
-        >
-          {STEPS[activeStep]}
-        </Typography>
-        <WizardStepBar steps={STEPS} active={activeStep} />
+  const createNow = useEffectEvent(() => void handleCreate())
+  useEffect(() => {
+    // the click is taken up once the preselection is decided, as its own task after this render
+    if (!createWhenReady || preselectPending) return
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (!cancelled) createNow()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [createWhenReady, preselectPending])
 
-        {mayNotCreate && (
-          <Alert severity="info" sx={{ mb: 2 }} id="space-create-capability-hint">
-            {capabilityMissingMessage('CREATE_SPACE')}
-          </Alert>
-        )}
+  const memberIcon = (member: PendingMember) =>
+    member.subjectType === 'GROUP' ? (
+      <GroupsOutlinedIcon fontSize="inherit" />
+    ) : (
+      <PersonOutlineIcon fontSize="inherit" />
+    )
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {activeStep === 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <Box>
-              <FieldLabel htmlFor="space-create-name">Name</FieldLabel>
-              <TextField
-                id="space-create-name"
-                size="small"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="z. B. Widerspruchsstelle"
-                fullWidth
-              />
-            </Box>
-            <Box>
-              <FieldLabel htmlFor="space-create-description">Beschreibung (optional)</FieldLabel>
-              <TextField
-                id="space-create-description"
-                size="small"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                multiline
-                minRows={2}
-                fullWidth
-              />
-            </Box>
-            <ChatAutoCleanupField
-              id="space-create-chat-auto-cleanup"
-              checked={chatAutoCleanup}
-              onChange={setChatAutoCleanup}
-              archiveAfterDays={cleanupPeriods?.archiveAfterDays}
-              deleteAfterDays={cleanupPeriods?.deleteAfterDays}
-            />
+  const reviewEntries: WizardReviewEntry[] = [
+    { label: 'Name', value: name.trim(), onChange: () => changeAt(0) },
+    { label: 'Beschreibung', value: description.trim(), onChange: () => changeAt(0) },
+    ...(chatAutoCleanup
+      ? [
+          {
+            label: 'Chats',
+            value: cleanupPeriods
+              ? `Inaktive Chats werden nach ${cleanupPeriods.archiveAfterDays} Tagen archiviert und nach weiteren ${cleanupPeriods.deleteAfterDays} Tagen gelöscht.`
+              : 'Inaktive Chats werden automatisch archiviert und später gelöscht.',
+            onChange: () => changeAt(0),
+          },
+        ]
+      : []),
+    {
+      label: 'Mitglieder',
+      value:
+        pendingMembers.length === 0 ? (
+          'nur Sie'
+        ) : (
+          <Box component="ul" sx={summaryListSx}>
+            {pendingMembers.map((member) => (
+              <SummaryItem key={pendingKey(member)} icon={memberIcon(member)}>
+                {member.label}
+                {member.subjectType === 'GROUP' ? ' · Gruppe' : ''} · {spaceRoleLabel(member.role)}
+              </SummaryItem>
+            ))}
           </Box>
-        )}
-
-        {activeStep === 1 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
-              Schritt ist optional.
-            </Typography>
-            <SubjectFormRow
-              picker={
-                <SubjectPicker
-                  value={subject}
-                  onChange={(next) => {
-                    choice.clear()
-                    setSubject(next)
-                  }}
-                  errorText={choice.errorText}
-                  inputRef={choice.inputRef}
-                  excludedUserIds={excludedUserIds}
-                  excludedGroupIds={excludedGroupIds}
-                />
-              }
-              role={
-                <Select
-                  size="small"
-                  fullWidth
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as SpaceRole)}
-                  aria-label="Rolle des neuen Mitglieds"
+        ),
+      onChange: () => changeAt(STEP_MEMBERS),
+    },
+    {
+      label: 'Inhalte',
+      value:
+        selectedAssets.length === 0 ? (
+          'keine'
+        ) : (
+          <Box component="ul" sx={summaryListSx}>
+            {selectedAssets.map((pick) => {
+              const definition = assetTypeDefinition(pick.assetType)
+              const TypeIcon = definition?.Icon
+              return (
+                <SummaryItem
+                  key={`${pick.assetType}:${pick.assetId}`}
+                  icon={TypeIcon ? <TypeIcon fontSize="inherit" /> : null}
                 >
-                  {MEMBER_ROLES.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {spaceRoleLabel(role)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              }
-              action={
-                <Button variant="outlined" onClick={() => void handleNoteMember()}>
-                  Vormerken
-                </Button>
-              }
-            />
-            {pendingMembers.length > 0 && (
-              <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px' }}>
-                {pendingMembers.map((member) => (
-                  <Box
-                    key={pendingKey(member)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.5,
-                      px: 2,
-                      py: 1.25,
-                      '& + &': { borderTop: 1, borderColor: 'divider' },
-                    }}
-                  >
-                    {member.subjectType === 'GROUP' ? (
-                      <GroupsOutlinedIcon fontSize="small" color="action" aria-hidden />
-                    ) : (
-                      <PersonOutlineIcon fontSize="small" color="action" aria-hidden />
-                    )}
-                    <Typography sx={{ fontSize: fontSize.text, flex: 1 }} noWrap>
-                      {member.label}
-                      {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
-                    </Typography>
-                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                      {spaceRoleLabel(member.role)}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      aria-label={`Vorgemerktes Mitglied ${member.label} entfernen`}
-                      onClick={() =>
-                        setPendingMembers((prev) =>
-                          prev.filter((m) => pendingKey(m) !== pendingKey(member)),
-                        )
-                      }
-                    >
-                      <DeleteIcon sx={{ fontSize: iconSize.sm }} />
-                    </IconButton>
-                  </Box>
+                  {pick.name}
+                  {definition ? ` · ${definition.title}` : ''}
+                </SummaryItem>
+              )
+            })}
+          </Box>
+        ),
+      onChange: () => changeAt(STEP_ASSETS),
+    },
+  ]
+
+  return (
+    <WizardLayout
+      object="Neuer Space"
+      steps={STEPS}
+      activeStep={activeStep}
+      failed={nameCheck.error !== null}
+      createBlockedBy={mayNotCreate ? capabilityMissingMessage('CREATE_SPACE') : null}
+      error={error}
+      footerNote={
+        activeStep === STEP_MEMBERS
+          ? pendingMembers.length === 1
+            ? '1 Mitglied vorgemerkt'
+            : `${pendingMembers.length} Mitglieder vorgemerkt`
+          : null
+      }
+      footerSeparated={activeStep !== STEPS.length - 1}
+      submitting={submitting || createWhenReady}
+      createAnnouncement="Space wird angelegt"
+      onCancel={() => void handleCancel()}
+      onBack={() => {
+        setReturnToReview(false)
+        setActiveStep((s) => s - 1)
+      }}
+      onNext={handleNext}
+      onCreate={() => void handleCreate()}
+    >
+      {activeStep === 0 && (
+        <>
+          <AssetNameFields
+            idPrefix="space-create"
+            name={name}
+            onNameChange={(next) => {
+              nameCheck.clear()
+              setName(next)
+            }}
+            nameError={nameCheck.error}
+            nameInputRef={nameCheck.ref}
+            description={description}
+            onDescriptionChange={setDescription}
+            namePlaceholder="z. B. Widerspruchsstelle"
+          />
+          <ChatAutoCleanupField
+            id="space-create-chat-auto-cleanup"
+            checked={chatAutoCleanup}
+            onChange={setChatAutoCleanup}
+            archiveAfterDays={cleanupPeriods?.archiveAfterDays}
+            deleteAfterDays={cleanupPeriods?.deleteAfterDays}
+          />
+        </>
+      )}
+
+      {activeStep === STEP_MEMBERS && (
+        <>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Mitglieder lassen sich auch später jederzeit in der Space-Verwaltung ergänzen — dieser
+            Schritt ist optional.
+          </Typography>
+          <SubjectFormRow
+            picker={
+              <SubjectPicker
+                value={subject}
+                onChange={(next) => {
+                  choice.clear()
+                  setSubject(next)
+                }}
+                errorText={choice.errorText}
+                inputRef={choice.inputRef}
+                excludedUserIds={excludedUserIds}
+                excludedGroupIds={excludedGroupIds}
+              />
+            }
+            role={
+              <Select
+                size="small"
+                fullWidth
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value as SpaceRole)}
+                aria-label="Rolle des neuen Mitglieds"
+              >
+                {MEMBER_ROLES.map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {spaceRoleLabel(role)}
+                  </MenuItem>
                 ))}
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {activeStep === 2 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen; die Zuordnung gewährt
-              keinen zusätzlichen Zugriff. Dieser Schritt ist optional.
-            </Typography>
-            {preselect && preselectDropped && (
-              <Alert severity="warning">
-                „{preselect.name}“ ist nicht vorgewählt: Solange die Nachfolge offen ist, lässt es
-                sich nicht neu zuordnen.
-              </Alert>
-            )}
-            <AssetTilePicker
-              value={selectedAssets}
-              onChange={setSelectedAssets}
-              aria-label="Inhalte für diesen Space"
-            />
-          </Box>
-        )}
-
-        {activeStep === 3 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <SummaryRow label="Name">{name.trim()}</SummaryRow>
-            <SummaryRow label="Beschreibung">{description.trim() || '–'}</SummaryRow>
-            <SummaryRow label="Mitglieder">
-              {pendingMembers.length === 0 ? (
-                'nur Sie'
-              ) : (
-                <Box component="ul" sx={summaryListSx}>
-                  {pendingMembers.map((member) => (
-                    <SummaryItem
-                      key={pendingKey(member)}
-                      icon={
-                        member.subjectType === 'GROUP' ? (
-                          <GroupsOutlinedIcon sx={{ fontSize: iconSize.sm }} />
-                        ) : (
-                          <PersonOutlineIcon sx={{ fontSize: iconSize.sm }} />
-                        )
-                      }
-                    >
-                      {member.label}
-                      {member.subjectType === 'GROUP' ? ' · Gruppe' : ''} ·{' '}
-                      {spaceRoleLabel(member.role)}
-                    </SummaryItem>
-                  ))}
+              </Select>
+            }
+            action={
+              <Button variant="outlined" onClick={() => void handleNoteMember()}>
+                Vormerken
+              </Button>
+            }
+          />
+          {pendingMembers.length > 0 && (
+            <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px' }}>
+              {pendingMembers.map((member) => (
+                <Box
+                  key={pendingKey(member)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    px: 2,
+                    py: 1.25,
+                    '& + &': { borderTop: 1, borderColor: 'divider' },
+                  }}
+                >
+                  {member.subjectType === 'GROUP' ? (
+                    <GroupsOutlinedIcon fontSize="small" color="action" aria-hidden />
+                  ) : (
+                    <PersonOutlineIcon fontSize="small" color="action" aria-hidden />
+                  )}
+                  <Typography variant="body2" sx={{ flex: 1 }} noWrap>
+                    {member.label}
+                    {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {spaceRoleLabel(member.role)}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    aria-label={`Vorgemerktes Mitglied ${member.label} entfernen`}
+                    onClick={() =>
+                      setPendingMembers((prev) =>
+                        prev.filter((m) => pendingKey(m) !== pendingKey(member)),
+                      )
+                    }
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
                 </Box>
-              )}
-            </SummaryRow>
-            <SummaryRow label="Inhalte">
-              {selectedAssets.length === 0 ? (
-                'keine'
-              ) : (
-                <Box component="ul" sx={summaryListSx}>
-                  {selectedAssets.map((pick) => {
-                    const definition = assetTypeDefinition(pick.assetType)
-                    const TypeIcon = definition?.Icon
-                    return (
-                      <SummaryItem
-                        key={`${pick.assetType}:${pick.assetId}`}
-                        icon={TypeIcon ? <TypeIcon sx={{ fontSize: iconSize.sm }} /> : null}
-                      >
-                        {pick.name}
-                        {definition ? ` · ${definition.title}` : ''}
-                      </SummaryItem>
-                    )
-                  })}
-                </Box>
-              )}
-            </SummaryRow>
-            {chatAutoCleanup && (
-              <SummaryRow label="Chats">
-                {cleanupPeriods
-                  ? `Inaktive Chats werden nach ${cleanupPeriods.archiveAfterDays} Tagen archiviert und nach weiteren ${cleanupPeriods.deleteAfterDays} Tagen gelöscht.`
-                  : 'Inaktive Chats werden automatisch archiviert und später gelöscht.'}
-              </SummaryRow>
-            )}
-            {!selectedAssets.some((pick) => pick.assetType === 'KNOWLEDGE_LIBRARY') && (
-              <Alert severity="info">{NO_KNOWLEDGE_SUMMARY}</Alert>
-            )}
-          </Box>
-        )}
+              ))}
+            </Box>
+          )}
+        </>
+      )}
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: { xs: 1, sm: 1.5 },
-            mt: 4,
-            pt: 2,
-            borderTop: 1,
-            borderColor: 'divider',
-          }}
-        >
-          <Button
-            variant="text"
-            onClick={() => void handleCancel()}
-            disabled={submitting}
-            sx={{ mr: 'auto' }}
-          >
-            Abbrechen
-          </Button>
-          {activeStep === 1 && (
-            // below 600 px the counter takes a line of its own above the buttons
-            <Typography
-              sx={{
-                fontSize: fontSize.meta,
-                color: 'text.secondary',
-                order: { xs: -1, sm: 0 },
-                flexBasis: { xs: '100%', sm: 'auto' },
-                textAlign: 'right',
-              }}
-            >
-              {pendingMembers.length === 1
-                ? '1 Mitglied vorgemerkt'
-                : `${pendingMembers.length} Mitglieder vorgemerkt`}
-            </Typography>
+      {activeStep === STEP_ASSETS && (
+        <>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen; die Zuordnung gewährt keinen
+            zusätzlichen Zugriff. Dieser Schritt ist optional.
+          </Typography>
+          {preselect && preselectDropped && (
+            <Alert severity="warning">
+              „{preselect.name}“ ist nicht vorgewählt: Solange die Nachfolge offen ist, lässt es
+              sich nicht neu zuordnen.
+            </Alert>
           )}
-          {activeStep > 0 && (
-            <Button
-              variant="outlined"
-              onClick={() => setActiveStep((s) => s - 1)}
-              disabled={submitting}
-            >
-              Zurück
-            </Button>
+          <AssetTilePicker
+            value={selectedAssets}
+            onChange={setSelectedAssets}
+            aria-label="Inhalte für diesen Space"
+          />
+        </>
+      )}
+
+      {activeStep === STEPS.length - 1 && (
+        <>
+          <WizardReview entries={reviewEntries} />
+          {!selectedAssets.some((pick) => pick.assetType === 'KNOWLEDGE_LIBRARY') && (
+            <Alert severity="info">{NO_KNOWLEDGE_SUMMARY}</Alert>
           )}
-          {activeStep < STEPS.length - 1 ? (
-            <Button
-              variant="contained"
-              onClick={() => setActiveStep((s) => s + 1)}
-              disabled={name.trim() === ''}
-            >
-              Weiter
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={() => void handleCreate()}
-              disabled={submitting || mayNotCreate || preselectPending || name.trim() === ''}
-              aria-describedby={mayNotCreate ? 'space-create-capability-hint' : undefined}
-            >
-              {submitting ? 'Wird angelegt …' : 'Space anlegen'}
-            </Button>
-          )}
-        </Box>
-      </Box>
-    </Box>
+        </>
+      )}
+    </WizardLayout>
   )
 }

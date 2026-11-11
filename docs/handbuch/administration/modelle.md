@@ -63,8 +63,8 @@ gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennba
 Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit der Messung unter
 [Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen):
 Ergebnis und Kennung des Messlaufs aus dem Kopf des Berichts tragen Sie im Dialog mit der Grundlage
-„Gemessen“ ein. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher;
-„Speichern“ bleibt gesperrt, solange sich nichts ändert. Eine Person oder Gruppe steht nicht am
+„Gemessen“ ein. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die
+Schaltfläche heißt „Ersetzen“. Eine Person oder Gruppe steht nicht am
 Modell. Wer die Angabe geändert hat, steht im
 [Nachweisprotokoll](nachweisprotokoll-lesen.md) als Änderung des Chat-Modells, mit dem Wert vorher
 und nachher.

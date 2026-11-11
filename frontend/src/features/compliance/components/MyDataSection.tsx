@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureStatus } from '@/shared/api/types'
 import { apiErrorCode, apiErrorStatus } from '@/shared/api/apiErrorDetails'
@@ -30,6 +28,7 @@ import {
   completedText,
   formatMoment,
 } from '../utils/selfDisclosureMessages'
+import LoadError from '@/shared/ui/states/LoadError'
 import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** How often the page asks for the status while a download it started may still run. */
@@ -316,17 +315,11 @@ export default function MyDataSection() {
       </Typography>
 
       {loadError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Der Stand der Selbstauskunft konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       )}
 
       {disabled ? (

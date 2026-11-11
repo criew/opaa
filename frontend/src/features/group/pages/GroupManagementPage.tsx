@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
@@ -23,7 +22,6 @@ import { contentWidth } from '@/shared/theme/tokens'
  * Entscheidungen 2, 4 and 9).
  */
 export default function GroupManagementPage() {
-  const error = useGroupAdminListStore((s) => s.error)
   const loadGroups = useGroupAdminListStore((s) => s.loadGroups)
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<GroupListResponse | null>(null)
@@ -51,28 +49,23 @@ export default function GroupManagementPage() {
           action={<CreateButton onClick={() => setCreateOpen(true)}>Gruppe anlegen</CreateButton>}
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         {/* As with the accounts: flush with the table, a hint - here a waiting directory plan. */}
         <Box sx={{ minWidth: 0, mb: 1.5, '&:empty': { display: 'none' } }}>
           <PendingPlanHint />
         </Box>
         <GroupFilterBar />
-        {/* After a loading error only the message is shown - an empty list below it would look like
-           a filter without matches. */}
-        {!error && (
-          <GroupList
-            onEdit={setEditing}
-            onMembers={setMembers}
-            onTransfer={setTransfer}
-            onDeleted={() => void loadGroups()}
-            onChanged={() => void loadGroups()}
-          />
-        )}
+        <GroupList
+          onEdit={setEditing}
+          onMembers={setMembers}
+          onTransfer={setTransfer}
+          onDeleted={() => void loadGroups()}
+          onChanged={() => void loadGroups()}
+          createAction={
+            <CreateButton placement="empty" onClick={() => setCreateOpen(true)}>
+              Gruppe anlegen
+            </CreateButton>
+          }
+        />
 
         <GroupEditDialog group={editing} onClose={() => closeAndReload(() => setEditing(null))} />
         <GroupMembersDialog
