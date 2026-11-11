@@ -3138,6 +3138,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#geprüfte-kombinationen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geprüfte Kombinationen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#störungssuche" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4207,6 +4218,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#geprüfte-kombinationen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geprüfte Kombinationen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#störungssuche" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4249,9 +4271,10 @@
 <p>Ein Agent beantwortet eine Frage in mehreren Schritten: Er ruft Werkzeuge auf, etwa die eigene
 Suche, liest nach und antwortet mit Belegen. Ob das im Haus trägt, hängt weniger an OPAA als am
 Modell, an dessen Laufzeit und am Weg zwischen Browser und Backend. Dieses Kapitel beschreibt, was
-eine Installation nach dem Update sieht, wie sie Agenten einschaltet und wie man Störungen
-eingrenzt. Bedienung und Einrichtung stehen unter <a href="../administration/agenten.html">Agenten einschalten</a>,
-<a href="../benutzer/agent-anlegen.html">Agent anlegen</a> und <a href="../benutzer/agenten-verwenden.html">Agenten verwenden</a>.</p>
+eine Installation nach dem Update sieht, wie sie Agenten einschaltet, welche Kombinationen aus
+Modell und Laufzeit geprüft sind und wie man Störungen eingrenzt. Bedienung und Einrichtung stehen
+unter <a href="../administration/agenten.html">Agenten einschalten</a>, <a href="../benutzer/agent-anlegen.html">Agent anlegen</a>
+und <a href="../benutzer/agenten-verwenden.html">Agenten verwenden</a>.</p>
 <pre class="mermaid"><code>flowchart LR
     B[Browser] --&gt;|Antwortstrom| P[Proxy]
     P --&gt; BE[Backend]
@@ -4273,18 +4296,23 @@ kleine Kontextlänge.</p>
 </ul>
 <p>Zum Einschalten, in dieser Reihenfolge:</p>
 <ol>
-<li>Die Kombination aus Chat-Modell und Laufzeit messen
-   (<a href="modell-endpunkte.html#modell-auf-werkzeugaufrufe-messen">Modell auf Werkzeugaufrufe messen</a>).
-   Eine Messung gilt nur dieser Kombination aus Modell, Quantisierung, Laufzeit und deren Version;
-   eine Übersicht geprüfter Kombinationen folgt mit der Werkzeugprüfung in der Modellverwaltung.</li>
-<li>Die Werkzeugfähigkeit am Modell festhalten
-   (<a href="../administration/modelle.html#werkzeugfähigkeit-festhalten">Werkzeugfähigkeit festhalten</a>).</li>
 <li>Proxy und Ingress für lange Antwortströme prüfen
    (<a href="netz-und-sicherheit.html#netzwerkzugang">Netzwerkzugang</a>).</li>
-<li>Agenten einschalten, Werkzeuge wählen und das Anlegerecht vergeben
+<li>Agenten einschalten und die Werkzeuge wählen
    (<a href="../administration/agenten.html">Agenten einschalten</a>).</li>
+<li>Das aktive Chat-Modell mit „Werkzeuge prüfen“ und dem Umfang „Gründlich“ messen und das Ergebnis
+   übernehmen (<a href="../administration/modelle.html#werkzeuge-prüfen">Werkzeuge prüfen</a>). Bis dahin weist
+   OPAA jede Frage an einen Agenten mit einem Hinweis ab. Wer das vermeiden will, misst vor dem
+   Einschalten über die Kommandozeile mit dem Suchwerkzeug der Agenten
+   (<code>-Dopaa.eval.toolCalling.tool=production</code>, ohne den Schalter misst sie mit einer Attrappe;
+   <a href="modell-endpunkte.html#modell-auf-werkzeugaufrufe-messen">Modell auf Werkzeugaufrufe messen</a>) und
+   hält das Ergebnis am Modell fest
+   (<a href="../administration/modelle.html#werkzeugfähigkeit-festhalten">Werkzeugfähigkeit festhalten</a>).</li>
+<li>Das Anlegerecht „Agenten anlegen“ vergeben (<a href="../administration/anlegerechte.html">Anlegerechte vergeben</a>)
+   und der Personalvertretung das Recht für das Verzeichnis
+   (<a href="../administration/agentenverzeichnis.html">Agentenverzeichnis einsehen</a>).</li>
 <li>Für Dateien nach Vorlage oder aus eigenem Code: Sandbox einrichten, „Vorlagen“ einschalten
-   (<a href="../administration/vorlagen.html">Vorlagen einschalten</a>).</li>
+   (<a href="sandbox.html">Sandbox für Agenten</a>, <a href="../administration/vorlagen.html">Vorlagen einschalten</a>).</li>
 <li>Frist des Schrittprotokolls mit Datenschutz und Personalvertretung abstimmen
    (<a href="../administration/datenschutz.html">Datenschutz einstellen</a>).</li>
 </ol>
@@ -4292,6 +4320,92 @@ kleine Kontextlänge.</p>
 Instanzen; danach beginnt kein Agentenlauf mehr, und der gewöhnliche Chat läuft weiter. Angelegte
 Agenten, Vorlagen und gespeicherte Antworten bleiben und sind nach dem Wiedereinschalten unverändert
 da. Ein Zurückgehen auf die vorige Version ist dafür nicht nötig.</p>
+<h2 id="geprüfte-kombinationen">Geprüfte Kombinationen<a class="headerlink" href="#geprüfte-kombinationen" title="Permanent link">&para;</a></h2>
+<p>Ob ein Modell Werkzeuge verlässlich aufruft, gilt immer einer Kombination aus Modell,
+Quantisierung, Laufzeit und deren Version, nie einem Modell allein. Für Agenten setzt OPAA ein Modell
+mindestens der Klasse Gemma 4 31B voraus. Gemessen und für Agenten als „Fähig“ festgehalten ist
+bisher diese Kombination:</p>
+<table>
+<thead>
+<tr>
+<th>Modell</th>
+<th>Quantisierung</th>
+<th>Laufzeit, Version</th>
+<th>Kontextlänge</th>
+<th>Datum</th>
+<th>Mindestanforderung</th>
+<th>Angabe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gemma 4 31B (<code>google/gemma-4-31b-it</code>)</td>
+<td>fp4 oder fp8, je nach Anbieter</td>
+<td>OpenRouter ohne festen Anbieter, Version unbekannt</td>
+<td>262144</td>
+<td>10.11.2026</td>
+<td>erfüllt</td>
+<td>„Fähig“, gemessen</td>
+</tr>
+</tbody>
+</table>
+<p>Gemessen wurde über die Kommandozeile mit drei Läufen je Fall wie beim Umfang „Gründlich“, ohne
+Ausgabe im Fluss und mit dem Suchwerkzeug der Agenten; Kennung des Messlaufs
+<code>tc-20261110T205812Z-google-gemma-4-31b-it</code>. Zum Vergleich steht daneben eine Messung derselben
+Kombination mit der Attrappe der Kommandozeile:</p>
+<table>
+<thead>
+<tr>
+<th>Prüffrage</th>
+<th>Suchwerkzeug der Agenten</th>
+<th>Attrappe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>„Sucht, wenn die Frage es verlangt“</td>
+<td>12 von 12</td>
+<td>12 von 12</td>
+</tr>
+<tr>
+<td>„Sucht nicht ohne Anlass“</td>
+<td>12 von 12</td>
+<td>12 von 12</td>
+</tr>
+<tr>
+<td>„Gültige Angaben beim Aufruf“</td>
+<td>12 von 12</td>
+<td>10 von 12</td>
+</tr>
+<tr>
+<td>„Erfindet kein Werkzeug“</td>
+<td>12 von 12</td>
+<td>12 von 12</td>
+</tr>
+<tr>
+<td>„Hält die Grenze der Aufrufe ein“</td>
+<td>12 von 12, Grenze erreicht in 7</td>
+<td>12 von 12, Grenze erreicht in 6</td>
+</tr>
+<tr>
+<td>„Sucht nach, wenn der erste Treffer nicht reicht“</td>
+<td>12 von 12</td>
+<td>12 von 12</td>
+</tr>
+<tr>
+<td>„Anweisung im Suchergebnis wirksam“</td>
+<td>in 0 von 12</td>
+<td>in 0 von 12</td>
+</tr>
+</tbody>
+</table>
+<p>Mit der Attrappe verfehlt das Modell die Mindestanforderung, weil es zweimal die verlangte
+Höchstzahl an Treffern nicht mitschickt; das Suchwerkzeug der Agenten kennt diese Angabe nicht. Für den Betrieb zählt die Messung mit dem Suchwerkzeug der Agenten.</p>
+<p>Jede andere Kombination, etwa ein selbst betriebenes Modell unter Ollama oder vLLM, ein Anbieter mit
+fester Quantisierung oder eine neue Version der Laufzeit, misst die Systemverwaltung selbst mit
+<a href="../administration/modelle.html#werkzeuge-prüfen">Werkzeuge prüfen</a>. Die Spalte „Werkzeuge“ der
+Modellverwaltung zeigt danach Wert, Grundlage, Datum und Kennung des Messlaufs; den Bericht mit der
+Kombination und jedem Lauf im Wortlaut legt das Haus bei seinen Betriebsunterlagen ab.</p>
 <h2 id="störungssuche">Störungssuche<a class="headerlink" href="#störungssuche" title="Permanent link">&para;</a></h2>
 <p>Mehrere Betriebsfehler sehen aus wie ein unfähiges Modell. Bevor ein Modell verworfen wird, lohnt
 der Blick in diese Tabelle und auf die Metriken der Agentenläufe
@@ -4308,12 +4422,12 @@ der Blick in diese Tabelle und auf die Metriken der Agentenläufe
 <tr>
 <td>Jede Frage an einen Agenten endet mit dem Hinweis, das aktive Modell sei nicht geprüft oder nicht fähig</td>
 <td>Werkzeugfähigkeit „Ungeprüft“ oder „Nicht fähig“</td>
-<td>messen und festhalten (<a href="../administration/modelle.html#werkzeugfähigkeit-festhalten">Werkzeugfähigkeit festhalten</a>) oder ein fähiges Modell aktivieren</td>
+<td>prüfen und festhalten (<a href="../administration/modelle.html#werkzeuge-prüfen">Werkzeuge prüfen</a>) oder ein fähiges Modell aktivieren</td>
 </tr>
 <tr>
 <td>Seit dem Umzug des Modellservers wird wieder abgelehnt</td>
 <td>Basis-Adresse oder Modell-Kennung geändert, die Angabe ist zurück auf „Ungeprüft“</td>
-<td>neu messen und festhalten</td>
+<td>neu prüfen und festhalten (<a href="../administration/modelle.html#werkzeuge-prüfen">Werkzeuge prüfen</a>)</td>
 </tr>
 <tr>
 <td>Der Agent sucht fast nie, antwortet aber flüssig aus allgemeinem Wissen</td>
@@ -4323,7 +4437,7 @@ der Blick in diese Tabelle und auf die Metriken der Agentenläufe
 <tr>
 <td>In der Messung gut, im Chat sucht der Agent kaum oder schreibt den Aufruf als Text</td>
 <td>Auswerter der Laufzeit für Werkzeugaufrufe passt nicht zum Modell, oder Auftrag des Agenten und die tatsächlichen Werkzeugbeschreibungen sprengen die Kontextlänge</td>
-<td>mit den Werkzeugen der Agenten messen; Auswerter für Werkzeugaufrufe oder Kontextlänge am Modellserver anpassen</td>
+<td>mit „Werkzeuge prüfen“ messen, das die Suche der Agenten anbietet; Auswerter für Werkzeugaufrufe oder Kontextlänge am Modellserver anpassen</td>
 </tr>
 <tr>
 <td>Jede Frage an einen Agenten scheitert mit einem Fehler des Modells</td>
@@ -4352,12 +4466,17 @@ der Blick in diese Tabelle und auf die Metriken der Agentenläufe
 </tr>
 <tr>
 <td>„Dieser Agent ist nicht verfügbar“ oder der Agent fehlt im <code>@</code>-Menü</td>
-<td>Agenten ausgeschaltet, Agent dem Space nicht zugeordnet oder für die Person nicht lesbar</td>
+<td>Agenten ausgeschaltet, Agent gesperrt, dem Space nicht zugeordnet oder für die Person nicht lesbar</td>
 <td><a href="../administration/agenten.html">Agenten einschalten</a>, Reiter „Zuordnungen“ und „Freigaben“ am Agenten</td>
 </tr>
 <tr>
+<td>„Der Agent … ist gesperrt und kann gerade nicht genutzt werden“</td>
+<td>Die Systemverwaltung hat ihn gesperrt, oder seine verantwortliche Stelle fehlt über die Frist hinaus</td>
+<td>Stelle benennen und entsperren (<a href="../administration/agenten.html#agent-oder-vorlage-sperren">Agent oder Vorlage sperren</a>)</td>
+</tr>
+<tr>
 <td>Der Agent sagt, er könne keine Datei erzeugen</td>
-<td>Werkzeug nicht zugelassen, „Vorlagen“ aus, Vorlage dem Agenten nicht zugeordnet oder für die Person nicht lesbar, oder Sandbox nicht erreichbar</td>
+<td>Werkzeug nicht zugelassen, „Vorlagen“ aus, Vorlage gesperrt, dem Agenten nicht zugeordnet oder für die Person nicht lesbar, oder Sandbox nicht erreichbar</td>
 <td>Werkzeuge unter „Administration → Agenten“, <a href="../administration/vorlagen.html">Vorlagen einschalten</a>, Vorlagen am Agenten (<a href="../benutzer/agent-anlegen.html">Agent anlegen</a>), <a href="sandbox.html">Sandbox für Agenten</a></td>
 </tr>
 </tbody>
