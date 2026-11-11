@@ -8,7 +8,7 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 
 | Aufgabe | Seite |
 |---|---|
-| Spaces, Chat und Katalog kennenlernen | [Erste Schritte](erste-schritte.md) |
+| Spaces, Chat und Katalog kennenlernen, Rundgang machen | [Erste Schritte](erste-schritte.md) |
 | Frage stellen, Suchbereich wählen | [Fragen stellen](fragen-stellen.md) |
 | Prüfen, worauf eine Antwort sich stützt | [Belege prüfen](belege-pruefen.md) |
 | Fassungsstempel und Entwurf einer Agentenantwort lesen | [Agentenergebnis prüfen](agentenergebnis-pruefen.md) |
