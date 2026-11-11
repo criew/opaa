@@ -19,6 +19,7 @@ import type { ChatAttachmentRef } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
 import { useChatAttachmentDraft } from '../hooks/useChatAttachmentDraft'
@@ -505,6 +506,7 @@ export default function ChatInput({
 
       <Box
         ref={setInputBoxEl}
+        {...tourAnchor('chat-input')}
         sx={(theme) => ({
           display: 'flex',
           alignItems: 'flex-end',
@@ -534,6 +536,7 @@ export default function ChatInput({
           <DictationField dictation={dictation} draft={value} />
         ) : (
           <TextField
+            {...(actions.enabled ? tourAnchor('prompts') : {})}
             ref={setFieldEl}
             fullWidth
             multiline
@@ -595,6 +598,7 @@ export default function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
               aria-label="Dateien anhängen"
+              {...tourAnchor('attach')}
               sx={{ alignSelf: 'flex-end', p: 1, color: 'text.secondary' }}
             >
               <AttachFileIcon sx={{ fontSize: iconSize.md }} />

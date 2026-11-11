@@ -14,6 +14,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -21,9 +22,12 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
 import { handbookUrl } from './handbookLink'
+import { useStartQuickTour } from './tour/quickTourActions'
 import BrandMark from '@/shared/ui/BrandMark'
 import { NotificationBell } from '@/features/notification'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import { tourAnchor, type TourAnchorName } from '@/shared/ui/a11y/tourAnchor'
 import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { userInitial } from '@/shared/utils/userInitial'
@@ -43,6 +47,8 @@ interface RailDestination {
   /** Route prefixes on which this entry counts as the active scope. */
   activePrefixes: string[]
   icon: typeof ChatBubbleOutlineIcon
+  /** The element of a quick-tour station, if the tour explains this entry. */
+  tourAnchor?: TourAnchorName
 }
 
 /**
@@ -60,6 +66,8 @@ export default function GlobalRail() {
   const branding = useBrandingStore((s) => s.branding)
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const quickTour = useFeatureEnabled('quickTour')
+  const startQuickTour = useStartQuickTour()
   const agentsOn = useRuntimeSwitchStore((s) => s.agents)
   const { capabilities } = useMyCapabilities()
   // The administration reaches the directory from its own navigation; whoever else holds the
@@ -95,6 +103,7 @@ export default function GlobalRail() {
       to: CATALOG_ROUTE,
       activePrefixes: catalogScopePrefixes(),
       icon: LibraryBooksOutlinedIcon,
+      tourAnchor: 'catalog',
     },
     ...(user?.systemRole === 'SYSTEM_ADMIN'
       ? [
@@ -103,6 +112,7 @@ export default function GlobalRail() {
             to: '/admin/users',
             activePrefixes: ['/admin', '/agent-directory'],
             icon: SettingsOutlinedIcon,
+            tourAnchor: 'admin' as const,
           },
         ]
       : []),
@@ -168,6 +178,7 @@ export default function GlobalRail() {
               key={destination.to}
               component={RouterLink}
               to={destination.to}
+              {...(destination.tourAnchor ? tourAnchor(destination.tourAnchor) : {})}
               aria-current={
                 active ? (location.pathname === destination.to ? 'page' : 'true') : undefined
               }
@@ -208,12 +219,15 @@ export default function GlobalRail() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Handbuch zu dieser Ansicht (öffnet in neuem Fenster)"
+            {...tourAnchor('handbook')}
           >
             <HelpOutlineIcon />
           </IconButton>
         </Tooltip>
 
-        <NotificationBell />
+        <Box {...tourAnchor('notifications')}>
+          <NotificationBell />
+        </Box>
 
         {user && (
           <>
@@ -222,6 +236,7 @@ export default function GlobalRail() {
               aria-haspopup="menu"
               aria-expanded={userMenuAnchor ? 'true' : undefined}
               aria-label="Profil und Einstellungen"
+              {...tourAnchor('profile')}
               sx={{ mt: 0.75, borderRadius: '50%' }}
             >
               <Avatar
@@ -258,6 +273,19 @@ export default function GlobalRail() {
                   </ListItemIcon>
                   Einstellungen
                 </MenuItem>
+                {quickTour && (
+                  <MenuItem
+                    onClick={() => {
+                      closeUserMenu()
+                      startQuickTour()
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ExploreOutlinedIcon fontSize="small" />
+                    </ListItemIcon>
+                    Rundgang starten
+                  </MenuItem>
+                )}
                 {/* Product name, version and the demo hint are shown here instead of permanently
                    under every page. */}
                 <MenuItem

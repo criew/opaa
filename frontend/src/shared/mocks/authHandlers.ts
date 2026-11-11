@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw'
-import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
+import {
+  mockAuthConfig,
+  mockLocalAccount,
+  mockLocalTokenResponse,
+  mockQuickTourHintDone,
+  mockUser,
+} from './authFixtures'
 import { isMockInstallationPending } from '@/features/installation/mocks/installationFixtures'
 import { currentMockProfile, mockProfileUser } from './mockProfile'
 
@@ -126,9 +132,9 @@ export const authHandlers = [
   // regular fixture user, so the way from the sign-in page into the app can be walked.
   http.get('/api/v1/auth/me', ({ request }) => {
     const user = mockProfileUser(currentMockProfile(), mockUser)
-    if (user) return HttpResponse.json(user)
+    if (user) return HttpResponse.json({ ...user, quickTourHintDone: mockQuickTourHintDone })
     return request.headers.has('Authorization')
-      ? HttpResponse.json(mockUser)
+      ? HttpResponse.json({ ...mockUser, quickTourHintDone: mockQuickTourHintDone })
       : new HttpResponse(null, { status: 401 })
   }),
 ]

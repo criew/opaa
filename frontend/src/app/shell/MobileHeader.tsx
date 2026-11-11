@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import MenuIcon from '@mui/icons-material/Menu'
 import BrandMark from '@/shared/ui/BrandMark'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 import { NotificationBell } from '@/features/notification'
 import { useUiStore } from '@/shared/stores/uiStore'
 
@@ -27,14 +28,22 @@ export default function MobileHeader() {
       }}
     >
       <Toolbar>
-        <IconButton edge="start" color="inherit" aria-label="Menü öffnen" onClick={toggleSidebar}>
+        <IconButton
+          edge="start"
+          color="inherit"
+          aria-label="Menü öffnen"
+          onClick={toggleSidebar}
+          {...tourAnchor('menu')}
+        >
           <MenuIcon />
         </IconButton>
         <Box sx={{ ml: 1 }}>
           <BrandMark logoHeight={24} />
         </Box>
         <Box sx={{ flexGrow: 1 }} />
-        <NotificationBell />
+        <Box {...tourAnchor('notifications')}>
+          <NotificationBell />
+        </Box>
       </Toolbar>
     </AppBar>
   )

@@ -55,7 +55,7 @@ import { resetDocumentTemplateMockState } from '@/features/document-template/moc
 import { resetMalwareScanMockState } from '@/features/malware-scan/mocks/malwareScanHandlers'
 import { resetRetentionMockState } from '@/features/compliance/mocks/retentionHandlers'
 // auth
-import { resetMockAuthConfig } from '@/shared/mocks/authFixtures'
+import { resetMockAuthConfig, resetMockQuickTourHint } from '@/shared/mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
 // installation
 import { resetMockInstallation } from '@/features/installation/mocks/installationFixtures'
@@ -112,6 +112,7 @@ afterEach(() => {
   // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
   // management on must not leave it on for the next one.
   resetMockAuthConfig()
+  resetMockQuickTourHint()
   // A self-service link is single-use in the mock, as it is in the backend - a link one test
   // redeemed would read as invalid in the next.
   resetMockSelfServiceTokens()

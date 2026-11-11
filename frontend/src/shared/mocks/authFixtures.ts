@@ -84,3 +84,17 @@ export const mockUser: AuthUser = {
   displayName: 'Admin',
   systemRole: 'SYSTEM_ADMIN',
 }
+
+/**
+ * The quick tour's marker as the mocked GET /api/v1/auth/me reports it: `false` (hint shown) like a
+ * fresh account, `undefined` like an older backend without the field.
+ */
+export let mockQuickTourHintDone: boolean | undefined = false
+
+export function setMockQuickTourHintDone(done: boolean | undefined) {
+  mockQuickTourHintDone = done
+}
+
+export function resetMockQuickTourHint() {
+  mockQuickTourHintDone = false
+}

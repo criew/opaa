@@ -33,6 +33,7 @@ import { fontSize, iconSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -572,6 +573,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
               <IconButton
                 size="small"
                 aria-label="Neuer Chat"
+                {...tourAnchor('new-chat')}
                 onClick={handleNewChat}
                 disabled={Boolean(isArchived)}
                 sx={{ p: 0.5, borderRadius: '4px' }}

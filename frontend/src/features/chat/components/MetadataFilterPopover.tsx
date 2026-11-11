@@ -25,6 +25,7 @@ import {
 import { fillLevelText, notOfferedText } from './metadataFilterText'
 import { fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 interface MetadataFilterPopoverProps {
   /** The scope the next question would search - the options are loaded for exactly this scope. */
@@ -226,6 +227,7 @@ export default function MetadataFilterPopover({
         aria-controls={open ? popoverId : undefined}
         // Contains the visible "Filter" word for word (WCAG 2.5.3).
         aria-label="Filter für Metadaten setzen"
+        {...tourAnchor('filter')}
         sx={{ textTransform: 'none', fontSize: fontSize.meta, py: 0.25 }}
       >
         Filter

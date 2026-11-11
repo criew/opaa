@@ -18,6 +18,7 @@ import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { SpaceListContext } from '@/features/asset'
 import { loadSpaceList } from './themeSeams'
 import PageLoading from './PageLoading'
+import QuickTour from './tour/QuickTour'
 
 export default function AppShell() {
   const theme = useTheme()
@@ -144,6 +145,7 @@ export default function AppShell() {
 
       <NotificationHost />
       <ConfirmHost />
+      <QuickTour />
     </Box>
   )
 }

@@ -9,6 +9,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import type { ChatDictation } from './useChatDictation'
 import { iconSize } from '@/shared/theme/tokens'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 interface DictationControlProps {
   dictation: ChatDictation
@@ -70,7 +71,7 @@ export default function DictationControl({ dictation, disabled = false }: Dictat
       )}
       {(status === 'idle' || status === 'starting') && (
         <Tooltip title="Spracheingabe">
-          <Box component="span" sx={{ alignSelf: 'flex-end' }}>
+          <Box component="span" {...tourAnchor('dictate')} sx={{ alignSelf: 'flex-end' }}>
             <IconButton
               onClick={() => void dictation.start()}
               disabled={disabled || status === 'starting'}

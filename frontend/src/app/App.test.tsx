@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 import { useAuthStore } from '@/shared/session/authStore'
-import { setMockFeatures } from '@/shared/mocks/authFixtures'
+import { setMockFeatures, setMockQuickTourHintDone } from '@/shared/mocks/authFixtures'
 
 /** Pages load on demand; the first load of a theme transforms its whole chunk. */
 const PAGE_LOAD = { timeout: 8000 }
@@ -29,6 +29,8 @@ describe('App', () => {
   })
 
   it('redirects to an empty chat in the default space by default', async () => {
+    // The modal hint of the quick tour would hide the page behind it; it is tested on its own.
+    setMockQuickTourHintDone(true)
     render(<App />)
     expect(
       await screen.findByPlaceholderText(/^Nachricht eingeben …/, {}, PAGE_LOAD),

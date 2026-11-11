@@ -59,6 +59,8 @@ describe('authStore', () => {
       email: 'admin@opaa.local',
       displayName: 'Admin',
       systemRole: 'SYSTEM_ADMIN',
+      // The quick tour's hint reads the marker from the user the store keeps.
+      quickTourHintDone: false,
     })
   })
 

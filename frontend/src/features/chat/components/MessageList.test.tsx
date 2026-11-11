@@ -19,6 +19,22 @@ describe('MessageList', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the hint the application frame passes in below the greeting of an empty chat', () => {
+    const { rerender } = render(
+      <MessageList messages={[]} isLoading={false} emptyStateHint={<p>Neu hier?</p>} />,
+    )
+    expect(screen.getByText('Neu hier?')).toBeInTheDocument()
+
+    rerender(
+      <MessageList
+        messages={[{ id: '1', role: 'user', content: 'Hallo', timestamp: new Date() }]}
+        isLoading={false}
+        emptyStateHint={<p>Neu hier?</p>}
+      />,
+    )
+    expect(screen.queryByText('Neu hier?')).not.toBeInTheDocument()
+  })
+
   it('renders messages', () => {
     const messages: ChatMessage[] = [
       { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },

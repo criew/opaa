@@ -28,6 +28,7 @@ const SESSION_STORES = [
   'useNotificationStore',
   'useOidcProviderStore',
   'usePromptLibraryStore',
+  'useQuickTourStore',
   'useSearchAdminStore',
   'useSpaceStore',
   'useUserAdminStore',

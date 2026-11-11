@@ -35,6 +35,8 @@ interface MessageListProps {
   streamingRun?: LiveAgentRun | null
   /** Shown right under the latest message, e.g. the answers to an agent's plan. */
   afterMessages?: ReactNode
+  /** Shown below the greeting of an empty chat; the application frame decides what. */
+  emptyStateHint?: ReactNode
 }
 
 export const THINKING_STATUS = 'Denkt nach …'
@@ -81,6 +83,7 @@ export default function MessageList({
   isLoading,
   targetMessageId,
   streamingAnswer = null,
+  emptyStateHint,
   streamingRun = null,
   afterMessages = null,
 }: MessageListProps) {
@@ -172,6 +175,7 @@ export default function MessageList({
           Womit kann ich Ihnen heute helfen?
         </Typography>
         <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+        {emptyStateHint}
         <AiNotice variant="prominent" />
         {liveRegion}
       </Box>

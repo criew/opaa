@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import type { MetadataFilter, MetadataFilterOptionsResponse } from '@/shared/api/types'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 import type { SearchScope } from '../stores/chatSettingsPersistence'
 import type { MetadataFilterScope } from '../stores/metadataFilterOptionsStore'
 import MetadataFilterPopover from './MetadataFilterPopover'
@@ -113,6 +114,7 @@ export default function ChatScopeChipBar({
         <Chip
           icon={<AllInclusiveIcon />}
           label="@Space-Wissen"
+          {...tourAnchor('space-knowledge')}
           size="small"
           color="primary"
           onDelete={scopeLocked ? undefined : onClearScope}
@@ -122,11 +124,14 @@ export default function ChatScopeChipBar({
         />
       )}
       {scope === 'libraries' &&
-        libraryChips.map((chip) => {
+        libraryChips.map((chip, position) => {
+          // The quick tour explains the scope at its first chip, whichever form the scope has.
+          const anchor = position === 0 ? tourAnchor('space-knowledge') : {}
           if (chip.kind === 'known') {
             return (
               <Chip
                 key={chip.libraryId}
+                {...anchor}
                 label={chip.library.name}
                 size="small"
                 variant="filled"
@@ -140,6 +145,7 @@ export default function ChatScopeChipBar({
             return (
               <Chip
                 key={chip.libraryId}
+                {...anchor}
                 label={<LoadingState shape="inline" />}
                 size="small"
                 variant="outlined"
@@ -150,6 +156,7 @@ export default function ChatScopeChipBar({
           return (
             <Chip
               key={chip.libraryId}
+              {...anchor}
               label="Nicht verfügbare Bibliothek"
               size="small"
               variant="outlined"
@@ -168,6 +175,7 @@ export default function ChatScopeChipBar({
           <Chip
             icon={<AllInclusiveIcon />}
             label="@Space-Wissen nutzen"
+            {...tourAnchor('space-knowledge')}
             size="small"
             variant="outlined"
             onClick={scopeLocked ? undefined : onSetScopeAll}

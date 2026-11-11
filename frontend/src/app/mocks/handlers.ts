@@ -76,6 +76,7 @@ import { retentionHandlers } from '@/features/compliance/mocks/retentionHandlers
 // auth
 import { authHandlers } from '@/shared/mocks/authHandlers'
 import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
+import { quickTourHintHandlers } from '@/features/auth/mocks/quickTourHintHandlers'
 // installation
 import { installationHandlers } from '@/features/installation/mocks/installationHandlers'
 // app
@@ -168,6 +169,7 @@ const topicHandlers = [
   // auth
   ...authHandlers,
   ...localAuthHandlers,
+  ...quickTourHintHandlers,
   // installation
   ...installationHandlers,
   // app

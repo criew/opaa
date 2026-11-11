@@ -233,6 +233,8 @@ describe('createAppTheme', () => {
 
     expect(backdrop['&:not(.MuiBackdrop-invisible)'].backgroundColor).toBe(scrim)
     expect(backdrop['&:not(.MuiBackdrop-invisible)'].backdropFilter).toBe('blur(2px)')
+    // One role for every scrim: a layer without a backdrop (the quick tour) reads the same value.
+    expect(theme.palette.background.scrim).toBe(scrim)
   })
 
   test('dark scheme maps the neutral carbon roles onto the MUI palette (#654)', () => {

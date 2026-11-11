@@ -3,6 +3,7 @@ import Typography from '@mui/material/Typography'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { fontSize, iconSize, readingWidth } from '@/shared/theme/tokens'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 /** The accessible name of the notice region; screen readers announce it before the text. */
 const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
@@ -24,6 +25,7 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         role="note"
         aria-label={NOTICE_NAME}
         data-testid="ai-notice-line"
+        {...tourAnchor('ai-notice')}
         // the full text stays in the DOM (screen readers, title); the line itself shows two rows
         title={notice}
         sx={{
@@ -45,6 +47,7 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
       role="note"
       aria-label={NOTICE_NAME}
       data-testid="ai-notice"
+      {...tourAnchor('ai-notice')}
       sx={{
         display: 'flex',
         alignItems: 'flex-start',
