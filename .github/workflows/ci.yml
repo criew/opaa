@@ -62,6 +62,7 @@ jobs:
       compose: ${{ steps.filter.outputs.compose }}
       gradleVerification: ${{ steps.filter.outputs.gradleVerification }}
       ratchets: ${{ steps.filter.outputs.ratchets }}
+      installationE2e: ${{ steps.filter.outputs.installationE2e }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -268,6 +269,13 @@ jobs:
             gradleVerification:
               - 'backend/gradle/verification-metadata.xml'
               - '.github/scripts/check_gradle_verification_metadata.py'
+            # Filter of the E2E coverage guard of the set-up assistant in the `changes` job.
+            installationE2e:
+              - 'backend/src/main/java/io/opaa/installation/InstallationStep.java'
+              - 'frontend/src/features/installation/utils/steps.ts'
+              - 'frontend/src/shared/ui/setup/setupNames.ts'
+              - 'e2e/tests/installation-assistant.spec.ts'
+              - '.github/scripts/check_installation_e2e_coverage.sh'
             # Filter of the ratchets in the `changes` job.
             ratchets:
               - 'backend/src/main/**'
@@ -422,6 +430,12 @@ jobs:
       - name: Sichere Vorgaben der Compose-Vorlagen prüfen
         if: github.event_name != 'pull_request' || needs.paths.outputs.compose == 'true'
         run: .github/scripts/check_compose_defaults.sh
+
+      # Every step of the set-up assistant is walked through by its E2E scenario, which runs only
+      # nightly: a new step without it fails here, on the pull request that adds it.
+      - name: E2E-Abdeckung des Einrichtungs-Assistenten prüfen
+        if: github.event_name != 'pull_request' || needs.paths.outputs.installationE2e == 'true'
+        run: .github/scripts/check_installation_e2e_coverage.sh
 
       # Counted stock that must not grow: Instant.now() in Spring beans, @Value outside *Properties
       # classes (ADR-0051, Entscheidung 6). The limits sit in the scripts and only ever go down.

@@ -7,17 +7,18 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  * The set-up assistant against a stack in installation mode (ADR-0060), the target "installation"
  * of scripts/run-e2e.mjs: operating mode oidc without answer file, the token preset through
  * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub:8089 on
- * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
- * Every scenario of this file needs a fresh database, as completing ends the installation mode for
- * good: the runner starts one stack per tag (@mail-skipped, @mail-filled). The @mail-skipped scenario
- * also skips the optional model steps, the rerank and the transcription model included, the malware
- * scan (the stack runs no clamd) and the branding, signs in with the first account under the OPAA standard, meets the notices of the chat
- * and sets the first chat and embedding model in the model administration (ADR-0061, Entscheidung
- * 8); the @mail-filled one checks chat and embedding model in the assistant, chooses the rerank
- * model from the list of ai-stub's rerank endpoint (RERANK_URL) and the transcription model from
- * the list below TRANSCRIPTION_URL, finds both switched on in the model administration and fills
- * the branding, whose product name and accent colour then show on the sign-in page and in the
- * interface.
+ * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST,
+ * oidc-stub as identity provider, ocr-stub as text recognition service and clamd-stub as virus
+ * scanner (e2e/docker-compose.installation.yml). Every scenario of this file needs a fresh
+ * database, as completing ends the installation mode for good: the runner starts one stack per tag
+ * (@mail-skipped, @mail-filled). The @mail-skipped scenario keeps local accounts only, skips every
+ * optional step, signs in with the first account under the OPAA standard, meets the notices of the
+ * chat and sets the first chat and embedding model in the model administration (ADR-0061,
+ * Entscheidung 8); the @mail-filled one adds oidc-stub as provider, fills and checks every optional
+ * step and finds each switched on after the completion: the provider on the sign-in page, rerank,
+ * transcription and text recognition in the model administration, the scanner under Virenprüfung,
+ * product name and accent colour on the sign-in page and in the interface.
+ * .github/scripts/check_installation_e2e_coverage.sh fails while a step is missing here.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
@@ -27,6 +28,18 @@ const RERANK_MODEL = 'stub-reranker'
 /** The stub lists its speech model only below this path. */
 const TRANSCRIPTION_URL = 'http://ai-stub:8089/transcription'
 const TRANSCRIPTION_MODEL = 'ai-stub-whisper'
+/** ocr-stub under its service name: the backend checks it, never the browser. */
+const TEXT_RECOGNITION_URL = 'http://ocr-stub:5001'
+const OCR_API_KEY = process.env.E2E_OCR_API_KEY ?? ''
+/** clamd-stub under its service name, on the clamd port the assistant offers. */
+const CLAMD_HOST = 'clamd-stub'
+/**
+ * oidc-stub: the browser reads it under the issuer, the backend only the JWK set under the service
+ * name (e2e/docker-compose.installation.yml).
+ */
+const OIDC_ISSUER = 'http://localhost:18095'
+const OIDC_JWK_SET = 'http://oidc-stub:8095/jwks'
+const OIDC_PROVIDER_NAME = 'Landes-Login'
 const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 const TEST_RECIPIENT = 'it-betrieb@stadt.example'
@@ -37,8 +50,10 @@ const PRODUCT_NAME = 'Landesamt-Assistent'
 const ACCENT = '#7A3E9D'
 const ACCENT_RGB = 'rgb(122, 62, 157)'
 
-if (INSTALLATION_TOKEN === '') {
-  throw new Error('E2E_INSTALLATION_TOKEN is not set: run the target "installation" of run-e2e.mjs')
+if (INSTALLATION_TOKEN === '' || OCR_API_KEY === '') {
+  throw new Error(
+    'E2E_INSTALLATION_TOKEN or E2E_OCR_API_KEY is not set: run the target "installation" of run-e2e.mjs',
+  )
 }
 
 async function enterToken(page: Page, token: string) {
@@ -129,8 +144,8 @@ async function expectStepEdgesFlushAlsoNarrow(page: Page) {
 }
 
 /**
- * Both mandatory steps with local accounts only and chat and embedding model checked, up to the
- * rerank step.
+ * Both mandatory steps, local accounts and oidc-stub as provider, and chat and embedding model
+ * checked, up to the rerank step.
  */
 async function completeStepsUpToRerank(page: Page) {
   await page.goto('/installation')
@@ -142,6 +157,14 @@ async function completeStepsUpToRerank(page: Page) {
   await page.getByLabel('Passwort wiederholen', { exact: true }).fill(ADMIN_PASSWORD)
   await submitStep(page)
   await expect(stepHeading(page, 'Identitätsanbieter')).toBeVisible()
+  // The provider is checked by its JWK set; the backend cannot reach the issuer's loopback address
+  // and says so instead of failing.
+  await page.getByRole('radio', { name: /Lokale Konten und ein Identitätsanbieter/ }).check()
+  await page.getByLabel('Issuer-URI').fill(OIDC_ISSUER)
+  await page.getByLabel('Client-ID').fill('opaa')
+  await page.getByLabel('JWK-Set-Adresse').fill(OIDC_JWK_SET)
+  await page.getByLabel('Name auf der Anmeldeseite').fill(OIDC_PROVIDER_NAME)
+  await expectNoSeriousA11yViolations(page, 'Einrichtung: Identitätsanbieter mit Anbieter')
   await submitStep(page)
   await expect(stepHeading(page, 'Chat-Modell')).toBeVisible()
   await page.getByRole('radio', { name: /Eigene Adresse/ }).click()
@@ -241,7 +264,15 @@ test.describe('Einrichtungs-Assistent', () => {
       await expectStepEdgesFlushAlsoNarrow(page)
       await skipStep(page)
 
-      // The stack runs no clamd: the malware scan is skipped and stays off. The assistant takes
+      // The operation releases text recognition in this stack, so its step is offered and
+      // skipped; text recognition stays off.
+      await expect(stepHeading(page, 'Texterkennung')).toBeVisible()
+      await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Texterkennung')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await skipStep(page)
+
+      // The malware scan is skipped and stays off. The assistant takes
       // clamd's default port only and says where another one is entered.
       await expect(stepHeading(page, 'Virenprüfung')).toBeVisible()
       await expect(page.getByText('Optional · später unter Virenprüfung')).toBeVisible()
@@ -285,19 +316,20 @@ test.describe('Einrichtungs-Assistent', () => {
 
       // The skip goes through the API; the summary follows once it is recorded.
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
-      // Chat-Modell, Einbettung, Reranking, Spracheingabe, Virenprüfung, E-Mail and Branding.
+      // Every optional step stays not set up.
       for (const skipped of [
         'Chat-Modell',
         'Einbettung',
         'Reranking',
         'Spracheingabe',
+        'Texterkennung',
         'Virenprüfung',
         'E-Mail',
         'Branding',
       ]) {
         await expect(stepState(page, skipped)).toContainText('Nicht eingerichtet')
       }
-      await expect(stepStates(page).getByText('Nicht eingerichtet')).toHaveCount(7)
+      await expect(stepStates(page).getByText('Nicht eingerichtet')).toHaveCount(8)
       // Each row leads to its step, and the step list back to the summary.
       await stepState(page, 'E-Mail').getByRole('button', { name: 'E-Mail', exact: true }).click()
       await expect(stepHeading(page, 'E-Mail')).toBeVisible()
@@ -336,7 +368,11 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(page.getByText(/noch kein Chat-Modell aktiv/)).toBeVisible()
 
       // The first chat model, created and activated without a restart.
-      await page.getByRole('button', { name: 'Neues Modell' }).click()
+      // The empty state and the toolbar both offer it; the toolbar's is the one of the tab.
+      await page
+        .getByRole('tabpanel', { name: 'Chat-Modell' })
+        .getByRole('button', { name: 'Neues Modell' })
+        .click()
       const dialog = page.getByRole('dialog')
       await dialog.getByLabel('Anzeigename', { exact: false }).fill(FIRST_CHAT_MODEL)
       await dialog.getByLabel('Basis-Adresse', { exact: false }).fill(CHAT_MODEL_URL)
@@ -374,7 +410,7 @@ test.describe('Einrichtungs-Assistent', () => {
   )
 
   test(
-    'richtet Reranking und Spracheingabe, E-Mail mit Prüfung und Testnachricht und das Branding ein',
+    'richtet Identitätsanbieter, Reranking, Spracheingabe, Texterkennung, Virenprüfung, E-Mail mit Prüfung und Testnachricht und das Branding ein',
     {
       tag: '@mail-filled',
     },
@@ -415,9 +451,27 @@ test.describe('Einrichtungs-Assistent', () => {
       await expectStepEdgesFlushAlsoNarrow(page)
       await submitStep(page)
 
-      // The stack runs no clamd, so the malware scan is skipped here as well.
+      // Text recognition with an own docling-serve endpoint, ocr-stub, checked in its stages with
+      // the test page; a wrong key fails at the stage "Anmeldung".
+      await expect(stepHeading(page, 'Texterkennung')).toBeVisible()
+      await page.getByRole('radio', { name: /Eigener Endpunkt/ }).click()
+      await page.getByRole('radio', { name: /^docling-serve/ }).click()
+      await page.getByLabel('Basis-Adresse').fill(TEXT_RECOGNITION_URL)
+      await page.getByRole('textbox', { name: 'API-Schlüssel (optional)' }).fill('falscher-schluessel')
+      await submitStep(page)
+      await expect(page.getByText(/Gescheitert an der Stufe „Anmeldung“/)).toBeVisible()
+      // The field keeps what was typed; the right key replaces the wrong one.
+      await page.getByRole('textbox', { name: 'API-Schlüssel (optional)' }).fill(OCR_API_KEY)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Texterkennung ausgefüllt')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await submitStep(page)
+
+      // The virus scanner: clamd-stub answers the version request of the check.
       await expect(stepHeading(page, 'Virenprüfung')).toBeVisible()
-      await skipStep(page)
+      await page.getByLabel('Host des Virenscanners').fill(CLAMD_HOST)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Virenprüfung ausgefüllt')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await submitStep(page)
 
       await expect(stepHeading(page, 'E-Mail')).toBeVisible()
       await expectStepEdgesFlushAlsoNarrow(page)
@@ -481,20 +535,34 @@ test.describe('Einrichtungs-Assistent', () => {
         'Die Verbindung zum Mailserver ist gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
       )
       await expect(stepStates(page)).not.toContainText(TEST_RECIPIENT)
-      for (const checked of ['Reranking', 'Spracheingabe', 'E-Mail', 'Branding']) {
+      for (const checked of [
+        'Identitätsanbieter',
+        'Reranking',
+        'Spracheingabe',
+        'Texterkennung',
+        'Virenprüfung',
+        'E-Mail',
+        'Branding',
+      ]) {
         await expect(stepState(page, checked)).toContainText('Geprüft')
       }
-      await expect(stepState(page, 'Virenprüfung')).toContainText('Nicht eingerichtet')
       await page.getByRole('button', { name: 'Installation abschließen' }).click()
       await expect(stepHeading(page, 'Installation abgeschlossen')).toBeVisible()
 
-      // Product name and accent colour on the sign-in page and in the interface.
+      // Product name and accent colour on the sign-in page and in the interface. The page first
+      // tries a silent sign-in at the provider; oidc-stub answers login_required and the page comes
+      // back with the provider above the local accounts.
       await page.getByRole('link', { name: 'Zur Anmeldung' }).click()
       await expect(page).toHaveURL(/\/login/)
+      const providers = page.getByRole('group', { name: 'Identitätsanbieter' })
+      await expect(providers).toContainText(OIDC_PROVIDER_NAME)
       const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
       await expect(page.getByText(PRODUCT_NAME, { exact: true }).first()).toBeVisible()
+      // The provider carries the page's one primary button, in the accent; the local form's
+      // „Anmelden“ stays secondary.
+      await expect(providers.getByRole('button').first()).toHaveCSS('background-color', ACCENT_RGB)
       const signInButton = signIn.getByRole('button', { name: 'Anmelden' })
-      await expect(signInButton).toHaveCSS('background-color', ACCENT_RGB)
+      await expect(signInButton).toHaveClass(/MuiButton-outlined/)
       await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await signInButton.click()
@@ -518,6 +586,14 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(page.getByRole('checkbox', { name: 'Spracheingabe einschalten' })).toBeChecked()
       await expect(page.getByLabel('Basis-Adresse')).toHaveValue(TRANSCRIPTION_URL)
       await expect(page.getByLabel('Modell-Kennung')).toHaveValue(TRANSCRIPTION_MODEL)
+
+      // Text recognition and virus scan, switched on with the values of the assistant.
+      await page.goto('/admin/models/text-recognition')
+      await expect(page.getByRole('checkbox', { name: 'Texterkennung einschalten' })).toBeChecked()
+      await expect(page.getByLabel('Basis-Adresse')).toHaveValue(TEXT_RECOGNITION_URL)
+      await page.goto('/admin/malware-scan')
+      await expect(page.getByRole('checkbox', { name: 'Jede eingehende Datei prüfen' })).toBeChecked()
+      await expect(page.getByLabel('Host des Virenscanners')).toHaveValue(CLAMD_HOST)
     },
   )
 })
