@@ -104,7 +104,7 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
   test("der SMTP-Zugang steht als Hostname des Stapels in den Einstellungen", async ({ page }) => {
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
     await page.goto("/admin/mail/server");
-    await expect(page.getByLabel("Server")).toHaveValue(smtp.host);
-    await expect(page.getByLabel("Port")).toHaveValue(smtp.port);
+    await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
+    await expect(page.getByLabel("Port", { exact: true })).toHaveValue(smtp.port);
   });
 });

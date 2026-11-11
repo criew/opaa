@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/auth'
-import { isChatAnswer, startFreshChat } from '../fixtures/chat'
+import { expectNoCatalogMatch, isChatAnswer, startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
+import { headerCreateButton } from '../fixtures/pageHeader'
 import {
   catalogEntry,
   createKnowledgeLibraryViaApi,
@@ -60,16 +61,6 @@ function grantsSection(page: Page) {
 }
 
 /**
- * The rendered empty result of this very search - without it, an absent entry would also pass
- * before the result is on the page.
- */
-async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
-  await expect(
-    page.getByText(`Kein Eintrag passt zu „${query}“.`, { exact: true }).and(page.locator('p')),
-  ).toBeVisible()
-}
-
-/**
  * The catalog narrowed to prompt libraries, searched for `name`: the catalog pages its result, so
  * presence and absence are only conclusive through the search.
  */
@@ -121,7 +112,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await owner.getByRole('button', { name: 'Anlegen', exact: true }).click()
     await expect(owner.getByRole('heading', { level: 1, name: LIBRARY_NAME })).toBeVisible()
 
-    await owner.getByRole('button', { name: 'Neuer Prompt' }).click()
+    await headerCreateButton(owner, 'Neuer Prompt').click()
     const dialog = owner.getByRole('dialog', { name: 'Neuer Prompt' })
     await dialog.getByLabel('Titel', { exact: true }).fill(PROMPT_TITLE)
     await dialog.getByLabel('Befehl', { exact: true }).fill(PROMPT_COMMAND)

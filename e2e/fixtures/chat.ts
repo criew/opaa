@@ -1,5 +1,6 @@
 import type { Locator, Page, Response } from '@playwright/test'
 import { expect } from '@playwright/test'
+import { headerCreateButton } from './pageHeader'
 
 /**
  * Reusable building blocks for scenarios that drive the chat UI (test(e2e) #424, #529). Extracted
@@ -256,12 +257,13 @@ export async function searchLibraries(page: Page, query: string): Promise<void> 
 
 /**
  * The rendered empty result of this very search - without it, an absent entry would also pass
- * before the result is on the page.
+ * before the result is on the page. The visible state says only „Keine Treffer." (guidelines
+ * 5.7); which search it answers is in the result announcement of the live region.
  */
 export async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
-  await expect(
-    page.getByText(`Kein Eintrag passt zu „${query}“.`, { exact: true }).and(page.locator('p')),
-  ).toBeVisible()
+  const announcement = `Kein Eintrag passt zu „${query}“.`
+  await expect(page.getByRole('status').filter({ hasText: announcement })).toHaveText(announcement)
+  await expect(page.getByText('Keine Treffer.', { exact: true })).toBeVisible()
 }
 
 /**
@@ -293,7 +295,7 @@ export async function gotoLibraryDetail(page: Page, libraryName: string): Promis
  */
 export async function openNewLibraryWizard(page: Page): Promise<void> {
   await page.goto('/catalog')
-  await page.getByRole('button', { name: 'Neuer Katalogeintrag', exact: true }).click()
+  await headerCreateButton(page, 'Neuer Katalogeintrag').click()
   await page.getByRole('radio', { name: /^Wissen/ }).click()
   await Promise.all([
     page.waitForURL(/\/libraries\/new$/),

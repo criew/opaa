@@ -342,7 +342,11 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // Kein Lauf ausgelöst - der Dokumentbereich (der vorgewählte Reiter) muss trotzdem erscheinen,
     // mit seinem Leerzustand und ohne Upload-Fläche, weil diese Bibliothek nie eine hatte.
     await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
-    await expect(page.getByText('Noch keine Dokumente.', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText('Noch keine Dokumente. Sie erscheinen nach der ersten Indizierung der Quelle.', {
+        exact: true,
+      }),
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Hochladen' })).toHaveCount(0)
   })
 })
