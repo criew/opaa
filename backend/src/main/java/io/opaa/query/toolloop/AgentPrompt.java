@@ -75,6 +75,14 @@ final class AgentPrompt {
       bestätigt oder ändert ihn.
       - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.""";
 
+  /** Added to the fixed rules of the run that answers a question back of a plan's working run. */
+  static final String RESUMED_PLAN =
+      """
+      BESTÄTIGTER PLAN (verbindlich):
+      - Du hast einen von der Person bestätigten Plan abgearbeitet und dabei eine Rückfrage \
+      gestellt. Die neue Nachricht der Person beantwortet sie.
+      - Arbeite den Plan mit dieser Angabe fort und lege keinen neuen Plan vor.""";
+
   /** What a run does with a plan step. */
   enum PlanPhase {
     /** The agent has no plan step, or ended its last run differently. */
@@ -82,7 +90,9 @@ final class AgentPrompt {
     /** The run answers with a plan only. */
     PLAN,
     /** The run works off the plan the person confirmed or changed. */
-    CONFIRMED
+    CONFIRMED,
+    /** The run continues a confirmed plan after the person answered its question back. */
+    RESUMED
   }
 
   private AgentPrompt() {}
@@ -104,6 +114,7 @@ final class AgentPrompt {
     switch (phase) {
       case PLAN -> text.append("\n\n").append(PLAN_RULES);
       case CONFIRMED -> text.append("\n\n").append(CONFIRMED_PLAN);
+      case RESUMED -> text.append("\n\n").append(RESUMED_PLAN);
       case NONE -> {}
     }
     if (agentInstruction != null && !agentInstruction.isBlank()) {

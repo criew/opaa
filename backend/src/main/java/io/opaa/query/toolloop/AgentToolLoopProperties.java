@@ -8,10 +8,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * The system limits of an agent run and the workspace in front of it (ADR-0070 Entscheidung 6).
- * Defaults are starting values from the research cases in {@code eval/agents/recherche}, to be
- * calibrated by their first measurement; an agent may only lower the four run limits. The same on
- * every instance: the workspace capacity is the installation's absolute figure, never divided by
- * the number of instances.
+ * Conservative starting values; the four run limits are the ceiling of an agent's own limits, an
+ * agent without limits of its own gets less (see {@code AgentLimits#DEFAULT}). The same on every
+ * instance: the workspace capacity is the installation's absolute figure, never divided by the
+ * number of instances.
  *
  * @param maxToolCalls tool calls per run, over all tools.
  * @param maxSearchCalls calls of {@code search_knowledge} per run.

@@ -1127,6 +1127,38 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void theReplyToAQuestionBackOfTheWorkingRunContinuesThePlanInsteadOfAskingForANewOne() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")),
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.ASK_USER, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", ToolNames.ASK_USER, "{\"frage\":\"Welchen Zeitraum meinen Sie?\"}"),
+            answer("Es gilt 【source: doc-1#0 | regeln.pdf】."));
+
+    AgentToolLoop loop = loop();
+    QueryResult asked = loop.handle(turn());
+    QueryResult continued = loop.handle(turn());
+
+    assertThat(asked.agentRun().endState()).isEqualTo(EndState.ASK_USER);
+    assertThat(continued.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(2)).call(prompts.capture());
+    Prompt last = prompts.getAllValues().get(1);
+    assertThat(toolNamesOf(last)).contains(ToolNames.SEARCH_KNOWLEDGE);
+    assertThat(last.getInstructions().get(0).getText())
+        .contains(AgentPrompt.RESUMED_PLAN)
+        .doesNotContain(AgentPrompt.PLAN_RULES);
+    assertThat(runs("builtin", "plan")).isZero();
+  }
+
+  @Test
   void aPlanOfAnotherAgentOrAnAnswerInBetweenIsNoConfirmation() {
     planning(true);
     when(chatService.latestAgentRun(chat.getId()))
@@ -1298,12 +1330,12 @@ class AgentToolLoopTest {
             1,
             "Benenne Widersprüche.",
             Set.of(),
-            Set.of(ToolNames.SEARCH_KNOWLEDGE),
+            Set.of(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER),
             AgentLimits.SYSTEM,
             confirmPlan,
             true,
             "Recherche");
-    switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE);
+    switchedOn = Set.of(ToolNames.SEARCH_KNOWLEDGE, ToolNames.ASK_USER);
   }
 
   private static List<String> toolNamesOf(Prompt prompt) {

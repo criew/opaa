@@ -537,19 +537,27 @@ class AgentToolLoop implements AgentTurnHandler {
   /**
    * Where the run stands in the agent's plan step: an agent without one works at once; with one,
    * the run works off the plan when the chat's latest answer is this agent's plan - whatever the
-   * person wrote confirms or changes it -, and otherwise answers with a new plan.
+   * person wrote confirms or changes it -, continues it when that answer is this agent's question
+   * back, and otherwise answers with a new plan.
    */
   private AgentPrompt.PlanPhase planPhase(AgentRunSpec spec, Chat chat) {
     if (!spec.confirmPlan()) {
       return AgentPrompt.PlanPhase.NONE;
     }
-    boolean planPending =
+    EndState previous =
         chatService
             .latestAgentRun(chat.getId())
-            .filter(previous -> previous.endState() == EndState.PLAN)
-            .filter(previous -> spec.agentId().equals(previous.agentId()))
-            .isPresent();
-    return planPending ? AgentPrompt.PlanPhase.CONFIRMED : AgentPrompt.PlanPhase.PLAN;
+            .filter(run -> spec.agentId().equals(run.agentId()))
+            .map(AgentRunRecord::endState)
+            .orElse(null);
+    if (previous == EndState.PLAN) {
+      return AgentPrompt.PlanPhase.CONFIRMED;
+    }
+    // A plan run offers no tool, so a question back can only come from a run that worked a
+    // confirmed plan off: the reply continues it instead of asking for a new plan.
+    return previous == EndState.ASK_USER
+        ? AgentPrompt.PlanPhase.RESUMED
+        : AgentPrompt.PlanPhase.PLAN;
   }
 
   /**

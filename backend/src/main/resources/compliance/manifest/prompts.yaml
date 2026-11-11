@@ -42,7 +42,7 @@ prompts:
       Regeln für einen Agentenlauf: Werkzeuge in Schritten nutzen, Belegpflicht, Antwortsprache,
       Anweisung des Agenten und des Space, Gesprächsnotiz; bei einem Agenten mit Planschritt die
       Regel, zuerst nur einen Plan vorzulegen, und im nächsten Lauf die Regel, den bestätigten oder
-      geänderten Plan abzuarbeiten; dazu die Beschreibungen der Werkzeuge,
+      geänderten Plan abzuarbeiten, auch nach der Antwort auf eine Rückfrage dabei; dazu die Beschreibungen der Werkzeuge,
       nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
       dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
@@ -60,7 +60,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "25531e8feef25e3fca7ce5d42d7421fe3c458127bf250161b2ecef3de2df81f2"
+    sha256: "636dcc301cb1c2792a67d1ce5a1228b8e6f398e5dd4899461072b13de3c4dbe7"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
