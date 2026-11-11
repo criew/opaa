@@ -9,9 +9,10 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * The aging threshold of the operational list, {@code null} while the factory default applies.
- * Applied through {@link SuccessionSettingsAdministration#change}, which writes and audits nothing
- * for an unchanged value. It highlights and widens nothing, so it is not marked.
+ * The aging threshold of the operational list and the days until an agent or a template without a
+ * responsible unit is locked, each {@code null} while the factory default applies. Applied through
+ * {@link SuccessionSettingsAdministration}, which writes and audits nothing for an unchanged value.
+ * Neither widens anything, so neither is marked.
  */
 @Component
 class SuccessionSettingsSection implements SettingsSection {
@@ -34,13 +35,16 @@ class SuccessionSettingsSection implements SettingsSection {
 
   @Override
   public Set<String> tables() {
-    return Set.of("succession_settings");
+    return Set.of("succession_settings", "responsibility_lock_settings");
   }
 
   @Override
   public Map<String, String> keyLabels() {
     return Map.of(
-        SuccessionSettingsAdministration.FIELD, "Als lange offen hervorgehoben ab … Monaten");
+        SuccessionSettingsAdministration.FIELD,
+        "Als lange offen hervorgehoben ab … Monaten",
+        SuccessionSettingsAdministration.LOCK_FIELD,
+        "Ohne verantwortliche Stelle gesperrt nach … Tagen");
   }
 
   @Override
@@ -50,6 +54,9 @@ class SuccessionSettingsSection implements SettingsSection {
     values.put(
         SuccessionSettingsAdministration.FIELD,
         current.overridden() ? current.agingThresholdMonths() : null);
+    values.put(
+        SuccessionSettingsAdministration.LOCK_FIELD,
+        current.responsibleLockDaysOverridden() ? current.responsibleLockDays() : null);
     return values;
   }
 
@@ -61,5 +68,9 @@ class SuccessionSettingsSection implements SettingsSection {
         months == null
             ? null
             : (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, months)));
+    Long days = values.optionalLong(SuccessionSettingsAdministration.LOCK_FIELD);
+    administration.changeResponsibleLockDays(
+        actor,
+        days == null ? null : (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, days)));
   }
 }

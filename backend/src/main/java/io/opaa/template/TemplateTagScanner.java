@@ -231,6 +231,14 @@ final class TemplateTagScanner {
         throw notAllowed("einen Funktionsaufruf");
       } else if (is(token, "[") && callable(before)) {
         Token key = at(tokens, i + 1);
+        if (is(key, "-")) {
+          throw new ValidationException(
+              "Die Vorlage zählt in eckigen Klammern vom Ende her, etwa „"
+                  + before.text()
+                  + "[-1]“. Das ist nicht möglich: Zählen Sie von vorn ab 0, etwa „"
+                  + before.text()
+                  + "[0]“ für den ersten Eintrag.");
+        }
         if (key == null
             || !(key.kind().equals("number") || key.kind().equals("string"))
             || key.text().substring(key.kind().equals("string") ? 1 : 0).startsWith("_")

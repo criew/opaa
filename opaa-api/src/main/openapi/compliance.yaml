@@ -383,7 +383,7 @@ components:
     DataCollectionDisclosure:
       type: object
       required:
-        [opaaVersion, commit, generatedAt, notice, manifest, instance, protocol]
+        [opaaVersion, commit, generatedAt, notice, manifest, instance, protocol, dataSets]
       properties:
         opaaVersion:
           type: string
@@ -407,6 +407,40 @@ components:
           $ref: "#/components/schemas/DisclosureInstanceState"
         protocol:
           $ref: "#/components/schemas/DisclosureProtocol"
+        dataSets:
+          type: array
+          description: >-
+            Further data sets described field by field for the staff council, such as the step log
+            of the agent runs, ordered by id.
+          items:
+            $ref: "#/components/schemas/DisclosureDataSet"
+
+    DisclosureDataSet:
+      type: object
+      description: >-
+        A data set besides the audit log: its purpose, its fields with granularity, purpose and
+        retention, the query paths there are and the ones there are not. A description, never a
+        record of the data set.
+      required: [id, title, purpose, fields, queryPaths, absentQueryPaths]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        purpose:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureProtocolField"
+        queryPaths:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureQueryPath"
+        absentQueryPaths:
+          type: array
+          items:
+            type: string
 
     DisclosureInstanceState:
       type: object

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -12,6 +12,8 @@ import { mockMyCapabilities } from '@/features/capability/mocks/capabilityFixtur
 import type { AgentUpdateRequest } from '@/shared/api/types'
 import { useAgentStore } from '../stores/agentStore'
 import { mockAgentSettings } from '../mocks/agentFixtures'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
+import { mockDocumentTemplateState } from '@/features/document-template/mocks/documentTemplateFixtures'
 import AgentCreatePage from './AgentCreatePage'
 import AgentDetailPage from './AgentDetailPage'
 import AgentSettingsPage from './AgentSettingsPage'
@@ -141,7 +143,7 @@ describe('Agenten', () => {
       expect.objectContaining({
         instruction: 'Prüfe streng.',
         libraryIds: ['lib-1'],
-        toolNames: ['search_knowledge', 'read_document'],
+        toolNames: ['search_knowledge', 'read_document', 'fill_template'],
         planStep: 'CONFIRM',
       }),
     ])
@@ -152,6 +154,37 @@ describe('Agenten', () => {
 
     expect(await screen.findByText('Vergaberecht')).toBeInTheDocument()
     expect(screen.getByText(/Dazu 1 Bibliothek, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+  })
+
+  it('zeigt Vorlagen nur bei eingeschaltetem Schalter „Vorlagen“', async () => {
+    useRuntimeSwitchStore.setState({ documentTemplates: false })
+    renderAt('/agents/agent-vergabe/wissen')
+
+    expect(await screen.findByText('Vergaberecht')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vorlagen ändern' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Vermerk Referat 50')).not.toBeInTheDocument()
+  })
+
+  it('ordnet Vorlagen per Auswahlkästchen zu und nennt nicht lesbare nur als Zahl', async () => {
+    mockDocumentTemplateState.settings.enabled = true
+    useRuntimeSwitchStore.setState({ documentTemplates: true })
+    const updates = captureUpdates()
+    const user = userEvent.setup()
+    renderAt('/agents/agent-vergabe/wissen')
+
+    expect(await screen.findByText('Vermerk Referat 50')).toBeInTheDocument()
+    expect(screen.getByText(/Dazu 1 Vorlage, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Vorlagen ändern' }))
+    const group = screen.getByRole('group', { name: 'Vorlagen (optional)' })
+    const box = await within(group).findByRole('checkbox', { name: 'Vermerk Referat 50' })
+    expect(box).toBeChecked()
+    await user.click(box)
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(screen.queryByText('Vermerk Referat 50')).not.toBeInTheDocument())
+    expect(screen.getByText(/Dazu 1 Vorlage, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+    expect(updates).toEqual([expect.objectContaining({ templateIds: [], libraryIds: ['lib-1'] })])
   })
 
   it('zeigt Lesenden die Einrichtung ohne „Ändern“', async () => {

@@ -24,9 +24,10 @@ import java.util.UUID;
  * tools, plan step and limits. Name, description, owner and reach are the shell's.
  *
  * <p>{@link #revision} counts every saved change of what a run uses (the "Fassung"): instruction,
- * libraries, tools, plan step and limits, not a new name or purpose; the shell's {@code updatedAt}
- * moves with every change. The libraries are ids only: a library that is deleted or no longer
- * readable stays assigned, and the agent says so instead of losing it silently.
+ * libraries, tools, document templates, plan step and limits, not a new name or purpose; the
+ * shell's {@code updatedAt} moves with every change. The libraries are ids only: a library that is
+ * deleted or no longer readable stays assigned, and the agent says so instead of losing it
+ * silently. The same holds for the document templates, except that a deleted template drops out.
  */
 @Entity
 @Table(name = "agents")
@@ -76,6 +77,11 @@ public class Agent extends Asset {
   @Column(name = "tool_name", nullable = false, length = 64)
   private Set<String> toolNames = new LinkedHashSet<>();
 
+  @ElementCollection(fetch = FetchType.EAGER)
+  @CollectionTable(name = "agent_templates", joinColumns = @JoinColumn(name = "agent_id"))
+  @Column(name = "template_id", nullable = false)
+  private Set<UUID> templateIds = new LinkedHashSet<>();
+
   protected Agent() {}
 
   private Agent(
@@ -118,6 +124,9 @@ public class Agent extends Asset {
     this.maxCollectedChars = configuration.limits().maxCollectedChars();
     replace(this.libraryIds, configuration.libraryIds());
     replace(this.toolNames, configuration.toolNames());
+    if (configuration.templateIds() != null) {
+      replace(this.templateIds, configuration.templateIds());
+    }
     touch();
   }
 
@@ -134,7 +143,8 @@ public class Agent extends Asset {
         Set.copyOf(libraryIds),
         Set.copyOf(toolNames),
         planStep,
-        new AgentLimits(maxToolCalls, maxSearchCalls, maxDurationSeconds, maxCollectedChars));
+        new AgentLimits(maxToolCalls, maxSearchCalls, maxDurationSeconds, maxCollectedChars),
+        Set.copyOf(templateIds));
   }
 
   private static <T> void replace(Set<T> target, Collection<T> values) {
@@ -152,6 +162,14 @@ public class Agent extends Asset {
 
   public Set<UUID> getLibraryIds() {
     return Set.copyOf(libraryIds);
+  }
+
+  /**
+   * The assigned document templates; a deleted template drops out with its row, one the reader may
+   * not read stays assigned.
+   */
+  public Set<UUID> getTemplateIds() {
+    return Set.copyOf(templateIds);
   }
 
   public Set<String> getToolNames() {

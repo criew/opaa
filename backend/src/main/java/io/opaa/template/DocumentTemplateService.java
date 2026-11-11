@@ -10,8 +10,11 @@ import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetOwnerNames;
+import io.opaa.asset.AssetResponsibilityService;
+import io.opaa.asset.AssetResponsibilityView;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -58,6 +61,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>An upload is admitted by {@link DocxTemplateInspector} and the malware scan before anything is
  * stored, outside any transaction, so neither holds a database connection; the write then checks
  * switch and rights again. The file is stored as received and never rendered here.
+ *
+ * <p>Every template names a responsible unit ({@link AssetResponsibilityService}); the system
+ * administration may lock a single template, which then reaches no agent run ({@link #lockedAmong})
+ * and stays manageable.
  */
 @Service
 @Transactional(readOnly = true)
@@ -79,6 +86,7 @@ public class DocumentTemplateService {
   private final AssetOwnerNames ownerNames;
   private final AssetSuccessionSource successionSource;
   private final AuditEventRecorder auditEventRecorder;
+  private final AssetResponsibilityService responsibilityService;
   private final TransactionTemplate writes;
 
   DocumentTemplateService(
@@ -95,7 +103,9 @@ public class DocumentTemplateService {
       AssetOwnerNames ownerNames,
       AssetSuccessionSource successionSource,
       AuditEventRecorder auditEventRecorder,
+      AssetResponsibilityService responsibilityService,
       PlatformTransactionManager transactionManager) {
+    this.responsibilityService = responsibilityService;
     this.writes = new TransactionTemplate(transactionManager);
     this.repository = repository;
     this.files = files;
@@ -121,6 +131,7 @@ public class DocumentTemplateService {
     requireMayCreate(request, caller);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
+    ResponsibleUnit responsible = responsibilityService.requireValid(request.responsible(), caller);
     Admitted admitted = admit(request.file(), caller.organizationId());
     return writes.execute(
         status -> {
@@ -138,7 +149,8 @@ public class DocumentTemplateService {
           DocumentTemplate saved = repository.saveAndFlush(template);
           files.store(saved.getId(), admitted.content());
           shellService.registerCreated(saved, caller.id(), auditPayload(saved));
-          return view(saved, AssetRole.OWNER);
+          responsibilityService.establish(saved, responsible);
+          return view(saved, AssetRole.OWNER, caller);
         });
   }
 
@@ -170,6 +182,8 @@ public class DocumentTemplateService {
     Map<UUID, AssetReach> reach = accessService.reachByAsset(DocumentTemplate.ASSET_TYPE, readable);
     Map<UUID, String> names = ownerNames.of(templates);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(templates, false);
+    Map<UUID, AssetResponsibilityView> responsibilities =
+        responsibilityService.viewsOf(templates, caller, roles);
     List<DocumentTemplateView> views = new ArrayList<>(templates.size());
     for (DocumentTemplate template : templates) {
       views.add(
@@ -178,7 +192,8 @@ public class DocumentTemplateService {
               Objects.requireNonNullElse(roles.get(template.getId()), AssetRole.VIEWER),
               names.get(template.getOwnerId()),
               succession.get(template.getId()),
-              reach.getOrDefault(template.getId(), AssetReach.NONE)));
+              reach.getOrDefault(template.getId(), AssetReach.NONE),
+              responsibilities.get(template.getId())));
     }
     return views;
   }
@@ -187,7 +202,7 @@ public class DocumentTemplateService {
     DocumentTemplate template = load(templateId, caller);
     AssetRole role =
         authorization.requireRole(template, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    return view(template, role);
+    return view(template, role, caller);
   }
 
   /** The file as uploaded, with its name ({@code VIEWER}). */
@@ -205,11 +220,29 @@ public class DocumentTemplateService {
   @Transactional
   public DocumentTemplateView update(
       UUID templateId, String name, String description, CurrentUser caller) {
+    return update(templateId, name, description, null, caller);
+  }
+
+  /**
+   * Replaces name, description and, unless {@code responsible} is {@code null}, the responsible
+   * unit ({@code MANAGER}).
+   */
+  @Transactional
+  public DocumentTemplateView update(
+      UUID templateId,
+      String name,
+      String description,
+      ResponsibleUnit responsible,
+      CurrentUser caller) {
     DocumentTemplate template = load(templateId, caller);
     AssetRole role =
         authorization.requireRole(template, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     String validName = validateName(name);
     String validDescription = validateDescription(description);
+    if (responsible != null) {
+      responsibilityService.change(
+          template, responsibilityService.requireValid(responsible, caller), caller);
+    }
     List<String> changedFields = new ArrayList<>();
     if (!Objects.equals(template.getName(), validName)) {
       changedFields.add("name");
@@ -221,7 +254,7 @@ public class DocumentTemplateService {
       template.rename(validName, validDescription);
       recordChanged(template, caller, changedFields);
     }
-    return view(repository.save(template), role);
+    return view(repository.save(template), role, caller);
   }
 
   /** Replaces the file ({@code EDITOR}, the template's content), admitted like on creation. */
@@ -242,7 +275,7 @@ public class DocumentTemplateService {
           DocumentTemplate saved = repository.saveAndFlush(template);
           files.store(saved.getId(), admitted.content());
           recordChanged(saved, caller, List.of("file"));
-          return view(saved, role);
+          return view(saved, role, caller);
         });
   }
 
@@ -262,6 +295,23 @@ public class DocumentTemplateService {
             .outcome(AuditOutcome.SUCCESS)
             .build());
     repository.delete(template);
+  }
+
+  /**
+   * Locks the template (system administration only) with a required reason: from the next run on,
+   * on every instance, no agent is offered it. It stays manageable and is never deleted.
+   */
+  @Transactional
+  public AssetResponsibilityView lock(UUID templateId, String reason, CurrentUser caller) {
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen sperren.");
+    return responsibilityService.lock(load(templateId, caller), reason, caller);
+  }
+
+  /** Lifts the lock of the template (system administration only), whatever its cause. */
+  @Transactional
+  public AssetResponsibilityView unlock(UUID templateId, CurrentUser caller) {
+    caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen entsperren.");
+    return responsibilityService.unlock(load(templateId, caller), caller);
   }
 
   /**
@@ -341,7 +391,7 @@ public class DocumentTemplateService {
             .build());
   }
 
-  private DocumentTemplateView view(DocumentTemplate template, AssetRole role) {
+  private DocumentTemplateView view(DocumentTemplate template, AssetRole role, CurrentUser caller) {
     return new DocumentTemplateView(
         template,
         role,
@@ -349,7 +399,8 @@ public class DocumentTemplateService {
         successionSource.findingsAmong(List.of(template), false).get(template.getId()),
         accessService
             .reachByAsset(DocumentTemplate.ASSET_TYPE, Set.of(template.getId()))
-            .get(template.getId()));
+            .get(template.getId()),
+        responsibilityService.view(template, caller, role));
   }
 
   private static Map<String, Object> auditPayload(DocumentTemplate template) {

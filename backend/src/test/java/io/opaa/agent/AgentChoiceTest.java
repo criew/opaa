@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AgentPlanStep;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetResponsibilityService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
@@ -31,6 +32,8 @@ import org.springframework.transaction.PlatformTransactionManager;
  */
 class AgentChoiceTest {
 
+  private static final UUID TEMPLATE = UUID.randomUUID();
+
   private final UUID organization = UUID.randomUUID();
   private final UUID user = UUID.randomUUID();
   private final UUID space = UUID.randomUUID();
@@ -43,7 +46,13 @@ class AgentChoiceTest {
   private final SpaceAssetDirectory spaceAssets = mock(SpaceAssetDirectory.class);
   private final AgentChoice choice =
       new AgentChoice(
-          repository, agentSwitch, access, spaceAssets, mock(PlatformTransactionManager.class));
+          repository,
+          agentSwitch,
+          access,
+          spaceAssets,
+          mock(AssetResponsibilityService.class),
+          mock(AgentService.class),
+          mock(PlatformTransactionManager.class));
   private Agent agent;
 
   @BeforeEach
@@ -72,6 +81,7 @@ class AgentChoiceTest {
     assertThat(spec.get().limits().maxToolCalls()).isNull();
     assertThat(spec.get().confirmPlan()).isTrue();
     assertThat(spec.get().builtin()).isFalse();
+    assertThat(spec.get().templateIds()).containsExactly(TEMPLATE);
   }
 
   @Test
@@ -136,7 +146,8 @@ class AgentChoiceTest {
                 Set.of(),
                 Set.of(AgentTools.SEARCH_KNOWLEDGE),
                 AgentPlanStep.CONFIRM,
-                new AgentLimits(null, null, 90, null)));
+                new AgentLimits(null, null, 90, null),
+                Set.of(TEMPLATE)));
     return agent;
   }
 }

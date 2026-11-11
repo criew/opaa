@@ -4,7 +4,9 @@ import type {
   AgentSettingsResponse,
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
+  AssetResponsibilityResponse,
   AvailableAgent,
+  DocumentTemplateResponse,
   LibraryListResponse,
 } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
@@ -64,6 +66,34 @@ export async function updateAgent(
   }
 }
 
+/** Locks the agent with a reason (system administration only). */
+export async function lockAgent(
+  agentId: string,
+  reason: string,
+): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.put<AssetResponsibilityResponse>(
+      `/v1/agents/${agentId}/lock`,
+      { reason },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Lifts the lock of the agent (system administration only). */
+export async function unlockAgent(agentId: string): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.delete<AssetResponsibilityResponse>(
+      `/v1/agents/${agentId}/lock`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function deleteAgent(agentId: string): Promise<void> {
   try {
     await apiClient.delete(`/v1/agents/${agentId}`)
@@ -76,6 +106,16 @@ export async function deleteAgent(agentId: string): Promise<void> {
 export async function getReadableLibraries(): Promise<LibraryListResponse[]> {
   try {
     const { data } = await apiClient.get<LibraryListResponse[]>('/v1/libraries')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The document templates the caller may read: those an agent may be given. */
+export async function getReadableTemplates(): Promise<DocumentTemplateResponse[]> {
+  try {
+    const { data } = await apiClient.get<DocumentTemplateResponse[]>('/v1/document-templates')
     return data
   } catch (err) {
     normalizeError(err)

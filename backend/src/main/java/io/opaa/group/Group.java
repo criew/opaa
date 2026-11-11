@@ -18,12 +18,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * A permission subject that groups users together, scoped to exactly one organization. A grant can
  * reference a group instead of a single user (see {@link PermissionSubject}); resolving which users
  * a group grant reaches goes through {@link GroupMembershipResolver}.
+ *
+ * <p>Written column by column ({@code @DynamicUpdate}): a write of a loaded instance keeps a
+ * deactivation, dissolution, release or protection another transaction committed after the read.
  */
+@DynamicUpdate
 @Entity
 @Table(name = "groups")
 public class Group {

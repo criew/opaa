@@ -188,6 +188,7 @@ public class ServiceAccountConsentService {
   @Transactional
   public void revoke(CurrentUser actor, UUID libraryId, UUID serviceAccountId) {
     KnowledgeLibrary library = requireManaged(actor, libraryId);
+    accounts.lockByIdAndOrganizationId(serviceAccountId, library.getOrganizationId());
     ServiceAccountLibraryConsent open =
         consents
             .findByServiceAccountIdAndLibraryIdAndEndedAtIsNull(serviceAccountId, library.getId())
@@ -218,9 +219,13 @@ public class ServiceAccountConsentService {
     return library;
   }
 
+  /**
+   * The account, its row locked until the transaction ends: every change and withdrawal of its
+   * consents takes this lock first, so each reads the consents the one before it committed.
+   */
   private ServiceAccount requireAccount(KnowledgeLibrary library, UUID serviceAccountId) {
     return accounts
-        .findByIdAndOrganizationId(serviceAccountId, library.getOrganizationId())
+        .lockByIdAndOrganizationId(serviceAccountId, library.getOrganizationId())
         .orElseThrow(() -> new NotFoundException("Dienstkonto nicht gefunden"));
   }
 

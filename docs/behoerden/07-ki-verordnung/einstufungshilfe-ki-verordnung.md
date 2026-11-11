@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-06
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-23
@@ -34,6 +34,13 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
   lesen, ab Werk zweifach aus ({{faktenblatt:voreinstellungen#ki-funktion-text-recognition}},
   {{faktenblatt:voreinstellungen#opaa-ocr-enabled}}). Der erkannte Text dient nur der Suche, das
   Original bleibt maßgeblich; die Funktion interagiert nicht mit Personen und bewertet keine.
+- **Agenten und Recherche:** Ein Agent beantwortet eine Frage in mehreren Schritten mit Werkzeugen,
+  etwa mehreren Suchen, und kann eine Word-Datei nach Vorlage erstellen; der mitgelieferte Agent
+  „Recherche“ ist einer davon. Ab Werk aus ({{faktenblatt:voreinstellungen#ki-funktion-agent-run}}).
+  Er liest nur, was die Person lesen darf, handelt nicht außerhalb der Antwort und trifft keine
+  Entscheidung: Jede Antwort und jede Datei trägt „Entwurf, nicht geprüft“ mit Fassungsstempel
+  ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)). Der Einsatzzweck
+  eines Agenten steht an ihm selbst und gehört in die Einstufung wie der Zweck eines Space.
 - **Kein Schulungsmaterial;** das Handbuch zur Suche taugt als Grundlage einer Einweisung.
 - **Updates:** Das Update-Paket weist geänderte Standardmodelle und Prompts aus.
 
@@ -47,7 +54,8 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
    quelloffene Software hilft nicht.
 3. **Hochrisiko prüfen:** etwa Personal, Leistungsansprüche, Strafverfolgung, Migration, Rechtspflege.
    Ein Wissensassistent mit Belegen ist in der Regel nicht hochriskant; trifft ein Bereich zu, reicht
-   diese Hilfe nicht.
+   diese Hilfe nicht. Das gilt je Agent: Ein Agent, der etwa Anträge oder Personalvorgänge
+   vorbereitet, wird für sich geprüft, auch wenn sein Ergebnis nur ein Entwurf ist.
 4. **Über die KI informieren:** spätestens bei der ersten Nutzung, klar und barrierefrei; die Behörde
    prüft den Hinweistext. Veröffentlicht sie einen Text, der die Öffentlichkeit über Angelegenheiten
    von öffentlichem Interesse informiert, legt sie die KI-Herkunft offen, außer er wurde menschlich
@@ -65,6 +73,7 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 Einstufung KI-Verordnung für: [Behörde], OPAA-Version [Version]
 Name im Haus:          [ ]
 Einsatzzweck:          [ ]
+Agenten:               [aus / an], je Agent Zweck und Hochrisiko-Prüfung [ ]
 Rolle:                 [Anbieter / Betreiber], Begründung: [ ]
 Hochrisiko:            geprüfte Bereiche [ ], Ergebnis [ ]
 Hinweis auf KI:        wo [ ], Hinweistext [Standard / angepasst], barrierefrei [ ]

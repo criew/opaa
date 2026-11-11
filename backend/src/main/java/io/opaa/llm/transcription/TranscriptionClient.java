@@ -3,6 +3,7 @@ package io.opaa.llm.transcription;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.llm.ModelEndpointAccess;
 import io.opaa.llm.ModelRoleHttp;
 import io.opaa.observability.MeteredHttpClient;
 import io.opaa.observability.OutboundMetrics;
@@ -191,7 +192,8 @@ public class TranscriptionClient {
 
   private static void authorize(HttpRequest.Builder request, TranscriptionEndpoint endpoint) {
     if (StringUtils.hasText(endpoint.apiKey())) {
-      request.header("Authorization", "Bearer " + endpoint.apiKey());
+      request.header(
+          "Authorization", "Bearer " + ModelEndpointAccess.headerSafe(endpoint.apiKey()));
     }
   }
 

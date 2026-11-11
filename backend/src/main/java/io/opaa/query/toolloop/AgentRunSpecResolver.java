@@ -12,8 +12,9 @@ public interface AgentRunSpecResolver {
 
   /**
    * The agent's run spec, or empty when the agent is unknown, belongs to another organization, is
-   * not visible to the caller, not assigned to {@code spaceId}, locked, or agents are switched off
-   * - all alike, so a foreign id is never confirmed.
+   * not visible to the caller, not assigned to {@code spaceId}, or agents are switched off - all
+   * alike, so a foreign id is never confirmed. An agent the caller may choose but the system
+   * administration locked throws a {@code ConflictException} with code {@code AGENT_LOCKED}.
    */
   Optional<AgentRunSpec> resolve(
       UUID agentId, UUID organizationId, UUID userId, UUID spaceId, Set<UUID> readableLibraryIds);

@@ -119,6 +119,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "account_state_history",
                   "succession_cases",
                   "succession_settings",
+                  "asset_responsibilities",
+                  "responsibility_lock_settings",
                   "directory_sync_settings")),
           Map.entry(
               KNOWLEDGE,
@@ -219,6 +221,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "agents",
                   "agent_libraries",
                   "agent_tools",
+                  "agent_templates",
                   "agent_settings",
                   "agent_settings_tools",
                   "agent_seeds")),

@@ -1,5 +1,6 @@
 package io.opaa.query.toolloop;
 
+import java.util.Optional;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -25,10 +26,11 @@ public interface AgentTool {
   /**
    * Description and argument schema as this run offers them to the model, asked once before the
    * run's first model call. By default the fixed ones; a tool whose arguments depend on what the
-   * asker may use right now builds them here and checks them again on every call.
+   * asker may use right now builds them here and checks them again on every call. Empty when the
+   * tool has nothing to offer this run; the model then does not see it.
    */
-  default ToolOffer offer(AgentRun run) {
-    return new ToolOffer(description(), inputSchema());
+  default Optional<ToolOffer> offer(AgentRun run) {
+    return Optional.of(new ToolOffer(description(), inputSchema()));
   }
 
   /**
