@@ -4,6 +4,9 @@ import type {
   AgentResponse,
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
+  AssetLockRequest,
+  AssetResponsibilityResponse,
+  ResponsibleUnitRequest,
 } from '@/shared/api/types'
 import { mockGroups } from '../../group/mocks/groupFixtures'
 import { mockMyCapabilities } from '../../capability/mocks/capabilityFixtures'
@@ -27,17 +30,33 @@ function invalid(field: string, code: string, message: string) {
 
 const offline = () => !mockAgentSettings.enabled
 
+/** The responsibility a submitted unit stands for; `null` when none is named. */
+export function responsibilityOf(
+  unit: ResponsibleUnitRequest | null | undefined,
+): AssetResponsibilityResponse | null {
+  if (unit?.groupId) {
+    const group = mockGroups.find((g) => g.id === unit.groupId)
+    return { groupId: unit.groupId, groupName: group?.name ?? 'Gruppe', missing: false }
+  }
+  if (unit?.function?.trim()) return { function: unit.function.trim(), missing: false }
+  return null
+}
+
+const RESPONSIBLE_REQUIRED =
+  'Geben Sie die verantwortliche Stelle an: eine Gruppe, Organisationseinheit oder Funktion.'
+
 export const agentHandlers = [
   http.get('/api/v1/agents/availability', () =>
     HttpResponse.json({ enabled: mockAgentSettings.enabled }),
   ),
 
-  // Every readable agent stands in every space of the mock; switched off, nothing is offered.
+  // Every readable, unlocked agent stands in every space of the mock; switched off, nothing is offered.
   http.get('/api/v1/agents/available', () =>
     HttpResponse.json(
       offline()
         ? []
         : Object.values(mockAgents)
+            .filter((agent) => !agent.responsibility.lock)
             .sort((a, b) => a.name.localeCompare(b.name, 'de'))
             .map((agent) => ({ id: agent.id, name: agent.name, description: agent.description })),
     ),
@@ -50,6 +69,27 @@ export const agentHandlers = [
           Object.values(mockAgents).sort((a, b) => a.name.localeCompare(b.name, 'de')),
         ),
   ),
+
+  http.put('/api/v1/agents/:id/lock', async ({ params, request }) => {
+    const agent = mockAgents[params.id as string]
+    if (offline() || !agent) return notFound()
+    const body = (await request.json()) as AssetLockRequest
+    if (!body.reason?.trim()) {
+      return invalid('reason', 'REQUIRED', 'Geben Sie an, warum gesperrt wird.')
+    }
+    agent.responsibility = {
+      ...agent.responsibility,
+      lock: { cause: 'MANUAL', reason: body.reason.trim(), lockedAt: new Date().toISOString() },
+    }
+    return HttpResponse.json(agent.responsibility)
+  }),
+
+  http.delete('/api/v1/agents/:id/lock', ({ params }) => {
+    const agent = mockAgents[params.id as string]
+    if (offline() || !agent) return notFound()
+    agent.responsibility = { ...agent.responsibility, lock: null }
+    return HttpResponse.json(agent.responsibility)
+  }),
 
   http.post('/api/v1/agents', async ({ request }) => {
     if (offline()) return notFound()
@@ -64,6 +104,8 @@ export const agentHandlers = [
     }
     const body = (await request.json()) as AgentCreateRequest
     if (!body.name?.trim()) return invalid('name', 'REQUIRED', 'Geben Sie dem Agenten einen Namen.')
+    const responsibility = responsibilityOf(body.responsible)
+    if (!responsibility) return invalid('responsible', 'REQUIRED', RESPONSIBLE_REQUIRED)
     const group =
       body.ownerType === 'GROUP' ? mockGroups.find((g) => g.id === body.ownerId) : undefined
     const now = new Date().toISOString()
@@ -86,6 +128,7 @@ export const agentHandlers = [
       ownerName: group?.name ?? 'Entwicklerin',
       reach: { allAccounts: false, groupCount: 0, userCount: 0 },
       myRole: 'OWNER',
+      responsibility,
       succession: null,
       createdAt: now,
       updatedAt: now,
@@ -145,6 +188,9 @@ export const agentHandlers = [
         ])
           ? agent.revision
           : agent.revision + 1,
+      responsibility: body.responsible
+        ? { ...agent.responsibility, ...responsibilityOf(body.responsible) }
+        : agent.responsibility,
       updatedAt: new Date().toISOString(),
     }
     mockAgents[agent.id] = updated

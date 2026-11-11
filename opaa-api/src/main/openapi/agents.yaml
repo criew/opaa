@@ -15,7 +15,7 @@ paths:
       summary: >
         List the agents the caller may read - direct grant, grant to one of their groups, or
         organization-wide release. A system administrator sees here only what the formula grants
-        them.
+        them. A locked agent stays in this list; /api/v1/agents/available leaves it out.
       responses:
         "200":
           description: The readable agents, by name
@@ -36,7 +36,9 @@ paths:
         capability CREATE_AGENT, which is offered only while agents are switched on. The agent
         starts without instruction and libraries (the caller's whole readable scope), with the
         tools search_knowledge and read_document, without plan step and with the installation's
-        limits. Rights are then given through /api/v1/assets/AGENT/{assetId}/grants.
+        limits. Rights are then given through /api/v1/assets/AGENT/{assetId}/grants. The
+        responsible unit is required; without it the request is refused with a field error on
+        responsible.
       requestBody:
         required: true
         content:
@@ -176,6 +178,63 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/agents/{agentId}/lock:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: lockAgent
+      tags: [agent]
+      summary: >
+        Lock this one agent (system admin only), naming a reason. A locked agent is not offered for
+        use and every run is refused with 409 and the code AGENT_LOCKED, on every instance from the
+        next call on; it stays manageable and is never deleted. Locking a locked agent replaces
+        cause and reason. Audited as ASSET_LOCKED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetLockRequest"
+      responses:
+        "200":
+          description: The agent's responsibility with the lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unlockAgent
+      tags: [agent]
+      summary: >
+        Lift the lock of this agent (system admin only), whatever its cause; an agent without lock
+        answers unchanged. A lock for a missing responsible unit comes back with the next run of
+        the check while the unit is still missing and the period is over. Audited as
+        ASSET_UNLOCKED.
+      responses:
+        "200":
+          description: The agent's responsibility without lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/system/agents:
     get:
       operationId: getAgentSettings
@@ -277,6 +336,11 @@ components:
       type: object
       required: [name]
       properties:
+        responsible:
+          description: Required by the service; missing, it answers 400 with a field error.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ResponsibleUnitRequest"
         name:
           type: string
           minLength: 1
@@ -303,6 +367,13 @@ components:
       required: [name, instruction, libraryIds, toolNames, planStep, limits]
       description: Replaces name, purpose and configuration as a whole.
       properties:
+        responsible:
+          description: >
+            The responsible unit; null or absent keeps the stored one. A change is audited as
+            ASSET_RESPONSIBILITY_CHANGED.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ResponsibleUnitRequest"
         name:
           type: string
           minLength: 1
@@ -367,6 +438,7 @@ components:
         - ownerId
         - reach
         - myRole
+        - responsibility
         - createdAt
         - updatedAt
       properties:
@@ -441,6 +513,8 @@ components:
             a single agent a system administrator counts as OWNER, as for every asset.
           allOf:
             - $ref: "#/components/schemas/AssetRole"
+        responsibility:
+          $ref: "#/components/schemas/AssetResponsibilityResponse"
         succession:
           description: >
             Set while the agent has no capable owner (ADR-0036, Entscheidung 6) - state and

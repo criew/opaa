@@ -1,5 +1,7 @@
 import type {
   AssetOwnerType,
+  AssetResponsibilityResponse,
+  ResponsibleUnitRequest,
   DocumentTemplateResponse,
   DocumentTemplateSettingsResponse,
   DocumentTemplateUpdateRequest,
@@ -25,6 +27,7 @@ export interface DocumentTemplateCreation {
   description: string | null
   ownerType: AssetOwnerType
   ownerId: string | null
+  responsible: ResponsibleUnitRequest | null
 }
 
 export async function createDocumentTemplate(
@@ -36,6 +39,10 @@ export async function createDocumentTemplate(
   if (creation.description) form.append('description', creation.description)
   form.append('ownerType', creation.ownerType)
   if (creation.ownerId) form.append('ownerId', creation.ownerId)
+  if (creation.responsible?.groupId) form.append('responsibleGroupId', creation.responsible.groupId)
+  if (creation.responsible?.function) {
+    form.append('responsibleFunction', creation.responsible.function)
+  }
   try {
     const { data } = await apiClient.post<DocumentTemplateResponse>('/v1/document-templates', form)
     return data
@@ -114,6 +121,34 @@ export async function updateDocumentTemplateSettings(
     const { data } = await apiClient.put<DocumentTemplateSettingsResponse>(
       '/v1/system/document-templates',
       { enabled },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Locks the template with a reason (system administration only). */
+export async function lockDocumentTemplate(
+  id: string,
+  reason: string,
+): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.put<AssetResponsibilityResponse>(
+      `/v1/document-templates/${id}/lock`,
+      { reason },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Lifts the lock of the template (system administration only). */
+export async function unlockDocumentTemplate(id: string): Promise<AssetResponsibilityResponse> {
+  try {
+    const { data } = await apiClient.delete<AssetResponsibilityResponse>(
+      `/v1/document-templates/${id}/lock`,
     )
     return data
   } catch (err) {

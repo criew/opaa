@@ -29,6 +29,29 @@ Das Anlegerecht „Agenten anlegen“ hat ab Werk niemand außer der Systemverwa
 unter [Anlegerechte vergeben](anlegerechte.md) an die Personen oder Gruppen, die Agenten für
 andere einrichten sollen.
 
+## Agent oder Vorlage sperren
+
+Jeder Agent und jede Vorlage nennt eine verantwortliche Stelle: eine Gruppe, Organisationseinheit
+oder Funktion, nie eine Person allein. Wer ein Objekt anlegt, muss sie angeben. Ein einzelnes
+Objekt nehmen Sie so aus dem Betrieb, ohne es zu löschen:
+
+1. Auf der Seite des Agenten oder der Vorlage den Reiter „Freigaben“ öffnen.
+2. In der Zeile „Sperre“ auf „Sperren“, einen Grund eintragen und „Sperren“ bestätigen.
+
+Ein gesperrter Agent fehlt in der Auswahl im Chat, und jeder Aufruf wird mit einer Meldung
+abgewiesen. Eine gesperrte Vorlage bietet kein Agent mehr an; er antwortet stattdessen im Chat und
+sagt das. Die Sperre gilt auf allen Instanzen ab dem nächsten Aufruf. „Entsperren“ in derselben
+Zeile hebt sie auf.
+
+## Wenn die verantwortliche Stelle fehlt
+
+Wird die Gruppe der Stelle gelöscht oder steht der Eigentümer auf „Nachfolge offen“, fehlt die
+Stelle. Die Seite des Objekts zeigt dann, wann es gesperrt wird. Wird bis dahin keine neue Stelle
+benannt, sperrt OPAA das Objekt, löscht es aber nicht. Die Frist stellen Sie unter
+„Administration → Ohne Zuständigkeit“ im Abschnitt „Sperre ohne verantwortliche Stelle“ ein, ab
+Werk 30 Tage. Nach dem Benennen einer neuen Stelle heben Sie die Sperre mit „Entsperren“
+auf; fehlt die Stelle dann noch, sperrt OPAA beim nächsten Lauf wieder.
+
 ## Grenzen
 
 Jeder Lauf hat Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge. Ein Agent kann sie
@@ -38,6 +61,8 @@ Installation.
 **Gut zu wissen:**
 
 - Ein Agent liest nie mehr als die aufrufende Person; eine Freigabe am Agenten öffnet kein Wissen.
+- Ändern der Stelle, Sperren und Entsperren stehen im
+  [Nachweisprotokoll](nachweisprotokoll-lesen.md), mit dem Grund der Sperre; das Nutzen nicht.
 - Wie ein Agent angelegt und eingerichtet wird: [Agent anlegen](../benutzer/agent-anlegen.md).
 - Vor dem Einschalten braucht das aktive Chat-Modell die Werkzeugfähigkeit „Fähig“; was nach
   einem Update zu tun ist und welche Störungen wie ein unfähiges Modell aussehen, steht unter

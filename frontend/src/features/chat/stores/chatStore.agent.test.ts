@@ -84,6 +84,7 @@ describe('chatStore with an agent', () => {
 
   it.each([
     ['AGENT_NOT_AVAILABLE', false],
+    ['AGENT_LOCKED', false],
     ['AGENT_WORKSPACE_FULL', true],
   ])('hands a question refused with %s back, keeping the agent: %s', async (code, keep) => {
     server.use(

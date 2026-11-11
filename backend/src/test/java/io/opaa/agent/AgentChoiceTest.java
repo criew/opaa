@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AgentPlanStep;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetResponsibilityService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
@@ -45,7 +46,13 @@ class AgentChoiceTest {
   private final SpaceAssetDirectory spaceAssets = mock(SpaceAssetDirectory.class);
   private final AgentChoice choice =
       new AgentChoice(
-          repository, agentSwitch, access, spaceAssets, mock(PlatformTransactionManager.class));
+          repository,
+          agentSwitch,
+          access,
+          spaceAssets,
+          mock(AssetResponsibilityService.class),
+          mock(AgentService.class),
+          mock(PlatformTransactionManager.class));
   private Agent agent;
 
   @BeforeEach

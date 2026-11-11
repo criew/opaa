@@ -96,13 +96,13 @@ class FillTemplateTool implements AgentTool {
 
   static final String NOT_AVAILABLE =
       "Diese Vorlage ist nicht verfügbar: Vorlagen sind ausgeschaltet, die Vorlage gehört nicht zu"
-          + " diesem Agenten, oder die Person darf sie nicht lesen."
+          + " diesem Agenten, sie ist gesperrt, oder die Person darf sie nicht lesen."
           + FALLBACK;
 
   static final String NONE_AVAILABLE =
       "Befüllt eine Dokumentvorlage. Zurzeit steht in diesem Lauf keine Vorlage zur Verfügung"
-          + " (Vorlagen sind ausgeschaltet, die Vorlagen sind diesem Agenten nicht zugeordnet,"
-          + " oder die Person darf keine von ihnen lesen). Rufe das"
+          + " (Vorlagen sind ausgeschaltet, die Vorlagen sind diesem Agenten nicht zugeordnet oder"
+          + " gesperrt, oder die Person darf keine von ihnen lesen). Rufe das"
           + " Werkzeug nicht auf; antworte im Chat und sage der Person in einem Satz, dass keine"
           + " Datei nach Vorlage erstellt werden kann.";
 

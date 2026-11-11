@@ -825,6 +825,31 @@ class QueryControllerTest {
   }
 
   @Test
+  void aQuestionToALockedAgentIsRefusedWithTheLockCode() throws Exception {
+    String message =
+        "Der Agent „Vergabeprüfung“ ist gesperrt und kann gerade nicht genutzt werden. Wenden Sie"
+            + " sich an die Systemverwaltung.";
+    when(queryService.query(
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        .thenThrow(new ConflictException(message, "AGENT_LOCKED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Frage?\", \"chatId\": \""
+                        + UUID.randomUUID()
+                        + "\", \"agentId\": \""
+                        + UUID.randomUUID()
+                        + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AGENT_LOCKED"))
+        .andExpect(jsonPath("$.error").value(message));
+  }
+
+  @Test
   void aRefusalBeforeTheModelAnswersKeepsItsOwnStatus() throws Exception {
     when(queryService.query(
             anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))

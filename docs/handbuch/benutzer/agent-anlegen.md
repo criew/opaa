@@ -11,7 +11,8 @@ niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Agenten“ und „Weiter“.
 2. **Stammdaten:** Name und Zweck. Der Zweck steht später in der Auswahl im Chat unter dem Namen.
-   **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“, auf Wunsch Rollen vormerken.
+   **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“, dazu die „Verantwortliche
+   Stelle“, auf Wunsch Rollen vormerken.
    **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 3. Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen darf,
    und mit den Werkzeugen „Im Wissen suchen“ und „Dokument lesen“.
@@ -51,6 +52,11 @@ sie erhalten. Eine gelöschte Vorlage fällt aus der Zuordnung.
 | Leser | den Agenten im Chat aufrufen und seine Einrichtung sehen |
 | Verwalter | zusätzlich Name, Zweck, Auftrag, Wissen, Werkzeuge, Vorlagen, Ablauf und Rechte ändern |
 | Eigentümer | zusätzlich den Agenten löschen und übergeben |
+
+**Verantwortliche Stelle:** eine Gruppe aus der Liste oder eine Organisationseinheit bzw. Funktion
+als Text, etwa „Referat Z3 – Organisation“, keine Einzelperson. Vorbelegt ist die Gruppe des
+Eigentümers, sonst Ihre erste Gruppe. Ändern lässt sie sich im Reiter „Freigaben“. Fehlt die Stelle
+länger als die Frist der Systemverwaltung, wird der Agent gesperrt.
 
 **Gut zu wissen:**
 

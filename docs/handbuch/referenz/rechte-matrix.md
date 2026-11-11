@@ -49,6 +49,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Externe KI-Werkzeuge zulassen](../administration/externe-ki-werkzeuge.md) | Systemverwaltung | „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“ | aus |
 | [Agenten einschalten](../administration/agenten.md) | Systemverwaltung | „Administration → Agenten“ | aus, „Rechnen“ aus |
 | [Vorlagen einschalten](../administration/vorlagen.md) | Systemverwaltung | „Administration → Vorlagen“ | aus |
+| [Agent oder Vorlage sperren](../administration/agenten.md#agent-oder-vorlage-sperren) | Systemverwaltung | Reiter „Freigaben“ des Objekts | nichts gesperrt; Frist ohne Stelle 30 Tage |
 | [Modelle verwalten](../administration/modelle.md) | Systemverwaltung | „Administration → Modelle“ | Reranking, Spracheingabe aus |
 | [Suche und Indexierung](../administration/suche-und-indexierung.md) | Systemverwaltung; „Sicht als“ nur mit Befugnis | „Administration → Suche & Indexierung“ | keine Befugnis |
 | [Datenschutz einstellen](../administration/datenschutz.md) | Systemverwaltung | „Administration → Datenschutz“ | siehe Seite |
