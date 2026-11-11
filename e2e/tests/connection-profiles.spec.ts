@@ -168,7 +168,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   test('1b. Gruppenmitglied legt eine Bibliothek über den Zugang an, sie läuft und wird gefunden', async ({
     regularUserPage: page,
   }) => {
-    await openRssSourceStep(page)
+    await openRssSourceStep(page, PROFILE_LIBRARY)
     const choice = connectionChoice(page)
     // Der freigegebene Zugang ist vorgewählt, „Eigene Adresse“ steht als letzte Wahl daneben.
     const profileWay = choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })
