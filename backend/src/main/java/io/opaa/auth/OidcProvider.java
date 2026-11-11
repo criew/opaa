@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * One identity provider a deployment accepts sign-ins from (ADR-0025). {@link #getIssuerUri()} is
@@ -27,7 +28,11 @@ import java.util.UUID;
  * ux_oidc_providers_single_local}): its {@link #isEnabled()} is that management's switch, its
  * issuer is fixed to {@link LocalIssuer#URN}, it has no client id, is never the default and has no
  * editable connection details - the schema's CHECKs and this class refuse all of that.
+ *
+ * <p>Written column by column ({@code @DynamicUpdate}): a write of a loaded instance keeps a switch
+ * or a claim mapping another transaction committed after the read.
  */
+@DynamicUpdate
 @Entity
 @Table(name = "oidc_providers")
 public class OidcProvider {

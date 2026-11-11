@@ -1,6 +1,5 @@
 package io.opaa.permission;
 
-import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -412,11 +411,8 @@ public class PermissionTransferService {
       }
       transferred++;
       Optional<AssetGrant> existing =
-          grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-              grant.getAssetType(),
-              grant.getAssetId(),
-              AssetGrantSubjectType.GROUP,
-              parties.target().id());
+          grantRepository.findGroupGrantForUpdate(
+              grant.getAssetType(), grant.getAssetId(), parties.target().id());
       if (existing.isPresent()) {
         AssetGrant target = existing.get();
         AssetRole role = stronger(target.getRole(), grant.getRole());

@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.security.TargetAddressValidator.Scope;
@@ -190,7 +191,9 @@ public final class RedirectFollowingFetcher {
           targetAddressValidator.validate(uri, Scope.PER_CONNECTION);
           HttpRequest.Builder builder =
               HttpRequest.newBuilder().uri(uri).timeout(timeout).method(method, body);
-          headers.forEach(builder::header);
+          headers.forEach(
+              (name, value) ->
+                  builder.header(name, HeaderValues.requireSafe(value, "value of header " + name)));
           builder.setHeader("Content-Type", contentType);
           HttpResponse<InputStream> response =
               httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -256,7 +259,9 @@ public final class RedirectFollowingFetcher {
       targetAddressValidator.validate(currentUri, Scope.PER_CONNECTION);
       HttpRequest.Builder reqBuilder =
           HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
-      currentHeaders.forEach(reqBuilder::header);
+      currentHeaders.forEach(
+          (name, value) ->
+              reqBuilder.header(name, HeaderValues.requireSafe(value, "value of header " + name)));
 
       HttpResponse<InputStream> response =
           httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());

@@ -364,6 +364,7 @@ Die Auskunft enthält:
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+| Weitere Bestände | Schrittprotokoll und Sandboxprotokoll der Agentenläufe sowie der Fassungsstempel an der Agentenantwort, je mit Zweck, jedem Feld samt Zweck und der in dieser Installation eingestellten Frist, den vorhandenen und den ausdrücklich nicht vorhandenen Abfragewegen ([Agenten betreiben](agenten-betreiben.md#was-über-agentenläufe-gespeichert-wird)) |
 | Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind, dazu die Zahl der angehaltenen Chat-Löschungen und je Zweck ihre Anträge, Freigaben, Verlängerungen, Ablehnungen und Abläufe |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest

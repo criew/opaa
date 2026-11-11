@@ -64,3 +64,6 @@ Installation.
 - Ändern der Stelle, Sperren und Entsperren stehen im
   [Nachweisprotokoll](nachweisprotokoll-lesen.md), mit dem Grund der Sperre; das Nutzen nicht.
 - Wie ein Agent angelegt und eingerichtet wird: [Agent anlegen](../benutzer/agent-anlegen.md).
+- Vor dem Einschalten braucht das aktive Chat-Modell die Werkzeugfähigkeit „Fähig“; was nach
+  einem Update zu tun ist und welche Störungen wie ein unfähiges Modell aussehen, steht unter
+  [Agenten betreiben](../betrieb/agenten-betreiben.md).

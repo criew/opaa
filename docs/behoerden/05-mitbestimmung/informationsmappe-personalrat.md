@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-06
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -188,7 +188,40 @@ Jedes Update kommt mit einer Liste seiner Änderungen. Für jede schlägt OPAA e
 Im Zweifel gilt Zustimmung. Sicherheitsupdates ohne neue Funktion werden sofort eingespielt, der
 Personalrat erfährt es danach.
 
-## 9. Glossar
+## 9. Agenten
+
+Ein Agent beantwortet eine Frage in mehreren Schritten: Er sucht, liest nach und antwortet mit
+Belegen, auf Wunsch auch als Word-Datei nach einer Vorlage. Ab Werk sind Agenten und Vorlagen
+ausgeschaltet ({{faktenblatt:voreinstellungen#ki-funktion-agent-run}},
+{{faktenblatt:voreinstellungen#document-template-settings-enabled}}); jedes Ein- und Ausschalten
+steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
+
+- **Wer Agenten anlegt:** nur, wem die Systemverwaltung das Anlegerecht gibt; ab Werk niemand
+  außer ihr ({{faktenblatt:rollensicht#create-agent}}, {{faktenblatt:rollensicht#create-template}}).
+  Anlegen, Ändern und Löschen eines Agenten stehen im Protokoll, ohne seinen Auftrag
+  ({{faktenblatt:protokollereignisse#agent-changed}}).
+- **Was ein Agent liest:** nie mehr als die Person, die ihn aufruft.
+- **Entwurfscharakter:** Jede Antwort eines Agenten und jede Datei daraus trägt „Entwurf, nicht
+  geprüft“ mit dem Fassungsstempel: Agent und Fassung, durchsuchbare Bibliotheken, Vorlagen und
+  Modell. Den Stempel sieht nur die Person an ihrer Antwort und in ihrer Selbstauskunft; eine Datei
+  nimmt ihn beim Weitergeben mit ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)).
+- **Keine Nutzungserhebung je Person:** Die Nutzung je Person, je Space und je angelegtem Agenten
+  wird nicht erhoben; die Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis,
+  getrennt nach mitgeliefertem und angelegten Agenten. Wer wann welchen Agenten aufgerufen hat,
+  steht nur an der Antwort im Chat der Person, nicht im Protokoll.
+- **Schritt- und Sandboxprotokoll:** für die Fehlersuche, ohne Konto, ohne Teilfrage, ohne
+  Skript und ohne Inhalte, mit kurzer Frist; die Systemverwaltung liest es nur für einen Lauf mit
+  Laufkennung und Begründung, jeder Abruf steht im Protokoll ({{faktenblatt:datenkatalog#agent-run-logs}}).
+  Die Auskunft über die Datenerhebung führt beide Protokolle und den Fassungsstempel Feld für Feld
+  mit Zweck, Frist und den Abfragewegen, die es gibt und nicht gibt.
+- **Datenfluss:** Ein Agent schickt dem Sprachmodell wie der Chat Frage, Verlauf und Textstellen,
+  dazu die Ergebnisse seiner Schritte ({{faktenblatt:datenfluesse#chat-model}}). Code eines Agenten
+  läuft nur in einer abgeschotteten Umgebung ohne Netz ({{faktenblatt:datenfluesse#code-sandbox}}).
+
+Welche Agenten die Installation anbietet, mit Zweck und zuständiger Stelle, trägt die Dienststelle
+hier ein, ohne Angaben zur Nutzung: [Agent, Zweck, zuständige Stelle …]
+
+## 10. Glossar
 
 | Begriff | Bedeutung |
 |---|---|
@@ -209,6 +242,9 @@ Personalrat erfährt es danach.
 | Selbstauskunft | Download der Daten zur eigenen Person, nur durch die Person selbst |
 | Notabschaltung | Schalter der Systemverwaltung, mit dem die Selbstauskunft bei einer Störung vorübergehend abgeschaltet wird |
 | Auskunft über die Datenerhebung | Abruf der Einstellungen einer Installation mit der Beschreibung des Protokolls (Auszug für die Personalvertretung) |
+| Agent | Arbeitsmittel mit Auftrag, Wissen und Werkzeugen, das eine Frage in mehreren Schritten beantwortet; seine Antwort ist ein Entwurf |
+| Fassungsstempel | Angabe an einer Agentenantwort, mit welchem Agenten in welcher Fassung, welchen Bibliotheken, Vorlagen und welchem Modell sie entstand |
+| Schrittprotokoll | kurzlebiges technisches Protokoll eines Agentenlaufs für die Fehlersuche, ohne Konto und ohne Inhalte |
 | Mindestgruppengröße | hat eine Gruppe weniger aktive Konten, nennt die Auswahl eines Empfängers ihre Größe nicht, und „Sicht als“ sowie die Diagnose mit Space-Kontext sind für sie gesperrt; an bestehenden Freigaben und für die Systemverwaltung bleiben Zahl und Mitglieder sichtbar |
 
 ## Gut zu wissen

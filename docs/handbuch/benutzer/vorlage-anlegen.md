@@ -10,9 +10,8 @@
    (siehe unten). Als `.docx` speichern, ohne Makros.
 2. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Vorlagen“ und „Weiter“.
 3. **Stammdaten:** Name, Beschreibung und „Word-Datei auswählen“.
-4. **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“, für eine Hausvorlage die
-   haltbarere Wahl. Dazu die „Verantwortliche Stelle“ (Gruppe, Organisationseinheit oder Funktion,
-   keine Einzelperson; vorbelegt mit der Gruppe) und auf Wunsch Rollen.
+4. **Freigaben:** Eigentümer („Eine Gruppe“ ist für Hausvorlagen haltbarer), „Verantwortliche
+   Stelle“ (Gruppe, Einheit oder Funktion, keine Einzelperson) und auf Wunsch Rollen.
 5. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent

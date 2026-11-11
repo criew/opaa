@@ -5,6 +5,7 @@ import io.opaa.api.dto.DisclosureCaseCount;
 import io.opaa.api.dto.DisclosureChatDeletionHoldCases;
 import io.opaa.api.dto.DisclosureConnectorType;
 import io.opaa.api.dto.DisclosureDataFlow;
+import io.opaa.api.dto.DisclosureDataSet;
 import io.opaa.api.dto.DisclosureIncidentScopeCases;
 import io.opaa.api.dto.DisclosureIncidentScopePurposeCases;
 import io.opaa.api.dto.DisclosureInstanceState;
@@ -19,8 +20,11 @@ import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.compliance.FactSheetRenderer;
 import io.opaa.compliance.InstanceDisclosure;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
+import io.opaa.compliance.InstanceDisclosure.ProtocolField;
+import io.opaa.compliance.InstanceDisclosure.QueryPath;
 import io.opaa.compliance.InstanceDisclosureRenderer;
 
 /** Domain to response mapping of the disclosure of the data collection. */
@@ -36,7 +40,37 @@ final class DataCollectionDisclosureResponseMapper {
         .notice(FactSheetRenderer.NOTICE)
         .manifest(InstanceDisclosureRenderer.manifestObject(disclosure.manifest()))
         .instance(instance(disclosure))
-        .protocol(protocol(disclosure.protocol()));
+        .protocol(protocol(disclosure.protocol()))
+        .dataSets(
+            disclosure.dataSets().stream()
+                .map(DataCollectionDisclosureResponseMapper::dataSet)
+                .toList());
+  }
+
+  private static DisclosureDataSet dataSet(DataSetDescription dataSet) {
+    return new DisclosureDataSet()
+        .id(dataSet.id())
+        .title(dataSet.title())
+        .purpose(dataSet.purpose())
+        .fields(
+            dataSet.fields().stream().map(DataCollectionDisclosureResponseMapper::field).toList())
+        .queryPaths(
+            dataSet.queryPaths().stream()
+                .map(DataCollectionDisclosureResponseMapper::queryPath)
+                .toList())
+        .absentQueryPaths(dataSet.absentQueryPaths());
+  }
+
+  private static DisclosureProtocolField field(ProtocolField field) {
+    return new DisclosureProtocolField()
+        .name(field.name())
+        .granularity(field.granularity())
+        .purpose(field.purpose())
+        .retention(field.retention());
+  }
+
+  private static DisclosureQueryPath queryPath(QueryPath path) {
+    return new DisclosureQueryPath().name(path.name()).description(path.description());
   }
 
   private static DisclosureInstanceState instance(InstanceDisclosure disclosure) {
@@ -100,20 +134,10 @@ final class DataCollectionDisclosureResponseMapper {
   private static DisclosureProtocol protocol(Protocol protocol) {
     return new DisclosureProtocol()
         .fields(
-            protocol.fields().stream()
-                .map(
-                    field ->
-                        new DisclosureProtocolField()
-                            .name(field.name())
-                            .granularity(field.granularity())
-                            .purpose(field.purpose())
-                            .retention(field.retention()))
-                .toList())
+            protocol.fields().stream().map(DataCollectionDisclosureResponseMapper::field).toList())
         .queryPaths(
             protocol.queryPaths().stream()
-                .map(
-                    path ->
-                        new DisclosureQueryPath().name(path.name()).description(path.description()))
+                .map(DataCollectionDisclosureResponseMapper::queryPath)
                 .toList())
         .absentQueryPaths(protocol.absentQueryPaths())
         .networkAddress(protocol.networkAddress())

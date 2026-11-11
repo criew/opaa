@@ -25,6 +25,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.test.LogCapture;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.TestSessions;
 import java.net.URI;
@@ -601,6 +602,39 @@ class McpServerIntegrationTest {
                 .header(DevAuthFilter.DEV_USER_HEADER, "dev-admin")
                 .build());
     assertThat(asDevelopmentUser.statusCode()).isEqualTo(401);
+  }
+
+  /**
+   * No bearer value reaches a log line at any level: the token of a person and of a service account
+   * over MCP and REST, and invented values that fail, in the form of a token and of a JWT.
+   */
+  @Test
+  void noBearerValueReachesALogLine() throws Exception {
+    String serviceAccountValue = serviceAccountToken();
+    String inventedToken = "opaa_pat_SENTINELerfundenesTokenQ7v";
+    String inventedJwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.SENTINELsignaturX9";
+    List<String> secrets = List.of(narrowToken, serviceAccountValue, inventedToken, inventedJwt);
+
+    try (LogCapture logs = LogCapture.ofAllLoggers()) {
+      rpc(narrowToken, toolCall("search", Map.of("query", QUESTION, "maxHits", 1)));
+      rpc(serviceAccountValue, call("tools/list", Map.of()));
+      mockMvc
+          .perform(
+              post("/api/v1/search")
+                  .with(bearer(serviceAccountValue))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(searchBody(servedLibraryId)))
+          .andExpect(status().isOk());
+      assertThat(send(request(inventedToken, call("tools/list", Map.of())).build()).statusCode())
+          .isEqualTo(401);
+      assertThat(send(request(inventedJwt, call("tools/list", Map.of())).build()).statusCode())
+          .isEqualTo(401);
+      mockMvc.perform(get("/api/v1/search/hits/" + UUID.randomUUID()).with(bearer(inventedToken)));
+      mockMvc.perform(get("/api/v1/me").with(bearer(inventedJwt)));
+
+      assertThat(logs.events()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+      assertThat(logs.linesNaming(secrets)).isEmpty();
+    }
   }
 
   @Test

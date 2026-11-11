@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-05
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -30,6 +30,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 | Welche Löschungen protokolliert werden | {{faktenblatt:protokollereignisse}} |
 | Frist für Chats gesperrter Konten, mit Schalter | {{faktenblatt:fristen#locked-account-chat-cleanup-settings-delete-after-days}}, {{faktenblatt:voreinstellungen#locked-account-chat-cleanup-settings-enabled}} |
 | Schritt- und Sandboxprotokoll der Agentenläufe, Löschung nicht abschaltbar | {{faktenblatt:datenkatalog#agent-run-logs}}, {{faktenblatt:fristen#agent-run-log-retention-settings-step-log-retention-days}}, {{faktenblatt:fristen#agent-run-log-retention-settings-sandbox-log-retention-days}} |
+| Fassungsstempel an Agentenantworten und Dateien aus Agentenläufen, mit dem Chat gelöscht | {{faktenblatt:datenkatalog#chats}}, {{faktenblatt:datenkatalog#chat-attachments}} |
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
