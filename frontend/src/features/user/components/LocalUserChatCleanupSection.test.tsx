@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { FormEvent } from 'react'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
@@ -136,6 +137,30 @@ describe('LocalUserChatCleanupSection', () => {
 
     expect(await screen.findByRole('button', { name: 'Anhaltung beantragen' })).toBeVisible()
     expect(screen.queryByTestId('chat-cleanup-pending')).not.toBeInTheDocument()
+  })
+
+  // regression guard: the section stands inside the account's edit dialog, whose paper is a form;
+  // filing the request must not submit that form and save (and close) the account dialog.
+  it('files a request without submitting the surrounding account form', async () => {
+    const user = userEvent.setup()
+    const outerSubmit = vi.fn((event: FormEvent) => event.preventDefault())
+    const { container } = renderWithProviders(
+      <form onSubmit={outerSubmit}>
+        <LocalUserChatCleanupSection user={fixture('local-user-vogt')} />
+      </form>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Anhaltung beantragen' }))
+    expect(container.querySelector('form form')).toBeNull()
+    await user.click(screen.getByRole('combobox', { name: 'Zweck' }))
+    await user.click(
+      screen.getByRole('option', { name: 'Behördliche oder gerichtliche Anordnung' }),
+    )
+    await user.type(screen.getByRole('textbox', { name: /Begründung/ }), REASON)
+    await user.click(screen.getByRole('button', { name: 'Antrag stellen' }))
+
+    expect(await screen.findByTestId('chat-cleanup-pending')).toBeVisible()
+    expect(outerSubmit).not.toHaveBeenCalled()
   })
 
   it('tells an account that is not locked by the administration what a lock would start', async () => {

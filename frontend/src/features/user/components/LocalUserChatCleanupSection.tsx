@@ -198,14 +198,9 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           )}
 
           {formOpen && !pending && (
-            <Box
-              component="form"
-              aria-labelledby="chat-cleanup-hold-form-heading"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void submitRequest()
-              }}
-            >
+            // A group, not a form: the section stands inside the account's edit dialog, which is
+            // a form itself, and a nested form would submit (and close) the dialog as well.
+            <Box role="group" aria-labelledby="chat-cleanup-hold-form-heading">
               <Typography
                 id="chat-cleanup-hold-form-heading"
                 component="h4"
@@ -253,10 +248,10 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
               />
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Button
-                  type="submit"
                   size="small"
                   variant="contained"
                   disabled={busy || !purpose || !reasonValid}
+                  onClick={() => void submitRequest()}
                 >
                   Antrag stellen
                 </Button>
