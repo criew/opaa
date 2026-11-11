@@ -3,6 +3,7 @@ package io.opaa.llm.textrecognition;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.compliance.DataFlow;
+import io.opaa.llm.ModelEndpointAccess;
 import io.opaa.llm.ModelRoleHttp;
 import io.opaa.observability.MeteredHttpClient;
 import io.opaa.observability.OutboundMetrics;
@@ -515,9 +516,10 @@ public class TextRecognitionClient {
       HttpRequest.Builder request, TextRecognitionEndpoint endpoint) {
     if (StringUtils.hasText(endpoint.apiKey())) {
       if (endpoint.connectionType() == TextRecognitionConnectionType.DOCLING_SERVE) {
-        request.header("X-Api-Key", endpoint.apiKey());
+        request.header("X-Api-Key", ModelEndpointAccess.headerSafe(endpoint.apiKey()));
       } else {
-        request.header("Authorization", "Bearer " + endpoint.apiKey());
+        request.header(
+            "Authorization", "Bearer " + ModelEndpointAccess.headerSafe(endpoint.apiKey()));
       }
     }
     return request;

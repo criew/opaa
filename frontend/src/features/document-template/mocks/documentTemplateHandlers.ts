@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw'
-import type { DocumentTemplateResponse, DocumentTemplateSettingsRequest } from '@/shared/api/types'
+import { responsibilityOf } from '@/features/agent/mocks/agentHandlers'
+import type {
+  AssetLockRequest,
+  DocumentTemplateResponse,
+  DocumentTemplateSettingsRequest,
+  DocumentTemplateUpdateRequest,
+} from '@/shared/api/types'
 import { mockDocumentTemplateState as state } from './documentTemplateFixtures'
 
 function notFound() {
@@ -56,6 +62,26 @@ export const documentTemplateHandlers = [
     const file = form.get('file')
     const rejected = invalidFile(file)
     if (rejected) return rejected
+    const responsibility = responsibilityOf({
+      groupId: (form.get('responsibleGroupId') as string | null) ?? null,
+      function: (form.get('responsibleFunction') as string | null) ?? null,
+    })
+    if (!responsibility) {
+      return HttpResponse.json(
+        {
+          error: 'Bitte prüfen Sie die markierten Angaben.',
+          fieldErrors: [
+            {
+              field: 'responsible',
+              code: 'REQUIRED',
+              message:
+                'Geben Sie die verantwortliche Stelle an: eine Gruppe, Organisationseinheit oder Funktion.',
+            },
+          ],
+        },
+        { status: 400 },
+      )
+    }
     const now = new Date().toISOString()
     const id = `document-template-${Date.now()}`
     const created: DocumentTemplateResponse = {
@@ -67,6 +93,7 @@ export const documentTemplateHandlers = [
       ownerName: 'Max Mustermann',
       reach: { allAccounts: false, groupCount: 0, userCount: 1 },
       myRole: 'OWNER',
+      responsibility,
       fileName: (file as File).name,
       sizeBytes: (file as File).size,
       placeholders: [{ name: 'betreff', kind: 'FIELD', fields: [] }],
@@ -88,15 +115,38 @@ export const documentTemplateHandlers = [
     const template = state.templates[params.id as string]
     const off = enabledOr404()
     if (off || !template) return off ?? notFound()
-    const body = (await request.json()) as { name: string; description?: string | null }
+    const body = (await request.json()) as DocumentTemplateUpdateRequest
     const updated = {
       ...template,
       name: body.name,
       description: body.description ?? null,
+      responsibility: body.responsible
+        ? { ...template.responsibility, ...responsibilityOf(body.responsible) }
+        : template.responsibility,
       updatedAt: new Date().toISOString(),
     }
     state.templates[template.id] = updated
     return HttpResponse.json(updated)
+  }),
+
+  http.put('/api/v1/document-templates/:id/lock', async ({ params, request }) => {
+    const template = state.templates[params.id as string]
+    const off = enabledOr404()
+    if (off || !template) return off ?? notFound()
+    const body = (await request.json()) as AssetLockRequest
+    template.responsibility = {
+      ...template.responsibility,
+      lock: { cause: 'MANUAL', reason: body.reason, lockedAt: new Date().toISOString() },
+    }
+    return HttpResponse.json(template.responsibility)
+  }),
+
+  http.delete('/api/v1/document-templates/:id/lock', ({ params }) => {
+    const template = state.templates[params.id as string]
+    const off = enabledOr404()
+    if (off || !template) return off ?? notFound()
+    template.responsibility = { ...template.responsibility, lock: null }
+    return HttpResponse.json(template.responsibility)
   }),
 
   http.delete('/api/v1/document-templates/:id', ({ params }) => {

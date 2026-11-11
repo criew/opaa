@@ -9,10 +9,15 @@ import {
   AssetNameFields,
   AssetOwnerFields,
   AssetRightsFields,
+  RESPONSIBLE_REQUIRED,
+  ResponsibleUnitField,
   applyPendingGrantsAfterCreation,
+  responsibleDraftOfGroup,
+  responsibleRequest,
   masterDataReview,
   sharingReview,
   type PendingGrant,
+  type ResponsibleDraft,
 } from '@/features/asset'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -20,6 +25,7 @@ import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { CATALOG_ROUTE, documentTemplateRoute } from '@/shared/routes'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { createDocumentTemplate } from '../api/documentTemplateApi'
 import TemplateFilePicker from '../components/TemplateFilePicker'
@@ -50,6 +56,11 @@ export default function DocumentTemplateCreatePage() {
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const groupCheck = useFieldError('Gruppe fehlt')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [responsible, setResponsible] = useState<ResponsibleDraft | null>(null)
+  const responsibleCheck = useFieldError(RESPONSIBLE_REQUIRED)
+  // Follows the chosen owner group, else the person's first group, until the person edits it.
+  const prefill = selectedGroup ?? myGroups.groups.find((group) => !group.deactivated)
+  const responsibleDraft = responsible ?? responsibleDraftOfGroup(prefill ?? undefined)
 
   const missingCapability = isMissing('CREATE_TEMPLATE')
     ? capabilityMissingMessage('CREATE_TEMPLATE')
@@ -77,11 +88,11 @@ export default function DocumentTemplateCreatePage() {
       const nameThere = nameCheck.check(name.trim() !== '')
       if (!nameThere || !fileThere) return
     }
-    if (
-      activeStep === STEP_SHARING &&
-      !groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
-    ) {
-      return
+    if (activeStep === STEP_SHARING) {
+      // both fields report at once; the focus goes to the first one missing
+      const unitThere = responsibleCheck.check(responsibleRequest(responsibleDraft) !== null)
+      const groupThere = groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
+      if (!groupThere || !unitThere) return
     }
     setActiveStep((step) => (returnToReview ? STEPS.length - 1 : step + 1))
     setReturnToReview(false)
@@ -104,12 +115,21 @@ export default function DocumentTemplateCreatePage() {
         description: description.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
+        responsible: responsibleRequest(responsibleDraft),
       })
       await applyPendingGrantsAfterCreation('DOCUMENT_TEMPLATE', created.id, pendingGrants)
       notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(documentTemplateRoute(created.id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Die Vorlage konnte nicht angelegt werden')
+      // A refused unit takes the server's word to its step and field; anything else stays here.
+      const refusedUnit = apiFieldErrors(err).find((field) => field.field === 'responsible')
+      if (refusedUnit) {
+        setActiveStep(STEP_SHARING)
+        setReturnToReview(true)
+        responsibleCheck.fail(refusedUnit.message)
+      } else {
+        setError(err instanceof Error ? err.message : 'Die Vorlage konnte nicht angelegt werden')
+      }
       setSubmitting(false)
     }
   }
@@ -126,7 +146,12 @@ export default function DocumentTemplateCreatePage() {
       object="Neue Vorlage"
       steps={STEPS}
       activeStep={activeStep}
-      failed={nameCheck.error !== null || fileCheck.error !== null || groupCheck.error !== null}
+      failed={
+        nameCheck.error !== null ||
+        fileCheck.error !== null ||
+        groupCheck.error !== null ||
+        responsibleCheck.error !== null
+      }
       createBlockedBy={missingCapability}
       error={error}
       footerNote={
@@ -196,6 +221,17 @@ export default function DocumentTemplateCreatePage() {
             groupError={groupCheck.error}
             groupInputRef={groupCheck.ref}
           />
+          <ResponsibleUnitField
+            id={'document-template-create-responsible'}
+            groups={myGroups.groups}
+            value={responsibleDraft}
+            onChange={(next) => {
+              responsibleCheck.clear()
+              setResponsible(next)
+            }}
+            error={responsibleCheck.error}
+            inputRef={responsibleCheck.ref}
+          />
           <AssetRightsFields
             pendingGrants={pendingGrants}
             onPendingGrantsChange={setPendingGrants}
@@ -208,6 +244,11 @@ export default function DocumentTemplateCreatePage() {
             ...masterDataReview({ name, description, onChangeMasterData: () => changeAt(0) }),
             { label: 'Word-Datei', value: file?.name ?? '', onChange: () => changeAt(0) },
             ...sharingReview(sharing),
+            {
+              label: 'Verantwortliche Stelle',
+              value: responsibleDraft.text.trim(),
+              onChange: () => changeAt(STEP_SHARING),
+            },
           ]}
         />
       )}

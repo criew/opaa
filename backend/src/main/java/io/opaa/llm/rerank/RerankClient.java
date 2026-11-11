@@ -2,6 +2,7 @@ package io.opaa.llm.rerank;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.llm.ModelEndpointAccess;
 import io.opaa.llm.ModelRoleHttp;
 import io.opaa.llm.OptionalRoleStatus;
 import io.opaa.observability.MeteredHttpClient;
@@ -258,7 +259,8 @@ public class RerankClient {
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
     if (StringUtils.hasText(endpoint.apiKey())) {
-      request.header("Authorization", "Bearer " + endpoint.apiKey());
+      request.header(
+          "Authorization", "Bearer " + ModelEndpointAccess.headerSafe(endpoint.apiKey()));
     }
 
     // nanoTime, not Instant/currentTimeMillis: a wall-clock jump (e.g. an NTP correction) must not
