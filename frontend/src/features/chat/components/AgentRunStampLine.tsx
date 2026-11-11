@@ -53,20 +53,22 @@ export default function AgentRunStampLine({ run }: AgentRunStampLineProps) {
         )}
       </Box>
       {open && stamp && (
-        <Box component="dl" id={detailsId} sx={{ m: 0, mt: 0.5 }}>
-          <StampFact label="Bibliotheken">
-            {stamp.libraries.length > 0
-              ? stamp.libraries.map((library) => library.name).join(', ')
-              : 'keine'}
-          </StampFact>
-          {stamp.templates.length > 0 && (
-            <StampFact label={stamp.templates.length === 1 ? 'Vorlage' : 'Vorlagen'}>
-              {stamp.templates
-                .map((template) => `„${template.name}“, Fassung ${template.revision}`)
-                .join('; ')}
+        <Box id={detailsId} sx={{ mt: 0.5 }}>
+          <Box component="dl" sx={{ m: 0 }}>
+            <StampFact label="Bibliotheken">
+              {stamp.libraries.length > 0
+                ? stamp.libraries.map((library) => library.name).join(', ')
+                : 'keine'}
             </StampFact>
-          )}
-          {stamp.model && <StampFact label="Modell">{stamp.model}</StampFact>}
+            {stamp.templates.length > 0 && (
+              <StampFact label={stamp.templates.length === 1 ? 'Vorlage' : 'Vorlagen'}>
+                {stamp.templates
+                  .map((template) => `„${template.name}“, Fassung ${template.revision}`)
+                  .join('; ')}
+              </StampFact>
+            )}
+            {stamp.model && <StampFact label="Modell">{stamp.model}</StampFact>}
+          </Box>
           <Typography variant="body2" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
             {`${DRAFT_NOTICE}: Die Antwort ist eine Vorlage für Ihre Bearbeitung, kein geprüftes Arbeitsergebnis.`}
           </Typography>

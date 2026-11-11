@@ -1,5 +1,6 @@
 import { PDFDocument } from 'pdf-lib'
 import { expect, test } from '../../fixtures/auth'
+import { RESPONSIBLE_UNIT, setToolCapability } from '../../fixtures/agents'
 import { startFreshChat } from '../../fixtures/chat'
 import { apiAs } from '../../fixtures/externalAccess'
 import { cleanupLibraries } from '../../fixtures/libraries'
@@ -58,7 +59,7 @@ async function askAgent(page: Page, name: string, question: string): Promise<voi
   await input.pressSequentially('@')
   await page
     .getByRole('group', { name: 'Agenten' })
-    .getByRole('option', { name: new RegExp(`^Agent ${name}`) })
+    .getByRole('option', { name: new RegExp(`^${name}`) })
     .click()
   await expect(page.getByTestId('chosen-agent-chip')).toHaveText(`Agent: ${name}`)
   await input.fill(question)
@@ -76,6 +77,7 @@ async function pdfOf(api: APIRequestContext, attachmentId: string): Promise<PDFD
 test.describe('Agent mit Code-Sandbox', () => {
   const createdLibraryIds = cleanupLibraries()
   let restoreModelId: string | null = null
+  let restoreCapability: Awaited<ReturnType<typeof setToolCapability>> | null = null
   let restoreAgentSettings: AgentSettings | null = null
   let agentId: string | null = null
   const agentName = `E2E-Rechnen-${Date.now().toString(36)}`
@@ -123,7 +125,9 @@ test.describe('Agent mit Code-Sandbox', () => {
         data: { enabled: true, enabledTools: settings.availableTools },
       })
       expect(switchedOn.ok(), await switchedOn.text()).toBe(true)
-      const created = await api.post('/api/v1/agents', { data: { name: agentName } })
+      const created = await api.post('/api/v1/agents', {
+        data: { name: agentName, responsible: { function: RESPONSIBLE_UNIT } },
+      })
       expect(created.ok(), await created.text()).toBe(true)
       agentId = ((await created.json()) as { id: string }).id
       const configured = await api.put(`/api/v1/agents/${agentId}`, {
@@ -139,6 +143,10 @@ test.describe('Agent mit Code-Sandbox', () => {
       expect(configured.ok(), await configured.text()).toBe(true)
       await assignToDefaultSpace(ADMIN, 'AGENT', agentId)
 
+      // An agent run is refused unless the active model is recorded as tool-capable.
+      if (!REAL_MODEL) {
+        restoreCapability = await setToolCapability('CAPABLE')
+      }
       if (REAL_MODEL) {
         const models = (await (await api.get('/api/v1/admin/models')).json()) as ModelEntry[]
         restoreModelId = models.find((model) => model.active)?.id ?? null
@@ -155,6 +163,7 @@ test.describe('Agent mit Code-Sandbox', () => {
         const { id: modelId } = (await created.json()) as { id: string }
         const activated = await api.post(`/api/v1/admin/models/${modelId}/activate`)
         expect(activated.ok(), await activated.text()).toBe(true)
+        await setToolCapability('CAPABLE')
       }
     } finally {
       await api.dispose()
@@ -180,6 +189,9 @@ test.describe('Agent mit Code-Sandbox', () => {
       }
     } finally {
       await api.dispose()
+    }
+    if (restoreCapability && restoreCapability !== 'CAPABLE') {
+      await setToolCapability(restoreCapability)
     }
   })
 
