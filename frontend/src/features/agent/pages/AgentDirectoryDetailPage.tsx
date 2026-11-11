@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import LoadError from '@/shared/ui/states/LoadError'
 import { contentWidth, fontSize } from '@/shared/theme/tokens'
@@ -24,7 +24,7 @@ import {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Box sx={{ mb: 2 }}>
-      <FieldLabel>{label}</FieldLabel>
+      <FormFieldLabel>{label}</FormFieldLabel>
       <Typography component="div" sx={{ fontSize: fontSize.text, whiteSpace: 'pre-wrap' }}>
         {children}
       </Typography>

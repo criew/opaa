@@ -65,13 +65,11 @@ describe('Agentenverzeichnis', () => {
 
     const table = await screen.findByRole('table', { name: 'Agenten' })
     expect(within(table).queryByText(/Eigentümer|Nutzung|genutzt|Aufrufe/i)).toBeNull()
-    expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      'Name',
-      'Zweck',
-      'Verantwortlich',
-      'Fassung',
-      'Gesperrt seit',
-    ])
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Name', 'Zweck', 'Verantwortlich', 'Fassung', 'Gesperrt seit'])
   })
 
   it('explains the missing right instead of showing the directory', async () => {
