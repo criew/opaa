@@ -16,12 +16,14 @@ vulnerabilities:
       - pkg:deb/debian/libxml2
     statement: >-
       Debian-Paket libxml2 nur im Sandbox-Image (sandbox/Dockerfile), dort Abhängigkeit von
-      LibreOffice, das in fill_template eine Vorlage in PDF wandelt; erreicht wird es zudem von jedem
-      Skript, das run_code ausführt. Folge des Befunds ist ein Denial of Service beim Parsen einer
-      präparierten internen DTD. Die Vertrauensgrenze ist die Sandbox selbst: Wer dort XML einspeisen
-      kann, führt per run_code ohnehin beliebigen Code als uid 1000 aus, in einer kurzlebigen,
-      isolierten Sandbox mit Laufzeit- und Lebensdauergrenze; ein Absturz oder Hänger trifft nur
-      diesen Lauf. Debian trixie hat keinen Fix (Stand 11.11.2026). Neu zu bewerten, sobald Debian
-      einen Fix liefert (dann neu bauen, Eintrag entfällt), sobald libxml2 in einem Image außerhalb
+      LibreOffice. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
+      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat, und die Prüfung beim
+      Hochladen sperrt DTDs nur in den Word-Parts. Skripte von run_code nutzen das libxml2 der
+      Python-Wheels und erreichen das Debian-Paket nur über soffice oder ctypes; dort läuft ohnehin
+      beliebiger Code. Folge ist ein Denial of Service beim Parsen einer präparierten internen DTD,
+      begrenzt auf den einen Sandbox-Lauf (kurzlebig, isoliert, uid 1000, ohne Netz, mit Laufzeit-
+      und Lebensdauergrenze). Debian trixie hat keinen Fix (Stand 11.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), sobald Vorlagen von
+      Personen ohne Vorlagenrecht eingebracht werden können, sobald libxml2 in einem Image außerhalb
       der Sandbox auftaucht oder die Sandbox ihre Isolation verliert.
     expired_at: 2027-02-10
