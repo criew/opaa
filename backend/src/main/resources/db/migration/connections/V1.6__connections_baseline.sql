@@ -241,6 +241,7 @@ CREATE TABLE connector_type_policies (
     updated_at timestamp with time zone NOT NULL,
     profile_required_at timestamp with time zone,
     own_address_stock character varying(16),
+    version bigint DEFAULT 0 NOT NULL,
     CONSTRAINT chk_connector_type_policies_own_address_stock CHECK ((own_address_stock IN ('RUNS', 'LOCKED'))),
     CONSTRAINT chk_connector_type_policies_profile_requirement CHECK (((profile_required_at IS NULL) = (own_address_stock IS NULL)))
 );
