@@ -555,8 +555,9 @@ Schreibwege der Verwaltung antworten dann mit `409` und der Bitte, neu zu laden
 - Die Rolle aus dem Token schreibt ein bedingtes `UPDATE` ohne Versionsprüfung
   (`#changeRoleIfStill`), das die Version erhöht; zwei gleichzeitige Anmeldungen derselben Person
   scheitern nicht aneinander, eine Bearbeitung, die die Rolle vorher gelesen hat, dagegen schon.
-- Gruppenmitgliedschaften sind eigene Zeilen und erhöhen die Version der Gruppe nicht
-  (`@OptimisticLock(excluded = true)`); die Gruppen aus dem Token schreiben nur sie.
+- Gruppenmitgliedschaften sind eigene Zeilen, die die Verbindung zur Gruppe selbst tragen
+  (`mappedBy`); sie schreiben die Gruppe nicht und erhöhen ihre Version nicht
+  (`GroupRowWriteIntegrationTest`). Die Gruppen aus dem Token schreiben nur sie.
 - Der Verzeichnisabgleich wendet seinen Stand bis zu dreimal an, wenn seine Transaktion auf eine
   zwischenzeitlich geänderte Gruppe oder ein Konto trifft (`DirectorySyncService#STALE_ROW_ATTEMPTS`),
   und liest dabei jedes Mal neu.

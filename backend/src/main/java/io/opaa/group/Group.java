@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.OptimisticLock;
 
 /**
  * A permission subject that groups users together, scoped to exactly one organization. A grant can
@@ -29,10 +28,10 @@ import org.hibernate.annotations.OptimisticLock;
  *
  * <p>Optimistically locked ({@link #version}): a write from a stale read, a saved detached instance
  * included, fails instead of writing back a deactivation, dissolution, release or protection.
- * Memberships are rows of their own and do not count as a change of the group, so two members added
- * at once never make each other fail. Writing only the changed columns ({@code @DynamicUpdate})
- * keeps what a writer without the version changed meanwhile, such as the predecessor version during
- * a rolling update.
+ * Memberships are rows of their own that own the link ({@code mappedBy}); adding or removing one
+ * neither writes the group nor raises its version, so two members added at once never make each
+ * other fail. Writing only the changed columns ({@code @DynamicUpdate}) keeps what a writer without
+ * the version changed meanwhile, such as the predecessor version during a rolling update.
  */
 @DynamicUpdate
 @Entity
@@ -146,7 +145,6 @@ public class Group {
   private Instant deactivatedAt;
 
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OptimisticLock(excluded = true)
   private List<GroupMembership> memberships = new ArrayList<>();
 
   @Version private long version;
