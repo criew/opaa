@@ -214,9 +214,9 @@ test.describe.serial("Revision und Nachweis", () => {
       reason: "E2E Stichtag vor Entzug",
     });
     await submit.click();
-    await expect(
-      auditor.getByText(new RegExp(`^${libraryName} — \\d+ Zugriffszeitr`)),
-    ).toBeVisible();
+    // The object's name heads the result, the count of periods stands in the page header.
+    await expect(auditor.getByText(libraryName, { exact: true })).toBeVisible();
+    await expect(auditor.getByText(/^\d+ Zugriffszeitr(aum|äume)$/)).toBeVisible();
     await expect(readerRow).toContainText("Direkte Freigabe");
     await expect(readerRow).toContainText(/\d{1,2}\.\d{1,2}\.\d{4}/);
     await expect(readerRow).toContainText("noch wirksam");

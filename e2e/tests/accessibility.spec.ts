@@ -14,6 +14,7 @@ import {
   gotoConnectionProfiles,
 } from "../fixtures/connectionProfiles";
 import { apiAs } from "../fixtures/externalAccess";
+import { headerCreateButton } from "../fixtures/pageHeader";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
 /**
@@ -377,7 +378,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page);
-    await page.getByRole("button", { name: "Neuer Zugang" }).click();
+    await headerCreateButton(page, "Neuer Zugang").click();
     const form = page.getByRole("dialog", { name: "Neuer Zugang" });
     await form.getByRole("combobox", { name: /Quellart/ }).click();
     const locked = page
@@ -693,7 +694,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.waitForURL("**/admin/mail/templates");
     await page
       .getByRole("navigation", { name: "Vorlagen" })
-      .getByText("Testnachricht")
+      .getByText("Testnachricht", { exact: true })
       .click();
     // The debounced preview iframe is the last thing to appear; analysing before it is there
     // would skip exactly the pattern this block exists for.
@@ -719,7 +720,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     const tabs = [
-      ["access", "Zugänge", page.getByRole("button", { name: "Neuer Zugang" })],
+      ["access", "Zugänge", headerCreateButton(page, "Neuer Zugang")],
       [
         "source-types",
         "Quellarten",
