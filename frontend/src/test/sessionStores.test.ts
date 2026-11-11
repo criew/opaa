@@ -11,6 +11,7 @@ import { registeredSessionStores } from '@/shared/session/resettableStores'
  */
 const SESSION_STORES = [
   'useAgentAvailability',
+  'useAgentDirectoryStore',
   'useAgentStore',
   'useCatalogStore',
   'useChatListStore',
