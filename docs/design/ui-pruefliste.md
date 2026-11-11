@@ -209,7 +209,8 @@ zwei Einträgen.
 
 55. **Listen aus einem Baustein** ([guidelines.md](./guidelines.md), 5.3): die ganze Zeile als
     Link statt „Details“, „Beheben“ oder Chevron; höchstens eine sichtbare, sekundäre Handlung je
-    Zeile, der Rest hinter „⋯“; Anzahl neben dem Seitentitel, gefiltert „12 von 40“; Blättern
+    Zeile, der Rest hinter „⋯“ (Ausnahme: Pfeile zum Verschieben, wo die Reihenfolge der Inhalt
+    ist); Anzahl neben dem Seitentitel, gefiltert „12 von 40“; Blättern
     unten rechts als „Seite 2 von 5“; höchstens sieben Spalten bei 1280 px; Zellen einzeilig,
     Namen gekürzt mit Tooltip. – gemessen (`tableColumns`, `rowPrimaryButtons`) und Sicht; ESLint
     verbietet `Table` außerhalb von `shared/ui`, im Code geprüft durch `AdminList.test.tsx`

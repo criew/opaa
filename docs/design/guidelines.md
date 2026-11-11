@@ -588,7 +588,9 @@ diese Regeln um:
    an Ort und Stelle, trägt sie `aria-expanded`.
 2. **Höchstens eine sichtbare Handlung je Zeile**: kompakt, sekundär, mit Verb (`RowAction`). Nie
    primär, nie roter Text. Alles Weitere, auch Löschen und Widerrufen, steht hinter „⋯“
-   (`RowMenu`).
+   (`RowMenu`). Ausnahme: Ist die Reihenfolge der Zeilen selbst der Inhalt (Identitätsanbieter
+   auf der Anmeldeseite), stehen die beiden Pfeile zum Verschieben als Symbolschaltflächen neben
+   „⋯“; sie zählen zusammen als die eine Handlung.
 3. **Anzahl neben dem Seitentitel** (`AreaPageCount`), bei gefilterter Liste „12 von 40“. Die Zahl
    steht nicht über oder unter der Tabelle.
 4. **Blättern in einer Form** (`ListPager`): unten rechts „Seite 2 von 5“ mit Pfeilen; bei einer

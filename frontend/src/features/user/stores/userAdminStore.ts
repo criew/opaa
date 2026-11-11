@@ -88,6 +88,8 @@ interface UserAdminState {
   total: number
   /** All accounts without any filter, for „12 von 40“; null while unknown. */
   overallTotal: number | null
+  /** The last count request failed; `overallTotal` then repeats the filtered total. */
+  countFailed: boolean
   size: number
   filters: AccountFilters
   isLoading: boolean
@@ -101,7 +103,7 @@ interface UserAdminState {
 
   reset: () => void
   /** Loads the page the current {@link AccountFilters} describe. */
-  loadAccounts: () => Promise<void>
+  loadAccounts: (options?: { keepCount?: boolean }) => Promise<void>
   /**
    * Merges `patch` into the filters and reloads. Every change but an explicit page jump returns
    * to the first page: a filter that narrows the result would otherwise land on a page that no
@@ -140,6 +142,7 @@ const emptyState = {
   accounts: [] as AccountResponse[],
   total: 0,
   overallTotal: null as number | null,
+  countFailed: false,
   size: LOCAL_USER_PAGE_SIZE,
   filters: INITIAL_ACCOUNT_FILTERS,
   isLoading: false,
@@ -190,7 +193,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     set({ ...emptyState })
   },
 
-  loadAccounts: async () => {
+  loadAccounts: async (options) => {
     const sessionEpoch = currentSessionEpoch()
     listRequestSequence += 1
     const requestId = listRequestSequence
@@ -198,14 +201,18 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     const { query, providerType, providerId, status, role, review, sort, direction, page } =
       get().filters
     set({ isLoading: true, error: null })
-    // The count beside the title needs the unfiltered total; a failed count leaves it out
-    // instead of failing the list.
-    const overall = narrowsAccounts(get().filters)
-      ? listAccounts({ size: 1 }).then(
-          (all) => all.total,
-          () => null,
-        )
-      : null
+    // The count beside the title needs the unfiltered total. A filter change reuses the known
+    // one; every other load (first, retry, after a write) counts again. A failed count falls
+    // back to the total of the filtered list instead of failing the list.
+    const known = options?.keepCount && !get().countFailed ? get().overallTotal : null
+    const overall = !narrowsAccounts(get().filters)
+      ? null
+      : known !== null
+        ? Promise.resolve(known)
+        : listAccounts({ size: 1 }).then(
+            (all) => all.total,
+            () => null,
+          )
     try {
       const result = await listAccounts({
         query: query.trim(),
@@ -219,12 +226,13 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
         direction,
         page,
       })
-      const overallTotal = overall === null ? result.total : await overall
+      const counted = overall === null ? result.total : await overall
       if (isStale()) return
       set({
         accounts: result.items,
         total: result.total,
-        overallTotal,
+        overallTotal: counted ?? result.total,
+        countFailed: counted === null,
         size: result.size,
         isLoading: false,
       })
@@ -241,7 +249,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     set({
       filters: { ...get().filters, ...patch, page: patch.page ?? 0 },
     })
-    await get().loadAccounts()
+    await get().loadAccounts({ keepCount: true })
   },
 
   loadSummary: async () => {

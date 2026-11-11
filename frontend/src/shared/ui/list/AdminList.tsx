@@ -330,19 +330,31 @@ export interface AdminListColumn<Row, F extends string = never> {
    * value (default), `hidden` stays in the table only.
    */
   card?: 'title' | 'line' | 'fact' | 'hidden'
+  /**
+   * For the title column of a row with a target: what stands below the name outside the row's
+   * link, e.g. state badges. The link is named by the entry alone, so a state inside it would
+   * not be announced.
+   */
+  below?: (row: Row, index: number) => ReactNode
 }
 
 const INTERACTIVE =
   'a, button, input, select, textarea, label, [role="button"], [role="checkbox"], [tabindex="0"]'
 
 /**
- * A click anywhere on the row follows the row's link. Not counted: a control inside the row, and
- * an element of a menu or dialog that only bubbles through React's tree from a portal.
+ * A click anywhere on the row follows the row's link. Not counted: a control inside the row, the
+ * row's open details, and an element of a menu or dialog that only bubbles through React's tree
+ * from a portal. A focusable ancestor of the row, such as the scroll region, is not a control.
  */
 function followRowLink(event: MouseEvent<HTMLElement>) {
   const target = event.target as HTMLElement
-  if (!event.currentTarget.contains(target) || target.closest(INTERACTIVE) !== null) return
-  event.currentTarget.querySelector<HTMLElement>('[data-row-link]')?.click()
+  const row = event.currentTarget
+  if (!row.contains(target)) return
+  const control = target.closest(INTERACTIVE)
+  if (control !== null && row.contains(control) && control !== row) return
+  const detail = target.closest('[data-row-detail]')
+  if (detail !== null && row.contains(detail)) return
+  row.querySelector<HTMLElement>('[data-row-link]')?.click()
 }
 
 /**
@@ -555,6 +567,7 @@ export default function AdminList<Row, F extends string = never>({
                         ) : (
                           title
                         )}
+                        {titleColumn.below?.(row, index)}
                         {lines.map((column) => {
                           const value = column.cell(row, index)
                           if (value === null || value === undefined || value === false) return null
@@ -585,7 +598,11 @@ export default function AdminList<Row, F extends string = never>({
                         ))}
                       </Box>
                     )}
-                    {detail && <Box sx={{ mt: 1.5 }}>{detail}</Box>}
+                    {detail && (
+                      <Box data-row-detail="" sx={{ mt: 1.5, cursor: 'auto' }}>
+                        {detail}
+                      </Box>
+                    )}
                   </>
                 </Box>
               </Box>
@@ -692,6 +709,7 @@ export default function AdminList<Row, F extends string = never>({
                         ) : (
                           content
                         )}
+                        {column === titleColumn && column.below?.(row, index)}
                       </TableCell>
                     )
                   })}

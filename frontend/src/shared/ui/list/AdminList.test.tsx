@@ -99,6 +99,42 @@ describe('AdminList', () => {
     expect(await screen.findByText('Detailseite')).toBeInTheDocument()
   })
 
+  it('follows the row link inside the focusable scroll region of a wide table', async () => {
+    renderList({ minWidth: 900, rowTarget: (row) => ({ to: `/items/${row.id}` }) })
+
+    expect(screen.getByRole('region', { name: 'Einträge, horizontal scrollbar' })).toHaveAttribute(
+      'tabindex',
+      '0',
+    )
+    await userEvent.click(screen.getByText('12'))
+    expect(await screen.findByText('Detailseite')).toBeInTheDocument()
+  })
+
+  it('keeps what stands below the name out of the row link', () => {
+    renderList({
+      rowTarget: () => ({ onOpen: vi.fn() }),
+      columns: [{ ...COLUMNS[0], below: () => <span>Gesperrt</span> }, COLUMNS[1]],
+    })
+
+    const opener = screen.getByRole('button', { name: 'Alpha' })
+    const badge = within(opener.closest('td')!).getByText('Gesperrt')
+    expect(opener).not.toContainElement(badge)
+  })
+
+  it('leaves the open details of a card alone when they are clicked', async () => {
+    stubViewport(false)
+    const onOpen = vi.fn()
+    renderList({
+      rowTarget: () => ({ onOpen, expanded: true }),
+      rowDetail: (row) => (row.id === 'a' ? <p>Einzelheiten</p> : null),
+    })
+
+    await userEvent.click(screen.getByText('Einzelheiten'))
+    expect(onOpen).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByText('3'))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('opens a row in place with the keyboard and reports the expanded state', async () => {
     const onOpen = vi.fn()
     renderList({ rowTarget: (row) => ({ onOpen: () => onOpen(row.id), expanded: row.id === 'a' }) })

@@ -25,7 +25,7 @@ interface OverviewProps {
 }
 
 /** Source type and at most one lock badge: a cell carries no more than two (guidelines 5.3). */
-function ProfileCell({ entry }: { entry: ProfileEntry }) {
+function ProfileBadges({ entry }: { entry: ProfileEntry }) {
   const lock =
     entry.profile.locked && entry.typeLocked
       ? 'Zugang und Quellart gesperrt'
@@ -35,12 +35,9 @@ function ProfileCell({ entry }: { entry: ProfileEntry }) {
           ? 'Quellart gesperrt'
           : null
   return (
-    <Box sx={{ minWidth: 0 }}>
-      <ListText strong>{entry.profile.name}</ListText>
-      <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, overflow: 'hidden' }}>
-        <MetaBadge>{entry.sourceTypeName}</MetaBadge>
-        {lock && <MetaBadge>{lock}</MetaBadge>}
-      </Box>
+    <Box sx={{ display: 'flex', gap: 0.75, mt: 0.5, overflow: 'hidden' }}>
+      <MetaBadge>{entry.sourceTypeName}</MetaBadge>
+      {lock && <MetaBadge>{lock}</MetaBadge>}
     </Box>
   )
 }
@@ -93,7 +90,8 @@ export default function ConnectionProfileOverview({ entries, onOpen }: OverviewP
           id: 'profile',
           head: 'Zugang',
           width: '26%',
-          cell: (entry) => <ProfileCell entry={entry} />,
+          cell: (entry) => <ListText strong>{entry.profile.name}</ListText>,
+          below: (entry) => <ProfileBadges entry={entry} />,
         },
         {
           id: 'server',
