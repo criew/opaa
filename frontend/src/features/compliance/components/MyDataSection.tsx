@@ -28,8 +28,8 @@ import {
   completedText,
   formatMoment,
 } from '../utils/selfDisclosureMessages'
-import { fontSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** How often the page asks for the status while a download it started may still run. */
 export const STATUS_POLL_MS = 4000
@@ -301,7 +301,7 @@ export default function MyDataSection() {
   }
 
   return (
-    <Box sx={{ maxWidth: 640 }}>
+    <Box sx={{ maxWidth: contentWidth.form }}>
       <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
         Laden Sie die zu Ihnen in {productName} gespeicherten Daten als ZIP-Datei herunter: Konto,
         Chats, Rechte, Gruppen, Spaces und weitere, lesbar und maschinenlesbar.

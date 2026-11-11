@@ -62,7 +62,7 @@ export default function CapabilityManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Anlegerechte" gutterBottom />
         <Alert severity="info">
           Anlegerechte vergibt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht
@@ -79,7 +79,7 @@ export default function CapabilityManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={KeyOutlinedIcon}
           title="Anlegerechte"

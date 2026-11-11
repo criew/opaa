@@ -123,7 +123,7 @@ export default function DirectorySyncPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Verzeichnisabgleich" gutterBottom />
         <Alert severity="info">
           Den Verzeichnisabgleich führt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht
@@ -140,11 +140,11 @@ export default function DirectorySyncPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={SyncOutlinedIcon}
           title="Verzeichnisabgleich"
-          meta={entries.length === 1 ? '1 Anbieter' : `${entries.length} Anbieter`}
+          count={{ total: entries.length, unit: ['Anbieter', 'Anbieter'] }}
           description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
         />
 

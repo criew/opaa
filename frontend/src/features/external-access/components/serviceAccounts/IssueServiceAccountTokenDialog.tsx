@@ -6,7 +6,7 @@ import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
-import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { connectionsAdminRoute } from '@/shared/routes'
 import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
@@ -196,7 +196,7 @@ function TokenDialog({
             error={Boolean(errors.expiry)}
             helperText={errors.expiry ?? `höchstens ${maxDays} Tage`}
             size="small"
-            sx={{ maxWidth: 240 }}
+            sx={{ maxWidth: fieldWidth.short }}
             slotProps={{
               htmlInput: {
                 min: toDateInputValue(earliestExpiryDate()),

@@ -178,8 +178,9 @@ export default function EmbeddingIndexSection() {
 
       {refillPending && !running && (
         <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+          {/* With a stale index „Neueinbettung starten" below is the page's primary action. */}
           <Button
-            variant="contained"
+            variant={status.stale ? 'outlined' : 'contained'}
             disabled={busy}
             onClick={() => void act(startEmbeddingReindex)}
           >

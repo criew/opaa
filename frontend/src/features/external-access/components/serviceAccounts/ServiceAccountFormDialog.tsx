@@ -9,8 +9,8 @@ import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccount, updateServiceAccount } from '../../api/serviceAccountApi'
 import { useErrorTitle } from './serviceAccountHooks'
-import { fontSize } from '@/shared/theme/tokens'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 type Field = 'name' | 'responsibleUserId' | 'rateLimitPerHour'
 
@@ -193,7 +193,7 @@ function AccountForm({
               : undefined)
           }
           size="small"
-          sx={{ maxWidth: 360 }}
+          sx={{ maxWidth: fieldWidth.medium }}
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
         />
       </Stack>

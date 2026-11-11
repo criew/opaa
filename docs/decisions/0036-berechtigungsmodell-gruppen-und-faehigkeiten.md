@@ -224,7 +224,8 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
 - **Wirkung:** Das Objekt bleibt nutzbar, Rechte bleiben, die **Reichweite ist eingefroren** (keine neuen
   Grants, keine höhere Freigabestufe, keine neue Bereitstellung, keine neuen Space-Mitglieder). Nichts
   wird gelöscht.
-- **Betriebsliste** (`GET /api/v1/admin/succession`, Zahl je Reiter `GET /api/v1/admin/succession/counts`, `SuccessionKind`): vollständig ab dem ersten Tag,
+- **Betriebsliste** (`GET /api/v1/admin/succession`, `SuccessionKind`; die Zahl der Einträge nennt die Liste des
+  gezeigten Reiters, einen eigenen Zählendpunkt gibt es nicht): vollständig ab dem ersten Tag,
   drei Reiter mit derselben Mechanik — **Offene Nachfolgen** (Objekt, derzeitiger Adressat, Alter;
   Stufung Space → übrige handlungsfähige `ADMIN`, Asset einer internen Gruppe → deren Verantwortliche,
   sonst Systemverwaltung — eine Zuständigkeitsangabe, keine Zugangsbeschränkung), **Freigaben ohne

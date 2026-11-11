@@ -3,13 +3,12 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import { fontSize, radius } from '../theme/tokens'
+import { fontSize } from '../theme/tokens'
 
 export interface AreaTab<T extends string> {
   value: T
+  /** Text only: no icon, no counter (Prüfliste P2). A list's count stands next to the page title. */
   label: string
-  /** A neutral count after the label, e.g. open entries; part of the tab's accessible name. */
-  count?: number
 }
 
 interface AreaTabsProps<T extends string> {
@@ -71,31 +70,7 @@ export default function AreaTabs<T extends string>({
         {tabs.map((entry) => (
           <Tab
             key={entry.value}
-            label={
-              entry.count === undefined ? (
-                entry.label
-              ) : (
-                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                  {entry.label}{' '}
-                  <Box
-                    component="span"
-                    sx={{
-                      minWidth: 22,
-                      px: 0.75,
-                      borderRadius: `${radius.pill}px`,
-                      fontSize: fontSize.meta,
-                      fontWeight: 600,
-                      lineHeight: '20px',
-                      textAlign: 'center',
-                      bgcolor: entry.count > 0 ? 'action.selected' : 'transparent',
-                      color: entry.count > 0 ? 'text.primary' : 'text.secondary',
-                    }}
-                  >
-                    {entry.count}
-                  </Box>
-                </Box>
-              )
-            }
+            label={entry.label}
             value={entry.value}
             component={RouterLink}
             to={href(entry.value)}

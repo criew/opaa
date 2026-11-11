@@ -109,7 +109,7 @@ export default function AuditorRoleRequestsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={HowToRegOutlinedIcon}
           title="Rollenanträge"

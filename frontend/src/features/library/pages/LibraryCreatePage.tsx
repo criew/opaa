@@ -79,9 +79,9 @@ import {
 import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
-import { iconSize } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { iconSize } from '@/shared/theme/tokens'
 
 /**
  * The creation wizard for knowledge libraries. Every step

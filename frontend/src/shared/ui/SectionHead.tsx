@@ -1,5 +1,6 @@
 import Typography from '@mui/material/Typography'
 import { fontSize } from '../theme/tokens'
+import { SECTION_GAP_SELECTOR } from './sectionGap'
 
 interface SectionHeadProps {
   children: string
@@ -11,8 +12,9 @@ interface SectionHeadProps {
 }
 
 /**
- * Eyebrow-style section head on a hairline, shared by the migrated management pages
- * (guidelines 3.4/5.3): monospace uppercase over the content block it introduces.
+ * The one section head of the app (guidelines 4.6): monospace uppercase on a hairline over the
+ * content block it introduces. The gap to whatever stands before it is part of the head, so a
+ * second section never sticks to the content of the first.
  */
 export default function SectionHead({
   children,
@@ -31,7 +33,15 @@ export default function SectionHead({
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
         color: 'text.secondary',
-        ...(underline ? { borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 } : { mb: 0 }),
+        ...(underline
+          ? {
+              borderBottom: 1,
+              borderColor: 'divider',
+              pb: 1,
+              mb: 2,
+              [SECTION_GAP_SELECTOR]: { mt: 4 },
+            }
+          : { mb: 0 }),
       }}
     >
       {children}

@@ -88,7 +88,7 @@ entsteht ein neues, leeres Konto.
 ## Liste prüfen
 
 Die Filter „ohne Ablaufdatum“, „länger nicht genutzt“ und „offene Einladungen“ zeigen die Konten,
-an denen eine Entscheidung fällig ist. Ein Hinweis neben „Konto anlegen“ nennt die Zahlen, einmal
+an denen eine Entscheidung fällig ist. Ein Hinweis über der Liste nennt die Zahlen, einmal
 im Quartal kommt eine Wiedervorlage per Mail. Die Liste zeigt bewusst kein Datum der letzten
 Nutzung und hat keinen Export.
 

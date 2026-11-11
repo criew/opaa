@@ -25,6 +25,7 @@ import PageSection from '@/shared/ui/PageSection'
 import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth, fieldWidth, readingWidth } from '@/shared/theme/tokens'
 
 interface SettingText {
   name: string
@@ -193,7 +194,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
             Speichern
           </BusyButton>
         </Box>
-        <Box sx={{ mt: 1, maxWidth: 520 }}>
+        <Box sx={{ mt: 1, maxWidth: fieldWidth.long }}>
           <RetentionPauseNotice
             pauses={entry.pausedBy}
             confirmLabel="Angezeigten Wert festlegen"
@@ -201,7 +202,7 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
           />
         </Box>
         {belowGroupSize && (
-          <Alert severity="warning" sx={{ mt: 1, maxWidth: 420 }}>
+          <Alert severity="warning" sx={{ mt: 1, maxWidth: readingWidth }}>
             {`Der Wert liegt unter der Mindestgruppengröße von ${minimumGroupSize}: Jeder Zugang für Personen zeigt dann schon bei „weniger als ${minimumGroupSize}“ die Warnung, auch ein leerer.`}
           </Alert>
         )}
@@ -286,7 +287,7 @@ export default function ConnectionLifecycleSection() {
         <Table
           size="small"
           aria-label="Schwellen und Fristen der Verbindungen"
-          sx={{ maxWidth: 860 }}
+          sx={{ maxWidth: contentWidth.detail }}
         >
           <TableHead>
             <TableRow>

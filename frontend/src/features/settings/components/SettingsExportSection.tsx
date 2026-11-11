@@ -8,6 +8,7 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { exportSettings } from '../api/settingsApi'
 import { downloadSettings, settingsFileName } from '../utils/settingsFile'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /** Saves every setting of the installation as one JSON file, without secrets. */
 export default function SettingsExportSection() {
@@ -35,7 +36,7 @@ export default function SettingsExportSection() {
       title="Exportieren"
       description="Speichert alle Einstellungen der Verwaltung als eine Datei, etwa um Test und Produktion zu vergleichen oder eine neue Installation vorzubereiten."
     >
-      <Stack spacing={2} sx={{ maxWidth: 640, alignItems: 'flex-start' }}>
+      <Stack spacing={2} sx={{ maxWidth: contentWidth.form, alignItems: 'flex-start' }}>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Ohne Passwörter und Schlüssel. Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge,
           Konnektor-Freigabe und Bilder des Brandings gehören nicht dazu.
