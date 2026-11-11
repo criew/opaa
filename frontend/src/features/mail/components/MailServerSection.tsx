@@ -195,12 +195,6 @@ export default function MailServerSection() {
 
       {!settings.publicBaseUrlConfigured && <PublicBaseUrlMissingAlert sx={{ mb: 2.5 }} />}
 
-      {(refusal ?? error) && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {refusal ?? error}
-        </Alert>
-      )}
-
       <PageSection title="Verbindung">
         <SettingsForm
           onSave={() => handleSave()}
@@ -219,6 +213,7 @@ export default function MailServerSection() {
           }
           result={
             <Stack spacing={2}>
+              {(refusal ?? error) && <Alert severity="error">{refusal ?? error}</Alert>}
               <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 Die Testnachricht geht immer an die Adresse Ihres eigenen Kontos — eine andere lässt
                 sich hier bewusst nicht eintragen.

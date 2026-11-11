@@ -13,6 +13,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | --- | --- |
 | `capture.mjs` | Screenshots und Kennzahlen je Ablauf, Szenario, Schema und Breite |
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
+| `mobile-pass.mjs` | Seitendurchlauf bei 360 und 320 px über alle Verwaltungs- und Hauptseiten (Leitlinie 4.7, Prüfliste P25) |
 | `record-flows.mjs` | Videos je Art und Szenario (`--kinds`) als MP4 mit sichtbarem Mauszeiger; im UI-Lab je Szenario ein Video über alle Reiter |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
@@ -229,6 +230,34 @@ Sitzung: Die Theme-Übergänge sind dann noch nicht abgeschlossen, und axe melde
 die es im direkt geladenen Schema nicht gibt.
 
 Nach einer Änderung an `lib/measure.mjs` oder `lib/browser.mjs` die Kalibrierung laufen lassen.
+
+## mobile-pass.mjs
+
+```bash
+cd e2e
+node ui-lab/mobile-pass.mjs --base http://localhost:5191 [--out <dir>] [--shots]
+     [--profiles admin,user,auditor] [--only /admin/users] [--chromium <pfad>]
+```
+
+Lädt jede Seite aus `PAGES` mit ihrem [Mock-Profil](#mock-profile) bei 360 px, dazu den
+Installationsassistenten (`?mockInstallation=pending`), und folgt den Reitern, die eine Seite als
+Links zeigt. Gemessen wird bei 360 px:
+
+| Kennzahl | Regel ([guidelines.md](../../docs/design/guidelines.md), 4.7) |
+| --- | --- |
+| `contentTop` | Oberkante des `<h1>` höchstens 200 px unter der Oberkante |
+| `overflowX` | kein waagerechtes Scrollen der Seite |
+| `tables` | keine sichtbare `<table>` |
+| `wrappedLabels` | keine Beschriftung eines Knopfs oder Reiters über zwei Zeilen |
+| `cutOff` | kein Text am Rand abgeschnitten (außer in scrollenden Behältern wie der Navigationszeile) |
+| `createButton` | der Anlege-Knopf im Seitenkopf steht in voller Breite unter dem Titel |
+| `dialog` | der Dialog dieses Knopfs füllt den Bildschirm, seine Fußzeile steht unten |
+
+Bei 320 px (Reflow nach WCAG) nur `overflowX` und `cutOff`. Jede Seite steht als Zeile auf der
+Konsole, mit `--out` zusätzlich in `mobile-pass.jsonl`, mit `--shots` als Bildschirmfoto bei
+360 px (mit geöffnetem Dialog als `…__dialog.png`). Der volle Lauf über rund 65 Seiten dauert
+etwa 25 Minuten. Exit-Code 1, sobald eine Seite eine Regel verletzt. Eine neue Verwaltungsseite gehört in
+`PAGES`.
 
 ## record-flows.mjs
 

@@ -2,27 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { useTheme } from '@mui/material/styles'
 import { renderWithProviders } from '@/test/test-utils'
+import { setViewportWidth } from '@/test/viewport'
 import { DIALOG_MAX_WIDTH, type DialogWidth } from './dialogWidth'
 import FormDialog from './FormDialog'
 import ViewDialog from './ViewDialog'
-
-/** Answers every media query as a viewport of the given width would. */
-function setViewportWidth(width: number) {
-  window.matchMedia = ((query: string) => {
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    return {
-      matches: (!max || width <= Number(max[1])) && (!min || width >= Number(min[1])),
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }
-  }) as typeof window.matchMedia
-}
 
 function BreakpointProbe({ onValues }: { onValues: (values: Record<string, number>) => void }) {
   onValues(useTheme().breakpoints.values)

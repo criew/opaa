@@ -369,7 +369,9 @@ Inhalt stehen nur Reiter, Hinweise und die Filterzeile.
 Seiten derselben Art haben dieselbe Breite; die rechte Kante springt nicht beim Wechsel zwischen
 zwei Menüpunkten (Prüfliste P46). **Kein Thema schreibt eine Breite als Zahl.** Ein einzelnes
 Feld oder ein kleiner Block, der seinen Behälter nicht füllen soll, nimmt eine Stufe aus
-`fieldWidth` (240, 360, 480 px).
+`fieldWidth` (240, 360, 480 px). Formulare haben eigene Breiten aus `formWidth` (5.2):
+`formWidth.number` für Zahlenfelder, `formWidth.column` für die Spalte eines
+Einstellungsformulars.
 
 **Erklärtexte in Lesebreite.** Ein erklärender Absatz ist höchstens 72 Zeichen breit
 (`readingWidth`), auch über einer breiten Tabelle. Die Beschreibung im Seitenkopf und unter einer
@@ -382,6 +384,43 @@ gibt es nicht. Den Abstand zum Inhalt davor (32 px) setzt der Baustein, nicht di
 
 Ein Quelltext-Test (`frontend/src/shared/ui/pageGrid.test.tsx`) hält Breiten, Plus-Icon und
 Reiter ohne Zähler fest; `AreaPageHeader.test.tsx` führt die Liste der Bereichsseiten.
+
+### 4.7 Telefon und schmale Fenster
+
+**Zwei Schwellen, 600 und 900 px** (`sm` und `md` im Theme). Darunter ändert sich die Form, nicht
+nur die Breite:
+
+| Unter | Was sich ändert |
+| --- | --- |
+| 900 px | Die Seitenleiste wird zur Schublade hinter „Menü öffnen“. Die Bereichsnavigation steht als eine Zeile über der Seite. Jede Liste aus `AdminList` ist eine Kartenliste (5.3); eine `<table>` ist nicht sichtbar. Die Schrittliste des Installationsassistenten zeigt nur „Schritt 2 von 12 · Erstes Konto“ (5.17). |
+| 600 px | Dialoge und Seitenpanels füllen den Bildschirm, die Fußzeile steht unten (5.6). Der Anlege-Knopf steht in voller Breite in einer eigenen Zeile unter dem Titel (`AreaPageHeader`, 4.6). Die Schrittleiste der übrigen Assistenten (`WizardStepBar`) nennt nur beim aktiven Schritt den Namen, die anderen zeigen ihre Nummer; vorgelesen werden alle mit Namen (5.15). |
+
+**Bereichsnavigation in einer Zeile** (`frontend/src/app/shell/AreaSectionRow.tsx`): Unter 900 px
+stehen die Einträge von Administration und Revision nebeneinander in einer Zeile, die sich
+waagerecht scrollen lässt. Der aktive Eintrag steht beim Öffnen einer Seite in der Mitte; ein
+Verlauf am Rand zeigt, dass dort weitere Einträge folgen. Die Einträge bleiben Links einer Liste,
+der Tabulator scrollt sie herein. Titel und Kennzeichen „Global“ der Spalte entfallen, die
+Landmarke behält den Namen. Nur diese Datei kennt die schmale Form; wer sie ändert, ändert nur
+sie.
+
+**Inhalt oben.** Bei 360 px beginnt der Seitentitel spätestens 200 px unter der Oberkante.
+
+**Beschriftungen brechen nie um.** Knöpfe, Reiter und Einträge der Bereichsnavigation bleiben
+einzeilig. Passt eine Fußzeile nicht in eine Zeile, brechen die Knöpfe als Ganzes in die nächste
+Zeile, nicht ihr Text.
+
+**Zwei Breiten, zwei Zwecke:**
+
+- **320 px** ist die Untergrenze für Reflow nach WCAG 1.4.10
+  ([Barrierefreiheit](./accessibility.md), 2.5): Nichts bricht, nichts ist abgeschnitten,
+  nichts scrollt waagerecht. Gemessen in `e2e/ui-lab/capture.mjs` (`overflowX`, `clippedText`),
+  in `mobile-pass.mjs` (`overflowX`, `cutOff`) und in der E2E-Suite
+  (`admin-area-navigation.spec.ts`).
+- **360 px** ist das Telefon, an dem die Regeln dieses Abschnitts gemessen und Screenshots
+  bewertet werden: `e2e/ui-lab/mobile-pass.mjs` lädt alle Verwaltungs- und Hauptseiten mit den
+  Mock-Profilen `admin`, `user` und `auditor` und misst Inhaltsbeginn, waagerechtes Scrollen,
+  sichtbare Tabellen, umbrechende Beschriftungen, Anlege-Knopf und den Dialog, den er öffnet
+  (Prüfliste P25).
 
 ---
 
@@ -942,7 +981,8 @@ in der Statuszeile; die fertige Antwort ersetzt die vorläufige an derselben Ste
 für Agentenläufe: Ihre Schritte stehen unter derselben Statuszeile, die den laufenden Schritt nennt.
 
 **Kopf des Chats.** Der Kopf steht von Anfang an, auch im leeren Chat, mit „Neuer Chat“ als
-Titel, bis der Chat einen eigenen hat. Nichts rutscht, wenn die erste Antwort fertig ist oder der
+Titel, bis der Chat einen eigenen hat; hat er nach der ersten Runde keinen, zeigt der Kopf
+„Unbenannter Chat“ wie die Chatliste. Nichts rutscht, wenn die erste Antwort fertig ist oder der
 Titel eintrifft: Die erste Nachricht steht während der laufenden und nach der fertigen Antwort an
 derselben Stelle (geprüft in `e2e/tests/chat-streaming.spec.ts`).
 
@@ -1274,7 +1314,9 @@ die Fußzeile eines Einstellungsformulars selbst.
 - **„Verwerfen" steht still daneben, nur solange etwas geändert ist**, und stellt den gespeicherten
   Stand wieder her. Wer die Seite mit Änderungen über einen Link verlässt, wird gefragt:
   „Änderungen verwerfen?" (Ton `neutral`, Handlung „Verwerfen"); beim Schließen oder Neuladen des
-  Tabs fragt der Browser.
+  Tabs fragt der Browser. Die Zurück-Taste des Browsers fängt die Nachfrage nicht ab: Abfangen
+  ließe sie sich nur mit `useBlocker`, und der setzt einen Daten-Router voraus, den die
+  Anwendung nicht nutzt (`BrowserRouter`). Wer zurückgeht, verliert die Eingaben ohne Frage.
 - **Ein einzelner Wert ist eine Wertzeile mit „Ändern"** (`SettingValueRow`, 5.12): Titel, Wert,
   rechts „Ändern". „Ändern" öffnet das Feld unter dem Wert mit „Speichern" (primär, kompakt) und
   „Abbrechen" (still). Neben einem Feld steht kein Speichern-Knopf. Der Weg zurück zur

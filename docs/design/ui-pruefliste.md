@@ -35,8 +35,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
-| Spalten je Tabelle | höchstens 7 bei 1280 px | gemessen: `tableColumns`, Spaltenköpfe der breitesten sichtbaren Tabelle; die Spalte der Handlungen zählt mit (P55) |
-| Primärschaltflächen in Tabellenzeilen | 0 | gemessen: `rowPrimaryButtons`, gefüllte Schaltflächen in Tabellenzeilen (P55) |
+| Spalten je Tabelle | höchstens 7 bei 1280 px | gemessen: `tableColumns`, Spaltenköpfe der breitesten sichtbaren Tabelle; die Spalte der Handlungen zählt mit (P58) |
+| Primärschaltflächen in Tabellenzeilen | 0 | gemessen: `rowPrimaryButtons`, gefüllte Schaltflächen in Tabellenzeilen (P58) |
 
 ## Visuell
 
@@ -110,8 +110,15 @@ zwei Einträgen.
 
 ## Allgemeine Qualität
 
-25. Reflow bei 320 px und 400 % Zoom ohne waagerechtes Scrollen:
-    [accessibility.md](./accessibility.md), 2.5. – gemessen (`overflowX` bei 320 px)
+25. **Telefon und Reflow** ([guidelines.md](./guidelines.md), 4.7): Bei 320 px und 400 % Zoom
+    bricht nichts und nichts scrollt waagerecht ([accessibility.md](./accessibility.md), 2.5).
+    Bei 360 px beginnt der Inhalt spätestens 200 px unter der Oberkante, die Bereichsnavigation
+    steht in einer Zeile, unter 900 px ist keine `<table>` sichtbar, unter 600 px stehen Dialoge
+    bildschirmfüllend und der Anlege-Knopf in voller Breite unter dem Titel; keine Beschriftung
+    eines Knopfs oder Reiters bricht um, kein Text ist am Rand abgeschnitten. – gemessen:
+    `e2e/ui-lab/mobile-pass.mjs` (alle Verwaltungs- und Hauptseiten mit den Mock-Profilen
+    `admin`, `user` und `auditor`, `contentTop`, `overflowX`, `tables`, `wrappedLabels`,
+    `cutOff`, `createButton`, `dialog`), dazu `overflowX` bei 320 px in `capture.mjs`
 26. **Tastatur:** die ganze Strecke ohne Maus ([accessibility.md](./accessibility.md), 2.1). Nach
     „Weiter“ liegt der Fokus auf der Schrittüberschrift, und `document.title` nennt den Schritt. –
     gemessen (`tabStops`, `title`) und Tastatur
@@ -184,13 +191,6 @@ zwei Einträgen.
     Bild an, ein Titel, der später feststeht, hat bis dahin einen Platzhalter („Neuer Chat“). Was
     schon steht, behält seine Position, wenn eine Antwort, ein Titel oder ein Ergebnis eintrifft
     ([guidelines.md](./guidelines.md), 5.8). – Video im Szenario `slow`
-
-52. **Formularfelder aus einem Baustein:** Beschriftung oberhalb, kein schwebendes Label, kein
-    Sternchen, „(optional)“ an optionalen Feldern, Hilfetext bündig mit der Feldkante;
-    Such- und Filterfelder ohne sichtbare Beschriftung; Einstellungsformulare einspaltig in
-    640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
-    ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
-    `FormField.test.tsx` und `fieldHeight.test.tsx`
 54. **Seiten vor der Anmeldung wie die Anwendung:** Bausteine `FormField`, `SecretField`,
     `TextLink`, `SectionHead`; Rückweg überall „Zur Anmeldung" als Textlink unter dem Formular;
     Abschnittsköpfe grau, auch im Installationsassistenten; die Primärschaltfläche trägt das Verb
@@ -214,8 +214,13 @@ zwei Einträgen.
     „Verbindung testen" sekundär neben „Speichern", im Dialog links in der Fußzeile, Ergebnis
     inline. – Sicht (Querbögen) und gemessen (`disabledSubmits`); im Code geprüft durch
     `settingsSource.test.ts` und `SettingsForm.test.tsx`
-
-55. **Listen aus einem Baustein** ([guidelines.md](./guidelines.md), 5.3): die ganze Zeile als
+57. **Formularfelder aus einem Baustein:** Beschriftung oberhalb, kein schwebendes Label, kein
+    Sternchen, „(optional)“ an optionalen Feldern, Hilfetext bündig mit der Feldkante;
+    Such- und Filterfelder ohne sichtbare Beschriftung; Einstellungsformulare einspaltig in
+    640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
+    ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
+    `FormField.test.tsx` und `fieldHeight.test.tsx`
+58. **Listen aus einem Baustein** ([guidelines.md](./guidelines.md), 5.3): die ganze Zeile als
     Link statt „Details“, „Beheben“ oder Chevron; höchstens eine sichtbare, sekundäre Handlung je
     Zeile, der Rest hinter „⋯“ (Ausnahme: Pfeile zum Verschieben, wo die Reihenfolge der Inhalt
     ist, und die Entscheidungszeile mit „Bestätigen“ und „Ablehnen“ als zwei kompakten
@@ -230,5 +235,8 @@ zwei Einträgen.
 ## Pflege
 
 Ein neuer Punkt bekommt die nächste freie Nummer; ein gestrichener behält seine Nummer mit dem
-Vermerk „entfallen“, damit ältere Berichte lesbar bleiben. Wird eine Regel in die Guidelines
+Vermerk „entfallen“, damit ältere Berichte lesbar bleiben. Vor einem Merge prüfen, ob ein
+paralleler PR dieselbe Nummer vergeben hat. Doppelt vergeben waren einmal 52 und 55: Seit
+November 2026 heißen die Formularfelder P57 und die Listen P58; ein älterer Bericht mit „P52“ zu
+Formularfeldern oder „P55“ zu Listen meint diese Punkte. Wird eine Regel in die Guidelines
 übernommen, schrumpft der Punkt hier zum Verweis.

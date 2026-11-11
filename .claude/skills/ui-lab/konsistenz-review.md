@@ -2,8 +2,8 @@
 
 Gehört zum Skill [ui-lab](./SKILL.md), Abschnitte 4 und 6. Läuft nur für die Gewinnerin nach der
 Teilmatrix, vor dem Halt beim Maintainer und vor den Videos. Die allgemeinen Regeln dahinter
-stehen in der UI-Prüfliste, vor allem P13, P18, P19 und das Layout P45–P53; ein Befund nennt die
-Nummer, wenn er eine verletzt. Die Muster unten sind Beispiele dafür, wonach zu suchen ist,
+stehen in der UI-Prüfliste, vor allem P13, P18, P19, das Layout P45–P53 und die Bausteine für
+Formularfelder und Listen P57 und P58; ein Befund nennt die Nummer, wenn er eine verletzt. Die Muster unten sind Beispiele dafür, wonach zu suchen ist,
 keine abschließende Liste.
 
 ## Unterlagen
